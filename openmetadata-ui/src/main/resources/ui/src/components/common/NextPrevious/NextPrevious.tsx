@@ -107,7 +107,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
       </Button>
       <span className="pagination-indicator" data-testid="page-indicator">{`${t(
         'label.page'
-      )} ${currentPage} of ${computeTotalPages(
+      )} ${currentPage} ${t('label.of')} ${computeTotalPages(
         pageSize,
         paging.total
       )} `}</span>

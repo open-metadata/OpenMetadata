@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import {
   mlModelVersionMockProps,
   mockMlModelDetails,
@@ -60,6 +61,7 @@ jest.mock('react-router-dom', () => ({
     tab: 'container',
   }),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
 jest.mock(
@@ -76,7 +78,9 @@ jest.mock(
 describe('MlModelVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {
-      render(<MlModelVersion {...mlModelVersionMockProps} />);
+      render(<MlModelVersion {...mlModelVersionMockProps} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const dataAssetsVersionHeader = screen.getByText('DataAssetsVersionHeader');
@@ -96,7 +100,9 @@ describe('MlModelVersion tests', () => {
 
   it('Should display Loader if isVersionLoading is true', async () => {
     await act(async () => {
-      render(<MlModelVersion {...mlModelVersionMockProps} isVersionLoading />);
+      render(<MlModelVersion {...mlModelVersionMockProps} isVersionLoading />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const loader = screen.getByText('Loader');
@@ -122,7 +128,10 @@ describe('MlModelVersion tests', () => {
         <MlModelVersion
           {...mlModelVersionMockProps}
           currentVersionData={{ ...mockMlModelDetails, mlFeatures: undefined }}
-        />
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
       );
     });
 
@@ -135,7 +144,9 @@ describe('MlModelVersion tests', () => {
 
   it('Should update url on click of tab', async () => {
     await act(async () => {
-      render(<MlModelVersion {...mlModelVersionMockProps} />);
+      render(<MlModelVersion {...mlModelVersionMockProps} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const customPropertyTabLabel = screen.getByText(

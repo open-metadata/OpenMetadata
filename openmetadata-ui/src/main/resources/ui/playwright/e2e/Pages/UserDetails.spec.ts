@@ -22,6 +22,8 @@ import { getApiContext, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitUserProfilePage } from '../../utils/user';
 import { redirectToUserPage } from '../../utils/userDetails';
+import { TableClass } from '../../support/entity/TableClass';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
@@ -61,7 +63,7 @@ test.describe('User with different Roles', () => {
     await user1.create(apiContext);
     await user2.create(apiContext);
     await user3.create(apiContext);
-    
+
     await team.create(apiContext);
     await domain.create(apiContext);
 
@@ -80,7 +82,7 @@ test.describe('User with different Roles', () => {
     await afterAction();
   });
 
-  test('Admin user can get all the teams hierarchy and edit teams', async ({
+  test('Admin user can get all the teams hierarchy and edit teams', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({
     adminPage,
   }) => {
     await redirectToUserPage(adminPage);
@@ -91,8 +93,6 @@ test.describe('User with different Roles', () => {
     await adminPage.getByTestId('edit-teams-button').click();
 
     await expect(adminPage.getByTestId('team-select')).toBeVisible();
-
-    await adminPage.getByTestId('team-select').click();
 
     await adminPage.waitForSelector('.ant-tree-select-dropdown', {
       state: 'visible',
@@ -122,8 +122,6 @@ test.describe('User with different Roles', () => {
     await adminPage.getByTestId('edit-teams-button').click();
 
     await expect(adminPage.getByTestId('team-select')).toBeVisible();
-
-    await adminPage.getByTestId('team-select').click();
 
     await adminPage.waitForSelector('.ant-tree-select-dropdown', {
       state: 'visible',
@@ -220,7 +218,6 @@ test.describe('User with different Roles', () => {
     await adminPage.getByTestId('edit-teams-button').click();
 
     await teamsListResponse;
-    await adminPage.getByTestId('team-select').click();
 
     await adminPage.waitForSelector('.ant-tree-select-dropdown', {
       state: 'visible',
@@ -503,15 +500,13 @@ test.describe('User with different Roles', () => {
       adminPage.getByTestId('profile-edit-roles-select')
     ).toBeVisible();
 
-    await adminPage.getByTestId('profile-edit-roles-select').click();
-
     await adminPage.waitForSelector('.ant-select-dropdown', {
       state: 'visible',
     });
 
     await adminPage
       .locator('.ant-select-item-option-content')
-      .getByText('Application bot role')
+      .getByText('Application bot role', { exact: true })
       .click();
 
     await adminPage.getByTestId('user-profile-edit-roles-save-button').click();
@@ -557,9 +552,90 @@ test.describe('User with different Roles', () => {
       userPage.getByTestId('edit-user-persona').getByTestId('edit-persona')
     ).not.toBeVisible();
     await expect(userPage.getByTestId('user-profile-roles')).toBeVisible();
-    // Edit Roles icon shouldn't be visible
     await expect(
       userPage.getByTestId('user-profile-edit-roles-save-button')
     ).not.toBeVisible();
+  });
+
+  test('My Data Tab - AssetsTabs search functionality', async ({
+    adminPage,
+  }) => {
+    const { apiContext } = await getApiContext(adminPage);
+    const table = new TableClass();
+
+    try {
+      await table.create(apiContext);
+
+      const adminUserResponse = await apiContext.get(
+        '/api/v1/users/name/admin'
+      );
+      const adminUser = await adminUserResponse.json();
+
+      await apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id}`, {
+        data: [
+          {
+            op: 'add',
+            path: '/owners/0',
+            value: {
+              id: adminUser.id,
+              type: 'user',
+            },
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      });
+
+      await redirectToUserPage(adminPage);
+
+      await adminPage.getByTestId('mydata').click();
+
+      const assetsSearchBox = adminPage
+        .locator('#asset-tab')
+        .getByTestId('searchbar');
+
+      await expect(assetsSearchBox).toBeVisible();
+
+      const searchResponse = adminPage.waitForResponse(
+        '**/api/v1/search/query*'
+      );
+
+      await assetsSearchBox.fill(table.entity.name);
+
+      await searchResponse;
+
+      const assetCard = adminPage.getByText(table.entity.name).first();
+
+      await expect(assetCard).toBeVisible();
+
+      await assetsSearchBox.clear();
+
+      const incorrectSearchResponse = adminPage.waitForResponse(
+        '**/api/v1/search/query*'
+      );
+
+      await assetsSearchBox.fill('nonexistent-asset-name-xyz-123');
+
+      await incorrectSearchResponse;
+
+      await expect(assetsSearchBox).toBeVisible();
+
+      const incorrectAssetCard = adminPage.getByText(table.entity.name);
+
+      await expect(incorrectAssetCard).not.toBeVisible();
+
+      await expect(
+        adminPage.getByText('No records found')
+      ).toBeVisible();
+
+      const rightPanel = adminPage.getByTestId(
+        'entity-summary-panel-container'
+      );
+
+      await expect(rightPanel).not.toBeVisible();
+    } finally {
+      await table.delete(apiContext);
+    }
   });
 });

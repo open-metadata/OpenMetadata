@@ -97,6 +97,21 @@ class SamplerProcessor(Processor):
             schema_entity, database_entity, _ = get_context_entities(
                 entity=entity, metadata=self.metadata
             )
+
+            if database_entity is None:
+                return Either(
+                    left=StackTraceError(
+                        name=record.entity.fullyQualifiedName.root,
+                        error=(
+                            f"Could not fetch database entity for [{record.entity.fullyQualifiedName.root}] "
+                            f"from Search Indexes. The search index may not be available or the entity "
+                            f"has not been indexed yet. Please ensure the Elasticsearch index is properly "
+                            f"configured and try reindexing."
+                        ),
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
             service_conn_config = self._copy_service_config(
                 self.config, database_entity
             )

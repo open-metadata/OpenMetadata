@@ -61,7 +61,11 @@ def extract_pii_tags(
 
     for text in texts:
         results = analyzer.analyze(
-            text, language=SUPPORTED_LANG, context=context, entities=PIITag.values()
+            text,
+            language=SUPPORTED_LANG,
+            context=context,
+            entities=PIITag.values(),
+            return_decision_process=True,
         )
         if recognizer_result_patcher is not None:
             results = recognizer_result_patcher(results, text)

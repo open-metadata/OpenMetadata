@@ -19,6 +19,14 @@ import {
   parseBucketsData,
 } from './SearchUtils';
 
+// Add type definition for ESQueryClause to fix type errors
+type ESQueryClause = {
+  term?: Record<string, string | number | boolean>;
+  wildcard?: Record<string, string>;
+  match?: Record<string, string | number | boolean>;
+  bool?: Record<string, unknown>;
+};
+
 describe('getEntityTypeFromSearchIndex', () => {
   it.each([
     [SearchIndex.TABLE, EntityType.TABLE],
@@ -130,7 +138,10 @@ describe('getGroupLabel', () => {
 
 describe('parseBucketsData', () => {
   it('should parse buckets with only key property', () => {
-    const buckets = [{ key: 'value1' }, { key: 'value2' }];
+    const buckets = [
+      { key: 'value1', doc_count: 1 },
+      { key: 'value2', doc_count: 2 },
+    ];
 
     const result = parseBucketsData(buckets);
 
@@ -142,8 +153,8 @@ describe('parseBucketsData', () => {
 
   it('should use label property for title when available', () => {
     const buckets = [
-      { key: 'value1', label: 'Label 1' },
-      { key: 'value2', label: 'Label 2' },
+      { key: 'value1', label: 'Label 1', doc_count: 1 },
+      { key: 'value2', label: 'Label 2', doc_count: 2 },
     ];
 
     const result = parseBucketsData(buckets);
@@ -158,6 +169,7 @@ describe('parseBucketsData', () => {
     const buckets = [
       {
         key: 'fallback1',
+        doc_count: 1,
         'top_hits#top': {
           hits: {
             hits: [
@@ -174,6 +186,7 @@ describe('parseBucketsData', () => {
       },
       {
         key: 'fallback2',
+        doc_count: 2,
         'top_hits#top': {
           hits: {
             hits: [
@@ -202,6 +215,7 @@ describe('parseBucketsData', () => {
     const buckets = [
       {
         key: 'fallback1',
+        doc_count: 1,
         'top_hits#top': {
           hits: {
             hits: [
@@ -225,19 +239,22 @@ describe('parseBucketsData', () => {
 
   it('should handle incomplete or malformed bucket data gracefully', () => {
     const buckets = [
-      { key: 'key1' },
+      { key: 'key1', doc_count: 1 },
       {
         key: 'key2',
+        doc_count: 2,
         'top_hits#top': {}, // Missing hits property
       },
       {
         key: 'key3',
+        doc_count: 3,
         'top_hits#top': {
           hits: {}, // Missing hits array
         },
       },
       {
         key: 'key4',
+        doc_count: 4,
         'top_hits#top': {
           hits: {
             hits: [], // Empty hits array
@@ -261,6 +278,7 @@ describe('parseBucketsData', () => {
       const buckets = [
         {
           key: 'bucket1',
+          doc_count: 1,
           'top_hits#top': {
             hits: {
               hits: [
@@ -276,6 +294,7 @@ describe('parseBucketsData', () => {
         },
         {
           key: 'bucket2',
+          doc_count: 2,
           'top_hits#top': {
             hits: {
               hits: [
@@ -306,6 +325,7 @@ describe('parseBucketsData', () => {
       const buckets = [
         {
           key: 'bucket1',
+          doc_count: 1,
           'top_hits#top': {
             hits: {
               hits: [
@@ -332,6 +352,7 @@ describe('parseBucketsData', () => {
       const buckets = [
         {
           key: 'bucket1',
+          doc_count: 1,
           'top_hits#top': {
             hits: {
               hits: [
@@ -358,6 +379,7 @@ describe('parseBucketsData', () => {
       const buckets = [
         {
           key: 'bucket1',
+          doc_count: 1,
           'top_hits#top': {
             hits: {
               hits: [
@@ -382,6 +404,7 @@ describe('parseBucketsData', () => {
       const buckets = [
         {
           key: 'bucket1',
+          doc_count: 1,
           'top_hits#top': {
             hits: {
               hits: [
@@ -414,6 +437,7 @@ describe('parseBucketsData', () => {
       const buckets = [
         {
           key: 'bucket1',
+          doc_count: 1,
           'top_hits#top': {
             hits: {
               hits: [
@@ -429,6 +453,7 @@ describe('parseBucketsData', () => {
         },
         {
           key: 'bucket2',
+          doc_count: 2,
           'top_hits#top': {
             hits: {
               hits: [
@@ -444,6 +469,7 @@ describe('parseBucketsData', () => {
         },
         {
           key: 'bucket3',
+          doc_count: 3,
           'top_hits#top': {
             hits: {
               hits: [
@@ -468,6 +494,175 @@ describe('parseBucketsData', () => {
         { title: 'Team A', value: 'team_a' },
         { title: 'Team B', value: 'team_b' },
         { title: 'Team C', value: 'team_c' },
+      ]);
+    });
+
+    it('should handle buckets with additional properties (type safety test)', () => {
+      const buckets = [
+        {
+          key: 'value1',
+          doc_count: 5,
+          label: 'Label 1',
+          // Additional properties that might exist in ES aggregations
+          'top_hits#top': {
+            hits: {
+              total: { value: 1, relation: 'eq' },
+              hits: [
+                {
+                  _index: 'test_index',
+                  _type: '_doc',
+                  _id: '1',
+                  _source: {
+                    displayName: 'Test Display',
+                    nested: {
+                      field: 'nested_value',
+                    },
+                  },
+                },
+              ],
+            },
+          },
+          anotherProperty: 'some value',
+        },
+      ];
+
+      // Test with sourceFields
+      const resultWithSourceFields = parseBucketsData(buckets, 'nested.field');
+
+      expect(resultWithSourceFields).toEqual([
+        { value: 'nested_value', title: 'Label 1' }, // Uses bucket.label when available
+      ]);
+
+      // Test with sourceFieldOptionType
+      const resultWithOptionType = parseBucketsData(buckets, undefined, {
+        label: 'displayName',
+        value: 'nested.field',
+      });
+
+      expect(resultWithOptionType).toEqual([
+        { title: 'Test Display', value: undefined }, // nested.field should be undefined as it's not at root level
+      ]);
+
+      // Test basic usage
+      const basicResult = parseBucketsData(buckets);
+
+      expect(basicResult).toEqual([{ value: 'value1', title: 'Label 1' }]);
+    });
+
+    it('should handle null or undefined values in type-safe manner', () => {
+      const buckets = [
+        {
+          key: 'test1',
+          doc_count: 1,
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: {
+                    displayName: null,
+                    fullyQualifiedName: undefined,
+                    validField: 'valid_value',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        {
+          key: 'test2',
+          doc_count: 2,
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: null, // null source
+                },
+              ],
+            },
+          },
+        },
+      ];
+
+      // Test sourceFieldOptionType with null values
+      const result = parseBucketsData(buckets, undefined, {
+        label: 'displayName',
+        value: 'fullyQualifiedName',
+      });
+
+      expect(result).toEqual([
+        { title: null, value: undefined },
+        { title: undefined, value: undefined },
+      ]);
+
+      // Test sourceFields with valid path
+      const resultWithSourceFields = parseBucketsData(buckets, 'validField');
+
+      expect(resultWithSourceFields).toEqual([
+        { value: 'valid_value', title: 'valid_value' },
+        { value: 'test2', title: 'test2' }, // fallback to key when source is null
+      ]);
+    });
+
+    it('should handle complex nested path traversal with type safety', () => {
+      const buckets = [
+        {
+          key: 'complex1',
+          doc_count: 1,
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: {
+                    level1: {
+                      level2: {
+                        level3: {
+                          value: 'deeply_nested_value',
+                        },
+                        array: [{ item: 'array_item' }],
+                      },
+                    },
+                    emptyObject: {},
+                    nullObject: null,
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ];
+
+      // Test successful deep nesting
+      const deepResult = parseBucketsData(
+        buckets,
+        'level1.level2.level3.value'
+      );
+
+      expect(deepResult).toEqual([
+        { value: 'deeply_nested_value', title: 'deeply_nested_value' },
+      ]);
+
+      // Test path that doesn't exist
+      const invalidPathResult = parseBucketsData(
+        buckets,
+        'level1.level2.level3.nonexistent'
+      );
+
+      expect(invalidPathResult).toEqual([
+        { value: 'complex1', title: 'complex1' }, // fallback to key
+      ]);
+
+      // Test path through null object
+      const nullPathResult = parseBucketsData(buckets, 'nullObject.property');
+
+      expect(nullPathResult).toEqual([
+        { value: 'complex1', title: 'complex1' }, // fallback to key
+      ]);
+
+      // Test path through empty object
+      const emptyPathResult = parseBucketsData(buckets, 'emptyObject.property');
+
+      expect(emptyPathResult).toEqual([
+        { value: 'complex1', title: 'complex1' }, // fallback to key
       ]);
     });
   });
@@ -945,6 +1140,100 @@ describe('getTermQuery', () => {
         query: {
           bool: {
             must: [{ term: { field: 'value@with#special$chars' } }],
+          },
+        },
+      });
+    });
+  });
+
+  describe('Type safety improvements', () => {
+    it('should handle ESQueryClause types correctly for term queries', () => {
+      const result = getTermQuery({
+        stringField: 'stringValue',
+        numberField: 42,
+        booleanField: true,
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { stringField: 'stringValue' } },
+              { term: { numberField: 42 } },
+              { term: { booleanField: true } },
+            ],
+          },
+        },
+      });
+    });
+
+    it('should handle ESBoolQuery structure with proper typing', () => {
+      const result = getTermQuery({ mainField: 'value' }, 'must', undefined, {
+        wildcardTerms: { wildcardField: '*pattern*' },
+        matchTerms: { matchField: 'matchValue' },
+        mustNotTerms: { excludeField: 'excludeValue' },
+      });
+
+      // Verify the structure follows ESBoolQuery interface
+      expect(result.query.bool).toHaveProperty('must');
+      expect(result.query.bool).toHaveProperty('must_not');
+      expect(result.query.bool.must).toBeInstanceOf(Array);
+      expect(result.query.bool.must_not).toBeInstanceOf(Array);
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { mainField: 'value' } },
+              { wildcard: { wildcardField: '*pattern*' } },
+              { match: { matchField: 'matchValue' } },
+            ],
+            must_not: [{ term: { excludeField: 'excludeValue' } }],
+          },
+        },
+      });
+    });
+
+    it('should handle complex nested boolean structures with type safety', () => {
+      const result = getTermQuery({ category: 'data' }, 'must', undefined, {
+        wildcardShouldQueries: {
+          'name.keyword': '*test*',
+          'description.keyword': '*test*',
+        },
+        wildcardMustNotQueries: {
+          fullyQualifiedName: ['pattern1.*', 'pattern2.*'],
+        },
+      });
+
+      // Verify nested bool structure is properly typed
+      const mustArray = result.query.bool.must as ESQueryClause[];
+      const nestedBool = mustArray.find(
+        (item: ESQueryClause) => 'bool' in item
+      );
+
+      expect(nestedBool).toBeDefined();
+      expect(nestedBool?.bool).toHaveProperty('should');
+      expect(nestedBool?.bool).toHaveProperty('minimum_should_match');
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { category: 'data' } },
+              {
+                bool: {
+                  should: [
+                    { wildcard: { 'name.keyword': '*test*' } },
+                    { wildcard: { 'description.keyword': '*test*' } },
+                  ],
+                  minimum_should_match: 1,
+                },
+              },
+            ],
+            must_not: [
+              { wildcard: { fullyQualifiedName: 'pattern1.*' } },
+              { wildcard: { fullyQualifiedName: 'pattern2.*' } },
+            ],
           },
         },
       });

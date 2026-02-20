@@ -25,6 +25,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../assets/svg/ic-suggestions-active.svg';
@@ -50,7 +51,14 @@ import './global-search-bar.less';
 
 export const GlobalSearchBar = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
-  const { searchCriteria, updateSearchCriteria } = useApplicationStore();
+  const { searchCriteria, updateSearchCriteria, currentUser } =
+    useApplicationStore(
+      useShallow((state) => ({
+        searchCriteria: state.searchCriteria,
+        updateSearchCriteria: state.updateSearchCriteria,
+        currentUser: state.currentUser,
+      }))
+    );
   const { isNLPEnabled, isNLPActive, setNLPActive, setNLPEnabled } =
     useSearchStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -62,7 +70,6 @@ export const GlobalSearchBar = () => {
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const { isTourOpen, updateTourPage, updateTourSearch } = useTourProvider();
-  const { currentUser } = useApplicationStore();
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')
       ? location.search.substring(1)

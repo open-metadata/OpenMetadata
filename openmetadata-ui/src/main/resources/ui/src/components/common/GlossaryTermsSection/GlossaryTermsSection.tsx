@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
+import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { GlossaryTermSelectableList } from '../GlossaryTermSelectableList/GlossaryTermSelectableList.component';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
@@ -41,6 +43,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     []
   );
   const [showAllTerms, setShowAllTerms] = useState(false);
+  const { entityRules } = useEntityRules(entityType);
 
   const {
     isEditing,
@@ -80,27 +83,45 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         );
         const updatedTags = [...nonGlossaryTags, ...selectedTerms];
 
+        // When onGlossaryTermsUpdate is provided, use it directly as the update mechanism
+        // This avoids updateEntityField's fallback behavior for non-standard entity types
+        if (onGlossaryTermsUpdate) {
+          try {
+            const resultTags = await onGlossaryTermsUpdate(updatedTags);
+            if (resultTags) {
+              setDisplayTags(resultTags);
+            }
+            completeEditing();
+          } catch {
+            // Revert editing state so the UI doesn't show the failed selection
+            setEditingGlossaryTerms(glossaryTerms);
+            cancelEditing();
+            setIsLoading(false);
+          }
+
+          return;
+        }
+
         const result = await updateEntityField({
           entityId,
-          entityType: entityType as EntityType,
+          entityType: entityType,
           fieldName: 'tags',
           currentValue: displayTags,
           newValue: updatedTags,
           entityLabel: t('label.glossary-term-plural'),
           onSuccess: (newTags: TagLabel[]) => {
             setDisplayTags(newTags);
-            onGlossaryTermsUpdate?.(newTags);
-            completeEditing();
           },
           t,
         });
 
-        if (result.success && result.data === displayTags) {
+        if (result.success) {
           completeEditing();
-        } else if (!result.success) {
+        } else {
           setIsLoading(false);
         }
       } catch (error) {
+        showErrorToast(error as AxiosError);
         setIsLoading(false);
       }
     },
@@ -133,6 +154,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   const editingState = useMemo(
     () => (
       <GlossaryTermSelectableList
+        multiSelect={entityRules.canAddMultipleGlossaryTerm}
         popoverProps={{
           placement: 'bottomLeft',
           open: popoverOpen,
@@ -143,7 +165,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         onCancel={handleCancel}
         onUpdate={handleGlossaryTermSelection}>
         <div className="d-none glossary-term-selector-display">
-          {editingGlossaryTerms.length > 0 && isEditing && (
+          {editingGlossaryTerms.length > 0 ? (
             <div className="selected-glossary-terms-list">
               {editingGlossaryTerms.map((term) => (
                 <div className="selected-glossary-term-chip" key={term.tagFQN}>
@@ -154,6 +176,12 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
                 </div>
               ))}
             </div>
+          ) : (
+            <span className="no-data-placeholder">
+              {t('label.no-entity-assigned', {
+                entity: t('label.glossary-term-plural'),
+              })}
+            </span>
           )}
         </div>
       </GlossaryTermSelectableList>
@@ -164,7 +192,8 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
       editingGlossaryTerms,
       handleCancel,
       handleGlossaryTermSelection,
-      isEditing,
+      entityRules.canAddMultipleGlossaryTerm,
+      t,
     ]
   );
 

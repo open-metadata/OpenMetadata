@@ -289,4 +289,31 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
       refNode.remove(fieldName);
     }
   }
+
+  // ===================================================================
+  // IMPORT/EXPORT OPERATIONS
+  // ===================================================================
+  public String importCsv(String name, String csvData, boolean dryRun, String targetEntityType)
+      throws OpenMetadataException {
+    RequestOptions options =
+        RequestOptions.builder()
+            .header("Content-Type", "text/plain; charset=UTF-8")
+            .queryParam("dryRun", String.valueOf(dryRun))
+            .queryParam("targetEntityType", targetEntityType)
+            .build();
+    String path = basePath + "/name/" + name + "/import";
+    return httpClient.executeForString(HttpMethod.PUT, path, csvData, options);
+  }
+
+  public String importCsvAsync(String name, String csvData, boolean dryRun, String targetEntityType)
+      throws OpenMetadataException {
+    RequestOptions options =
+        RequestOptions.builder()
+            .header("Content-Type", "text/plain; charset=UTF-8")
+            .queryParam("dryRun", String.valueOf(dryRun))
+            .queryParam("targetEntityType", targetEntityType)
+            .build();
+    String path = basePath + "/name/" + name + "/importAsync";
+    return httpClient.executeForString(HttpMethod.PUT, path, csvData, options);
+  }
 }

@@ -36,6 +36,7 @@ from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
 from metadata.profiler.processor.core import Profiler
+from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
 BUCKET_NAME = "MyBucket"
@@ -127,7 +128,15 @@ class MetricsTest(TestCase):
     )
     def setUp(self, *_):
         with (
-            patch.object(DatalakeSampler, "raw_dataset", new_callable=lambda: self.dfs),
+            patch.object(
+                DatalakeSampler,
+                "get_dataframes",
+                return_value=DatalakeColumnWrapper(
+                    dataframes=lambda: iter(self.dfs),
+                    columns=None,
+                    raw_data=None,
+                ),
+            ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
             self.sampler = DatalakeSampler(
@@ -202,7 +211,15 @@ class MetricsTest(TestCase):
         )
 
         with (
-            patch.object(DatalakeSampler, "raw_dataset", new_callable=lambda: self.dfs),
+            patch.object(
+                DatalakeSampler,
+                "get_dataframes",
+                return_value=DatalakeColumnWrapper(
+                    dataframes=lambda: iter(self.dfs),
+                    columns=None,
+                    raw_data=None,
+                ),
+            ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
             sampler = DatalakeSampler(
@@ -264,7 +281,15 @@ class MetricsTest(TestCase):
             ],
         )
         with (
-            patch.object(DatalakeSampler, "raw_dataset", new_callable=lambda: self.dfs),
+            patch.object(
+                DatalakeSampler,
+                "get_dataframes",
+                return_value=DatalakeColumnWrapper(
+                    dataframes=lambda: iter(self.dfs),
+                    columns=None,
+                    raw_data=None,
+                ),
+            ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
             sampler = DatalakeSampler(

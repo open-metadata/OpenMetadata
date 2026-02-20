@@ -38,6 +38,7 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
+
 const persona = new PersonaClass();
 const domain = new Domain();
 const subDomain = new SubDomain(domain);
@@ -117,6 +118,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   }) => {
     // Navigate to domain page and add assets via UI
     await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
 
     // addAssetsToDomain navigates to assets tab, adds assets, and verifies count
@@ -138,6 +140,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   }) => {
     // Navigate to data product page
     await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProduct.data);
 
@@ -163,6 +166,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     // Current state: domain has 2 assets (table, topic)
     // Navigate to domain page
     await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
 
@@ -198,6 +202,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   }) => {
     // Navigate to data product page
     await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProduct.data);
 

@@ -404,6 +404,8 @@ class RedshiftSource(
             ).all()
             for row in results:
                 stored_procedure = RedshiftStoredProcedure.model_validate(dict(row))
+                if self.is_stored_procedure_filtered(stored_procedure.name):
+                    continue
                 yield stored_procedure
 
     @calculate_execution_time_generator()

@@ -134,6 +134,8 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - **Theme and Styles**: MUI theme data and styles are defined in `openmetadata-ui-core-components`
 - **Colors and Design Tokens**: Always reference theme colors and design tokens from the MUI theme, not hardcoded values
 - **Legacy Components**: Ant Design components remain in existing code but should be replaced with MUI equivalents when refactoring
+- Do not add unnecessary spacing between logs and code.
+- In Java, avoid wildcards imports (e.g., use `import java.util.List;` instead of `import java.util.*;`)
 - Custom styles in `.less` files with component-specific naming (legacy pattern)
 - Follow BEM naming convention for custom CSS classes
 - Use CSS modules where appropriate
@@ -195,6 +197,9 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Use clear, descriptive variable and method names instead of comments
 - Follow existing project patterns and conventions
 - Generate production-ready code, not tutorial code
+- Create integration tests in openmetadata-integration-tests
+- Do not use Fully Qualified Names in the code such as org.openmetadata.schema.type.Status instead import the class name
+- Do not import wild-card packages instead import exactly required packages
 
 ### TypeScript/Frontend Code Requirements
 - **NEVER use `any` type** in TypeScript code - always use proper types
@@ -208,6 +213,23 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
   3. Relative imports for utilities and components
   4. Asset imports (SVGs, styles)
   5. Type imports grouped separately when needed
+
+### Python Code Requirements
+- **Use pytest, not unittest** - write tests using pytest style with plain `assert` statements
+- Use pytest fixtures for test setup instead of `setUp`/`tearDown` methods
+- Use `unittest.mock` for mocking (MagicMock, patch) - this is compatible with pytest
+- Test classes should not inherit from `TestCase` - use plain classes prefixed with `Test`
+- Use `assert x == y` instead of `self.assertEqual(x, y)`
+- Use `assert x is None` instead of `self.assertIsNone(x)`
+- Use `assert "text" in string` instead of `self.assertIn("text", string)`
+
+### Testing Philosophy
+- **Test real behavior, not mock wiring** - if a test requires mocking 3+ classes just to verify a method call, it's testing the wrong thing
+- **Prefer integration tests** over heavily-mocked unit tests. This project has full integration test infrastructure (OpenMetadataApplicationTest, Docker containers, real OpenSearch). Use it.
+- **Mocks are for boundaries, not internals** - mock external services (HTTP clients, third-party APIs), not your own classes. If you're mocking static methods left and right to test internal plumbing, write an integration test instead.
+- **A test that mocks everything proves nothing** - it only verifies that your mocks are wired correctly, not that the system works
+- **Ask "what breaks if this test passes but the code is wrong?"** - if the answer is "nothing, because everything real is mocked out", delete the test and write a better one
+- **Test the outcome, not the implementation** - assert on observable results (API responses, database state, stats values) rather than verifying internal method calls with `verify()`
 
 ### Response Format
 - Provide clean code blocks without unnecessary explanations

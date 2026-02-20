@@ -61,6 +61,7 @@ export const COLOR_FIELD: FieldProp = {
 export const getNameField = (disabled: boolean): FieldProp => ({
   name: 'name',
   id: 'root/name',
+  muiLabel: 'label.name',
   label: 'label.name',
   required: true,
   placeholder: 'label.name',
@@ -79,6 +80,7 @@ export const getNameField = (disabled: boolean): FieldProp => ({
 export const getDisplayNameField = (disabled: boolean): FieldProp => ({
   name: 'displayName',
   id: 'root/displayName',
+  muiLabel: 'label.display-name',
   label: 'label.display-name',
   required: false,
   placeholder: 'label.display-name',
@@ -102,6 +104,7 @@ export const getOwnerField = ({
   id: 'root/owner',
   required: false,
   label: 'label.owner-plural',
+  muiLabel: 'label.owner-plural',
   type: FieldTypes.USER_TEAM_SELECT_MUI,
   props: {
     multipleUser: canAddMultipleUserOwners,
@@ -122,6 +125,7 @@ export const getDomainField = ({
   id: 'root/domains',
   required: false,
   label: 'label.domain-plural',
+  muiLabel: 'label.domain-plural',
   type: FieldTypes.DOMAIN_SELECT_MUI,
   props: {
     'data-testid': 'domain-select',
@@ -167,6 +171,7 @@ export const getDisabledField = ({
   name: 'disabled',
   required: false,
   label: 'label.disable-tag',
+  muiLabel: 'label.disable-tag',
   id: 'root/disabled',
   type: FieldTypes.SWITCH_MUI,
   formItemLayout: FormItemLayout.HORIZONTAL,
@@ -187,6 +192,7 @@ export const getMutuallyExclusiveField = ({
   showHelperText: boolean;
 }): FieldProp => ({
   name: 'mutuallyExclusive',
+  muiLabel: 'label.mutually-exclusive',
   label: 'label.mutually-exclusive',
   type: FieldTypes.SWITCH_MUI,
   required: false,

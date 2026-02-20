@@ -26,9 +26,9 @@ interface CustomizePageStore {
 
   setPage: (page: Page) => void;
 
-  getPage: (pageType: string) => Page;
+  getPage: (pageType: string) => Page | null;
 
-  getNavigation: () => NavigationItem[];
+  getNavigation: () => NavigationItem[] | null;
   setCurrentPageType: (pageType: PageType) => void;
   updateCurrentPage: (page: Page) => void;
   setCurrentPersonaDocStore: (document: Document) => void;
@@ -44,7 +44,7 @@ export const useCustomizeStore = create<CustomizePageStore>()((set, get) => ({
     const { updateCurrentPage, currentPageType } = get();
 
     // Remove undefined or null pages
-    const pages = document?.data?.pages.filter(Boolean);
+    const pages = document?.data?.pages?.filter(Boolean);
 
     const newPage = pages?.find((p: Page) => p?.pageType === currentPageType);
 
@@ -89,7 +89,7 @@ export const useCustomizeStore = create<CustomizePageStore>()((set, get) => ({
     const currentPage = getPage(pageType);
 
     set({
-      currentPage: currentPage ?? { pageType },
+      currentPage: currentPage ?? ({ pageType } as Page),
       currentPageType: pageType,
     });
   },

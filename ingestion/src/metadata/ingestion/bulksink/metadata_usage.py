@@ -240,7 +240,14 @@ class MetadataUsageBulkSink(BulkSink):
             for usage_record in file_handler.readlines():
                 record = json.loads(usage_record)
                 cost_record = QueryCostWrapper(**record)
-                self.metadata.publish_query_cost(cost_record, self.service_name)
+                try:
+                    self.metadata.publish_query_cost(cost_record, self.service_name)
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Failed to publish query cost for "
+                        f"query={cost_record.query[:100]}...: {exc}"
+                    )
 
     # Check here how to properly pick up ES and/or table query data
     def run(self) -> None:

@@ -14,6 +14,7 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
 import json
 import traceback
+from hashlib import md5
 from typing import Any, Iterable, Optional, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -63,7 +64,7 @@ from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
 from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
-    fetch_dataframe,
+    fetch_dataframe_first_chunk,
     get_file_format_type,
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -270,13 +271,14 @@ class DatalakeSource(DatabaseServiceSource):
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
-        Prepare a table request and pass it to the sink
+        Prepare a table request and pass it to the sink.
+        Uses first chunk only for schema inference to avoid loading entire file.
         """
         table_name, table_type, table_extension = table_name_and_type
         schema_name = self.context.get().database_schema
         try:
             table_constraints = None
-            data_frame, raw_data = fetch_dataframe(
+            data_frame, raw_data = fetch_dataframe_first_chunk(
                 config_source=self.config_source,
                 client=self.client._client,
                 file_fqn=DatalakeTableSchemaWrapper(
@@ -287,16 +289,26 @@ class DatalakeSource(DatabaseServiceSource):
                 fetch_raw_data=True,
             )
             if data_frame:
+                data_frame = next(data_frame)
                 column_parser = DataFrameColumnParser.create(
-                    data_frame[0], table_extension, raw_data=raw_data
+                    data_frame, table_extension, raw_data=raw_data
                 )
                 columns = column_parser.get_columns()
             else:
                 # If no data_frame (due to unsupported type), ignore
                 columns = None
             if columns:
+                display_name = None
+                if len(table_name) > 256:
+                    display_name = table_name
+                    table_name = md5(table_name.encode()).hexdigest()
+                    logger.debug(
+                        f"Table name exceeds 256 characters. Using MD5 hash [{table_name}] "
+                        f"as name and storing the full path in displayName: [{display_name}]"
+                    )
                 table_request = CreateTableRequest(
                     name=table_name,
+                    displayName=display_name,
                     tableType=table_type,
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,

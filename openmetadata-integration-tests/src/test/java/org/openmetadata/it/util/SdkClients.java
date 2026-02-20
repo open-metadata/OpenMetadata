@@ -190,6 +190,8 @@ public class SdkClients {
             .serverUrl(BASE_URL)
             .accessToken(token)
             .header("X-Auth-Params-Email", email)
+            .readTimeout(300000)
+            .writeTimeout(300000)
             .build();
     OpenMetadataClient client = new OpenMetadataClient(cfg);
     // Set default client for fluent APIs used in factories (only for admin)
@@ -253,5 +255,16 @@ public class SdkClients {
     Metrics.setDefaultClient(client);
     Tags.setDefaultClient(client);
     TestCases.setDefaultClient(client);
+  }
+
+  /** Get the base server URL for direct HTTP calls */
+  public static String getServerUrl() {
+    return BASE_URL;
+  }
+
+  /** Get an admin JWT token for direct HTTP calls */
+  public static String getAdminToken() {
+    return JwtAuthProvider.tokenFor(
+        "admin@open-metadata.org", "admin@open-metadata.org", new String[] {"admin"}, 3600);
   }
 }

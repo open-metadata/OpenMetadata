@@ -21,7 +21,10 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -35,10 +38,16 @@ import org.openmetadata.sdk.models.ListResponse;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, CreateDatabaseSchema> {
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(DatabaseSchemaResourceIT.class);
 
-  // Enable import/export for database schemas
   {
     supportsImportExport = true;
+    supportsBatchImport = true;
+    supportsRecursiveImport = true; // DatabaseSchema supports recursive import with nested entities
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // Store last created schema for import/export tests
@@ -1290,5 +1299,563 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
         adminDescription,
         updatedEntity.getDescription(),
         "Admin should be able to update description via bulk");
+  }
+
+  /**
+   * Test that importing a table with unapproved (IN_REVIEW) glossary terms as tags fails with
+   * appropriate error message.
+   */
+  @Test
+  void test_importCsv_withUnapprovedGlossaryTerm_fails(TestNamespace ns)
+      throws InterruptedException, com.fasterxml.jackson.core.JsonProcessingException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = createDatabase(ns, service);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("schemaForGlossaryValidation"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    // Create a table to be updated via CSV
+    CreateTable createTable = new CreateTable();
+    createTable.setName(ns.prefix("testTable"));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    createTable.setTableConstraints(null);
+    client.tables().create(createTable);
+
+    // Create a glossary with an IN_REVIEW term
+    org.openmetadata.schema.api.data.CreateGlossary createGlossary =
+        new org.openmetadata.schema.api.data.CreateGlossary()
+            .withName(ns.prefix("glossaryForValidation"))
+            .withDescription("Glossary for validation");
+    org.openmetadata.schema.entity.data.Glossary glossary =
+        client.glossaries().create(createGlossary);
+
+    // Create an IN_REVIEW glossary term by creating it first, then patching the status
+    // (You cannot create a term with IN_REVIEW status directly)
+    org.openmetadata.schema.type.EntityReference reviewerRef =
+        org.openmetadata.it.factories.UserTestFactory.createUser(ns, "reviewer1")
+            .getEntityReference();
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createInReviewTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("inReviewGlossaryTerm"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term in review status")
+            .withReviewers(List.of(reviewerRef));
+    org.openmetadata.schema.entity.data.GlossaryTerm inReviewTerm =
+        client.glossaryTerms().create(createInReviewTerm);
+
+    // Now update the term to set it to IN_REVIEW status
+    inReviewTerm.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
+    inReviewTerm = client.glossaryTerms().update(inReviewTerm.getId(), inReviewTerm);
+
+    // Wait for the term to be updated to IN_REVIEW status
+    final UUID termId = inReviewTerm.getId();
+    org.awaitility.Awaitility.await()
+        .atMost(10, java.util.concurrent.TimeUnit.SECONDS)
+        .pollInterval(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              org.openmetadata.schema.entity.data.GlossaryTerm term =
+                  client.glossaryTerms().get(termId.toString());
+              return term.getEntityStatus() == org.openmetadata.schema.type.EntityStatus.IN_REVIEW;
+            });
+
+    log.info("TEST: Creating CSV for unapproved glossary term import");
+    log.info("TEST: IN_REVIEW term FQN: {}", inReviewTerm.getFullyQualifiedName());
+    log.info("TEST: Schema FQN: {}", schema.getFullyQualifiedName());
+
+    // Create CSV with the unapproved glossary term
+    String csv =
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n"
+            + ns.prefix("testTable")
+            + ",Test Table,Updated description,,,\""
+            + inReviewTerm.getFullyQualifiedName()
+            + "\",,,,,,";
+
+    log.info("TEST: CSV to import:\n{}", csv);
+    log.info("TEST: CSV header field count: {}", csv.split("\n")[0].split(",").length);
+    log.info("TEST: CSV data field count: {}", csv.split("\n")[1].split(",", -1).length);
+
+    // Attempt to import - should fail
+    log.info("TEST: Attempting CSV import for schema: {}", schema.getFullyQualifiedName());
+    String resultCsv =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, false, false);
+
+    // Log the result for debugging
+    log.info("TEST: CSV Import completed");
+    log.info("TEST: Result CSV: {}", resultCsv);
+    log.info("TEST: Result contains 'failure': {}", resultCsv.contains("failure"));
+    log.info("TEST: Result contains 'aborted': {}", resultCsv.contains("aborted"));
+    log.info("TEST: Result contains 'APPROVED status': {}", resultCsv.contains("APPROVED status"));
+
+    assertNotNull(resultCsv);
+    // Verify error message contains status information
+    assertTrue(
+        resultCsv.contains("must have APPROVED status")
+            || resultCsv.contains("IN_REVIEW")
+            || resultCsv.contains("failure"),
+        "Error message should mention the unapproved term and status requirement. Result: "
+            + resultCsv);
+  }
+
+  /**
+   * Test that importing a schema with mutually exclusive tags in dry run mode fails with
+   * appropriate error message.
+   */
+  @Test
+  void test_importCsv_mutualExclusivityTags_dryRun_fails(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = createDatabase(ns, service);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("mutualExclusiveTagsSchema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    // Create classification with mutually exclusive tags
+    org.openmetadata.schema.api.classification.CreateClassification createClassification =
+        new org.openmetadata.schema.api.classification.CreateClassification()
+            .withName(ns.prefix("mutuallyExclusiveClassification"))
+            .withMutuallyExclusive(true)
+            .withDescription("Classification with mutually exclusive tags for CSV test");
+    org.openmetadata.schema.entity.classification.Classification classification =
+        client.classifications().create(createClassification);
+
+    // Create two mutually exclusive tags
+    org.openmetadata.schema.api.classification.CreateTag createTag1 =
+        new org.openmetadata.schema.api.classification.CreateTag()
+            .withName(ns.prefix("exclusiveTag1"))
+            .withClassification(classification.getName())
+            .withDescription("First mutually exclusive tag");
+    org.openmetadata.schema.entity.classification.Tag tag1 = client.tags().create(createTag1);
+
+    org.openmetadata.schema.api.classification.CreateTag createTag2 =
+        new org.openmetadata.schema.api.classification.CreateTag()
+            .withName(ns.prefix("exclusiveTag2"))
+            .withClassification(classification.getName())
+            .withDescription("Second mutually exclusive tag");
+    org.openmetadata.schema.entity.classification.Tag tag2 = client.tags().create(createTag2);
+
+    log.info("TEST: Creating CSV with mutually exclusive tags for dry run import");
+    log.info("TEST: Tag 1 FQN: {}", tag1.getFullyQualifiedName());
+    log.info("TEST: Tag 2 FQN: {}", tag2.getFullyQualifiedName());
+    log.info("TEST: Schema FQN: {}", schema.getFullyQualifiedName());
+
+    // Create CSV with both mutually exclusive tags
+    String csv =
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n"
+            + ns.prefix("mutualExclusiveTagsSchema") // field 1: name
+            + ",Test Schema with Mutual Exclusive Tags" // field 2: displayName
+            + ",Schema with mutually exclusive tags test" // field 3: description
+            + ",," // field 4: owner (empty), field 5: tags starts
+            + "\""
+            + tag1.getFullyQualifiedName()
+            + ";"
+            + tag2.getFullyQualifiedName()
+            + "\"" // field 5: tags
+            + "," // field 6: glossaryTerms (empty)
+            + "," // field 7: tiers (empty)
+            + "," // field 8: certification (empty)
+            + "," // field 9: retentionPeriod (empty)
+            + "," // field 10: sourceUrl (empty)
+            + "," // field 11: domains (empty)
+            + "," // field 12: extension (empty)
+            + ""; // End of line
+
+    log.info("TEST: CSV to import in dry run mode:\n{}", csv);
+    log.info("TEST: CSV header field count: {}", csv.split("\n")[0].split(",").length);
+    log.info("TEST: CSV data field count: {}", csv.split("\n")[1].split(",", -1).length);
+
+    // Attempt to import with dry run = true, recursive = false - should fail
+    log.info(
+        "TEST: Attempting CSV import in dry run mode for schema: {}",
+        schema.getFullyQualifiedName());
+    String resultCsv =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, true, false);
+
+    // Log the result for debugging
+    log.info("TEST: CSV Import completed in dry run mode");
+    log.info("TEST: Result CSV: {}", resultCsv);
+    log.info("TEST: Result contains 'failure': {}", resultCsv.contains("failure"));
+    log.info("TEST: Result contains 'exclusive': {}", resultCsv.contains("exclusive"));
+    log.info("TEST: Result contains 'mutually': {}", resultCsv.contains("mutually"));
+
+    assertNotNull(resultCsv);
+    // Verify import failed with mutual exclusivity error
+    assertTrue(
+        resultCsv.contains("failure"),
+        "Dry run import should fail with mutually exclusive tags. Result: " + resultCsv);
+    assertTrue(
+        resultCsv.contains("mutually exclusive") || resultCsv.contains("exclusive"),
+        "Error message should mention mutual exclusivity. Result: " + resultCsv);
+
+    // Verify no changes were made to the schema (dry run behavior)
+    DatabaseSchema unchangedSchema = getEntity(schema.getId().toString());
+    assertNotNull(unchangedSchema);
+    // Schema should not have the problematic tags
+    assertTrue(
+        unchangedSchema.getTags() == null || unchangedSchema.getTags().isEmpty(),
+        "Schema should not have tags applied in dry run mode");
+  }
+
+  /**
+   * Test that importing a table with APPROVED glossary terms as tags succeeds.
+   */
+  @Test
+  void test_importCsv_withApprovedGlossaryTerm_succeeds(TestNamespace ns)
+      throws com.fasterxml.jackson.core.JsonProcessingException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = createDatabase(ns, service);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("sch"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    // Create a table to be updated via CSV
+    CreateTable createTable = new CreateTable();
+    createTable.setName(ns.prefix("tbl"));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    org.openmetadata.schema.entity.data.Table table = client.tables().create(createTable);
+
+    // Create a glossary with an APPROVED term
+    org.openmetadata.schema.api.data.CreateGlossary createGlossary =
+        new org.openmetadata.schema.api.data.CreateGlossary()
+            .withName(ns.prefix("glos"))
+            .withDescription("Glossary with approved term");
+    org.openmetadata.schema.entity.data.Glossary glossary =
+        client.glossaries().create(createGlossary);
+
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createApprovedTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("agt"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term with approved status");
+    org.openmetadata.schema.entity.data.GlossaryTerm approvedTerm =
+        client.glossaryTerms().create(createApprovedTerm);
+
+    // Verify the term is APPROVED
+    org.openmetadata.schema.entity.data.GlossaryTerm fetchedTerm =
+        client.glossaryTerms().get(approvedTerm.getId().toString());
+    assertEquals(org.openmetadata.schema.type.EntityStatus.APPROVED, fetchedTerm.getEntityStatus());
+
+    log.info("TEST [APPROVED]: Creating CSV for approved glossary term import on table");
+    log.info("TEST [APPROVED]: APPROVED term FQN: {}", approvedTerm.getFullyQualifiedName());
+    log.info("TEST [APPROVED]: Schema FQN: {}", schema.getFullyQualifiedName());
+
+    // Create CSV with the approved glossary term
+    String csv =
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n"
+            + ns.prefix("tbl")
+            + ",Test Table,Updated description,,,\""
+            + approvedTerm.getFullyQualifiedName()
+            + "\",,,,,,";
+
+    log.info("TEST [APPROVED]: CSV to import:\n{}", csv);
+    log.info("TEST [APPROVED]: CSV header field count: {}", csv.split("\n")[0].split(",").length);
+    log.info("TEST [APPROVED]: CSV data field count: {}", csv.split("\n")[1].split(",", -1).length);
+
+    // Attempt to import - should succeed
+    log.info(
+        "TEST [APPROVED]: Attempting CSV import for schema: {}", schema.getFullyQualifiedName());
+    String resultCsv =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, false, false);
+
+    // Log the result for debugging
+    log.info("TEST [APPROVED]: CSV Import completed");
+    log.info("TEST [APPROVED]: Result CSV: {}", resultCsv);
+    log.info("TEST [APPROVED]: Result contains 'success': {}", resultCsv.contains("success"));
+    log.info("TEST [APPROVED]: Result contains 'failure': {}", resultCsv.contains("failure"));
+
+    assertNotNull(resultCsv);
+    // Verify import succeeded
+    assertFalse(
+        resultCsv.contains("failure"),
+        "Import should succeed with APPROVED glossary term. Result: " + resultCsv);
+
+    // Verify the table was updated with the glossary term
+    // Verify the table was updated with the glossary term
+    org.openmetadata.schema.entity.data.Table updatedTable =
+        client.tables().get(table.getId().toString(), "tags");
+    assertNotNull(updatedTable.getTags());
+
+    // Log tags for debugging
+    log.info("TEST [APPROVED]: Table tags: {}", updatedTable.getTags());
+
+    assertTrue(
+        updatedTable.getTags().stream()
+            .anyMatch(
+                tag ->
+                    tag.getTagFQN().equals(approvedTerm.getFullyQualifiedName())
+                        && tag.getSource()
+                            == org.openmetadata.schema.type.TagLabel.TagSource.GLOSSARY),
+        "Table should have the approved glossary term as a tag. Found tags: "
+            + updatedTable.getTags());
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT
+  // ===================================================================
+
+  protected String generateValidCsvData(TestNamespace ns, List<DatabaseSchema> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return null;
+    }
+
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n");
+
+    for (DatabaseSchema schema : entities) {
+      csv.append(escapeCSVValue(schema.getName())).append(",");
+      csv.append(escapeCSVValue(schema.getDisplayName())).append(",");
+      csv.append(escapeCSVValue(schema.getDescription())).append(",");
+      csv.append(escapeCSVValue(formatOwnersForCsv(schema.getOwners()))).append(",");
+      csv.append(escapeCSVValue(formatTagsForCsv(schema.getTags()))).append(",");
+      csv.append(escapeCSVValue("")).append(","); // glossaryTerms - not available on DatabaseSchema
+      csv.append(escapeCSVValue(formatTiersForCsv(schema.getTags()))).append(",");
+      csv.append(escapeCSVValue(formatCertificationForCsv(schema.getCertification()))).append(",");
+      csv.append(escapeCSVValue(schema.getRetentionPeriod())).append(",");
+      csv.append(escapeCSVValue(schema.getSourceUrl() != null ? schema.getSourceUrl() : ""))
+          .append(",");
+      csv.append(escapeCSVValue(formatDomainsForCsv(schema.getDomains()))).append(",");
+      csv.append(escapeCSVValue(formatExtensionForCsv(schema.getExtension())));
+      csv.append("\n");
+    }
+
+    return csv.toString();
+  }
+
+  protected String generateInvalidCsvData(TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n");
+    // Missing required name field
+    csv.append(",Test Schema,Description,,,,,,,,,\n");
+    // Invalid owner format
+    csv.append("invalid_schema,,,,invalid_owner_format,,,,,,,\n");
+    return csv.toString();
+  }
+
+  protected List<String> getRequiredCsvHeaders() {
+    return List.of("name*");
+  }
+
+  protected List<String> getAllCsvHeaders() {
+    return List.of(
+        "name*",
+        "displayName",
+        "description",
+        "owner",
+        "tags",
+        "glossaryTerms",
+        "tiers",
+        "certification",
+        "retentionPeriod",
+        "sourceUrl",
+        "domains",
+        "extension");
+  }
+
+  private String formatOwnersForCsv(List<org.openmetadata.schema.type.EntityReference> owners) {
+    if (owners == null || owners.isEmpty()) {
+      return "";
+    }
+    return owners.stream()
+        .map(
+            owner -> {
+              String prefix = "user";
+              if ("team".equals(owner.getType())) {
+                prefix = "team";
+              }
+              return prefix + ";" + owner.getName();
+            })
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatTagsForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream()
+        .filter(
+            tag ->
+                !tag.getTagFQN().startsWith("Tier.")
+                    && !tag.getTagFQN().startsWith("Certification."))
+        .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatTiersForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream()
+        .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
+        .filter(tagFQN -> tagFQN.startsWith("Tier."))
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatCertificationForCsv(
+      org.openmetadata.schema.type.AssetCertification certification) {
+    if (certification == null || certification.getTagLabel() == null) {
+      return "";
+    }
+    return certification.getTagLabel().getTagFQN();
+  }
+
+  private String formatGlossaryTermsForCsv(
+      List<org.openmetadata.schema.type.EntityReference> glossaryTerms) {
+    if (glossaryTerms == null || glossaryTerms.isEmpty()) {
+      return "";
+    }
+    return glossaryTerms.stream()
+        .map(org.openmetadata.schema.type.EntityReference::getFullyQualifiedName)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatDomainsForCsv(List<org.openmetadata.schema.type.EntityReference> domains) {
+    if (domains == null || domains.isEmpty()) {
+      return "";
+    }
+    return domains.stream()
+        .map(org.openmetadata.schema.type.EntityReference::getName)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatExtensionForCsv(Object extension) {
+    if (extension == null) {
+      return "";
+    }
+    return extension.toString();
+  }
+
+  private String escapeCSVValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  // ===================================================================
+  // DATA PERSISTENCE VALIDATION - Critical for CSV import testing
+  // ===================================================================
+
+  @Override
+  protected void validateCsvDataPersistence(
+      List<DatabaseSchema> originalEntities, String csvData, CsvImportResult result) {
+    super.validateCsvDataPersistence(originalEntities, csvData, result);
+
+    if (result.getStatus() != ApiStatus.SUCCESS) {
+      return;
+    }
+
+    if (originalEntities != null) {
+      for (DatabaseSchema originalEntity : originalEntities) {
+        DatabaseSchema updatedEntity =
+            getEntityByNameWithFields(originalEntity.getName(), "owners,tags,domains");
+        assertNotNull(
+            updatedEntity, "Schema " + originalEntity.getName() + " should exist after CSV import");
+
+        validateSchemaFieldsAfterImport(originalEntity, updatedEntity);
+      }
+    }
+  }
+
+  private void validateSchemaFieldsAfterImport(DatabaseSchema original, DatabaseSchema imported) {
+    assertEquals(original.getName(), imported.getName(), "Schema name should match");
+
+    if (original.getDisplayName() != null) {
+      assertEquals(
+          original.getDisplayName(),
+          imported.getDisplayName(),
+          "Schema displayName should be preserved");
+    }
+
+    if (original.getDescription() != null) {
+      assertEquals(
+          original.getDescription(),
+          imported.getDescription(),
+          "Schema description should be preserved");
+    }
+
+    if (original.getRetentionPeriod() != null) {
+      assertEquals(
+          original.getRetentionPeriod(),
+          imported.getRetentionPeriod(),
+          "Schema retention period should be preserved");
+    }
+
+    if (original.getSourceUrl() != null) {
+      assertEquals(
+          original.getSourceUrl(),
+          imported.getSourceUrl(),
+          "Schema source URL should be preserved");
+    }
+
+    if (original.getOwners() != null && !original.getOwners().isEmpty()) {
+      assertNotNull(imported.getOwners(), "Schema owners should be preserved");
+      assertEquals(
+          original.getOwners().size(),
+          imported.getOwners().size(),
+          "Schema owner count should match");
+    }
+
+    if (original.getTags() != null && !original.getTags().isEmpty()) {
+      assertNotNull(imported.getTags(), "Schema tags should be preserved");
+      assertEquals(
+          original.getTags().size(), imported.getTags().size(), "Schema tag count should match");
+    }
+
+    if (original.getDomains() != null && !original.getDomains().isEmpty()) {
+      assertNotNull(imported.getDomains(), "Schema domains should be preserved");
+      assertEquals(
+          original.getDomains().size(),
+          imported.getDomains().size(),
+          "Schema domain count should match");
+    }
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateDatabaseSchema> createRequests) {
+    return SdkClients.adminClient().databaseSchemas().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateDatabaseSchema> createRequests) {
+    return SdkClients.adminClient().databaseSchemas().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateDatabaseSchema createInvalidRequestForBulk(TestNamespace ns) {
+    CreateDatabaseSchema request = new CreateDatabaseSchema();
+    request.setName(ns.prefix("invalid_schema"));
+    return request;
   }
 }

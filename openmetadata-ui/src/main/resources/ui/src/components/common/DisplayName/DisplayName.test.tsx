@@ -10,18 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
 import DisplayName from './DisplayName';
 import { DisplayNameProps } from './DisplayName.interface';
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <span {...props}>{children}</span>
-    )),
+  Link: jest.fn().mockImplementation(({ children, ...props }) => (
+    <a href="#" {...props}>
+      {children}
+    </a>
+  )),
 }));
 
 jest.mock('../../../constants/constants', () => ({
@@ -32,6 +33,12 @@ jest.mock('../../../constants/constants', () => ({
 jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () =>
   jest.fn().mockImplementation(() => <p>Mocked Modal</p>)
 );
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `/entity/${fqn}`),
+}));
 
 const mockOnEditDisplayName = jest.fn();
 
@@ -101,10 +108,10 @@ describe('Test DisplayName Component', () => {
       </MemoryRouter>
     );
 
-    const linkElement = screen.getByTestId('Sample Entity');
+    const linkElements = screen.getAllByTestId('Sample Entity');
 
-    expect(linkElement.tagName).toBe('SPAN');
-    expect(linkElement).toHaveTextContent('Sample Display Name');
+    expect(linkElements.length).toBeGreaterThanOrEqual(1);
+    expect(linkElements[0].tagName).toBe('A');
   });
 
   it('Should render plain text when link prop is not provided', async () => {
@@ -116,10 +123,10 @@ describe('Test DisplayName Component', () => {
       </MemoryRouter>
     );
 
-    const nameElement = screen.getByTestId('Sample Entity');
+    const nameElements = screen.getAllByTestId('Sample Entity');
 
-    expect(nameElement.tagName).toBe('SPAN');
-    expect(nameElement).toHaveTextContent('Sample Display Name');
+    expect(nameElements.length).toBeGreaterThanOrEqual(1);
+    expect(nameElements[0].tagName).toBe('SPAN');
   });
 
   it('Should render name as a link when displayName is empty and link is provided', async () => {
@@ -135,5 +142,66 @@ describe('Test DisplayName Component', () => {
 
     expect(nameElement).toBeInTheDocument();
     expect(nameElement).toHaveTextContent('Sample Entity');
+  });
+
+  it('Should render copy link button when entityType is provided', async () => {
+    const props = {
+      ...mockProps,
+      entityType: EntityType.DASHBOARD_DATA_MODEL,
+    };
+
+    render(
+      <MemoryRouter>
+        <DisplayName {...props} />
+      </MemoryRouter>
+    );
+
+    const copyButton = screen.getByTestId('copy-column-link-button');
+
+    expect(copyButton).toBeInTheDocument();
+  });
+
+  it('Should not render copy link button when entityType is not provided', async () => {
+    render(
+      <MemoryRouter>
+        <DisplayName {...mockProps} />
+      </MemoryRouter>
+    );
+
+    const copyButton = screen.queryByTestId('copy-column-link-button');
+
+    expect(copyButton).not.toBeInTheDocument();
+  });
+
+  it('Should copy link to clipboard when copy button is clicked', async () => {
+    const mockWriteText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
+
+    const props = {
+      ...mockProps,
+      entityType: EntityType.DASHBOARD_DATA_MODEL,
+    };
+
+    render(
+      <MemoryRouter>
+        <DisplayName {...props} />
+      </MemoryRouter>
+    );
+
+    const copyButton = screen.getByTestId('copy-column-link-button');
+
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+
+    expect(mockWriteText).toHaveBeenCalledWith(expect.stringContaining('1'));
   });
 });

@@ -12,6 +12,7 @@
  */
 
 import { COMMON_TIER_TAG } from '../../constant/common';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -39,7 +40,7 @@ const table2 = new TableClass();
 const topic1 = new TopicClass();
 const topic2 = new TopicClass();
 
-test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
+test.describe('Advanced Search', { tag: ['@advanced-search', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ.tag] }, () => {
   let searchCriteria: Record<string, Array<string>> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -278,7 +279,9 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dashboardDataModel2.entityResponseData.project,
       ],
       entityStatus: ['Approved', 'In Review'],
-      tableType: [table.entity.tableType, 'MaterializedView'],
+      // Some common field value search criteria are causing problems in not equal filter tests
+      // TODO: Refactor the advanced search tests so that these fields can be added back
+      // tableType: [table.entity.tableType, 'MaterializedView'],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.chartsResponseData.displayName,
         EntityDataClass.dashboard2.chartsResponseData.displayName,

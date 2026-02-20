@@ -15,5 +15,7 @@
     }
   ],
   "provider": "system",
-  "dataQualityDimension": "Integrity"
+  "enabled": true,
+  "dataQualityDimension": "Integrity",
+  "validatorClass": "TableColumnCountToEqualValidator"
 }

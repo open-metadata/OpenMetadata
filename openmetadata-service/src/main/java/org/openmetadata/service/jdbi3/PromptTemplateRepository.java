@@ -13,12 +13,16 @@
 
 package org.openmetadata.service.jdbi3;
 
+import com.google.gson.Gson;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.PromptTemplate;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.PromptTemplateResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 @Repository
@@ -38,7 +42,8 @@ public class PromptTemplateRepository extends EntityRepository<PromptTemplate> {
   }
 
   @Override
-  public void setFields(PromptTemplate promptTemplate, Fields fields) {
+  public void setFields(
+      PromptTemplate promptTemplate, Fields fields, RelationIncludes relationIncludes) {
     // No additional fields to set beyond base entity fields
   }
 
@@ -55,6 +60,17 @@ public class PromptTemplateRepository extends EntityRepository<PromptTemplate> {
   @Override
   public void storeEntity(PromptTemplate promptTemplate, boolean update) {
     store(promptTemplate, update);
+  }
+
+  @Override
+  public void storeEntities(List<PromptTemplate> entities) {
+    List<PromptTemplate> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (PromptTemplate entity : entities) {
+      String jsonCopy = gson.toJson(entity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, PromptTemplate.class));
+    }
+    storeMany(entitiesToStore);
   }
 
   @Override

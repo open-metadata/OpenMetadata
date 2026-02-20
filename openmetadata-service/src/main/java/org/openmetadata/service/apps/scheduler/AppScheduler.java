@@ -272,18 +272,15 @@ public class AppScheduler {
       String jobIdentity;
       String triggerIdentity;
 
-      if (allowConcurrent && config != null && config.containsKey("ingestionRunner")) {
-        // For apps that allow concurrent execution, use ingestionRunner as unique identifier
-        String ingestionRunner = (String) config.get("ingestionRunner");
-        jobIdentity =
-            String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, ingestionRunner);
-        triggerIdentity =
-            String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, ingestionRunner);
+      String uniqueId = getUniqueJobIdentifier(config);
+      if (allowConcurrent && uniqueId != null) {
+        // For apps that allow concurrent execution, use a unique identifier per job
+        jobIdentity = String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, uniqueId);
+        triggerIdentity = String.format("%s-%s-%s", application.getName(), ON_DEMAND_JOB, uniqueId);
         LOG.info(
-            "Triggering app {} with concurrent execution support. Unique identity: {} for ingestionRunner: {}",
+            "Triggering app {} with concurrent execution support. Unique identity: {}",
             application.getName(),
-            jobIdentity,
-            ingestionRunner);
+            jobIdentity);
       } else {
         // For apps that don't allow concurrent execution, use standard identity and apply blocking
         // logic
@@ -463,5 +460,18 @@ public class AppScheduler {
             .getScheduler()
             .getListenerManager()
             .getJobListener(OmAppJobListener.JOB_LISTENER_NAME);
+  }
+
+  // Package-private for testing
+  String getUniqueJobIdentifier(Map<String, Object> config) {
+    if (config != null) {
+      if (config.containsKey("ingestionRunner")) {
+        return (String) config.get("ingestionRunner");
+      }
+      if (config.containsKey("workflowName")) {
+        return (String) config.get("workflowName");
+      }
+    }
+    return null;
   }
 }

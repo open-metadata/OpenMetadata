@@ -189,7 +189,9 @@ test('Classification Page', async ({ page }) => {
     );
 
     const tagResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${tag.responseData.displayName}***`
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        tag.responseData.displayName
+      )}***`
     );
     await page.fill(
       '[data-testid="tag-selector"] input',
@@ -342,7 +344,11 @@ test('Classification Page', async ({ page }) => {
   });
 
   await test.step(`Assign tag to table`, async () => {
+    const columnResponse = page.waitForResponse(
+      `/api/v1/tables/name/${table.entityResponseData?.['fullyQualifiedName']}/columns?*`
+    );
     await table.visitEntityPage(page);
+    const columnData = await columnResponse.then((res) => res.json());
     const { name, displayName } = NEW_TAG;
 
     await addTagToTableColumn(page, {
@@ -350,7 +356,7 @@ test('Classification Page', async ({ page }) => {
       tagFqn,
       tagDisplayName: displayName,
       columnNumber: 0,
-      rowName: `${table.entity?.columns[0].name} numeric`,
+      rowName: columnData.data?.[0]?.name,
     });
   });
 

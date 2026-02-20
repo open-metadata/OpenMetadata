@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,6 +49,7 @@ import org.openmetadata.service.resources.dashboards.DashboardResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -121,13 +123,18 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void setFields(Dashboard dashboard, Fields fields) {
+  public void setFields(Dashboard dashboard, Fields fields, RelationIncludes relationIncludes) {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setCharts(
-        fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
+        fields.contains("charts")
+            ? getRelatedEntities(dashboard, Entity.CHART, relationIncludes.getIncludeFor("charts"))
+            : null);
     dashboard.setDataModels(
         fields.contains("dataModels")
-            ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL)
+            ? getRelatedEntities(
+                dashboard,
+                Entity.DASHBOARD_DATA_MODEL,
+                relationIncludes.getIncludeFor("dataModels"))
             : null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
@@ -374,6 +381,36 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
+  public void storeEntities(List<Dashboard> dashboards) {
+    List<Dashboard> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Dashboard dashboard : dashboards) {
+      EntityReference service = dashboard.getService();
+      List<EntityReference> charts = dashboard.getCharts();
+      List<EntityReference> dataModels = dashboard.getDataModels();
+
+      dashboard.withService(null).withCharts(null).withDataModels(null);
+
+      String jsonCopy = gson.toJson(dashboard);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Dashboard.class));
+
+      dashboard.withService(service).withCharts(charts).withDataModels(dataModels);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Dashboard> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Dashboard::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteFromMany(ids, Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
+    deleteFromMany(ids, Entity.DASHBOARD, Relationship.HAS, Entity.DASHBOARD_DATA_MODEL);
+  }
+
+  @Override
   public void storeRelationships(Dashboard dashboard) {
     addServiceRelationship(dashboard, dashboard.getService());
 
@@ -408,10 +445,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
-  private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {
+  private List<EntityReference> getRelatedEntities(
+      Dashboard dashboard, String entityType, Include include) {
     return dashboard == null
         ? Collections.emptyList()
-        : findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
+        : findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType, include);
   }
 
   private Map<UUID, List<EntityReference>> batchFetchCharts(List<Dashboard> dashboards) {
@@ -532,7 +570,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
           listOrEmpty(updated.getDataModels()),
           listOrEmpty(original.getDataModels()));
       updateDashboardUrl(original, updated);
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void update(

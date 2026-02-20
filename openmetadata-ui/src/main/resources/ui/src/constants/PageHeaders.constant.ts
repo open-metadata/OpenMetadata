@@ -58,6 +58,10 @@ export const PAGE_HEADERS = {
     header: 'label.policy-plural',
     subHeader: 'message.page-sub-header-for-policies',
   },
+  AUDIT_LOGS: {
+    header: 'label.audit-log-plural',
+    subHeader: 'message.page-sub-header-for-audit-logs',
+  },
   DATABASES_SERVICES: {
     header: 'label.database-plural',
     subHeader: 'message.page-sub-header-for-databases',
@@ -110,6 +114,10 @@ export const PAGE_HEADERS = {
     header: 'label.table-plural',
     subHeader: 'message.define-custom-property-for-entity',
     subHeaderParams: { entity: 'label.table-plural' },
+  },
+  COLUMN_CUSTOM_ATTRIBUTES: {
+    header: 'label.column-plural',
+    subHeader: 'message.define-custom-property-for-column',
   },
   TOPICS_CUSTOM_ATTRIBUTES: {
     header: 'label.topic-plural',

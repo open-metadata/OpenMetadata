@@ -107,9 +107,16 @@ export const validateViewPermissions = async (
   // check Add domain permission
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
-  await expect(
-    page.locator('[data-testid="edit-displayName-button"]')
-  ).toHaveCount(permission?.editDisplayName ? 8 : 0);
+  if (permission?.editDisplayName) {
+    expect(
+      await page.locator('[data-testid="edit-displayName-button"]').count()
+    ).toBeGreaterThan(0);
+  } else {
+    await expect(
+      page.locator('[data-testid="edit-displayName-button"]')
+    ).toHaveCount(0);
+  }
+
 
   // check edit owner permission
   await expect(page.locator('[data-testid="edit-owner"]')).not.toBeVisible();

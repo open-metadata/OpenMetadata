@@ -364,10 +364,7 @@ const PipelineDetails = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.pipeline'),
-      })}>
+    <PageLayoutV1 pageTitle={entityName}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

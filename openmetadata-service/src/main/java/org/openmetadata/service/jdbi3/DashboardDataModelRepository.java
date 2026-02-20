@@ -19,6 +19,7 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -48,6 +50,7 @@ import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -147,17 +150,35 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void storeEntity(DashboardDataModel dashboardDataModel, boolean update) {
-    // Relationships and fields such as href are derived and not stored as part of json
     EntityReference service = dashboardDataModel.getService();
-
-    // Don't store owners, database, href and tags as JSON. Build it on the fly based on
-    // relationships
     dashboardDataModel.withService(null);
-
     store(dashboardDataModel, update);
-
-    // Restore the relationships
     dashboardDataModel.withService(service);
+  }
+
+  @Override
+  public void storeEntities(List<DashboardDataModel> entities) {
+    List<DashboardDataModel> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (DashboardDataModel dashboardDataModel : entities) {
+      EntityReference service = dashboardDataModel.getService();
+      dashboardDataModel.withService(null);
+
+      String jsonCopy = gson.toJson(dashboardDataModel);
+      entitiesToStore.add(gson.fromJson(jsonCopy, DashboardDataModel.class));
+
+      dashboardDataModel.withService(service);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<DashboardDataModel> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(DashboardDataModel::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
   }
 
   @Override
@@ -167,18 +188,41 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public void setFields(DashboardDataModel dashboardDataModel, Fields fields) {
+  public void setFields(
+      DashboardDataModel dashboardDataModel, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(dashboardDataModel);
     populateEntityFieldTags(
         entityType,
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
+    if (fields.contains("columns") && fields.contains("extension")) {
+      if (dashboardDataModel.getColumns() != null) {
+        for (Column column : dashboardDataModel.getColumns()) {
+          column.setExtension(
+              getColumnExtension(dashboardDataModel.getId(), column.getFullyQualifiedName()));
+        }
+      }
+    }
   }
 
   private void setDefaultFields(DashboardDataModel dashboardDataModel) {
     EntityReference service = getContainer(dashboardDataModel.getId());
     dashboardDataModel.withService(service);
+  }
+
+  private Object getColumnExtension(UUID dataModelId, String columnFQN) {
+    try {
+      String extensionKey = FullyQualifiedName.buildHash(columnFQN);
+      String extensionJson =
+          daoCollection.entityExtensionDAO().getExtension(dataModelId, extensionKey);
+      if (extensionJson != null) {
+        return JsonUtils.readValue(extensionJson, Object.class);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get extension for column {}: {}", columnFQN, e.getMessage());
+    }
+    return null;
   }
 
   // Individual field fetchers registered in constructor
@@ -279,7 +323,13 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       DatabaseUtil.validateColumns(original.getColumns());
       updateColumns("columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
       recordChange("sql", original.getSql(), updated.getSql());
     }
   }
@@ -319,6 +369,12 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (fieldsParam != null && fieldsParam.contains("tags")) {
       populateEntityFieldTags(
           entityType, paginatedColumns, dataModel.getFullyQualifiedName(), true);
+    }
+
+    if (fieldsParam != null && fieldsParam.contains("extension")) {
+      for (Column column : paginatedColumns) {
+        column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
+      }
     }
 
     // Calculate pagination metadata

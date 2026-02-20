@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.ChartType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -38,6 +39,12 @@ import org.openmetadata.sdk.models.ListResponse;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
+
+  {
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
+  }
 
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
@@ -757,12 +764,14 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     // Delete chart
     deleteEntity(chart.getId().toString());
 
-    // Verify dashboard still has the deleted chart reference (soft delete behavior)
+    // Verify dashboard no longer shows the deleted chart (default behavior filters deleted
+    // entities)
     Dashboard afterDelete = client.dashboards().get(dashboard.getId().toString(), "charts");
-    assertTrue(
+    assertFalse(
         afterDelete.getCharts().stream()
             .map(EntityReference::getId)
-            .anyMatch(chart.getId()::equals));
+            .anyMatch(chart.getId()::equals),
+        "Deleted charts should not appear in dashboard.charts by default");
   }
 
   @Test
@@ -900,5 +909,88 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
         getEntityByNameWithFields(chart.getFullyQualifiedName(), "owners,dashboards");
     assertNotNull(byNameWithFields.getService());
     assertNotNull(byNameWithFields.getOwners());
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateChart> createRequests) {
+    return SdkClients.adminClient().charts().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateChart> createRequests) {
+    return SdkClients.adminClient().charts().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateChart createInvalidRequestForBulk(TestNamespace ns) {
+    CreateChart request = new CreateChart();
+    request.setName(ns.prefix("invalid_chart"));
+    return request;
+  }
+
+  @Test
+  void test_bulkListChartsFromDifferentServices_maintainsCorrectServiceReference(TestNamespace ns) {
+    // Regression test for bug where bulk loading charts incorrectly set all charts
+    // to the first chart's service. This was caused by ChartRepository.fetchAndSetServices()
+    // assuming all charts in a batch belong to the same service.
+
+    // Create two different dashboard services
+    DashboardService metabaseService = DashboardServiceTestFactory.createMetabase(ns);
+    DashboardService lookerService = DashboardServiceTestFactory.createLooker(ns);
+
+    // Create charts under different services
+    CreateChart metabaseChartRequest = new CreateChart();
+    metabaseChartRequest.setName(ns.prefix("bulk_test_metabase_chart"));
+    metabaseChartRequest.setService(metabaseService.getFullyQualifiedName());
+    metabaseChartRequest.setChartType(ChartType.Bar);
+
+    CreateChart lookerChartRequest = new CreateChart();
+    lookerChartRequest.setName(ns.prefix("bulk_test_looker_chart"));
+    lookerChartRequest.setService(lookerService.getFullyQualifiedName());
+    lookerChartRequest.setChartType(ChartType.Line);
+
+    Chart metabaseChart = createEntity(metabaseChartRequest);
+    Chart lookerChart = createEntity(lookerChartRequest);
+
+    // Verify initial service assignments
+    assertEquals(
+        metabaseService.getFullyQualifiedName(),
+        metabaseChart.getService().getFullyQualifiedName());
+    assertEquals(
+        lookerService.getFullyQualifiedName(), lookerChart.getService().getFullyQualifiedName());
+
+    // List all charts (this uses bulk loading internally via setFieldsInBulk)
+    ListParams params = new ListParams();
+    params.setLimit(1000);
+    params.setFields("service");
+    ListResponse<Chart> allCharts = listEntities(params);
+
+    // Find our test charts in the bulk-loaded list
+    Chart foundMetabaseChart =
+        allCharts.getData().stream()
+            .filter(c -> c.getName().equals(metabaseChartRequest.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Metabase chart not found in list"));
+
+    Chart foundLookerChart =
+        allCharts.getData().stream()
+            .filter(c -> c.getName().equals(lookerChartRequest.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Looker chart not found in list"));
+
+    // This assertion would fail before the fix - all charts got the first chart's service
+    assertEquals(
+        metabaseService.getFullyQualifiedName(),
+        foundMetabaseChart.getService().getFullyQualifiedName(),
+        "Chart created under Metabase should retain Metabase as its service after bulk list");
+
+    assertEquals(
+        lookerService.getFullyQualifiedName(),
+        foundLookerChart.getService().getFullyQualifiedName(),
+        "Chart created under Looker should retain Looker as its service after bulk list");
   }
 }

@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import { FC, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { renderIcon } from '../../../utils/IconUtils';
+import { isImageUrl, renderIcon } from '../../../utils/IconUtils';
 import { useSearch } from '../atoms/navigation/useSearch';
 import { AVAILABLE_ICONS, DEFAULT_ICON_NAME } from './IconPicker.constants';
 import {
@@ -59,7 +59,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
       return { type: 'icons' as IconPickerTabValue, value: resolvedIconName };
     }
     if (typeof val === 'string') {
-      if (val.startsWith('http') || val.startsWith('/')) {
+      if (isImageUrl(val)) {
         return { type: 'url' as IconPickerTabValue, value: val };
       }
 
@@ -84,6 +84,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
       setUrlValue(newParsedValue.value);
       setActiveTab('url');
     } else {
+      setUrlValue('');
       setActiveTab('icons');
     }
   }, [value]);
@@ -106,13 +107,28 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
     if (onChange) {
       onChange(iconName);
     }
+    setUrlValue('');
     setOpen(false);
   };
 
   const handleUrlChange = (url: string) => {
     setUrlValue(url);
-    if (onChange && url) {
-      onChange(url);
+  };
+
+  const handleUrlBlur = () => {
+    if (urlValue && onChange && urlValue !== parsedValue.value) {
+      onChange(urlValue);
+    }
+  };
+
+  const handleUrlKeyDown = (e: React.KeyboardEvent) => {
+    if (
+      e.key === 'Enter' &&
+      urlValue &&
+      onChange &&
+      urlValue !== parsedValue.value
+    ) {
+      onChange(urlValue);
     }
   };
 
@@ -369,7 +385,9 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                     },
                   }}
                   value={urlValue}
+                  onBlur={handleUrlBlur}
                   onChange={(e) => handleUrlChange(e.target.value)}
+                  onKeyDown={handleUrlKeyDown}
                 />
               </Box>
             )}

@@ -44,7 +44,8 @@
         "Partitioned",
         "Foreign",
         "Transient",
-        "Stream"
+        "Stream",
+        "Stage"
       ],
       "javaEnums": [
         {
@@ -82,6 +83,9 @@
         },
         {
           "name": "Stream"
+        },
+        {
+          "name": "Stage"
         }
       ]
     },
@@ -375,6 +379,10 @@
             "$ref": "../../tests/customMetric.json"
           },
           "default": null
+        },
+        "extension": {
+          "description": "Entity extension data with custom attributes added to the entity.",
+          "$ref": "../../type/basic.json#/definitions/entityExtension"
         }
       },
       "required": [

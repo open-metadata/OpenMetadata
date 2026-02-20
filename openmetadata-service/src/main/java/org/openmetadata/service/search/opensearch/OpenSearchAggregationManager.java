@@ -3,6 +3,7 @@ package org.openmetadata.service.search.opensearch;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -20,6 +21,7 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.AggregationManagementClient;
 import org.openmetadata.service.search.SearchAggregation;
@@ -174,8 +176,15 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       searchRequestBuilder.size(0);
       searchRequestBuilder.timeout("30s");
 
-      SearchResponse<JsonData> searchResponse =
-          client.search(searchRequestBuilder.build(), JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequestBuilder.build(), JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
       return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
@@ -217,8 +226,15 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       searchRequestBuilder.size(0);
       searchRequestBuilder.timeout("30s");
 
-      SearchResponse<JsonData> searchResponse =
-          client.search(searchRequestBuilder.build(), JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequestBuilder.build(), JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       String response = searchResponse.toJsonString();
       JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
@@ -296,8 +312,15 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       searchRequestBuilder.size(0);
       searchRequestBuilder.timeout("30s");
 
-      SearchResponse<JsonData> searchResponse =
-          client.search(searchRequestBuilder.build(), JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequestBuilder.build(), JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       String response = searchResponse.toJsonString();
       JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
@@ -373,8 +396,15 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       searchRequestBuilder.size(0);
       searchRequestBuilder.timeout("30s");
 
-      SearchResponse<JsonData> searchResponse =
-          client.search(searchRequestBuilder.build(), JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequestBuilder.build(), JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       String response = searchResponse.toJsonString();
       JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
@@ -460,7 +490,15 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);
-      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       LOG.info("Entity type counts query for index '{}' (resolved: '{}')", index, resolvedIndex);
 

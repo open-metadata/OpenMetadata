@@ -535,7 +535,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
           jobStats.getFailedRecords());
 
       if (currentThroughput > 0) {
-        LOG.info("Average throughput: {:.1f} entities/sec", currentThroughput);
+        LOG.info("Average throughput: {} entities/sec", String.format("%.1f", currentThroughput));
       }
     }
   }

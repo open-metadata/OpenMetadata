@@ -465,7 +465,10 @@ describe('ClassificationDetails', () => {
       );
     });
 
-    expect(screen.getByTestId('tag-disable-toggle-Tag1')).toBeDisabled();
+    expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
 
     unmount2();
 
@@ -483,6 +486,9 @@ describe('ClassificationDetails', () => {
       );
     });
 
-    expect(screen.getByTestId('tag-disable-toggle-Tag1')).toBeDisabled();
+    expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 });

@@ -26,6 +26,11 @@ public class SetCandidateUsersImpl implements TaskListener {
           JsonUtils.readOrConvertValue(
               delegateTask.getVariable(assigneesVarNameExpr.getValue(delegateTask).toString()),
               List.class);
+      LOG.debug(
+          "[Process: {}] Setting candidate users for task {}: {}",
+          delegateTask.getProcessInstanceId(),
+          delegateTask.getId(),
+          assignees);
       delegateTask.addCandidateUsers(assignees);
     } catch (Exception exc) {
       LOG.error(

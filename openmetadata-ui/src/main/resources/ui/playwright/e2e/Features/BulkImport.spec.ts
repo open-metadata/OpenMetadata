@@ -105,7 +105,7 @@ const columnDetails1 = {
 };
 
 const columnDetails2 = {
-  ...createColumnRowDetailsWithEncloseDot(),
+  ...createColumnRowDetails(),
   glossary: glossaryDetails,
 };
 
@@ -158,7 +158,13 @@ test.describe('Bulk Import Export', () => {
       'should import and edit with two additional database',
       async () => {
         await dbService.visitEntityPage(page);
-        await page.click('[data-testid="manage-button"] > .anticon');
+
+
+        await page.getByTestId('manage-button').click();
+        await page.waitForSelector(
+          '[data-testid="manage-dropdown-list-container"]',
+          { state: 'visible' }
+        );
         await page.click('[data-testid="import-button-title"]');
         const fileInput = page.getByTestId('upload-file-widget');
         await fileInput?.setInputFiles([
@@ -167,7 +173,10 @@ test.describe('Bulk Import Export', () => {
 
         // Adding manual wait for the file to load
         await page.waitForTimeout(500);
-
+        // Wait for upload widget to be hidden indicating file is loaded
+        await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          state: 'hidden',
+        });
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -409,15 +418,22 @@ test.describe('Bulk Import Export', () => {
       'should import and edit with two additional database schema',
       async () => {
         await dbEntity.visitEntityPage(page);
-        await page.click('[data-testid="manage-button"] > .anticon');
+
+        await page.getByTestId('manage-button').click();
+        await page.waitForSelector(
+          '[data-testid="manage-dropdown-list-container"]',
+          { state: 'visible' }
+        );
         await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
           'downloads/' + dbEntity.entity.name + '.csv',
         ]);
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+        // Wait for upload widget to be hidden indicating file is loaded
+        await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          state: 'hidden',
+        });
 
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -617,7 +633,10 @@ test.describe('Bulk Import Export', () => {
 
         // Adding manual wait for the file to load
         await page.waitForTimeout(500);
-
+        // Wait for upload widget to be hidden indicating file is loaded
+        await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          state: 'hidden',
+        });
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -713,7 +732,7 @@ test.describe('Bulk Import Export', () => {
         await fillRecursiveColumnDetails(
           {
             ...columnDetails2,
-            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}."${columnDetails2.name}"`,
+            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}.${columnDetails2.name}`,
           },
           page
         );
@@ -780,7 +799,10 @@ test.describe('Bulk Import Export', () => {
 
         // Adding manual wait for the file to load
         await page.waitForTimeout(500);
-
+        // Wait for upload widget to be hidden indicating file is loaded
+        await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          state: 'hidden',
+        });
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -807,25 +829,18 @@ test.describe('Bulk Import Export', () => {
         await fillColumnDetails(columnDetails2, page);
 
         await page.getByRole('button', { name: 'Next' }).click();
-
+        // total column count +1 for header row and +2 for newly added columns
+        const count = `${tableEntity.entityLinkColumnsName.length + 3}`;
         await validateImportStatus(page, {
-          passed: '11',
-          processed: '11',
+          passed: count,
+          processed: count,
           failed: '0',
         });
 
-        const rowStatus = [
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-        ];
+        // total column count +2 for newly added columns
+        const rowStatus = Array(
+          tableEntity.entityLinkColumnsName.length + 2
+        ).fill('Entity updated');
 
         await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
@@ -870,11 +885,11 @@ test.describe('Bulk Import Export', () => {
           'downloads/' + dbEntity.entity.name + '.csv',
         ]);
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+        await page.waitForSelector('[data-testid="add-row-btn"]', {
+          state: 'visible',
+        });
 
         // Adding some assertion to make sure that CSV loaded correctly
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
         await expect(
@@ -955,11 +970,11 @@ test.describe('Bulk Import Export', () => {
         'downloads/' + `${dbEntity.entity.name}-delete` + '.csv',
       ]);
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
+      await page.waitForSelector('[data-testid="add-row-btn"]', {
+        state: 'visible',
+      });
 
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
@@ -1067,6 +1082,10 @@ test.describe('Bulk Import Export', () => {
       await fileInput?.setInputFiles([
         'downloads/' + dbEntity.entity.name + '.csv',
       ]);
+      // Wait for upload widget to be hidden indicating file is loaded
+      await page.waitForSelector('[data-testid="upload-file-widget"]', {
+        state: 'hidden',
+      });
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();

@@ -22,7 +22,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
-  PAGE_SIZE,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
@@ -36,6 +35,7 @@ import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Database } from '../../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
+import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { UsageDetails } from '../../../../generated/type/entityUsage';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
@@ -57,6 +57,7 @@ import {
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import {
@@ -103,6 +104,15 @@ export const DatabaseSchemaTable = ({
     );
   }, [permissions, isVersionPage]);
 
+  const viewUsagePermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        permissions.databaseSchema,
+        Operation.ViewUsage
+      ),
+    [permissions.databaseSchema]
+  );
+
   const searchValue = useMemo(() => {
     const param = location.search;
     const searchData = QueryString.parse(
@@ -136,7 +146,10 @@ export const DatabaseSchemaTable = ({
           after: params?.after,
           before: params?.before,
           include: showDeletedSchemas ? Include.Deleted : Include.NonDeleted,
-          fields: [TabSpecificField.USAGE_SUMMARY, commonTableFields],
+          fields: [
+            ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
+            commonTableFields,
+          ],
         });
 
         setSchemas(data);
@@ -147,21 +160,17 @@ export const DatabaseSchemaTable = ({
         setIsLoading(false);
       }
     },
-    [pageSize, decodedDatabaseFQN, showDeletedSchemas]
+    [pageSize, decodedDatabaseFQN, showDeletedSchemas, viewUsagePermission]
   );
 
   const searchSchema = useCallback(
     async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
       setIsLoading(true);
-      handlePageChange(pageNumber, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
       try {
         const response = await searchQuery({
           query: '',
           pageNumber,
-          pageSize: PAGE_SIZE,
+          pageSize: pageSize,
           queryFilter: buildSchemaQueryFilter(
             'database.fullyQualifiedName',
             decodedDatabaseFQN,
@@ -195,10 +204,8 @@ export const DatabaseSchemaTable = ({
   const handleSchemaPageChange = useCallback(
     ({ currentPage, cursorType }: PagingHandlerParams) => {
       if (searchValue) {
-        searchSchema(searchValue, currentPage);
         handlePageChange(currentPage);
       } else if (cursorType) {
-        fetchDatabaseSchema({ [cursorType]: paging[cursorType] });
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
@@ -206,20 +213,18 @@ export const DatabaseSchemaTable = ({
         );
       }
     },
-    [paging, fetchDatabaseSchema, searchSchema, searchValue]
+    [paging, handlePageChange, pageSize, searchValue]
   );
 
   const onSchemaSearch = useCallback(
     (value: string) => {
       setFilters({ schema: isEmpty(value) ? undefined : value });
-      if (value) {
-        searchSchema(value);
-      } else {
-        fetchDatabaseSchema();
-        handlePageChange(INITIAL_PAGING_VALUE);
-      }
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     },
-    [setFilters, searchSchema, fetchDatabaseSchema]
+    [setFilters, handlePageChange]
   );
 
   const handleDisplayNameUpdate = useCallback(
@@ -282,16 +287,24 @@ export const DatabaseSchemaTable = ({
       ...domainTableObject<DatabaseSchema>(),
       ...dataProductTableObject<DatabaseSchema>(),
       ...tagTableObject<DatabaseSchema>(),
-      {
-        title: t('label.usage'),
-        dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
-        key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
-        width: 120,
-        render: (text: UsageDetails) =>
-          getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
-      },
+      ...(viewUsagePermission
+        ? [
+            {
+              title: t('label.usage'),
+              dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+              key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+              width: 120,
+              render: (text: UsageDetails) =>
+                getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
+            },
+          ]
+        : []),
     ],
-    [handleDisplayNameUpdate, allowEditDisplayNamePermission]
+    [
+      handleDisplayNameUpdate,
+      allowEditDisplayNamePermission,
+      viewUsagePermission,
+    ]
   );
 
   const handleEditTable = () => {
@@ -299,6 +312,15 @@ export const DatabaseSchemaTable = ({
   };
 
   useEffect(() => {
+    if (searchValue) {
+      searchSchema(searchValue, currentPage);
+    }
+  }, [searchValue, currentPage, searchSchema]);
+
+  useEffect(() => {
+    if (searchValue) {
+      return;
+    }
     if (isCustomizationPage) {
       setSchemas(DATABASE_SCHEMAS_DUMMY_DATA);
       setIsLoading(false);
@@ -321,6 +343,7 @@ export const DatabaseSchemaTable = ({
     isDatabaseDeleted,
     isCustomizationPage,
     pagingCursor,
+    searchValue,
   ]);
 
   const searchProps = useMemo(

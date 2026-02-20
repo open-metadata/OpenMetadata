@@ -29,6 +29,7 @@ import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -44,7 +45,10 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -91,7 +95,11 @@ const ChartDetailsPage = () => {
   };
 
   const viewUsagePermission = useMemo(
-    () => chartPermissions.ViewAll || chartPermissions.ViewUsage,
+    () =>
+      getPrioritizedViewPermission(
+        chartPermissions,
+        PermissionOperation.ViewUsage
+      ),
     [chartPermissions]
   );
 
@@ -216,9 +224,11 @@ const ChartDetailsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateChartVotes(id, data);
-      const details = await getChartByFqn(chartFQN, {
-        fields: defaultFields,
-      });
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      const details = await getChartByFqn(chartFQN, { fields });
       setChartDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

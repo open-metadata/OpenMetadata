@@ -12,7 +12,7 @@
  */
 import { Button, Card, Space, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { split } from 'lodash';
+import { isEmpty, split } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
@@ -32,7 +32,13 @@ const QueryViewer = ({
 }) => {
   const { t } = useTranslation();
 
+  const hasQuery = !isEmpty(sqlQuery);
+
   const { queryLine, lineCount } = useMemo(() => {
+    if (!hasQuery) {
+      return { queryLine: '', lineCount: 0 };
+    }
+
     const lineCount = split(sqlQuery, '\n').length;
 
     return {
@@ -41,40 +47,46 @@ const QueryViewer = ({
       }`,
       lineCount,
     };
-  }, [sqlQuery]);
+  }, [sqlQuery, hasQuery]);
 
-  const { onCopyToClipBoard } = useClipboard(sqlQuery);
+  const { onCopyToClipBoard } = useClipboard(hasQuery ? sqlQuery : '');
 
   return (
     <Card
       className="w-auto dbt-tab-container"
       extra={
-        <Space className="m-y-xs">
-          <Tag className="query-lines" data-testid="query-line">
-            {queryLine}
-          </Tag>
-          <Tooltip placement="topRight" title={t('message.copy-to-clipboard')}>
-            <Button
-              className="flex-center button-size bg-white"
-              data-testid="query-entity-copy-button"
-              icon={<CopyIcon height={16} width={16} />}
-              onClick={onCopyToClipBoard}
-            />
-          </Tooltip>
-        </Space>
+        hasQuery ? (
+          <Space className="m-y-xs">
+            <Tag className="query-lines" data-testid="query-line">
+              {queryLine}
+            </Tag>
+            <Tooltip
+              placement="topRight"
+              title={t('message.copy-to-clipboard')}>
+              <Button
+                className="flex-center button-size bg-white"
+                data-testid="query-entity-copy-button"
+                icon={<CopyIcon height={16} width={16} />}
+                onClick={onCopyToClipBoard}
+              />
+            </Tooltip>
+          </Space>
+        ) : null
       }
       title={title}>
-      <SchemaEditor
-        className="custom-code-mirror-theme"
-        editorClass={classNames(
-          lineCount > 4 ? 'table-query-editor' : 'query-editor'
-        )}
-        mode={{ name: CSMode.SQL }}
-        options={{ readOnly: true }}
-        refreshEditor={isActive}
-        showCopyButton={false}
-        value={sqlQuery}
-      />
+      {hasQuery && (
+        <SchemaEditor
+          className="custom-code-mirror-theme"
+          editorClass={classNames(
+            lineCount > 4 ? 'table-query-editor' : 'query-editor'
+          )}
+          mode={{ name: CSMode.SQL }}
+          options={{ readOnly: true }}
+          refreshEditor={isActive}
+          showCopyButton={false}
+          value={sqlQuery}
+        />
+      )}
     </Card>
   );
 };

@@ -408,6 +408,67 @@ describe('LineageProvider', () => {
     expect(tracedColumnsDisplay.textContent).toBe('');
   });
 
+  it('should remove traced columns when column layer is removed', () => {
+    const TestComponent = () => {
+      const { onUpdateLayerView, onColumnClick, activeLayer, tracedColumns } =
+        useLineageProvider();
+
+      const toggleColumnLayer = () => {
+        if (activeLayer.includes(LineageLayer.ColumnLevelLineage)) {
+          onUpdateLayerView(
+            activeLayer.filter(
+              (layer) => layer !== LineageLayer.ColumnLevelLineage
+            )
+          );
+        } else {
+          onUpdateLayerView([...activeLayer, LineageLayer.ColumnLevelLineage]);
+        }
+      };
+
+      return (
+        <div>
+          <button data-testid="toggle-column-layer" onClick={toggleColumnLayer}>
+            Toggle Column Layer
+          </button>
+          <button
+            data-testid="simulate-column-click"
+            onClick={() => onColumnClick('test-column')}>
+            Simulate Column Click
+          </button>
+          <div data-testid="active-layers">{activeLayer.join(',')}</div>
+          <div data-testid="traced-columns">{tracedColumns.join(',')}</div>
+        </div>
+      );
+    };
+
+    render(
+      <LineageProvider>
+        <TestComponent />
+      </LineageProvider>
+    );
+
+    const toggleColumnLayerButton = screen.getByTestId('toggle-column-layer');
+    const simulateColumnClick = screen.getByTestId('simulate-column-click');
+    const activeLayersDisplay = screen.getByTestId('active-layers');
+    const tracedColumnsDisplay = screen.getByTestId('traced-columns');
+
+    expect(tracedColumnsDisplay.textContent).toBe('');
+    expect(activeLayersDisplay.textContent).not.toContain('ColumnLevelLineage');
+
+    fireEvent.click(toggleColumnLayerButton);
+
+    expect(activeLayersDisplay.textContent).toContain('ColumnLevelLineage');
+
+    fireEvent.click(simulateColumnClick);
+
+    expect(tracedColumnsDisplay.textContent).toBe('test-column');
+
+    fireEvent.click(toggleColumnLayerButton);
+
+    expect(activeLayersDisplay.textContent).not.toContain('ColumnLevelLineage');
+    expect(tracedColumnsDisplay.textContent).toBe('');
+  });
+
   it('should show delete modal', async () => {
     render(
       <LineageProvider>

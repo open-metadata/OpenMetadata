@@ -87,6 +87,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -155,6 +158,8 @@ import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
@@ -2822,5 +2827,163 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                   .anyMatch(team -> team.getId().equals(testTeam.getId())),
               "Deleted team should be automatically removed during version consolidation");
         });
+  }
+
+  @Test
+  void testUserContextCachePerformance() throws HttpResponseException {
+    // Create a test user with multiple roles and teams to properly test cache performance
+    CreateUser createUser =
+        createRequest("cache-perf-test-user", "", "", null)
+            .withRoles(List.of(DATA_STEWARD_ROLE.getId(), DATA_CONSUMER_ROLE.getId()))
+            .withTeams(List.of(TEAM1.getId(), TEAM21.getId()));
+    User testUser = createEntity(createUser, ADMIN_AUTH_HEADERS);
+    String userName = testUser.getName();
+
+    SubjectCache.invalidateAll();
+
+    LOG.info("Starting User Context Cache Performance Test");
+    LOG.info(
+        "Test user: {} with {} roles and {} teams",
+        userName,
+        testUser.getRoles().size(),
+        testUser.getTeams().size());
+
+    // Warm up JVM (exclude from measurements)
+    for (int i = 0; i < 3; i++) {
+      SubjectContext.getSubjectContext(userName);
+    }
+    SubjectCache.invalidateAll();
+
+    // Test 1: Cache Miss (First call - should be slower)
+    long cacheMissStartTime = System.currentTimeMillis();
+    SubjectContext context1 = SubjectContext.getSubjectContext(userName);
+    long cacheMissTime = System.currentTimeMillis() - cacheMissStartTime;
+    assertNotNull(context1);
+    assertEquals(userName, context1.user().getName());
+
+    LOG.info("Cache MISS time: {}ms (first call - loads from database)", cacheMissTime);
+
+    // Test 2: Cache Hit (Multiple subsequent calls - should be much faster)
+    List<Long> cacheHitTimes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      long cacheHitStartTime = System.currentTimeMillis();
+      SubjectContext context = SubjectContext.getSubjectContext(userName);
+      long cacheHitTime = System.currentTimeMillis() - cacheHitStartTime;
+
+      cacheHitTimes.add(cacheHitTime);
+      assertNotNull(context);
+      assertEquals(userName, context.user().getName());
+    }
+
+    // Calculate cache hit performance statistics
+    double avgCacheHitTime =
+        cacheHitTimes.stream().mapToLong(Long::longValue).average().orElse(0.0);
+    long maxCacheHitTime = cacheHitTimes.stream().mapToLong(Long::longValue).max().orElse(0);
+    long minCacheHitTime = cacheHitTimes.stream().mapToLong(Long::longValue).min().orElse(0);
+
+    LOG.info(
+        "Cache HIT times - Avg: {}ms, Min: {}ms, Max: {}ms",
+        String.format("%.2f", avgCacheHitTime),
+        minCacheHitTime,
+        maxCacheHitTime);
+
+    // Performance assertions
+    double performanceImprovement =
+        ((double) cacheMissTime - avgCacheHitTime) / cacheMissTime * 100;
+    LOG.info(
+        "Performance improvement: {}% ({}ms → {}ms)",
+        String.format("%.1f", performanceImprovement),
+        cacheMissTime,
+        String.format("%.1f", avgCacheHitTime));
+
+    // Assert significant performance improvement
+    assertTrue(
+        performanceImprovement > 30.0,
+        String.format(
+            "Expected >30%% improvement, got %.1f%% (%dms → %.1fms)",
+            performanceImprovement, cacheMissTime, avgCacheHitTime));
+    assertTrue(
+        avgCacheHitTime < 200,
+        String.format("Cache hits should be <200ms, got %.1fms", avgCacheHitTime));
+
+    // Test 3: Concurrent Access Performance
+    int threadCount = 5;
+    int callsPerThread = 10;
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+
+    LOG.info(
+        "Testing concurrent access with {} threads, {} calls each", threadCount, callsPerThread);
+
+    long concurrentStartTime = System.currentTimeMillis();
+    List<CompletableFuture<List<Long>>> futures = new ArrayList<>();
+
+    for (int threadId = 0; threadId < threadCount; threadId++) {
+      CompletableFuture<List<Long>> future =
+          CompletableFuture.supplyAsync(
+              () -> {
+                List<Long> threadTimes = new ArrayList<>();
+                for (int call = 0; call < callsPerThread; call++) {
+                  long callStart = System.currentTimeMillis();
+                  SubjectContext context = SubjectContext.getSubjectContext(userName);
+                  long callTime = System.currentTimeMillis() - callStart;
+
+                  threadTimes.add(callTime);
+                  assertNotNull(context);
+                  assertEquals(userName, context.user().getName());
+                }
+                return threadTimes;
+              },
+              executor);
+
+      futures.add(future);
+    }
+
+    // Wait for all threads to complete
+    try {
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
+    } catch (Exception e) {
+      throw new RuntimeException("Concurrent test failed", e);
+    }
+
+    long totalConcurrentTime = System.currentTimeMillis() - concurrentStartTime;
+    executor.shutdown();
+
+    // Collect all concurrent timing data
+    List<Long> allConcurrentTimes = new ArrayList<>();
+    for (CompletableFuture<List<Long>> future : futures) {
+      try {
+        allConcurrentTimes.addAll(future.get());
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to get concurrent results", e);
+      }
+    }
+
+    double avgConcurrentTime =
+        allConcurrentTimes.stream().mapToLong(Long::longValue).average().orElse(0.0);
+    int totalCalls = threadCount * callsPerThread;
+    double callsPerSecond = (double) totalCalls / (totalConcurrentTime / 1000.0);
+
+    LOG.info("Concurrent test results:");
+    LOG.info("  Total calls: {} across {} threads", totalCalls, threadCount);
+    LOG.info("  Total time: {}ms", totalConcurrentTime);
+    LOG.info("  Calls per second: {}", String.format("%.1f", callsPerSecond));
+    LOG.info("  Avg concurrent call time: {}ms", String.format("%.2f", avgConcurrentTime));
+
+    // Performance assertions for concurrent access
+    assertTrue(
+        avgConcurrentTime < 300,
+        String.format(
+            "Average concurrent call time should be <300ms, got %.2fms", avgConcurrentTime));
+    assertTrue(
+        callsPerSecond > 20,
+        String.format("Should handle >20 calls/sec, got %.1f", callsPerSecond));
+
+    // Test 4: Cache Statistics
+    String cacheStats = SubjectCache.getCacheStats();
+    LOG.info("Cache statistics: {}", cacheStats);
+
+    // Cleanup: Remove the test user
+    deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
+    LOG.info("Test completed and user cleaned up: {}", userName);
   }
 }

@@ -30,9 +30,11 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 
 /**
  * Integration tests for DashboardDataModel entity operations.
@@ -45,6 +47,17 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class DashboardDataModelResourceIT
     extends BaseEntityIT<DashboardDataModel, CreateDashboardDataModel> {
+
+  {
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return DashboardDataModelResource.COLLECTION_PATH;
+  }
 
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
@@ -782,5 +795,27 @@ public class DashboardDataModelResourceIT
     assertEquals(3, deletedByName.getColumns().size());
 
     hardDeleteEntity(dataModel.getId().toString());
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateDashboardDataModel> createRequests) {
+    return SdkClients.adminClient().dashboardDataModels().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(
+      List<CreateDashboardDataModel> createRequests) {
+    return SdkClients.adminClient().dashboardDataModels().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateDashboardDataModel createInvalidRequestForBulk(TestNamespace ns) {
+    CreateDashboardDataModel request = new CreateDashboardDataModel();
+    request.setName(ns.prefix("invalid_data_model"));
+    return request;
   }
 }

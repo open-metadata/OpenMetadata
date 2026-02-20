@@ -13,12 +13,17 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE,
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
+import {
+  DataProductPortsView,
+  PaginatedEntities,
+} from '../generated/api/domains/dataProductPortsView';
 import {
   DataProduct,
   EntityReference,
@@ -179,6 +184,135 @@ export const removeFollower = async (dataProductID: string, userId: string) => {
 export const getAllDataProductsWithAssetsCount = async () => {
   const response = await APIClient.get<Record<string, number>>(
     `${BASE_URL}/assets/counts`
+  );
+
+  return response.data;
+};
+
+export const addInputPortsToDataProduct = async (
+  dataProductFqn: string,
+  ports: EntityReference[]
+) => {
+  const data: { assets: EntityReference[] } = {
+    assets: ports,
+  };
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/inputPorts/add`, data);
+
+  return response.data;
+};
+
+export const removeInputPortsFromDataProduct = async (
+  dataProductFqn: string,
+  ports: EntityReference[]
+) => {
+  const data: { assets: EntityReference[] } = {
+    assets: ports,
+  };
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/inputPorts/remove`, data);
+
+  return response.data;
+};
+
+export const addOutputPortsToDataProduct = async (
+  dataProductFqn: string,
+  ports: EntityReference[]
+) => {
+  const data: { assets: EntityReference[] } = {
+    assets: ports,
+  };
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/outputPorts/add`, data);
+
+  return response.data;
+};
+
+export const removeOutputPortsFromDataProduct = async (
+  dataProductFqn: string,
+  ports: EntityReference[]
+) => {
+  const data: { assets: EntityReference[] } = {
+    assets: ports,
+  };
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/outputPorts/remove`, data);
+
+  return response.data;
+};
+
+export const removePortsFromDataProduct = async (
+  dataProductFqn: string,
+  ports: EntityReference[],
+  type:
+    | AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
+    | AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
+) => {
+  const data: { assets: EntityReference[] } = {
+    assets: ports,
+  };
+
+  const endpoint =
+    type === AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
+      ? `${BASE_URL}/${getEncodedFqn(dataProductFqn)}/inputPorts/remove`
+      : `${BASE_URL}/${getEncodedFqn(dataProductFqn)}/outputPorts/remove`;
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(endpoint, data);
+
+  return response.data;
+};
+
+export const getDataProductPortsView = async (
+  dataProductFqn: string,
+  params?: {
+    inputLimit?: number;
+    inputOffset?: number;
+    outputLimit?: number;
+    outputOffset?: number;
+  }
+) => {
+  const response = await APIClient.get<DataProductPortsView>(
+    `${BASE_URL}/name/${getEncodedFqn(dataProductFqn)}/portsView`,
+    { params }
+  );
+
+  return response.data;
+};
+
+export const getDataProductInputPorts = async (
+  dataProductFqn: string,
+  params?: { limit?: number; offset?: number; fields?: string }
+) => {
+  const response = await APIClient.get<PaginatedEntities>(
+    `${BASE_URL}/name/${getEncodedFqn(dataProductFqn)}/inputPorts`,
+    { params }
+  );
+
+  return response.data;
+};
+
+export const getDataProductOutputPorts = async (
+  dataProductFqn: string,
+  params?: { limit?: number; offset?: number; fields?: string }
+) => {
+  const response = await APIClient.get<PaginatedEntities>(
+    `${BASE_URL}/name/${getEncodedFqn(dataProductFqn)}/outputPorts`,
+    { params }
   );
 
   return response.data;

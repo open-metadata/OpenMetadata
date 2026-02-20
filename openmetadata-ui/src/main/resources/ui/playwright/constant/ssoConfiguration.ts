@@ -15,11 +15,8 @@ export const SSO_COMMON_FIELDS = [
   'Authority',
   'Client ID',
   'Callback URL',
-  'Public Key URLs',
-  'Token Validation Algorithm',
   'JWT Principal Claims',
   'Enable Self Signup',
-  'Allowed Email Registration Domains',
   'Allowed Domains',
   'Use Roles From Provider',
 ];
@@ -54,13 +51,10 @@ export const SAML_VISIBLE_FIELDS = [
   'SP Private Key',
   'Debug Mode',
   'Strict Mode',
-  'Token Validity (seconds)',
   'Want Assertions Signed',
   'Want Messages Signed',
   'Send Signed Auth Request',
-  'Allowed Email Registration Domains',
   'Allowed Domains',
-  'Use Roles From Provider',
 ];
 
 export const LDAP_VISIBLE_FIELDS = [
@@ -76,13 +70,9 @@ export const LDAP_VISIBLE_FIELDS = [
   'Admin Role Name',
   'All Attribute Name',
   'Mail Attribute Name',
-  'Username Attribute Name',
   'Group Attribute Name',
   'Group Attribute Value',
   'Group Member Attribute Name',
-  'Auth Roles Mapping',
   'Auth Reassign Roles',
-  'Allowed Email Registration Domains',
   'Allowed Domains',
-  'Use Roles From Provider',
 ];

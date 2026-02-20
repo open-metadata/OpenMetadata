@@ -39,7 +39,8 @@
         "Wherescape",
         "SSIS",
         "Snowplow",
-        "Mulesoft"
+        "Mulesoft",
+        "MicrosoftFabricPipeline"
       ],
       "javaEnums": [
         {
@@ -110,6 +111,9 @@
         },
         {
           "name": "Mulesoft"
+        },
+        {
+          "name": "MicrosoftFabricPipeline"
         }
       ]
     },
@@ -192,6 +196,9 @@
             },
             {
               "$ref": "./connections/pipeline/mulesoftConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/microsoftFabricPipelineConnection.json"
             }
           ]
         }

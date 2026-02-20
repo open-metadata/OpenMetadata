@@ -91,7 +91,7 @@ class ColumnValueMeanToBeBetweenValidator(
         dimension_results = []
 
         try:
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
             mean_impl = Metrics.MEAN(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(

@@ -25,6 +25,9 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureCode,
 )
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.source.database.lineage_processors import (
@@ -501,6 +504,7 @@ class TestTempTableLineage(unittest.TestCase):
                     procedure=self.test_procedure,
                     procedure_graph_map=procedure_graph_map,
                     enableTempTableLineage=True,
+                    parser_type=QueryParserType.Auto,
                 )
             )
 
@@ -534,6 +538,7 @@ class TestTempTableLineage(unittest.TestCase):
                     procedure=self.test_procedure,
                     procedure_graph_map=procedure_graph_map,
                     enableTempTableLineage=False,
+                    parser_type=QueryParserType.Auto,
                 )
             )
 
@@ -565,6 +570,7 @@ class TestTempTableLineage(unittest.TestCase):
                     procedure=self.test_procedure,
                     procedure_graph_map=procedure_graph_map,
                     enableTempTableLineage=True,
+                    parser_type=QueryParserType.Auto,
                 )
             )
 
@@ -687,6 +693,7 @@ class TestProcedureGraphProcessing(unittest.TestCase):
                     procedure=test_procedure,
                     procedure_graph_map=procedure_graph_map,
                     enableTempTableLineage=True,
+                    parser_type=QueryParserType.Auto,
                 )
             )
 
@@ -708,6 +715,7 @@ class TestProcedureGraphProcessing(unittest.TestCase):
                     procedure=test_procedure,
                     procedure_graph_map=procedure_graph_map,
                     enableTempTableLineage=True,
+                    parser_type=QueryParserType.Auto,
                 )
             )
 

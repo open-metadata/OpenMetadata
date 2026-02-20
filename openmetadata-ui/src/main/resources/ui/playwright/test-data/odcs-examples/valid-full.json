@@ -1,0 +1,25 @@
+{
+  "apiVersion": "v3.1.0",
+  "kind": "DataContract",
+  "id": "full-contract-json",
+  "name": "Complete ODCS Contract JSON",
+  "version": "2.0.0",
+  "status": "active",
+  "description": {
+    "purpose": "Comprehensive data contract for analytics.",
+    "limitations": "Historical data only.",
+    "usage": "For internal dashboards."
+  },
+  "slaProperties": [
+    {
+      "property": "freshness",
+      "value": "12",
+      "unit": "hour"
+    },
+    {
+      "property": "latency",
+      "value": "2",
+      "unit": "hour"
+    }
+  ]
+}

@@ -17,8 +17,8 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -33,7 +33,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.http.client.HttpResponseException;
-import org.apache.http.util.EntityUtils;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -520,13 +519,11 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             .allMatch(
                 ts -> ts.getFullyQualifiedName().equals(logicalTestSuite.getFullyQualifiedName())));
 
-    // 6. List test suites with a nested sort
+    // 6. List test suites sorted by lastResultTimestamp
     queryParams.clear();
     queryParams.put("fields", "tests");
-    queryParams.put("sortField", "testCaseResultSummary.timestamp");
+    queryParams.put("sortField", "lastResultTimestamp");
     queryParams.put("sortOrder", "asc");
-    queryParams.put("sortNestedPath", "testCaseResultSummary");
-    queryParams.put("sortNestedMode", "max");
     ResultList<TestSuite> sortedTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
     assertNotNull(sortedTestSuites.getData());
@@ -934,9 +931,9 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
     TestSuite testSuite = createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
-    RestClient searchClient = getSearchClient();
+    Rest5Client searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(Entity.TABLE);
-    es.org.elasticsearch.client.Response response;
+    es.co.elastic.clients.transport.rest5_client.low_level.Response esResponse;
     Request request =
         new Request(
             "GET",
@@ -946,13 +943,18 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         String.format(
             "{\"size\": 10,\"query\":{\"bool\":{\"must\":[{\"term\":{\"_id\":\"%s\"}}]}}}",
             table.getId().toString());
-    request.setJsonEntity(query);
+    request.setEntity(
+        new org.apache.hc.core5.http.io.entity.StringEntity(
+            query, org.apache.hc.core5.http.ContentType.APPLICATION_JSON));
     try {
-      response = searchClient.performRequest(request);
+      esResponse = searchClient.performRequest(request);
     } finally {
       searchClient.close();
     }
-    String jsonString = EntityUtils.toString(response.getEntity());
+    String jsonString =
+        new String(
+            esResponse.getEntity().getContent().readAllBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
     LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
@@ -1190,6 +1192,16 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   private DataQualityReport getDataQualityReport(
       String query, String aggregationQuery, String index, Map<String, String> authHeaders)
       throws IOException {
+    return getDataQualityReport(query, aggregationQuery, index, null, authHeaders);
+  }
+
+  private DataQualityReport getDataQualityReport(
+      String query,
+      String aggregationQuery,
+      String index,
+      String domain,
+      Map<String, String> authHeaders)
+      throws IOException {
     WebTarget target = getResource("dataQuality/testSuites/dataQualityReport");
     if (query != null) {
       // URL encode the query parameter as it contains special characters like {, }, etc.
@@ -1199,7 +1211,141 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     }
     target = target.queryParam("aggregationQuery", aggregationQuery);
     target = target.queryParam("index", index);
+    if (domain != null) {
+      target = target.queryParam("domain", domain);
+    }
     return TestUtils.get(target, DataQualityReport.class, authHeaders);
+  }
+
+  @Test
+  void test_getDataQualityReport_domainFilter(TestInfo testInfo) throws IOException {
+    // Setup: Create tables with different domains
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+
+    // Create a table with DOMAIN1
+    CreateTable tableWithDomainReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withName("domainFilterTestTable_" + UUID.randomUUID())
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)))
+            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
+    Table tableWithDomain =
+        tableResourceTest.createAndCheckEntity(tableWithDomainReq, ADMIN_AUTH_HEADERS);
+    String tableLinkWithDomain =
+        String.format("<#E::table::%s>", tableWithDomain.getFullyQualifiedName());
+
+    // Create a table without domain
+    CreateTable tableWithoutDomainReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withName("noDomainFilterTestTable_" + UUID.randomUUID())
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)));
+    Table tableWithoutDomain =
+        tableResourceTest.createAndCheckEntity(tableWithoutDomainReq, ADMIN_AUTH_HEADERS);
+    String tableLinkWithoutDomain =
+        String.format("<#E::table::%s>", tableWithoutDomain.getFullyQualifiedName());
+
+    // Create test suites for both tables
+    CreateTestSuite createTestSuiteWithDomain =
+        createRequest(tableWithDomain.getFullyQualifiedName());
+    createBasicTestSuite(createTestSuiteWithDomain, ADMIN_AUTH_HEADERS);
+
+    CreateTestSuite createTestSuiteWithoutDomain =
+        createRequest(tableWithoutDomain.getFullyQualifiedName());
+    createBasicTestSuite(createTestSuiteWithoutDomain, ADMIN_AUTH_HEADERS);
+
+    // Create test cases for table with domain
+    for (int i = 0; i < 3; i++) {
+      CreateTestCase createTestCase =
+          testCaseResourceTest
+              .createRequest("DomainTestCase_" + UUID.randomUUID())
+              .withDescription("Test case for table with domain")
+              .withEntityLink(tableLinkWithDomain);
+      testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+    }
+
+    // Create test cases for table without domain
+    for (int i = 0; i < 2; i++) {
+      CreateTestCase createTestCase =
+          testCaseResourceTest
+              .createRequest("NoDomainTestCase_" + UUID.randomUUID())
+              .withDescription("Test case for table without domain")
+              .withEntityLink(tableLinkWithoutDomain);
+      testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+    }
+
+    String countAggregation = "bucketName=count:aggType=cardinality:field=fullyQualifiedName";
+
+    // Wait for indexing
+    Awaitility.await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(60, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              DataQualityReport report =
+                  getDataQualityReport(null, countAggregation, "testCase", ADMIN_AUTH_HEADERS);
+              assertNotNull(report);
+              assertNotNull(report.getData());
+              assertFalse(report.getData().isEmpty(), "Should have some aggregation data");
+            });
+
+    // Test 1: Get report without domain filter - should return all test cases
+    DataQualityReport reportWithoutFilter =
+        getDataQualityReport(null, countAggregation, "testCase", ADMIN_AUTH_HEADERS);
+    assertNotNull(reportWithoutFilter);
+    assertNotNull(reportWithoutFilter.getData());
+    assertFalse(
+        reportWithoutFilter.getData().isEmpty(),
+        "Report without domain filter should have aggregation data");
+
+    // Test 2: Get report with domain filter - should return only test cases from that domain
+    DataQualityReport reportWithDomainFilter =
+        getDataQualityReport(
+            null,
+            countAggregation,
+            "testCase",
+            DOMAIN1.getFullyQualifiedName(),
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(reportWithDomainFilter);
+    assertNotNull(reportWithDomainFilter.getData());
+
+    // Domain filter should reduce results since we're filtering to only one domain
+    // that contains the table with domain assigned
+    int countWithoutFilter = reportWithoutFilter.getData().size();
+    int countWithFilter = reportWithDomainFilter.getData().size();
+    assertTrue(
+        countWithFilter <= countWithoutFilter,
+        String.format(
+            "Count with domain filter (%d) should be <= count without filter (%d)",
+            countWithFilter, countWithoutFilter));
+
+    // Test 3: Test with testCaseResolutionStatus index (uses different domain field path)
+    String resolutionAggregation =
+        "bucketName=status:aggType=terms:field=testCaseResolutionStatusType";
+    DataQualityReport resolutionReport =
+        getDataQualityReport(
+            null,
+            resolutionAggregation,
+            "testCaseResolutionStatus",
+            DOMAIN1.getFullyQualifiedName(),
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(resolutionReport);
+    assertNotNull(resolutionReport.getData());
   }
 
   @Test
@@ -1253,7 +1399,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // 4. Fetch the test suite linked to the table using the search endpoint (before reindex)
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("fullyQualifiedName", testSuite.getFullyQualifiedName());
-    queryParams.put("fields", "tests,testCaseResultSummary");
+    queryParams.put("fields", "tests,summary");
     ResultList<TestSuite> testSuitesBeforeReindex =
         listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
     assertNotNull(testSuitesBeforeReindex);
@@ -1320,10 +1466,18 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       verifyTestCases(testSuiteBeforeReindex.getTests(), testSuiteAfterReindex.getTests());
     }
 
-    // Compare test case result summaries
+    // The batch /search/list path computes summary (total/success/failed counts) directly
+    // from result statuses without populating testCaseResultSummary (which is expensive).
+    assertNotNull(
+        testSuiteAfterReindex.getSummary(), "After reindex, summary should be populated from DB");
     assertEquals(
-        testSuiteBeforeReindex.getTestCaseResultSummary(),
-        testSuiteAfterReindex.getTestCaseResultSummary());
+        1,
+        testSuiteAfterReindex.getSummary().getTotal(),
+        "Should have exactly one test case in summary total");
+    assertEquals(
+        1,
+        testSuiteAfterReindex.getSummary().getSuccess(),
+        "The single test case result should be Success");
   }
 
   private void postTriggerSearchIndexingApp(Map<String, String> authHeaders) throws IOException {

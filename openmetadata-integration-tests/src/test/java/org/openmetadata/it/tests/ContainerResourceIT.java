@@ -25,6 +25,7 @@ import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -39,6 +40,12 @@ import org.openmetadata.sdk.models.ListResponse;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer> {
+
+  {
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
+  }
 
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
@@ -1146,5 +1153,26 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     Column retrievedBigintArray = container.getDataModel().getColumns().get(2);
     assertEquals(ColumnDataType.ARRAY, retrievedBigintArray.getDataType());
     assertEquals(ColumnDataType.BIGINT, retrievedBigintArray.getArrayDataType());
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateContainer> createRequests) {
+    return SdkClients.adminClient().containers().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateContainer> createRequests) {
+    return SdkClients.adminClient().containers().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateContainer createInvalidRequestForBulk(TestNamespace ns) {
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("invalid_container"));
+    return request;
   }
 }

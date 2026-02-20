@@ -29,6 +29,8 @@ import {
 } from '../../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
+import { useFqn } from '../../../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../../../hooks/useFqnDeepLink';
 import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
@@ -43,7 +45,12 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
-import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
+import {
+  getHighlightedRowClassName,
+  getTableExpandableConfig,
+  pruneEmptyChildren,
+  updateColumnInNestedStructure,
+} from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -61,8 +68,12 @@ import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEdi
 
 const ModelTab = () => {
   const { t } = useTranslation();
+
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
+  const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
+  const { openColumnDetailPanel, selectedColumn, setDisplayedColumns } =
+    useGenericContext<DashboardDataModel>();
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true);
@@ -80,6 +91,24 @@ const ModelTab = () => {
   const { data: dataModel, permissions } =
     useGenericContext<DashboardDataModel>();
   const { fullyQualifiedName: entityFqn, deleted: isReadOnly } = dataModel;
+
+  const { columnFqn: columnPart, fqn } = useFqn({
+    type: EntityType.DASHBOARD_DATA_MODEL,
+  });
+
+  useFqnDeepLink({
+    data: paginatedColumns,
+    columnPart,
+    fqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as Column | null,
+  });
+
+  const getRowClassName = useCallback(
+    (record: Column) => getHighlightedRowClassName(record, fqn),
+    [fqn]
+  );
 
   // Always use paginated columns, never dataModel.columns directly
   const data = paginatedColumns;
@@ -109,9 +138,10 @@ const ModelTab = () => {
               fields: TabSpecificField.TAGS,
             });
 
-        setPaginatedColumns(pruneEmptyChildren(response.data) || []);
+        const data = pruneEmptyChildren(response.data) || [];
+        setPaginatedColumns(data);
         handlePagingChange(response.paging);
-      } catch (error) {
+      } catch {
         setPaginatedColumns([]);
         handlePagingChange({
           offset: 1,
@@ -169,12 +199,17 @@ const ModelTab = () => {
     if (entityFqn) {
       fetchPaginatedColumns(1, searchText || undefined);
     }
-  }, [entityFqn, searchText, fetchPaginatedColumns, pageSize]);
+  }, [entityFqn, searchText, fetchPaginatedColumns, pageSize, dataModel]);
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(paginatedColumns);
+  }, [paginatedColumns, setDisplayedColumns]);
 
   const updateColumnDetails = async (
     columnFqn: string,
     column: Partial<Column>,
-    field?: keyof Column
+    field: keyof Column
   ) => {
     const response = await updateDataModelColumn(columnFqn, column);
     const cleanResponse = isEmpty(response.children)
@@ -182,12 +217,7 @@ const ModelTab = () => {
       : response;
 
     setPaginatedColumns((prev) =>
-      prev.map((col) =>
-        col.fullyQualifiedName === columnFqn
-          ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...cleanResponse }
-          : col
-      )
+      updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
     );
 
     return response;
@@ -244,6 +274,21 @@ const ModelTab = () => {
     );
   };
 
+  const handleColumnClick = useCallback(
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        target.closest(
+          'button, a, input, textarea, select, .table-expand-icon'
+        ) !== null
+      ) {
+        return;
+      }
+      openColumnDetailPanel(column);
+    },
+    [openColumnDetailPanel]
+  );
+
   const searchProps = useMemo(
     () => ({
       placeholder: t('message.find-in-table'),
@@ -287,16 +332,24 @@ const ModelTab = () => {
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         fixed: 'left',
+        className: 'cursor-pointer text-link-color',
         sorter: getColumnSorter<Column, 'name'>('name'),
+        onCell: (record: Column) => ({
+          onClick: (event: React.MouseEvent) =>
+            handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: (_, record: Column) => {
           const { displayName } = record;
 
           return (
             <DisplayName
               displayName={displayName}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
               hasEditPermission={editDisplayNamePermission}
               id={record.fullyQualifiedName ?? ''}
               name={record.name}
+              parentEntityFqn={entityFqn}
               onEditDisplayName={handleEditColumnData}
             />
           );
@@ -389,6 +442,9 @@ const ModelTab = () => {
       editColumnDescription,
       hasEditDescriptionPermission,
       handleFieldTagsChange,
+      handleColumnClick,
+      editDisplayNamePermission,
+      handleEditColumnData,
     ]
   );
 
@@ -401,12 +457,17 @@ const ModelTab = () => {
         data-testid="data-model-column-table"
         dataSource={data}
         defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
+        expandable={{
+          ...getTableExpandableConfig<Column>(false, 'text-link-color'),
+          rowExpandable: (record) => !isEmpty(record.children),
+        }}
         loading={columnsLoading}
         locale={{
           emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
-        rowKey="name"
+        rowClassName={getRowClassName}
+        rowKey="fullyQualifiedName"
         scroll={{ x: 1200 }}
         searchProps={searchProps}
         size="small"

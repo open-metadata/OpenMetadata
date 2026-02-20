@@ -52,6 +52,7 @@ export const ColumnSummaryList = ({
         const { data, paging } = await api(fqn, {
           offset,
           limit: columnsPaging.limit,
+          fields: 'tags,extension',
         });
 
         setColumns((prev) => [...prev, ...data]);

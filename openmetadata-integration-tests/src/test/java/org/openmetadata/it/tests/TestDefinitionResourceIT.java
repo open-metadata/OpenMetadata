@@ -21,6 +21,7 @@ import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 
 /**
  * Integration tests for TestDefinition entity operations.
@@ -39,6 +40,12 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     supportsDataProducts = false; // TestDefinition doesn't support dataProducts
     supportsNameLengthValidation = false; // TestDefinition doesn't enforce name length
     supportsSearchIndex = false; // TestDefinition doesn't have a search index
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return TestDefinitionResource.COLLECTION_PATH;
   }
 
   // ===================================================================

@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import {
-  compact,
-  get,
-  isEmpty,
-  isString,
-  isUndefined,
-  startCase,
-} from 'lodash';
-import { parse } from 'papaparse';
+import { isEmpty, isString, isUndefined, startCase } from 'lodash';
+import { parse, unparse } from 'papaparse';
 import { Column } from 'react-data-grid';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
@@ -60,6 +53,13 @@ export const COLUMNS_WIDTH: Record<string, number> = {
   tiers: 120,
   status: 70,
 };
+
+export const CSV_DISABLED_COLUMNS = [
+  'name*',
+  'testDefinition*',
+  'entityFQN*',
+  'testSuite',
+];
 
 const statusRenderer = (value: Status) => {
   return value === Status.Failure ? (
@@ -120,7 +120,9 @@ export const getColumnConfig = (
   isBulkEdit = false
 ): Column<any> => {
   const colType = column.split('.').pop() ?? '';
-  const disabledColumns = isBulkEdit ? ['name*'].includes(colType) : false;
+  const disabledColumns = isBulkEdit
+    ? CSV_DISABLED_COLUMNS.includes(colType)
+    : false;
 
   return {
     key: column,
@@ -186,44 +188,26 @@ export const getEntityColumnsAndDataSourceFromCSV = (
 };
 
 export const getCSVStringFromColumnsAndDataSource = (
-  columns: Column<any>[],
+  columns: Array<Pick<Column<unknown>, 'key'>>,
   dataSource: Record<string, string>[]
 ) => {
-  const header = columns.map((col) => col.key).join(',');
-  const rows = dataSource.map((row) => {
-    const compactValues = compact(columns.map((col) => row[col.key ?? '']));
+  const fieldNames = columns.map((c) => c.key);
 
-    if (compactValues.length === 0) {
-      return '';
-    }
+  const data = dataSource.map((row) =>
+    Object.fromEntries(
+      fieldNames.map((key) => {
+        const value = String(row[key] ?? '');
 
-    return columns
-      .map((col) => {
-        const value = get(row, col.key ?? '', '');
-        const colName = col.key ?? '';
-        if (
-          csvUtilsClassBase
-            .columnsWithMultipleValuesEscapeNeeded()
-            .includes(colName)
-        ) {
-          return isEmpty(value)
-            ? ''
-            : `"${value.replaceAll(new RegExp('"', 'g'), '""')}"`;
-        } else if (
-          value.includes(',') ||
-          value.includes('\n') ||
-          colName.includes('tags') ||
-          colName.includes('domains')
-        ) {
-          return isEmpty(value) ? '' : `"${value}"`;
-        }
-
-        return get(row, col.key ?? '', '');
+        return [key, value];
       })
-      .join(',');
-  });
+    )
+  );
 
-  return [header, ...compact(rows)].join('\n');
+  return unparse(data, {
+    columns: fieldNames,
+    header: true,
+    newline: '\n',
+  });
 };
 
 /**

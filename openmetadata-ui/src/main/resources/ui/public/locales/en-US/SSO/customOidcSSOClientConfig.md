@@ -29,13 +29,16 @@ Custom OIDC authentication enables integration with any OpenID Connect compliant
 - **Required:** Yes
 - **Note:** Must be publicly accessible and return valid OIDC discovery document at `/.well-known/openid_configuration`
 
-## <span data-id="callbackUrl">Callback URL</span>
+## <span data-id="callbackUrl">Callback URL / Redirect URI</span>
 
-- **Definition:** URL where users are redirected after authentication.
-- **Example:** https://yourapp.company.com/callback
-- **Why it matters:** Must match the redirect URI configured in your OIDC provider.
-- **Required:** Yes
-- **Setup:** Add this URL to your OIDC provider's allowed redirect URIs.
+- **Definition:** URL where the OIDC provider redirects after authentication.
+- **Auto-Generated:** This field is automatically populated as `{your-domain}/callback`.
+- **Example:** https://openmetadata.company.com/callback
+- **Why it matters:** Must be registered in your OIDC provider configuration.
+- **Note:**
+  - **This field is read-only** - it cannot be edited
+  - **Copy this exact URL** and add it to your OIDC provider's allowed redirect URIs list
+  - Format is always: `{your-domain}/callback`
 
 ## <span data-id="scopes">Scopes</span>
 
@@ -49,14 +52,6 @@ Custom OIDC authentication enables integration with any OpenID Connect compliant
   - `email`: Access to user email address
   - `groups`: Access to user group memberships (if supported)
 
-## <span data-id="tokenValidation">Token Validation Algorithm</span>
-
-- **Definition:** Algorithm used to validate JWT tokens from your OIDC provider.
-- **Default:** RS256
-- **Options:** RS256, RS384, RS512, HS256, HS384, HS512
-- **Why it matters:** Must match the algorithm your OIDC provider uses to sign tokens.
-- **Note:** RS256 is recommended for most providers.
-
 ## <span data-id="publicKey">Public Key / JWK URI</span>
 
 - **Definition:** Public key or JSON Web Key Set URI for token validation.
@@ -66,10 +61,50 @@ Custom OIDC authentication enables integration with any OpenID Connect compliant
 
 ## <span data-id="principals">JWT Principal Claims</span>
 
+> ⚠️ **CRITICAL WARNING**: Incorrect claims will **lock out ALL users including admins**!
+> - These claims MUST exist in JWT tokens from your OIDC provider
+> - Order matters: first matching claim is used for user identification
+> - **Default values (email, preferred_username, sub) work for most standard OIDC providers**
+> - Verify with your provider's documentation before changing
+
 - **Definition:** JWT claim names that contain user principal information.
-- **Default:** ["email", "preferred_username", "sub"]
+- **Default:** ["email", "preferred_username", "sub"] (recommended)
 - **Example:** ["email", "username", "sub"]
 - **Why it matters:** Maps JWT claims to OpenMetadata user identities.
+
+### <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
+
+- **Definition:** Maps JWT claims to OpenMetadata user attributes. (Overrides JWT Principal Claims if set)
+- **Example:** ["email:email", "username:preferred_username"]
+- **Why it matters:** Controls how user information from your OIDC provider maps to OpenMetadata user profiles.
+- **Note:** Format: "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
+- **Important:** JWT Principal Claims Mapping is **rarely needed** for most OIDC configurations. The default JWT Principal Claims handle user identification correctly. Only configure this if you have specific custom claim requirements.
+
+## <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+
+- **Definition:** JWT claim or attribute containing team/department information for automatic team assignment.
+- **Example:** "department", "groups", "organization", "team"
+- **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their OIDC provider attributes during login.
+- **How it works:**
+  - Extracts the value(s) from the specified JWT claim (e.g., if set to "department", reads user's department from the ID token)
+  - For array claims (like "groups"), processes all values in the array
+  - Matches the extracted value(s) against existing team names in OpenMetadata
+  - Assigns the user to all matching teams that are of type "Group"
+  - If a team doesn't exist or is not of type "Group", a warning is logged but authentication continues
+- **OIDC Provider Configuration:**
+  - Ensure the claim/attribute is included in the ID token by your OIDC provider
+  - Common attributes: "department", "organization", "groups", "roles"
+  - Configure custom claims in your OIDC provider's claim mapping settings
+  - For group-based teams, include "groups" scope in the OIDC request
+- **Note:** 
+  - The team must already exist in OpenMetadata for assignment to work
+  - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
+  - Team names are case-sensitive and must match exactly
+  - Multiple team assignments are supported for array claims (e.g., "groups")
 
 ## <span data-id="principalDomain">Principal Domain</span>
 
@@ -78,11 +113,23 @@ Custom OIDC authentication enables integration with any OpenID Connect compliant
 - **Why it matters:** Ensures consistent user identification across systems.
 - **Optional:** Only needed if usernames don't include domain information.
 
+### <span data-id="allowedDomains">Allowed Domains</span>
+
+- **Definition:** List of email domains that are permitted to access OpenMetadata.
+- **Example:** ["company.com", "external-partner.com"]
+- **Why it matters:** Provides fine-grained control over which email domains can authenticate via your OIDC provider.
+- **Note:**
+  - Works in conjunction with `enforcePrincipalDomain`
+  - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
+  - Leave empty or use single `principalDomain` if you only have one domain
+  - Useful for multi-domain organizations or when integrating with providers that support multiple domains
+
 ## <span data-id="adminPrincipals">Admin Principals</span>
 
 - **Definition:** List of user principals who should have admin access.
-- **Example:** ["admin@company.com", "sysadmin@company.com"]
+- **Example:** ["admin", "sysadmin", "john.doe"]
 - **Why it matters:** Grants administrative privileges to specific users.
+- **Note:** Use usernames (NOT email addresses) - these are derived from the email prefix (part before @)
 - **Security:** Ensure these users are trusted administrators.
 
 ## <span data-id="selfSignup">Enable Self Signup</span>

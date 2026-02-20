@@ -232,14 +232,13 @@ class QlikCloudUnitTest(TestCase):
     Qlikcloud Unit Testtest_dbt
     """
 
-    def __init__(self, methodName) -> None:
-        with patch.object(
-            QlikCloudClient, "get_dashboards_list", return_value=None
-        ), patch.object(
-            QlikCloudClient, "get_dashboards_list_test_conn", return_value=None
-        ):
+    @patch(
+        "metadata.ingestion.source.dashboard.qlikcloud.metadata.QlikcloudSource.test_connection"
+    )
+    def __init__(self, methodName, test_connection) -> None:
+        with patch.object(QlikCloudClient, "get_dashboards_list", return_value=None):
             super().__init__(methodName)
-            # test_connection.return_value = False
+            test_connection.return_value = False
             self.config = OpenMetadataWorkflowConfig.model_validate(
                 mock_qlikcloud_config
             )

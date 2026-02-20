@@ -33,7 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.apiSchema import APISchema
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
 from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -42,11 +42,13 @@ from metadata.ingestion.source.api.api_service import ApiServiceSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
 from metadata.ingestion.source.api.rest.parser import parse_openapi_schema
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_collection
+from metadata.utils.filters import filter_by_collection, filter_by_endpoint
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+DEFAULT_TAG = "default"
 
 
 class RestSource(ApiServiceSource):
@@ -88,6 +90,10 @@ class RestSource(ApiServiceSource):
                         continue
                     collections_list.append(collection)
                     tags_collection_set.update({collection.get("name")})
+            # append default tag for endpoints that don't have any collection tag
+            if DEFAULT_TAG not in tags_collection_set:
+                tags_collection_set.update({DEFAULT_TAG})
+                collections_list.append({"name": DEFAULT_TAG})
             # iterate through paths if there's any missing collection not present in tags
             collections_set = set()
             for path, methods in self.json_response.get("paths", {}).items():
@@ -146,6 +152,14 @@ class RestSource(ApiServiceSource):
                     )
                     if not endpoint:
                         continue
+                    if filter_by_endpoint(
+                        self.source_config.apiEndpointFilterPattern,
+                        endpoint.display_name,
+                    ):
+                        self.status.filter(
+                            endpoint.display_name, "Endpoint filtered out"
+                        )
+                        continue
                     yield Either(
                         right=CreateAPIEndpointRequest(
                             name=endpoint.name,
@@ -182,8 +196,9 @@ class RestSource(ApiServiceSource):
             filtered_paths = {}
             for path, methods in self.json_response.get("paths", {}).items():
                 for method_type, info in methods.items():
-                    if collection.name.root in info.get("tags", []):
-                        # path & methods are part of collection
+                    if (
+                        collection.name.root == DEFAULT_TAG and not info.get("tags")
+                    ) or collection.name.root in info.get("tags", []):
                         filtered_paths.update({path: methods})
                     break
             return filtered_paths
@@ -531,8 +546,19 @@ class RestSource(ApiServiceSource):
                                 logger.debug(
                                     f"Skipping array fields inside schema: {children_ref} to avoid infinite recursion"
                                 )
+                    # Extract description if available
+                    description = val.get("description")
+                    description_obj = (
+                        Markdown(root=description) if description is not None else None
+                    )
+
                     fetched_fields.append(
-                        FieldModel(name=key, dataType=parsed_dtype, children=children)
+                        FieldModel(
+                            name=key,
+                            dataType=parsed_dtype,
+                            children=children,
+                            description=description_obj,
+                        )
                     )
                 else:
                     # If type of field is not defined then check for sub-schema
@@ -548,12 +574,19 @@ class RestSource(ApiServiceSource):
                             logger.debug(
                                 f"Skipping object fields inside schema: {val.get('$ref')} to avoid infinite recursion"
                             )
+                    # Extract description if available
+                    description = val.get("description")
+                    description_obj = (
+                        Markdown(root=description) if description is not None else None
+                    )
+
                     fetched_fields.append(
                         FieldModel(
                             name=key,
                             dataType=DataTypeTopic.UNKNOWN,
                             dataTypeDisplay="OBJECT",
                             children=children,
+                            description=description_obj,
                         )
                     )
             if parent_refs and (schema_ref in parent_refs):

@@ -33,6 +33,7 @@ import org.openmetadata.schema.services.connections.database.CockroachConnection
 import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
+import org.openmetadata.schema.services.connections.database.DremioConnection;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.IcebergConnection;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
 import org.openmetadata.schema.services.connections.database.SapHanaConnection;
+import org.openmetadata.schema.services.connections.database.StarRocksConnection;
 import org.openmetadata.schema.services.connections.database.TimescaleConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.UnityCatalogConnection;
@@ -78,6 +80,7 @@ public final class ClassConverterFactory {
             Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
             Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
             Map.entry(DeltaLakeConnection.class, new DeltaLakeConnectionClassConverter()),
+            Map.entry(DremioConnection.class, new DremioConnectionClassConverter()),
             Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
             Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
             Map.entry(ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
@@ -95,6 +98,7 @@ public final class ClassConverterFactory {
             Map.entry(GreenplumConnection.class, new GreenplumConnectionClassConverter()),
             Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
             Map.entry(SapHanaConnection.class, new SapHanaConnectionClassConverter()),
+            Map.entry(StarRocksConnection.class, new StarRocksConnectionClassConverter()),
             Map.entry(StorageConfig.class, new StorageConfigClassConverter()),
             Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),

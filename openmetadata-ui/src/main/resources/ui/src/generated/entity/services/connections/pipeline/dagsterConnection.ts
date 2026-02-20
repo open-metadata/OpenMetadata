@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,7 +21,13 @@ export interface DagsterConnection {
     /**
      * Regex exclude pipelines.
      */
-    pipelineFilterPattern?:      FilterPattern;
+    pipelineFilterPattern?: FilterPattern;
+    /**
+     * Number of leading segments to remove from asset key paths before resolving to tables. For
+     * example, if your asset keys follow the pattern 'project/environment/schema/table' but you
+     * only need 'schema/table', set this to 2.
+     */
+    stripAssetKeyPrefixLength?:  number;
     supportsMetadataExtraction?: boolean;
     /**
      * Connection Time Limit Between OM and Dagster Graphql API in second

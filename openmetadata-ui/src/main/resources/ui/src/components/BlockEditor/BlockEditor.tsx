@@ -46,6 +46,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       autoFocus,
       placeholder,
       onChange,
+      onFocus,
       showInlineAlert = true,
       extensionOptions,
       showMenu,
@@ -75,6 +76,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         const htmlContent = editor.getHTML();
         const backendFormat = formatContent(htmlContent, 'server');
         onChange?.(backendFormat);
+      },
+      onFocus() {
+        onFocus?.();
       },
       editorProps: {
         attributes: {

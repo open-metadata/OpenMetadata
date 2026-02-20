@@ -100,9 +100,16 @@ public class ConfigResourceIT {
       assertNotNull(
           auth.getSamlConfiguration(), "SAML configuration should be present for SAML provider");
       assertNotNull(auth.getSamlConfiguration().getIdp(), "IDP configuration should be present");
-      assertNotNull(
-          auth.getSamlConfiguration().getIdp().getAuthorityUrl(),
-          "Authority URL should be present in SAML IDP configuration");
+      // Verify sensitive fields like certificates are not exposed in public config
+      assertNull(
+          auth.getSamlConfiguration().getIdp().getIdpX509Certificate(),
+          "Sensitive IDP X509 certificate should not be present in public configuration");
+      assertNull(
+          auth.getSamlConfiguration().getSp(),
+          "Sensitive SP configuration should not be present in public configuration");
+      assertNull(
+          auth.getSamlConfiguration().getSecurity(),
+          "Sensitive security configuration should not be present in public configuration");
     }
   }
 
