@@ -369,4 +369,3 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     def close(self):
         if self.generate_sample_data and self.consumer_client:
             self.consumer_client.close()
-
