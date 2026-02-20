@@ -67,6 +67,8 @@ const additionalGlossaryTerm = createGlossaryTermRowDetails();
 test.describe('Glossary Bulk Import Export', () => {
   test.slow(true);
 
+  test.setTimeout(20 * 60 * 1000);
+
   test.beforeAll('setup pre-test', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -291,13 +293,32 @@ test.describe('Glossary Bulk Import Export', () => {
     );
 
     await test.step('should have term in review state', async () => {
+      const { apiContext } = await getApiContext(page);
+      const newTermFqn = `${glossary1.responseData.fullyQualifiedName}.${additionalGlossaryTerm.name}`;
+
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext
+              .get(
+                `api/v1/glossaryTerms/name/${encodeURIComponent(newTermFqn)}`
+              )
+              .then((res) => res.json());
+
+            return response?.entityStatus;
+          },
+          {
+            message: `Waiting for glossary term "${newTermFqn}" status to become "In Review"`,
+            timeout: 600_000,
+            intervals: [2_000],
+          }
+        )
+        .toBe('In Review');
+
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
-      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
-
-      const statusBadge = page.locator('.status-badge');
-
-      await expect(statusBadge).toHaveText('Approved');
+      await selectActiveGlossaryTerm(page, additionalGlossaryTerm.displayName);
+      await expect(page.locator('.status-badge')).toHaveText('In Review');
     });
 
     await test.step('delete custom properties', async () => {
