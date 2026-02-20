@@ -506,14 +506,14 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             ).toBeVisible();
 
             // Cleanup: remove tag via panel
-            await openColumnDetailPanel({
+            const cleanupPanelContainer = await openColumnDetailPanel({
               page,
               rowSelector,
               columnId: entity.childrenSelectorId ?? '',
               columnNameTestId,
               entityType: entity.type as EntityType,
             });
-            await panelContainer.getByTestId('edit-icon-tags').click();
+            await cleanupPanelContainer.getByTestId('edit-icon-tags').click();
 
             // Wait for selectable list to be visible and ready
             await page
@@ -540,7 +540,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await waitForAllLoadersToDisappear(page);
 
             await expect(
-              panelContainer.getByTestId('tag-PersonalData.SpecialCategory')
+              cleanupPanelContainer
+                .locator('.tags-list')
+                .getByTestId('tag-PersonalData.SpecialCategory')
             ).toBeHidden();
 
             await closeColumnDetailPanel(page);

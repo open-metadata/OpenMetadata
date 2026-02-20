@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { DateTime } from 'luxon';
 import { Space } from 'antd';
 import { debounce } from 'lodash';
+import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
 
@@ -28,9 +28,13 @@ import {
   TimeFilterValue,
 } from '../../types/auditLogs.interface';
 import { formatUsersResponse } from '../../utils/APIUtils';
+import {
+  buildParamsFromFilters,
+  getAuditLogCategoryLabel,
+} from '../../utils/AuditLogUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getTermQuery } from '../../utils/SearchUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import { getTermQuery } from '../../utils/SearchUtils';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -38,10 +42,6 @@ import {
   AuditLogFiltersProps,
   FilterOption,
 } from './AuditLogFilters.interface';
-import {
-  buildParamsFromFilters,
-  getAuditLogCategoryLabel,
-} from '../../utils/AuditLogUtils';
 
 const ENTITY_TYPE_OPTIONS: FilterOption[] = [
   // Data Assets
@@ -132,15 +132,13 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isLoadingBots, setIsLoadingBots] = useState(false);
 
-
-
-  
-
   const getSelectedKeys = useCallback(
     (category: AuditLogFilterCategoryType): SearchDropdownOption[] => {
       const filter = activeFilters.find((f) => f.category === category);
 
-      return filter ? [{ key: filter.value.key, label: filter.value.label }] : [];
+      return filter
+        ? [{ key: filter.value.key, label: filter.value.label }]
+        : [];
     },
     [activeFilters]
   );

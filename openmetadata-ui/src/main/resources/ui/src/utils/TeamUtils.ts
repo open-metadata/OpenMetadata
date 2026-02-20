@@ -16,7 +16,7 @@ import { ReactComponent as MsTeamsIcon } from '../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../assets/svg/webhook.svg';
 import { SUBSCRIPTION_WEBHOOK } from '../constants/Teams.constants';
-import { TeamType } from '../generated/entity/teams/team';
+import { Team, TeamType } from '../generated/entity/teams/team';
 import { t } from './i18next/LocalUtil';
 
 export const getDeleteMessagePostFix = (
@@ -75,6 +75,13 @@ export const getTeamOptionsFromType = (parentType: TeamType) => {
  * Division: Can have only Department and Group
  * Department: Can have only Group
  */
+
+export const flattenTeamTree = (teams: Team[]): Team[] =>
+  teams.flatMap((team) => {
+    const children = (team.children as unknown as Team[] | undefined) ?? [];
+
+    return [team, ...flattenTeamTree(children)];
+  });
 
 export const isDropRestricted = (
   dragTeamType?: TeamType,

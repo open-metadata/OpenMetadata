@@ -11,8 +11,70 @@
  *  limitations under the License.
  */
 
-import { TeamType } from '../generated/entity/teams/team';
-import { isDropRestricted } from './TeamUtils';
+import { Team, TeamType } from '../generated/entity/teams/team';
+import { flattenTeamTree, isDropRestricted } from './TeamUtils';
+
+const makeTeam = (id: string, children?: Team[]): Team =>
+  ({
+    id,
+    name: id,
+    children: children as unknown as Team['children'],
+  } as Team);
+
+describe('flattenTeamTree', () => {
+  it('returns an empty array for empty input', () => {
+    expect(flattenTeamTree([])).toEqual([]);
+  });
+
+  it('returns leaf teams as-is when they have no children', () => {
+    const teams = [makeTeam('a'), makeTeam('b')];
+
+    expect(flattenTeamTree(teams).map((t) => t.id)).toEqual(['a', 'b']);
+  });
+
+  it('flattens a single level of children', () => {
+    const child1 = makeTeam('child1');
+    const child2 = makeTeam('child2');
+    const parent = makeTeam('parent', [child1, child2]);
+
+    expect(flattenTeamTree([parent]).map((t) => t.id)).toEqual([
+      'parent',
+      'child1',
+      'child2',
+    ]);
+  });
+
+  it('flattens multiple levels of nesting depth-first', () => {
+    const grandchild = makeTeam('grandchild');
+    const child = makeTeam('child', [grandchild]);
+    const parent = makeTeam('parent', [child]);
+
+    expect(flattenTeamTree([parent]).map((t) => t.id)).toEqual([
+      'parent',
+      'child',
+      'grandchild',
+    ]);
+  });
+
+  it('handles trees with mixed leaf and non-leaf siblings', () => {
+    const child = makeTeam('child');
+    const bu1 = makeTeam('bu1', [child]);
+    const bu2 = makeTeam('bu2');
+
+    expect(flattenTeamTree([bu1, bu2]).map((t) => t.id)).toEqual([
+      'bu1',
+      'child',
+      'bu2',
+    ]);
+  });
+
+  it('treats undefined children the same as no children', () => {
+    const team = makeTeam('a');
+    (team as unknown as Record<string, unknown>).children = undefined;
+
+    expect(flattenTeamTree([team]).map((t) => t.id)).toEqual(['a']);
+  });
+});
 
 describe('isDropRestricted', () => {
   it('should be droppable if on drop team is BusinessUnit', () => {

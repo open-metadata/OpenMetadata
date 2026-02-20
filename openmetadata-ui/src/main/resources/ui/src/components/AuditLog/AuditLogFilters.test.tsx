@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { DateRangeObject } from 'Models';
 import { AuditLogActiveFilter } from '../../types/auditLogs.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -27,32 +33,34 @@ const defaultProps = {
 let capturedHandleDateRangeChange: (dateRange: DateRangeObject) => void;
 
 jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () =>
-  jest.fn().mockImplementation(
-    ({
-      handleDateRangeChange,
-    }: {
-      handleDateRangeChange: (dateRange: DateRangeObject) => void;
-    }) => {
-      capturedHandleDateRangeChange = handleDateRangeChange;
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        handleDateRangeChange,
+      }: {
+        handleDateRangeChange: (dateRange: DateRangeObject) => void;
+      }) => {
+        capturedHandleDateRangeChange = handleDateRangeChange;
 
-      return (
-        <div data-testid="date-picker-menu">
-          <button
-            data-testid="time-preset-trigger"
-            onClick={() =>
-              handleDateRangeChange({
-                startTs: Date.now() - 86400000,
-                endTs: Date.now(),
-                key: 'yesterday',
-                title: 'Yesterday',
-              })
-            }>
-            Yesterday
-          </button>
-        </div>
-      );
-    }
-  )
+        return (
+          <div data-testid="date-picker-menu">
+            <button
+              data-testid="time-preset-trigger"
+              onClick={() =>
+                handleDateRangeChange({
+                  startTs: Date.now() - 86400000,
+                  endTs: Date.now(),
+                  key: 'yesterday',
+                  title: 'Yesterday',
+                })
+              }>
+              Yesterday
+            </button>
+          </div>
+        );
+      }
+    )
 );
 
 const capturedOnChange: Record<
@@ -287,7 +295,9 @@ describe('AuditLogFilters', () => {
     ];
 
     await act(async () => {
-      render(<AuditLogFilters {...defaultProps} activeFilters={activeFilters} />);
+      render(
+        <AuditLogFilters {...defaultProps} activeFilters={activeFilters} />
+      );
     });
 
     const now = Date.now();
@@ -327,7 +337,9 @@ describe('AuditLogFilters', () => {
     ];
 
     await act(async () => {
-      render(<AuditLogFilters {...defaultProps} activeFilters={activeFilters} />);
+      render(
+        <AuditLogFilters {...defaultProps} activeFilters={activeFilters} />
+      );
     });
 
     await act(async () => {

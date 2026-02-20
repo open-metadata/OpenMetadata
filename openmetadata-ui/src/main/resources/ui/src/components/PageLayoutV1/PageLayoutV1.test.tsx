@@ -61,7 +61,9 @@ describe('PageLayoutV1', () => {
       <PageLayoutV1 pageTitle="Test Page">{centerText}</PageLayoutV1>
     );
 
-    expect(container.querySelector('.page-layout-v1-vertical-scroll')).toBeInTheDocument();
+    expect(
+      container.querySelector('.page-layout-v1-vertical-scroll')
+    ).toBeInTheDocument();
   });
 
   it('Should render with fullHeight wrapper when fullHeight is true', () => {
@@ -76,7 +78,9 @@ describe('PageLayoutV1', () => {
     );
 
     expect(container.querySelector('.test-full-height')).toBeInTheDocument();
-    expect(container.querySelector('.page-layout-v1-vertical-scroll')).toBeInTheDocument();
+    expect(
+      container.querySelector('.page-layout-v1-vertical-scroll')
+    ).toBeInTheDocument();
   });
 
   it('Should apply default height when fullHeight is true and no pageContainerStyle.height is provided', () => {
@@ -137,7 +141,7 @@ describe('PageLayoutV1', () => {
     expect(pageLayout).toHaveStyle({
       height: 'calc(100vh - 64px)',
       overflow: 'hidden',
-      backgroundColor: 'red'
+      backgroundColor: 'red',
     });
   });
 });

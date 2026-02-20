@@ -131,11 +131,6 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     this.nlqService = nlqService;
   }
 
-  private SearchResponse<JsonData> searchWithLenientDeserialization(SearchRequest request)
-      throws IOException {
-    return OsUtils.searchWithLenientDeserialization(client, request);
-  }
-
   @Override
   public Response search(
       org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext)
@@ -178,7 +173,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
     try {
-      response = searchWithLenientDeserialization(searchRequest);
+      response = client.search(searchRequest, JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -216,7 +211,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
     try {
-      response = searchWithLenientDeserialization(searchRequest);
+      response = client.search(searchRequest, JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -303,7 +298,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> response;
       try {
-        response = searchWithLenientDeserialization(searchRequest);
+        response = client.search(searchRequest, JsonData.class);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -480,7 +475,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> response;
       try {
-        response = searchWithLenientDeserialization(searchRequest);
+        response = client.search(searchRequest, JsonData.class);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -574,7 +569,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         addAggregationsToNLQQuery(requestBuilder, request.getIndex());
 
         SearchResponse<JsonData> response =
-            searchWithLenientDeserialization(requestBuilder.build(request.getIndex()));
+            client.search(requestBuilder.build(request.getIndex()), JsonData.class);
 
         // End search operation timing
         if (searchTimerSample != null) {
@@ -647,7 +642,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> response;
       try {
-        response = searchWithLenientDeserialization(searchRequest);
+        response = client.search(searchRequest, JsonData.class);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -846,9 +841,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
-      SearchRequest searchRequest =
-          SearchRequest.of(s -> s.index(indexName).query(boolQuery).size(1000));
-      return searchWithLenientDeserialization(searchRequest);
+      return client.search(s -> s.index(indexName).query(boolQuery).size(1000), JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1212,7 +1205,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
 
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> searchResponse = searchWithLenientDeserialization(searchRequest);
+      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
 
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1311,7 +1304,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
     try {
-      searchResponse = searchWithLenientDeserialization(searchRequest);
+      searchResponse = client.search(searchRequest, JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1508,7 +1501,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> searchResponse;
       try {
-        searchResponse = searchWithLenientDeserialization(searchRequest);
+        searchResponse = client.search(searchRequest, JsonData.class);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1544,7 +1537,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
     try {
-      searchResponse = searchWithLenientDeserialization(searchRequest);
+      searchResponse = client.search(searchRequest, JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1599,7 +1592,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
     try {
-      searchResponse = searchWithLenientDeserialization(searchRequest);
+      searchResponse = client.search(searchRequest, JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1709,7 +1702,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
     try {
-      searchResponse = searchWithLenientDeserialization(searchRequest);
+      searchResponse = client.search(searchRequest, JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
