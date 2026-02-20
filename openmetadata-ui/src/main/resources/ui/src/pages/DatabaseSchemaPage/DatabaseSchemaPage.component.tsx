@@ -180,6 +180,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission]
   );
 
+  const viewUsagePermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        databaseSchemaPermission,
+        PermissionOperation.ViewUsage
+      ),
+    [databaseSchemaPermission]
+  );
+
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
   }, []);
@@ -200,7 +209,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         {
           fields: [
             TabSpecificField.OWNERS,
-            TabSpecificField.USAGE_SUMMARY,
+            ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
             TabSpecificField.TAGS,
             TabSpecificField.DOMAINS,
             TabSpecificField.VOTES,
@@ -225,7 +234,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } finally {
       setIsSchemaDetailsLoading(false);
     }
-  }, [decodedDatabaseSchemaFQN]);
+  }, [decodedDatabaseSchemaFQN, viewUsagePermission]);
 
   const saveUpdatedDatabaseSchemaData = useCallback(
     (updatedData: DatabaseSchema) => {
@@ -531,7 +540,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         {
           fields: [
             TabSpecificField.OWNERS,
-            TabSpecificField.USAGE_SUMMARY,
+            ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
             TabSpecificField.TAGS,
             TabSpecificField.VOTES,
           ],

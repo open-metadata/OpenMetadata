@@ -14,10 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Phaser;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
@@ -36,8 +40,13 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.VectorBulkProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
 import os.org.opensearch.client.opensearch._types.Refresh;
@@ -61,6 +70,8 @@ public class OpenSearchBulkSink implements BulkSink {
     void onFailure(String entityType, int count);
   }
 
+  private static final int MAX_VECTOR_THREADS = 10;
+
   private final OpenSearchClient searchClient;
   protected final SearchRepository searchRepository;
   private final CustomBulkProcessor bulkProcessor;
@@ -81,6 +92,14 @@ public class OpenSearchBulkSink implements BulkSink {
   // Stats callback for per-entity-type reporting
   private volatile SinkStatsCallback statsCallback;
 
+  // Vector embedding fields
+  private final ExecutorService vectorExecutor;
+  private final Phaser phaser;
+  private final CopyOnWriteArrayList<Thread> pendingThreads;
+  private final AtomicLong vectorSuccess = new AtomicLong(0);
+  private final AtomicLong vectorFailed = new AtomicLong(0);
+  private VectorBulkProcessor vectorBulkProcessor;
+
   public OpenSearchBulkSink(
       SearchRepository searchRepository,
       int batchSize,
@@ -91,6 +110,10 @@ public class OpenSearchBulkSink implements BulkSink {
     this.searchClient = (OpenSearchClient) searchRepository.getSearchClient();
     this.batchSize = batchSize;
     this.maxConcurrentRequests = maxConcurrentRequests;
+    this.vectorExecutor =
+        Executors.newFixedThreadPool(MAX_VECTOR_THREADS, Thread.ofVirtual().factory());
+    this.phaser = new Phaser(1);
+    this.pendingThreads = new CopyOnWriteArrayList<>();
 
     // Initialize stats
     stats.withTotalRecords(0).withSuccessRecords(0).withFailedRecords(0);
@@ -112,7 +135,7 @@ public class OpenSearchBulkSink implements BulkSink {
         bulkActions,
         maxPayloadSizeBytes,
         concurrentRequests,
-        5000, // 5 seconds flush interval
+        1000, // 1 second flush interval
         100, // 100ms initial backoff
         3, // 3 retries
         totalSubmitted,
@@ -184,7 +207,7 @@ public class OpenSearchBulkSink implements BulkSink {
         // Process vector embeddings in batch (no-op in base class)
         if (embeddingsEnabled) {
           addEntitiesToVectorIndexBatch(
-              bulkProcessor, entityInterfaces, recreateIndex, reindexContext);
+              bulkProcessor, entityInterfaces, recreateIndex, reindexContext, tracker);
         }
       }
     } catch (Exception e) {
@@ -213,6 +236,8 @@ public class OpenSearchBulkSink implements BulkSink {
     return null;
   }
 
+  private static final int BULK_OPERATION_METADATA_OVERHEAD = 50;
+
   private void addEntity(
       EntityInterface entity,
       String indexName,
@@ -224,6 +249,8 @@ public class OpenSearchBulkSink implements BulkSink {
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
       String docId = entity.getId().toString();
+      long estimatedSize =
+          (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
 
       BulkOperation operation;
       if (recreateIndex) {
@@ -246,7 +273,7 @@ public class OpenSearchBulkSink implements BulkSink {
       if (tracker != null) {
         tracker.incrementPendingSink();
       }
-      bulkProcessor.add(operation, docId, entityType, tracker);
+      bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
       if (tracker != null) {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
@@ -293,6 +320,8 @@ public class OpenSearchBulkSink implements BulkSink {
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
       String docId = entity.getId().toString();
+      long estimatedSize =
+          (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
 
       BulkOperation operation =
           BulkOperation.of(
@@ -303,7 +332,7 @@ public class OpenSearchBulkSink implements BulkSink {
       if (tracker != null) {
         tracker.incrementPendingSink();
       }
-      bulkProcessor.add(operation, docId, entityType, tracker);
+      bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
       if (tracker != null) {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
@@ -367,16 +396,33 @@ public class OpenSearchBulkSink implements BulkSink {
   @Override
   public void close() {
     try {
-      // Flush any pending requests
+      awaitVectorCompletion(300);
+    } catch (Exception e) {
+      LOG.warn("Error awaiting vector completion during close: {}", e.getMessage());
+    }
+
+    if (vectorBulkProcessor != null) {
+      vectorBulkProcessor.close();
+    }
+
+    vectorExecutor.shutdown();
+    try {
+      if (!vectorExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+        vectorExecutor.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      vectorExecutor.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
+
+    try {
       bulkProcessor.flush();
 
-      // Wait for completion
       boolean terminated = bulkProcessor.awaitClose(60, TimeUnit.SECONDS);
       if (!terminated) {
         LOG.warn("Bulk processor did not terminate within timeout");
       }
 
-      // Final stats update to ensure all processed records are reflected
       updateStats();
 
       LOG.info(
@@ -443,34 +489,161 @@ public class OpenSearchBulkSink implements BulkSink {
     LOG.info("Concurrent requests updated to: {}", concurrentRequests);
   }
 
-  protected boolean isVectorEmbeddingEnabledForEntity(String entityType) {
-    return false;
+  boolean isVectorEmbeddingEnabledForEntity(String entityType) {
+    return searchRepository.isVectorEmbeddingEnabled()
+        && OpenSearchVectorService.getInstance() != null
+        && AvailableEntityTypes.isVectorIndexable(entityType);
   }
 
-  protected void addEntityToVectorIndex(
-      CustomBulkProcessor bulkProcessor,
-      EntityInterface entity,
-      boolean recreateIndex,
-      ReindexContext reindexContext) {}
-
-  /**
-   * Process vector embeddings for a batch of entities.
-   * Override this method to implement batch vector indexing with optimizations like:
-   * - Batch fingerprint lookups
-   * - Batch embedding computation
-   * - Bulk vector document indexing
-   *
-   * @param bulkProcessor The bulk processor for indexing
-   * @param entities The list of entities to process
-   * @param recreateIndex Whether indexes are being recreated
-   * @param reindexContext Context for reindexing operations
-   */
-  protected void addEntitiesToVectorIndexBatch(
+  void addEntitiesToVectorIndexBatch(
       CustomBulkProcessor bulkProcessor,
       List<EntityInterface> entities,
       boolean recreateIndex,
-      ReindexContext reindexContext) {
-    // Default: no-op, subclasses can override for batch processing
+      ReindexContext reindexContext,
+      StageStatsTracker tracker) {
+    if (entities.isEmpty()) {
+      return;
+    }
+
+    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    if (vectorService == null) {
+      return;
+    }
+
+    String entityType = entities.getFirst().getEntityReference().getType();
+    if (!AvailableEntityTypes.isVectorIndexable(entityType)) {
+      return;
+    }
+
+    String canonicalIndex = VectorIndexService.getClusteredIndexName();
+    String finalTargetIndex = canonicalIndex;
+    String finalSourceIndex = null;
+
+    if (reindexContext != null) {
+      String stagedIndex =
+          reindexContext.getStagedIndex(VectorIndexService.VECTOR_INDEX_KEY).orElse(null);
+      if (stagedIndex != null) {
+        finalSourceIndex = canonicalIndex;
+        finalTargetIndex = stagedIndex;
+      }
+    }
+
+    String srcIdx = finalSourceIndex;
+    String tgtIdx = finalTargetIndex;
+
+    Map<String, String> existingFingerprints = Map.of();
+    if (srcIdx != null) {
+      List<String> parentIds = new ArrayList<>(entities.size());
+      for (EntityInterface entity : entities) {
+        parentIds.add(entity.getId().toString());
+      }
+      existingFingerprints = vectorService.getExistingFingerprintsBatch(srcIdx, parentIds);
+    }
+
+    for (EntityInterface entity : entities) {
+      String parentId = entity.getId().toString();
+      String existingFp = existingFingerprints.get(parentId);
+      String currentFp = VectorDocBuilder.computeFingerprintForEntity(entity);
+
+      if (existingFp != null && existingFp.equals(currentFp) && srcIdx != null) {
+        submitVectorTask(
+            () ->
+                processMigration(
+                    vectorService, srcIdx, tgtIdx, parentId, currentFp, entity, tracker));
+      } else {
+        submitVectorTask(() -> processEmbedding(vectorService, entity, tgtIdx, tracker));
+      }
+    }
+  }
+
+  private void processMigration(
+      OpenSearchVectorService vectorService,
+      String sourceIndex,
+      String targetIndex,
+      String parentId,
+      String fingerprint,
+      EntityInterface entity,
+      StageStatsTracker tracker) {
+    try {
+      if (vectorService.copyExistingVectorDocuments(
+          sourceIndex, targetIndex, parentId, fingerprint)) {
+        vectorSuccess.incrementAndGet();
+        if (tracker != null) {
+          tracker.recordVector(StatsResult.SUCCESS);
+        }
+      } else {
+        processEmbedding(vectorService, entity, targetIndex, tracker);
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Vector migration failed for parent_id={}, falling back to recomputation: {}",
+          parentId,
+          e.getMessage());
+      processEmbedding(vectorService, entity, targetIndex, tracker);
+    }
+  }
+
+  private void processEmbedding(
+      OpenSearchVectorService vectorService,
+      EntityInterface entity,
+      String targetIndex,
+      StageStatsTracker tracker) {
+    try {
+      vectorService.updateVectorEmbeddings(entity, targetIndex);
+      vectorSuccess.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordVector(StatsResult.SUCCESS);
+      }
+    } catch (Exception e) {
+      vectorFailed.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordVector(StatsResult.FAILED);
+      }
+      LOG.error("Vector embedding failed for entity {}: {}", entity.getId(), e.getMessage(), e);
+    }
+  }
+
+  private void submitVectorTask(Runnable task) {
+    phaser.register();
+    vectorExecutor.submit(
+        () -> {
+          Thread current = Thread.currentThread();
+          pendingThreads.add(current);
+          try {
+            task.run();
+          } finally {
+            pendingThreads.remove(current);
+            phaser.arriveAndDeregister();
+          }
+        });
+  }
+
+  @Override
+  public boolean awaitVectorCompletion(int timeoutSeconds) {
+    try {
+      int phase = phaser.arrive();
+      phaser.awaitAdvanceInterruptibly(phase, timeoutSeconds, TimeUnit.SECONDS);
+      return true;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return false;
+    } catch (TimeoutException e) {
+      LOG.warn("Timeout waiting for vector completion after {}s", timeoutSeconds);
+      return false;
+    }
+  }
+
+  @Override
+  public int getPendingVectorTaskCount() {
+    return Math.max(0, phaser.getUnarrivedParties() - 1);
+  }
+
+  @Override
+  public StepStats getVectorStats() {
+    return new StepStats()
+        .withTotalRecords((int) (vectorSuccess.get() + vectorFailed.get()))
+        .withSuccessRecords((int) vectorSuccess.get())
+        .withFailedRecords((int) vectorFailed.get());
   }
 
   public static class CustomBulkProcessor {
@@ -543,13 +716,21 @@ public class OpenSearchBulkSink implements BulkSink {
     }
 
     void add(BulkOperation operation, String docId, String entityType, StageStatsTracker tracker) {
+      add(operation, docId, entityType, tracker, -1);
+    }
+
+    void add(
+        BulkOperation operation,
+        String docId,
+        String entityType,
+        StageStatsTracker tracker,
+        long estimatedSizeBytes) {
       lock.lock();
       try {
         if (closed) {
           throw new IllegalStateException("Bulk processor is closed");
         }
 
-        // Track entityType and tracker for stats reporting
         if (docId != null) {
           if (entityType != null) {
             docIdToEntityType.put(docId, entityType);
@@ -559,7 +740,8 @@ public class OpenSearchBulkSink implements BulkSink {
           }
         }
 
-        long operationSize = estimateOperationSize(operation);
+        long operationSize =
+            estimatedSizeBytes > 0 ? estimatedSizeBytes : estimateOperationSize(operation);
         buffer.add(operation);
         currentBufferSize += operationSize;
 

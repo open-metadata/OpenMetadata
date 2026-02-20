@@ -64,6 +64,7 @@ export type ExploreSearchIndex =
   | SearchIndex.DASHBOARD
   | SearchIndex.DATABASE
   | SearchIndex.DATABASE_SCHEMA
+  | SearchIndex.CHART
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER
@@ -123,6 +124,8 @@ export interface ExploreQuickFilterField {
   hideSearchBar?: boolean;
   searchIndex?: SearchIndex;
   searchKey?: string;
+  dropdownClassName?: string;
+  singleSelect?: boolean;
 }
 
 // Type for all the explore tab entities

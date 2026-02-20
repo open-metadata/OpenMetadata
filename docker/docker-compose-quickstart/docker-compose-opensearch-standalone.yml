@@ -1,7 +1,7 @@
-# Standalone OpenSearch 2.19 with security disabled for local testing
+# Standalone OpenSearch 3.0 with security disabled for local testing
 services:
   opensearch:
-    image: opensearchproject/opensearch:2.19.0
+    image: opensearchproject/opensearch:3.4.0
     platform: linux/arm64  # Native ARM64 support
     container_name: opensearch-standalone
     hostname: opensearch

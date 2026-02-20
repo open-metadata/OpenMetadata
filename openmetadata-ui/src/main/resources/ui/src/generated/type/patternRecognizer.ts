@@ -17,16 +17,12 @@ export interface PatternRecognizer {
     /**
      * List of context words that can help boost confidence score
      */
-    context: string[];
+    context?: string[];
     /**
      * List of patterns
      */
     patterns:   Pattern[];
     regexFlags: RegexFlags;
-    /**
-     * The entity type this recognizer detects
-     */
-    supportedEntity: PIIEntity;
     /**
      * Language supported by this recognizer
      */
@@ -71,61 +67,15 @@ export interface RegexFlags {
 }
 
 /**
- * The entity type this recognizer detects
- *
- * Enum of PII (Personally Identifiable Information) tags for classification and detection
- * of sensitive data. Based on Presidio supported entities
- * (https://microsoft.github.io/presidio/supported_entities/).
- */
-export enum PIIEntity {
-    AuAbn = "AU_ABN",
-    AuAcn = "AU_ACN",
-    AuMedicare = "AU_MEDICARE",
-    AuTfn = "AU_TFN",
-    CreditCard = "CREDIT_CARD",
-    Crypto = "CRYPTO",
-    DateTime = "DATE_TIME",
-    EmailAddress = "EMAIL_ADDRESS",
-    EsNie = "ES_NIE",
-    EsNif = "ES_NIF",
-    FiPersonalIdentityCode = "FI_PERSONAL_IDENTITY_CODE",
-    IPAddress = "IP_ADDRESS",
-    IbanCode = "IBAN_CODE",
-    InAadhaar = "IN_AADHAAR",
-    InPan = "IN_PAN",
-    InPassport = "IN_PASSPORT",
-    InVehicleRegistration = "IN_VEHICLE_REGISTRATION",
-    InVoter = "IN_VOTER",
-    ItDriverLicense = "IT_DRIVER_LICENSE",
-    ItFiscalCode = "IT_FISCAL_CODE",
-    ItIdentityCard = "IT_IDENTITY_CARD",
-    ItPassport = "IT_PASSPORT",
-    ItVatCode = "IT_VAT_CODE",
-    Location = "LOCATION",
-    MedicalLicense = "MEDICAL_LICENSE",
-    Nrp = "NRP",
-    Person = "PERSON",
-    PhoneNumber = "PHONE_NUMBER",
-    PlPesel = "PL_PESEL",
-    SgNricFin = "SG_NRIC_FIN",
-    SgUen = "SG_UEN",
-    URL = "URL",
-    UkNhs = "UK_NHS",
-    UsBankNumber = "US_BANK_NUMBER",
-    UsDriverLicense = "US_DRIVER_LICENSE",
-    UsItin = "US_ITIN",
-    UsPassport = "US_PASSPORT",
-    UsSsn = "US_SSN",
-}
-
-/**
  * Language supported by this recognizer
  *
- * Supported languages for auto classification recognizers (ISO 639-1 codes)
+ * Supported languages for auto classification recognizers (ISO 639-1 codes). Use 'any' to
+ * apply all recognizers regardless of their configured language.
  */
 export enum ClassificationLanguage {
     AF = "af",
     Am = "am",
+    Any = "any",
     Ar = "ar",
     Az = "az",
     Be = "be",

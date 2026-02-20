@@ -11,20 +11,17 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { isUndefined } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
+import { TagClass } from '../../support/tag/TagClass';
 import {
-  assignSingleSelectDomain,
   clickOutside,
   createNewPage,
   redirectToHomePage,
 } from '../../utils/common';
-import {
-  assignTag,
-  assignTier,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { searchAndClickOnOption, selectNullOption } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -33,30 +30,47 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const domain = new Domain();
 const table = new TableClass();
+const tier = new TagClass({
+  classification: 'Tier',
+});
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow();
 
-  const { page, apiContext, afterAction } = await createNewPage(browser);
+  const { apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
   await domain.create(apiContext);
-  await table.visitEntityPage(page);
-  await assignSingleSelectDomain(page, domain.data);
-  await assignTag(
-    page,
-    'PersonalData.Personal',
-    'Add',
-    table.endpoint,
-    'KnowledgePanel.Tags'
-  );
-  await assignTier(page, 'Tier5', table.endpoint);
-  await afterAction();
-});
+  await tier.create(apiContext);
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-  await table.delete(apiContext);
-  await domain.delete(apiContext);
+  await table.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        value: {
+          tagFQN: 'PersonalData.Personal',
+        },
+        path: '/tags/0',
+      },
+      {
+        op: 'add',
+        value: {
+          tagFQN: tier.responseData.fullyQualifiedName,
+        },
+        path: '/tags/1',
+      },
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: domain.responseData.id,
+          type: 'domain',
+          name: domain.responseData.name,
+          displayName: domain.responseData.displayName,
+        },
+      },
+    ],
+  });
   await afterAction();
 });
 
@@ -85,7 +99,7 @@ test('search dropdown should work properly for quick filters', async ({
 
     const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${
       filter.key
-    }*${(filter.value ?? '').replace(/ /g, '+').toLowerCase()}*`;
+    }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
 
     const queryRes = page.waitForResponse(querySearchURL);
     await page.click('[data-testid="update-btn"]');
@@ -114,27 +128,37 @@ test('should show correct count for initial options', async ({ page }) => {
     const aggregateAPI = page.waitForResponse(
       '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
     );
+    const tierFetchAPI = page.waitForResponse(
+      '/api/v1/tags?parent=Tier&limit=50'
+    );
     await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
 
     const res = await aggregateAPI;
+    const tierRes = await tierFetchAPI;
     const data = await res.json();
+    const tierList = (await tierRes.json()).data;
     const buckets = data.aggregations['sterms#tier.tagFQN'].buckets;
 
     await waitForAllLoadersToDisappear(page);
 
-    for (const bucket of buckets) {
-      const normalizedKey = bucket.key
-        .split('.')
-        .map((seg: string) =>
-          seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : seg
-        )
-        .join('.');
-
-      expect(
-        page
-          .locator(`[data-menu-id$="-${normalizedKey}"]`)
-          .getByTestId('filter-count')
-      ).toHaveText(bucket.doc_count.toString());
+    // The following logic is required due to special case for tier filter
+    // where we are fetching the tier options from tag API and
+    // the count from aggregation API.
+    // So we need to match the bucket count with the corresponding tier option.
+    for (const tierItem of tierList) {
+      // Find the corresponding bucket for the tier
+      const bucket = buckets.find(
+        (item: { key: string }) =>
+          item.key.toLowerCase() === tierItem.fullyQualifiedName?.toLowerCase()
+      );
+      // Check if the tier in the dropdown has a corresponding bucket in elastic search response
+      if (!isUndefined(bucket)) {
+        await expect(
+          page
+            .locator(`[data-menu-id$="-${tierItem.fullyQualifiedName}"]`)
+            .getByTestId('filter-count')
+        ).toHaveText(bucket.doc_count.toString());
+      }
     }
 
     await clickOutside(page);
@@ -175,7 +199,7 @@ test('should persist quick filter on global search', async ({ page }) => {
 
   await page
     .getByTestId('searchBox')
-    .fill(table.entityResponseData.fullyQualifiedName);
+    .fill(table.entityResponseData.fullyQualifiedName ?? '');
   await waitForSearchResponse;
 
   await clickOutside(page);

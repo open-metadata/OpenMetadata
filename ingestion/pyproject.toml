@@ -43,7 +43,15 @@ provider_info = "airflow_provider_openmetadata:get_provider_config"
 source = ["metadata"]
 relative_files = true
 branch = true
-dynamic_context = "test_function"
+
+# Remap installed-package paths back to the source tree so that
+# ``coverage combine`` (in a lightweight CI job without the package
+# installed) produces paths that resolve to the checkout.
+[tool.coverage.paths]
+metadata = [
+    "src/metadata",
+    "*/site-packages/metadata",
+]
 
 [tool.coverage.report]
 omit = [
@@ -76,7 +84,8 @@ disallow_incomplete_defs = false
 
 [tool.pytest.ini_options]
 markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "xdist_group(name): group tests to run on the same xdist worker"
 ]
 
 # Skip tests that are known to fail or are not ready to run until issue #21736 is solved

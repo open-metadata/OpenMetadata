@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -15,9 +16,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpHost;
+import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,16 +27,20 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.TopHits;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.Datum;
+import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchAggregationNode;
+import org.openmetadata.service.search.SearchIndexUtils;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch.core.IndexRequest;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
-import os.org.opensearch.client.transport.rest_client.RestClientTransport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -73,21 +79,15 @@ class OpenSearchAggregationManagerIntegrationTest extends OpenMetadataApplicatio
 
   private OpenSearchClient createOpenSearchClient() {
     try {
-      es.org.elasticsearch.client.RestClient esRestClient = getSearchClient();
-      HttpHost[] hosts =
-          esRestClient.getNodes().stream()
-              .map(
-                  node ->
-                      new HttpHost(
-                          node.getHost().getHostName(),
-                          node.getHost().getPort(),
-                          node.getHost().getSchemeName()))
-              .toArray(HttpHost[]::new);
+      org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration
+          searchConfig = getSearchConfig();
+      HttpHost host =
+          new HttpHost(searchConfig.getScheme(), searchConfig.getHost(), searchConfig.getPort());
 
-      os.org.opensearch.client.RestClient osRestClient =
-          os.org.opensearch.client.RestClient.builder(hosts).build();
-      RestClientTransport transport =
-          new RestClientTransport(osRestClient, new JacksonJsonpMapper());
+      ApacheHttpClient5Transport transport =
+          ApacheHttpClient5TransportBuilder.builder(host)
+              .setMapper(new JacksonJsonpMapper())
+              .build();
       return new OpenSearchClient(transport);
     } catch (Exception e) {
       LOG.error("Failed to create OpenSearch client", e);
@@ -653,6 +653,510 @@ class OpenSearchAggregationManagerIntegrationTest extends OpenMetadataApplicatio
     assertEquals(2, keys.size(), "Should have two keys (date_histogram and value_count)");
     assertEquals("date_histogram#dates", keys.get(0), "First key should be date_histogram");
     assertEquals("value_count#count", keys.get(1), "Second key should be value_count");
+  }
+
+  @Test
+  void testParseAggregationResults_DateHistogramWithValueCount() {
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+
+    Map<String, String> dateHistParams = new HashMap<>();
+    dateHistParams.put("field", "timestamp");
+    dateHistParams.put("calendar_interval", "1d");
+    SearchAggregationNode dateHistNode =
+        new SearchAggregationNode("date_histogram", "byDay", dateHistParams);
+
+    Map<String, String> countParams = new HashMap<>();
+    countParams.put("field", "id.keyword");
+    SearchAggregationNode countNode =
+        new SearchAggregationNode("value_count", "count", countParams);
+
+    root.addChild(dateHistNode);
+    dateHistNode.addChild(countNode);
+
+    SearchAggregation aggregation = SearchAggregation.fromTree(root);
+    DataQualityReportMetadata metadata = aggregation.getAggregationMetadata();
+
+    JsonObject aggregationResults =
+        Json.createObjectBuilder()
+            .add(
+                "date_histogram#byDay",
+                Json.createObjectBuilder()
+                    .add(
+                        "buckets",
+                        Json.createArrayBuilder()
+                            .add(
+                                Json.createObjectBuilder()
+                                    .add("key", 1704067200000L)
+                                    .add("doc_count", 5)
+                                    .add(
+                                        "value_count#count",
+                                        Json.createObjectBuilder().add("value", 5)))))
+            .build();
+
+    DataQualityReport report =
+        SearchIndexUtils.parseAggregationResults(Optional.of(aggregationResults), metadata);
+
+    assertNotNull(report);
+    assertNotNull(report.getData());
+    assertEquals(1, report.getData().size());
+
+    Datum datum = report.getData().get(0);
+    assertEquals("1704067200000", datum.getAdditionalProperties().get("timestamp"));
+    assertEquals("5", datum.getAdditionalProperties().get("id.keyword"));
+  }
+
+  @Test
+  void testParseAggregationResults_DateHistogramWithNestedTermsAndMetric() {
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+
+    Map<String, String> dateHistParams = new HashMap<>();
+    dateHistParams.put("field", "timestamp");
+    dateHistParams.put("calendar_interval", "1d");
+    SearchAggregationNode dateHistNode =
+        new SearchAggregationNode("date_histogram", "byDay", dateHistParams);
+
+    Map<String, String> nestedParams = new HashMap<>();
+    nestedParams.put("path", "testCaseResults");
+    SearchAggregationNode nestedNode = new SearchAggregationNode("nested", "byTerm", nestedParams);
+
+    Map<String, String> termsParams = new HashMap<>();
+    termsParams.put("field", "testCaseResults.testCaseStatus.keyword");
+    SearchAggregationNode termsNode = new SearchAggregationNode("terms", "status", termsParams);
+
+    Map<String, String> avgParams = new HashMap<>();
+    avgParams.put("field", "testCaseResults.result");
+    SearchAggregationNode avgNode = new SearchAggregationNode("avg", "avgMetric", avgParams);
+
+    root.addChild(dateHistNode);
+    dateHistNode.addChild(nestedNode);
+    nestedNode.addChild(termsNode);
+    termsNode.addChild(avgNode);
+
+    SearchAggregation aggregation = SearchAggregation.fromTree(root);
+    DataQualityReportMetadata metadata = aggregation.getAggregationMetadata();
+
+    assertEquals(
+        List.of("date_histogram#byDay", "nested#byTerm", "sterms#status", "avg#avgMetric"),
+        metadata.getKeys());
+    assertEquals(
+        List.of("timestamp", "testCaseResults.testCaseStatus.keyword"), metadata.getDimensions());
+    assertEquals(List.of("testCaseResults.result"), metadata.getMetrics());
+
+    JsonObject aggregationResults =
+        Json.createObjectBuilder()
+            .add(
+                "date_histogram#byDay",
+                Json.createObjectBuilder()
+                    .add(
+                        "buckets",
+                        Json.createArrayBuilder()
+                            .add(
+                                Json.createObjectBuilder()
+                                    .add("key", 1704067200000L)
+                                    .add("doc_count", 10)
+                                    .add(
+                                        "nested#byTerm",
+                                        Json.createObjectBuilder()
+                                            .add("doc_count", 10)
+                                            .add(
+                                                "sterms#status",
+                                                Json.createObjectBuilder()
+                                                    .add(
+                                                        "buckets",
+                                                        Json.createArrayBuilder()
+                                                            .add(
+                                                                Json.createObjectBuilder()
+                                                                    .add("key", "Success")
+                                                                    .add("doc_count", 8)
+                                                                    .add(
+                                                                        "avg#avgMetric",
+                                                                        Json.createObjectBuilder()
+                                                                            .add("value", 95)))
+                                                            .add(
+                                                                Json.createObjectBuilder()
+                                                                    .add("key", "Failed")
+                                                                    .add("doc_count", 2)
+                                                                    .add(
+                                                                        "avg#avgMetric",
+                                                                        Json.createObjectBuilder()
+                                                                            .add(
+                                                                                "value", 42)))))))))
+            .build();
+
+    DataQualityReport report =
+        SearchIndexUtils.parseAggregationResults(Optional.of(aggregationResults), metadata);
+
+    assertNotNull(report);
+    assertNotNull(report.getData());
+    assertEquals(2, report.getData().size());
+
+    Datum successDatum = report.getData().get(0);
+    assertEquals("1704067200000", successDatum.getAdditionalProperties().get("timestamp"));
+    assertEquals(
+        "Success",
+        successDatum.getAdditionalProperties().get("testCaseResults.testCaseStatus.keyword"));
+    assertEquals("95", successDatum.getAdditionalProperties().get("testCaseResults.result"));
+
+    Datum failedDatum = report.getData().get(1);
+    assertEquals("1704067200000", failedDatum.getAdditionalProperties().get("timestamp"));
+    assertEquals(
+        "Failed",
+        failedDatum.getAdditionalProperties().get("testCaseResults.testCaseStatus.keyword"));
+    assertEquals("42", failedDatum.getAdditionalProperties().get("testCaseResults.result"));
+  }
+
+  @Test
+  void testParseAggregationResults_MultipleDateBucketsWithNestedTerms() {
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+
+    Map<String, String> dateHistParams = new HashMap<>();
+    dateHistParams.put("field", "timestamp");
+    dateHistParams.put("calendar_interval", "1d");
+    SearchAggregationNode dateHistNode =
+        new SearchAggregationNode("date_histogram", "byDay", dateHistParams);
+
+    Map<String, String> nestedParams = new HashMap<>();
+    nestedParams.put("path", "testCaseResults");
+    SearchAggregationNode nestedNode = new SearchAggregationNode("nested", "byTerm", nestedParams);
+
+    Map<String, String> termsParams = new HashMap<>();
+    termsParams.put("field", "testCaseResults.status");
+    SearchAggregationNode termsNode = new SearchAggregationNode("terms", "status", termsParams);
+
+    Map<String, String> avgParams = new HashMap<>();
+    avgParams.put("field", "testCaseResults.result");
+    SearchAggregationNode avgNode = new SearchAggregationNode("avg", "avgMetric", avgParams);
+
+    root.addChild(dateHistNode);
+    dateHistNode.addChild(nestedNode);
+    nestedNode.addChild(termsNode);
+    termsNode.addChild(avgNode);
+
+    SearchAggregation aggregation = SearchAggregation.fromTree(root);
+    DataQualityReportMetadata metadata = aggregation.getAggregationMetadata();
+
+    JsonObject aggregationResults =
+        Json.createObjectBuilder()
+            .add(
+                "date_histogram#byDay",
+                Json.createObjectBuilder()
+                    .add(
+                        "buckets",
+                        Json.createArrayBuilder()
+                            .add(
+                                Json.createObjectBuilder()
+                                    .add("key", 1704067200000L)
+                                    .add("doc_count", 10)
+                                    .add(
+                                        "nested#byTerm",
+                                        Json.createObjectBuilder()
+                                            .add("doc_count", 10)
+                                            .add(
+                                                "sterms#status",
+                                                Json.createObjectBuilder()
+                                                    .add(
+                                                        "buckets",
+                                                        Json.createArrayBuilder()
+                                                            .add(
+                                                                Json.createObjectBuilder()
+                                                                    .add("key", "Success")
+                                                                    .add("doc_count", 8)
+                                                                    .add(
+                                                                        "avg#avgMetric",
+                                                                        Json.createObjectBuilder()
+                                                                            .add("value", 95)))))))
+                            .add(
+                                Json.createObjectBuilder()
+                                    .add("key", 1704153600000L)
+                                    .add("doc_count", 6)
+                                    .add(
+                                        "nested#byTerm",
+                                        Json.createObjectBuilder()
+                                            .add("doc_count", 6)
+                                            .add(
+                                                "sterms#status",
+                                                Json.createObjectBuilder()
+                                                    .add(
+                                                        "buckets",
+                                                        Json.createArrayBuilder()
+                                                            .add(
+                                                                Json.createObjectBuilder()
+                                                                    .add("key", "Failed")
+                                                                    .add("doc_count", 4)
+                                                                    .add(
+                                                                        "avg#avgMetric",
+                                                                        Json.createObjectBuilder()
+                                                                            .add("value", 30)))
+                                                            .add(
+                                                                Json.createObjectBuilder()
+                                                                    .add("key", "Success")
+                                                                    .add("doc_count", 2)
+                                                                    .add(
+                                                                        "avg#avgMetric",
+                                                                        Json.createObjectBuilder()
+                                                                            .add(
+                                                                                "value", 88)))))))))
+            .build();
+
+    DataQualityReport report =
+        SearchIndexUtils.parseAggregationResults(Optional.of(aggregationResults), metadata);
+
+    assertNotNull(report);
+    assertEquals(3, report.getData().size());
+
+    Datum day1 = report.getData().get(0);
+    assertEquals("1704067200000", day1.getAdditionalProperties().get("timestamp"));
+    assertEquals("Success", day1.getAdditionalProperties().get("testCaseResults.status"));
+    assertEquals("95", day1.getAdditionalProperties().get("testCaseResults.result"));
+
+    Datum day2Failed = report.getData().get(1);
+    assertEquals("1704153600000", day2Failed.getAdditionalProperties().get("timestamp"));
+    assertEquals("Failed", day2Failed.getAdditionalProperties().get("testCaseResults.status"));
+    assertEquals("30", day2Failed.getAdditionalProperties().get("testCaseResults.result"));
+
+    Datum day2Success = report.getData().get(2);
+    assertEquals("1704153600000", day2Success.getAdditionalProperties().get("timestamp"));
+    assertEquals("Success", day2Success.getAdditionalProperties().get("testCaseResults.status"));
+    assertEquals("88", day2Success.getAdditionalProperties().get("testCaseResults.result"));
+  }
+
+  @Test
+  void testParseAggregationResults_SimpleTermsAggregation() {
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+
+    Map<String, String> termsParams = new HashMap<>();
+    termsParams.put("field", "status.keyword");
+    SearchAggregationNode termsNode = new SearchAggregationNode("terms", "byStatus", termsParams);
+
+    root.addChild(termsNode);
+
+    SearchAggregation aggregation = SearchAggregation.fromTree(root);
+    DataQualityReportMetadata metadata = aggregation.getAggregationMetadata();
+
+    assertEquals(List.of("sterms#byStatus"), metadata.getKeys());
+    assertEquals(List.of("status.keyword"), metadata.getDimensions());
+    assertEquals(List.of("document_count"), metadata.getMetrics());
+
+    JsonObject aggregationResults =
+        Json.createObjectBuilder()
+            .add(
+                "sterms#byStatus",
+                Json.createObjectBuilder()
+                    .add(
+                        "buckets",
+                        Json.createArrayBuilder()
+                            .add(
+                                Json.createObjectBuilder()
+                                    .add("key", "Active")
+                                    .add("doc_count", 10))
+                            .add(
+                                Json.createObjectBuilder()
+                                    .add("key", "Inactive")
+                                    .add("doc_count", 3))))
+            .build();
+
+    DataQualityReport report =
+        SearchIndexUtils.parseAggregationResults(Optional.of(aggregationResults), metadata);
+
+    assertNotNull(report);
+    assertEquals(2, report.getData().size());
+
+    Datum active = report.getData().get(0);
+    assertEquals("Active", active.getAdditionalProperties().get("status.keyword"));
+    assertEquals("10", active.getAdditionalProperties().get("document_count"));
+
+    Datum inactive = report.getData().get(1);
+    assertEquals("Inactive", inactive.getAdditionalProperties().get("status.keyword"));
+    assertEquals("3", inactive.getAdditionalProperties().get("document_count"));
+  }
+
+  @Test
+  void testParseAggregationResults_EmptyResults() {
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+
+    Map<String, String> dateHistParams = new HashMap<>();
+    dateHistParams.put("field", "timestamp");
+    dateHistParams.put("calendar_interval", "1d");
+    SearchAggregationNode dateHistNode =
+        new SearchAggregationNode("date_histogram", "byDay", dateHistParams);
+
+    Map<String, String> countParams = new HashMap<>();
+    countParams.put("field", "id.keyword");
+    SearchAggregationNode countNode =
+        new SearchAggregationNode("value_count", "count", countParams);
+
+    root.addChild(dateHistNode);
+    dateHistNode.addChild(countNode);
+
+    SearchAggregation aggregation = SearchAggregation.fromTree(root);
+    DataQualityReportMetadata metadata = aggregation.getAggregationMetadata();
+
+    DataQualityReport report = SearchIndexUtils.parseAggregationResults(Optional.empty(), metadata);
+
+    assertNotNull(report);
+    assertNotNull(report.getData());
+    assertEquals(0, report.getData().size());
+  }
+
+  @Test
+  void testParseAggregationResults_EmptyBuckets() {
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+
+    Map<String, String> dateHistParams = new HashMap<>();
+    dateHistParams.put("field", "timestamp");
+    dateHistParams.put("calendar_interval", "1d");
+    SearchAggregationNode dateHistNode =
+        new SearchAggregationNode("date_histogram", "byDay", dateHistParams);
+
+    Map<String, String> countParams = new HashMap<>();
+    countParams.put("field", "id.keyword");
+    SearchAggregationNode countNode =
+        new SearchAggregationNode("value_count", "count", countParams);
+
+    root.addChild(dateHistNode);
+    dateHistNode.addChild(countNode);
+
+    SearchAggregation aggregation = SearchAggregation.fromTree(root);
+    DataQualityReportMetadata metadata = aggregation.getAggregationMetadata();
+
+    JsonObject aggregationResults =
+        Json.createObjectBuilder()
+            .add(
+                "date_histogram#byDay",
+                Json.createObjectBuilder().add("buckets", Json.createArrayBuilder()))
+            .build();
+
+    DataQualityReport report =
+        SearchIndexUtils.parseAggregationResults(Optional.of(aggregationResults), metadata);
+
+    assertNotNull(report);
+    assertNotNull(report.getData());
+    assertEquals(0, report.getData().size());
+  }
+
+  @Test
+  void testParseAggregationResults_NestedWithEmptyTermsBuckets() {
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+
+    Map<String, String> dateHistParams = new HashMap<>();
+    dateHistParams.put("field", "timestamp");
+    dateHistParams.put("calendar_interval", "1d");
+    SearchAggregationNode dateHistNode =
+        new SearchAggregationNode("date_histogram", "byDay", dateHistParams);
+
+    Map<String, String> nestedParams = new HashMap<>();
+    nestedParams.put("path", "testCaseResults");
+    SearchAggregationNode nestedNode = new SearchAggregationNode("nested", "byTerm", nestedParams);
+
+    Map<String, String> termsParams = new HashMap<>();
+    termsParams.put("field", "testCaseResults.status");
+    SearchAggregationNode termsNode = new SearchAggregationNode("terms", "status", termsParams);
+
+    Map<String, String> avgParams = new HashMap<>();
+    avgParams.put("field", "testCaseResults.result");
+    SearchAggregationNode avgNode = new SearchAggregationNode("avg", "avgMetric", avgParams);
+
+    root.addChild(dateHistNode);
+    dateHistNode.addChild(nestedNode);
+    nestedNode.addChild(termsNode);
+    termsNode.addChild(avgNode);
+
+    SearchAggregation aggregation = SearchAggregation.fromTree(root);
+    DataQualityReportMetadata metadata = aggregation.getAggregationMetadata();
+
+    JsonObject aggregationResults =
+        Json.createObjectBuilder()
+            .add(
+                "date_histogram#byDay",
+                Json.createObjectBuilder()
+                    .add(
+                        "buckets",
+                        Json.createArrayBuilder()
+                            .add(
+                                Json.createObjectBuilder()
+                                    .add("key", 1704067200000L)
+                                    .add("doc_count", 0)
+                                    .add(
+                                        "nested#byTerm",
+                                        Json.createObjectBuilder()
+                                            .add("doc_count", 0)
+                                            .add(
+                                                "sterms#status",
+                                                Json.createObjectBuilder()
+                                                    .add("buckets", Json.createArrayBuilder()))))))
+            .build();
+
+    DataQualityReport report =
+        SearchIndexUtils.parseAggregationResults(Optional.of(aggregationResults), metadata);
+
+    assertNotNull(report);
+    assertNotNull(report.getData());
+    assertEquals(0, report.getData().size());
+  }
+
+  @Test
+  void testParseAggregationResults_WithAggregationQueryString() {
+    String aggQuery =
+        "aggType=date_histogram:bucketName=byDay:field=timestamp&calendar_interval=1d,"
+            + "aggType=nested:bucketName=byTerm:path=testCaseResults,"
+            + "aggType=terms:bucketName=status:field=testCaseResults.testCaseStatus.keyword,"
+            + "aggType=avg:bucketName=avgMetric:field=testCaseResults.result";
+
+    SearchAggregation aggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
+    DataQualityReportMetadata metadata = aggregation.getAggregationMetadata();
+
+    assertEquals(
+        List.of("date_histogram#byDay", "nested#byTerm", "sterms#status", "avg#avgMetric"),
+        metadata.getKeys());
+    assertEquals(
+        List.of("timestamp", "testCaseResults.testCaseStatus.keyword"), metadata.getDimensions());
+    assertEquals(List.of("testCaseResults.result"), metadata.getMetrics());
+
+    JsonObject aggregationResults =
+        Json.createObjectBuilder()
+            .add(
+                "date_histogram#byDay",
+                Json.createObjectBuilder()
+                    .add(
+                        "buckets",
+                        Json.createArrayBuilder()
+                            .add(
+                                Json.createObjectBuilder()
+                                    .add("key", 1704067200000L)
+                                    .add("doc_count", 5)
+                                    .add(
+                                        "nested#byTerm",
+                                        Json.createObjectBuilder()
+                                            .add("doc_count", 5)
+                                            .add(
+                                                "sterms#status",
+                                                Json.createObjectBuilder()
+                                                    .add(
+                                                        "buckets",
+                                                        Json.createArrayBuilder()
+                                                            .add(
+                                                                Json.createObjectBuilder()
+                                                                    .add("key", "Success")
+                                                                    .add("doc_count", 5)
+                                                                    .add(
+                                                                        "avg#avgMetric",
+                                                                        Json.createObjectBuilder()
+                                                                            .add(
+                                                                                "value",
+                                                                                100)))))))))
+            .build();
+
+    DataQualityReport report =
+        SearchIndexUtils.parseAggregationResults(Optional.of(aggregationResults), metadata);
+
+    assertNotNull(report);
+    assertEquals(1, report.getData().size());
+
+    Datum datum = report.getData().get(0);
+    assertEquals("1704067200000", datum.getAdditionalProperties().get("timestamp"));
+    assertEquals(
+        "Success", datum.getAdditionalProperties().get("testCaseResults.testCaseStatus.keyword"));
+    assertEquals("100", datum.getAdditionalProperties().get("testCaseResults.result"));
   }
 
   private void createTestIndex(String indexName) {

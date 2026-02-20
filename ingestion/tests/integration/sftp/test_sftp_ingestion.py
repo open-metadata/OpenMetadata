@@ -11,19 +11,12 @@
 """
 SFTP integration tests
 """
-import sys
-
-import pytest
 
 from metadata.generated.schema.entity.data.directory import Directory
 from metadata.generated.schema.entity.data.file import File, FileType
 from metadata.generated.schema.entity.services.driveService import DriveService
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9),
-    reason="testcontainers requires python3.9 or higher",
-)
 class TestSftpIngestion:
     """Test SFTP ingestion workflow"""
 
@@ -386,10 +379,6 @@ class TestSftpIngestion:
         assert "header3" in column_names
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9),
-    reason="testcontainers requires python3.9 or higher",
-)
 class TestSftpStructuredOnly:
     """Test SFTP ingestion with structuredDataFilesOnly enabled"""
 
@@ -499,10 +488,6 @@ class TestSftpStructuredOnly:
         assert docs_dir is not None
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9),
-    reason="testcontainers requires python3.9 or higher",
-)
 class TestSftpConnection:
     """Test SFTP connection functionality"""
 

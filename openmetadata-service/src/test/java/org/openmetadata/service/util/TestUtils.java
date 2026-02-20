@@ -656,6 +656,19 @@ public final class TestUtils {
     return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
+  public static <T, K> T putExpectStatus(
+      WebTarget target,
+      K request,
+      Class<T> clz,
+      Status expectedStatus,
+      Map<String, String> headers) {
+    Response response =
+        SecurityUtil.addHeaders(target, headers)
+            .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    assertEquals(expectedStatus.getStatusCode(), response.getStatus());
+    return response.readEntity(clz);
+  }
+
   public static <T> T putCsv(
       WebTarget target,
       String request,

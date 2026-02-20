@@ -1,232 +1,239 @@
 """
 Tests for the OMeta tag MixIn
 """
+import uuid
 
-import unittest
-from unittest import TestCase
+import pytest
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceRequest,
-)
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
 )
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
-    LookerConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardConnection,
-    DashboardService,
-    DashboardServiceType,
-)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-CLASSIFICATION_NAME = "TestTag"
-PRIMARY_TAG_NAME = "TestPrimaryTag"
-SECONDARY_TAG_NAME = "TestSecondaryTag"
-TEST_SPECIAL_CHARS_TAG_NAME = "Test/Sepcial_Chars/Tag"
+from ..integration_base import generate_name, get_create_service
+from .conftest import _safe_delete
+
+_RUN_ID = uuid.uuid4().hex[:8]
+CLASSIFICATION_NAME = f"TestTag{_RUN_ID}"
+PRIMARY_TAG_NAME = f"TestPrimaryTag{_RUN_ID}"
+SECONDARY_TAG_NAME = f"TestSecondaryTag{_RUN_ID}"
+TEST_SPECIAL_CHARS_TAG_NAME = f"Test/Sepcial_Chars/Tag{_RUN_ID}"
 LONG_CLASSIFICATION_NAME = "A" * 256
 LONG_PRIMARY_TAG_NAME = "B" * 256
 
 
-class OMetaTagMixinPost(TestCase):
-    """Class to test the Mixin implementation of the OMeta Tag"""
-
-    unittest.TestLoader.sortTestMethodsUsing = None
-
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-        ),
+@pytest.fixture(scope="module")
+def tag_classification(metadata):
+    """Module-scoped classification for tag tests."""
+    classification = metadata.create_or_update(
+        CreateClassificationRequest(description="test tag", name=CLASSIFICATION_NAME)
     )
-    metadata = OpenMetadata(server_config)
+    yield classification
 
-    def test_a_create_classifications(self):
-        """Test POST classification"""
+    _safe_delete(
+        metadata,
+        entity=Classification,
+        entity_id=classification.id,
+        recursive=True,
+        hard_delete=True,
+    )
 
-        classification = CreateClassificationRequest(
-            description="test tag", name=CLASSIFICATION_NAME
-        )
 
-        self.metadata.create_or_update(classification)
-
-    def test_b_create_tag(self):
-        """Test POST primary tag Mixin method"""
-
-        create_primary_tag = CreateTagRequest(
+@pytest.fixture(scope="module")
+def primary_tag(metadata, tag_classification):
+    """Module-scoped primary tag."""
+    return metadata.create_or_update(
+        CreateTagRequest(
             name=PRIMARY_TAG_NAME,
             classification=CLASSIFICATION_NAME,
             description="test tag",
         )
+    )
 
-        primary_tag: Tag = self.metadata.create_or_update(create_primary_tag)
 
-        create_secondary_tag = CreateTagRequest(
+@pytest.fixture(scope="module")
+def secondary_tag(metadata, primary_tag):
+    """Module-scoped secondary tag (child of primary)."""
+    return metadata.create_or_update(
+        CreateTagRequest(
             name=SECONDARY_TAG_NAME,
             classification=CLASSIFICATION_NAME,
             description="test secondary tag",
             parent=primary_tag.fullyQualifiedName,
         )
+    )
 
-        secondary_tag: Tag = self.metadata.create_or_update(create_secondary_tag)
 
-        assert (
-            secondary_tag.fullyQualifiedName
-            == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{SECONDARY_TAG_NAME}"
-        )
-
-        create_special_char_tag = CreateTagRequest(
+@pytest.fixture(scope="module")
+def special_char_tag(metadata, primary_tag):
+    """Module-scoped tag with special characters in name."""
+    return metadata.create_or_update(
+        CreateTagRequest(
             name=TEST_SPECIAL_CHARS_TAG_NAME,
             classification=CLASSIFICATION_NAME,
             description="test special char tag",
             parent=primary_tag.fullyQualifiedName,
         )
+    )
 
-        special_char_tag: Tag = self.metadata.create_or_update(create_special_char_tag)
 
+@pytest.fixture(scope="module")
+def long_tag_classification(metadata):
+    """Module-scoped classification with long name."""
+    classification = metadata.create_or_update(
+        CreateClassificationRequest(
+            description="test tag", name=LONG_CLASSIFICATION_NAME
+        )
+    )
+    yield classification
+
+    _safe_delete(
+        metadata,
+        entity=Classification,
+        entity_id=classification.id,
+        recursive=True,
+        hard_delete=True,
+    )
+
+
+@pytest.fixture(scope="module")
+def long_primary_tag(metadata, long_tag_classification):
+    """Module-scoped tag with long name."""
+    return metadata.create_or_update(
+        CreateTagRequest(
+            name=LONG_PRIMARY_TAG_NAME,
+            classification=LONG_CLASSIFICATION_NAME,
+            description="test tag",
+        )
+    )
+
+
+class TestOMetaTagMixin:
+    """
+    Tag Mixin integration tests.
+    Tests classification and tag CRUD operations.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    """
+
+    def test_create_classification(self, tag_classification):
+        """Test POST classification"""
+        assert tag_classification is not None
+
+    def test_create_tags(self, primary_tag, secondary_tag, special_char_tag):
+        """Test POST tag creation including nested and special chars"""
+        assert (
+            secondary_tag.fullyQualifiedName
+            == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{SECONDARY_TAG_NAME}"
+        )
         assert (
             special_char_tag.fullyQualifiedName
             == f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{TEST_SPECIAL_CHARS_TAG_NAME}"
         )
 
-    def test_get_classification(self):
-        """Test GET primary tag"""
-
-        classification = self.metadata.get_by_name(
+    def test_get_classification(self, metadata, tag_classification):
+        """Test GET classification by name"""
+        classification = metadata.get_by_name(
             entity=Classification, fqn=CLASSIFICATION_NAME
         )
+        assert classification.name.root == CLASSIFICATION_NAME
 
-        self.assertEqual(classification.name.root, CLASSIFICATION_NAME)
-
-    def test_get_primary_tag(self):
+    def test_get_primary_tag(self, metadata, primary_tag):
         """Test GET tag by classification"""
-        primary_tag = self.metadata.get_by_name(
+        tag = metadata.get_by_name(
             entity=Tag,
             fqn=f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}",
         )
+        assert tag.name.root == PRIMARY_TAG_NAME
 
-        self.assertEqual(primary_tag.name.root, PRIMARY_TAG_NAME)
-
-    def test_get_secondary_tag(self):
-        """Test GET secondary"""
-        secondary_tag = self.metadata.get_by_name(
+    def test_get_secondary_tag(self, metadata, secondary_tag):
+        """Test GET secondary tag"""
+        tag = metadata.get_by_name(
             entity=Tag,
             fqn=f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}.{SECONDARY_TAG_NAME}",
         )
+        assert tag.name.root == SECONDARY_TAG_NAME
 
-        self.assertEqual(secondary_tag.name.root, SECONDARY_TAG_NAME)
+    def test_list_classifications(self, metadata, tag_classification):
+        """Test GET list classifications"""
+        classifications = metadata.list_entities(entity=Classification).entities
+        assert classifications is not None
 
-    def test_list_classifications(self):
-        """Test GET list categories Mixin method"""
-
-        classifications = self.metadata.list_entities(entity=Classification).entities
-
-        self.assertIsNotNone(classifications)
-
-    def test_list_tag_in_category(self):
-        """
-        Get tags from a category
-        """
-        tags = self.metadata.list_entities(
+    def test_list_tag_in_category(self, metadata, primary_tag):
+        """Get tags from a category"""
+        tags = metadata.list_entities(
             entity=Tag, params={"parent": CLASSIFICATION_NAME}
         ).entities
+        assert tags is not None
 
-        self.assertIsNotNone(tags)
+    def test_create_long_classification(self, long_tag_classification):
+        """Test POST classification with long name"""
+        assert long_tag_classification.name.root == LONG_CLASSIFICATION_NAME
 
-    def test_c_create_classifications(self):
-        """Test POST classification for long name"""
-
-        classification = CreateClassificationRequest(
-            description="test tag", name=LONG_CLASSIFICATION_NAME
-        )
-
-        classification: Classification = self.metadata.create_or_update(classification)
-        self.assertEqual(classification.name.root, LONG_CLASSIFICATION_NAME)
-
-    def test_d_create_tag(self):
+    def test_create_long_tag(self, long_primary_tag):
         """Test POST tag creation with long name"""
-        create_primary_tag = CreateTagRequest(
-            name=LONG_PRIMARY_TAG_NAME,
-            classification=LONG_CLASSIFICATION_NAME,
-            description="test tag",
+        assert long_primary_tag.name.root == LONG_PRIMARY_TAG_NAME
+        assert (
+            long_primary_tag.fullyQualifiedName
+            == f"{LONG_CLASSIFICATION_NAME}.{LONG_PRIMARY_TAG_NAME}"
         )
 
-        primary_tag: Tag = self.metadata.create_or_update(create_primary_tag)
-        self.assertEqual(primary_tag.name.root, LONG_PRIMARY_TAG_NAME)
-        self.assertEqual(
-            primary_tag.fullyQualifiedName,
-            f"{LONG_CLASSIFICATION_NAME}.{LONG_PRIMARY_TAG_NAME}",
-        )
-
-    def test_get_tag_assets(self):
+    def test_get_tag_assets(self, metadata, primary_tag):
         """We can get assets for a tag"""
-        service: DashboardService = self.metadata.create_or_update(
-            data=CreateDashboardServiceRequest(
-                name="test-service-dashboard-tag-assets",
-                serviceType=DashboardServiceType.Looker,
-                connection=DashboardConnection(
-                    config=LookerConnection(
-                        hostPort="http://hostPort", clientId="id", clientSecret="secret"
-                    )
+        service_name = generate_name()
+        create_service = get_create_service(entity=DashboardService, name=service_name)
+        service = metadata.create_or_update(data=create_service)
+
+        try:
+            dashboard: Dashboard = metadata.create_or_update(
+                CreateDashboardRequest(
+                    name="test-dashboard-tag-assets",
+                    service=service.fullyQualifiedName,
+                )
+            )
+
+            tag_fqn = f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}"
+            metadata.patch(
+                entity=Dashboard,
+                source=dashboard,
+                destination=Dashboard(
+                    id=dashboard.id,
+                    name=dashboard.name,
+                    service=dashboard.service,
+                    tags=[
+                        TagLabel(
+                            tagFQN=tag_fqn,
+                            source=TagSource.Classification,
+                            labelType=LabelType.Manual,
+                            state=State.Confirmed,
+                        )
+                    ],
                 ),
             )
-        )
 
-        dashboard: Dashboard = self.metadata.create_or_update(
-            CreateDashboardRequest(
-                name="test-dashboard-tag-assets",
-                service=service.fullyQualifiedName,
+            assets_response = metadata.get_tag_assets(tag_fqn, limit=100)
+            assert len(assets_response["data"]) >= 1
+            assert assets_response["data"][0]["id"] == str(dashboard.id.root)
+            assert assets_response["data"][0]["type"] == "dashboard"
+        finally:
+            _safe_delete(
+                metadata,
+                entity=DashboardService,
+                entity_id=service.id,
+                recursive=True,
+                hard_delete=True,
             )
-        )
-
-        tag_fqn = f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}"
-        self.metadata.patch(
-            entity=Dashboard,
-            source=dashboard,
-            destination=Dashboard(
-                id=dashboard.id,
-                name=dashboard.name,
-                service=dashboard.service,
-                tags=[
-                    TagLabel(
-                        tagFQN=tag_fqn,
-                        source=TagSource.Classification,
-                        labelType=LabelType.Manual,
-                        state=State.Confirmed,
-                    )
-                ],
-            ),
-        )
-
-        assets_response = self.metadata.get_tag_assets(tag_fqn, limit=100)
-        self.assertGreaterEqual(len(assets_response["data"]), 1)
-        self.assertEqual(assets_response["data"][0]["id"], str(dashboard.id.root))
-        self.assertEqual(assets_response["data"][0]["type"], "dashboard")
-
-        self.metadata.delete(
-            entity=DashboardService,
-            entity_id=service.id,
-            recursive=True,
-            hard_delete=True,
-        )

@@ -3,8 +3,8 @@ package org.openmetadata.sdk.services.datacontracts;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
-import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
@@ -220,10 +220,10 @@ public class DataContractService extends EntityServiceBase<DataContract> {
   }
 
   /**
-   * Validate ODCS YAML content against an entity without importing. Returns schema validation
-   * results including any field mismatches.
+   * Validate ODCS YAML content against an entity without importing. Returns comprehensive
+   * validation results including entity errors, constraint errors, and schema field mismatches.
    */
-  public SchemaValidation validateODCSYaml(String yamlContent, UUID entityId, String entityType)
+  public ContractValidation validateODCSYaml(String yamlContent, UUID entityId, String entityType)
       throws OpenMetadataException {
     RequestOptions options =
         RequestOptions.builder()
@@ -235,7 +235,32 @@ public class DataContractService extends EntityServiceBase<DataContract> {
         HttpMethod.POST,
         basePath + "/odcs/validate/yaml",
         yamlContent,
-        SchemaValidation.class,
+        ContractValidation.class,
+        options);
+  }
+
+  /**
+   * Validate a CreateDataContract request without creating the contract. Returns comprehensive
+   * validation results including entity errors, constraint errors, and schema field mismatches.
+   */
+  public ContractValidation validateContract(CreateDataContract createRequest)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.POST, basePath + "/validate", createRequest, ContractValidation.class);
+  }
+
+  /**
+   * Validate a CreateDataContract YAML request without creating the contract. Returns comprehensive
+   * validation results including entity errors, constraint errors, and schema field mismatches.
+   */
+  public ContractValidation validateContractYaml(String yamlContent) throws OpenMetadataException {
+    RequestOptions options =
+        RequestOptions.builder().header("Content-Type", "application/yaml").build();
+    return httpClient.execute(
+        HttpMethod.POST,
+        basePath + "/validate/yaml",
+        yamlContent,
+        ContractValidation.class,
         options);
   }
 }

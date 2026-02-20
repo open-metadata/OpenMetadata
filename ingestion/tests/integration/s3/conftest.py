@@ -36,7 +36,7 @@ def service_name():
     return str(uuid.uuid4())
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def bucket_name():
     return "test-bucket"
 
@@ -58,7 +58,7 @@ def upload_directory_to_minio(client: Minio, local_directory: Path, bucket_name:
             client.fput_object(bucket_name, object_name, local_file_path)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def minio(bucket_name):
     config = MinioContainerConfigs(container_name=str(uuid.uuid4()))
     minio_container = get_minio_container(config)

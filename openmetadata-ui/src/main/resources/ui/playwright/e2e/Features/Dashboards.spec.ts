@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
@@ -198,7 +199,7 @@ test.describe('Dashboard and Charts deleted toggle', () => {
   });
 });
 
-test.describe('Data Model', () => {
+test.describe('Data Model', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('expand / collapse should not appear after updating nested fields for dashboardDataModels', async ({
     page,
   }) => {
@@ -214,21 +215,25 @@ test.describe('Data Model', () => {
     await assignTagToChildren({
       page,
       tag: 'PersonalData.Personal',
-      rowId: 'revenue_metrics_0031',
+      rowId:
+        'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031',
       entityEndpoint: 'dashboard/datamodels',
     });
 
     // Should not show expand icon for non-nested columns
     expect(
       page
-        .locator('[data-row-key="revenue_metrics_0031"]')
+        .locator(
+          '[data-row-key="sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031"]'
+        )
         .getByTestId('expand-icon')
     ).not.toBeVisible();
 
     await removeTagsFromChildren({
       page,
       tags: ['PersonalData.Personal'],
-      rowId: 'revenue_metrics_0031',
+      rowId:
+        'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031',
       entityEndpoint: 'dashboard/datamodels',
     });
   });

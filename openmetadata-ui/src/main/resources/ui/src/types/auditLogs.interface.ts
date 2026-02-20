@@ -69,7 +69,7 @@ export interface AuditLogFilterValue {
 export interface AuditLogActiveFilter {
   category: AuditLogFilterCategoryType;
   categoryLabel: string;
-  value: AuditLogFilterValue;
+  value: AuditLogFilterValue | TimeFilterValue;
 }
 
 /** Time filter preset options */

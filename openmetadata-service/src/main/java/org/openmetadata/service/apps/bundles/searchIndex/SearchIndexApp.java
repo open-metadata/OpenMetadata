@@ -11,6 +11,7 @@ import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -91,7 +92,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private DistributedSearchIndexExecutor distributedExecutor;
   private ReindexContext recreateContext;
   private RecreateIndexHandler recreateIndexHandler;
-  private BulkSink searchIndexSink;
+  private volatile BulkSink searchIndexSink;
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -184,8 +185,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void runReindexing(JobExecutionContext jobExecutionContext) throws Exception {
     boolean success = false;
     try {
+      if (jobData.getEntities() == null || jobData.getEntities().isEmpty()) {
+        LOG.info("No entities selected for reindexing, completing immediately");
+        jobData.setStatus(EventPublisherJob.Status.COMPLETED);
+        jobData.setStats(new Stats());
+        success = true;
+        return;
+      }
+
       setupEntities();
       cleanupOldFailures();
+
       LOG.info(
           "Search Index Job Started for Entities: {}, RecreateIndex: {}, DistributedIndexing: {}",
           jobData.getEntities(),
@@ -326,6 +336,23 @@ public class SearchIndexApp extends AbstractNativeApplication {
     monitorDistributedJob(jobExecutionContext, distributedJob.getId());
 
     if (searchIndexSink != null) {
+      // Wait for vector embedding tasks to complete before closing
+      int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
+      if (pendingVectorTasks > 0) {
+        LOG.info("Waiting for {} pending vector embedding tasks to complete", pendingVectorTasks);
+        boolean vectorComplete = searchIndexSink.awaitVectorCompletion(120);
+        if (!vectorComplete) {
+          LOG.warn("Vector embedding wait timed out - some tasks may not be reflected in stats");
+        }
+      }
+
+      // Flush and wait for pending bulk requests
+      LOG.info("Flushing sink and waiting for pending bulk requests");
+      boolean flushComplete = searchIndexSink.flushAndAwait(60);
+      if (!flushComplete) {
+        LOG.warn("Sink flush timed out - some requests may not be reflected in stats");
+      }
+
       searchIndexSink.close();
     }
 
@@ -335,6 +362,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
       // The partition-based stats may be inaccurate because the bulk sink is asynchronous
       StepStats sinkStats = searchIndexSink != null ? searchIndexSink.getStats() : null;
       updateJobDataFromDistributedJob(finalJob, sinkStats);
+
+      // Set vector stats directly from the bulk sink since the sink tracks vector
+      // success/failure internally and these may not be fully reflected in server stats
+      if (searchIndexSink != null && jobData.getStats() != null) {
+        StepStats sinkVectorStats = searchIndexSink.getVectorStats();
+        if (sinkVectorStats != null && sinkVectorStats.getTotalRecords() > 0) {
+          jobData.getStats().setVectorStats(sinkVectorStats);
+        }
+      }
+
       saveServerStatsToJobDataMap(jobExecutionContext, finalJob);
     }
 
@@ -715,17 +752,37 @@ public class SearchIndexApp extends AbstractNativeApplication {
       return;
     }
 
+    // Get already-promoted entities from distributed executor (if running in distributed mode)
+    Set<String> promotedEntities = Collections.emptySet();
+    if (distributedExecutor != null && distributedExecutor.getEntityTracker() != null) {
+      promotedEntities = distributedExecutor.getEntityTracker().getPromotedEntities();
+    }
+
+    // Calculate entities that still need finalization
+    Set<String> entitiesToFinalize = new HashSet<>(recreateContext.getEntities());
+    entitiesToFinalize.removeAll(promotedEntities);
+
+    if (entitiesToFinalize.isEmpty()) {
+      LOG.info(
+          "All {} entities already promoted during execution, skipping finalizeAllEntityReindex",
+          promotedEntities.size());
+      recreateContext = null;
+      return;
+    }
+
+    LOG.info(
+        "Finalizing {} remaining entities (already promoted: {})",
+        entitiesToFinalize.size(),
+        promotedEntities.size());
+
     try {
-      recreateContext
-          .getEntities()
-          .forEach(
-              entityType -> {
-                try {
-                  finalizeEntityReindex(entityType, true);
-                } catch (Exception ex) {
-                  LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
-                }
-              });
+      for (String entityType : entitiesToFinalize) {
+        try {
+          finalizeEntityReindex(entityType, finalSuccess);
+        } catch (Exception ex) {
+          LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+        }
+      }
     } finally {
       recreateContext = null;
     }
@@ -757,9 +814,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void handleExecutionException(Exception ex) {
-    if (searchIndexSink != null) {
+    BulkSink sink = searchIndexSink;
+    if (sink != null) {
+      searchIndexSink = null;
       try {
-        searchIndexSink.close();
+        sink.close();
       } catch (Exception e) {
         LOG.error("Error closing search index sink", e);
       }
@@ -828,10 +887,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
       SuccessContext successContext =
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
 
+      SearchIndexJob distributedJob =
+          distributedExecutor != null ? distributedExecutor.getJobWithFreshStats() : null;
+
       try {
         String jobIdStr =
-            distributedExecutor != null
-                ? distributedExecutor.getJobWithFreshStats().getId().toString()
+            distributedJob != null
+                ? distributedJob.getId().toString()
                 : getApp().getId().toString();
         int failureCount = collectionDAO.searchIndexFailureDAO().countByJobId(jobIdStr);
         if (failureCount > 0) {
@@ -841,15 +903,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
         LOG.debug("Could not get failure count", e);
       }
 
-      if (distributedExecutor != null) {
-        SearchIndexJob distributedJob = distributedExecutor.getJobWithFreshStats();
-        if (distributedJob != null && distributedJob.getServerStats() != null) {
-          successContext.withAdditionalProperty("serverStats", distributedJob.getServerStats());
-          successContext.withAdditionalProperty(
-              "serverCount", distributedJob.getServerStats().size());
-          successContext.withAdditionalProperty(
-              "distributedJobId", distributedJob.getId().toString());
-        }
+      if (distributedJob != null && distributedJob.getServerStats() != null) {
+        successContext.withAdditionalProperty("serverStats", distributedJob.getServerStats());
+        successContext.withAdditionalProperty(
+            "serverCount", distributedJob.getServerStats().size());
+        successContext.withAdditionalProperty(
+            "distributedJobId", distributedJob.getId().toString());
       }
 
       appRecord.setSuccessContext(successContext);
@@ -895,9 +954,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
       sendUpdates(jobExecutionContext, true);
     }
 
-    if (searchIndexSink != null) {
+    BulkSink sink = searchIndexSink;
+    if (sink != null) {
+      searchIndexSink = null;
       try {
-        searchIndexSink.close();
+        sink.close();
       } catch (Exception e) {
         LOG.error("Error closing search index sink", e);
       }

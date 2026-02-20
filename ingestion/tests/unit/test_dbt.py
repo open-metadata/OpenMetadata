@@ -2585,3 +2585,104 @@ class TestDownloadDbtFiles(TestCase):
             self.assertIsNotNone(result[0].dbt_catalog)
             self.assertIsNotNone(result[0].dbt_run_results)
             self.assertIsNotNone(result[0].dbt_sources)
+
+
+class TestGetLatestResult(TestCase):
+    """
+    Test _get_latest_result picks the most recent result by execute
+    completed_at when the same unique_id appears in multiple run_results files.
+    """
+
+    @staticmethod
+    def _make_result(unique_id, completed_at, status="pass"):
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = completed_at
+        result = MagicMock()
+        result.unique_id = unique_id
+        result.timing = [timing]
+        result.status = MagicMock(value=status)
+        return result
+
+    @staticmethod
+    def _make_dbt_objects(run_results_list):
+        run_results = []
+        for results in run_results_list:
+            rr = MagicMock()
+            rr.results = results
+            run_results.append(rr)
+        dbt_objects = MagicMock()
+        dbt_objects.dbt_run_results = run_results
+        return dbt_objects
+
+    def test_single_match_returned(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        result_a = self._make_result("test.pkg.my_test", "2026-02-12T10:00:00.000000Z")
+        dbt_objects = self._make_dbt_objects([[result_a]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, result_a)
+
+    def test_no_match_returns_none(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        result_a = self._make_result("test.pkg.other", "2026-02-12T10:00:00.000000Z")
+        dbt_objects = self._make_dbt_objects([[result_a]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.missing")
+        self.assertIsNone(got)
+
+    def test_picks_latest_across_files(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        old_result = self._make_result(
+            "test.pkg.my_test", "2026-02-12T10:00:00.000000Z", "pass"
+        )
+        new_result = self._make_result(
+            "test.pkg.my_test", "2026-02-12T14:00:00.000000Z", "fail"
+        )
+        dbt_objects = self._make_dbt_objects([[old_result], [new_result]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, new_result)
+
+    def test_picks_latest_regardless_of_order(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        new_result = self._make_result(
+            "test.pkg.my_test", "2026-02-12T14:00:00.000000Z", "fail"
+        )
+        old_result = self._make_result(
+            "test.pkg.my_test", "2026-02-12T10:00:00.000000Z", "pass"
+        )
+        dbt_objects = self._make_dbt_objects([[new_result], [old_result]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, new_result)
+
+    def test_falls_back_to_first_when_no_timestamps(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        result_a = self._make_result("test.pkg.my_test", None, "pass")
+        result_b = self._make_result("test.pkg.my_test", None, "fail")
+        dbt_objects = self._make_dbt_objects([[result_a], [result_b]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, result_a)
+
+    def test_datetime_objects_handled(self):
+        from datetime import datetime
+
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        old_result = self._make_result(
+            "test.pkg.my_test", datetime(2026, 2, 12, 10, 0, 0), "pass"
+        )
+        new_result = self._make_result(
+            "test.pkg.my_test", datetime(2026, 2, 12, 14, 0, 0), "fail"
+        )
+        dbt_objects = self._make_dbt_objects([[old_result], [new_result]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, new_result)

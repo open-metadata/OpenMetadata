@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.opensearch;
 
-import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -89,7 +88,12 @@ public class SemanticSearchQueryBuilder {
                                 s ->
                                     s.inline(
                                         i ->
-                                            i.lang(ScriptLanguage.Painless.jsonValue())
+                                            i.lang(
+                                                    l ->
+                                                        l.builtin(
+                                                            os.org.opensearch.client.opensearch
+                                                                ._types.BuiltinScriptLanguage
+                                                                .Painless))
                                                 .source(
                                                     "cosineSimilarity(params.query_vector, '"
                                                         + KNN_FIELD
@@ -148,7 +152,11 @@ public class SemanticSearchQueryBuilder {
         s ->
             s.inline(
                 i ->
-                    i.lang(ScriptLanguage.Painless.jsonValue())
+                    i.lang(
+                            l ->
+                                l.builtin(
+                                    os.org.opensearch.client.opensearch._types.BuiltinScriptLanguage
+                                        .Painless))
                         .source(scriptSource)
                         .params(Map.of())));
   }

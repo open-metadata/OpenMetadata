@@ -1240,9 +1240,22 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   );
 
   // 5. Reload Page
+  const getColumnDetails = page.waitForResponse(
+    '/api/v1/tables/name/*/columns?*fields=*extension*'
+  );
+  const getTableColumnTypes = page.waitForResponse(
+    '/api/v1/metadata/types/name/tableColumn*'
+  );
   await page.reload();
-  await waitForAllLoadersToDisappear(page);
-  await expect(sidePanel).toBeVisible();
+  await getTableColumnTypes;
+  await getColumnDetails;
+
+  await page.waitForSelector(
+    '.column-detail-panel-container [data-testid="custom-properties-tab"]',
+    {
+      state: 'visible',
+    }
+  );
   await customPropertiesTab.click();
   await expect(searchbar).toBeVisible();
   await searchbar.fill(propertyName);

@@ -138,6 +138,11 @@ class OMetaQueryMixin:
 
         masked_query = mask_query(query_cost_data.query, query_cost_data.dialect)
 
+        # mask_query can return None if it fails to parse the query
+        # Fall back to the original query so we can still track cost
+        if masked_query is None:
+            masked_query = query_cost_data.query
+
         query_hash = self._get_query_hash(masked_query)
 
         query = self.__get_query_by_hash(

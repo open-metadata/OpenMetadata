@@ -164,11 +164,17 @@ export const addOwnerWithoutValidation = async ({
 }) => {
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
-    const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=&index=user_search_index&*'
-    );
-    await page.getByRole('tab', { name: type }).click();
-    await userListResponse;
+    const usersTab = page.getByRole('tab', { name: type });
+    const isTabAlreadySelected =
+      (await usersTab.getAttribute('aria-selected')) === 'true';
+
+    if (!isTabAlreadySelected) {
+      const userListResponse = page.waitForResponse(
+        '/api/v1/search/query?q=&index=user_search_index&*'
+      );
+      await usersTab.click();
+      await userListResponse;
+    }
   }
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -583,16 +589,18 @@ export const updateDescription = async (
   page: Page,
   description: string,
   isModal = false,
-  validationContainerTestId = 'asset-description-container'
+  validationContainerTestId = 'asset-description-container',
+  endpoint?: EntityTypeEndpoint
 ) => {
-  const editButton = page.locator('[data-testid="edit-description"]');
-  if (await editButton.isVisible()) {
+  const editDescriptionButton = page.getByTestId('edit-description');
+  const editButton = page.getByTestId('edit-button');
+
+  try {
+    await expect(editDescriptionButton).toBeVisible();
+    await editDescriptionButton.click();
+  } catch {
+    await expect(editButton).toBeVisible();
     await editButton.click();
-  } else {
-    // Fallback for ML Model which uses 'edit-button'
-    const fallbackButton = page.getByTestId('edit-button');
-    await expect(fallbackButton).toBeVisible();
-    await fallbackButton.click();
   }
 
   // Wait for description box to be visible and ready
@@ -606,8 +614,17 @@ export const updateDescription = async (
   const saveButton = page.getByTestId('save');
   await expect(saveButton).toBeVisible();
   await expect(saveButton).toBeEnabled();
-  await saveButton.click();
 
+  // Always wait for the PATCH request, not just when endpoint is provided
+  const patchRequest = endpoint
+    ? page.waitForResponse(`/api/v1/${endpoint}/*`)
+    : page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' && response.status() === 200
+      );
+
+  await saveButton.click();
+  await patchRequest;
   if (isModal) {
     await page.waitForSelector('[role="dialog"].description-markdown-editor', {
       state: 'hidden',
@@ -713,17 +730,16 @@ export const assignTag = async (
   parentId = 'KnowledgePanel.Tags',
   tagFqn?: string
 ) => {
-  await page
+  const tagButton = page
     .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .first()
-    .click();
+    .first();
 
-  // Wait for the form to be visible and stable
-  await page.locator('#tagsForm_tags').waitFor({
-    state: 'visible',
-  });
+  await expect(tagButton).toBeVisible();
+  await tagButton.click();
+
+  await expect(page.locator('#tagsForm_tags')).toBeVisible();
 
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
@@ -932,7 +948,7 @@ export const assignGlossaryTerm = async (
   page: Page,
   glossaryTerm: GlossaryTermOption,
   action: 'Add' | 'Edit' = 'Add',
-  entityEndpoint?: string
+  entityEndpoint: string
 ) => {
   await page
     .getByTestId('KnowledgePanel.GlossaryTerms')
@@ -942,10 +958,8 @@ export const assignGlossaryTerm = async (
   const searchGlossaryTerm = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
   );
-  // Wait for the form to be visible before proceeding
   await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
 
-  // Fill the input first
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
   await searchGlossaryTerm;
 
@@ -960,19 +974,14 @@ export const assignGlossaryTerm = async (
     page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
   ).toBeEnabled();
 
-  const patchRequest = entityEndpoint
-    ? page.waitForResponse(`/api/v1/${entityEndpoint}/*`)
-    : undefined;
+  const patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
 
   await page
     .getByTestId('custom-drop-down-menu')
     .getByTestId('saveAssociatedTag')
     .click();
 
-  if (patchRequest) {
-    await patchRequest;
-  }
-
+  await patchRequest;
   await expect(
     page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
   ).not.toBeVisible();
@@ -1145,6 +1154,8 @@ export const removeGlossaryTerm = async (
       .getByTestId('glossary-container')
       .getByTestId('edit-button')
       .click();
+      //small timeout to avoid popup collide with click
+      await page.waitForTimeout(500)
 
     await page
       .getByTestId('glossary-container')
@@ -1625,8 +1636,10 @@ export const updateDisplayNameForEntityChildren = async (
 
   await page.locator('#displayName').fill(displayName.newDisplayName);
 
-  const updateRequest = page.waitForResponse((req) =>
-    ['PUT', 'PATCH'].includes(req.request().method())
+  const updateRequest = page.waitForResponse(
+    (req) =>
+      ['PUT', 'PATCH'].includes(req.request().method()) &&
+      !req.url().includes('api/v1/analytics/web/events/collect')
   );
 
   await page.click('[data-testid="save-button"]');

@@ -80,6 +80,13 @@ public class RdfRepository {
     return INSTANCE;
   }
 
+  public static void reset() {
+    if (INSTANCE != null) {
+      INSTANCE.close();
+    }
+    INSTANCE = null;
+  }
+
   public boolean isEnabled() {
     return config.getEnabled() != null && config.getEnabled() && storageService != null;
   }

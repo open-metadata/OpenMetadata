@@ -19,11 +19,12 @@ import {
   tokenExpirationUnlimitedDays,
   updateBotDetails,
 } from '../../utils/bot';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Bots Page should work properly', () => {
+test.describe('Bots Page should work properly', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.slow(true);
 
   test('Bots Page should work properly', async ({ page }) => {

@@ -26,6 +26,7 @@ import athenaConnection from '../jsons/connectionSchemas/connections/database/at
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
 import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import bigTableConnection from '../jsons/connectionSchemas/connections/database/bigTableConnection.json';
+import burstiqConnection from '../jsons/connectionSchemas/connections/database/burstIQConnection.json';
 import cassandraConnection from '../jsons/connectionSchemas/connections/database/cassandraConnection.json';
 import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
 import cockroachConnection from '../jsons/connectionSchemas/connections/database/cockroachConnection.json';
@@ -304,6 +305,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Timescale: {
       schema = timescaleConnection;
+
+      break;
+    }
+    case DatabaseServiceType.BurstIQ: {
+      schema = burstiqConnection;
 
       break;
     }
