@@ -17,8 +17,6 @@ import tempfile
 from functools import singledispatchmethod
 from typing import Optional
 
-import pandas as pd
-
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -50,6 +48,8 @@ class MF4DataFrameReader(DataFrameReader):
     @staticmethod
     def _extract_header_from_mdf(mdf) -> Optional[DatalakeColumnWrapper]:
         """Extract header properties from an opened MDF object."""
+        import pandas as pd
+
         if hasattr(mdf, "header") and hasattr(mdf.header, "_common_properties"):
             common_props = mdf.header._common_properties
 

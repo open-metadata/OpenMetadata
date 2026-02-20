@@ -2,7 +2,7 @@
 
 # Integration
 
-> **1 Components** | **6 Files** | **53 Tests** | **57 Scenarios** 🚀
+> **1 Components** | **7 Files** | **59 Tests** | **63 Scenarios** 🚀
 
 ## Table of Contents
 - [Connectors](#connectors)
@@ -122,6 +122,24 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Service Ingestion Pagination** - Default Pagination size should be 15 | Tests default ingestion pagination size  Verifies ingestion pipelines load with a default page size of 15 |
+
+</details>
+
+<details open>
+<summary>📄 <b>ServiceCreationPermissions.spec.ts</b> (6 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/ServiceCreationPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ServiceCreationPermissions.spec.ts)
+
+### Service Creation with isOwner() Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Service Creation with isOwner() Permissions** - User with service creation permission can create a new database service | User with service creation permission can create a new database service |
+| 2 | **Service Creation with isOwner() Permissions** - User can view but cannot modify services they do not own | User can view but cannot modify services they do not own |
+| 3 | **Service Creation with isOwner() Permissions** - User can update connection details of their own service | User can update connection details of their own service |
+| 4 | **Service Creation with isOwner() Permissions** - Different user can view but cannot modify service owned by another user | Different user can view but cannot modify service owned by another user |
+| 5 | **Service Creation with isOwner() Permissions** - Owner can delete their own service | Owner can delete their own service |
+| 6 | **Service Creation with isOwner() Permissions** - Owner can update description of their service | Owner can update description of their service |
 
 </details>
 

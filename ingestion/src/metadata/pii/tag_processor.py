@@ -14,6 +14,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from metadata.generated.schema.type.tagLabelMetadata import TagLabelMetadata
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.algorithms.presidio_utils import load_nlp_engine
 from metadata.pii.algorithms.tag_scoring import ScoreTagsForColumnService
@@ -94,12 +95,17 @@ class TagProcessor(AutoClassificationProcessor):
     @staticmethod
     def build_tag_label(scored_tag: ScoredTag) -> TagLabel:
         """Build a TagLabel from a ScoredTag."""
+        metadata = None
+        if scored_tag.recognizer_metadata:
+            metadata = TagLabelMetadata(recognizer=scored_tag.recognizer_metadata)
+
         tag_label = TagLabel(
             tagFQN=scored_tag.tag.fullyQualifiedName,
             source=TagSource.Classification,
             state=State.Suggested,
             labelType=LabelType.Generated,
             reason=scored_tag.reason,
+            metadata=metadata,
         )
 
         return tag_label

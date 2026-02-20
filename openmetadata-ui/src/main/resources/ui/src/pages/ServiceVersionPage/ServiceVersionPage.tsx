@@ -32,6 +32,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Directory } from '../../generated/entity/data/directory';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
@@ -60,7 +61,10 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
 } from '../../utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import {
   getServiceDetailsPath,
   getServiceVersionPath,
@@ -76,7 +80,7 @@ import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 function ServiceVersionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { serviceCategory, version } = useRequiredParams<{
     serviceCategory: ServiceTypes;
     version: string;
@@ -175,16 +179,22 @@ function ServiceVersionPage() {
 
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
+      const databaseUsagePermission = getPrioritizedViewPermission(
+        permissions.database,
+        PermissionOperation.ViewUsage
+      );
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}, ${TabSpecificField.USAGE_SUMMARY}`,
+        databaseUsagePermission
+          ? `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY}`
+          : `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging
       );
 
       setData(data);
       handlePagingChange(resPaging);
     },
-    [decodedServiceFQN, handlePagingChange]
+    [decodedServiceFQN, handlePagingChange, permissions.database]
   );
 
   const fetchTopics = useCallback(
@@ -202,15 +212,21 @@ function ServiceVersionPage() {
 
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
+      const dashboardUsagePermission = getPrioritizedViewPermission(
+        permissions.dashboard,
+        PermissionOperation.ViewUsage
+      );
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS}`,
+        dashboardUsagePermission
+          ? `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS}`
+          : `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging
       );
       setData(data);
       handlePagingChange(resPaging);
     },
-    [decodedServiceFQN, handlePagingChange]
+    [decodedServiceFQN, handlePagingChange, permissions.dashboard]
   );
 
   const fetchPipeLines = useCallback(

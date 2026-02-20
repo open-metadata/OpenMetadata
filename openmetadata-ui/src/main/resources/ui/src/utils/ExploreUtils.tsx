@@ -14,6 +14,7 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { get, isEmpty, isNil, isString, isUndefined, lowerCase } from 'lodash';
+import { Bucket } from 'Models';
 import Qs from 'qs';
 import React from 'react';
 import {
@@ -36,11 +37,7 @@ import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import {
-  Aggregations,
-  Bucket,
-  SearchResponse,
-} from '../interface/search.interface';
+import { Aggregations, SearchResponse } from '../interface/search.interface';
 import {
   EsBoolQuery,
   QueryFieldInterface,

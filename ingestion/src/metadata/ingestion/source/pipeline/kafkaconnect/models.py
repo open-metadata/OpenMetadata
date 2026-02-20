@@ -16,10 +16,11 @@ KafkaConnect Source Model module
 from enum import Enum
 from typing import List, Optional, Type, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 
 
 class ConnectorType(str, Enum):
@@ -47,6 +48,30 @@ class KafkaConnectTopics(BaseModel):
     )
 
 
+class ServiceResolutionResult(BaseModel):
+    """Result of service name resolution from connector config"""
+
+    database_service_name: Optional[str] = Field(
+        default=None, description="Resolved database service name"
+    )
+    messaging_service_name: Optional[str] = Field(
+        default=None, description="Resolved messaging service name"
+    )
+
+
+class TopicResolutionResult(BaseModel):
+    """Result of topic parsing and resolution"""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    topics: List[KafkaConnectTopics] = Field(
+        default_factory=list, description="List of discovered/parsed topics"
+    )
+    topic_entity_map: dict[str, Optional[Topic]] = Field(
+        default_factory=dict, description="Map of topic name to resolved Topic entity"
+    )
+
+
 class KafkaConnectColumnMapping(BaseModel):
     """Model for column-level mapping between source and target"""
 
@@ -55,8 +80,14 @@ class KafkaConnectColumnMapping(BaseModel):
 
 
 class KafkaConnectDatasetDetails(BaseModel):
+    """
+    Details about the dataset from kafkaconnect configuration
+    """
+
     table: Optional[str] = None
     database: Optional[str] = None
+    schema: Optional[str] = None
+    parent_container: Optional[str] = None
     container_name: Optional[str] = None
     column_mappings: List[KafkaConnectColumnMapping] = Field(
         default_factory=list, description="Column-level mappings if available"
@@ -66,12 +97,15 @@ class KafkaConnectDatasetDetails(BaseModel):
     def dataset_type(self) -> Optional[Type[Union[Table, Container]]]:
         if self.table or self.database:
             return Table
-        if self.container_name:
+        if self.container_name or self.parent_container:
             return Container
         return None
 
 
 class KafkaConnectPipelineDetails(BaseModel):
+    """
+    Details about a Kafka Connect pipeline/connector"""
+
     name: str = Field(
         ..., description="Name of the status source (e.g., random-source-json)"
     )
@@ -83,7 +117,7 @@ class KafkaConnectPipelineDetails(BaseModel):
     topics: Optional[List[KafkaConnectTopics]] = Field(default_factory=list)
     conn_type: Optional[str] = Field(default="UNKNOWN", alias="type")
     description: Optional[str] = None
-    dataset: Optional[KafkaConnectDatasetDetails] = None
+    datasets: Optional[List[KafkaConnectDatasetDetails]] = Field(default_factory=list)
     config: Optional[dict] = Field(default_factory=dict)
 
     @field_validator("conn_type", mode="before")

@@ -22,6 +22,8 @@ import { forwardRef } from 'react';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import {
   MOCK_TEST_CASE,
+  MOCK_TEST_CASE_WITH_BOOLEAN_PARAM,
+  MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET,
   MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
 } from '../../../mocks/TestSuite.mock';
 import { getTestDefinitionById } from '../../../rest/testAPI';
@@ -47,7 +49,43 @@ jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
   );
 });
 jest.mock('./components/ParameterForm', () => {
-  return jest.fn().mockImplementation(() => <div>ParameterForm.component</div>);
+  const { Form } = require('antd');
+
+  function ParameterFormMock({
+    definition,
+  }: Readonly<{
+    definition?: {
+      parameterDefinition?: Array<{ name: string; dataType: string }>;
+    };
+  }>) {
+    let params: Record<string, unknown> = {};
+
+    try {
+      const form = Form.useFormInstance();
+      params = form.getFieldValue('params') ?? {};
+    } catch {
+      // no form context
+    }
+
+    const booleanParams = (definition?.parameterDefinition ?? []).filter(
+      (param) => param.dataType === 'BOOLEAN'
+    );
+
+    return (
+      <div>
+        ParameterForm.component
+        {booleanParams.map((param) => (
+          <button
+            aria-checked={params[param.name] ? 'true' : 'false'}
+            key={param.name}
+            role="switch"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return jest.fn().mockImplementation(ParameterFormMock);
 });
 jest.mock('../../../pages/TasksPage/shared/TagSuggestion', () =>
   jest.fn().mockImplementation(({ children, ...props }) => (
@@ -602,5 +640,69 @@ describe('EditTestCaseModal Component', () => {
 
     // Should work normally without tier tags
     expect(mockProps.onUpdate).toHaveBeenCalled();
+  });
+
+  it('should convert boolean parameter string "false" to boolean false', async () => {
+    (getTestDefinitionById as jest.Mock).mockResolvedValue(
+      MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET
+    );
+
+    const testCaseWithBooleanFalse = {
+      ...MOCK_TEST_CASE_WITH_BOOLEAN_PARAM,
+      parameterValues: [
+        { name: 'allowedValues', value: '["active","inactive"]' },
+        { name: 'matchEnum', value: 'false' },
+      ],
+    };
+
+    render(
+      <EditTestCaseModal {...mockProps} testCase={testCaseWithBooleanFalse} />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    const switchElement = await waitFor(() => {
+      const el = document.querySelector('button[role="switch"]');
+
+      expect(el).toBeInTheDocument();
+
+      return el as HTMLButtonElement;
+    });
+
+    expect(switchElement.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('should convert boolean parameter string "true" to boolean true', async () => {
+    (getTestDefinitionById as jest.Mock).mockResolvedValue(
+      MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET
+    );
+
+    const testCaseWithBooleanTrue = {
+      ...MOCK_TEST_CASE_WITH_BOOLEAN_PARAM,
+      parameterValues: [
+        { name: 'allowedValues', value: '["active","inactive"]' },
+        { name: 'matchEnum', value: 'true' },
+      ],
+    };
+
+    render(
+      <EditTestCaseModal {...mockProps} testCase={testCaseWithBooleanTrue} />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    const switchElement = await waitFor(() => {
+      const el = document.querySelector('button[role="switch"]');
+
+      expect(el).toBeInTheDocument();
+
+      return el as HTMLButtonElement;
+    });
+
+    expect(switchElement.getAttribute('aria-checked')).toBe('true');
   });
 });

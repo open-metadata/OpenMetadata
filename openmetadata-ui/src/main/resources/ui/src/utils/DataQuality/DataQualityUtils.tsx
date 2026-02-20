@@ -19,6 +19,7 @@ import {
   lowerCase,
   omit,
   omitBy,
+  parseInt,
   startCase,
   uniqBy,
 } from 'lodash';
@@ -547,4 +548,15 @@ export const aggregateTestResultsByEntity = (
     ...entities,
     total: overallTotal,
   };
+};
+
+/**
+ * Extracts the service type from a table entity for test definition filtering
+ * @param table - The table entity
+ * @returns The service type string or undefined if not available
+ */
+export const getServiceTypeForTestDefinition = (
+  table?: Table
+): string | undefined => {
+  return table?.serviceType;
 };

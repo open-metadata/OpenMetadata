@@ -16,10 +16,10 @@
     <description>Model Context Protocol implementation for OpenMetadata</description>
     
     <properties>
-        <assertj-core.version>3.26.3</assertj-core.version>
+        <assertj-core.version>3.27.7</assertj-core.version>
         <okhttp.version>4.12.0</okhttp.version>
         <awaitility.version>4.2.2</awaitility.version>
-        <testcontainers.version>1.20.4</testcontainers.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
         <jetty.version>12.1.1</jetty.version>
     </properties>
     
@@ -207,12 +207,43 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>unpack-service-test-resources</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.open-metadata</groupId>
+                                    <artifactId>openmetadata-service</artifactId>
+                                    <version>${project.parent.version}</version>
+                                    <type>jar</type>
+                                    <classifier>tests</classifier>
+                                    <outputDirectory>${project.build.directory}/test-classes</outputDirectory>
+                                    <includes>db/**,openmetadata-secure-test.yaml</includes>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <includes>
+                        <include>org/openmetadata/mcp/**/*.java</include>
+                    </includes>
+                    <excludedGroups>load</excludedGroups>
+                    <reuseForks>false</reuseForks>
                     <systemPropertyVariables>
                         <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
                         <jdbcContainerImage>mysql:8</jdbcContainerImage>
-                        <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
+                        <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</elasticSearchContainerClassName>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

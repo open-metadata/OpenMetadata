@@ -11,12 +11,15 @@
 
 """Test SQA custom types are correctly maped"""
 
+import json
 from unittest import TestCase
+from unittest.mock import MagicMock
 
+import pytest
 from sqlalchemy import TEXT, Column, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base
 
-from metadata.profiler.orm.types.bytea_to_string import ByteaToHex
+from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 
 Base = declarative_base()
 
@@ -29,7 +32,7 @@ class User(Base):
     nickname = Column(String(256))
     comments = Column(TEXT)
     age = Column(Integer)
-    config = Column(ByteaToHex)
+    config = Column(HexByteString)
 
 
 class TestCustomTypes(TestCase):
@@ -73,10 +76,48 @@ class TestCustomTypes(TestCase):
             cls.session.commit()
 
     def test_bytea_to_hex(self):
-        """test ByteaToHex correctly returns an hex from a memoryview value"""
+        """test HexByteString correctly returns a string from a memoryview value"""
         assert isinstance(self.session.query(User.config).first().config, str)
 
     @classmethod
     def tearDownClass(cls) -> None:
         User.__table__.drop(bind=cls.engine)
         return super().tearDownClass()
+
+
+MOCK_DIALECT = MagicMock()
+
+
+class TestHexByteStringResultIsJsonSerializable:
+    """Ensure HexByteString output is safe for PostgreSQL jsonb storage."""
+
+    converter = HexByteString()
+
+    @pytest.mark.parametrize(
+        "data",
+        [
+            b"simple ascii",
+            b"null\x00byte",
+            b"\x00\x00\x00",
+            b"\x89PNG\r\n\x1a\n\x00\x00",
+            bytes(range(256)),
+            b"\xff\xfe\xfd\xfc",
+            memoryview(b"\x00binary\x00data\x00"),
+            bytearray(b"\x00test\x00"),
+        ],
+        ids=[
+            "ascii",
+            "embedded_null_byte",
+            "only_null_bytes",
+            "png_header",
+            "all_byte_values",
+            "high_bytes",
+            "memoryview_with_nulls",
+            "bytearray_with_nulls",
+        ],
+    )
+    def test_result_is_json_safe(self, data):
+        result = self.converter.process_result_value(data, MOCK_DIALECT)
+        assert isinstance(result, str)
+        assert "\x00" not in result
+        json.dumps(result)

@@ -18,6 +18,7 @@ import sys
 import unittest
 from datetime import date, datetime
 from unittest import TestCase
+from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -113,20 +114,21 @@ class DeltaLakeUnitTest(TestCase):
     Add method validations from Deltalake ingestion
     """
 
-    config: OpenMetadataWorkflowConfig = OpenMetadataWorkflowConfig.model_validate(
-        MOCK_DELTA_CONFIG
-    )
-    delta: DeltalakeSource = DeltalakeSource.create(
-        MOCK_DELTA_CONFIG["source"],
-        OpenMetadata(config.workflowConfig.openMetadataServerConfig),
-    )
-    spark = delta.client._spark
-
     @classmethod
     def setUpClass(cls) -> None:
         """
         Prepare the SparkSession and metastore
         """
+        with patch(
+            "metadata.ingestion.source.database.deltalake.metadata.DeltalakeSource.test_connection"
+        ):
+            config = OpenMetadataWorkflowConfig.model_validate(MOCK_DELTA_CONFIG)
+            cls.delta = DeltalakeSource.create(
+                MOCK_DELTA_CONFIG["source"],
+                OpenMetadata(config.workflowConfig.openMetadataServerConfig),
+            )
+        cls.spark = cls.delta.client._spark
+
         df = cls.spark.createDataFrame(
             [
                 (1, 2.0, "string1", date(2000, 1, 1), datetime(2000, 1, 1, 12, 0)),

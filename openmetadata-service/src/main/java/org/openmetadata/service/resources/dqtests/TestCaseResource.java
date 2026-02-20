@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
@@ -540,15 +541,23 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
-    // VIEW_TESTS
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
+    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
     return getInternal(
-        uriInfo, securityContext, id, fields, include, operationContext, resourceContext);
+        uriInfo, securityContext, id, fields, relationIncludes, operationContext, resourceContext);
   }
 
   @GET
@@ -585,15 +594,23 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
-    // VIEW_TESTS
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
+    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
     return getByNameInternal(
-        uriInfo, securityContext, fqn, fields, include, operationContext, resourceContext);
+        uriInfo, securityContext, fqn, fields, relationIncludes, operationContext, resourceContext);
   }
 
   @GET
@@ -1481,5 +1498,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             authRequests);
 
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
+  }
+
+  @Override
+  protected void processChangeEventForBulkImport(
+      EntityRepository<EntityInterface> versioningRepo,
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      CsvImportResult result) {
+    // No-op: change events for affected test suites are emitted
+    // directly from TestCaseCsv.createEntity() where we have
+    // the context of which test suites were touched
+    // this allows us to process changes events when performing
+    // bulk upload at the obs tab level where we have no parent test suites
   }
 }

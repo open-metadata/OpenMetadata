@@ -30,4 +30,5 @@ export enum SidebarItem {
   LOGOUT = 'logout',
   METRICS = 'metrics',
   LINEAGE = 'lineage',
+  COLUMN_BULK_OPERATIONS = 'column-bulk-operations',
 }

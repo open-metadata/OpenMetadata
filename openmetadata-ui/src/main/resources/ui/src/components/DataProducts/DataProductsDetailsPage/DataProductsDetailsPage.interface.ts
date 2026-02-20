@@ -26,4 +26,5 @@ export interface DataProductsDetailsPageProps {
 export enum DataProductTabs {
   DOCUMENTATION = 'documentation',
   ASSETS = 'assets',
+  CONTRACT = 'contract',
 }

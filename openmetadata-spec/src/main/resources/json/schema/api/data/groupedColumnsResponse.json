@@ -1,0 +1,86 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/groupedColumnsResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GroupedColumnsResponse",
+  "description": "Response containing columns grouped by name with occurrence information.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.GroupedColumnsResponse",
+  "properties": {
+    "columnName": {
+      "description": "Name of the column being grouped.",
+      "type": "string"
+    },
+    "occurrences": {
+      "description": "List of column occurrences across different entities.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/columnOccurrence"
+      }
+    },
+    "totalCount": {
+      "description": "Total number of occurrences for this column name.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": ["columnName", "occurrences", "totalCount"],
+  "definitions": {
+    "columnOccurrence": {
+      "javaType": "org.openmetadata.schema.api.data.ColumnOccurrence",
+      "description": "Individual column occurrence with entity details.",
+      "type": "object",
+      "properties": {
+        "columnFQN": {
+          "description": "Fully qualified name of the column.",
+          "type": "string"
+        },
+        "entityType": {
+          "description": "Type of entity containing the column (table or dashboardDataModel).",
+          "type": "string"
+        },
+        "entityFQN": {
+          "description": "Fully qualified name of the parent entity.",
+          "type": "string"
+        },
+        "entityDisplayName": {
+          "description": "Display name of the parent entity.",
+          "type": "string"
+        },
+        "serviceName": {
+          "description": "Name of the service.",
+          "type": "string"
+        },
+        "databaseName": {
+          "description": "Name of the database (if applicable).",
+          "type": "string"
+        },
+        "schemaName": {
+          "description": "Name of the schema (if applicable).",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Display name of the column.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of the column.",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "tags": {
+          "description": "Tags and glossary terms associated with the column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          }
+        },
+        "dataType": {
+          "description": "Data type of the column.",
+          "type": "string"
+        }
+      },
+      "required": ["columnFQN", "entityType", "entityFQN"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations } from '../../interface/search.interface';
 import { ExploreQuickFilterField } from './ExplorePage.interface';
 
 export interface ExploreQuickFiltersProps {
-  index: SearchIndex;
+  index: SearchIndex | SearchIndex[];
   fields: Array<ExploreQuickFilterField>;
   aggregations?: Aggregations;
   onFieldValueSelect: (field: ExploreQuickFilterField) => void;
@@ -29,4 +30,5 @@ export interface ExploreQuickFiltersProps {
   defaultQueryFilter?: Record<string, unknown>;
   showSelectedCounts?: boolean; // flag to show counts instead of labels for selected filters
   optionPageSize?: number;
+  additionalActions?: ReactNode;
 }

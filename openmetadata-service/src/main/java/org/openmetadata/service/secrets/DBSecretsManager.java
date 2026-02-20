@@ -23,9 +23,10 @@ public class DBSecretsManager extends SecretsManager {
     super(secretsManagerProvider, secretsConfig);
   }
 
-  public static DBSecretsManager getInstance(SecretsConfig secretsConfig) {
+  public static DBSecretsManager getInstance(
+      SecretsManagerProvider provider, SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new DBSecretsManager(SecretsManagerProvider.DB, secretsConfig);
+      instance = new DBSecretsManager(provider, secretsConfig);
     }
     return instance;
   }
@@ -42,5 +43,12 @@ public class DBSecretsManager extends SecretsManager {
   @Override
   String getSecret(String secretName) {
     return secretName;
+  }
+
+  @Override
+  public Boolean isSecret(String string) {
+    // DB SM stores secrets directly in the database (Fernet-encrypted), not in external vaults.
+    // Values starting with "secret:" are not external references - they're just regular passwords.
+    return false;
   }
 }

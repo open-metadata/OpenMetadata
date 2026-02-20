@@ -64,7 +64,8 @@ const insertPluginItem = (
 
 export const mergePluginSidebarItems = (
   baseItems: LeftSidebarItem[],
-  pluginItems: Array<LeftSidebarItemExample>
+  pluginItems: Array<LeftSidebarItemExample>,
+  navigationItems?: NavigationItem[]
 ): LeftSidebarItem[] => {
   if (isEmpty(pluginItems)) {
     return baseItems;
@@ -73,7 +74,11 @@ export const mergePluginSidebarItems = (
   const sortedPluginItems = sortPluginItemsByIndex(pluginItems);
   const mergedItems = [...baseItems];
 
-  sortedPluginItems.forEach((item) => insertPluginItem(mergedItems, item));
+  sortedPluginItems.forEach((item) => {
+    const navData = navigationItems?.find((i) => i.id === item.key);
+
+    !navData?.isHidden && insertPluginItem(mergedItems, item);
+  });
 
   return mergedItems;
 };
@@ -164,7 +169,7 @@ export const getTreeDataForNavigationItems = (
 ): TreeDataNode[] => {
   const sidebarItemsWithPlugins = getSidebarItemsWithPlugins(plugins);
 
-  if (navigationItems === null) {
+  if (navigationItems === null || isEmpty(navigationItems)) {
     return sidebarItemsWithPlugins.map(convertSidebarItemToTreeNode);
   }
 
@@ -199,9 +204,10 @@ export const getHiddenKeysFromNavigationItems = (
   plugins?: AppPlugin[]
 ): string[] => {
   const sidebarItemsWithPlugins = getSidebarItemsWithPlugins(plugins);
-  const navigationMap = navigationItems
-    ? createNavigationMap(navigationItems)
-    : null;
+  const navigationMap =
+    navigationItems && !isEmpty(navigationItems)
+      ? createNavigationMap(navigationItems)
+      : null;
 
   return sidebarItemsWithPlugins.flatMap((item) =>
     collectHiddenKeys(item, navigationMap)
@@ -249,7 +255,7 @@ export const filterHiddenNavigationItems = (
   if (plugins?.length) {
     const pluginItems = extractPluginSidebarItems(plugins);
 
-    return mergePluginSidebarItems(filteredItems, pluginItems);
+    return mergePluginSidebarItems(filteredItems, pluginItems, navigationItems);
   }
 
   return filteredItems;

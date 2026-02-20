@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test } from '../../support/fixtures/userPages';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import { test } from '../../support/fixtures/userPages';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
@@ -33,6 +33,7 @@ const propertiesList = [
   'Sql Query',
   'Time Interval',
   'Timestamp',
+  'Hyperlink',
 ];
 
 const TABLE_COLUMN_ENTITY_NAME = 'tableColumn';
@@ -49,27 +50,19 @@ test.describe('Custom properties without custom property config', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await adminTestEntity.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach('Visit Home Page', async ({ page }) => {
     await redirectToHomePage(page);
   });
 
   propertiesList.forEach((property) => {
     test.describe(`Add update and delete ${property} custom properties`, () => {
-      test.slow(true);
       Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-        const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
-
         test(`Add ${property} custom property for ${entity.name}`, async ({
           page,
         }) => {
-          test.slow(true);
-
+          // Using Date.now() to generate property names in a way that new property will always be
+          // added after existing properties to avoid conflicts due to parallel test executions
+          const propertyName = `pwcp${Date.now()}test${entity.name}`;
           await settingClick(
             page,
             entity.entityApiType as SettingOptionsType,
@@ -88,7 +81,8 @@ test.describe('Custom properties without custom property config', () => {
           await verifyCustomPropertyInAdvancedSearch(
             page,
             propertyName.toUpperCase(), // displayName is in uppercase
-            entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
+            entity.name.charAt(0).toUpperCase() + entity.name.slice(1),
+            property
           );
 
           if (entity.name === TABLE_COLUMN_ENTITY_NAME) {

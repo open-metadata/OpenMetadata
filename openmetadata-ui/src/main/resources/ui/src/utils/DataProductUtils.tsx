@@ -26,6 +26,7 @@ import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichT
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { DataProductDomainWidget } from '../components/DataProducts/DataProductDomainWidget/DataProductDomainWidget';
 import { InputOutputPortsTab } from '../components/DataProducts/InputOutputPortsTab';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
@@ -43,6 +44,7 @@ import { Operation } from '../generated/entity/policies/policy';
 import { PageType } from '../generated/system/ui/page';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   convertDataProductsToEntityReferences as convertDataProductsToEntityReferencesUtil,
   convertEntityReferencesToDataProducts as convertEntityReferencesToDataProductsUtil,
@@ -193,6 +195,7 @@ export const getDataProductDetailTabs = ({
                   wrapInCard: false,
                   children: (
                     <InputOutputPortsTab
+                      assetCount={assetCount}
                       dataProduct={dataProduct}
                       dataProductFqn={dataProduct.fullyQualifiedName ?? ''}
                       permissions={dataProductPermission}
@@ -279,6 +282,16 @@ export const getDataProductDetailTabs = ({
               />
             ),
           },
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.CONTRACT}
+                name={labelMap?.[EntityTabs.CONTRACT] ?? t('label.contract')}
+              />
+            ),
+            key: EntityTabs.CONTRACT,
+            children: <ContractTab />,
+          },
         ]),
     {
       label: (
@@ -341,4 +354,16 @@ export const convertEntityReferencesToDataProducts = (
   refs: EntityReference[]
 ): DataProduct[] => {
   return convertEntityReferencesToDataProductsUtil(refs);
+};
+
+export const getQueryFilterForDataProductPorts = (
+  dataProductFqn: string
+): QueryFilterInterface => {
+  return {
+    query: {
+      bool: {
+        must: [{ term: { 'dataProducts.fullyQualifiedName': dataProductFqn } }],
+      },
+    },
+  };
 };

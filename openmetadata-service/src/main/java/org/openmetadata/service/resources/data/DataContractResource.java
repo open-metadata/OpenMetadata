@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.data;
 import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -50,11 +51,12 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
-import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -92,6 +94,11 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public static final String COLLECTION_PATH = "/v1/dataContracts/";
   static final String FIELDS = "owners,reviewers,extension";
   static final String EXPORT_FIELDS = "owners,reviewers,extension,schema,sla,security";
+
+  private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+  private static final ObjectMapper YAML_MAPPER =
+      new ObjectMapper(new YAMLFactory())
+          .setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
 
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
@@ -280,12 +287,13 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   @Path("/entity")
   @Operation(
       operationId = "getDataContractByEntityId",
-      summary = "Get a data contract by its related Entity ID",
-      description = "Get a data contract by its related Entity ID.",
+      summary = "Get the effective data contract for an entity",
+      description =
+          "Get the effective data contract for an entity, including inherited contract properties from its data product if applicable.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The data contract",
+            description = "The effective data contract (may include inherited properties)",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -314,9 +322,10 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
         getResourceContextById(entityId));
-    DataContract dataContract =
-        repository.loadEntityDataContract(
-            new EntityReference().withId(entityId).withType(entityType));
+
+    EntityInterface entity = Entity.getEntity(entityType, entityId, "*", Include.NON_DELETED);
+    DataContract dataContract = repository.getEffectiveDataContract(entity);
+
     if (dataContract == null) {
       throw EntityNotFoundException.byMessage(
           String.format("Data contract for entity %s is not found", entityId));
@@ -422,7 +431,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response createFromYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ObjectMapper yamlMapper = YAML_MAPPER;
       CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
           getDataContract(create, securityContext.getUserPrincipal().getName());
@@ -504,7 +513,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response createOrUpdateFromYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ObjectMapper yamlMapper = YAML_MAPPER;
       CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
           getDataContract(create, securityContext.getUserPrincipal().getName());
@@ -872,7 +881,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "validateDataContract",
       summary = "Validate a data contract",
       description =
-          "Execute on-demand validation of a data contract including semantic rules and quality tests.",
+          "Execute on-demand validation of a data contract including semantic rules, quality tests, and inherited contract properties from data products.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -896,7 +905,85 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    RestUtil.PutResponse<DataContractResult> result = repository.validateContract(dataContract);
+    // Get the effective contract (with inherited properties from data products) for validation
+    EntityInterface entity =
+        Entity.getEntity(
+            dataContract.getEntity().getType(),
+            dataContract.getEntity().getId(),
+            "*",
+            Include.NON_DELETED);
+    DataContract effectiveContract = repository.getEffectiveDataContract(entity);
+
+    // Use the effective contract for validation to include inherited semantics
+    RestUtil.PutResponse<DataContractResult> result =
+        repository.validateContract(effectiveContract != null ? effectiveContract : dataContract);
+    return result.toResponse();
+  }
+
+  @POST
+  @Path("/entity/validate")
+  @Operation(
+      operationId = "validateDataContractByEntityId",
+      summary = "Validate a data contract for an entity",
+      description =
+          "Execute on-demand validation of a data contract for an entity. If the entity only has "
+              + "an inherited contract from a Data Product, an empty contract will be materialized "
+              + "for the entity to store validation results.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContractResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity not found or no contract available")
+      })
+  public Response validateContractByEntityId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ID of the entity", schema = @Schema(type = "UUID"))
+          @QueryParam("entityId")
+          UUID entityId,
+      @Parameter(description = "Type of the entity", schema = @Schema(type = "string"))
+          @QueryParam("entityType")
+          String entityType) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+        getResourceContextById(entityId));
+
+    EntityInterface entity = Entity.getEntity(entityType, entityId, "*", Include.NON_DELETED);
+
+    // Get the entity's direct contract (if exists)
+    DataContract directContract = repository.getEntityDataContractSafely(entity);
+
+    // Get the effective contract (with inherited properties)
+    DataContract effectiveContract = repository.getEffectiveDataContract(entity);
+
+    if (effectiveContract == null) {
+      throw EntityNotFoundException.byMessage(
+          String.format("No data contract found for entity %s", entityId));
+    }
+
+    // If entity has no direct contract but has an inherited one, materialize an empty contract
+    DataContract contractForValidation;
+    if (directContract == null && Boolean.TRUE.equals(effectiveContract.getInherited())) {
+      // Materialize an empty contract for this entity to store validation results
+      // Use the Data Product contract name as prefix for the new contract name
+      contractForValidation =
+          repository.materializeInheritedContract(
+              entity, effectiveContract.getName(), securityContext.getUserPrincipal().getName());
+    } else {
+      contractForValidation = directContract != null ? directContract : effectiveContract;
+    }
+
+    // Validate using the effective contract (to include inherited rules)
+    // but store results against the entity's own contract
+    RestUtil.PutResponse<DataContractResult> result =
+        repository.validateContractWithEffective(contractForValidation, effectiveContract);
     return result.toResponse();
   }
 
@@ -974,10 +1061,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         getInternal(uriInfo, securityContext, id, fields, Include.NON_DELETED);
     ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      yamlMapper.setSerializationInclusion(
-          com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
-      String yamlContent = yamlMapper.writeValueAsString(odcs);
+      String yamlContent = YAML_MAPPER.writeValueAsString(odcs);
       return Response.ok(yamlContent, "application/yaml").build();
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to convert to YAML: " + e.getMessage(), e);
@@ -1053,10 +1137,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         getByNameInternal(uriInfo, securityContext, fqn, fields, Include.NON_DELETED);
     ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      yamlMapper.setSerializationInclusion(
-          com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
-      String yamlContent = yamlMapper.writeValueAsString(odcs);
+      String yamlContent = YAML_MAPPER.writeValueAsString(odcs);
       return Response.ok(yamlContent, "application/yaml").build();
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to convert to YAML: " + e.getMessage(), e);
@@ -1101,12 +1182,20 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string"))
           @QueryParam("objectName")
           String objectName,
-      @Valid ODCSDataContract odcs) {
-    EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-    DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
-    dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-    dataContract.setUpdatedAt(System.currentTimeMillis());
-    return create(uriInfo, securityContext, dataContract);
+      String jsonContent) {
+    try {
+      ObjectMapper jsonMapper = JSON_MAPPER;
+      JsonNode rootNode = jsonMapper.readTree(jsonContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = jsonMapper.treeToValue(rootNode, ODCSDataContract.class);
+      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
+      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
+      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
+      dataContract.setUpdatedAt(System.currentTimeMillis());
+      return create(uriInfo, securityContext, dataContract);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid ODCS JSON content: " + e.getMessage(), e);
+    }
   }
 
   @POST
@@ -1149,8 +1238,10 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           String objectName,
       String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+      ObjectMapper yamlMapper = YAML_MAPPER;
+      JsonNode rootNode = yamlMapper.readTree(yamlContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
       DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
       dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
@@ -1183,8 +1274,10 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response parseODCSYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+      ObjectMapper yamlMapper = YAML_MAPPER;
+      JsonNode rootNode = yamlMapper.readTree(yamlContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
 
       ODCSParseResult result = new ODCSParseResult();
       result.setName(odcs.getName());
@@ -1200,14 +1293,13 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   }
 
   @POST
-  @Path("/odcs/validate/yaml")
-  @Consumes({"application/yaml", "text/yaml"})
+  @Path("/validate")
   @Operation(
-      operationId = "validateODCSYaml",
-      summary = "Validate ODCS YAML without importing",
+      operationId = "validateDataContractRequest",
+      summary = "Validate data contract request without creating",
       description =
-          "Validate an ODCS YAML contract against the target entity without creating the contract. "
-              + "Returns validation results including any schema field mismatches.",
+          "Validate a CreateDataContract request against the target entity without creating the contract. "
+              + "Returns comprehensive validation results including constraint errors and schema field mismatches.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1215,7 +1307,70 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SchemaValidation.class))),
+                    schema = @Schema(implementation = ContractValidation.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request")
+      })
+  public Response validateDataContractRequest(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      CreateDataContract createRequest) {
+    DataContract dataContract = DataContractMapper.createEntity(createRequest, "validation");
+    ContractValidation validation = repository.validateContractWithoutThrowing(dataContract);
+    return Response.ok(validation).build();
+  }
+
+  @POST
+  @Path("/validate/yaml")
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "validateDataContractRequestYaml",
+      summary = "Validate data contract request from YAML without creating",
+      description =
+          "Validate a CreateDataContract YAML request against the target entity without creating the contract. "
+              + "Returns comprehensive validation results including entity errors, constraint errors, "
+              + "and schema field mismatches.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContractValidation.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid YAML content")
+      })
+  public Response validateDataContractRequestYaml(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
+    try {
+      ObjectMapper yamlMapper = YAML_MAPPER;
+      CreateDataContract createRequest =
+          yamlMapper.readValue(yamlContent, CreateDataContract.class);
+      DataContract dataContract = DataContractMapper.createEntity(createRequest, "validation");
+      ContractValidation validation = repository.validateContractWithoutThrowing(dataContract);
+      return Response.ok(validation).build();
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid YAML content: " + e.getMessage(), e);
+    }
+  }
+
+  @POST
+  @Path("/odcs/validate/yaml")
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "validateODCSYaml",
+      summary = "Validate ODCS YAML without importing",
+      description =
+          "Validate an ODCS YAML contract against the target entity without creating the contract. "
+              + "Returns comprehensive validation results including entity errors, constraint errors, "
+              + "and schema field mismatches.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContractValidation.class))),
         @ApiResponse(responseCode = "400", description = "Invalid YAML content")
       })
   public Response validateODCSYaml(
@@ -1240,12 +1395,14 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           String objectName,
       String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+      ObjectMapper yamlMapper = YAML_MAPPER;
+      JsonNode rootNode = yamlMapper.readTree(yamlContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
       DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
 
-      SchemaValidation validation = repository.validateContractSchema(dataContract, entityRef);
+      ContractValidation validation = repository.validateContractWithoutThrowing(dataContract);
       return Response.ok(validation).build();
     } catch (JsonProcessingException e) {
       throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
@@ -1302,16 +1459,24 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string"))
           @QueryParam("objectName")
           String objectName,
-      @Valid ODCSDataContract odcs) {
-    EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-    DataContract imported = ODCSConverter.fromODCS(odcs, entityRef, objectName);
-    DataContract dataContract =
-        "replace".equalsIgnoreCase(mode)
-            ? applyFullReplace(entityRef, imported)
-            : applySmartMerge(entityRef, imported);
-    dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-    dataContract.setUpdatedAt(System.currentTimeMillis());
-    return createOrUpdate(uriInfo, securityContext, dataContract);
+      String jsonContent) {
+    try {
+      ObjectMapper jsonMapper = JSON_MAPPER;
+      JsonNode rootNode = jsonMapper.readTree(jsonContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = jsonMapper.treeToValue(rootNode, ODCSDataContract.class);
+      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
+      DataContract imported = ODCSConverter.fromODCS(odcs, entityRef, objectName);
+      DataContract dataContract =
+          "replace".equalsIgnoreCase(mode)
+              ? applyFullReplace(entityRef, imported)
+              : applySmartMerge(entityRef, imported);
+      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
+      dataContract.setUpdatedAt(System.currentTimeMillis());
+      return createOrUpdate(uriInfo, securityContext, dataContract);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid ODCS JSON content: " + e.getMessage(), e);
+    }
   }
 
   @PUT
@@ -1366,8 +1531,10 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           String objectName,
       String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+      ObjectMapper yamlMapper = YAML_MAPPER;
+      JsonNode rootNode = yamlMapper.readTree(yamlContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
       DataContract imported = ODCSConverter.fromODCS(odcs, entityRef, objectName);
       DataContract dataContract =

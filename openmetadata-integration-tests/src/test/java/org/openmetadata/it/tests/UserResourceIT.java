@@ -117,6 +117,30 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     return sanitized + "@test.openmetadata.org";
   }
 
+  /**
+   * Helper to find a user in paginated results with a given filter.
+   * Paginates through all pages until the user is found or no more pages exist.
+   */
+  private boolean findUserInPaginatedResults(UUID userId, String filterKey, String filterValue) {
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.addFilter(filterKey, filterValue);
+
+    ListResponse<User> page = listEntities(params);
+    while (page != null && page.getData() != null) {
+      if (page.getData().stream().anyMatch(u -> u.getId().equals(userId))) {
+        return true;
+      }
+      String afterCursor = page.getPaging() != null ? page.getPaging().getAfter() : null;
+      if (afterCursor == null) {
+        break;
+      }
+      params.setAfter(afterCursor);
+      page = listEntities(params);
+    }
+    return false;
+  }
+
   @Override
   protected CreateUser createMinimalRequest(TestNamespace ns) {
     String name = ns.prefix("user");
@@ -626,9 +650,164 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     ListResponse<User> nonAdminUsers = listEntities(nonAdminParams);
 
     assertNotNull(nonAdminUsers.getData());
+
+    // Diagnostic: Check if user exists by fetching directly
+    User fetchedUser = getEntity(nonAdminUser.getId().toString());
+    assertNotNull(fetchedUser, "User should exist when fetched by ID");
+    assertFalse(
+        fetchedUser.getIsAdmin(),
+        String.format(
+            "Fetched user isAdmin should be false but was: %s", fetchedUser.getIsAdmin()));
+
+    // Diagnostic: Log pagination info
+    int pageCount = nonAdminUsers.getData().size();
+    boolean hasMore =
+        nonAdminUsers.getPaging() != null && nonAdminUsers.getPaging().getAfter() != null;
+
+    // Check if user is in first page
+    boolean foundInFirstPage =
+        nonAdminUsers.getData().stream().anyMatch(u -> u.getId().equals(nonAdminUser.getId()));
+
+    // If not found in first page and there are more pages, paginate to find it
+    boolean foundInAnyPage = foundInFirstPage;
+    int totalPages = 1;
+    String afterCursor = hasMore ? nonAdminUsers.getPaging().getAfter() : null;
+
+    while (!foundInAnyPage && afterCursor != null) {
+      totalPages++;
+      ListParams nextPageParams = new ListParams();
+      nextPageParams.setLimit(100);
+      nextPageParams.addFilter("isAdmin", "false");
+      nextPageParams.setAfter(afterCursor);
+      ListResponse<User> nextPage = listEntities(nextPageParams);
+
+      foundInAnyPage =
+          nextPage.getData().stream().anyMatch(u -> u.getId().equals(nonAdminUser.getId()));
+      afterCursor = nextPage.getPaging() != null ? nextPage.getPaging().getAfter() : null;
+    }
+
     assertTrue(
-        nonAdminUsers.getData().stream().anyMatch(u -> u.getId().equals(nonAdminUser.getId())),
-        "Non-admin user should be in filtered list");
+        foundInAnyPage,
+        String.format(
+            "Non-admin user should be in filtered list. "
+                + "User ID: %s, User name: %s, isAdmin from fetch: %s, "
+                + "First page size: %d, Has more pages: %s, Total pages searched: %d, "
+                + "Found in first page: %s",
+            nonAdminUser.getId(),
+            nonAdminUser.getName(),
+            fetchedUser.getIsAdmin(),
+            pageCount,
+            hasMore,
+            totalPages,
+            foundInFirstPage));
+  }
+
+  /**
+   * Test that reproduces pagination issue with isAdmin=false filter.
+   * Creates 101 non-admin users to ensure target user is pushed beyond first page.
+   * This test verifies that the filter works correctly across pagination boundaries.
+   */
+  @Test
+  void test_listUsersWithAdminFilter_paginationBoundary(TestNamespace ns) {
+    // First, check how many non-admin users already exist
+    ListParams countParams = new ListParams();
+    countParams.setLimit(1);
+    countParams.addFilter("isAdmin", "false");
+    ListResponse<User> initialCount = listEntities(countParams);
+    int existingNonAdminCount =
+        initialCount.getPaging() != null && initialCount.getPaging().getTotal() != null
+            ? initialCount.getPaging().getTotal()
+            : 0;
+
+    // Create 101 non-admin users with names that sort BEFORE our target alphabetically
+    // Using "aaa" prefix ensures they come first in alphabetical order
+    int usersToCreate = 101;
+    for (int i = 0; i < usersToCreate; i++) {
+      String name = ns.prefix(String.format("aaa_paginationUser_%03d", i));
+      CreateUser createRequest =
+          new CreateUser()
+              .withName(name)
+              .withEmail(toValidEmail(name))
+              .withIsAdmin(false)
+              .withDescription("User for pagination boundary test");
+      createEntity(createRequest);
+    }
+
+    // Create target user with name that sorts AFTER all the "aaa" users
+    String targetName = ns.prefix("zzz_targetUser");
+    CreateUser targetRequest =
+        new CreateUser()
+            .withName(targetName)
+            .withEmail(toValidEmail(targetName))
+            .withIsAdmin(false)
+            .withDescription("Target user that should be beyond first page");
+    User targetUser = createEntity(targetRequest);
+    assertFalse(targetUser.getIsAdmin(), "Target user should be non-admin");
+
+    // Verify target user exists and has correct isAdmin value
+    User fetchedTarget = getEntity(targetUser.getId().toString());
+    assertFalse(
+        fetchedTarget.getIsAdmin(),
+        String.format(
+            "Fetched target user isAdmin should be false but was: %s", fetchedTarget.getIsAdmin()));
+
+    // List with isAdmin=false filter and limit=100 (first page only)
+    ListParams firstPageParams = new ListParams();
+    firstPageParams.setLimit(100);
+    firstPageParams.addFilter("isAdmin", "false");
+    ListResponse<User> firstPage = listEntities(firstPageParams);
+
+    assertNotNull(firstPage.getData(), "First page data should not be null");
+
+    boolean foundInFirstPage =
+        firstPage.getData().stream().anyMatch(u -> u.getId().equals(targetUser.getId()));
+
+    // The target user may or may not be in first page depending on existing users
+    // The key assertion is that we can find it through pagination
+    boolean foundInAnyPage = foundInFirstPage;
+    int totalPagesSearched = 1;
+    String afterCursor = firstPage.getPaging() != null ? firstPage.getPaging().getAfter() : null;
+
+    while (!foundInAnyPage && afterCursor != null) {
+      totalPagesSearched++;
+      ListParams nextPageParams = new ListParams();
+      nextPageParams.setLimit(100);
+      nextPageParams.addFilter("isAdmin", "false");
+      nextPageParams.setAfter(afterCursor);
+      ListResponse<User> nextPage = listEntities(nextPageParams);
+
+      foundInAnyPage =
+          nextPage.getData().stream().anyMatch(u -> u.getId().equals(targetUser.getId()));
+      afterCursor = nextPage.getPaging() != null ? nextPage.getPaging().getAfter() : null;
+    }
+
+    // This is the key assertion - the user MUST be found when paginating
+    assertTrue(
+        foundInAnyPage,
+        String.format(
+            "Target non-admin user should be found via pagination. "
+                + "User ID: %s, User name: %s, "
+                + "Existing non-admin count before test: %d, "
+                + "Users created in test: %d, "
+                + "First page size: %d, "
+                + "Found in first page: %s, "
+                + "Total pages searched: %d, "
+                + "isAdmin from direct fetch: %s",
+            targetUser.getId(),
+            targetUser.getName(),
+            existingNonAdminCount,
+            usersToCreate,
+            firstPage.getData().size(),
+            foundInFirstPage,
+            totalPagesSearched,
+            fetchedTarget.getIsAdmin()));
+
+    // Additional diagnostic: if not found in first page, that's expected given we created 101 users
+    // But if there are many existing users, target might still be in first page
+    if (!foundInFirstPage && totalPagesSearched > 1) {
+      // This is the expected behavior - user was beyond first page but found via pagination
+      assertTrue(true, "User correctly found via pagination as expected");
+    }
   }
 
   @Test
@@ -672,15 +851,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
         botUsers.getData().stream().anyMatch(u -> u.getId().equals(botUser.getId())),
         "Bot user should be in filtered list");
 
-    // List with isBot=false filter
-    ListParams nonBotParams = new ListParams();
-    nonBotParams.setLimit(100);
-    nonBotParams.addFilter("isBot", "false");
-    ListResponse<User> nonBotUsers = listEntities(nonBotParams);
-
-    assertNotNull(nonBotUsers.getData());
+    // List with isBot=false filter using paginated search
     assertTrue(
-        nonBotUsers.getData().stream().anyMatch(u -> u.getId().equals(regularUser.getId())),
+        findUserInPaginatedResults(regularUser.getId(), "isBot", "false"),
         "Regular user should be in filtered list");
   }
 
@@ -707,17 +880,10 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withName(userName2)
             .withEmail(toValidEmail(userName2))
             .withDescription("User not in team for filter test");
-    User user2 = createEntity(request2);
+    createEntity(request2);
 
-    // List with team filter
-    ListParams teamParams = new ListParams();
-    teamParams.setLimit(100);
-    teamParams.addFilter("team", testTeam1().getName());
-    ListResponse<User> teamUsers = listEntities(teamParams);
-
-    assertNotNull(teamUsers.getData());
     assertTrue(
-        teamUsers.getData().stream().anyMatch(u -> u.getId().equals(user1.getId())),
+        findUserInPaginatedResults(user1.getId(), "team", testTeam1().getName()),
         "User in team should be in filtered list");
   }
 
@@ -1868,14 +2034,8 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withDescription("User not in domain");
     createEntity(request2);
 
-    ListParams params = new ListParams();
-    params.setLimit(100);
-    params.addFilter("domain", testDomain().getName());
-    ListResponse<User> domainUsers = listEntities(params);
-
-    assertNotNull(domainUsers.getData());
     assertTrue(
-        domainUsers.getData().stream().anyMatch(u -> u.getId().equals(user1.getId())),
+        findUserInPaginatedResults(user1.getId(), "domain", testDomain().getName()),
         "User in domain should be in filtered list");
   }
 

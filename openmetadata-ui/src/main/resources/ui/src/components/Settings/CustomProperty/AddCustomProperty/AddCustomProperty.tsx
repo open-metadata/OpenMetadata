@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, FormInstance, Row } from 'antd';
 import { Chip, Typography, useTheme } from '@mui/material';
+import { Button, Col, Form, FormInstance, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { ReactComponent as TableIcon } from '../../../../assets/svg/table-icon.svg';
+import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
 import MuiDrawer from '../../../common/MuiDrawer/MuiDrawer';
 
 import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
@@ -142,7 +142,6 @@ const AddCustomProperty = ({
     });
   }, [propertyTypes]);
 
-
   const {
     hasEnumConfig,
     hasFormatConfig,
@@ -237,12 +236,12 @@ const AddCustomProperty = ({
   const getAppliesToField = useCallback(() => {
     return (
       <Chip
-        icon={<TableIcon />}
+        icon={<ColumnIcon height={14} width={14} />}
         label={
           <Typography
             color={theme.palette.allShades.gray['700']}
             variant="body2">
-            {t('label.table')}
+            {t('label.table-column')}
           </Typography>
         }
         sx={{

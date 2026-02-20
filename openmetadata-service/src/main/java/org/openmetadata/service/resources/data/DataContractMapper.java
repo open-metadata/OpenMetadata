@@ -43,7 +43,12 @@ public class DataContractMapper {
             .withEffectiveFrom(create.getEffectiveFrom())
             .withEffectiveUntil(create.getEffectiveUntil())
             .withSourceUrl(create.getSourceUrl())
-            .withTermsOfUse(create.getTermsOfUse())
+            .withTermsOfUse(
+                create.getTermsOfUse() != null
+                    ? new org.openmetadata.schema.entity.data.TermsOfUse()
+                        .withContent(create.getTermsOfUse())
+                        .withInherited(false)
+                    : null)
             .withSecurity(create.getSecurity())
             .withSla(create.getSla())
             .withExtension(create.getExtension())

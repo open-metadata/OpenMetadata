@@ -74,7 +74,19 @@ public class WebsocketNotificationHandler {
     }
   }
 
-  public static void bulkAssetsOperationCompleteNotification(
+  public static void sendBulkAssetsOperationStartedNotification(
+      String jobId, SecurityContext securityContext) {
+    BulkAssetsOperationMessage message =
+        new BulkAssetsOperationMessage(jobId, "STARTED", null, null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendBulkAssetsOperationCompleteNotification(
       String jobId, SecurityContext securityContext, BulkOperationResult result) {
     BulkAssetsOperationMessage message =
         new BulkAssetsOperationMessage(jobId, "COMPLETED", result, null);
@@ -86,15 +98,43 @@ public class WebsocketNotificationHandler {
     }
   }
 
-  public static void bulkAssetsOperationFailedNotification(
+  public static void sendBulkAssetsOperationFailedNotification(
       String jobId, SecurityContext securityContext, String errorMessage) {
-    CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
+    BulkAssetsOperationMessage message =
+        new BulkAssetsOperationMessage(jobId, "FAILED", null, errorMessage);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
     if (userId != null) {
       WebSocketManager.getInstance()
           .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
     }
+  }
+
+  public static void sendBulkAssetsOperationProgressNotification(
+      String jobId,
+      SecurityContext securityContext,
+      long progress,
+      long total,
+      String progressMessage) {
+    BulkAssetsOperationMessage message =
+        new BulkAssetsOperationMessage(
+            jobId, "IN_PROGRESS", null, null, progress, total, progressMessage);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void bulkAssetsOperationCompleteNotification(
+      String jobId, SecurityContext securityContext, BulkOperationResult result) {
+    sendBulkAssetsOperationCompleteNotification(jobId, securityContext, result);
+  }
+
+  public static void bulkAssetsOperationFailedNotification(
+      String jobId, SecurityContext securityContext, String errorMessage) {
+    sendBulkAssetsOperationFailedNotification(jobId, securityContext, errorMessage);
   }
 
   private void handleNotifications(ContainerResponseContext responseContext) {
@@ -231,6 +271,18 @@ public class WebsocketNotificationHandler {
       String jobId, SecurityContext securityContext) {
     CSVImportMessage message = new CSVImportMessage(jobId, "STARTED", null, null);
     String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendCsvImportProgressNotification(
+      String jobId, SecurityContext securityContext, int progress, int total, String message) {
+    CSVImportMessage importMessage =
+        new CSVImportMessage(jobId, "IN_PROGRESS", null, null, progress, total, message);
+    String jsonMessage = JsonUtils.pojoToJson(importMessage);
     UUID userId = getUserIdFromSecurityContext(securityContext);
     if (userId != null) {
       WebSocketManager.getInstance()

@@ -32,6 +32,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   DEFAULT_RANGE_DATA,
+  DEFAULT_SELECTED_RANGE,
   TEST_CASE_STATUS_LABELS,
 } from '../../../../constants/profiler.constant';
 import { SIZE } from '../../../../enums/common.enum';
@@ -121,7 +122,7 @@ const DimensionalityTab = () => {
       );
 
       setDimensionData(response.data);
-    } catch (error) {
+    } catch {
       setDimensionData([]);
     } finally {
       setIsLoading(false);
@@ -370,6 +371,7 @@ const DimensionalityTab = () => {
           </Typography>
           <MuiDatePickerMenu
             showSelectedCustomRange
+            defaultDateRange={DEFAULT_SELECTED_RANGE}
             handleDateRangeChange={handleDateRangeChange}
             size="small"
           />

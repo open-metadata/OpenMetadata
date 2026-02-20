@@ -22,6 +22,7 @@ import {
   DATA_CONTRACT_SEMANTICS2,
   NEW_TABLE_TEST_CASE,
   ODCS_WITH_SLA_YAML,
+  VALID_OM_SIMPLE_YAML,
 } from '../../constant/dataContracts';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -51,7 +52,6 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-
 import {
   clickOutside,
   getApiContext,
@@ -64,6 +64,7 @@ import {
   deleteContract,
   exportContractYaml,
   importOdcsViaDropdown,
+  importOMViaDropdown,
   navigateToContractTab,
   openContractActionsDropdown,
   saveAndTriggerDataContractValidation,
@@ -80,11 +81,12 @@ import {
   assignGlossaryTerm,
   assignTag,
   assignTier,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
-import { merge } from 'lodash';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Define entities that support Data Contracts
 const entitiesWithDataContracts = [
@@ -120,9 +122,9 @@ const entitySupportsQuality = (entityType: string): boolean => {
   return entityType === 'Table';
 };
 
-test.describe('Data Contracts', () => {
+test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   const user = new UserClass();
-  test.slow(true)
+  test.slow(true);
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -178,14 +180,27 @@ test.describe('Data Contracts', () => {
           DATA_CONTRACT_DETAILS.description
         );
 
-        await page.getByTestId('select-owners').click();
-        await page.locator('.rc-virtual-list-holder-inner li').first().click();
+        // Add owner using created user to verify displayName is shown in UserTag
+        await addOwnerWithoutValidation({
+          page,
+          owner: user.responseData.displayName,
+          type: 'Users',
+          initiatorId: 'select-owners',
+        });
 
+        // Verify the UserTag shows the user's displayName (not name)
         await expect(page.getByTestId('user-tag')).toBeVisible();
+        await expect(
+          page.getByTestId('user-tag').getByText(user.responseData.displayName)
+        ).toBeVisible();
       });
 
       await test.step('Fill the Terms of Service Detail', async () => {
-        await page.getByRole('button', { name: 'Terms of Service' }).click();
+        // Scope to contract card to avoid conflicts with entity page tabs
+        const contractCard = page.getByTestId('add-contract-card');
+        await contractCard
+          .getByRole('tab', { name: 'Terms of Service' })
+          .click();
         await page.fill(
           '.om-block-editor .has-focus',
           DATA_CONTRACT_DETAILS.termsOfService
@@ -195,7 +210,9 @@ test.describe('Data Contracts', () => {
       // Schema selection step - only for entities with schema
       if (entitySupportsSchema(entityType)) {
         await test.step('Fill Contract Schema form', async () => {
-          await page.getByRole('button', { name: 'Schema' }).click();
+          // Scope to contract card to avoid conflicts with entity page tabs (e.g., Topic, ApiEndpoint)
+          const contractCard = page.getByTestId('add-contract-card');
+          await contractCard.getByRole('tab', { name: 'Schema' }).click();
 
           // Check if there are schema fields to select
           const hasSchemaFields = await page
@@ -216,7 +233,9 @@ test.describe('Data Contracts', () => {
       }
 
       await test.step('Fill first Contract Semantics form', async () => {
-        await page.getByRole('button', { name: 'Semantics' }).click();
+        // Scope to contract card to avoid conflicts with entity page tabs
+        const contractCard = page.getByTestId('add-contract-card');
+        await contractCard.getByRole('tab', { name: 'Semantics' }).click();
 
         await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
 
@@ -350,7 +369,6 @@ test.describe('Data Contracts', () => {
 
         await page.reload();
 
-        
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -454,7 +472,6 @@ test.describe('Data Contracts', () => {
 
             await expect(page.getByRole('dialog')).not.toBeVisible();
 
-            
             await page.waitForSelector('[data-testid="loader"]', {
               state: 'detached',
             });
@@ -628,8 +645,11 @@ test.describe('Data Contracts', () => {
           ).not.toBeChecked();
         }
 
-        // Move to Semantic Tab
-        await page.getByRole('tab', { name: 'Semantics' }).click();
+        // Move to Semantic Tab - scope to contract card to avoid conflicts with entity page tabs
+        await page
+          .getByTestId('add-contract-card')
+          .getByRole('tab', { name: 'Semantics' })
+          .click();
 
         await page.getByTestId('delete-condition-button').last().click();
 
@@ -659,9 +679,20 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Delete contract', async () => {
+        const contractRefreshResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts/entity') &&
+            response.request().method() === 'GET'
+        );
+
         await deleteContract(page, DATA_CONTRACT_DETAILS.name);
 
         await toastNotification(page, '"Contract" deleted successfully!');
+
+        await contractRefreshResponse;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -678,9 +709,58 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Delete imported contract', async () => {
+        const contractRefreshResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts/entity') &&
+            response.request().method() === 'GET'
+        );
+
         await deleteContract(page);
 
         await toastNotification(page, '"Contract" deleted successfully!');
+
+        await contractRefreshResponse;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+      });
+
+      await test.step('Import contract from OM YAML', async () => {
+        await importOMViaDropdown(
+          page,
+          VALID_OM_SIMPLE_YAML,
+          'om-contract.yaml'
+        );
+
+        await toastNotification(page, 'Contract imported successfully');
+
+        await expect(page.getByTestId('contract-title')).toBeVisible();
+
+        await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+      });
+
+      await test.step('Export OM YAML', async () => {
+        const filename = await exportContractYaml(page, 'native');
+        expect(filename).toBeTruthy();
+        await toastNotification(page, 'Contract exported successfully');
+      });
+
+      await test.step('Delete OM imported contract', async () => {
+        const contractRefreshResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts/entity') &&
+            response.request().method() === 'GET'
+        );
+
+        await deleteContract(page);
+
+        const response = await contractRefreshResponse;
+        expect(response.status()).toBe(404);
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       });
@@ -699,7 +779,6 @@ test.describe('Data Contracts', () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -914,7 +993,6 @@ test.describe('Data Contracts', () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -925,7 +1003,12 @@ test.describe('Data Contracts', () => {
 
         await toastNotification(page, '"Contract" deleted successfully!');
 
-        await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+        // Wait for loaders to disappear and verify page is ready
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+          timeout: 10000,
+        });
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
       });
     }
@@ -1084,7 +1167,12 @@ test.describe('Data Contracts', () => {
       'KnowledgePanel.Tags',
       testTag.responseData.fullyQualifiedName
     );
-    await assignGlossaryTerm(page, testGlossaryTerm.responseData);
+    await assignGlossaryTerm(
+      page,
+      testGlossaryTerm.responseData,
+      'Add',
+      EntityTypeEndpoint.Table
+    );
 
     await navigateToContractTab(page);
 
@@ -1094,7 +1182,6 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1257,7 +1344,12 @@ test.describe('Data Contracts', () => {
       'KnowledgePanel.Tags',
       testTag.responseData.fullyQualifiedName
     );
-    await assignGlossaryTerm(page, testGlossaryTerm.responseData);
+    await assignGlossaryTerm(
+      page,
+      testGlossaryTerm.responseData,
+      'Add',
+      EntityTypeEndpoint.Table
+    );
 
     await navigateToContractTab(page);
 
@@ -1267,7 +1359,6 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1369,7 +1460,6 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('add-contract-button').click();
 
-
     await expect(page.getByTestId('add-contract-menu')).toBeVisible();
     await page.getByTestId('create-contract-button').click();
 
@@ -1432,7 +1522,6 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1819,10 +1908,10 @@ test.describe('Data Contracts', () => {
 
       await page.getByTestId('add-contract-button').click();
 
-    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
-    await page.getByTestId('create-contract-button').click();
+      await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+      await page.getByTestId('create-contract-button').click();
 
-    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+      await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
       await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 
@@ -1864,7 +1953,8 @@ test.describe('Data Contracts', () => {
         await expect(
           page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
         ).toContainText(
-          `${table.columnsName[filter.index]} = ${filter.values[0]},${filter.values[1]
+          `${table.columnsName[filter.index]} = ${filter.values[0]},${
+            filter.values[1]
           }`
         );
       }
@@ -1942,7 +2032,8 @@ test.describe('Data Contracts', () => {
           await expect(
             page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
           ).toContainText(
-            `${table.columnsName[filter.index]} = ${filter.values[0]},${filter.values[1]
+            `${table.columnsName[filter.index]} = ${filter.values[0]},${
+              filter.values[1]
             },${filter.values[2]},${filter.values[3]}`
           );
         }
@@ -1997,7 +2088,6 @@ test.describe('Data Contracts', () => {
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-      
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -2133,29 +2223,27 @@ description:
         }
       );
 
-      await test.step(
-        'Import again via modal with replace mode',
-        async () => {
-          await page.getByTestId('manage-contract-actions').click();
+      await test.step('Import again via modal with replace mode', async () => {
+        await page.getByTestId('manage-contract-actions').click();
 
-          await page.waitForSelector('.contract-action-dropdown', {
-            state: 'visible',
-          });
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
 
-          await page.getByTestId('import-odcs-contract-button').click();
+        await page.getByTestId('import-odcs-contract-button').click();
 
-          // Modal should be visible
-          await page.getByTestId('import-contract-modal').waitFor();
+        // Modal should be visible
+        await page.getByTestId('import-contract-modal').waitFor();
 
-          // Upload a new ODCS file with different content
-          const dropzone = page.locator('.import-content-wrapper');
-          await dropzone.click();
+        // Upload a new ODCS file with different content
+        const dropzone = page.locator('.import-content-wrapper');
+        await dropzone.click();
 
-          const fileInput = page.getByTestId('file-upload-input');
-          await fileInput.setInputFiles({
-            name: 'replace.yaml',
-            mimeType: 'application/yaml',
-            buffer: Buffer.from(`apiVersion: v3.1.0
+        const fileInput = page.getByTestId('file-upload-input');
+        await fileInput.setInputFiles({
+          name: 'replace.yaml',
+          mimeType: 'application/yaml',
+          buffer: Buffer.from(`apiVersion: v3.1.0
 kind: DataContract
 id: replace-contract
 name: Replaced Contract
@@ -2164,37 +2252,35 @@ status: active
 description:
   purpose: Completely replaced via replace mode
 `),
-          });
+        });
 
-          await expect(
-            page.getByTestId('existing-contract-warning')
-          ).toBeVisible();
+        await expect(
+          page.getByTestId('existing-contract-warning')
+        ).toBeVisible();
 
-          // Select replace mode
-          const replaceRadio = page.locator('input[type="radio"][value="replace"]');
-          await expect(replaceRadio).toBeVisible();
-          await replaceRadio.click();
+        // Select replace mode
+        const replaceRadio = page.locator(
+          'input[type="radio"][value="replace"]'
+        );
+        await expect(replaceRadio).toBeVisible();
+        await replaceRadio.click();
 
-          const importResponse = page.waitForResponse(
-            '/api/v1/dataContracts/odcs/yaml**mode=replace**'
-          );
+        const importResponse = page.waitForResponse(
+          '/api/v1/dataContracts/odcs/yaml**mode=replace**'
+        );
 
-          await page.getByRole('button', { name: 'Import' }).click();
-          await importResponse;
+        await page.getByRole('button', { name: 'Import' }).click();
+        await importResponse;
 
-          await toastNotification(page, 'ODCS Contract imported successfully');
+        await toastNotification(page, 'ODCS Contract imported successfully');
 
-          
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
-          // SLA should NOT be visible (replace mode clears fields not in import)
-          await expect(
-            page.getByTestId('contract-sla-card')
-          ).not.toBeVisible();
-        }
-      );
+        // SLA should NOT be visible (replace mode clears fields not in import)
+        await expect(page.getByTestId('contract-sla-card')).not.toBeVisible();
+      });
     } finally {
       await test.step('Cleanup: Delete contract', async () => {
         await deleteContract(page);
@@ -2412,7 +2498,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
             async () => {
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-              
+
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
@@ -2445,7 +2531,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 'Store Procedure': 'Stored Procedure',
               };
               await settingClick(page, GlobalSettingOptions.PERSONA);
-              
+
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
@@ -2457,7 +2543,6 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 true
               );
               await page.getByRole('tab', { name: 'Customize UI' }).click();
-              
 
               // Navigate to Table customization
               await page
@@ -2496,7 +2581,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-              
+
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });

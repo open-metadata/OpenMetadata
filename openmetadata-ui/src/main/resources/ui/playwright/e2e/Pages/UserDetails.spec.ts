@@ -23,6 +23,7 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitUserProfilePage } from '../../utils/user';
 import { redirectToUserPage } from '../../utils/userDetails';
 import { TableClass } from '../../support/entity/TableClass';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
@@ -81,7 +82,7 @@ test.describe('User with different Roles', () => {
     await afterAction();
   });
 
-  test('Admin user can get all the teams hierarchy and edit teams', async ({
+  test('Admin user can get all the teams hierarchy and edit teams', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({
     adminPage,
   }) => {
     await redirectToUserPage(adminPage);
@@ -505,7 +506,7 @@ test.describe('User with different Roles', () => {
 
     await adminPage
       .locator('.ant-select-item-option-content')
-      .getByText('Application bot role')
+      .getByText('Application bot role', { exact: true })
       .click();
 
     await adminPage.getByTestId('user-profile-edit-roles-save-button').click();

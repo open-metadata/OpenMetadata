@@ -252,15 +252,21 @@ export const getQueryFilterForDomain = (domainFqn: string) => {
   return {
     query: {
       bool: {
-        should: [
+        must: [
           {
-            term: {
-              'domains.fullyQualifiedName': domainFqn,
-            },
-          },
-          {
-            prefix: {
-              'domains.fullyQualifiedName': `${domainFqn}.`,
+            bool: {
+              should: [
+                {
+                  term: {
+                    'domains.fullyQualifiedName': domainFqn,
+                  },
+                },
+                {
+                  prefix: {
+                    'domains.fullyQualifiedName': `${domainFqn}.`,
+                  },
+                },
+              ],
             },
           },
         ],
@@ -289,15 +295,21 @@ export const getQueryFilterForDataProducts = (domainFqn: string) => {
   return {
     query: {
       bool: {
-        should: [
+        must: [
           {
-            term: {
-              'domains.fullyQualifiedName': domainFqn,
-            },
-          },
-          {
-            prefix: {
-              'domains.fullyQualifiedName': `${domainFqn}.`,
+            bool: {
+              should: [
+                {
+                  term: {
+                    'domains.fullyQualifiedName': domainFqn,
+                  },
+                },
+                {
+                  prefix: {
+                    'domains.fullyQualifiedName': `${domainFqn}.`,
+                  },
+                },
+              ],
             },
           },
         ],

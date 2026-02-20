@@ -40,14 +40,16 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 - **Why it matters:** AWS Cognito uses this to identify your application during authentication.
 - **Note:** Found in AWS Console → Cognito → User Pools → Your pool → App integration → App clients
 
-## <span data-id="callbackUrl">OIDC Callback URL</span>
+## <span data-id="callbackUrl">OIDC Callback URL / Redirect URI</span>
 
-- **Definition:** Redirect URI where AWS Cognito sends authentication responses.
-- **Example:** https://yourapp.company.com/callback
-- **Why it matters:** Must match exactly what's configured in Cognito, or authentication will fail.
+- **Definition:** URL where AWS Cognito redirects after authentication.
+- **Auto-Generated:** This field is automatically populated as `{your-domain}/callback`.
+- **Example:** https://openmetadata.company.com/callback
+- **Why it matters:** Must be registered in your AWS Cognito configuration.
 - **Note:**
-  - Must be registered in Cognito User Pool → App client → Hosted UI → Allowed callback URLs
-  - Always use HTTPS in production
+  - **This field is read-only** - it cannot be edited
+  - **Copy this exact URL** and add it to AWS Cognito's allowed redirect URIs list
+  - Format is always: `{your-domain}/callback`
 
 ## <span data-id="authority">Authority</span>
 
@@ -84,27 +86,12 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 ## <span data-id="useNonce">OIDC Use Nonce</span>
 
 - **Definition:** Security feature to prevent replay attacks in OIDC flows.
-- **Default:** true
-- **Example:** true
+- **Default:** false
+- **Example:** false
 - **Why it matters:** Enhances security by ensuring each authentication request is unique.
-- **Note:** Generally should be left enabled for security
+- **Note:** Can be enabled for additional security if your provider supports it
 
-## <span data-id="preferredJwsAlgorithm">OIDC Preferred JWS Algorithm</span>
 
-- **Definition:** Algorithm used to verify JWT token signatures from AWS Cognito.
-- **Default:** RS256
-- **Example:** RS256
-- **Why it matters:** Must match Cognito's token signing algorithm.
-- **Note:** AWS Cognito uses RS256, rarely needs to be changed
-
-## <span data-id="responseType">OIDC Response Type</span>
-
-- **Definition:** Type of response expected from AWS Cognito during authentication.
-- **Default:** id_token
-- **Options:** id_token | code
-- **Example:** code
-- **Why it matters:** Determines the OAuth flow type (implicit vs authorization code).
-- **Note:** Authorization code flow (code) is more secure and recommended
 
 ## <span data-id="disablePkce">OIDC Disable PKCE</span>
 
@@ -124,11 +111,9 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 ## <span data-id="clientAuthenticationMethod">OIDC Client Authentication Method</span>
 
 - **Definition:** Method used to authenticate the client with AWS Cognito.
-- **Default:** client_secret_basic
-- **Options:** client_secret_basic | client_secret_post
-- **Example:** client_secret_basic
-- **Why it matters:** Must match your Cognito app client configuration.
-- **Note:** Cognito supports basic and post methods for confidential clients
+- **Default:** client_secret_post (automatically configured)
+- **Why it matters:** OpenMetadata uses `client_secret_post` which is supported by AWS Cognito.
+- **Note:** This field is hidden and automatically configured. Cognito supports both `client_secret_post` and `client_secret_basic`.
 
 ## <span data-id="tokenValidity">OIDC Token Validity</span>
 
@@ -151,13 +136,6 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 - **Example:** us-east-1_ABC123DEF
 - **Why it matters:** Identifies your specific Cognito User Pool.
 - **Note:** Your User Pool ID from AWS Console
-
-## <span data-id="serverUrl">OIDC Server URL</span>
-
-- **Definition:** Base URL for Collate server.
-- **Example:** https://yourapp.company.com
-- **Why it matters:** Specifies Collate endpoint
-- **Note:** Usually your collate API server
 
 ## <span data-id="maxAge">OIDC Max Age</span>
 
@@ -194,7 +172,14 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 
 ## <span data-id="principals">JWT Principal Claims</span>
 
+> ⚠️ **CRITICAL WARNING**: Incorrect claims will **lock out ALL users including admins**!
+> - These claims MUST exist in JWT tokens from AWS Cognito
+> - Order matters: first matching claim is used for user identification
+> - **Default values (email, cognito:username, sub) work for most Cognito configurations**
+> - Only change if you have custom claim requirements
+
 - **Definition:** JWT claims used to identify the user principal.
+- **Default:** ["email", "cognito:username", "sub"] (recommended)
 - **Example:** ["cognito:username", "email", "sub"]
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common Cognito claims: cognito:username, email, sub, preferred_username
@@ -210,6 +195,7 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
   - Both `username` and `email` mappings must be present when this field is used
   - Only `username` and `email` keys are allowed; no other keys are permitted
   - If validation fails, errors will be displayed on this specific field
+- **Important:** JWT Principal Claims Mapping is **rarely needed** for most AWS Cognito configurations. The default JWT Principal Claims (`email`, `cognito:username`, `sub`) handle user identification correctly. Only configure this if you have specific custom claim requirements.
 
 ## <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
 
@@ -227,17 +213,51 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
   - Configure custom attributes in Cognito User Pool → Attributes
   - For group-based teams, use "cognito:groups" claim (requires user pool groups configured)
   - Ensure custom attributes are included in the ID token
-- **Note:** 
+- **Note:**
   - The team must already exist in OpenMetadata for assignment to work
   - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
   - Team names are case-sensitive and must match exactly
   - Multiple team assignments are supported for array claims (e.g., "cognito:groups")
 
-## <span data-id="tokenValidation">Token Validation Algorithm</span>
+## Authorizer Configuration
 
-- **Definition:** Algorithm used to validate JWT token signatures.
-- **Options:** RS256 | RS384 | RS512
-- **Default:** RS256
-- **Example:** RS256
-- **Why it matters:** Must match the algorithm used by AWS Cognito to sign tokens.
-- **Note:** AWS Cognito uses RS256
+### <span data-id="adminPrincipals">Admin Principals</span>
+
+- **Definition:** List of user principals who will have admin access.
+- **Example:** ["admin", "superuser", "john.doe"]
+- **Why it matters:** These users will have full administrative privileges in OpenMetadata.
+- **Note:** Use usernames (NOT email addresses) - these are derived from the email prefix (part before @)
+
+### <span data-id="principalDomain">Principal Domain</span>
+
+- **Definition:** Default domain for user principals.
+- **Example:** company.com
+- **Why it matters:** Used to construct full user principals when only username is provided.
+- **Note:** Typically your organization's primary domain
+
+### <span data-id="enforcePrincipalDomain">Enforce Principal Domain</span>
+
+- **Definition:** Whether to enforce that all users belong to the principal domain.
+- **Default:** false
+- **Example:** true
+- **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
+
+### <span data-id="allowedDomains">Allowed Domains</span>
+
+- **Definition:** List of email domains that are permitted to access OpenMetadata.
+- **Example:** ["company.com", "partner.com"]
+- **Why it matters:** Provides fine-grained control over which email domains can authenticate via AWS Cognito.
+- **Note:**
+  - Works in conjunction with `enforcePrincipalDomain`
+  - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
+  - Leave empty or use single `principalDomain` if you only have one Cognito User Pool
+  - Useful when your User Pool contains users from multiple domains
+
+### <span data-id="enableSecureSocketConnection">Enable Secure Socket Connection</span>
+
+- **Definition:** Whether to use SSL/TLS for secure connections.
+- **Default:** false
+- **Example:** true
+- **Why it matters:** Ensures encrypted communication for security.
+- **Note:** Should be enabled in production environments
+

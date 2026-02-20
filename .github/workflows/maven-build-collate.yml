@@ -19,6 +19,8 @@ on:
     paths:
       - "openmetadata-service/**"
       - "openmetadata-ui/**"
+      - "!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
+      - "!openmetadata-ui/src/main/resources/ui/playwright/docs/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-dist/**"
       - "openmetadata-clients/**"
@@ -38,7 +40,7 @@ permissions:
   contents: read
   checks: write
 
-concurrency: 
+concurrency:
   group: maven-build-collate-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:

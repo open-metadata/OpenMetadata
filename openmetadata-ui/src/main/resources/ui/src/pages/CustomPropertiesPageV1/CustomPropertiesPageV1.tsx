@@ -12,18 +12,20 @@
  */
 
 import { Card, Col, Row, Tabs } from 'antd';
+import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePageHeader } from '../../components/common/atoms/navigation/usePageHeader';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
-import { usePageHeader } from '../../components/common/atoms/navigation/usePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import AddCustomProperty from '../../components/Settings/CustomProperty/AddCustomProperty/AddCustomProperty';
 import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
 import { ENTITY_PATH } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -34,18 +36,19 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
-import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
+import { CustomProperty } from '../../generated/type/customProperty';
+import {
+  addPropertyToEntity,
+  getTypeByFQN,
+  updateType,
+} from '../../rest/metadataTypeAPI';
 import { getCustomPropertyPageHeaderFromEntity } from '../../utils/CustomProperty.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { addPropertyToEntity } from '../../rest/metadataTypeAPI';
-import { useForm } from 'antd/lib/form/Form';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './custom-properties-pageV1.less';
-import AddCustomProperty from '../../components/Settings/CustomProperty/AddCustomProperty/AddCustomProperty';
-import { CustomProperty } from '../../generated/type/customProperty';
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
@@ -174,9 +177,7 @@ const CustomEntityDetailV1 = () => {
   );
 
   const customPageHeader = useMemo(() => {
-    const pageHeader = getCustomPropertyPageHeaderFromEntity(
-      tabAttributePath
-    );
+    const pageHeader = getCustomPropertyPageHeaderFromEntity(tabAttributePath);
 
     return {
       header: t(pageHeader.header),
