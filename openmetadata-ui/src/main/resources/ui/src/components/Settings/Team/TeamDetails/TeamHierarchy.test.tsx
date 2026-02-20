@@ -28,6 +28,8 @@ const teamHierarchyPropsData: TeamHierarchyProps = {
   currentTeam: MOCK_CURRENT_TEAM,
   onTeamExpand: jest.fn(),
   isFetchingAllTeamAdvancedDetails: false,
+  isSearchLoading: false,
+  isTeamBasicDataLoading: false,
   showDeletedTeam: false,
   onShowDeletedTeamChange: jest.fn(),
   handleAddTeamButtonClick: jest.fn(),
@@ -48,6 +50,19 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../../utils/TeamUtils', () => ({
   getMovedTeamData: jest.fn().mockReturnValue([]),
   isDropRestricted: jest.fn().mockReturnValue(false),
+  flattenTeamTree: jest.fn((teams) => teams),
+}));
+
+jest.mock('../../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({ hits: { total: { value: 0 } } }),
+}));
+
+jest.mock('./TeamDetailsV1.utils', () => ({
+  collectAllTeamIds: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('../../../../utils/SearchUtils', () => ({
+  getTermQuery: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../../../rest/teamsAPI', () => ({
