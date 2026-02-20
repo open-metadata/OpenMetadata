@@ -62,11 +62,6 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     mapper = new ObjectMapper();
   }
 
-  private SearchResponse<JsonData> searchWithLenientDeserialization(SearchRequest request)
-      throws IOException {
-    return OsUtils.searchWithLenientDeserialization(client, request);
-  }
-
   private String praseJsonQuery(String jsonQuery) throws JsonProcessingException {
     JsonNode rootNode = mapper.readTree(jsonQuery);
     String queryToProcess = jsonQuery;
@@ -184,15 +179,13 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> searchResponse;
       try {
-        searchResponse = searchWithLenientDeserialization(searchRequestBuilder.build());
+        searchResponse = client.search(searchRequestBuilder.build(), JsonData.class);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
         }
       }
-      return Response.status(Response.Status.OK)
-          .entity(OsUtils.toJsonStringLenient(searchResponse))
-          .build();
+      return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
@@ -236,14 +229,14 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> searchResponse;
       try {
-        searchResponse = searchWithLenientDeserialization(searchRequestBuilder.build());
+        searchResponse = client.search(searchRequestBuilder.build(), JsonData.class);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
         }
       }
 
-      String response = OsUtils.toJsonStringLenient(searchResponse);
+      String response = searchResponse.toJsonString();
       JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
       Optional<JsonObject> aggregationResults =
           Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
@@ -322,14 +315,14 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> searchResponse;
       try {
-        searchResponse = searchWithLenientDeserialization(searchRequestBuilder.build());
+        searchResponse = client.search(searchRequestBuilder.build(), JsonData.class);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
         }
       }
 
-      String response = OsUtils.toJsonStringLenient(searchResponse);
+      String response = searchResponse.toJsonString();
       JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
       Optional<JsonObject> aggregationResults =
           Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
@@ -406,14 +399,14 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> searchResponse;
       try {
-        searchResponse = searchWithLenientDeserialization(searchRequestBuilder.build());
+        searchResponse = client.search(searchRequestBuilder.build(), JsonData.class);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
         }
       }
 
-      String response = OsUtils.toJsonStringLenient(searchResponse);
+      String response = searchResponse.toJsonString();
       JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
       return jsonResponse.getJsonObject("aggregations");
     } catch (Exception e) {
@@ -500,7 +493,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> searchResponse;
       try {
-        searchResponse = searchWithLenientDeserialization(searchRequest);
+        searchResponse = client.search(searchRequest, JsonData.class);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -509,7 +502,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
 
       LOG.info("Entity type counts query for index '{}' (resolved: '{}')", index, resolvedIndex);
 
-      String jsonResponse = OsUtils.toJsonStringLenient(searchResponse);
+      // Serialize response
+      String jsonResponse = searchResponse.toJsonString();
       return Response.status(Response.Status.OK).entity(jsonResponse).build();
 
     } catch (Exception e) {
