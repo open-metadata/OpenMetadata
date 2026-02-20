@@ -938,8 +938,6 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     // to the first chart's service. This was caused by ChartRepository.fetchAndSetServices()
     // assuming all charts in a batch belong to the same service.
 
-    OpenMetadataClient client = SdkClients.adminClient();
-
     // Create two different dashboard services
     DashboardService metabaseService = DashboardServiceTestFactory.createMetabase(ns);
     DashboardService lookerService = DashboardServiceTestFactory.createLooker(ns);
