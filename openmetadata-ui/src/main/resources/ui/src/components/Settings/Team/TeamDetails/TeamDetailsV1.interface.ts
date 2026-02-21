@@ -19,7 +19,6 @@ import { Team } from '../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../generated/entity/type';
 
 export interface TeamDetailsProp {
-  allTeamIds: string[];
   assetsCount: number;
   currentTeam: Team;
   teams?: Team[];

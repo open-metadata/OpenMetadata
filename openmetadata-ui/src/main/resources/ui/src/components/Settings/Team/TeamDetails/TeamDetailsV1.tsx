@@ -107,7 +107,6 @@ import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
 import { UserTab } from './UserTab/UserTab.component';
 
 const TeamDetailsV1 = ({
-  allTeamIds,
   assetsCount,
   currentTeam,
   isTeamMemberLoading,
@@ -159,11 +158,10 @@ const TeamDetailsV1 = ({
     return isGroupType ? TeamsPageTab.USERS : TeamsPageTab.TEAMS;
   }, [activeTab, isGroupType]);
   const [deletingUser, setDeletingUser] = useState<{
-    user: undefined | UserTeams;
+    user: UserTeams | undefined;
     state: boolean;
     leave: boolean;
   }>(DELETE_USER_INITIAL_STATE);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [childTeamList, setChildTeamList] = useState<Team[]>([]);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
@@ -244,11 +242,11 @@ const TeamDetailsV1 = ({
         permissionValue={
           type === ERROR_PLACEHOLDER_TYPE.CREATE
             ? t('label.create-entity', {
-              entity: heading,
-            })
+                entity: heading,
+              })
             : t('label.edit-entity', {
-              entity: heading,
-            })
+                entity: heading,
+              })
         }
         type={type}
         onClick={onClick}>
@@ -453,11 +451,11 @@ const TeamDetailsV1 = ({
       const parents =
         parentTeams && !isOrganization
           ? parentTeams.map((parent) => ({
-            name: getEntityName(parent),
-            url: getTeamsWithFqnPath(
-              parent.fullyQualifiedName ?? parent.name ?? ''
-            ),
-          }))
+              name: getEntityName(parent),
+              url: getTeamsWithFqnPath(
+                parent.fullyQualifiedName ?? parent.name ?? ''
+              ),
+            }))
           : [];
       const breadcrumb = [
         ...parents,
@@ -478,11 +476,11 @@ const TeamDetailsV1 = ({
   const removeUserBodyText = (leave: boolean) => {
     const text = leave
       ? t('message.leave-the-team-team-name', {
-        teamName: currentTeam?.displayName ?? currentTeam?.name,
-      })
+          teamName: currentTeam?.displayName ?? currentTeam?.name,
+        })
       : t('label.remove-entity', {
-        entity: deletingUser.user?.displayName ?? deletingUser.user?.name,
-      });
+          entity: deletingUser.user?.displayName ?? deletingUser.user?.name,
+        });
 
     return t('message.are-you-sure-want-to-text', { text });
   };
@@ -552,52 +550,52 @@ const TeamDetailsV1 = ({
       ...(isGroupType || isTeamDeleted ? [] : IMPORT_EXPORT_MENU_ITEM),
       ...(!currentTeam.parents?.[0]?.deleted && isTeamDeleted
         ? [
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.restore-deleted-team')}
-                icon={IconRestore}
-                id="restore-team-dropdown"
-                name={t('label.restore-entity', {
-                  entity: t('label.team'),
-                })}
-              />
-            ),
-            onClick: handleReactiveTeam,
-            key: 'restore-team-dropdown',
-          },
-        ]
+            {
+              label: (
+                <ManageButtonItemLabel
+                  description={t('message.restore-deleted-team')}
+                  icon={IconRestore}
+                  id="restore-team-dropdown"
+                  name={t('label.restore-entity', {
+                    entity: t('label.team'),
+                  })}
+                />
+              ),
+              onClick: handleReactiveTeam,
+              key: 'restore-team-dropdown',
+            },
+          ]
         : []),
       ...(isTeamDeleted
         ? []
         : [
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.access-to-collaborate')}
-                icon={IconOpenLock}
-                id="open-group-dropdown"
-                name={
-                  <Row>
-                    <Col span={21}>
-                      <Typography.Text
-                        className="font-medium"
-                        data-testid="open-group-label">
-                        {t('label.public-team')}
-                      </Typography.Text>
-                    </Col>
+            {
+              label: (
+                <ManageButtonItemLabel
+                  description={t('message.access-to-collaborate')}
+                  icon={IconOpenLock}
+                  id="open-group-dropdown"
+                  name={
+                    <Row>
+                      <Col span={21}>
+                        <Typography.Text
+                          className="font-medium"
+                          data-testid="open-group-label">
+                          {t('label.public-team')}
+                        </Typography.Text>
+                      </Col>
 
-                    <Col span={3}>
-                      <Switch checked={currentTeam.isJoinable} size="small" />
-                    </Col>
-                  </Row>
-                }
-              />
-            ),
-            onClick: handleOpenToJoinToggle,
-            key: 'open-group-dropdown',
-          },
-        ]),
+                      <Col span={3}>
+                        <Switch checked={currentTeam.isJoinable} size="small" />
+                      </Col>
+                    </Row>
+                  }
+                />
+              ),
+              onClick: handleOpenToJoinToggle,
+              key: 'open-group-dropdown',
+            },
+          ]),
     ],
     [
       entityPermissions,
@@ -715,23 +713,20 @@ const TeamDetailsV1 = ({
   );
 
   const assetTabRender = useMemo(
-    () =>
-      allTeamIds.length === 0 ? (
-        <Loader />
-      ) : (
-        <AssetsTabs
-          isSummaryPanelOpen
-          assetCount={assetsCount}
-          isEntityDeleted={isTeamDeleted}
-          noDataPlaceholder={t('message.adding-new-asset-to-team')}
-          permissions={entityPermissions}
-          queryFilter={getTermQuery({ 'owners.id': allTeamIds }, 'should', 1)}
-          type={AssetsOfEntity.TEAM}
-          onAddAsset={() => navigate(ROUTES.EXPLORE)}
-          onAssetClick={setPreviewAsset}
-        />
-      ),
-    [entityPermissions, assetsCount, setPreviewAsset, isTeamDeleted, allTeamIds]
+    () => (
+      <AssetsTabs
+        isSummaryPanelOpen
+        assetCount={assetsCount}
+        isEntityDeleted={isTeamDeleted}
+        noDataPlaceholder={t('message.adding-new-asset-to-team')}
+        permissions={entityPermissions}
+        queryFilter={getTermQuery({ 'owners.id': currentTeam.id })}
+        type={AssetsOfEntity.TEAM}
+        onAddAsset={() => navigate(ROUTES.EXPLORE)}
+        onAssetClick={setPreviewAsset}
+      />
+    ),
+    [entityPermissions, assetsCount, setPreviewAsset, isTeamDeleted]
   );
 
   const rolesTabRender = useMemo(
