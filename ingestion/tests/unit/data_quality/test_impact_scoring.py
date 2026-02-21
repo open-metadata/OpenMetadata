@@ -17,7 +17,7 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 from sqlalchemy import Column, Integer, String, create_engine, func, select
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_NORMALIZATION_FACTOR,
@@ -27,7 +27,9 @@ from metadata.data_quality.validations.impact_score import (
     get_volume_factor,
 )
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class SampleTable(Base):

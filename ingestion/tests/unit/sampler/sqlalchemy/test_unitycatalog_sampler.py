@@ -17,7 +17,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -34,7 +34,9 @@ from metadata.sampler.sqlalchemy.unitycatalog.sampler import (
     UnityCatalogSamplerInterface,
 )
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class _TestTableModel(Base):

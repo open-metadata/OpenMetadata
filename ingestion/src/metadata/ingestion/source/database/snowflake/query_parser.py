@@ -15,6 +15,8 @@ from abc import ABC
 from datetime import datetime
 from typing import Iterable, Optional
 
+from sqlalchemy import text
+
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
@@ -96,11 +98,14 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
         Method to set query tag for current session
         """
         if self.service_connection.queryTag:
-            self.engine.execute(
-                SNOWFLAKE_SESSION_TAG_QUERY.format(
-                    query_tag=self.service_connection.queryTag
+            with self.engine.connect() as conn:
+                conn.execute(
+                    text(
+                        SNOWFLAKE_SESSION_TAG_QUERY.format(
+                            query_tag=self.service_connection.queryTag
+                        )
+                    )
                 )
-            )
 
     def get_table_query(self) -> Iterable[TableQuery]:
         self.set_session_query_tag()

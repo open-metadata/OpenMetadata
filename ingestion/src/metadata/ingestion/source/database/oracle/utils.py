@@ -14,7 +14,7 @@ Utils module to define overrided sqlalchamy methods
 # pylint: disable=protected-access,unused-argument
 import re
 
-from sqlalchemy import sql, util
+from sqlalchemy import sql, text, util
 from sqlalchemy.dialects.oracle.base import FLOAT, INTEGER, INTERVAL, NUMBER, TIMESTAMP
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
@@ -80,7 +80,7 @@ def get_all_view_definitions(self, connection, query):
     """
     self.all_view_definitions = {}
     self.current_db: str = connection.engine.url.database  # type: ignore
-    result = connection.execute(query)
+    result = connection.execute(text(query))
     for view in result:
         if hasattr(view, "view_def") and hasattr(view, "schema"):
             view_definition = view.view_def

@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import Column as SQAColumn
 from sqlalchemy import Integer, MetaData, String
 from sqlalchemy import Table as SQATable
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from _openmetadata_testutils.postgres.conftest import postgres_container
@@ -61,7 +61,9 @@ def db_service(metadata, create_postgres_service, postgres_container):
     engine = create_engine(
         postgres_container.get_connection_url(), isolation_level="AUTOCOMMIT"
     )
-    engine.execute("CREATE DATABASE dq_test_db")
+    with engine.connect() as conn:
+        conn.execute(text("CREATE DATABASE dq_test_db"))
+        conn.commit()
 
     service_entity = metadata.create_or_update(data=create_postgres_service)
     service_entity.connection.config.authType.password = (

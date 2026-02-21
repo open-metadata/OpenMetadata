@@ -22,7 +22,7 @@ from uuid import uuid4
 import pytest
 import sqlalchemy.types
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -54,7 +54,9 @@ from metadata.profiler.processor.default import DefaultProfiler
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 if sys.version_info < (3, 9):

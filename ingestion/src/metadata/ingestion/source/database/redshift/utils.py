@@ -140,7 +140,7 @@ def _get_schema_column_info(
     schema_clause = f"AND schema = '{schema if schema else ''}'"
     all_columns = defaultdict(list)
     result = connection.execute(
-        REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)
+        sa.text(REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause))
     )
     for col in result:
         key = RelationKey(col.table_name, col.schema, connection)

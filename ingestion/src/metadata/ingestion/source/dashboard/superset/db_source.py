@@ -15,6 +15,7 @@ Superset source module
 import traceback
 from typing import Iterable, List, Optional
 
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
 
@@ -84,10 +85,13 @@ class SupersetDBSource(SupersetSourceMixin):
         the required information which is not available in fetch_charts_with_id api
         """
         try:
-            if isinstance(self.service_connection.connection, MysqlConnection):
-                charts = self.engine.execute(FETCH_ALL_CHARTS.replace('"', "`"))
-            else:
-                charts = self.engine.execute(FETCH_ALL_CHARTS)
+            with self.engine.connect() as conn:
+                if isinstance(self.service_connection.connection, MysqlConnection):
+                    charts = conn.execute(
+                        text(FETCH_ALL_CHARTS.replace('"', "`"))
+                    ).all()
+                else:
+                    charts = conn.execute(text(FETCH_ALL_CHARTS)).all()
             for chart in charts:
                 chart_detail = FetchChart(**chart)
                 self.all_charts[chart_detail.id] = chart_detail
@@ -98,7 +102,10 @@ class SupersetDBSource(SupersetSourceMixin):
     def get_column_list(self, table_id: Optional[int]) -> Iterable[FetchChart]:
         try:
             if table_id:
-                col_list = self.engine.execute(FETCH_COLUMN, table_id=table_id)
+                with self.engine.connect() as conn:
+                    col_list = conn.execute(
+                        text(FETCH_COLUMN), {"table_id": table_id}
+                    ).all()
                 return [FetchColumn(**col) for col in col_list]
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -118,7 +125,8 @@ class SupersetDBSource(SupersetSourceMixin):
             if self.source_config.includeDraftDashboard
             else FETCH_PUBLISHED_DASHBOARDS
         )
-        dashboards = self.engine.execute(query)
+        with self.engine.connect() as conn:
+            dashboards = conn.execute(text(query)).all()
         for dashboard in dashboards:
             yield FetchDashboard(**dashboard)
 

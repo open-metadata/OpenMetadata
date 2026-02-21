@@ -535,6 +535,10 @@ class BigqueryUnitTest(TestCase):
         self.bq_source.source_config.storedProcedureFilterPattern = FilterPattern(
             excludes=["sp_exclude"]
         )
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
         mock_engine = MagicMock()
         self.bq_source.engine = mock_engine
@@ -551,7 +555,10 @@ class BigqueryUnitTest(TestCase):
             "language": "SQL",
         }
 
-        mock_engine.execute.return_value.all.return_value = [row1, row2]
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [row1, row2]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         results = list(self.bq_source.get_stored_procedures())
 

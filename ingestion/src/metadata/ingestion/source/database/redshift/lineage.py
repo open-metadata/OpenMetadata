@@ -108,7 +108,7 @@ class RedshiftLineageSource(
                     )
                 )
                 for row in rows:
-                    query_dict = dict(row)
+                    query_dict = row._asdict()
                     try:
                         yield TableQuery(
                             dialect=self.dialect.value,

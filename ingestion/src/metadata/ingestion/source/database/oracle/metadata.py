@@ -14,6 +14,7 @@
 import traceback
 from typing import Iterable, Optional
 
+from sqlalchemy import text
 from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
 from sqlalchemy.engine import Inspector
 
@@ -164,9 +165,10 @@ class OracleSource(CommonDbSourceService):
     def _get_stored_procedures_internal(
         self, query: str
     ) -> Iterable[OracleStoredObject]:
-        results: FetchObjectList = self.engine.execute(
-            query.format(schema=self.context.get().database_schema.upper())
-        ).all()
+        with self.engine.connect() as conn:
+            results: FetchObjectList = conn.execute(
+                text(query.format(schema=self.context.get().database_schema.upper()))
+            ).all()
         results = self.process_result(data=results)
         for row in results.items():
             stored_procedure = OracleStoredObject(

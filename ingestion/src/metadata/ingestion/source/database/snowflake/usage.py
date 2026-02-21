@@ -85,7 +85,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
                             queries = []
                             row_count = 0
                             for row in rows:
-                                row = dict(row)
+                                row = row._asdict()
                                 row_count += 1
                                 try:
                                     row.update({k.lower(): v for k, v in row.items()})

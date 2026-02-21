@@ -252,7 +252,7 @@ class TrinoSource(CommonDbSourceService):
             self.set_inspector(database_name=configured_catalog)
             yield configured_catalog
         else:
-            results = self.connection.execute("SHOW CATALOGS")
+            results = self.connection.execute(sql.text("SHOW CATALOGS"))
             for res in results:
                 if res:
                     new_catalog = res[0]

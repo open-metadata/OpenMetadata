@@ -21,6 +21,7 @@ import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT, StructuredType
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy import exc as sa_exc
+from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier, Token
 
@@ -272,15 +273,19 @@ class SnowflakeSource(
         Method to set query tag for current session
         """
         if self.service_connection.queryTag:
-            self.engine.execute(
-                SNOWFLAKE_SESSION_TAG_QUERY.format(
-                    query_tag=self.service_connection.queryTag
+            with self.engine.connect() as conn:
+                conn.execute(
+                    text(
+                        SNOWFLAKE_SESSION_TAG_QUERY.format(
+                            query_tag=self.service_connection.queryTag
+                        )
+                    )
                 )
-            )
 
     def set_partition_details(self) -> None:
         self.partition_details.clear()
-        results = self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(SNOWFLAKE_GET_CLUSTER_KEY)).all()
         for row in results:
             if row.CLUSTERING_KEY:
                 self.partition_details[
@@ -289,22 +294,27 @@ class SnowflakeSource(
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()
-        results = self.engine.execute(SNOWFLAKE_GET_SCHEMA_COMMENTS).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(SNOWFLAKE_GET_SCHEMA_COMMENTS)).all()
         for row in results:
             self.schema_desc_map[(row.DATABASE_NAME, row.SCHEMA_NAME)] = row.COMMENT
 
     def set_database_description_map(self) -> None:
         self.database_desc_map.clear()
         if not self.database_desc_map:
-            results = self.engine.execute(SNOWFLAKE_GET_DATABASE_COMMENTS).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(text(SNOWFLAKE_GET_DATABASE_COMMENTS)).all()
             for row in results:
                 self.database_desc_map[row.DATABASE_NAME] = row.COMMENT
 
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
-        results = self.engine.execute(
-            SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)
-        ).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(
+                text(
+                    SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)
+                )
+            ).all()
         self.external_location_map = {
             (row.database_name, row.schema_name, row.name): row.location
             for row in results
@@ -317,12 +327,15 @@ class SnowflakeSource(
             return
 
         try:
-            results = self.engine.execute(
-                SNOWFLAKE_FETCH_SCHEMA_TAGS.format(
-                    database_name=database_name,
-                    account_usage=self.service_connection.accountUsageSchema,
-                )
-            ).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    text(
+                        SNOWFLAKE_FETCH_SCHEMA_TAGS.format(
+                            database_name=database_name,
+                            account_usage=self.service_connection.accountUsageSchema,
+                        )
+                    )
+                ).all()
 
             for row in results:
                 schema_name = row.SCHEMA_NAME
@@ -358,7 +371,7 @@ class SnowflakeSource(
         return self.service_connection.database
 
     def get_database_names_raw(self) -> Iterable[str]:
-        results = self.connection.execute(SNOWFLAKE_GET_DATABASES)
+        results = self.connection.execute(text(SNOWFLAKE_GET_DATABASES))
         for res in results:
             row = list(res)
             yield row[1]
@@ -503,10 +516,12 @@ class SnowflakeSource(
             result = []
             try:
                 result = self.connection.execute(
-                    SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                        database_name=self.context.get().database,
-                        schema_name=schema_name,
-                        account_usage=self.service_connection.accountUsageSchema,
+                    text(
+                        SNOWFLAKE_FETCH_TABLE_TAGS.format(
+                            database_name=self.context.get().database,
+                            schema_name=schema_name,
+                            account_usage=self.service_connection.accountUsageSchema,
+                        )
                     )
                 )
 
@@ -517,10 +532,12 @@ class SnowflakeSource(
                         f"Error fetching tags {exc}. Trying with quoted names"
                     )
                     result = self.connection.execute(
-                        SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                            database_name=f'"{self.context.get().database}"',
-                            schema_name=f'"{self.context.get().database_schema}"',
-                            account_usage=self.service_connection.accountUsageSchema,
+                        text(
+                            SNOWFLAKE_FETCH_TABLE_TAGS.format(
+                                database_name=f'"{self.context.get().database}"',
+                                schema_name=f'"{self.context.get().database_schema}"',
+                                account_usage=self.service_connection.accountUsageSchema,
+                            )
                         )
                     )
                 except Exception as inner_exc:
@@ -667,7 +684,8 @@ class SnowflakeSource(
 
     def _get_org_name(self) -> Optional[str]:
         try:
-            res = self.engine.execute(SNOWFLAKE_GET_ORGANIZATION_NAME).one()
+            with self.engine.connect() as conn:
+                res = conn.execute(text(SNOWFLAKE_GET_ORGANIZATION_NAME)).one()
             if res:
                 return res.NAME
         except Exception as exc:
@@ -677,7 +695,8 @@ class SnowflakeSource(
 
     def _get_current_account(self) -> Optional[str]:
         try:
-            res = self.engine.execute(SNOWFLAKE_GET_CURRENT_ACCOUNT).one()
+            with self.engine.connect() as conn:
+                res = conn.execute(text(SNOWFLAKE_GET_CURRENT_ACCOUNT)).one()
             if res:
                 return res.ACCOUNT
         except Exception as exc:
@@ -773,15 +792,20 @@ class SnowflakeSource(
         self, query: str
     ) -> Iterable[SnowflakeStoredProcedure]:
         try:
-            results = self.engine.execute(
-                query.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                    account_usage=self.service_connection.accountUsageSchema,
-                )
-            ).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    text(
+                        query.format(
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
+                            account_usage=self.service_connection.accountUsageSchema,
+                        )
+                    )
+                ).all()
             for row in results:
-                stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
+                stored_procedure = SnowflakeStoredProcedure.model_validate(
+                    row._asdict()
+                )
                 if stored_procedure.definition is None:
                     logger.debug(
                         f"Missing ownership permissions on procedure {stored_procedure.name}."
@@ -822,15 +846,18 @@ class SnowflakeSource(
                 query = SNOWFLAKE_DESC_STORED_PROCEDURE
             else:
                 query = SNOWFLAKE_DESC_FUNCTION
-            res = self.engine.execute(
-                query.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                    procedure_name=stored_procedure.name,
-                    procedure_signature=stored_procedure.unquote_signature(),
+            with self.engine.connect() as conn:
+                res = conn.execute(
+                    text(
+                        query.format(
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
+                            procedure_name=stored_procedure.name,
+                            procedure_signature=stored_procedure.unquote_signature(),
+                        )
+                    )
                 )
-            )
-            return dict(res.all()).get("body", "")
+                return dict(res.all()).get("body", "")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error fetching stored procedure definition: {exc}")
@@ -922,7 +949,11 @@ class SnowflakeSource(
         # since stream does not define columns separately in Snowflake
         if table_type == TableType.Stream:
             cursor = self.connection.execute(
-                SNOWFLAKE_GET_STREAM.format(stream_name=table_name, schema=schema_name)
+                text(
+                    SNOWFLAKE_GET_STREAM.format(
+                        stream_name=table_name, schema=schema_name
+                    )
+                )
             )
             try:
                 result = cursor.fetchone()

@@ -14,7 +14,7 @@ MySQL SQLAlchemy Helper Methods
 """
 import textwrap
 
-from sqlalchemy import sql
+from sqlalchemy import sql, text
 from sqlalchemy.engine import reflection
 
 from metadata.ingestion.source.database.doris.queries import (
@@ -46,7 +46,7 @@ def get_table_names_and_type(_, connection, schema=None, **kw):
     if schema:
         query_sql = query + f" WHERE TABLE_SCHEMA = '{schema}'"
     database = schema or connection.engine.url.database
-    rows = connection.execute(query_sql, database=database, **kw)
+    rows = connection.execute(text(query_sql), database=database, **kw)
     return list(rows)
 
 

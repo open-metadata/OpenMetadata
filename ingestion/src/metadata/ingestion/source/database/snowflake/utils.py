@@ -245,7 +245,7 @@ def get_table_names(self, connection, schema: str, **kw):
 
     query = queries["default"]
 
-    cursor = connection.execute(query.format(**parameters))
+    cursor = connection.execute(text(query.format(**parameters)))
     result = SnowflakeTableList(
         tables=[
             SnowflakeTable(
@@ -286,7 +286,7 @@ def get_view_names(self, connection, schema, **kw):
     else:
         query = queries["views"]
 
-    cursor = connection.execute(query.format(**parameters))
+    cursor = connection.execute(text(query.format(**parameters)))
     result = SnowflakeTableList(
         tables=[
             SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1])
@@ -304,7 +304,7 @@ def get_stream_names(self, connection, schema, **kw):
 
     query = queries["default"]
 
-    cursor = connection.execute(query.format(**parameters))
+    cursor = connection.execute(text(query.format(**parameters)))
     result = SnowflakeTableList(
         tables=[
             SnowflakeTable(name=self.normalize_name(row[1]), deleted=None)
@@ -317,7 +317,7 @@ def get_stream_names(self, connection, schema, **kw):
 def get_stage_names(self, connection, schema, **kw):
     """Return all stage names in schema."""
     parameters = {"schema": fqn.unquote_name(schema)}
-    cursor = connection.execute(SNOWFLAKE_GET_STAGES.format(**parameters))
+    cursor = connection.execute(text(SNOWFLAKE_GET_STAGES.format(**parameters)))
     result = SnowflakeTableList(
         tables=[
             SnowflakeTable(
@@ -353,7 +353,9 @@ def get_view_definition(
 
     schema = schema or self.default_schema_name
     view_name = f'"{schema}"."{table_name}"' if schema else table_name
-    cursor = connection.execute(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name))
+    cursor = connection.execute(
+        text(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name))
+    )
     try:
         result = cursor.fetchone()
         if result:
@@ -373,7 +375,7 @@ def get_stream_definition(  # pylint: disable=unused-argument
     schema = schema or self.default_schema_name
     stream_name = f"{schema}.{stream_name}" if schema else stream_name
     cursor = connection.execute(
-        SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name)
+        text(SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name))
     )
     try:
         result = cursor.fetchone()
@@ -645,7 +647,9 @@ def get_table_ddl(
     """
     schema = schema or self.default_schema_name
     table_name = f"{schema}.{table_name}" if schema else table_name
-    cursor = connection.execute(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name))
+    cursor = connection.execute(
+        text(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name))
+    )
     try:
         result = cursor.fetchone()
         if result:

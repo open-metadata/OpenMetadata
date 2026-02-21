@@ -15,6 +15,7 @@ Module for sqlalchemy dialect utils
 import traceback
 from typing import Dict, Optional, Tuple
 
+from sqlalchemy import text
 from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.schema import CreateTable, MetaData
 
@@ -30,7 +31,7 @@ def get_all_table_comments(self, connection, query):
     """
     self.all_table_comments: Dict[Tuple[str, str], str] = {}
     self.current_db: str = connection.engine.url.database
-    result = connection.execute(query)
+    result = connection.execute(text(query) if isinstance(query, str) else query)
     for table in result:
         self.all_table_comments[(table.table_name, table.schema)] = table.table_comment
 
@@ -52,7 +53,7 @@ def get_all_table_owners(
     Method to fetch owners of all available tables
     """
     self.all_table_owners: Dict[Tuple[str, str], str] = {}
-    result = connection.execute(query)
+    result = connection.execute(text(query) if isinstance(query, str) else query)
     for table in result:
         self.all_table_owners[(table[0], table[1])] = table[2]
 
@@ -72,7 +73,7 @@ def get_all_view_definitions(self, connection, query):
     """
     self.all_view_definitions: Dict[Tuple[str, str], str] = {}
     self.current_db: str = connection.engine.url.database  # type: ignore
-    result = connection.execute(query)
+    result = connection.execute(text(query) if isinstance(query, str) else query)
     for view in result:
         if hasattr(view, "view_def") and hasattr(view, "schema"):
             self.all_view_definitions[(view.view_name, view.schema)] = view.view_def
@@ -90,7 +91,8 @@ def get_view_definition_wrapper(self, connection, query, table_name, schema=None
 
 
 def get_schema_descriptions(engine: Engine, query: str):
-    results = engine.execute(query).all()
+    with engine.connect() as conn:
+        results = conn.execute(text(query)).all()
     schema_desc_map = {}
     for row in results:
         schema_desc_map[row.schema_name] = row.comment
@@ -146,7 +148,7 @@ def get_all_table_ddls(
         self.all_table_ddls: Dict[Tuple[str, str], str] = {}
         self.current_db: str = schema_name
         meta = MetaData()
-        meta.reflect(bind=connection.engine, schema=schema_name)
+        meta.reflect(bind=connection, schema=schema_name)
         for table in meta.sorted_tables or []:
             self.all_table_ddls[(table.schema, table.name)] = str(CreateTable(table))
     except Exception as exc:
@@ -181,7 +183,9 @@ def get_schema_comment_results(self, connection, query, database, schema=None):
     """
     self.schema_comment_result: Dict[str, str] = {}
     self.current_db: str = database
-    result = connection.execute(query).fetchall()
+    result = connection.execute(
+        text(query) if isinstance(query, str) else query
+    ).fetchall()
     self.schema_comment_result[schema] = result
 
 
@@ -194,7 +198,9 @@ def get_table_comment_results(
     """
     self.table_comment_result: Dict[Tuple[str, str], str] = {}
     self.current_db: str = database
-    result = connection.execute(query).fetchall()
+    result = connection.execute(
+        text(query) if isinstance(query, str) else query
+    ).fetchall()
     self.table_comment_result[(table_name, schema)] = result
 
 

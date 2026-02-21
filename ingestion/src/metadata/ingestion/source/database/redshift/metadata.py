@@ -15,7 +15,7 @@ import re
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
-from sqlalchemy import sql
+from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_redshift.dialect import (
@@ -294,9 +294,12 @@ class RedshiftSource(
 
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
-        results = self.engine.execute(
-            REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name)
-        ).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(
+                text(
+                    REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name)
+                )
+            ).all()
         self.external_location_map = {
             (database_name, row.schemaname, row.tablename): row.location
             for row in results
@@ -403,7 +406,7 @@ class RedshiftSource(
                 )
             ).all()
             for row in results:
-                stored_procedure = RedshiftStoredProcedure.model_validate(dict(row))
+                stored_procedure = RedshiftStoredProcedure.model_validate(row._asdict())
                 if self.is_stored_procedure_filtered(stored_procedure.name):
                     continue
                 yield stored_procedure

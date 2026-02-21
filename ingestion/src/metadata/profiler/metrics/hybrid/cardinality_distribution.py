@@ -15,7 +15,7 @@ Cardinality Distribution Metric definition
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from sqlalchemy import case, column, desc, func, or_
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from metadata.profiler.processor.runner import PandasRunner
@@ -52,7 +52,7 @@ class CardinalityDistribution(HybridMetric):
 
     def fn(
         self,
-        sample: Optional[DeclarativeMeta],
+        sample: Optional[type],
         res: Dict[str, Any],
         session: Optional[Session] = None,
     ) -> Optional[Dict[str, Any]]:
@@ -103,15 +103,13 @@ class CardinalityDistribution(HybridMetric):
         # step 2: Get categories
         categories = session.query(  # type: ignore
             case(
-                [
-                    (
-                        or_(
-                            value_counts_cte.c["category_count"] >= threshold,
-                            value_counts_cte.c["valueRank"] <= self.min_buckets,
-                        ),
-                        value_counts_cte.c["category"],
-                    )
-                ],
+                (
+                    or_(
+                        value_counts_cte.c["category_count"] >= threshold,
+                        value_counts_cte.c["valueRank"] <= self.min_buckets,
+                    ),
+                    value_counts_cte.c["category"],
+                ),
                 else_="Others",
             ).label("category"),
             value_counts_cte.c["category_count"],

@@ -19,6 +19,7 @@ from urllib.parse import quote_plus
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from pydantic import BaseModel, SecretStr
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
@@ -72,7 +73,8 @@ def _init_database(engine_wrapper: SnowflakeEngineWrapper):
     """
     if not engine_wrapper.service_connection.database:
         if not engine_wrapper.database_name:
-            databases = engine_wrapper.engine.execute(SNOWFLAKE_GET_DATABASES)
+            with engine_wrapper.engine.connect() as conn:
+                databases = conn.execute(text(SNOWFLAKE_GET_DATABASES)).all()
             for database in databases:
                 if filter_by_database(
                     engine_wrapper.service_connection.databaseFilterPattern,
@@ -93,7 +95,8 @@ def execute_inspector_func(engine_wrapper: SnowflakeEngineWrapper, func_name: st
     the function with name `func_name` and executes it
     """
     _init_database(engine_wrapper)
-    engine_wrapper.engine.execute(f'USE DATABASE "{engine_wrapper.database_name}"')
+    with engine_wrapper.engine.connect() as conn:
+        conn.execute(text(f'USE DATABASE "{engine_wrapper.database_name}"'))
     inspector = inspect(engine_wrapper.engine)
     inspector_fn = getattr(inspector, func_name)
     inspector_fn()

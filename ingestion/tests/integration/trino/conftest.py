@@ -8,7 +8,7 @@ import docker
 import pandas as pd
 import pytest
 import testcontainers.core.network
-from sqlalchemy import create_engine, insert
+from sqlalchemy import create_engine, insert, text
 from sqlalchemy.engine import Engine, make_url
 from tenacity import retry, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
@@ -54,7 +54,12 @@ class TrinoContainer(DbContainer):
         super()._connect()
         engine = create_engine(self.get_connection_url())
         try:
-            retry(wait=wait_fixed(1), stop=stop_after_delay(120))(engine.execute)(
+
+            def _exec(sql):
+                with engine.connect() as conn:
+                    return conn.execute(text(sql))
+
+            retry(wait=wait_fixed(1), stop=stop_after_delay(120))(_exec)(
                 "select system.runtime.nodes.node_id from system.runtime.nodes"
             ).fetchall()
         finally:
@@ -190,11 +195,17 @@ def create_test_data(trino_container):
         make_url(trino_container.get_connection_url()).set(database="minio")
     )
 
-    retry(wait=wait_fixed(2), stop=stop_after_delay(60))(engine.execute)(
+    def _execute_with_connect(sql):
+        with engine.connect() as conn:
+            result = conn.execute(text(sql))
+            conn.commit()
+            return result
+
+    retry(wait=wait_fixed(2), stop=stop_after_delay(60))(_execute_with_connect)(
         "SELECT 1 FROM minio.information_schema.schemata LIMIT 1"
     ).fetchall()
 
-    engine.execute(
+    _execute_with_connect(
         "create schema minio.my_schema WITH (location = 's3a://hive-warehouse/')"
     )
     data_dir = os.path.dirname(__file__) + "/data"
@@ -202,14 +213,13 @@ def create_test_data(trino_container):
         file_path = Path(os.path.join(data_dir, file))
 
         if file_path.suffix == ".sql":
-            # Creating test data with complex fields with pandas breaks
             create_test_data_from_sql(engine, file_path)
         else:
             create_test_data_from_parquet(engine, file_path)
 
         sleep(1)
-        engine.execute("ANALYZE " + f'minio."my_schema"."{file_path.stem}"')
-    engine.execute(
+        _execute_with_connect("ANALYZE " + f'minio."my_schema"."{file_path.stem}"')
+    _execute_with_connect(
         "CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')"
     )
     return
@@ -238,10 +248,12 @@ def create_test_data_from_sql(engine: Engine, file_path: Path):
         sql = f.read()
 
     sql = sql.format(catalog="minio", schema="my_schema", table_name=file_path.stem)
-    for statement in sql.split(";"):
-        if statement.strip() == "":
-            continue
-        engine.execute(statement)
+    with engine.connect() as conn:
+        for statement in sql.split(";"):
+            if statement.strip() == "":
+                continue
+            conn.execute(text(statement))
+        conn.commit()
 
 
 def custom_insert(self, conn, keys: list[str], data_iter):

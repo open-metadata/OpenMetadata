@@ -86,5 +86,5 @@ FROM
 JOIN
     crdb_internal.tables ON partitions.table_id = tables.table_id
 WHERE
-    tables.name = %(table_name)s;
+    tables.name = :table_name;
 """

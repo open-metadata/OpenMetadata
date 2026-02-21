@@ -330,7 +330,10 @@ class OracleUnitTest(TestCase):
         mock_result_pkg = MagicMock()
         mock_result_pkg.all.return_value = rows_packages
 
-        mock_engine.execute.side_effect = [mock_result_proc, mock_result_pkg]
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = [mock_result_proc, mock_result_pkg]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         results = list(self.oracle.get_stored_procedures())
 
