@@ -253,6 +253,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void clearFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
     entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
+    entity.setTestCaseResultSummary(
+        fields.contains("summary") ? entity.getTestCaseResultSummary() : null);
     entity.withTests(fields.contains(UPDATE_FIELDS) ? entity.getTests() : null);
   }
 
@@ -519,23 +521,21 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     List<UUID> suiteIds = testSuites.stream().map(TestSuite::getId).toList();
     Map<UUID, List<ResultSummary>> testCaseResultSummaryMap = batchGetResultSummary(suiteIds);
 
-    Set<String> allTestCaseFQNs =
-        testCaseResultSummaryMap.values().stream()
-            .flatMap(List::stream)
-            .map(ResultSummary::getTestCaseName)
-            .collect(Collectors.toSet());
-    Map<String, String> entityLinkMap = batchResolveEntityLinks(allTestCaseFQNs);
-
-    Map<UUID, TestSummary> testSummaryMap =
-        testCaseResultSummaryMap.entrySet().stream()
-            .collect(
-                Collectors.toMap(
-                    Map.Entry::getKey, entry -> getTestSummary(entry.getValue(), entityLinkMap)));
-
-    setFieldFromMap(
-        true, testSuites, testCaseResultSummaryMap, TestSuite::setTestCaseResultSummary);
+    Map<UUID, TestSummary> testSummaryMap = new HashMap<>();
+    testCaseResultSummaryMap.forEach(
+        (id, results) -> testSummaryMap.put(id, computeSimpleSummary(results)));
 
     setFieldFromMap(true, testSuites, testSummaryMap, TestSuite::setSummary);
+  }
+
+  private TestSummary computeSimpleSummary(List<ResultSummary> results) {
+    Map<String, Integer> statusCounts = new HashMap<>();
+    for (ResultSummary r : results) {
+      statusCounts.merge(r.getStatus().toString(), 1, Integer::sum);
+    }
+    TestSummary summary = createTestSummary(statusCounts);
+    summary.setTotal(results.size());
+    return summary;
   }
 
   protected void fetchAndSetIngestionPipelines(List<TestSuite> entities, EntityUtil.Fields fields) {
@@ -566,21 +566,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     TestCaseResultRepository repository =
         (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     return repository.listResultSummariesForTestSuites(testSuiteIds);
-  }
-
-  private Map<String, String> batchResolveEntityLinks(Set<String> testCaseFQNs) {
-    if (testCaseFQNs.isEmpty()) {
-      return Map.of();
-    }
-    List<TestCase> testCases =
-        Entity.getEntityByNames(TEST_CASE, new ArrayList<>(testCaseFQNs), "", ALL);
-    Map<String, String> entityLinkMap = new HashMap<>();
-    for (TestCase tc : testCases) {
-      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(tc.getEntityLink());
-      String linkString = entityLink.getFieldName() == null ? "table" : entityLink.getLinkString();
-      entityLinkMap.put(tc.getFullyQualifiedName(), linkString);
-    }
-    return entityLinkMap;
   }
 
   private TestSummary getTestSummary(

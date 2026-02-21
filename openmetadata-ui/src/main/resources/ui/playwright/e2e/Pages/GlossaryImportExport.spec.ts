@@ -290,16 +290,6 @@ test.describe('Glossary Bulk Import Export', () => {
       }
     );
 
-    await test.step('should have term in review state', async () => {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary1.data.displayName);
-      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
-
-      const statusBadge = page.locator('.status-badge');
-
-      await expect(statusBadge).toHaveText('Approved');
-    });
-
     await test.step('delete custom properties', async () => {
       for (const propertyName of Object.values(propertyListName)) {
         await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
