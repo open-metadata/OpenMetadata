@@ -21,7 +21,6 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TeamDetailsV1 from '../../components/Settings/Team/TeamDetails/TeamDetailsV1';
-import { collectAllTeamIds } from '../../components/Settings/Team/TeamDetails/TeamDetailsV1.utils';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -73,7 +72,6 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [assets, setAssets] = useState<number>(0);
-  const [allTeamIds, setAllTeamIds] = useState<string[]>([]);
   const [parentTeams, setParentTeams] = useState<Team[]>([]);
   const { updateCurrentUser } = useApplicationStore();
 
@@ -196,32 +194,20 @@ const TeamsPage = () => {
     }
   };
 
-
-
   const fetchAssets = async (selectedTeam: Team) => {
-    if (selectedTeam.id && selectedTeam.teamType !== TeamType.Organization) {
-      setAllTeamIds([selectedTeam.id]);
+    if (selectedTeam.id && selectedTeam.teamType === TeamType.Group) {
       try {
-        const teamIds = await collectAllTeamIds(selectedTeam);
-
         const res = await searchQuery({
           query: '',
           pageNumber: 0,
           pageSize: 0,
-          queryFilter: getTermQuery({ 'owners.id': teamIds }, 'should', 1),
+          queryFilter: getTermQuery({ 'owners.id': selectedTeam.id }),
           searchIndex: SearchIndex.ALL,
         });
         const total = res?.hits?.total.value ?? 0;
-        setAllTeamIds(teamIds);
         setAssets(total);
-      } catch (error) {
-        setAssets(0);
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.team-plural-lowercase'),
-          })
-        );
+      } catch {
+        // Error
       }
     }
   };
@@ -498,8 +484,6 @@ const TeamsPage = () => {
   }, [fqn]);
 
   useEffect(() => {
-    setAllTeamIds([]);
-    setAssets(0);
     init();
   }, [fqn]);
 
@@ -544,7 +528,6 @@ const TeamsPage = () => {
     <PageLayoutV1 pageTitle={t('label.team-plural')}>
       <TeamDetailsV1
         afterDeleteAction={afterDeleteAction}
-        allTeamIds={allTeamIds}
         assetsCount={assets}
         childTeams={childTeams}
         currentTeam={selectedTeam}

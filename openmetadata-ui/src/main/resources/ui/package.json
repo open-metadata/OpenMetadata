@@ -249,7 +249,7 @@
     "ws": "8.17.1",
     "axios": "1.13.5",
     "micromatch": "4.0.8",
-    "minimatch": "3.0.5",
+    "minimatch": "10.2.1",
     "semver": "7.5.2",
     "d3-color": "3.1.0",
     "tough-cookie": "4.1.3",

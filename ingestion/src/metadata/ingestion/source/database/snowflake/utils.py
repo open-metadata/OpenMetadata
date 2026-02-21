@@ -373,7 +373,7 @@ def get_stream_definition(  # pylint: disable=unused-argument
     Gets the stream definition
     """
     schema = schema or self.default_schema_name
-    stream_name = f"{schema}.{stream_name}" if schema else stream_name
+    stream_name = f'"{schema}"."{stream_name}"' if schema else f'"{stream_name}"'
     cursor = connection.execute(
         text(SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name))
     )
