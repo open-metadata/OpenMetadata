@@ -93,23 +93,25 @@ class SnowflakeLineageSource(
                             limit=batch_size,
                         )
                     )
-                for row in rows:
-                    query_dict = row._asdict()
-                    query_dict.update({k.lower(): v for k, v in query_dict.items()})
-                    row_count += 1
-                    try:
-                        yield TableQuery(
-                            dialect=self.dialect.value,
-                            query=query_dict["query_text"],
-                            databaseName=self.get_database_name(query_dict),
-                            serviceName=self.config.serviceName,
-                            databaseSchema=self.get_schema_name(query_dict),
+                    for row in rows:
+                        query_dict = row._asdict()
+                        query_dict.update(
+                            {k.lower(): v for k, v in query_dict.items()}
                         )
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Error processing query_dict {query_dict}: {exc}"
-                        )
+                        row_count += 1
+                        try:
+                            yield TableQuery(
+                                dialect=self.dialect.value,
+                                query=query_dict["query_text"],
+                                databaseName=self.get_database_name(query_dict),
+                                serviceName=self.config.serviceName,
+                                databaseSchema=self.get_schema_name(query_dict),
+                            )
+                        except Exception as exc:
+                            logger.debug(traceback.format_exc())
+                            logger.warning(
+                                f"Error processing query_dict {query_dict}: {exc}"
+                            )
                 total_fetched += row_count
                 if row_count < batch_size:
                     break

@@ -352,7 +352,7 @@ def get_view_definition(
     )
 
     schema = schema or self.default_schema_name
-    view_name = f'"{schema}"."{table_name}"' if schema else table_name
+    view_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
     cursor = connection.execute(
         text(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name))
     )
@@ -646,7 +646,7 @@ def get_table_ddl(
     Gets the Table DDL
     """
     schema = schema or self.default_schema_name
-    table_name = f"{schema}.{table_name}" if schema else table_name
+    table_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
     cursor = connection.execute(
         text(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name))
     )

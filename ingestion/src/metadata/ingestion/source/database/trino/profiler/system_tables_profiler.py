@@ -151,7 +151,7 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
     def _get_db_stats(self, schema, table) -> TableStats:
         rows = self.session.execute(text(f'SHOW STATS FOR "{schema}"."{table}"'))
         table_rows, column_rows = map(
-            list, partition(lambda row: row.get("column_name"), map(dict, rows))
+            list, partition(lambda row: row.get("column_name"), (r._asdict() for r in rows))
         )
         if len(table_rows) != 1:
             raise RuntimeError(

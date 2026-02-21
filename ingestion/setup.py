@@ -65,7 +65,6 @@ VERSIONS = {
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
     "starrocks": "pymysql~=1.0",
-    "pydoris": "pydoris-custom>=1.0.2,<1.5",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
@@ -264,7 +263,9 @@ plugins: Dict[str, Set[str]] = {
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
     "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
-    "doris": {VERSIONS["pydoris"]},
+    # pydoris-custom declares sqlalchemy<2 but works at runtime with SA 2.0.
+    # Pre-installed with --no-deps in Dockerfiles.
+    "doris": set(),
     "starrocks": {VERSIONS["pymysql"]},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
@@ -455,7 +456,7 @@ test = {
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
     VERSIONS["cockroach"],
-    VERSIONS["pydoris"],
+    # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
     VERSIONS["pyiceberg"],
     "testcontainers==3.7.1;python_version<'3.9'",

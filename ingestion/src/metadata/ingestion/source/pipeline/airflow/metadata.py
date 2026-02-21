@@ -279,7 +279,7 @@ class AirflowSource(PipelineServiceSource):
                 .all()
             )
 
-            dag_run_dict = [dict(elem) for elem in dag_run_list]
+            dag_run_dict = [elem._asdict() for elem in dag_run_list]
 
             # Build DagRun manually to not fall into new/old columns from
             # different Airflow versions
@@ -346,7 +346,7 @@ class AirflowSource(PipelineServiceSource):
             )
 
         task_instance_dict = (
-            [dict(elem) for elem in task_instance_list] if task_instance_list else []
+            [elem._asdict() for elem in task_instance_list] if task_instance_list else []
         )
 
         return [

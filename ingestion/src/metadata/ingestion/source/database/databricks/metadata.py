@@ -215,13 +215,14 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         }
         if col_type in {"array", "struct", "map"}:
             try:
-                rows = dict(
-                    connection.execute(
+                rows = {
+                    r[0]: r[1]
+                    for r in connection.execute(
                         text(
                             f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`"
                         )
                     ).fetchall()
-                )
+                }
                 col_info["system_data_type"] = rows["data_type"]
                 col_info["is_complex"] = True
             except DatabaseError as err:

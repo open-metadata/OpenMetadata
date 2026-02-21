@@ -857,7 +857,8 @@ class SnowflakeSource(
                         )
                     )
                 )
-                return dict(res.all()).get("body", "")
+                rows = res.all()
+                return rows[0]._mapping["body"] if rows else ""
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error fetching stored procedure definition: {exc}")

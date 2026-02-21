@@ -119,7 +119,7 @@ class HiveSource(CommonDbSourceService):
 
         if not metastore_conn:
             with self.engine.connect() as conn:
-                result = dict(conn.execute(text("SELECT VERSION()")).fetchone())
+                result = conn.execute(text("SELECT VERSION()")).fetchone()._asdict()
 
             version = result.get("_c0", "").split()
             if version and self._parse_version(version[0]) >= self._parse_version(
