@@ -105,6 +105,7 @@ public class DistributedSearchIndexExecutor {
   private final List<PartitionWorker> activeWorkers = new ArrayList<>();
   private Thread lockRefreshThread;
   private Thread partitionHeartbeatThread;
+  private Thread staleReclaimerThread;
 
   // App context for WebSocket broadcasts
   private UUID appId;
@@ -442,8 +443,7 @@ public class DistributedSearchIndexExecutor {
           });
     }
 
-    // Start stale partition reclaimer in a separate thread
-    Thread staleReclaimer =
+    staleReclaimerThread =
         Thread.ofVirtual()
             .name("stale-reclaimer-" + jobId.toString().substring(0, 8))
             .start(() -> runStaleReclaimerLoop(jobId));
@@ -462,14 +462,9 @@ public class DistributedSearchIndexExecutor {
       Thread.currentThread().interrupt();
       LOG.warn("Execution interrupted for job {}", jobId);
     } finally {
-      // Stop all background threads
-      staleReclaimer.interrupt();
-      if (lockRefreshThread != null) {
-        lockRefreshThread.interrupt();
-      }
-      if (partitionHeartbeatThread != null) {
-        partitionHeartbeatThread.interrupt();
-      }
+      interruptAndJoin(staleReclaimerThread, "stale-reclaimer");
+      interruptAndJoin(lockRefreshThread, "lock-refresh");
+      interruptAndJoin(partitionHeartbeatThread, "partition-heartbeat");
 
       // Shutdown executor
       workerExecutor.shutdown();
@@ -846,6 +841,26 @@ public class DistributedSearchIndexExecutor {
       LOG.error("Job {} marked as FAILED due to lost distributed lock", jobId);
     } catch (Exception e) {
       LOG.error("Error marking job {} as failed", jobId, e);
+    }
+  }
+
+  private static final long THREAD_JOIN_TIMEOUT_MS = 5000;
+
+  private void interruptAndJoin(Thread thread, String name) {
+    if (thread == null) {
+      return;
+    }
+    thread.interrupt();
+    try {
+      thread.join(THREAD_JOIN_TIMEOUT_MS);
+      if (thread.isAlive()) {
+        LOG.warn(
+            "Thread {} did not terminate within {}ms after interrupt",
+            name,
+            THREAD_JOIN_TIMEOUT_MS);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
   }
 
