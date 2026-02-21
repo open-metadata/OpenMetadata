@@ -1586,7 +1586,7 @@ class DbtSource(DbtServiceSource):
                 for entity_link_str in entity_link_list:
                     table_fqn = get_table_fqn(entity_link_str)
                     logger.debug(f"Table fqn found: {table_fqn}")
-                    source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
+                    source_elements = fqn.split(table_fqn)
                     test_case_fqn = fqn.build(
                         self.metadata,
                         entity_type=TestCase,
@@ -1697,7 +1697,7 @@ class DbtSource(DbtServiceSource):
 
                 # Create the test case fqns and add the results
                 for table_fqn in dbt_test.get(DbtCommonEnum.UPSTREAM.value):
-                    source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
+                    source_elements = fqn.split(table_fqn)
                     test_case_fqn = fqn.build(
                         self.metadata,
                         entity_type=TestCase,
