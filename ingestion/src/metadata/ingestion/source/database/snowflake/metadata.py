@@ -278,8 +278,7 @@ class SnowflakeSource(
 
     def set_partition_details(self) -> None:
         self.partition_details.clear()
-        results = self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY).all()
-        for row in results:
+        for row in self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY):
             if row.CLUSTERING_KEY:
                 self.partition_details[
                     f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
@@ -287,25 +286,22 @@ class SnowflakeSource(
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()
-        results = self.engine.execute(SNOWFLAKE_GET_SCHEMA_COMMENTS).all()
-        for row in results:
+        for row in self.engine.execute(SNOWFLAKE_GET_SCHEMA_COMMENTS):
             self.schema_desc_map[(row.DATABASE_NAME, row.SCHEMA_NAME)] = row.COMMENT
 
     def set_database_description_map(self) -> None:
         self.database_desc_map.clear()
         if not self.database_desc_map:
-            results = self.engine.execute(SNOWFLAKE_GET_DATABASE_COMMENTS).all()
-            for row in results:
+            for row in self.engine.execute(SNOWFLAKE_GET_DATABASE_COMMENTS):
                 self.database_desc_map[row.DATABASE_NAME] = row.COMMENT
 
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
-        results = self.engine.execute(
-            SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)
-        ).all()
         self.external_location_map = {
             (row.database_name, row.schema_name, row.name): row.location
-            for row in results
+            for row in self.engine.execute(
+                SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)
+            )
         }
 
     def set_schema_tags_map(self, database_name: str) -> None:
@@ -315,14 +311,12 @@ class SnowflakeSource(
             return
 
         try:
-            results = self.engine.execute(
+            for row in self.engine.execute(
                 SNOWFLAKE_FETCH_SCHEMA_TAGS.format(
                     database_name=database_name,
                     account_usage=self.service_connection.accountUsageSchema,
                 )
-            ).all()
-
-            for row in results:
+            ):
                 schema_name = row.SCHEMA_NAME
                 if schema_name not in self.schema_tags_map:
                     self.schema_tags_map[schema_name] = []
@@ -341,14 +335,12 @@ class SnowflakeSource(
             return
 
         try:
-            results = self.engine.execute(
+            for row in self.engine.execute(
                 SNOWFLAKE_FETCH_DATABASE_TAGS.format(
                     database_name=database_name,
                     account_usage=self.service_connection.accountUsageSchema,
                 )
-            ).all()
-
-            for row in results:
+            ):
                 db_name = row.DATABASE_NAME
                 if db_name not in self.database_tags_map:
                     self.database_tags_map[db_name] = []
@@ -797,14 +789,13 @@ class SnowflakeSource(
         self, query: str
     ) -> Iterable[SnowflakeStoredProcedure]:
         try:
-            results = self.engine.execute(
+            for row in self.engine.execute(
                 query.format(
                     database_name=self.context.get().database,
                     schema_name=self.context.get().database_schema,
                     account_usage=self.service_connection.accountUsageSchema,
                 )
-            ).all()
-            for row in results:
+            ):
                 stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
                 if stored_procedure.definition is None:
                     logger.debug(
