@@ -527,7 +527,7 @@ class SnowflakeUnitTest(TestCase):
                 ),
             ]
             mock_conn = MagicMock()
-            mock_conn.execute.return_value.all.return_value = mock_schema_tags
+            mock_conn.execute.return_value = mock_schema_tags
             source.engine = MagicMock()
             source.engine.connect.return_value.__enter__ = MagicMock(
                 return_value=mock_conn
@@ -594,9 +594,13 @@ class SnowflakeUnitTest(TestCase):
                     TAG_VALUE="DB_VALUE",
                 ),
             ]
-            mock_execute = Mock()
-            mock_execute.all.return_value = mock_database_tags
-            source.engine.execute = Mock(return_value=mock_execute)
+            mock_conn = MagicMock()
+            mock_conn.execute.return_value = mock_database_tags
+            source.engine = MagicMock()
+            source.engine.connect.return_value.__enter__ = MagicMock(
+                return_value=mock_conn
+            )
+            source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
             # Test set_database_tags_map
             source.set_database_tags_map("TEST_DATABASE")
@@ -800,7 +804,7 @@ class SnowflakeUnitTest(TestCase):
         }
 
         mock_conn = MagicMock()
-        mock_conn.execute.return_value.all.return_value = [row1, row2]
+        mock_conn.execute.return_value = [row1, row2]
         mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
@@ -835,7 +839,7 @@ class SnowflakeUnitTest(TestCase):
                 ),
             ]
             mock_conn = MagicMock()
-            mock_conn.execute.return_value.all.return_value = mock_schema_tags
+            mock_conn.execute.return_value = mock_schema_tags
             source.engine = MagicMock()
             source.engine.connect.return_value.__enter__ = MagicMock(
                 return_value=mock_conn
