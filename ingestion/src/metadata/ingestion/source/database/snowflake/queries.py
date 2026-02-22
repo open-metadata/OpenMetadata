@@ -109,6 +109,7 @@ SNOWFLAKE_FETCH_DATABASE_TAGS = textwrap.dedent(
       and OBJECT_NAME IS NULL
       and COLUMN_NAME IS NULL
       and DOMAIN = 'DATABASE'
+      and OBJECT_DELETED IS NULL
 """
 )
 
