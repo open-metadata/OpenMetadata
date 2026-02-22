@@ -97,6 +97,7 @@ SNOWFLAKE_FETCH_SCHEMA_TAGS = textwrap.dedent(
       and OBJECT_NAME IS NOT NULL
       and COLUMN_NAME IS NULL
       and DOMAIN = 'SCHEMA'
+      and OBJECT_DELETED IS NULL
 """
 )
 
