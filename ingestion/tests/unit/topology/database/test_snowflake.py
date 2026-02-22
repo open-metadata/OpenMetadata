@@ -525,9 +525,7 @@ class SnowflakeUnitTest(TestCase):
                     SCHEMA_NAME="TEST_SCHEMA", TAG_NAME="SCHEMA_TAG", TAG_VALUE="VALUE"
                 ),
             ]
-            mock_execute = Mock()
-            mock_execute.all.return_value = mock_schema_tags
-            source.engine.execute = Mock(return_value=mock_execute)
+            source.engine.execute = Mock(return_value=mock_schema_tags)
 
             source.set_schema_tags_map("TEST_DATABASE")
             self.assertEqual(len(source.schema_tags_map["TEST_SCHEMA"]), 1)
@@ -589,9 +587,7 @@ class SnowflakeUnitTest(TestCase):
                     TAG_VALUE="DB_VALUE",
                 ),
             ]
-            mock_execute = Mock()
-            mock_execute.all.return_value = mock_database_tags
-            source.engine.execute = Mock(return_value=mock_execute)
+            source.engine.execute = Mock(return_value=mock_database_tags)
 
             # Test set_database_tags_map
             source.set_database_tags_map("TEST_DATABASE")
