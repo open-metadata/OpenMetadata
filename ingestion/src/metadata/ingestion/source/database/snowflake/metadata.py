@@ -577,20 +577,20 @@ class SnowflakeSource(
                     )
 
     def yield_database_tag(
-        self, database_name: str
+        self, database_entity: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yield database-level tags for the topology."""
         if not self.source_config.includeTags:
             return
 
-        if database_name in self.database_tags_map:
+        if database_entity in self.database_tags_map:
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,
                 service_name=self.context.get().database_service,
-                database_name=database_name,
+                database_name=database_entity,
             )
-            for tag_info in self.database_tags_map[database_name]:
+            for tag_info in self.database_tags_map[database_entity]:
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=FullyQualifiedEntityName(database_fqn),
                     tags=[tag_info["tag_value"]],
