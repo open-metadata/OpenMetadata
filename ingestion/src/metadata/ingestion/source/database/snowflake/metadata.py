@@ -1047,7 +1047,8 @@ class SnowflakeSource(
     def _get_classification_name(self, tag_label: TagLabel) -> str:
         """Extract classification name from tag FQN (e.g., 'ENV.staging' -> 'ENV')"""
         tag_fqn = tag_label.tagFQN.root if tag_label.tagFQN else ""
-        return tag_fqn.split(".")[0] if "." in tag_fqn else tag_fqn
+        parts = fqn.split(tag_fqn) if tag_fqn else []
+        return parts[0] if parts else tag_fqn
 
     def _has_classification(
         self, classification_name: str, tag_list: List[TagLabel]
