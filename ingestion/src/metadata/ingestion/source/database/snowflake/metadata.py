@@ -293,40 +293,38 @@ class SnowflakeSource(
     def set_partition_details(self) -> None:
         self.partition_details.clear()
         with self.engine.connect() as conn:
-            results = conn.execute(text(SNOWFLAKE_GET_CLUSTER_KEY)).all()
-        for row in results:
-            if row.CLUSTERING_KEY:
-                self.partition_details[
-                    f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
-                ] = row.CLUSTERING_KEY
+            for row in conn.execute(text(SNOWFLAKE_GET_CLUSTER_KEY)):
+                if row.CLUSTERING_KEY:
+                    self.partition_details[
+                        f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
+                    ] = row.CLUSTERING_KEY
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()
         with self.engine.connect() as conn:
-            results = conn.execute(text(SNOWFLAKE_GET_SCHEMA_COMMENTS)).all()
-        for row in results:
-            self.schema_desc_map[(row.DATABASE_NAME, row.SCHEMA_NAME)] = row.COMMENT
+            for row in conn.execute(text(SNOWFLAKE_GET_SCHEMA_COMMENTS)):
+                self.schema_desc_map[(row.DATABASE_NAME, row.SCHEMA_NAME)] = row.COMMENT
 
     def set_database_description_map(self) -> None:
         self.database_desc_map.clear()
         if not self.database_desc_map:
             with self.engine.connect() as conn:
-                results = conn.execute(text(SNOWFLAKE_GET_DATABASE_COMMENTS)).all()
-            for row in results:
-                self.database_desc_map[row.DATABASE_NAME] = row.COMMENT
+                for row in conn.execute(text(SNOWFLAKE_GET_DATABASE_COMMENTS)):
+                    self.database_desc_map[row.DATABASE_NAME] = row.COMMENT
 
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
         with self.engine.connect() as conn:
-            results = conn.execute(
-                text(
-                    SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)
+            self.external_location_map = {
+                (row.database_name, row.schema_name, row.name): row.location
+                for row in conn.execute(
+                    text(
+                        SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(
+                            database_name=database_name
+                        )
+                    )
                 )
-            ).all()
-        self.external_location_map = {
-            (row.database_name, row.schema_name, row.name): row.location
-            for row in results
-        }
+            }
 
     def set_schema_tags_map(self, database_name: str) -> None:
         """Fetch and store all schema-level tags for the current database"""
@@ -336,28 +334,26 @@ class SnowflakeSource(
 
         try:
             with self.engine.connect() as conn:
-                results = conn.execute(
+                for row in conn.execute(
                     text(
                         SNOWFLAKE_FETCH_SCHEMA_TAGS.format(
                             database_name=database_name,
                             account_usage=self.service_connection.accountUsageSchema,
                         )
                     )
-                ).all()
-
-            for row in results:
-                schema_name = row.SCHEMA_NAME
-                if not row.TAG_VALUE:
-                    logger.warning(
-                        f"Skipping tag '{row.TAG_NAME}' for schema '{schema_name}' - "
-                        "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
+                ):
+                    schema_name = row.SCHEMA_NAME
+                    if not row.TAG_VALUE:
+                        logger.warning(
+                            f"Skipping tag '{row.TAG_NAME}' for schema '{schema_name}' - "
+                            "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
+                        )
+                        continue
+                    if schema_name not in self.schema_tags_map:
+                        self.schema_tags_map[schema_name] = []
+                    self.schema_tags_map[schema_name].append(
+                        {"tag_name": row.TAG_NAME, "tag_value": row.TAG_VALUE}
                     )
-                    continue
-                if schema_name not in self.schema_tags_map:
-                    self.schema_tags_map[schema_name] = []
-                self.schema_tags_map[schema_name].append(
-                    {"tag_name": row.TAG_NAME, "tag_value": row.TAG_VALUE}
-                )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -370,20 +366,21 @@ class SnowflakeSource(
             return
 
         try:
-            results = self.engine.execute(
-                SNOWFLAKE_FETCH_DATABASE_TAGS.format(
-                    database_name=database_name,
-                    account_usage=self.service_connection.accountUsageSchema,
-                )
-            ).all()
-
-            for row in results:
-                db_name = row.DATABASE_NAME
-                if db_name not in self.database_tags_map:
-                    self.database_tags_map[db_name] = []
-                self.database_tags_map[db_name].append(
-                    {"tag_name": row.TAG_NAME, "tag_value": row.TAG_VALUE}
-                )
+            with self.engine.connect() as conn:
+                for row in conn.execute(
+                    text(
+                        SNOWFLAKE_FETCH_DATABASE_TAGS.format(
+                            database_name=database_name,
+                            account_usage=self.service_connection.accountUsageSchema,
+                        )
+                    )
+                ):
+                    db_name = row.DATABASE_NAME
+                    if db_name not in self.database_tags_map:
+                        self.database_tags_map[db_name] = []
+                    self.database_tags_map[db_name].append(
+                        {"tag_name": row.TAG_NAME, "tag_value": row.TAG_VALUE}
+                    )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -854,7 +851,7 @@ class SnowflakeSource(
     ) -> Iterable[SnowflakeStoredProcedure]:
         try:
             with self.engine.connect() as conn:
-                results = conn.execute(
+                for row in conn.execute(
                     text(
                         query.format(
                             database_name=self.context.get().database,
@@ -862,22 +859,21 @@ class SnowflakeSource(
                             account_usage=self.service_connection.accountUsageSchema,
                         )
                     )
-                ).all()
-            for row in results:
-                stored_procedure = SnowflakeStoredProcedure.model_validate(
-                    row._asdict()
-                )
-                if stored_procedure.definition is None:
-                    logger.debug(
-                        f"Missing ownership permissions on procedure {stored_procedure.name}."
-                        " Trying to fetch description via DESCRIBE."
+                ):
+                    stored_procedure = SnowflakeStoredProcedure.model_validate(
+                        row._asdict()
                     )
-                    stored_procedure.definition = self.describe_procedure_definition(
-                        stored_procedure
-                    )
-                if self.is_stored_procedure_filtered(stored_procedure.name):
-                    continue
-                yield stored_procedure
+                    if stored_procedure.definition is None:
+                        logger.debug(
+                            f"Missing ownership permissions on procedure {stored_procedure.name}."
+                            " Trying to fetch description via DESCRIBE."
+                        )
+                        stored_procedure.definition = (
+                            self.describe_procedure_definition(stored_procedure)
+                        )
+                    if self.is_stored_procedure_filtered(stored_procedure.name):
+                        continue
+                    yield stored_procedure
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error fetching stored procedures: {exc}")
