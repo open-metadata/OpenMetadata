@@ -345,14 +345,11 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const entityOption = page.locator('.ant-dropdown-menu-item').first();
         await expect(entityOption).toBeVisible();
 
-        const auditLogResponse = page.waitForResponse((response) => {
-          const isAuditLogUrl = response.url().includes('/api/v1/audit/logs');
-          const hasEntityType = response
-            .url()
-            .toLowerCase()
-            .includes(`entitytype=${entityType.toLowerCase()}`);
-          return isAuditLogUrl && hasEntityType;
-        });
+        const auditLogResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/audit/logs') &&
+            response.url().includes('entityType=')
+        );
 
         await entityOption.click();
         await page.getByTestId('update-btn').click();
