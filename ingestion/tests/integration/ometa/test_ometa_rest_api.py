@@ -60,7 +60,9 @@ def api_service(metadata):
         serviceType=ApiServiceType.Rest,
         connection=ApiConnection(
             config=RestConnection(
-                openAPISchemaURL="https://petstore.swagger.io/v2/swagger.json",
+                openAPISchemaConnection=OpenAPISchemaURL(
+                    openAPISchemaURL="https://petstore.swagger.io/v2/swagger.json"
+                ),
                 type=RestType.Rest,
             )
         ),
