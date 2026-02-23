@@ -15,6 +15,7 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { lowerCase } from 'lodash';
 
 const navigateToAuditLogsPage = async (page: Page) => {
   const logRequest = page.waitForResponse('/api/v1/audit/logs?*');
@@ -306,8 +307,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .getByText('admin', { exact: true });
       await expect(adminOption).toBeVisible();
 
-      const auditLogResponse = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/audit')
+      const auditLogResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/audit/logs') &&
+          response.url().includes('userName=admin')
       );
 
       await adminOption.click();
@@ -343,14 +346,17 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const entityOption = page.locator('.ant-dropdown-menu-item').first();
         await expect(entityOption).toBeVisible();
 
-        const auditLogResponse = page.waitForResponse((response) =>
-          response.url().includes('/api/v1/audit')
+        const auditLogResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/audit/logs') &&
+            response.url().includes(`entityType=${lowerCase(entityType)}`)
         );
 
         await entityOption.click();
         await page.getByTestId('update-btn').click();
         const response = await auditLogResponse;
         expect(response.status()).toBe(200);
+
         const entityFilterTag = page.getByTestId('filter-chip-entityType');
         await expect(entityFilterTag).toBeVisible();
         await expect(entityFilterTag).toContainText(entityType);
@@ -777,9 +783,9 @@ test.describe(
           state: 'visible',
         });
 
-        const todayCell = page.locator(
-          '.ant-picker-dropdown:visible .ant-picker-cell-today'
-        ).first();
+        const todayCell = page
+          .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
+          .first();
         await todayCell.click();
         await todayCell.click();
       });
@@ -858,9 +864,9 @@ test.describe(
               state: 'visible',
             });
 
-            const todayCell = page.locator(
-              '.ant-picker-dropdown:visible .ant-picker-cell-today'
-            ).first();
+            const todayCell = page
+              .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
+              .first();
             await todayCell.click();
             await todayCell.click();
 
@@ -904,9 +910,9 @@ test.describe(
           state: 'visible',
         });
 
-        const todayCell = page.locator(
-          '.ant-picker-dropdown:visible .ant-picker-cell-today'
-        ).first();
+        const todayCell = page
+          .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
+          .first();
         await todayCell.click();
         await todayCell.click();
       });
