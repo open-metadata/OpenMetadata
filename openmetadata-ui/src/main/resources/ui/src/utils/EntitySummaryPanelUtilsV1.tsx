@@ -42,7 +42,10 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { Field } from '../generated/type/schema';
 import { TagLabel } from '../generated/type/tagLabel';
-import { getDataModelColumnsByFQN } from '../rest/dataModelsAPI';
+import {
+  getDataModelColumnsByFQN,
+  searchDataModelColumnsByFQN,
+} from '../rest/dataModelsAPI';
 import {
   getTableColumnsByFQN,
   getTableList,
@@ -51,7 +54,7 @@ import {
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 
-import { pruneEmptyChildren } from './TableUtils';
+import { flattenColumns, pruneEmptyChildren } from './TableUtils';
 const { Text } = AntTypography;
 
 /**
@@ -294,10 +297,14 @@ const SchemaFieldCardsV1: React.FC<{
       setIsLoading(true);
       try {
         const offset = (page - 1) * (columnsPaging.limit ?? PAGE_SIZE_LARGE);
+        const fields =
+          entityType === EntityType.TABLE
+            ? 'tags,customMetrics,description,extension'
+            : 'tags,description,extension';
         const params = {
           offset,
           limit: columnsPaging.limit,
-          fields: 'tags,customMetrics,description,extension',
+          fields,
           ...(search && { q: search }),
         };
 
@@ -315,7 +322,9 @@ const SchemaFieldCardsV1: React.FC<{
             paging = response.paging;
           }
         } else {
-          const response = await getDataModelColumnsByFQN(fqn, params);
+          const response = search
+            ? await searchDataModelColumnsByFQN(fqn, params)
+            : await getDataModelColumnsByFQN(fqn, params);
           data = response.data;
           paging = response.paging;
         }
@@ -468,10 +477,13 @@ const TopicFieldCardsV1: React.FC<{
 }> = ({ entityInfo, highlights, loading, searchText }) => {
   const schemaFields = entityInfo.messageSchema?.schemaFields || [];
 
-  const filteredFields = useMemo(
-    () => filterItemsBySearchText(schemaFields, searchText),
-    [schemaFields, searchText]
-  );
+  const filteredFields = useMemo(() => {
+    if (!searchText) {
+      return schemaFields;
+    }
+
+    return filterItemsBySearchText(flattenColumns(schemaFields), searchText);
+  }, [schemaFields, searchText]);
 
   if (loading) {
     return (
@@ -522,10 +534,13 @@ const ContainerFieldCardsV1: React.FC<{
 }> = ({ entityInfo, highlights, loading, searchText }) => {
   const columns = entityInfo.dataModel?.columns || [];
 
-  const filteredColumns = useMemo(
-    () => filterItemsBySearchText(columns, searchText),
-    [columns, searchText]
-  );
+  const filteredColumns = useMemo(() => {
+    if (!searchText) {
+      return columns;
+    }
+
+    return filterItemsBySearchText(flattenColumns(columns), searchText);
+  }, [columns, searchText]);
 
   if (loading) {
     return (
@@ -1166,10 +1181,13 @@ const SearchIndexFieldCardsV1: React.FC<{
 }> = ({ entityInfo, highlights, loading, searchText }) => {
   const fields = entityInfo.fields || [];
 
-  const filteredFields = useMemo(
-    () => filterItemsBySearchText(fields, searchText),
-    [fields, searchText]
-  );
+  const filteredFields = useMemo(() => {
+    if (!searchText) {
+      return fields;
+    }
+
+    return filterItemsBySearchText(flattenColumns(fields), searchText);
+  }, [fields, searchText]);
 
   if (loading) {
     return (
