@@ -143,6 +143,15 @@
     "graphPerformanceConfig": {
       "description": "Performance configuration for lineage graph builder.",
       "$ref": "#/definitions/graphPerformanceConfig"
+    },
+    "disableServiceLevelLineageForServiceTypes": {
+      "description": "List of service types for which service-level lineage edges should NOT be created. When an entity belongs to a service of one of these types, no service node will appear in the lineage graph. Valid values include: databaseService, messagingService, dashboardService, pipelineService, storageService, mlmodelService, apiService.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "uniqueItems": true
     }
   },
   "required": [
