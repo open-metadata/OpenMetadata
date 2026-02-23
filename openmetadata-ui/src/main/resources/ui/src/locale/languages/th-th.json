@@ -2168,7 +2168,7 @@
     "application-action-successfully": "แอปพลิเคชัน {{action}} สำเร็จ",
     "application-disabled-message": "แอปพลิเคชันถูกปิดการใช้งานในขณะนี้ คลิกที่เมนูสามจุดในหัวข้อเพื่อเปิดใช้งาน",
     "application-stop": "การหยุดแอปพลิเคชันกำลังดำเนินการ",
-    "application-to-improve-data": "ปรับปรุงข้อมูลของคุณโดยใช้แอปพลิเคชันสำหรับ MetaPilot, ข้อมูลเชิงลึก, และการจัดทำดัชนีการค้นหา",
+    "application-to-improve-data": "ปรับปรุงข้อมูลของคุณโดยใช้แอปพลิเคชันอย่าง AskCollate, Data Insights และการจัดทำดัชนีการค้นหา",
     "are-you-sure": "คุณแน่ใจหรือไม่?",
     "are-you-sure-action-property": "คุณแน่ใจหรือไม่ว่าต้องการ {{action}} {{propertyName}}?",
     "are-you-sure-delete-entity": "คุณแน่ใจหรือไม่ว่าต้องการลบคุณสมบัติ {{entity}}?",

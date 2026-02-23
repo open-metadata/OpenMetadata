@@ -2168,7 +2168,7 @@
     "application-action-successfully": "تم {{action}} التطبيق بنجاح",
     "application-disabled-message": "التطبيق معطل حاليًا. انقر على قائمة النقاط الثلاث في الرأس لتمكينه.",
     "application-stop": "إيقاف التطبيق قيد التقدم",
-    "application-to-improve-data": "حسّن بياناتك باستخدام تطبيقات MetaPilot، ورؤى البيانات، وفهرسة البحث",
+    "application-to-improve-data": "حسّن بياناتك باستخدام تطبيقات مثل AskCollate، ورؤى البيانات، وفهرسة البحث",
     "are-you-sure": "هل أنت متأكد؟",
     "are-you-sure-action-property": "هل أنت متأكد أنك تريد {{action}} {{propertyName}}؟",
     "are-you-sure-delete-entity": "هل أنت متأكد أنك تريد حذف الخاصية {{entity}}",
