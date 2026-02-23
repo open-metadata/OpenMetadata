@@ -274,7 +274,7 @@ def custom_insert(self, conn, keys: list[str], data_iter):
         stmt = insert(self.table).values(data)
         conn.execute(stmt)
         rowcount = conn.execute(
-            "SELECT COUNT(*) FROM " + f'"{self.schema}"."{self.name}"'
+            text("SELECT COUNT(*) FROM " + f'"{self.schema}"."{self.name}"')
         ).scalar()
     return rowcount
 

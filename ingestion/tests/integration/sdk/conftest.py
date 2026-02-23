@@ -190,6 +190,8 @@ def test_data(db_service, postgres_container):
             ],
         )
 
+        conn.commit()
+
     return {
         "users": users_table,
         "products": products_table,

@@ -12,7 +12,6 @@
 SQL Queries used during ingestion
 """
 
-from sqlalchemy import text
 
 COCKROACH_GET_TABLE_NAMES = """
     SELECT 
@@ -61,11 +60,9 @@ WHERE
 """
 
 
-COCKROACH_GET_DATABASE = text(
-    """
+COCKROACH_GET_DATABASE = """
     select datname FROM pg_catalog.pg_database
 """
-)
 
 COCKROACH_GET_DB_NAMES = """
     select datname from pg_catalog.pg_database

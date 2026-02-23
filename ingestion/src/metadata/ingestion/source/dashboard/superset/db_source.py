@@ -93,7 +93,7 @@ class SupersetDBSource(SupersetSourceMixin):
                 else:
                     charts = conn.execute(text(FETCH_ALL_CHARTS)).all()
             for chart in charts:
-                chart_detail = FetchChart(**chart)
+                chart_detail = FetchChart(**dict(chart._mapping))
                 self.all_charts[chart_detail.id] = chart_detail
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -106,7 +106,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     col_list = conn.execute(
                         text(FETCH_COLUMN), {"table_id": table_id}
                     ).all()
-                return [FetchColumn(**col) for col in col_list]
+                return [FetchColumn(**dict(col._mapping)) for col in col_list]
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -128,7 +128,7 @@ class SupersetDBSource(SupersetSourceMixin):
         with self.engine.connect() as conn:
             dashboards = conn.execute(text(query)).all()
         for dashboard in dashboards:
-            yield FetchDashboard(**dashboard)
+            yield FetchDashboard(**dict(dashboard._mapping))
 
     def yield_dashboard(
         self, dashboard_details: FetchDashboard
