@@ -59,7 +59,7 @@ class ApiIngestionClass extends ServiceBaseClass {
       .fill(openAPISchemaURL);
     await checkServiceFieldSectionHighlighting(
       page,
-      'openAPISchemaConnection'
+      'openAPISchemaURL'
     );
   }
 
