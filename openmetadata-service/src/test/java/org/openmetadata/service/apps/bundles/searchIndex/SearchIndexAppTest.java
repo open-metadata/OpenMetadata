@@ -74,6 +74,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.PartitionSt
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.EntityReindexContext;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.SecurityUtil;
@@ -1098,6 +1099,222 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
           resultJobData.getEntities().contains(entity),
           "Entity " + entity + " should be preserved");
     }
+  }
+
+  @Test
+  void testFinalizeAllEntityReindexPromotesVectorIndexOnCompleted() throws Exception {
+    AliasState aliasState = new AliasState();
+    aliasState.put(
+        "vector_search_index_rebuild_old", Set.of("vectorEmbedding", "vector_search_index"));
+    aliasState.put("vector_search_index_rebuild_123", new HashSet<>());
+
+    SearchClient client = aliasState.toMock();
+    SearchRepository repo = mock(SearchRepository.class);
+    when(repo.getSearchClient()).thenReturn(client);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+      SearchIndexApp app = new SearchIndexApp(collectionDAO, searchRepository);
+
+      ReindexContext context = new ReindexContext();
+      context.add(
+          "vectorEmbedding",
+          "vector_search_index",
+          "vector_search_index_rebuild_old",
+          "vector_search_index_rebuild_123",
+          Set.of("vectorEmbedding", "vector_search_index"),
+          "vectorEmbedding",
+          List.of());
+
+      setPrivateField(app, "recreateContext", context);
+      setPrivateField(app, "recreateIndexHandler", new DefaultRecreateHandler());
+      setPrivateField(
+          app, "jobData", new EventPublisherJob().withStatus(EventPublisherJob.Status.COMPLETED));
+
+      var method =
+          SearchIndexApp.class.getDeclaredMethod("finalizeAllEntityReindex", boolean.class);
+      method.setAccessible(true);
+      method.invoke(app, true);
+    }
+
+    assertTrue(
+        aliasState.deletedIndices.contains("vector_search_index_rebuild_old"),
+        "Old vector index should be deleted after successful promotion");
+    assertTrue(
+        aliasState.indexAliases.containsKey("vector_search_index_rebuild_123"),
+        "Staged vector index should exist after promotion");
+    assertTrue(
+        aliasState.indexAliases.get("vector_search_index_rebuild_123").contains("vectorEmbedding"),
+        "Staged vector index should have the vectorEmbedding alias");
+  }
+
+  @Test
+  void testFinalizeAllEntityReindexPromotesVectorIndexOnActiveError() throws Exception {
+    AliasState aliasState = new AliasState();
+    aliasState.put(
+        "vector_search_index_rebuild_old", Set.of("vectorEmbedding", "vector_search_index"));
+    aliasState.put("vector_search_index_rebuild_123", new HashSet<>());
+
+    SearchClient client = aliasState.toMock();
+    SearchRepository repo = mock(SearchRepository.class);
+    when(repo.getSearchClient()).thenReturn(client);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+      SearchIndexApp app = new SearchIndexApp(collectionDAO, searchRepository);
+
+      ReindexContext context = new ReindexContext();
+      context.add(
+          "vectorEmbedding",
+          "vector_search_index",
+          "vector_search_index_rebuild_old",
+          "vector_search_index_rebuild_123",
+          Set.of("vectorEmbedding", "vector_search_index"),
+          "vectorEmbedding",
+          List.of());
+
+      setPrivateField(app, "recreateContext", context);
+      setPrivateField(app, "recreateIndexHandler", new DefaultRecreateHandler());
+      setPrivateField(
+          app,
+          "jobData",
+          new EventPublisherJob().withStatus(EventPublisherJob.Status.ACTIVE_ERROR));
+
+      var method =
+          SearchIndexApp.class.getDeclaredMethod("finalizeAllEntityReindex", boolean.class);
+      method.setAccessible(true);
+      method.invoke(app, false);
+    }
+
+    assertTrue(
+        aliasState.deletedIndices.contains("vector_search_index_rebuild_old"),
+        "Old vector index should be deleted — ACTIVE_ERROR still promotes");
+    assertTrue(
+        aliasState
+            .indexAliases
+            .getOrDefault("vector_search_index_rebuild_123", Set.of())
+            .contains("vectorEmbedding"),
+        "Staged vector index should have the vectorEmbedding alias on ACTIVE_ERROR");
+  }
+
+  @Test
+  void testFinalizeAllEntityReindexDeletesVectorIndexOnFailed() throws Exception {
+    AliasState aliasState = new AliasState();
+    aliasState.put(
+        "vector_search_index_rebuild_old", Set.of("vectorEmbedding", "vector_search_index"));
+    aliasState.put("vector_search_index_rebuild_123", new HashSet<>());
+
+    SearchClient client = aliasState.toMock();
+    SearchRepository repo = mock(SearchRepository.class);
+    when(repo.getSearchClient()).thenReturn(client);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+      SearchIndexApp app = new SearchIndexApp(collectionDAO, searchRepository);
+
+      ReindexContext context = new ReindexContext();
+      context.add(
+          "vectorEmbedding",
+          "vector_search_index",
+          "vector_search_index_rebuild_old",
+          "vector_search_index_rebuild_123",
+          Set.of("vectorEmbedding", "vector_search_index"),
+          "vectorEmbedding",
+          List.of());
+
+      setPrivateField(app, "recreateContext", context);
+      setPrivateField(app, "recreateIndexHandler", new DefaultRecreateHandler());
+      setPrivateField(
+          app, "jobData", new EventPublisherJob().withStatus(EventPublisherJob.Status.FAILED));
+
+      var method =
+          SearchIndexApp.class.getDeclaredMethod("finalizeAllEntityReindex", boolean.class);
+      method.setAccessible(true);
+      method.invoke(app, false);
+    }
+
+    assertTrue(
+        aliasState.deletedIndices.contains("vector_search_index_rebuild_123"),
+        "Staged vector index should be deleted on FAILED status");
+    assertFalse(
+        aliasState.deletedIndices.contains("vector_search_index_rebuild_old"),
+        "Old vector index should NOT be deleted when reindex failed");
+  }
+
+  @Test
+  void testFinalizeAllEntityReindexSkipsAlreadyPromotedEntities() throws Exception {
+    AliasState aliasState = new AliasState();
+    aliasState.put(
+        "table_search_index_rebuild_old",
+        Set.of("table", "table_search_index", "all", "dataAsset"));
+    aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+    aliasState.put(
+        "vector_search_index_rebuild_old", Set.of("vectorEmbedding", "vector_search_index"));
+    aliasState.put("vector_search_index_rebuild_new", new HashSet<>());
+
+    SearchClient client = aliasState.toMock();
+    SearchRepository repo = mock(SearchRepository.class);
+    when(repo.getSearchClient()).thenReturn(client);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+      SearchIndexApp app = new SearchIndexApp(collectionDAO, searchRepository);
+
+      ReindexContext context = new ReindexContext();
+      context.add(
+          "table",
+          "table_search_index",
+          "table_search_index_rebuild_old",
+          "table_search_index_rebuild_new",
+          Set.of("table", "table_search_index", "all", "dataAsset"),
+          "table",
+          List.of("all", "dataAsset"));
+      context.add(
+          "vectorEmbedding",
+          "vector_search_index",
+          "vector_search_index_rebuild_old",
+          "vector_search_index_rebuild_new",
+          Set.of("vectorEmbedding", "vector_search_index"),
+          "vectorEmbedding",
+          List.of());
+
+      setPrivateField(app, "recreateContext", context);
+      setPrivateField(app, "recreateIndexHandler", new DefaultRecreateHandler());
+      setPrivateField(
+          app, "jobData", new EventPublisherJob().withStatus(EventPublisherJob.Status.COMPLETED));
+
+      var method =
+          SearchIndexApp.class.getDeclaredMethod("finalizeAllEntityReindex", boolean.class);
+      method.setAccessible(true);
+      method.invoke(app, true);
+    }
+
+    assertTrue(
+        aliasState.deletedIndices.contains("table_search_index_rebuild_old"),
+        "Old table index should be promoted and cleaned up");
+    assertTrue(
+        aliasState
+            .indexAliases
+            .get("table_search_index_rebuild_new")
+            .contains("table_search_index"),
+        "Staged table index should gain the table_search_index alias");
+    assertTrue(
+        aliasState.deletedIndices.contains("vector_search_index_rebuild_old"),
+        "Old vector index should be promoted and cleaned up");
+    assertTrue(
+        aliasState.indexAliases.get("vector_search_index_rebuild_new").contains("vectorEmbedding"),
+        "Staged vector index should gain the vectorEmbedding alias");
+  }
+
+  private static void setPrivateField(Object target, String fieldName, Object value)
+      throws Exception {
+    java.lang.reflect.Field field = target.getClass().getDeclaredField(fieldName);
+    field.setAccessible(true);
+    field.set(target, value);
   }
 
   @Test
