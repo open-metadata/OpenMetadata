@@ -292,6 +292,9 @@ public class SearchIndexExecutor implements AutoCloseable {
 
     reIndexFromStartToEnd(clusterMetrics, entities);
     closeSinkIfNeeded();
+    // Promote anything yet to be promoted such as vector search indexes which is not part of
+    // entities set
+    finalizeReindex();
 
     return buildResult();
   }
