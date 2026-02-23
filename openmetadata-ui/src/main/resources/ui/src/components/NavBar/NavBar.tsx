@@ -66,7 +66,7 @@ import {
 } from '../../utils/BrowserNotificationUtils';
 import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getDomainDisplayName } from '../../utils/EntityUtils';
 import {
   getEntityFQN,
   getEntityType,
@@ -429,6 +429,11 @@ const NavBar = () => {
     []
   );
 
+  const domainDisplayName = useMemo(
+    () => getDomainDisplayName(activeDomainEntityRef, activeDomain),
+    [activeDomainEntityRef, activeDomain, t]
+  );
+
   const handleLanguageChange = useCallback(({ key }: MenuInfo) => {
     i18next.changeLanguage(key);
     setPreference({ language: key as SupportedLocales });
@@ -496,9 +501,7 @@ const NavBar = () => {
                       width={20}
                     />
                     <Typography.Text ellipsis className="domain-text">
-                      {activeDomainEntityRef
-                        ? getEntityName(activeDomainEntityRef)
-                        : activeDomain}
+                      {domainDisplayName}
                     </Typography.Text>
                     <DropDownIcon width={12} />
                   </Button>
