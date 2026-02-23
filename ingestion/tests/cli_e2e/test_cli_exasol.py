@@ -17,6 +17,8 @@ from typing import List
 
 import pytest
 
+from sqlalchemy import text
+
 from .base.e2e_types import E2EType
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -93,13 +95,13 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         )
         super().setUpClass()
         with cls.engine.connect() as connection:
-            connection.execute(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}")
-            connection.execute(f"CREATE SCHEMA IF NOT EXISTS IGNORE_SCHEMA")
-            connection.execute(cls.create_table_query)
+            connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}"))
+            connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS IGNORE_SCHEMA"))
+            connection.execute(text(cls.create_table_query))
             connection.execute(
-                f"CREATE OR REPLACE TABLE {SCHEMA_NAME}.IGNORE_TABLE AS SELECT * FROM {SCHEMA_NAME}.{TABLE_NAME}"
+                text(f"CREATE OR REPLACE TABLE {SCHEMA_NAME}.IGNORE_TABLE AS SELECT * FROM {SCHEMA_NAME}.{TABLE_NAME}")
             )
-        connection.close()
+            connection.commit()
 
     @classmethod
     def tearDownClass(cls):
