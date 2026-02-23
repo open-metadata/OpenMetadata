@@ -14,7 +14,8 @@ import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar'
+import { settingClick } from '../../utils/sidebar';
+
 const navigateToAuditLogsPage = async (page: Page) => {
   const logRequest = page.waitForResponse('/api/v1/audit/logs?*');
   await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
@@ -344,13 +345,14 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const entityOption = page.locator('.ant-dropdown-menu-item').first();
         await expect(entityOption).toBeVisible();
 
-        const auditLogResponse = page.waitForResponse(
-          (response) => {
-            const isAuditLogUrl = response.url().includes('/api/v1/audit/logs');
-            const hasEntityType = response.url().toLowerCase().includes(`entitytype=${entityType.toLowerCase()}`);
-            return isAuditLogUrl && hasEntityType;
-          }
-        );
+        const auditLogResponse = page.waitForResponse((response) => {
+          const isAuditLogUrl = response.url().includes('/api/v1/audit/logs');
+          const hasEntityType = response
+            .url()
+            .toLowerCase()
+            .includes(`entitytype=${entityType.toLowerCase()}`);
+          return isAuditLogUrl && hasEntityType;
+        });
 
         await entityOption.click();
         await page.getByTestId('update-btn').click();
