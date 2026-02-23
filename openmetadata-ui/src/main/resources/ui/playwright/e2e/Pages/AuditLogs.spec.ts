@@ -779,7 +779,7 @@ test.describe(
 
         const todayCell = page.locator(
           '.ant-picker-dropdown:visible .ant-picker-cell-today'
-        );
+        ).first();
         await todayCell.click();
         await todayCell.click();
       });
@@ -860,7 +860,7 @@ test.describe(
 
             const todayCell = page.locator(
               '.ant-picker-dropdown:visible .ant-picker-cell-today'
-            );
+            ).first();
             await todayCell.click();
             await todayCell.click();
 
@@ -906,7 +906,7 @@ test.describe(
 
         const todayCell = page.locator(
           '.ant-picker-dropdown:visible .ant-picker-cell-today'
-        );
+        ).first();
         await todayCell.click();
         await todayCell.click();
       });
