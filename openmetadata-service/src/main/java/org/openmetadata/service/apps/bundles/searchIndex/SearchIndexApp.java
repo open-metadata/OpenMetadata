@@ -49,6 +49,7 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.quartz.JobExecutionContext;
@@ -762,29 +763,46 @@ public class SearchIndexApp extends AbstractNativeApplication {
     Set<String> entitiesToFinalize = new HashSet<>(recreateContext.getEntities());
     entitiesToFinalize.removeAll(promotedEntities);
 
-    if (entitiesToFinalize.isEmpty()) {
-      LOG.info(
-          "All {} entities already promoted during execution, skipping finalizeAllEntityReindex",
-          promotedEntities.size());
-      recreateContext = null;
-      return;
-    }
-
-    LOG.info(
-        "Finalizing {} remaining entities (already promoted: {})",
-        entitiesToFinalize.size(),
-        promotedEntities.size());
+    // Vector index is a pseudo-entity with no partitions or batch tracking — handle separately
+    boolean hasVectorIndex = entitiesToFinalize.remove(VectorIndexService.VECTOR_INDEX_KEY);
 
     try {
-      for (String entityType : entitiesToFinalize) {
-        try {
-          finalizeEntityReindex(entityType, finalSuccess);
-        } catch (Exception ex) {
-          LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+      if (!entitiesToFinalize.isEmpty()) {
+        LOG.info(
+            "Finalizing {} remaining entities (already promoted: {})",
+            entitiesToFinalize.size(),
+            promotedEntities.size());
+
+        for (String entityType : entitiesToFinalize) {
+          try {
+            finalizeEntityReindex(entityType, finalSuccess);
+          } catch (Exception ex) {
+            LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+          }
         }
+      }
+
+      if (hasVectorIndex) {
+        finalizeVectorIndex(finalSuccess);
       }
     } finally {
       recreateContext = null;
+    }
+  }
+
+  private void finalizeVectorIndex(boolean finalSuccess) {
+    // Vector index data is written as a side-effect of processing real entities.
+    // Promote when the job ran to completion (even with some errors) since partial
+    // vector data is better than an orphaned rebuild index. Only discard on
+    // FAILED (job crashed) or STOPPED (user cancelled).
+    boolean vectorSuccess =
+        finalSuccess
+            || (jobData != null && jobData.getStatus() == EventPublisherJob.Status.ACTIVE_ERROR);
+
+    try {
+      finalizeEntityReindex(VectorIndexService.VECTOR_INDEX_KEY, vectorSuccess);
+    } catch (Exception ex) {
+      LOG.error("Failed to finalize vector index", ex);
     }
   }
 
