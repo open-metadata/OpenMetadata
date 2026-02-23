@@ -946,8 +946,11 @@ const APIEndpointSchemaV1: React.FC<{
         if (nameMatch || filteredChildren.length > 0) {
           acc.push({
             ...field,
-            children:
-              filteredChildren.length > 0 ? filteredChildren : field.children,
+            children: nameMatch
+              ? field.children
+              : filteredChildren.length > 0
+              ? filteredChildren
+              : field.children,
           });
         }
 
