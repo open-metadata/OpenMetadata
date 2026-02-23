@@ -8,37 +8,42 @@
   "type": "module",
   "exports": {
     ".": {
+      "types": "./dist/types/src/index.d.ts",
       "import": "./dist/index.es.js",
-      "require": "./dist/index.cjs.js",
-      "types": "./dist/types/src/index.d.ts"
+      "require": "./dist/index.cjs.js"
     },
     "./theme": {
+      "types": "./dist/types/src/theme/index.d.ts",
       "import": "./dist/theme/index.es.js",
-      "require": "./dist/theme/index.cjs.js",
-      "types": "./dist/types/src/theme/index.d.ts"
+      "require": "./dist/theme/index.cjs.js"
     },
     "./colors": {
+      "types": "./dist/types/src/colors/index.d.ts",
       "import": "./dist/colors/index.es.js",
-      "require": "./dist/colors/index.cjs.js",
-      "types": "./dist/types/src/colors/index.d.ts"
+      "require": "./dist/colors/index.cjs.js"
     },
     "./components": {
+      "types": "./dist/types/src/components/index.d.ts",
       "import": "./dist/components/index.es.js",
-      "require": "./dist/components/index.cjs.js",
-      "types": "./dist/types/src/components/index.d.ts"
+      "require": "./dist/components/index.cjs.js"
     },
     "./utils": {
+      "types": "./dist/types/src/utils/index.d.ts",
       "import": "./dist/utils/index.es.js",
-      "require": "./dist/utils/index.cjs.js",
-      "types": "./dist/types/src/utils/index.d.ts"
-    }
+      "require": "./dist/utils/index.cjs.js"
+    },
+    "./styles.css": "./dist/ui-core-components.css",
+    "./theme.css": "./src/styles/theme.css"
   },
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css",
+    "dist/**/*.css"
+  ],
   "keywords": [
     "theme",
     "mui",
@@ -63,7 +68,15 @@
   "author": "OpenMetadata",
   "license": "Apache-2.0",
   "dependencies": {
-    "@material/material-color-utilities": "^0.3.0"
+    "@internationalized/date": "^3.11.0",
+    "@material/material-color-utilities": "^0.3.0",
+    "@react-aria/utils": "^3.33.0",
+    "@react-stately/utils": "^3.11.0",
+    "@untitledui/icons": "^0.0.21",
+    "input-otp": "^1.4.2",
+    "react-aria": "^3.46.0",
+    "react-aria-components": "^1.15.1",
+    "react-hook-form": "^7.71.1"
   },
   "peerDependencies": {
     "@emotion/react": ">=11.0.0",
@@ -73,7 +86,13 @@
     "@mui/x-date-pickers": ">=8.0.0",
     "notistack": ">=3.0.0",
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "react-dom": ">=18.0.0",
+    "@tailwindcss/typography": ">=0.5.0",
+    "@tailwindcss/vite": ">=4.0.0",
+    "tailwind-merge": ">=3.0.0",
+    "tailwindcss": ">=4.0.0",
+    "tailwindcss-animate": ">=1.0.0",
+    "tailwindcss-react-aria-components": ">=2.0.0"
   },
   "devDependencies": {
     "@emotion/react": "^11.14.0",
@@ -97,6 +116,12 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "storybook": "^8.6.15",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tailwindcss/vite": "^4.1.18",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "^4.1.18",
+    "tailwindcss-animate": "^1.0.7",
+    "tailwindcss-react-aria-components": "^2.0.1",
     "terser": "^5.0.0",
     "typescript": "^4.2.4",
     "vite": "^7.1.11",

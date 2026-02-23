@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
+import {
+  Input as CoreInput,
+  Select as CoreSelect,
+} from '@openmetadata/ui-core-components';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
@@ -171,6 +175,23 @@ export const getField = (field: FieldProp) => {
       );
     }
 
+    case FieldTypes.UT_TEXT: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <CoreInput
+            {...props}
+            isRequired={isRequired}
+            label={label as string}
+            placeholder={placeholder}
+          />
+        </Form.Item>
+      );
+    }
+
     case FieldTypes.PASSWORD_MUI: {
       const { error, ...muiProps } = props;
       const isRequired = fieldRules.some(
@@ -260,6 +281,34 @@ export const getField = (field: FieldProp) => {
         </Form.Item>
       );
     }
+
+    case FieldTypes.UT_DROPDOWN: {
+      const { options = [], ...coreSelectProps } = props;
+
+      fieldElement = (
+        <CoreSelect
+          {...coreSelectProps}
+          id={id}
+          items={options.map((option) => ({
+            id: option.value,
+            isDisabled: option.disabled,
+            label:
+              typeof option.label === 'string'
+                ? option.label
+                : String(option.value),
+          }))}
+          label={label as string}
+          placeholder={placeholder}
+          size="md">
+          {(item) => (
+            <CoreSelect.Item id={item.id}>{item.label}</CoreSelect.Item>
+          )}
+        </CoreSelect>
+      );
+
+      break;
+    }
+
     case FieldTypes.SLIDER_INPUT:
       fieldElement = (
         <SliderWithInput {...(props as unknown as SliderWithInputProps)} />

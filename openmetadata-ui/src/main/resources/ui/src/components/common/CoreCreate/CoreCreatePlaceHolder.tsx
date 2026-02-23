@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import AddIcon from '@mui/icons-material/Add';
-import { Box, Button, Typography } from '@mui/material';
+import { Button } from '@openmetadata/ui-core-components';
+import { Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 
-export interface MUICreateErrorPlaceHolderProps {
+export interface CoreCreatePlaceHolderProps {
   buttonId?: string;
   children?: ReactNode;
   className?: string;
@@ -27,7 +27,7 @@ export interface MUICreateErrorPlaceHolderProps {
   contentMaxWidth?: string;
 }
 
-const MUICreateErrorPlaceHolder = ({
+const CoreCreatePlaceHolder = ({
   children,
   buttonId,
   className,
@@ -37,41 +37,38 @@ const MUICreateErrorPlaceHolder = ({
   permission = false,
   onClick,
   contentMaxWidth,
-}: MUICreateErrorPlaceHolderProps) => {
+}: CoreCreatePlaceHolderProps) => {
   return (
     <div
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm bg-white w-full p-8'
+        'h-full flex-center border-default border-radius-sm bg-white w-full p-8 tw:pt-0'
       )}
-      data-testid="no-data-placeholder"
-      style={{ paddingTop: 0 }}>
-      <Box sx={{ textAlign: 'center' }}>
+      data-testid="no-data-placeholder">
+      <div className="tw:text-center">
         {icon && <div className="m-b-xs">{icon}</div>}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            flexDirection: 'column',
-            maxWidth: contentMaxWidth ?? '16rem',
-          }}>
-          {heading && <Typography>{heading}</Typography>}
+        <div
+          className="tw:flex tw:flex-col tw:items-center"
+          style={{ maxWidth: contentMaxWidth ?? '16rem' }}>
+          {heading && (
+            <p className="tw:m-0 tw:text-base tw:text-gray-700">{heading}</p>
+          )}
           {children}
           {permission && onClick && (
             <Button
+              className="tw:mt-6 tw:min-w-40"
               color="primary"
               data-testid={buttonId}
-              startIcon={<AddIcon />}
-              sx={{ mt: 3, minWidth: '10rem' }}
-              variant="contained"
+              iconLeading={Plus}
+              size="md"
               onClick={onClick}>
               {buttonTitle}
             </Button>
           )}
-        </Box>
-      </Box>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default MUICreateErrorPlaceHolder;
+export default CoreCreatePlaceHolder;

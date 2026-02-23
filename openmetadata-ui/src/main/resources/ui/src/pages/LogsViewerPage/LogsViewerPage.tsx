@@ -11,20 +11,18 @@
  *  limitations under the License.
  */
 
-import { DownloadOutlined } from '@ant-design/icons';
 import { LazyLog } from '@melloware/react-logviewer';
 import {
   Box,
-  Button,
-  CircularProgress,
   Divider,
-  IconButton,
   Skeleton,
   Stack,
   Tooltip,
   Typography,
   useTheme,
 } from '@mui/material';
+import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Download02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
 import {
@@ -40,6 +38,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as TimeDateIcon } from '../../assets/svg/time-date.svg';
 import { CopyToClipboardButton } from '../../components/common/CopyToClipboardButton/CopyToClipboardButton';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionRecentRuns } from '../../components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
@@ -456,10 +455,8 @@ const LogsViewerPage = () => {
               justifyContent="flex-end"
               spacing={4}>
               <Button
-                color="primary"
+                color="secondary"
                 data-testid="jump-to-end-button"
-                size="small"
-                variant="outlined"
                 onClick={handleJumpToEnd}>
                 {t('label.jump-to-end')}
               </Button>
@@ -470,15 +467,15 @@ const LogsViewerPage = () => {
                 <Tooltip
                   placement="top"
                   title={t('label.downloading-log-plural')}>
-                  <CircularProgress size={16} />
+                  <Loader />
                 </Tooltip>
               ) : (
-                <IconButton
+                <ButtonUtility
+                  color="tertiary"
                   data-testid="download"
-                  sx={{ padding: 0 }}
-                  onClick={handleIngestionDownloadClick}>
-                  <DownloadOutlined data-testid="download-icon" width="16" />
-                </IconButton>
+                  icon={Download02}
+                  onClick={handleIngestionDownloadClick}
+                />
               )}
             </Stack>
 

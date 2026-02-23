@@ -141,7 +141,7 @@ const AddDomainForm = ({
     label: t('label.name'),
     required: true,
     placeholder: t('label.name'),
-    type: FieldTypes.TEXT_MUI,
+    type: FieldTypes.UT_TEXT,
     props: {
       'data-testid': 'name',
     },
@@ -154,7 +154,7 @@ const AddDomainForm = ({
     label: t('label.display-name'),
     required: false,
     placeholder: t('label.display-name'),
-    type: FieldTypes.TEXT_MUI,
+    type: FieldTypes.UT_TEXT,
     props: {
       'data-testid': 'display-name',
     },
@@ -212,7 +212,7 @@ const AddDomainForm = ({
         required: true,
         label: t('label.domain-type'),
         id: 'root/domainType',
-        type: FieldTypes.SELECT_MUI,
+        type: FieldTypes.UT_DROPDOWN,
         helperText: domainTypeTooltipDataRender(),
         props: {
           'data-testid': 'domainType',

@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Paper, Typography } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import {
+  Button as UTButton,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +33,6 @@ interface PageHeaderConfig {
 
 export const usePageHeader = (config: PageHeaderConfig) => {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   const displayTitle = t(config.titleKey);
   const displayDescription = t(config.descriptionMessageKey);
@@ -39,64 +40,42 @@ export const usePageHeader = (config: PageHeaderConfig) => {
     ? t(config.addButtonLabelKey)
     : '';
 
-  // Inline implementation copying exact EntityPageHeader styling
   const pageHeader = useMemo(
     () => (
-      <Paper
-        sx={{
-          p: 5,
-          mb: 5,
-          boxShadow: 'none',
-          border: `1px solid ${theme.palette.allShades?.blueGray?.[100]}`,
-          borderRadius: 1.5,
-        }}>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography
-                sx={{
-                  fontWeight: 600,
-                  fontSize: '1.5rem',
-                  color: 'text.primary',
-                  mb: 0.5,
-                }}
-                variant="h4">
-                {displayTitle}
-              </Typography>
-              {config.learningPageId && (
-                <LearningIcon pageId={config.learningPageId} />
-              )}
-            </Box>
-            {displayDescription && (
-              <Typography
-                sx={{ color: 'text.secondary', fontSize: '0.875rem' }}
-                variant="body2">
-                {displayDescription}
-              </Typography>
+      <div
+        className="tw:bg-white tw:rounded-2xl tw:border tw:border-gray-blue-100 tw:px-5 tw:py-4 tw:mb-3 tw:flex tw:justify-between tw:items-center"
+        data-testid="page-header">
+        <div>
+          <div className="tw:flex tw:items-center tw:gap-2 tw:mb-0.5">
+            <Typography>
+              <h4>{displayTitle}</h4>
+            </Typography>
+            {config.learningPageId && (
+              <LearningIcon pageId={config.learningPageId} />
             )}
-          </Box>
-          {config.actions ||
-            (config.createPermission &&
-              config.addButtonLabelKey &&
-              config.onAddClick && (
-                <Button
-                  color="primary"
-                  data-testid={config.addButtonTestId || 'add-entity-button'}
-                  startIcon={<Plus size={16} />}
-                  variant="contained"
-                  onClick={config.onAddClick}>
-                  {displayButtonLabel}
-                </Button>
-              ))}
-        </Box>
-      </Paper>
+          </div>
+          {displayDescription && (
+            <Typography>
+              <p className="tw:text-gray-500">{displayDescription}</p>
+            </Typography>
+          )}
+        </div>
+        {config.actions ||
+          (config.createPermission &&
+            config.addButtonLabelKey &&
+            config.onAddClick && (
+              <UTButton
+                color="primary"
+                data-testid={config.addButtonTestId || 'add-entity-button'}
+                iconLeading={<Plus size={16} />}
+                size="md"
+                onClick={config.onAddClick}>
+                {displayButtonLabel}
+              </UTButton>
+            ))}
+      </div>
     ),
-    [displayTitle, displayDescription, displayButtonLabel, config, theme]
+    [displayTitle, displayDescription, displayButtonLabel, config]
   );
 
   return { pageHeader };

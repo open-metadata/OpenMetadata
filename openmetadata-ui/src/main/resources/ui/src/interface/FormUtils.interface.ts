@@ -29,6 +29,7 @@ export enum FormItemLayout {
 export enum FieldTypes {
   TEXT = 'text',
   TEXT_MUI = 'text_mui',
+  UT_TEXT = 'ut_text',
   PASSWORD = 'password',
   PASSWORD_MUI = 'password_mui',
   FILTER_PATTERN = 'filter_pattern',
@@ -36,6 +37,7 @@ export enum FieldTypes {
   SWITCH_MUI = 'switch_mui',
   SELECT = 'select',
   SELECT_MUI = 'select_mui',
+  UT_DROPDOWN = 'ut_dropdown',
   ASYNC_SELECT_LIST = 'async_select_list',
   NUMBER = 'number',
   CHECK_BOX = 'check_box',

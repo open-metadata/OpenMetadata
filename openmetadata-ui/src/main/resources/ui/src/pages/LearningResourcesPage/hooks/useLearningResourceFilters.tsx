@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@mui/material';
+import { Button } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
-import { Space } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
@@ -158,7 +157,7 @@ export const useLearningResourceFilters = (
 
   const quickFilters = useMemo(
     () => (
-      <Space wrap className="explore-quick-filters-container" size={[8, 0]}>
+      <div className="explore-quick-filters-container d-flex flex-wrap gap-2">
         {FILTER_FIELDS.map((field) => (
           <SearchDropdown
             hideCounts
@@ -175,7 +174,7 @@ export const useLearningResourceFilters = (
             onSearch={handleSearch}
           />
         ))}
-      </Space>
+      </div>
     ),
     [
       filterState,
@@ -245,33 +244,33 @@ export const useLearningResourceFilters = (
     }
 
     return (
-      <Box className="filter-selection-container">
-        <Box className="filter-selection-chips-wrapper">
+      <div className="filter-selection-container">
+        <div className="filter-selection-chips-wrapper">
           {selectedFilters.map((filter) => (
-            <Box className="filter-selection-chip" key={filter.key}>
-              <Box className="filter-selection-chip-content" component="span">
+            <div className="filter-selection-chip" key={filter.key}>
+              <span className="filter-selection-chip-content">
                 <span className="filter-selection-label">{filter.label}: </span>
                 <span className="filter-selection-value" title={filter.value}>
                   {filter.value}
                 </span>
-              </Box>
-              <Box
+              </span>
+              <button
                 aria-label="Remove filter"
                 className="filter-selection-remove-btn"
-                component="button"
                 onClick={() => handleRemoveFilter(filter.key)}>
                 <XClose size={14} />
-              </Box>
-            </Box>
+              </button>
+            </div>
           ))}
-        </Box>
+        </div>
         <Button
           className="filter-selection-clear-all"
-          variant="text"
+          color="tertiary"
+          size="sm"
           onClick={handleClearAll}>
           {t('label.clear-entity', { entity: t('label.all-lowercase') })}
         </Button>
-      </Box>
+      </div>
     );
   }, [selectedFilters, handleRemoveFilter, handleClearAll, t]);
 

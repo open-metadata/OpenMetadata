@@ -12,14 +12,16 @@
  */
 
 import { DragOutlined } from '@ant-design/icons';
+import { Button as UTButton, Dropdown } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@untitledui/icons';
 import { Button, Col, Row, Typography } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import { ReactNode } from 'react';
+import { Key, ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { WidgetConfig } from '../../../../../pages/CustomizablePage/CustomizablePage.interface';
 import WidgetMoreOptions from '../WidgetMoreOptions/WidgetMoreOptions';
-import WidgetSortFilter from '../WidgetSortFilter/WidgetSortFilter';
+
 import './widget-header.less';
 import { WIDGET_MORE_MENU_ITEMS } from './WidgetHeader.constants';
 
@@ -59,8 +61,8 @@ const WidgetHeader = ({
   title,
   widgetKey,
 }: WidgetHeaderProps) => {
-  const handleSortByClick = (e: MenuInfo) => {
-    onSortChange?.(e.key);
+  const handleSortByAction = (key: Key) => {
+    onSortChange?.(String(key));
   };
 
   const handleSizeChange = (value: number) => {
@@ -130,11 +132,25 @@ const WidgetHeader = ({
           ) : (
             sortOptions &&
             selectedSortBy && (
-              <WidgetSortFilter
-                selectedSortBy={selectedSortBy}
-                sortOptions={sortOptions}
-                onSortChange={handleSortByClick}
-              />
+              <Dropdown.Root>
+                <UTButton
+                  color="secondary"
+                  data-testid="widget-sort-by-dropdown"
+                  iconTrailing={ChevronDown}
+                  size="sm">
+                  {sortOptions.find((opt) => opt.key === selectedSortBy)?.label}
+                </UTButton>
+
+                <Dropdown.Popover>
+                  <Dropdown.Menu onAction={handleSortByAction}>
+                    {sortOptions.map((opt) => (
+                      <Dropdown.Item id={opt.key} key={opt.key}>
+                        {opt.label}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
             )
           )}
         </div>

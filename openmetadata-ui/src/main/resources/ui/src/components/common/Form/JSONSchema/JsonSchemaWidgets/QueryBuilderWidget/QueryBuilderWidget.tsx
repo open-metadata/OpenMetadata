@@ -33,7 +33,6 @@ import {
   Query,
   Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
-import 'antd/dist/antd.css';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

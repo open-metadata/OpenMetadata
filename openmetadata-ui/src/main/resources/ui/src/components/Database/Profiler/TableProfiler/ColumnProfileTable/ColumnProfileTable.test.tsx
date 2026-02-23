@@ -10,71 +10,84 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import '../../../../../test/unit/mocks/mui.mock';
+import { useTableProfiler } from '../TableProfilerProvider';
 import ColumnProfileTable from './ColumnProfileTable';
 
 jest.mock('../../../../common/Table/Table', () =>
   jest.fn().mockImplementation(({ searchProps }) => (
     <div>
-      <input data-testid="searchbar" value={searchProps?.searchValue} />
+      <input
+        data-testid="searchbar"
+        value={searchProps?.value ?? ''}
+        onChange={(e) => searchProps?.onSearch?.(e.target.value)}
+      />
       <div>Table</div>
     </div>
   ))
 );
-jest.mock('../../../../PageHeader/PageHeader.component', () =>
-  jest.fn().mockImplementation(() => <div>PageHeader</div>)
+
+jest.mock('../../../../common/SummaryCard/SummaryCardV1', () =>
+  jest.fn().mockImplementation(({ title, value }) => (
+    <div data-testid="summary-card-v1">
+      <span>{title}</span>
+      <span>{value}</span>
+    </div>
+  ))
 );
-jest.mock('../../../../common/DatePickerMenu/DatePickerMenu.component', () =>
-  jest.fn().mockImplementation(() => <div>DatePickerMenu</div>)
+
+jest.mock('../NoProfilerBanner/NoProfilerBanner.component', () =>
+  jest.fn().mockImplementation(() => <div>NoProfilerBanner</div>)
 );
-jest.mock('../ColumnPickerMenu', () =>
-  jest.fn().mockImplementation(() => <div>ColumnPickerMenu</div>)
+
+jest.mock('../SingleColumnProfile', () =>
+  jest.fn().mockImplementation(() => <div>SingleColumnProfile</div>)
 );
-jest.mock('../ColumnSummary', () =>
-  jest.fn().mockImplementation(() => <div>ColumnSummary</div>)
+
+jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
 );
-jest.mock('../../../../common/SummaryCard/SummaryCard.component', () => ({
-  SummaryCard: jest.fn().mockImplementation(() => <div>SummaryCard</div>),
-}));
+
+jest.mock(
+  '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
+  () => jest.fn().mockReturnValue(<div>FilterTablePlaceHolder</div>)
+);
 
 jest.mock('../../../../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => fqn),
+  calculatePercentage: jest.fn().mockReturnValue('50%'),
 }));
-jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ searchValue, onSearch }) => (
-      <input
-        data-testid="searchbar"
-        value={searchValue}
-        onChange={(e) => onSearch(e.target.value)}
-      />
-    ));
-});
-jest.mock('../ProfilerProgressWidget/ProfilerProgressWidget', () => {
-  return jest.fn().mockImplementation(({ value }) => (
-    <span data-testid="profiler-progress-widget">
-      {value} <span>Progress bar</span>{' '}
-    </span>
-  ));
-});
-jest.mock('../../../../common/TestIndicator/TestIndicator', () => {
-  return jest.fn().mockImplementation(({ value, type }) => (
-    <span data-testid="test-indicator">
-      {value} <span>{type}</span>
-    </span>
-  ));
-});
+
+jest.mock('../../../../../utils/TableUtils', () => ({
+  getTableExpandableConfig: jest.fn().mockReturnValue({}),
+  pruneEmptyChildren: jest.fn().mockImplementation((data) => data),
+}));
+
+jest.mock('../../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({ fqn: '' }),
+}));
+
+jest.mock('../../../../../hooks/useCustomLocation/useCustomLocation', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue({ search: '', pathname: '/test' }),
+}));
+
+jest.mock('../../../../../rest/tableAPI', () => ({
+  getTableColumnsByFQN: jest.fn().mockResolvedValue({
+    data: [],
+    paging: { total: 0 },
+  }),
+  searchTableColumnsByFQN: jest.fn().mockResolvedValue({
+    data: [],
+    paging: { total: 0 },
+  }),
+}));
+
 jest.mock('../TableProfilerProvider', () => ({
   useTableProfiler: jest.fn().mockImplementation(() => ({
     tableProfiler: MOCK_TABLE,
@@ -85,6 +98,11 @@ jest.mock('../TableProfilerProvider', () => ({
       ViewDataProfile: true,
       ViewAll: true,
     },
+    isTestsLoading: false,
+    isProfilerDataLoading: false,
+    overallSummary: [],
+    isProfilingEnabled: true,
+    testCaseSummary: {},
   })),
 }));
 
@@ -94,8 +112,8 @@ describe('Test ColumnProfileTable component', () => {
   });
 
   it('should render without crashing', async () => {
-    render(<ColumnProfileTable />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
     });
 
     const container = await screen.findByTestId(
@@ -103,13 +121,13 @@ describe('Test ColumnProfileTable component', () => {
     );
     const searchbox = await screen.findByTestId('searchbar');
 
-    expect(searchbox).toBeInTheDocument();
     expect(container).toBeInTheDocument();
+    expect(searchbox).toBeInTheDocument();
   });
 
   it('should render without crashing even if column is undefined', async () => {
-    render(<ColumnProfileTable />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
     });
 
     const container = await screen.findByTestId(
@@ -117,13 +135,13 @@ describe('Test ColumnProfileTable component', () => {
     );
     const searchbox = await screen.findByTestId('searchbar');
 
-    expect(searchbox).toBeInTheDocument();
     expect(container).toBeInTheDocument();
+    expect(searchbox).toBeInTheDocument();
   });
 
   it('search box should work as expected', async () => {
-    render(<ColumnProfileTable />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
     });
 
     const searchbox = await screen.findByTestId('searchbar');
@@ -141,5 +159,113 @@ describe('Test ColumnProfileTable component', () => {
     });
 
     expect(searchbox).toHaveValue('');
+  });
+
+  it('should render ErrorPlaceHolder when ViewDataProfile permission is false', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValueOnce({
+      tableProfiler: MOCK_TABLE,
+      permissions: {
+        EditAll: false,
+        ViewDataProfile: false,
+        ViewAll: false,
+      },
+      isTestsLoading: false,
+      isProfilerDataLoading: false,
+      overallSummary: [],
+      isProfilingEnabled: true,
+      testCaseSummary: {},
+    });
+
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
+    });
+
+    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+  });
+
+  it('should render NoProfilerBanner when profiling is disabled', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValueOnce({
+      tableProfiler: MOCK_TABLE,
+      permissions: {
+        ViewDataProfile: true,
+        ViewAll: true,
+      },
+      isTestsLoading: false,
+      isProfilerDataLoading: false,
+      overallSummary: [],
+      isProfilingEnabled: false,
+      testCaseSummary: {},
+    });
+
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
+    });
+
+    expect(await screen.findByText('NoProfilerBanner')).toBeInTheDocument();
+  });
+
+  it('should not render NoProfilerBanner when profiling is enabled', async () => {
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
+    });
+
+    expect(screen.queryByText('NoProfilerBanner')).not.toBeInTheDocument();
+  });
+
+  it('should render SummaryCardV1 for each overallSummary item', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValueOnce({
+      tableProfiler: MOCK_TABLE,
+      permissions: { ViewDataProfile: true, ViewAll: true },
+      isTestsLoading: false,
+      isProfilerDataLoading: false,
+      overallSummary: [
+        { title: 'Total', value: 100, icon: null },
+        { title: 'Success', value: 80, icon: null },
+      ],
+      isProfilingEnabled: true,
+      testCaseSummary: {},
+    });
+
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
+    });
+
+    const summaryCards = await screen.findAllByTestId('summary-card-v1');
+
+    expect(summaryCards).toHaveLength(2);
+  });
+
+  it('should render SingleColumnProfile when activeColumnFqn is in the URL', async () => {
+    const useCustomLocation = jest.requireMock(
+      '../../../../../hooks/useCustomLocation/useCustomLocation'
+    ).default;
+    useCustomLocation.mockReturnValueOnce({
+      search: '?activeColumnFqn=test.table.column',
+      pathname: '/test',
+    });
+
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
+    });
+
+    expect(await screen.findByText('SingleColumnProfile')).toBeInTheDocument();
+  });
+
+  it('should call getTableColumnsByFQN when tableFqn is available', async () => {
+    const { getTableColumnsByFQN } = jest.requireMock(
+      '../../../../../rest/tableAPI'
+    );
+    const { useFqn } = jest.requireMock('../../../../../hooks/useFqn');
+    useFqn.mockReturnValueOnce({ fqn: 'test.table' });
+
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
+    });
+
+    expect(getTableColumnsByFQN).toHaveBeenCalledWith('test.table', {
+      limit: expect.any(Number),
+      offset: 0,
+      fields: expect.any(String),
+    });
   });
 });

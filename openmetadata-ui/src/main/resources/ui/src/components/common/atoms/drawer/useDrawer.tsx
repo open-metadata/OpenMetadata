@@ -11,57 +11,30 @@
  *  limitations under the License.
  */
 
-import { Drawer } from '@mui/material';
+import { SlideoutMenu } from '@openmetadata/ui-core-components';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 
 export interface DrawerConfig {
   anchor?: 'left' | 'right' | 'top' | 'bottom';
   width?: number | string;
-  height?: number | string;
   onClose?: () => void;
   onOpen?: () => void;
   closeOnEscape?: boolean;
   closeOnBackdrop?: boolean;
   children?: ReactNode;
   defaultOpen?: boolean;
-  zIndex?: number;
   testId?: string;
 }
 
-/**
- * Base drawer hook with state management and configuration
- *
- * @description
- * Provides drawer state management and returns a configured MUI Drawer.
- * Can be used standalone or composed with other drawer atoms.
- *
- * @param config.anchor - Drawer position ('left' | 'right' | 'top' | 'bottom')
- * @param config.width - Drawer width (number or string)
- * @param config.height - Drawer height (for top/bottom anchors)
- * @param config.onClose - Callback when drawer closes
- * @param config.onOpen - Callback when drawer opens
- * @param config.closeOnEscape - Whether ESC key closes drawer (default: true)
- * @param config.closeOnBackdrop - Whether clicking backdrop closes drawer (default: true)
- * @param config.children - Content to render in drawer
- * @param config.defaultOpen - Initial open state
- * @param config.zIndex - Custom z-index for drawer (default: 1000)
- *
- * @example
- * ```typescript
- * const { drawer, openDrawer, closeDrawer, open } = useDrawer({
- *   anchor: 'right',
- *   width: 500,
- *   children: <MyContent />
- * });
- *
- * return (
- *   <>
- *     <Button onClick={openDrawer}>Open</Button>
- *     {drawer}
- *   </>
- * );
- * ```
- */
+const getWidthClassName = (width?: number | string): string | undefined => {
+  if (!width) {
+    return undefined;
+  }
+  const value = typeof width === 'number' ? `${width}px` : width;
+
+  return `tw:max-w-[${value}] tw:w-[${value}]`;
+};
+
 export const useDrawer = (config: DrawerConfig = {}) => {
   const [open, setOpen] = useState(config.defaultOpen || false);
 
@@ -79,77 +52,54 @@ export const useDrawer = (config: DrawerConfig = {}) => {
     setOpen((prev) => !prev);
   }, []);
 
-  const handleClose = useCallback(
-    (
-      _event: React.SyntheticEvent,
-      reason: 'backdropClick' | 'escapeKeyDown'
-    ) => {
-      if (reason === 'backdropClick' && config.closeOnBackdrop === false) {
-        return;
+  const handleOpenChange = useCallback(
+    (isOpen: boolean) => {
+      if (isOpen) {
+        openDrawer();
+      } else {
+        closeDrawer();
       }
-      if (reason === 'escapeKeyDown' && config.closeOnEscape === false) {
-        return;
-      }
-      closeDrawer();
     },
-    [closeDrawer, config.closeOnBackdrop, config.closeOnEscape]
+    [openDrawer, closeDrawer]
   );
 
-  const getDrawerSx = useMemo(() => {
-    const sx: any = {
-      zIndex: config.zIndex || 1000, // Set default z-index to 1000
-    };
-
-    if (
-      config.anchor === 'left' ||
-      config.anchor === 'right' ||
-      !config.anchor
-    ) {
-      sx['& .MuiDrawer-paper'] = {
-        width: config.width || '40vw',
-      };
-    }
-
-    if (config.anchor === 'top' || config.anchor === 'bottom') {
-      sx['& .MuiDrawer-paper'] = { height: config.height || 300 };
-    }
-
-    return sx;
-  }, [config.anchor, config.width, config.height, config.zIndex]);
+  const widthClassName = useMemo(
+    () => getWidthClassName(config.width),
+    [config.width]
+  );
 
   const drawer = useMemo(
     () => (
-      <Drawer
-        anchor={config.anchor || 'right'}
+      <SlideoutMenu
+        {...({ className: widthClassName } as Record<string, unknown>)}
         data-testid={config.testId}
-        open={open}
-        sx={getDrawerSx}
-        onClose={handleClose}>
+        isDismissable={config.closeOnBackdrop !== false}
+        isKeyboardDismissDisabled={config.closeOnEscape === false}
+        isOpen={open}
+        onOpenChange={handleOpenChange}>
         {config.children}
-      </Drawer>
+      </SlideoutMenu>
     ),
     [
       open,
-      config.anchor,
       config.children,
       config.testId,
-      getDrawerSx,
-      handleClose,
+      config.closeOnBackdrop,
+      config.closeOnEscape,
+      widthClassName,
+      handleOpenChange,
     ]
   );
 
   return {
-    // State
     open,
     isOpen: open,
 
-    // Actions
     openDrawer,
     closeDrawer,
     toggleDrawer,
     setOpen,
 
-    // UI
     drawer,
   };
 };

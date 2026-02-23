@@ -98,7 +98,6 @@ import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 
-import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
@@ -333,12 +332,8 @@ const DomainDetails = ({
     closeDrawer: closeDataProductDrawer,
   } = useFormDrawerWithRef({
     title: t('label.add-entity', { entity: t('label.data-product') }),
-    anchor: 'right',
     width: 670,
     closeOnEscape: false,
-    header: {
-      sx: DRAWER_HEADER_STYLING,
-    },
     onCancel: () => {
       dataProductForm.resetFields();
     },
@@ -480,12 +475,8 @@ const DomainDetails = ({
     closeDrawer: closeSubDomainDrawer,
   } = useFormDrawerWithRef({
     title: t('label.add-entity', { entity: t('label.sub-domain') }),
-    anchor: 'right',
     width: 670,
     closeOnEscape: false,
-    header: {
-      sx: DRAWER_HEADER_STYLING,
-    },
     onCancel: () => {
       subDomainForm.resetFields();
     },
