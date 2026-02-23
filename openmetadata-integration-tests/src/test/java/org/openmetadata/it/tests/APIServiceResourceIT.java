@@ -16,6 +16,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.api.services.CreateApiService.ApiServiceType;
 import org.openmetadata.schema.entity.services.ApiService;
+import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.EntityHistory;
@@ -37,7 +38,10 @@ public class APIServiceResourceIT extends BaseServiceIT<ApiService, CreateApiSer
   @Override
   protected CreateApiService createMinimalRequest(TestNamespace ns) {
     RestConnection conn =
-        new RestConnection().withOpenAPISchemaURL(URI.create("http://localhost:8585/swagger.json"));
+        new RestConnection()
+            .withOpenAPISchemaConnection(
+                new OpenAPISchemaURL()
+                    .withOpenAPISchemaURL(URI.create("http://localhost:8585/swagger.json")));
 
     return new CreateApiService()
         .withName(ns.prefix("apiservice"))
@@ -49,7 +53,10 @@ public class APIServiceResourceIT extends BaseServiceIT<ApiService, CreateApiSer
   @Override
   protected CreateApiService createRequest(String name, TestNamespace ns) {
     RestConnection conn =
-        new RestConnection().withOpenAPISchemaURL(URI.create("http://localhost:8585/swagger.json"));
+        new RestConnection()
+            .withOpenAPISchemaConnection(
+                new OpenAPISchemaURL()
+                    .withOpenAPISchemaURL(URI.create("http://localhost:8585/swagger.json")));
 
     return new CreateApiService()
         .withName(name)
@@ -147,7 +154,10 @@ public class APIServiceResourceIT extends BaseServiceIT<ApiService, CreateApiSer
   @Test
   void post_apiServiceWithRestConnection_200_OK(TestNamespace ns) {
     RestConnection conn =
-        new RestConnection().withOpenAPISchemaURL(URI.create("http://localhost:8585/swagger.json"));
+        new RestConnection()
+            .withOpenAPISchemaConnection(
+                new OpenAPISchemaURL()
+                    .withOpenAPISchemaURL(URI.create("http://localhost:8585/swagger.json")));
 
     CreateApiService request =
         new CreateApiService()
@@ -165,7 +175,9 @@ public class APIServiceResourceIT extends BaseServiceIT<ApiService, CreateApiSer
   void post_apiServiceWithCustomOpenAPIURL_200_OK(TestNamespace ns) {
     RestConnection conn =
         new RestConnection()
-            .withOpenAPISchemaURL(URI.create("https://api.example.com/openapi.json"));
+            .withOpenAPISchemaConnection(
+                new OpenAPISchemaURL()
+                    .withOpenAPISchemaURL(URI.create("https://api.example.com/openapi.json")));
 
     CreateApiService request =
         new CreateApiService()
