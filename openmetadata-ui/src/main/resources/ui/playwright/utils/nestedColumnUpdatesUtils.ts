@@ -481,8 +481,10 @@ export const createApiEndpointEntity = async (
         connection: {
           config: {
             type: 'Rest',
-            openAPISchemaURL:
-              'https://sandbox-beta.open-metadata.org/swagger.json',
+            openAPISchemaConnection: {
+              openAPISchemaURL:
+                'https://sandbox-beta.open-metadata.org/swagger.json',
+            },
           },
         },
       },
