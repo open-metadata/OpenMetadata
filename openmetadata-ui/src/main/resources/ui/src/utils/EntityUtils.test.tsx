@@ -12,6 +12,7 @@
  */
 import { render } from '@testing-library/react';
 import { startCase } from 'lodash';
+import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
@@ -22,6 +23,7 @@ import {
   columnSorter,
   getBreadcrumbForTestSuite,
   getColumnSorter,
+  getDomainDisplayName,
   getEntityBreadcrumbs,
   getEntityLinkFromType,
   getEntityOverview,
@@ -56,6 +58,7 @@ import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getTierTags } from './TableUtils';
 
 jest.mock('../constants/constants', () => ({
+  DEFAULT_DOMAIN_VALUE: 'All Domains',
   getEntityDetailsPath: jest.fn(),
   getServiceDetailsPath: jest.fn(),
 }));
@@ -81,6 +84,16 @@ jest.mock('./ExportUtilClassBase', () => ({
   default: {
     exportMethodBasedOnType: jest.fn(),
   },
+}));
+
+jest.mock('i18next', () => ({
+  t: jest.fn((key) => {
+    const translations: Record<string, string> = {
+      'label.all-domain-plural': 'All Domains',
+    };
+
+    return translations[key] || key;
+  }),
 }));
 
 jest.mock('../components/Tag/TagsV1/TagsV1.component', () => ({
@@ -593,6 +606,66 @@ describe('EntityUtils unit tests', () => {
       entitiesWithoutCustomProperties.forEach((entityType) => {
         expect(hasCustomPropertiesTab(entityType)).toBe(false);
       });
+    });
+  });
+
+  describe('getDomainDisplayName', () => {
+    it('should return entity name when activeDomainEntityRef is provided', () => {
+      const mockEntityRef = {
+        id: '123',
+        name: 'Engineering',
+        displayName: 'Engineering Domain',
+        type: 'domain',
+      };
+
+      const result = getDomainDisplayName(mockEntityRef);
+
+      expect(result).toBe('Engineering Domain');
+    });
+
+    it('should return entity name without displayName when activeDomainEntityRef has only name', () => {
+      const mockEntityRef = {
+        id: '123',
+        name: 'Engineering',
+        type: 'domain',
+      };
+
+      const result = getDomainDisplayName(mockEntityRef);
+
+      expect(result).toBe('Engineering');
+    });
+
+    it('should return translated "All Domains" when activeDomain is DEFAULT_DOMAIN_VALUE', () => {
+      const result = getDomainDisplayName(undefined, DEFAULT_DOMAIN_VALUE);
+
+      expect(result).toBe('All Domains');
+    });
+
+    it('should return custom domain name when activeDomain is a custom value', () => {
+      const customDomain = 'custom-domain';
+
+      const result = getDomainDisplayName(undefined, customDomain);
+
+      expect(result).toBe(customDomain);
+    });
+
+    it('should return undefined when both parameters are undefined', () => {
+      const result = getDomainDisplayName();
+
+      expect(result).toBe(undefined);
+    });
+
+    it('should prioritize activeDomainEntityRef over activeDomain', () => {
+      const mockEntityRef = {
+        id: '123',
+        name: 'Engineering',
+        displayName: 'Engineering Domain',
+        type: 'domain',
+      };
+
+      const result = getDomainDisplayName(mockEntityRef, DEFAULT_DOMAIN_VALUE);
+
+      expect(result).toBe('Engineering Domain');
     });
   });
 });
