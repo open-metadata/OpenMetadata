@@ -1133,8 +1133,6 @@
     "metadata-service": "שירות מטא-נתונים",
     "metadata-status": "יש / חסר מטא-דאטה",
     "metadata-to-es-config-optional": "קונפיגורציית מטא-דאטה ל-Elasticsearch (אופציונלי)",
-    "metapilot": "MetaPilot",
-    "metapilot-suggested-description": "תיאור מוצע על ידי Metapilot",
     "metric": "מדד",
     "metric-configuration": "Metric Configuration",
     "metric-plural": "מדדים",

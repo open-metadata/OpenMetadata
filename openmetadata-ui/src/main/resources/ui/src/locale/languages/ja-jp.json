@@ -1133,8 +1133,6 @@
     "metadata-service": "メタデータサービス",
     "metadata-status": "あり / なし メタデータ",
     "metadata-to-es-config-optional": "MetadataからES設定（オプション）",
-    "metapilot": "MetaPilot",
-    "metapilot-suggested-description": "MetaPilotの提案説明",
     "metric": "メトリクス",
     "metric-configuration": "メトリクス設定",
     "metric-plural": "メトリクス",

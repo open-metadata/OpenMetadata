@@ -1133,8 +1133,6 @@
     "metadata-service": "Meta Veri Servisi",
     "metadata-status": "Var / Eksik Metaveri",
     "metadata-to-es-config-optional": "Metadata'dan ES'ye Yapılandırma (İsteğe Bağlı)",
-    "metapilot": "MetaPilot",
-    "metapilot-suggested-description": "Metapilot Tarafından Önerilen Açıklama",
     "metric": "Metrik",
     "metric-configuration": "Metrik Yapılandırması",
     "metric-plural": "Metrikler",

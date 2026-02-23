@@ -1133,8 +1133,6 @@
     "metadata-service": "خدمة البيانات الوصفية",
     "metadata-status": "لديه / بدون بيانات وصفية",
     "metadata-to-es-config-optional": "تكوين البيانات الوصفية إلى ES (اختياري)",
-    "metapilot": "MetaPilot",
-    "metapilot-suggested-description": "وصف مقترح من Metapilot",
     "metric": "مقياس",
     "metric-configuration": "تكوين المقياس",
     "metric-plural": "مقاييس",

@@ -1133,8 +1133,6 @@
     "metadata-service": "Metadataservice",
     "metadata-status": "Heeft / Ontbreekt metagegevens",
     "metadata-to-es-config-optional": "Metadata naar ES-configuratie (Optioneel)",
-    "metapilot": "MetaPilot",
-    "metapilot-suggested-description": "Door Metapilot voorgestelde beschrijving",
     "metric": "Metriek",
     "metric-configuration": "Metric Configuration",
     "metric-plural": "Metrieken",

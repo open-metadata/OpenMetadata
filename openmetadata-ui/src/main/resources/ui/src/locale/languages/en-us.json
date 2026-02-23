@@ -1133,8 +1133,6 @@
     "metadata-service": "Metadata Service",
     "metadata-status": "Has / Missing Metadata",
     "metadata-to-es-config-optional": "Metadata To ES Config (Optional)",
-    "metapilot": "MetaPilot",
-    "metapilot-suggested-description": "Metapilot Suggested Description",
     "metric": "Metric",
     "metric-configuration": "Metric Configuration",
     "metric-plural": "Metrics",

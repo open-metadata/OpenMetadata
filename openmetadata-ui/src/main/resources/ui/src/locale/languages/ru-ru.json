@@ -1133,8 +1133,6 @@
     "metadata-service": "Сервис метаданных",
     "metadata-status": "Есть / Нет метаданных",
     "metadata-to-es-config-optional": "Метаданные для конфигурации ES (необязательно)",
-    "metapilot": "MetaPilot",
-    "metapilot-suggested-description": "Рекомендованные описания Metapilot",
     "metric": "Метрика",
     "metric-configuration": "Настройка метрики",
     "metric-plural": "Метрики",
