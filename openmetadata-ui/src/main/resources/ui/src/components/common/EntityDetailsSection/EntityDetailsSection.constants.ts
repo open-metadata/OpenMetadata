@@ -13,8 +13,9 @@
 import { EntityType } from '../../../enums/entity.enum';
 
 /**
- * Maps entity types to their i18n label keys for the search bar placeholder.
- * e.g. for TABLE → "Search for Columns", for DASHBOARD → "Search for Charts"
+ * Entity type → i18n key for the child list label. Used by EntityDetailsSection
+ * search placeholder and by getEntityChildrenAndLabel (EntityLineageUtils).
+ * e.g. TABLE → "Columns", DASHBOARD → "Charts", PIPELINE → "Tasks"
  */
 export const SEARCH_PLACEHOLDER_MAP: Record<string, string> = {
   [EntityType.TABLE]: 'label.column-plural',
@@ -28,4 +29,5 @@ export const SEARCH_PLACEHOLDER_MAP: Record<string, string> = {
   [EntityType.API_COLLECTION]: 'label.api-endpoint-plural',
   [EntityType.DATABASE_SCHEMA]: 'label.table-plural',
   [EntityType.DATABASE]: 'label.database-schema-plural',
+  [EntityType.MLMODEL]: 'label.feature-plural',
 };
