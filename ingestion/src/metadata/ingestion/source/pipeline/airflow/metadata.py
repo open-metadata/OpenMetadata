@@ -346,7 +346,9 @@ class AirflowSource(PipelineServiceSource):
             )
 
         task_instance_dict = (
-            [elem._asdict() for elem in task_instance_list] if task_instance_list else []
+            [elem._asdict() for elem in task_instance_list]
+            if task_instance_list
+            else []
         )
 
         return [

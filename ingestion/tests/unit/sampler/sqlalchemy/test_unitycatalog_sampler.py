@@ -77,10 +77,11 @@ class UnityCatalogSamplerTest(TestCase):
             catalog="test_catalog",
         )
 
+    @patch("metadata.sampler.sqlalchemy.databricks.sampler.databricks_get_connection")
     @patch(
         "metadata.sampler.sqlalchemy.unitycatalog.sampler.UnityCatalogSamplerInterface.build_table_orm"
     )
-    def test_handle_array_column(self, mock_build_table_orm):
+    def test_handle_array_column(self, mock_build_table_orm, mock_get_connection):
         """Test array column detection"""
         mock_build_table_orm.return_value = _TestTableModel
 

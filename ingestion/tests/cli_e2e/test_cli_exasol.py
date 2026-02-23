@@ -16,7 +16,6 @@ import subprocess
 from typing import List
 
 import pytest
-
 from sqlalchemy import text
 
 from .base.e2e_types import E2EType
@@ -99,7 +98,9 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS IGNORE_SCHEMA"))
             connection.execute(text(cls.create_table_query))
             connection.execute(
-                text(f"CREATE OR REPLACE TABLE {SCHEMA_NAME}.IGNORE_TABLE AS SELECT * FROM {SCHEMA_NAME}.{TABLE_NAME}")
+                text(
+                    f"CREATE OR REPLACE TABLE {SCHEMA_NAME}.IGNORE_TABLE AS SELECT * FROM {SCHEMA_NAME}.{TABLE_NAME}"
+                )
             )
             connection.commit()
 

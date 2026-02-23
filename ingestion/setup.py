@@ -48,6 +48,7 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "databricks-sdk": "databricks-sdk~=0.20.0",
+    "databricks-sql-connector": "databricks-sql-connector>=2.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
@@ -230,6 +231,7 @@ plugins: Dict[str, Set[str]] = {
     "databricks": {
         # sqlalchemy-databricks is pre-installed with --no-deps (SA<2 metadata conflict)
         VERSIONS["databricks-sdk"],
+        VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL~=24.1.0",
         "pyasn1~=0.6.0",
@@ -437,6 +439,7 @@ test = {
     "collate-dbt-artifacts-parser",
     "freezegun",
     VERSIONS["databricks-sdk"],
+    VERSIONS["databricks-sql-connector"],
     VERSIONS["scikit-learn"],
     VERSIONS["pyarrow"],
     VERSIONS["trino"],

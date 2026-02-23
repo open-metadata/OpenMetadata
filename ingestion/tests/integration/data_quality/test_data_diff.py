@@ -3,11 +3,11 @@ from datetime import datetime
 import pytest
 from dirty_equals import IsApprox, IsPositiveInt
 from pydantic import BaseModel
-from sqlalchemy import VARBINARY, text
+from sqlalchemy import VARBINARY
 from sqlalchemy import Column as SQAColumn
 from sqlalchemy import MetaData
 from sqlalchemy import Table as SQATable
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.sql import sqltypes
@@ -594,12 +594,16 @@ def test_error_paths(
 
 
 def add_changed_tables(connection: Connection):
-    connection.execute(text("CREATE TABLE customer_200 AS SELECT * FROM customer LIMIT 200;"))
+    connection.execute(
+        text("CREATE TABLE customer_200 AS SELECT * FROM customer LIMIT 200;")
+    )
     connection.execute(
         text("CREATE TABLE customer_different_case_columns AS SELECT * FROM customer;")
     )
     connection.execute(
-        text('ALTER TABLE customer_different_case_columns RENAME COLUMN first_name TO "First_Name";')
+        text(
+            'ALTER TABLE customer_different_case_columns RENAME COLUMN first_name TO "First_Name";'
+        )
     )
     # TODO: this appears to be unsupported by data diff. Cross data type comparison is flaky.
     # connection.execute(
@@ -607,9 +611,13 @@ def add_changed_tables(connection: Connection):
     # )
     connection.execute(text("CREATE TABLE changed_customer AS SELECT * FROM customer;"))
     connection.execute(
-        text("UPDATE changed_customer SET first_name = 'John' WHERE MOD(customer_id, 2) = 0;")
+        text(
+            "UPDATE changed_customer SET first_name = 'John' WHERE MOD(customer_id, 2) = 0;"
+        )
     )
-    connection.execute(text("DELETE FROM changed_customer WHERE MOD(customer_id, 13) = 0;"))
+    connection.execute(
+        text("DELETE FROM changed_customer WHERE MOD(customer_id, 13) = 0;")
+    )
     connection.execute(
         text("CREATE TABLE customer_without_first_name AS SELECT * FROM customer;")
     )
@@ -619,8 +627,12 @@ def add_changed_tables(connection: Connection):
     connection.execute(
         text("CREATE TABLE customer_int_first_name AS SELECT * FROM customer;")
     )
-    connection.execute(text("ALTER TABLE customer_int_first_name DROP COLUMN first_name;"))
-    connection.execute(text("ALTER TABLE customer_int_first_name ADD COLUMN first_name INT;"))
+    connection.execute(
+        text("ALTER TABLE customer_int_first_name DROP COLUMN first_name;")
+    )
+    connection.execute(
+        text("ALTER TABLE customer_int_first_name ADD COLUMN first_name INT;")
+    )
     connection.execute(text("UPDATE customer_int_first_name SET first_name = 1;"))
 
 

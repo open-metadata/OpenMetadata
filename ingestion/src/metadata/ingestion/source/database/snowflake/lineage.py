@@ -95,9 +95,7 @@ class SnowflakeLineageSource(
                     )
                     for row in rows:
                         query_dict = row._asdict()
-                        query_dict.update(
-                            {k.lower(): v for k, v in query_dict.items()}
-                        )
+                        query_dict.update({k.lower(): v for k, v in query_dict.items()})
                         row_count += 1
                         try:
                             yield TableQuery(
