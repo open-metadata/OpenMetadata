@@ -67,6 +67,7 @@ def crdb_engine():
                     "SELECT g, 'name_' || g::text FROM generate_series(1, 100) AS g"
                 )
             )
+            conn.commit()
             conn.execute(text("ANALYZE metric_computer_test"))
             conn.commit()
         yield engine
