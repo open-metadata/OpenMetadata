@@ -816,6 +816,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
     ResourceContext<?> resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     User user = repository.get(uriInfo, id, repository.getFieldsWithUserAuth("*"));
+
+    // Only allow token generation for bot users via this endpoint
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new AuthorizationException(
+          "This endpoint can only generate tokens for bot users. "
+              + "Use POST /users/generateToken for self-service token generation.");
+    }
+
     JWTAuthMechanism jwtAuthMechanism =
         jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
     AuthenticationMechanism authenticationMechanism =
@@ -823,13 +831,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    User updatedUser =
-        repository
-            .createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName())
-            .getEntity();
-    jwtAuthMechanism =
-        JsonUtils.convertValue(
-            updatedUser.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
+    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+
+    // Invalidate cached token for bot user
+    BotTokenCache.invalidateToken(user.getName());
+
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
 
@@ -890,13 +896,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    User updatedUser =
-        repository
-            .createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName())
-            .getEntity();
-    jwtAuthMechanism =
-        JsonUtils.convertValue(
-            updatedUser.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
+    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+
     // Invalidate any cached token for this user
     if (isBotUser) {
       BotTokenCache.invalidateToken(user.getName());

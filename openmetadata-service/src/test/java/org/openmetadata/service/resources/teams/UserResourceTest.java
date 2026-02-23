@@ -1506,6 +1506,24 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void put_generateToken_regular_user_forbidden() throws HttpResponseException {
+    CreateUser create =
+        createRequest("regularUserPutTest", "", "", null).withEmail("regularUserPutTest@email.com");
+    User regularUser = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    assertResponse(
+        () ->
+            TestUtils.put(
+                getResource(String.format("users/generateToken/%s", regularUser.getId())),
+                new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
+                FORBIDDEN,
+                ADMIN_AUTH_HEADERS),
+        FORBIDDEN,
+        "This endpoint can only generate tokens for bot users. "
+            + "Use POST /users/generateToken for self-service token generation.");
+  }
+
+  @Test
   void post_generateToken_bot_user_200_ok() throws HttpResponseException {
     // Test the new POST /generateToken endpoint with ID in request body
     AuthenticationMechanism authMechanism =
