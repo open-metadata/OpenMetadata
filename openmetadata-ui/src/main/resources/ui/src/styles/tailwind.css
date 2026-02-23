@@ -20,3 +20,14 @@ file in the core components and loading in here. */
 @source '../';
 
 @custom-variant dark (&:where(.dark-mode, .dark-mode *));
+
+/* These are global overrided by antd, so adding default values here */
+svg {
+  display: inline;
+  vertical-align: baseline;
+}
+
+img {
+  display: inline;
+  max-width: none;
+}
