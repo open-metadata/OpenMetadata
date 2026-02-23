@@ -22,6 +22,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,6 +68,41 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+  }
+
+  @Override
+  protected void initializeChildrenTranslations(DashboardDataModel dataModel) {
+    // Ensure the dataModel has a translations field
+    if (dataModel.getTranslations() == null) {
+      dataModel.setTranslations(new org.openmetadata.schema.type.Translations());
+    }
+
+    // Initialize translations for all columns
+    if (dataModel.getColumns() != null) {
+      for (Column column : dataModel.getColumns()) {
+        initializeColumnTranslations(column);
+      }
+    }
+  }
+
+  private void initializeColumnTranslations(Column column) {
+    if (column == null) {
+      return;
+    }
+
+    if (column.getTranslations() == null) {
+      column.setTranslations(new org.openmetadata.schema.type.Translations());
+    }
+    if (column.getTranslations().getTranslations() == null) {
+      column.getTranslations().setTranslations(new ArrayList<>());
+    }
+
+    // Recursively handle nested columns
+    if (column.getChildren() != null) {
+      for (Column child : column.getChildren()) {
+        initializeColumnTranslations(child);
+      }
+    }
   }
 
   @Override
@@ -261,6 +297,15 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       return;
     }
 
+    // Preserve translations before clearing fields since they're needed for locale-based responses
+    // Use UUID as key since the dataModel object reference might change
+    Map<UUID, org.openmetadata.schema.type.Translations> translationsMap = new HashMap<>();
+    for (DashboardDataModel dataModel : dataModels) {
+      if (dataModel.getTranslations() != null) {
+        translationsMap.put(dataModel.getId(), dataModel.getTranslations());
+      }
+    }
+
     // Set default fields (service) for all data models
     for (DashboardDataModel dataModel : dataModels) {
       setDefaultFields(dataModel);
@@ -271,6 +316,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     // Bulk fetch tags for columns if needed
     fetchAndSetColumnTags(dataModels, fields);
+
+    // Restore translations after clearing fields
+    for (DashboardDataModel dataModel : dataModels) {
+      dataModel.setTranslations(translationsMap.get(dataModel.getId()));
+    }
   }
 
   @Override

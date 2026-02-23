@@ -130,6 +130,10 @@ public interface EntityInterface {
     return null;
   }
 
+  default Translations getTranslations() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);
@@ -213,6 +217,10 @@ public interface EntityInterface {
   }
 
   default void setCertification(AssetCertification certification) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setTranslations(Translations translations) {
     /* no-op implementation to be overridden */
   }
 

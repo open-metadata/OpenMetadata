@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/type/translations.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Translations",
+  "description": "Container for multi-language translations of entity fields",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.Translations",
+  "properties": {
+    "translations": {
+      "description": "List of translations for different locales",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/translation"
+      },
+      "default": []
+    }
+  },
+  "definitions": {
+    "translation": {
+      "type": "object",
+      "description": "Translation for a specific locale",
+      "javaType": "org.openmetadata.schema.type.Translation",
+      "properties": {
+        "locale": {
+          "description": "Locale code (e.g., 'en', 'es', 'fr', 'zh-CN')",
+          "type": "string",
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+        },
+        "displayName": {
+          "description": "Translated display name",
+          "type": "string"
+        },
+        "description": {
+          "description": "Translated description",
+          "type": "string"
+        }
+      },
+      "required": ["locale"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

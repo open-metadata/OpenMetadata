@@ -59,6 +59,10 @@ export interface Persona {
      */
     name: string;
     /**
+     * Multi-language translations for displayName and description fields.
+     */
+    translations?: Translations;
+    /**
      * Reference to the UI customization configuration.
      */
     uiCustomization?: EntityReference;
@@ -203,4 +207,34 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Multi-language translations for displayName and description fields.
+ *
+ * Container for multi-language translations of entity fields
+ */
+export interface Translations {
+    /**
+     * List of translations for different locales
+     */
+    translations?: Translation[];
+}
+
+/**
+ * Translation for a specific locale
+ */
+export interface Translation {
+    /**
+     * Translated description
+     */
+    description?: string;
+    /**
+     * Translated display name
+     */
+    displayName?: string;
+    /**
+     * Locale code (e.g., 'en', 'es', 'fr', 'zh-CN')
+     */
+    locale: string;
 }

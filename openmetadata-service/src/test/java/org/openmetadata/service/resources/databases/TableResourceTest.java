@@ -6030,6 +6030,118 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             + bulkUpdatedEventCount);
   }
 
+  @Test
+  void test_columnTranslations(TestInfo test) throws HttpResponseException {
+    String tableName = getEntityName(test);
+    String defaultDisplayName = "Test Table";
+    String defaultDescription = "Test table for column translations";
+
+    List<Column> columns = new ArrayList<>();
+    columns.add(
+        new Column()
+            .withName("column1")
+            .withDisplayName("Column One")
+            .withDescription("First column description")
+            .withDataType(STRING));
+    columns.add(
+        new Column()
+            .withName("column2")
+            .withDisplayName("Column Two")
+            .withDescription("Second column description")
+            .withDataType(INT));
+
+    CreateTable createRequest =
+        new CreateTable()
+            .withName(tableName)
+            .withDatabaseSchema(getContainer().getFullyQualifiedName())
+            .withDisplayName(defaultDisplayName)
+            .withDescription(defaultDescription)
+            .withColumns(columns)
+            .withTableConstraints(null);
+
+    Table table = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    UUID tableId = table.getId();
+
+    try {
+      String originalJson = JsonUtils.pojoToJson(table);
+
+      for (Column column : table.getColumns()) {
+        if (column.getName().equals("column1")) {
+          column.setDisplayName("Columna Uno");
+          column.setDescription("Descripcion de la primera columna");
+        } else if (column.getName().equals("column2")) {
+          column.setDisplayName("Columna Dos");
+          column.setDescription("Descripcion de la segunda columna");
+        }
+      }
+
+      WebTarget target = getResource(tableId).queryParam("locale", "es");
+      String updatedJson = JsonUtils.pojoToJson(table);
+      com.fasterxml.jackson.databind.JsonNode patch =
+          com.github.fge.jsonpatch.diff.JsonDiff.asJson(
+              new com.fasterxml.jackson.databind.ObjectMapper().readTree(originalJson),
+              new com.fasterxml.jackson.databind.ObjectMapper().readTree(updatedJson));
+      TestUtils.patch(target, patch, Table.class, ADMIN_AUTH_HEADERS);
+
+      target = getResource(tableId).queryParam("locale", "es").queryParam("fields", "columns");
+      Table tableWithEs = TestUtils.get(target, Table.class, ADMIN_AUTH_HEADERS);
+
+      Column col1Es =
+          tableWithEs.getColumns().stream()
+              .filter(c -> c.getName().equals("column1"))
+              .findFirst()
+              .orElse(null);
+      assertNotNull(col1Es);
+      assertEquals("Columna Uno", col1Es.getDisplayName());
+      assertEquals("Descripcion de la primera columna", col1Es.getDescription());
+
+      Column col2Es =
+          tableWithEs.getColumns().stream()
+              .filter(c -> c.getName().equals("column2"))
+              .findFirst()
+              .orElse(null);
+      assertNotNull(col2Es);
+      assertEquals("Columna Dos", col2Es.getDisplayName());
+      assertEquals("Descripcion de la segunda columna", col2Es.getDescription());
+
+      target = getResource(tableId).queryParam("locale", "en").queryParam("fields", "columns");
+      Table tableWithEn = TestUtils.get(target, Table.class, ADMIN_AUTH_HEADERS);
+
+      Column col1En =
+          tableWithEn.getColumns().stream()
+              .filter(c -> c.getName().equals("column1"))
+              .findFirst()
+              .orElse(null);
+      assertNotNull(col1En);
+      assertEquals("Column One", col1En.getDisplayName());
+      assertEquals("First column description", col1En.getDescription());
+
+      Column col2En =
+          tableWithEn.getColumns().stream()
+              .filter(c -> c.getName().equals("column2"))
+              .findFirst()
+              .orElse(null);
+      assertNotNull(col2En);
+      assertEquals("Column Two", col2En.getDisplayName());
+      assertEquals("Second column description", col2En.getDescription());
+
+      target = getResource(tableId).queryParam("locale", "fr").queryParam("fields", "columns");
+      Table tableWithFr = TestUtils.get(target, Table.class, ADMIN_AUTH_HEADERS);
+      Column col1Fr =
+          tableWithFr.getColumns().stream()
+              .filter(c -> c.getName().equals("column1"))
+              .findFirst()
+              .orElse(null);
+      assertNotNull(col1Fr);
+      assertEquals("", col1Fr.getDisplayName());
+      assertEquals("", col1Fr.getDescription());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      deleteEntity(tableId, ADMIN_AUTH_HEADERS);
+    }
+  }
+
   private String getEntityLink(Table table, Column column) {
     // Build entity link in the format: <#E::entityType::fqn>
     if (column == null)

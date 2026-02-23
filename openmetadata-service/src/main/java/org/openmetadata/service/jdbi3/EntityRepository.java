@@ -238,6 +238,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.TranslationUtil;
 import software.amazon.awssdk.utils.Either;
 
 /**
@@ -529,6 +530,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * @see TableRepository#prepare(Table, boolean) for an example implementation
    */
   protected abstract void prepare(T entity, boolean update);
+
+  /**
+   * Initialize translations for nested children (columns, fields, etc.)
+   * Override this method in specific repositories to handle nested entity translations.
+   * This is called before applying translation patches to ensure nested structures have
+   * proper translation fields initialized.
+   *
+   * @param entity The entity to initialize translations for
+   */
+  protected void initializeChildrenTranslations(T entity) {
+    // Default implementation does nothing
+    // Override in specific repositories like TableRepository, TopicRepository, etc.
+  }
 
   /**
    * An entity is stored in the backend database as JSON document. The JSON includes some attributes of the entity and
@@ -826,7 +840,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Used for getting an entity with a set of requested fields
    */
   public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include, boolean fromCache) {
-    return get(uriInfo, id, fields, RelationIncludes.fromInclude(include), fromCache);
+    return get(uriInfo, id, fields, RelationIncludes.fromInclude(include), fromCache, null);
   }
 
   /**
@@ -838,6 +852,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Fields fields,
       RelationIncludes relationIncludes,
       boolean fromCache) {
+    return get(uriInfo, id, fields, relationIncludes, fromCache, null);
+  }
+
+  public final T get(
+      UriInfo uriInfo,
+      UUID id,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      boolean fromCache,
+      String locale) {
     if (!fromCache) {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
@@ -846,6 +870,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setInheritedFields(entity, fields);
 
     T entityClone = JsonUtils.deepCopy(entity, entityClass);
+
+    // Apply translations if locale is specified and not default
+    if (locale != null && !locale.isEmpty() && !"en".equals(locale)) {
+      LOG.info(
+          "Entity {} before translation - has translations: {}",
+          entityClone.getId(),
+          entityClone.getTranslations() != null);
+      if (entityClone.getTranslations() != null
+          && entityClone.getTranslations().getTranslations() != null) {
+        LOG.info(
+            "Available translations for entity {}: {}",
+            entityClone.getId(),
+            entityClone.getTranslations().getTranslations().stream()
+                .map(t -> t.getLocale() + ":" + t.getDisplayName())
+                .toList());
+      }
+      TranslationUtil.applyTranslations(entityClone, locale);
+    }
+
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
   }
@@ -920,7 +963,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T getByName(
       UriInfo uriInfo, String fqn, Fields fields, Include include, boolean fromCache) {
-    return getByName(uriInfo, fqn, fields, RelationIncludes.fromInclude(include), fromCache);
+    return getByName(uriInfo, fqn, fields, RelationIncludes.fromInclude(include), fromCache, null);
   }
 
   public final T getByName(
@@ -929,6 +972,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Fields fields,
       RelationIncludes relationIncludes,
       boolean fromCache) {
+    return getByName(uriInfo, fqn, fields, relationIncludes, fromCache, null);
+  }
+
+  public final T getByName(
+      UriInfo uriInfo,
+      String fqn,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      boolean fromCache,
+      String locale) {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     if (!fromCache) {
       CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
@@ -938,6 +991,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setInheritedFields(entity, fields);
 
     T entityClone = JsonUtils.deepCopy(entity, entityClass);
+
+    // Apply translations if locale is specified and not default
+    if (locale != null && !locale.isEmpty() && !"en".equals(locale)) {
+      LOG.info(
+          "Entity {} before translation - has translations: {}",
+          entityClone.getId(),
+          entityClone.getTranslations() != null);
+      if (entityClone.getTranslations() != null
+          && entityClone.getTranslations().getTranslations() != null) {
+        LOG.info(
+            "Available translations for entity {}: {}",
+            entityClone.getId(),
+            entityClone.getTranslations().getTranslations().stream()
+                .map(t -> t.getLocale() + ":" + t.getDisplayName())
+                .toList());
+      }
+      TranslationUtil.applyTranslations(entityClone, locale);
+    }
+
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
   }
@@ -1036,11 +1108,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
       T entity = JsonUtils.readValue(json, entityClass);
       entities.add(entity);
     }
+
+    // Preserve translations before clearing fields since they're needed for locale-based responses
+    Map<T, org.openmetadata.schema.type.Translations> translationsMap = new HashMap<>();
+    for (T entity : entities) {
+      if (entity.getTranslations() != null) {
+        translationsMap.put(entity, entity.getTranslations());
+      }
+    }
+
     // TODO: Ensure consistent behavior with setFieldsInBulk when all repositories implement it
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     for (T entity : entities) {
       clearFieldsInternal(entity, fields);
+      // Restore translations after clearing fields for locale-based translation application
+      if (translationsMap.containsKey(entity)) {
+        entity.setTranslations(translationsMap.get(entity));
+      }
     }
     return entities;
   }
@@ -1059,10 +1144,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities == null || entities.isEmpty()) {
       return;
     }
+
+    // Preserve translations before clearing fields since they're needed for locale-based responses
+    Map<T, org.openmetadata.schema.type.Translations> translationsMap = new HashMap<>();
+    for (T entity : entities) {
+      if (entity.getTranslations() != null) {
+        LOG.info(
+            "DEBUG setFieldsInBulk: Entity {} HAS translations before processing: {}",
+            entity.getId(),
+            entity.getTranslations().getTranslations().stream().map(t -> t.getLocale()).toList());
+        translationsMap.put(entity, entity.getTranslations());
+      } else {
+        LOG.info(
+            "DEBUG setFieldsInBulk: Entity {} has NO translations before processing",
+            entity.getId());
+      }
+    }
+
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     for (T entity : entities) {
       clearFieldsInternal(entity, fields);
+      // Restore translations after clearing fields for locale-based translation application
+      if (translationsMap.containsKey(entity)) {
+        entity.setTranslations(translationsMap.get(entity));
+        LOG.info(
+            "DEBUG setFieldsInBulk: Restored translations for entity {}: {}",
+            entity.getId(),
+            entity.getTranslations().getTranslations().stream().map(t -> t.getLocale()).toList());
+      }
     }
   }
 
@@ -1094,9 +1204,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       for (String json : jsons) {
         T entity = JsonUtils.readValue(json, entityClass);
+        // Debug: Check if entity has translations when loaded from JSON
+        if (entity.getTranslations() != null
+            && entity.getTranslations().getTranslations() != null) {
+          LOG.info(
+              "DEBUG listAfter: Entity {} loaded from JSON HAS translations: {}",
+              entity.getId(),
+              entity.getTranslations().getTranslations().stream().map(t -> t.getLocale()).toList());
+        } else {
+          LOG.info(
+              "DEBUG listAfter: Entity {} loaded from JSON has NO translations", entity.getId());
+        }
         entities.add(entity);
       }
       setFieldsInBulk(fields, entities);
+
+      // Debug: Check translations after setFieldsInBulk
+      for (T entity : entities) {
+        if (entity.getTranslations() != null
+            && entity.getTranslations().getTranslations() != null) {
+          LOG.info(
+              "DEBUG listAfter AFTER setFieldsInBulk: Entity {} HAS translations: {}",
+              entity.getId(),
+              entity.getTranslations().getTranslations().stream().map(t -> t.getLocale()).toList());
+        } else {
+          LOG.info(
+              "DEBUG listAfter AFTER setFieldsInBulk: Entity {} has NO translations",
+              entity.getId());
+        }
+      }
+
       entities.forEach(entity -> withHref(uriInfo, entity));
 
       String beforeCursor;
@@ -1692,6 +1829,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setExperts(fields.contains(FIELD_EXPERTS) ? entity.getExperts() : null);
     entity.setReviewers(fields.contains(FIELD_REVIEWERS) ? entity.getReviewers() : null);
     entity.setVotes(fields.contains(FIELD_VOTES) ? entity.getVotes() : null);
+    // Always clear translations from response - they should never be exposed to clients
+    entity.setTranslations(null);
     clearFields(entity, fields);
   }
 
@@ -2099,6 +2238,56 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final PatchResponse<T> patch(
       UriInfo uriInfo, UUID id, String user, JsonPatch patch, ChangeSource changeSource) {
     return patch(uriInfo, id, user, patch, changeSource, null, null);
+  }
+
+  @Transaction
+  public final PatchResponse<T> patchWithTranslations(
+      UriInfo uriInfo, UUID id, String user, JsonPatch patch, ChangeSource changeSource) {
+    // Special patch method that ensures translations field is preserved for translation patches
+    // Get the entity WITHOUT setFieldsInternal to preserve the translations field from JSON
+    T original = find(id, NON_DELETED, false);
+
+    // Ensure the entity has a translations field before applying the patch
+    // The entity from database may not have translations field if it's never been set
+    if (original.getTranslations() == null) {
+      original.setTranslations(new org.openmetadata.schema.type.Translations());
+    }
+    if (original.getTranslations() != null
+        && original.getTranslations().getTranslations() == null) {
+      original.getTranslations().setTranslations(new ArrayList<>());
+    }
+
+    // Initialize translations for nested children (columns, fields, etc.)
+    initializeChildrenTranslations(original);
+
+    // Apply the patch and update
+    T updated = JsonUtils.applyPatch(original, patch, entityClass);
+    updated.setUpdatedBy(user);
+    updated.setUpdatedAt(System.currentTimeMillis());
+
+    // Debug log the updated entity's translations
+    if (updated.getTranslations() != null && updated.getTranslations().getTranslations() != null) {
+      LOG.info(
+          "DEBUG: Updated entity {} has translations after patch: {}",
+          updated.getId(),
+          updated.getTranslations().getTranslations().stream()
+              .map(t -> t.getLocale() + ":" + t.getDisplayName())
+              .toList());
+    } else {
+      LOG.info("DEBUG: Updated entity {} has NO translations after patch", updated.getId());
+    }
+
+    // For translation patches, we directly update without going through EntityUpdater
+    // which might clear translations during version consolidation
+    updated.setVersion(EntityUtil.nextVersion(original.getVersion()));
+
+    // Store the entity directly
+    storeEntity(updated, true);
+
+    // Create change event
+    postUpdate(original, updated);
+
+    return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_FIELDS_CHANGED);
   }
 
   @Transaction
@@ -2858,7 +3047,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityReference> dataProducts = entity.getDataProducts();
     List<EntityReference> followers = entity.getFollowers();
     List<EntityReference> experts = entity.getExperts();
+
+    // Debug log translations before nullifying fields
+    if (entity.getTranslations() != null && entity.getTranslations().getTranslations() != null) {
+      LOG.info(
+          "DEBUG: Before nullifyEntityFields - entity {} has translations for locales: {}",
+          entity.getId(),
+          entity.getTranslations().getTranslations().stream().map(t -> t.getLocale()).toList());
+    }
+
     nullifyEntityFields(entity);
+
+    // Debug log translations after nullifying fields
+    if (entity.getTranslations() != null && entity.getTranslations().getTranslations() != null) {
+      LOG.info(
+          "DEBUG: After nullifyEntityFields - entity {} STILL has translations for locales: {}",
+          entity.getId(),
+          entity.getTranslations().getTranslations().stream().map(t -> t.getLocale()).toList());
+    } else {
+      LOG.info("DEBUG: After nullifyEntityFields - entity {} has NO translations", entity.getId());
+    }
 
     if (update) {
       if (expectedVersion != null) {
@@ -4474,6 +4682,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected final Fields getFields(Set<String> fields) {
     return new Fields(allowedFields, fields);
+  }
+
+  public final Set<String> getAllowedFields() {
+    return allowedFields;
   }
 
   public final Set<String> getAllowedFieldsCopy() {
@@ -6141,6 +6353,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityType,
           updated.getId(),
           updated.getChangeDescription());
+      // Log if translations are present before storing
+      if (updated.getTranslations() != null
+          && updated.getTranslations().getTranslations() != null) {
+        LOG.debug(
+            "Storing entity {} with translations for locales: {}",
+            updated.getId(),
+            updated.getTranslations().getTranslations().stream().map(t -> t.getLocale()).toList());
+      } else {
+        LOG.debug("Storing entity {} without translations", updated.getId());
+      }
       EntityRepository.this.storeEntity(updated, true);
       // Write-through cache after update
       EntityRepository.this.writeThroughCache(updated, true);
@@ -6258,6 +6480,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private T getPreviousVersion(T original) {
+      // Handle case where changeDescription is not initialized
+      if (original.getChangeDescription() == null
+          || original.getChangeDescription().getPreviousVersion() == null) {
+        return null;
+      }
       String extensionName =
           EntityUtil.getVersionExtension(
               entityType, original.getChangeDescription().getPreviousVersion());

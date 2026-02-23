@@ -111,6 +111,10 @@
             "$ref": "#/definitions/field"
           },
           "default": null
+        },
+        "translations": {
+          "description": "Multi-language translations for field displayName and description fields.",
+          "$ref": "translations.json"
         }
       },
       "required": [

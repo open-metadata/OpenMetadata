@@ -46,7 +46,8 @@ public final class ColumnUtil {
         .withOrdinalPosition(column.getOrdinalPosition())
         .withJsonSchema(column.getJsonSchema())
         .withExtension(column.getExtension())
-        .withChildren(children);
+        .withChildren(children)
+        .withTranslations(column.getTranslations()); // Preserve translations
   }
 
   public static void setColumnFQN(String parentFQN, List<Column> columns) {

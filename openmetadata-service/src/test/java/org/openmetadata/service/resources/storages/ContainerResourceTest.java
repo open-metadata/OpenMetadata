@@ -1077,4 +1077,112 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         updated.getDescription(),
         "Admin should be able to update description via bulk API");
   }
+
+  @Test
+  void test_dataModelColumnTranslations(TestInfo test) throws IOException {
+    String containerName = getEntityName(test) + UUID.randomUUID();
+    String defaultDisplayName = "Default Display Name";
+    String defaultDescription = "Default Description";
+
+    List<Column> columns =
+        Arrays.asList(
+            new Column()
+                .withName("column1")
+                .withDataType(ColumnDataType.STRING)
+                .withDisplayName("Column One")
+                .withDescription("First column description"),
+            new Column()
+                .withName("column2")
+                .withDataType(ColumnDataType.INT)
+                .withDisplayName("Column Two")
+                .withDescription("Second column description"));
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel().withIsPartitioned(false).withColumns(columns);
+
+    CreateContainer createRequest =
+        createRequest(containerName)
+            .withDisplayName(defaultDisplayName)
+            .withDescription(defaultDescription)
+            .withDataModel(dataModel);
+
+    Container container = createAndCheckEntity(createRequest, ADMIN_AUTH_HEADERS);
+    UUID containerId = container.getId();
+
+    String originalJson = JsonUtils.pojoToJson(container);
+
+    for (Column column : container.getDataModel().getColumns()) {
+      if (column.getName().equals("column1")) {
+        column.setDisplayName("Columna Uno");
+        column.setDescription("Descripcion de la primera columna");
+      } else if (column.getName().equals("column2")) {
+        column.setDisplayName("Columna Dos");
+        column.setDescription("Descripcion de la segunda columna");
+      }
+    }
+
+    WebTarget target = getResource(containerId).queryParam("locale", "es");
+    String updatedJson = JsonUtils.pojoToJson(container);
+    com.fasterxml.jackson.databind.JsonNode patch =
+        com.github.fge.jsonpatch.diff.JsonDiff.asJson(
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(originalJson),
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(updatedJson));
+    TestUtils.patch(target, patch, Container.class, ADMIN_AUTH_HEADERS);
+
+    target = getResource(containerId).queryParam("locale", "es").queryParam("fields", "dataModel");
+    Container containerWithEs = TestUtils.get(target, Container.class, ADMIN_AUTH_HEADERS);
+
+    Column col1Es =
+        containerWithEs.getDataModel().getColumns().stream()
+            .filter(c -> c.getName().equals("column1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col1Es);
+    assertEquals("Columna Uno", col1Es.getDisplayName());
+    assertEquals("Descripcion de la primera columna", col1Es.getDescription());
+
+    Column col2Es =
+        containerWithEs.getDataModel().getColumns().stream()
+            .filter(c -> c.getName().equals("column2"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col2Es);
+    assertEquals("Columna Dos", col2Es.getDisplayName());
+    assertEquals("Descripcion de la segunda columna", col2Es.getDescription());
+
+    target = getResource(containerId).queryParam("locale", "en").queryParam("fields", "dataModel");
+    Container containerWithEn = TestUtils.get(target, Container.class, ADMIN_AUTH_HEADERS);
+
+    Column col1En =
+        containerWithEn.getDataModel().getColumns().stream()
+            .filter(c -> c.getName().equals("column1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col1En);
+    assertEquals("Column One", col1En.getDisplayName());
+    assertEquals("First column description", col1En.getDescription());
+
+    Column col2En =
+        containerWithEn.getDataModel().getColumns().stream()
+            .filter(c -> c.getName().equals("column2"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col2En);
+    assertEquals("Column Two", col2En.getDisplayName());
+    assertEquals("Second column description", col2En.getDescription());
+
+    target = getResource(containerId).queryParam("locale", "fr").queryParam("fields", "dataModel");
+    Container containerWithFr = TestUtils.get(target, Container.class, ADMIN_AUTH_HEADERS);
+
+    Column col1Fr =
+        containerWithFr.getDataModel().getColumns().stream()
+            .filter(c -> c.getName().equals("column1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col1Fr);
+    assertEquals("", col1Fr.getDisplayName());
+    assertEquals("", col1Fr.getDescription());
+
+    deleteEntity(containerId, false, true, ADMIN_AUTH_HEADERS);
+  }
 }

@@ -157,10 +157,16 @@ public class DashboardDataModelResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Language locale for translation (e.g., 'en', 'es', 'fr')",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          @DefaultValue("en")
+          String locale) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after, locale);
   }
 
   @GET
@@ -228,8 +234,14 @@ public class DashboardDataModelResource
                       + "If not specified for a field, uses the entity's include value.",
               schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
           @QueryParam("includeRelations")
-          String includeRelations) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
+          String includeRelations,
+      @Parameter(
+              description = "Language locale for translation (e.g., 'en', 'es', 'fr')",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          @DefaultValue("en")
+          String locale) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations, locale);
   }
 
   @GET
@@ -277,8 +289,15 @@ public class DashboardDataModelResource
                       + "If not specified for a field, uses the entity's include value.",
               schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
           @QueryParam("includeRelations")
-          String includeRelations) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
+          String includeRelations,
+      @Parameter(
+              description = "Language locale for translation (e.g., 'en', 'es', 'fr')",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          @DefaultValue("en")
+          String locale) {
+    return getByNameInternal(
+        uriInfo, securityContext, fqn, fieldsParam, include, includeRelations, locale);
   }
 
   @GET
@@ -393,6 +412,11 @@ public class DashboardDataModelResource
       @Parameter(description = "Id of the dashboard datamodel", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
+      @Parameter(
+              description = "Language locale (e.g., 'en', 'es', 'fr') for storing translations",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          String locale,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -402,7 +426,7 @@ public class DashboardDataModelResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return patchInternal(uriInfo, securityContext, id, patch, locale, null);
   }
 
   @PATCH
@@ -422,6 +446,11 @@ public class DashboardDataModelResource
       @Parameter(description = "Name of the dashboard datamodel", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
+      @Parameter(
+              description = "Language locale (e.g., 'en', 'es', 'fr') for storing translations",
+              schema = @Schema(type = "string"))
+          @QueryParam("locale")
+          String locale,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -431,7 +460,7 @@ public class DashboardDataModelResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return patchInternal(uriInfo, securityContext, fqn, patch, locale, null);
   }
 
   @PUT

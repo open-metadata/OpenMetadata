@@ -711,4 +711,109 @@ public class DashboardDataModelResourceTest
     // Cleanup
     deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
+
+  @Test
+  void test_columnTranslations(TestInfo test) throws IOException {
+    String modelName = getEntityName(test) + java.util.UUID.randomUUID();
+    String defaultDisplayName = "Default Display Name";
+    String defaultDescription = "Default Description";
+
+    List<Column> columns =
+        Arrays.asList(
+            new Column()
+                .withName("column1")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING)
+                .withDisplayName("Column One")
+                .withDescription("First column description"),
+            new Column()
+                .withName("column2")
+                .withDataType(INT)
+                .withDisplayName("Column Two")
+                .withDescription("Second column description"));
+
+    CreateDashboardDataModel createRequest =
+        createRequest(modelName)
+            .withDisplayName(defaultDisplayName)
+            .withDescription(defaultDescription)
+            .withColumns(columns);
+
+    DashboardDataModel dataModel = createAndCheckEntity(createRequest, ADMIN_AUTH_HEADERS);
+    var dataModelId = dataModel.getId();
+
+    String originalJson = JsonUtils.pojoToJson(dataModel);
+
+    for (Column column : dataModel.getColumns()) {
+      if (column.getName().equals("column1")) {
+        column.setDisplayName("Columna Uno");
+        column.setDescription("Descripcion de la primera columna");
+      } else if (column.getName().equals("column2")) {
+        column.setDisplayName("Columna Dos");
+        column.setDescription("Descripcion de la segunda columna");
+      }
+    }
+
+    WebTarget target = getResource(dataModelId).queryParam("locale", "es");
+    String updatedJson = JsonUtils.pojoToJson(dataModel);
+    com.fasterxml.jackson.databind.JsonNode patch =
+        com.github.fge.jsonpatch.diff.JsonDiff.asJson(
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(originalJson),
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(updatedJson));
+    TestUtils.patch(target, patch, DashboardDataModel.class, ADMIN_AUTH_HEADERS);
+
+    target = getResource(dataModelId).queryParam("locale", "es").queryParam("fields", "columns");
+    DashboardDataModel modelWithEs = TestUtils.get(target, DashboardDataModel.class, ADMIN_AUTH_HEADERS);
+
+    Column col1Es =
+        modelWithEs.getColumns().stream()
+            .filter(c -> c.getName().equals("column1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col1Es);
+    assertEquals("Columna Uno", col1Es.getDisplayName());
+    assertEquals("Descripcion de la primera columna", col1Es.getDescription());
+
+    Column col2Es =
+        modelWithEs.getColumns().stream()
+            .filter(c -> c.getName().equals("column2"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col2Es);
+    assertEquals("Columna Dos", col2Es.getDisplayName());
+    assertEquals("Descripcion de la segunda columna", col2Es.getDescription());
+
+    target = getResource(dataModelId).queryParam("locale", "en").queryParam("fields", "columns");
+    DashboardDataModel modelWithEn = TestUtils.get(target, DashboardDataModel.class, ADMIN_AUTH_HEADERS);
+
+    Column col1En =
+        modelWithEn.getColumns().stream()
+            .filter(c -> c.getName().equals("column1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col1En);
+    assertEquals("Column One", col1En.getDisplayName());
+    assertEquals("First column description", col1En.getDescription());
+
+    Column col2En =
+        modelWithEn.getColumns().stream()
+            .filter(c -> c.getName().equals("column2"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col2En);
+    assertEquals("Column Two", col2En.getDisplayName());
+    assertEquals("Second column description", col2En.getDescription());
+
+    target = getResource(dataModelId).queryParam("locale", "fr").queryParam("fields", "columns");
+    DashboardDataModel modelWithFr = TestUtils.get(target, DashboardDataModel.class, ADMIN_AUTH_HEADERS);
+
+    Column col1Fr =
+        modelWithFr.getColumns().stream()
+            .filter(c -> c.getName().equals("column1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(col1Fr);
+    assertEquals("", col1Fr.getDisplayName());
+    assertEquals("", col1Fr.getDescription());
+
+    deleteEntity(dataModelId, false, true, ADMIN_AUTH_HEADERS);
+  }
 }
