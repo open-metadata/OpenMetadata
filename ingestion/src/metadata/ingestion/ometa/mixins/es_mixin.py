@@ -384,7 +384,7 @@ class ESMixin(Generic[T]):
         query = functools.partial(
             self.paginate_query.format,
             index=ES_INDEX_MAP[entity.__name__],
-            search_query=search_query,
+            search_query=quote_plus(search_query) if search_query else "",
             filter="&query_filter=" + quote_plus(query_filter) if query_filter else "",
             size=size,
             include_fields=self._get_include_fields_query(include_fields),

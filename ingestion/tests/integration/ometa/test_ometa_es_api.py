@@ -543,19 +543,19 @@ class TestOMetaESAPI:
                 )
             )
 
-    def test_search(self):
+    def test_search(self, metadata, es_service, es_schema):
         for name in [f"Table {i}" for i in range(5)]:
-            self.metadata.create_or_update(
+            metadata.create_or_update(
                 data=get_create_entity(
                     entity=Table,
                     name=EntityName(name),
-                    reference=self.create_schema_entity.fullyQualifiedName,
+                    reference=es_schema.fullyQualifiedName,
                 )
             )
 
         # Searching by an almost exact match has the highest rank.
         assets = list(
-            self.metadata.paginate_es(
+            metadata.paginate_es(
                 entity=Table, search_query="table 2", sort_field="_score"
             )
         )
@@ -566,7 +566,7 @@ class TestOMetaESAPI:
 
         # Searching by a value that doesn't exist returns an empty set of results.
         assets = list(
-            self.metadata.paginate_es(
+            metadata.paginate_es(
                 entity=Table, search_query="N0NExistent", sort_field="_score"
             )
         )
