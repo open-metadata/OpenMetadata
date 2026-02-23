@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
@@ -55,6 +56,7 @@ export default defineConfig(({ mode }) => {
             );
         },
       },
+      tailwindcss(),
       react(),
       svgr(),
       tsconfigPaths(),
@@ -101,6 +103,16 @@ export default defineConfig(({ mode }) => {
         '@mui/system',
         '@emotion/react',
         '@emotion/styled',
+        'react-aria',
+        'react-aria-components',
+        'react-stately',
+        '@untitledui/icons',
+        '@internationalized/date',
+        '@react-aria/utils',
+        '@react-stately/utils',
+        '@react-types/shared',
+        'tailwind-merge',
+        'react-hook-form',
       ],
     },
 
