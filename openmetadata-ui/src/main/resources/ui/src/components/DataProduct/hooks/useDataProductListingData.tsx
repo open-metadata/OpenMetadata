@@ -54,6 +54,11 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
   const columns: ColumnConfig<DataProduct>[] = useMemo(
     () => [
       { key: 'name', labelKey: 'label.data-product', render: 'entityName' },
+      {
+        key: 'fullyQualifiedName',
+        labelKey: 'label.technical-name',
+        render: 'text',
+      },
       { key: 'owners', labelKey: 'label.owner', render: 'owners' },
       {
         key: 'glossaryTerms',
