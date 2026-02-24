@@ -100,6 +100,58 @@ async function updateDescription(
   await page.waitForLoadState('networkidle');
 }
 
+/**
+ * Helper to find a tag in a paginated classification tag list.
+ * Iterates through pages until the tag is found or no more pages exist.
+ */
+async function findTagInPaginatedList(
+  page: Page,
+  tagName: string,
+  options?: { click?: boolean }
+): Promise<void> {
+  const tagLocator = page.getByTestId(tagName);
+  const MAX_PAGES = 50;
+  let pageCount = 0;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    if ((await tagLocator.count()) > 0 && (await tagLocator.isVisible())) {
+      if (options?.click) {
+        await tagLocator.click();
+      }
+
+      return;
+    }
+
+    const nextButton = page.getByTestId('next');
+
+    if ((await nextButton.isVisible()) && (await nextButton.isEnabled())) {
+      pageCount++;
+      if (pageCount >= MAX_PAGES) {
+        throw new Error(
+          `Tag "${tagName}" not found after checking ${MAX_PAGES} pages`
+        );
+      }
+
+      const nextResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags?') &&
+          response.request().method() === 'GET'
+      );
+      await nextButton.click();
+      await nextResponsePromise;
+      await page.waitForSelector(
+        '[data-testid="tags-container"] .table-container [data-testid="loader"]',
+        { state: 'detached' }
+      );
+    } else {
+      throw new Error(
+        `Tag "${tagName}" not found in any page of the classification tag list`
+      );
+    }
+  }
+}
+
 test.describe('Entity Rename + Field Update Consolidation', () => {
   test.beforeAll('Setup admin user', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -312,7 +364,7 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
       await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
       // Verify tag exists
-      await expect(page.getByTestId(tag.data.name)).toBeVisible();
+      await findTagInPaginatedList(page, tag.data.name);
 
       // Step 1: Rename the classification
       const newName = `renamed-class-${uuid()}`;
@@ -327,7 +379,7 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
       );
 
       // Step 3: Verify tag is still associated
-      await expect(page.getByTestId(tag.data.name)).toBeVisible();
+      await findTagInPaginatedList(page, tag.data.name);
     } finally {
       try {
         await apiContext.delete(
@@ -384,7 +436,7 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         );
 
         // Verify tag still exists after each cycle
-        await expect(page.getByTestId(tag.data.name)).toBeVisible();
+        await findTagInPaginatedList(page, tag.data.name);
       }
     } finally {
       try {
@@ -430,8 +482,7 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         .filter({ hasText: classification.data.displayName })
         .click();
 
-      await page.getByTestId(tag.data.name).waitFor({ state: 'visible' });
-      await page.getByTestId(tag.data.name).click();
+      await findTagInPaginatedList(page, tag.data.name, { click: true });
 
       await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
@@ -481,8 +532,7 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
         .filter({ hasText: classification.data.displayName })
         .click();
 
-      await page.getByTestId(tag.data.name).waitFor({ state: 'visible' });
-      await page.getByTestId(tag.data.name).click();
+      await findTagInPaginatedList(page, tag.data.name, { click: true });
 
       await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
