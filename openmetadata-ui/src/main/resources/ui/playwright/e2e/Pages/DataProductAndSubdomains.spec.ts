@@ -862,14 +862,14 @@ test.describe('Data Product Search and Filter', () => {
   });
 });
 
-test.describe('Data Product Name Column', () => {
+test.describe('Data Product Name in Entity Name Cell', () => {
   test.slow(true);
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
 
-  test('Name column is visible in table view with correct value', async ({
+  test('Entity name cell shows both display name and name', async ({
     page,
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
@@ -885,11 +885,6 @@ test.describe('Data Product Name Column', () => {
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
-
-      // Verify the table view is displayed by default with the Name header
-      const tableContainer = page.getByTestId('table-view-container');
-      await expect(tableContainer).toBeVisible();
-      await expect(tableContainer).toContainText('Name');
 
       // Search for the specific data product
       const searchBox = page
@@ -907,9 +902,10 @@ test.describe('Data Product Name Column', () => {
         state: 'detached',
       });
 
-      // Verify the data product row contains the name
+      // Verify the row shows both display name and name
       const row = page.getByTestId(dataProduct.data.name);
       await expect(row).toBeVisible();
+      await expect(row).toContainText(dataProduct.responseData.displayName);
       await expect(row).toContainText(dataProduct.responseData.name);
     } finally {
       await dataProduct.delete(apiContext);
