@@ -289,7 +289,7 @@ public class ListFilter extends Filter<ListFilter> {
           entityIdColumn, entityTypeCondition);
     }
 
-    String domainInClause = buildIndexedBindParams("domainId", domainId);
+    String domainInClause = buildIndexedBindParams("domainId", domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
       return String.format(
@@ -567,7 +567,7 @@ public class ListFilter extends Filter<ListFilter> {
     queryParams.put("typePrefix", typePrefix);
     return tableName == null
         ? "webhookType LIKE :typePrefix"
-        : tableName + ".webhookType LIKE typePrefix";
+        : tableName + ".webhookType LIKE :typePrefix";
   }
 
   private String getPipelineTypePrefixCondition(String tableName, String pipelineType) {
@@ -612,14 +612,10 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getStatusPrefixCondition(String tableName, String statusPrefix) {
     if (!statusPrefix.isEmpty()) {
-      List<String> statusList = new ArrayList<>(Arrays.asList(statusPrefix.split(",")));
-      List<String> condition = new ArrayList<>();
-      for (String s : statusList) {
-        String format = "\"" + s + "\"";
-        condition.add(format);
-      }
-      queryParams.put("statusList", String.join(",", condition));
-      return "status in (:statusList)";
+      String inCondition = buildIndexedBindParams("status", statusPrefix);
+      return tableName == null
+          ? String.format("status IN (%s)", inCondition)
+          : String.format("%s.status IN (%s)", tableName, inCondition);
     }
     queryParams.put("statusPrefix", String.format("%s%%", statusPrefix));
     return tableName == null
