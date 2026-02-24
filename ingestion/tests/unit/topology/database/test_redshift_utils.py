@@ -180,9 +180,7 @@ class TestRedshiftUtils(unittest.TestCase):
 
     def test_materialized_view_definition_with_create_or_replace(self):
         """Test that definition with CREATE OR REPLACE MATERIALIZED VIEW is not modified"""
-        self.mock_view.view_definition = (
-            "CREATE OR REPLACE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
-        )
+        self.mock_view.view_definition = "CREATE OR REPLACE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
 
         result = get_view_definition(
             self.mock_self,
@@ -216,9 +214,7 @@ class TestRedshiftUtils(unittest.TestCase):
 
     def test_external_view_definition_removes_schema_binding(self):
         """Test that WITH NO SCHEMA BINDING is removed from external view"""
-        self.mock_view.view_definition = (
-            "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1 WITH NO SCHEMA BINDING"
-        )
+        self.mock_view.view_definition = "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1 WITH NO SCHEMA BINDING"
 
         result = get_view_definition(
             self.mock_self,
@@ -231,5 +227,7 @@ class TestRedshiftUtils(unittest.TestCase):
             result,
             "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1 ",
         )
+
+
 if __name__ == "__main__":
     unittest.main()
