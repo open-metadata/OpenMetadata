@@ -795,6 +795,7 @@ export const fillRowDetails = async (
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
   await page.keyboard.press('Enter', { delay: 100 });
 
+  await page.getByTestId('cards').waitFor({ state: 'visible' });
   await page.click(`[data-testid="radio-btn-${row.tier}"]`);
   await page.click(`[data-testid="update-tier-card"]`);
 
@@ -810,6 +811,13 @@ export const fillRowDetails = async (
   await page
     .getByTestId('loader')
     .waitFor({ state: 'detached' });
+
+  await page
+    .locator('[data-testid="certification-cards"] .ant-radio-group')
+    .waitFor({ state: 'visible' });
+  
+  //small timeout to render certifications on popover
+  await page.waitForTimeout(500)
 
   const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
   await certRadioBtn.waitFor({ state: 'visible' });
