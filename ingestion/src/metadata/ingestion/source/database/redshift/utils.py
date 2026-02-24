@@ -417,8 +417,8 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     pattern = re.compile("WITH NO SCHEMA BINDING", re.IGNORECASE)
     view_definition = str(sa.text(pattern.sub("", view.view_definition)))
 
-    # If the view definition doesn't start with CREATE VIEW or CREATE MATERIALIZED VIEW,
-    # add it to make sure the lineage parser can parse it correctly
+    # If the view definition does not contain CREATE VIEW or CREATE MATERIALIZED VIEW,
+    # add a CREATE VIEW prefix to make sure the lineage parser can parse it correctly
     create_view_pattern = re.compile(
         r"CREATE\s+VIEW|CREATE\s+MATERIALIZED\s+VIEW", re.IGNORECASE
     )
