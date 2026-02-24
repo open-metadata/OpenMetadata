@@ -42,7 +42,10 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { Field } from '../generated/type/schema';
 import { TagLabel } from '../generated/type/tagLabel';
-import { getDataModelColumnsByFQN } from '../rest/dataModelsAPI';
+import {
+  getDataModelColumnsByFQN,
+  searchDataModelColumnsByFQN,
+} from '../rest/dataModelsAPI';
 import {
   getTableColumnsByFQN,
   getTableList,
@@ -51,8 +54,28 @@ import {
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 
-import { pruneEmptyChildren } from './TableUtils';
+import { flattenColumns, pruneEmptyChildren } from './TableUtils';
 const { Text } = AntTypography;
+
+/**
+ * Shared utility to filter items by search text using case-insensitive
+ * name/displayName matching. Used by all entity child components.
+ */
+const filterItemsBySearchText = <T extends { name?: string }>(
+  items: T[],
+  searchText?: string
+): T[] => {
+  if (!searchText) {
+    return items;
+  }
+  const lowerSearch = searchText.toLowerCase();
+
+  return items.filter(
+    (item) =>
+      item.name?.toLowerCase().includes(lowerSearch) ||
+      getEntityName(item)?.toLowerCase().includes(lowerSearch)
+  );
+};
 
 export const getEntityChildDetailsV1 = (
   entityType: EntityType,
@@ -81,6 +104,7 @@ export const getEntityChildDetailsV1 = (
           entityInfo={entityInfo as DatabaseSchema}
           highlights={highlights}
           loading={loading}
+          searchText={searchText}
         />
       );
 
@@ -90,6 +114,7 @@ export const getEntityChildDetailsV1 = (
           entityInfo={entityInfo as Dashboard}
           highlights={highlights}
           loading={loading}
+          searchText={searchText}
         />
       );
 
@@ -99,6 +124,7 @@ export const getEntityChildDetailsV1 = (
           entityInfo={entityInfo as Topic}
           highlights={highlights}
           loading={loading}
+          searchText={searchText}
         />
       );
 
@@ -108,6 +134,7 @@ export const getEntityChildDetailsV1 = (
           entityInfo={entityInfo as Container}
           highlights={highlights}
           loading={loading}
+          searchText={searchText}
         />
       );
 
@@ -117,6 +144,7 @@ export const getEntityChildDetailsV1 = (
           entityInfo={entityInfo as SearchIndex}
           highlights={highlights}
           loading={loading}
+          searchText={searchText}
         />
       );
 
@@ -126,6 +154,7 @@ export const getEntityChildDetailsV1 = (
           entityInfo={entityInfo as APIEndpoint}
           highlights={highlights}
           loading={loading}
+          searchText={searchText}
         />
       );
 
@@ -135,6 +164,7 @@ export const getEntityChildDetailsV1 = (
           entityInfo={entityInfo}
           highlights={highlights}
           loading={loading}
+          searchText={searchText}
         />
       );
 
@@ -144,6 +174,7 @@ export const getEntityChildDetailsV1 = (
           entityInfo={entityInfo as Pipeline}
           highlights={highlights}
           loading={loading}
+          searchText={searchText}
         />
       );
 
@@ -153,6 +184,7 @@ export const getEntityChildDetailsV1 = (
           entityInfo={entityInfo as APICollection}
           highlights={highlights}
           loading={loading}
+          searchText={searchText}
         />
       );
 
@@ -265,10 +297,14 @@ const SchemaFieldCardsV1: React.FC<{
       setIsLoading(true);
       try {
         const offset = (page - 1) * (columnsPaging.limit ?? PAGE_SIZE_LARGE);
+        const fields =
+          entityType === EntityType.TABLE
+            ? 'tags,customMetrics,description,extension'
+            : 'tags,description,extension';
         const params = {
           offset,
           limit: columnsPaging.limit,
-          fields: 'tags,customMetrics,description,extension',
+          fields,
           ...(search && { q: search }),
         };
 
@@ -286,7 +322,9 @@ const SchemaFieldCardsV1: React.FC<{
             paging = response.paging;
           }
         } else {
-          const response = await getDataModelColumnsByFQN(fqn, params);
+          const response = search
+            ? await searchDataModelColumnsByFQN(fqn, params)
+            : await getDataModelColumnsByFQN(fqn, params);
           data = response.data;
           paging = response.paging;
         }
@@ -435,8 +473,17 @@ const TopicFieldCardsV1: React.FC<{
   entityInfo: Topic;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
   const schemaFields = entityInfo.messageSchema?.schemaFields || [];
+
+  const filteredFields = useMemo(() => {
+    if (!searchText) {
+      return schemaFields;
+    }
+
+    return filterItemsBySearchText(flattenColumns(schemaFields), searchText);
+  }, [schemaFields, searchText]);
 
   if (loading) {
     return (
@@ -446,7 +493,7 @@ const TopicFieldCardsV1: React.FC<{
     );
   }
 
-  if (isEmpty(schemaFields)) {
+  if (isEmpty(filteredFields)) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -457,7 +504,7 @@ const TopicFieldCardsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {schemaFields.map((field: any) => {
+        {filteredFields.map((field: any) => {
           const isHighlighted = highlights?.field?.includes(field.name);
 
           return (
@@ -483,8 +530,17 @@ const ContainerFieldCardsV1: React.FC<{
   entityInfo: Container;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
   const columns = entityInfo.dataModel?.columns || [];
+
+  const filteredColumns = useMemo(() => {
+    if (!searchText) {
+      return columns;
+    }
+
+    return filterItemsBySearchText(flattenColumns(columns), searchText);
+  }, [columns, searchText]);
 
   if (loading) {
     return (
@@ -494,7 +550,7 @@ const ContainerFieldCardsV1: React.FC<{
     );
   }
 
-  if (isEmpty(columns)) {
+  if (isEmpty(filteredColumns)) {
     return (
       <div className="no-data-container text-grey-muted m-t-md d-flex justify-center align-items-center">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -505,7 +561,7 @@ const ContainerFieldCardsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {columns.map((column: any) => {
+        {filteredColumns.map((column: any) => {
           const isHighlighted = highlights?.column?.includes(column.name);
 
           return (
@@ -531,8 +587,14 @@ const PipelineTasksV1: React.FC<{
   entityInfo: Pipeline;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
   const tasks = entityInfo.tasks || [];
+
+  const filteredTasks = useMemo(
+    () => filterItemsBySearchText(tasks, searchText),
+    [tasks, searchText]
+  );
 
   if (loading) {
     return (
@@ -542,7 +604,7 @@ const PipelineTasksV1: React.FC<{
     );
   }
 
-  if (isEmpty(tasks)) {
+  if (isEmpty(filteredTasks)) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -553,7 +615,7 @@ const PipelineTasksV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {tasks.map((task: any) => {
+        {filteredTasks.map((task: any) => {
           const isHighlighted = highlights?.tasks?.includes(task.name);
 
           return (
@@ -579,7 +641,8 @@ const APICollectionEndpointsV1: React.FC<{
   entityInfo: APICollection;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
   const [endpoints, setEndpoints] = useState<APIEndpoint[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasInitialized, setHasInitialized] = useState<boolean>(false);
@@ -637,6 +700,11 @@ const APICollectionEndpointsV1: React.FC<{
     };
   }, [fqn]);
 
+  const filteredEndpoints = useMemo(
+    () => filterItemsBySearchText(endpoints, searchText),
+    [endpoints, searchText]
+  );
+
   if (loading || (isLoading && !hasInitialized)) {
     return (
       <div className="flex-center p-lg">
@@ -645,7 +713,7 @@ const APICollectionEndpointsV1: React.FC<{
     );
   }
 
-  if (isEmpty(endpoints) && hasInitialized) {
+  if (isEmpty(filteredEndpoints) && hasInitialized) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -665,7 +733,7 @@ const APICollectionEndpointsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {endpoints.map((endpoint: any) => {
+        {filteredEndpoints.map((endpoint: any) => {
           const isHighlighted = highlights?.apiEndpoints?.includes(
             endpoint.name
           );
@@ -692,7 +760,8 @@ const DatabaseSchemaTablesV1: React.FC<{
   entityInfo: DatabaseSchema;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
   const [tables, setTables] = useState<TableEntity[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasInitialized, setHasInitialized] = useState<boolean>(false);
@@ -730,6 +799,11 @@ const DatabaseSchemaTablesV1: React.FC<{
     };
   }, [fqn]);
 
+  const filteredTables = useMemo(
+    () => filterItemsBySearchText(tables, searchText),
+    [tables, searchText]
+  );
+
   const loadMoreBtn = useMemo(() => {
     // For now, we fetch all tables at once, so no load more button needed
     // This can be enhanced later with proper cursor-based pagination
@@ -744,7 +818,7 @@ const DatabaseSchemaTablesV1: React.FC<{
     );
   }
 
-  if (isEmpty(tables) && hasInitialized) {
+  if (isEmpty(filteredTables) && hasInitialized) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -764,7 +838,7 @@ const DatabaseSchemaTablesV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {tables.map((table) => {
+        {filteredTables.map((table) => {
           const isHighlighted = highlights?.table?.includes(table.name);
 
           return (
@@ -790,8 +864,14 @@ const DashboardChartsV1: React.FC<{
   entityInfo: Dashboard;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
   const charts = entityInfo.charts || [];
+
+  const filteredCharts = useMemo(
+    () => filterItemsBySearchText(charts, searchText),
+    [charts, searchText]
+  );
 
   if (loading) {
     return (
@@ -801,7 +881,7 @@ const DashboardChartsV1: React.FC<{
     );
   }
 
-  if (isEmpty(charts)) {
+  if (isEmpty(filteredCharts)) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -812,7 +892,7 @@ const DashboardChartsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {charts.map((chart: any) => {
+        {filteredCharts.map((chart: any) => {
           const isHighlighted = highlights?.chart?.includes(chart.name);
 
           return (
@@ -837,7 +917,8 @@ const APIEndpointSchemaV1: React.FC<{
   entityInfo: APIEndpoint;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, loading, searchText }) => {
   const [viewType, setViewType] = useState<
     'request-schema' | 'response-schema'
   >('request-schema');
@@ -858,10 +939,42 @@ const APIEndpointSchemaV1: React.FC<{
   ];
 
   const activeSchemaFields = useMemo(() => {
-    return viewType === 'request-schema'
-      ? requestSchemaFields
-      : responseSchemaFields;
-  }, [viewType, requestSchemaFields, responseSchemaFields]);
+    const fields =
+      viewType === 'request-schema'
+        ? requestSchemaFields
+        : responseSchemaFields;
+
+    if (!searchText) {
+      return fields;
+    }
+
+    const lowerSearch = searchText.toLowerCase();
+    const filterFields = (fieldList: Field[]): Field[] => {
+      return fieldList.reduce<Field[]>((acc, field) => {
+        const nameMatch =
+          field.name?.toLowerCase().includes(lowerSearch) ||
+          getEntityName(field)?.toLowerCase().includes(lowerSearch);
+        const filteredChildren = field.children
+          ? filterFields(field.children)
+          : [];
+
+        if (nameMatch || filteredChildren.length > 0) {
+          acc.push({
+            ...field,
+            children: nameMatch
+              ? field.children
+              : filteredChildren.length > 0
+              ? filteredChildren
+              : field.children,
+          });
+        }
+
+        return acc;
+      }, []);
+    };
+
+    return filterFields(fields);
+  }, [viewType, requestSchemaFields, responseSchemaFields, searchText]);
 
   // Get all row keys for expandable functionality
   const getAllRowKeys = (fields: Field[]): string[] => {
@@ -1014,8 +1127,14 @@ const DatabaseSchemasV1: React.FC<{
   entityInfo: any;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, loading, searchText }) => {
   const databaseSchemas = entityInfo.databaseSchemas || [];
+
+  const filteredSchemas = useMemo(
+    () => filterItemsBySearchText(databaseSchemas, searchText),
+    [databaseSchemas, searchText]
+  );
 
   if (loading) {
     return (
@@ -1025,7 +1144,7 @@ const DatabaseSchemasV1: React.FC<{
     );
   }
 
-  if (isEmpty(databaseSchemas)) {
+  if (isEmpty(filteredSchemas)) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -1036,7 +1155,7 @@ const DatabaseSchemasV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {databaseSchemas.map((schema: any) => {
+        {filteredSchemas.map((schema: any) => {
           return (
             <Col key={schema.id} span={24}>
               <FieldCard
@@ -1058,8 +1177,17 @@ const SearchIndexFieldCardsV1: React.FC<{
   entityInfo: SearchIndex;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
   const fields = entityInfo.fields || [];
+
+  const filteredFields = useMemo(() => {
+    if (!searchText) {
+      return fields;
+    }
+
+    return filterItemsBySearchText(flattenColumns(fields), searchText);
+  }, [fields, searchText]);
 
   if (loading) {
     return (
@@ -1069,7 +1197,7 @@ const SearchIndexFieldCardsV1: React.FC<{
     );
   }
 
-  if (isEmpty(fields)) {
+  if (isEmpty(filteredFields)) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -1080,7 +1208,7 @@ const SearchIndexFieldCardsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {fields.map((field: any) => {
+        {filteredFields.map((field: any) => {
           const isHighlighted = highlights?.field?.includes(field.name);
 
           return (

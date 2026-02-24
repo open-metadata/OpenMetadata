@@ -63,6 +63,8 @@ public class DistributedJobParticipant implements Managed {
    */
   @Getter private UUID currentJobId;
 
+  private volatile Thread participantThread;
+
   public DistributedJobParticipant(
       CollectionDAO collectionDAO,
       SearchRepository searchRepository,
@@ -116,6 +118,18 @@ public class DistributedJobParticipant implements Managed {
   @Override
   public void stop() {
     if (running.compareAndSet(true, false)) {
+      Thread thread = participantThread;
+      if (thread != null) {
+        thread.interrupt();
+        try {
+          thread.join(10_000);
+          if (thread.isAlive()) {
+            LOG.warn("Participant thread did not terminate within 10s after interrupt");
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
       notifier.stop();
       LOG.info("Stopped distributed job participant on server {}", serverId);
     }
@@ -190,22 +204,22 @@ public class DistributedJobParticipant implements Managed {
       pollingNotifier.setParticipating(true);
     }
 
-    Thread.ofVirtual()
-        .name("job-participant-" + job.getId().toString().substring(0, 8))
-        .start(
-            () -> {
-              try {
-                processJobPartitions(job);
-              } finally {
-                participating.set(false);
-                currentJobId = null;
-
-                // Reset polling notifier to idle interval
-                if (notifier instanceof PollingJobNotifier pollingNotifier) {
-                  pollingNotifier.setParticipating(false);
-                }
-              }
-            });
+    participantThread =
+        Thread.ofVirtual()
+            .name("job-participant-" + job.getId().toString().substring(0, 8))
+            .start(
+                () -> {
+                  try {
+                    processJobPartitions(job);
+                  } finally {
+                    currentJobId = null;
+                    if (notifier instanceof PollingJobNotifier pollingNotifier) {
+                      pollingNotifier.setParticipating(false);
+                    }
+                    participating.set(false);
+                    participantThread = null;
+                  }
+                });
   }
 
   /** Process partitions for a job. */
@@ -316,26 +330,19 @@ public class DistributedJobParticipant implements Managed {
             partition.getId(),
             partition.getEntityType());
 
-        try {
-          PartitionWorker.PartitionResult result = worker.processPartition(partition);
-          partitionsProcessed++;
-          totalReaderSuccess += result.successCount();
-          totalReaderFailed += result.readerFailed();
-          totalReaderWarnings += result.readerWarnings();
+        PartitionWorker.PartitionResult result = worker.processPartition(partition);
+        partitionsProcessed++;
+        totalReaderSuccess += result.successCount();
+        totalReaderFailed += result.readerFailed();
+        totalReaderWarnings += result.readerWarnings();
 
-          LOG.info(
-              "Participant completed partition {} (success: {}, failed: {}, readerFailed: {}, readerWarnings: {})",
-              partition.getId(),
-              result.successCount(),
-              result.failedCount(),
-              result.readerFailed(),
-              result.readerWarnings());
-
-          // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
-
-        } catch (Exception e) {
-          LOG.error("Error processing partition {}", partition.getId(), e);
-        }
+        LOG.info(
+            "Participant completed partition {} (success: {}, failed: {}, readerFailed: {}, readerWarnings: {})",
+            partition.getId(),
+            result.successCount(),
+            result.failedCount(),
+            result.readerFailed(),
+            result.readerWarnings());
       }
 
       // Flush sink and wait for all pending bulk requests to complete

@@ -13,7 +13,8 @@
 OpenAPI schema parser for both JSON and YAML formats
 """
 import json
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, Union
 
 import yaml
 from requests.models import Response
@@ -101,3 +102,49 @@ def validate_openapi_schema(schema: Dict[str, Any]) -> bool:
 
     # OpenAPI 3.x uses "openapi" field, OpenAPI 2.x uses "swagger" field
     return schema.get("openapi") is not None or schema.get("swagger") is not None
+
+
+def parse_openapi_schema_from_file(file_path: Union[str, Path]) -> Dict[str, Any]:
+    """
+    Parse OpenAPI schema from a local file.
+    Supports both JSON and YAML formats.
+    """
+    path = Path(file_path)
+    if not path.exists():
+        raise OpenAPIParseError(f"File not found: {file_path}")
+    if not path.is_file():
+        raise OpenAPIParseError(f"Path is not a file: {file_path}")
+
+    content = path.read_text(encoding="utf-8")
+    suffix = path.suffix.lower()
+
+    if suffix in (".json",):
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError as e:
+            raise OpenAPIParseError(f"Failed to parse JSON file: {e}") from e
+
+    if suffix in (".yaml", ".yml"):
+        try:
+            parsed = yaml.safe_load(content)
+            if parsed is None:
+                raise OpenAPIParseError("YAML parsing returned None")
+            return parsed
+        except yaml.YAMLError as e:
+            raise OpenAPIParseError(f"Failed to parse YAML file: {e}") from e
+
+    # Unknown extension — try JSON first, then YAML
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        pass
+
+    try:
+        parsed = yaml.safe_load(content)
+        if parsed is None:
+            raise OpenAPIParseError("YAML parsing returned None")
+        return parsed
+    except yaml.YAMLError:
+        pass
+
+    raise OpenAPIParseError(f"Failed to parse '{file_path}' as either JSON or YAML.")

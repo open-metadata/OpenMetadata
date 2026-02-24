@@ -217,8 +217,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     SearchRequest searchRequest =
         SearchRequest.of(s -> s.index(resolvedIndexes).query(query).size(10000));
 
-    SearchResponse<JsonData> response =
-        OsUtils.searchWithLenientDeserialization(client, searchRequest);
+    SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
 
     long totalHits = response.hits().total() != null ? response.hits().total().value() : 0;
     LOG.info(
@@ -568,7 +567,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     SearchRequest searchRequest =
         SearchRequest.of(s -> s.index(resolveIndexNames()).query(query).aggregations(aggs).size(0));
 
-    return OsUtils.searchWithLenientDeserialization(client, searchRequest);
+    return client.search(searchRequest, JsonData.class);
   }
 
   private Map<String, List<ColumnWithContext>> parseAggregationResults(
@@ -849,8 +848,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     SearchRequest countRequest =
         SearchRequest.of(s -> s.index(resolveIndexNames()).query(query).aggregations(aggs).size(0));
 
-    SearchResponse<JsonData> countResponse =
-        OsUtils.searchWithLenientDeserialization(client, countRequest);
+    SearchResponse<JsonData> countResponse = client.search(countRequest, JsonData.class);
 
     long uniqueColumns = 0;
     long totalOccurrences = 0;

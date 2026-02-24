@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
+  formatTestSummaryYAxis,
+  getStatusDotColor,
   prepareChartData,
   PrepareChartDataType,
 } from './TestSummaryGraphUtils';
@@ -26,6 +30,20 @@ jest.mock('../../utils/DataInsightUtils', () => {
     getRandomHexColor: jest.fn().mockReturnValue('#7147E8'),
   };
 });
+
+jest.mock('../ChartUtils', () => ({
+  axisTickFormatter: jest.fn((value: number) => {
+    if (value >= 1_000_000) {
+      return `${value / 1_000_000}M`;
+    }
+
+    if (value >= 1_000) {
+      return `${value / 1_000}k`;
+    }
+
+    return String(value);
+  }),
+}));
 
 describe('prepareChartData', () => {
   it('should prepare chart data correctly', () => {
@@ -426,5 +444,32 @@ describe('prepareChartData', () => {
       information: [],
       showAILearningBanner: true,
     });
+  });
+});
+
+describe('getStatusDotColor', () => {
+  it('should return GREEN_3 for Success', () => {
+    expect(getStatusDotColor(TestCaseStatus.Success)).toBe(GREEN_3);
+  });
+
+  it('should return RED_3 for Failed', () => {
+    expect(getStatusDotColor(TestCaseStatus.Failed)).toBe(RED_3);
+  });
+
+  it('should return YELLOW_2 for non success/failure status', () => {
+    expect(getStatusDotColor(TestCaseStatus.Aborted)).toBe(YELLOW_2);
+  });
+});
+
+describe('formatTestSummaryYAxis', () => {
+  it('should use freshness format when useFreshnessFormat is true', () => {
+    expect(formatTestSummaryYAxis(0, true)).toBe('0s');
+    expect(formatTestSummaryYAxis(90, true)).toBe('1m 30s');
+    expect(formatTestSummaryYAxis(3600, true)).toBe('1h');
+  });
+
+  it('should use axis tick format when useFreshnessFormat is false', () => {
+    expect(formatTestSummaryYAxis(1000, false)).toBe('1k');
+    expect(formatTestSummaryYAxis(1_000_000, false)).toBe('1M');
   });
 });

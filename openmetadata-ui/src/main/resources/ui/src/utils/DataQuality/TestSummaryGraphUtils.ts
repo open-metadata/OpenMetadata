@@ -12,13 +12,17 @@
  */
 import { isUndefined, omitBy, round } from 'lodash';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
 import { Thread } from '../../generated/entity/feed/thread';
 import {
   TestCaseParameterValue,
   TestCaseResult,
+  TestCaseStatus,
 } from '../../generated/tests/testCase';
+import { axisTickFormatter } from '../ChartUtils';
 import { getRandomHexColor } from '../DataInsightUtils';
+import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
 
 const EXCLUDED_CHART_FIELDS = ['schemaTable1', 'schemaTable2'];
 
@@ -112,3 +116,23 @@ export const prepareChartData = ({
     showAILearningBanner,
   };
 };
+
+export const getStatusDotColor = (status: TestCaseStatus): string => {
+  if (status === TestCaseStatus.Success) {
+    return GREEN_3;
+  }
+
+  if (status === TestCaseStatus.Failed) {
+    return RED_3;
+  }
+
+  return YELLOW_2;
+};
+
+export const formatTestSummaryYAxis = (
+  value: number,
+  useFreshnessFormat: boolean
+): string =>
+  useFreshnessFormat
+    ? convertSecondsToHumanReadableFormat(value, 2)
+    : axisTickFormatter(value);

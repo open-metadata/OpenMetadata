@@ -3505,9 +3505,9 @@ export interface ConfigObject {
      */
     docURL?: string;
     /**
-     * Open API Schema URL.
+     * OpenAPI Schema source config. Either a URL or a file path must be provided.
      */
-    openAPISchemaURL?: string;
+    openAPISchemaConnection?: OpenAPISchemaConnection;
     /**
      * Supports Metadata Extraction.
      */
@@ -6874,6 +6874,24 @@ export interface NifiCredentialsConfiguration {
      * Path to the client key
      */
     clientkeyPath?: string;
+}
+
+/**
+ * OpenAPI Schema source config. Either a URL or a file path must be provided.
+ *
+ * Open API Schema URL Connection Config
+ *
+ * Open API Schema File Path Connection Config
+ */
+export interface OpenAPISchemaConnection {
+    /**
+     * Open API Schema URL.
+     */
+    openAPISchemaURL?: string;
+    /**
+     * Path to a local OpenAPI schema file.
+     */
+    openAPISchemaFilePath?: string;
 }
 
 /**

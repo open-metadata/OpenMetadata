@@ -59,6 +59,7 @@ import {
   clearFieldError,
   createDOMClickHandler,
   createDOMFocusHandler,
+  createFormKeyDownHandler,
   createFreshFormData,
   findChangedFields,
   getProviderDisplayName,
@@ -553,16 +554,19 @@ const SSOConfigurationFormRJSF = ({
   useEffect(() => {
     const handleDOMFocus = createDOMFocusHandler(setActiveField);
     const handleDOMClick = createDOMClickHandler(setActiveField);
+    const handleKeyDown = createFormKeyDownHandler();
 
     // Add event listeners when form is shown
     if (showForm) {
       document.addEventListener('focusin', handleDOMFocus);
       document.addEventListener('click', handleDOMClick);
+      document.addEventListener('keydown', handleKeyDown, true);
     }
 
     return () => {
       document.removeEventListener('focusin', handleDOMFocus);
       document.removeEventListener('click', handleDOMClick);
+      document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [showForm]);
 
