@@ -212,8 +212,7 @@ public class WorkflowHandler {
               runningInstances.size(),
               workflowName);
           for (ProcessInstance instance : runningInstances) {
-            runtimeService.deleteProcessInstance(
-                instance.getId(), "Terminated for redeployment of periodicBatchEntity workflow");
+            runtimeService.deleteProcessInstance(instance.getId(), "Cleanup before redeployment");
           }
         }
 
@@ -230,8 +229,7 @@ public class WorkflowHandler {
               triggerInstances.size(),
               triggerWorkflowKey);
           for (ProcessInstance instance : triggerInstances) {
-            runtimeService.deleteProcessInstance(
-                instance.getId(), "Terminated for redeployment of periodicBatchEntity workflow");
+            runtimeService.deleteProcessInstance(instance.getId(), "Cleanup before redeployment");
           }
         }
       } catch (Exception e) {
@@ -372,24 +370,32 @@ public class WorkflowHandler {
             .list();
 
     // Pass 1: Clean up runtime jobs for ALL process definitions first.
-    for (ProcessDefinition pd : processDefinitions) {
-      deleteRuntimeJobsForProcessDefinition(managementService, pd.getId());
-    }
-    for (ProcessDefinition pd : triggerProcessDefinitions) {
-      deleteRuntimeJobsForProcessDefinition(managementService, pd.getId());
+    try {
+      for (ProcessDefinition pd : processDefinitions) {
+        deleteRuntimeJobsForProcessDefinition(managementService, pd.getId());
+      }
+      for (ProcessDefinition pd : triggerProcessDefinitions) {
+        deleteRuntimeJobsForProcessDefinition(managementService, pd.getId());
+      }
+    } catch (Exception e) {
+      LOG.warn("Error cleaning up runtime jobs for workflow {}: {}", wf.getName(), e.getMessage());
     }
 
     // Pass 2: Delete deployments (deduplicated — multiple PDs can share one deployment).
     Set<String> deletedDeployments = new HashSet<>();
-    for (ProcessDefinition pd : processDefinitions) {
-      if (deletedDeployments.add(pd.getDeploymentId())) {
-        repositoryService.deleteDeployment(pd.getDeploymentId(), false);
+    try {
+      for (ProcessDefinition pd : processDefinitions) {
+        if (deletedDeployments.add(pd.getDeploymentId())) {
+          repositoryService.deleteDeployment(pd.getDeploymentId(), false);
+        }
       }
-    }
-    for (ProcessDefinition pd : triggerProcessDefinitions) {
-      if (deletedDeployments.add(pd.getDeploymentId())) {
-        repositoryService.deleteDeployment(pd.getDeploymentId(), false);
+      for (ProcessDefinition pd : triggerProcessDefinitions) {
+        if (deletedDeployments.add(pd.getDeploymentId())) {
+          repositoryService.deleteDeployment(pd.getDeploymentId(), false);
+        }
       }
+    } catch (Exception e) {
+      LOG.warn("Error deleting deployments for workflow {}: {}", wf.getName(), e.getMessage());
     }
   }
 
