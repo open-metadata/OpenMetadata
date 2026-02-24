@@ -25,6 +25,7 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 import static org.openmetadata.service.Entity.WORKSHEET;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateSpreadsheet;
 import org.openmetadata.schema.entity.data.Directory;
@@ -112,6 +114,20 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   public void storeEntity(Spreadsheet spreadsheet, boolean update) {
     // Store the entity
     store(spreadsheet, update);
+  }
+
+  @Override
+  public void storeEntities(List<Spreadsheet> spreadsheets) {
+    List<Spreadsheet> spreadsheetsToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Spreadsheet spreadsheet : spreadsheets) {
+      // Clone for storage
+      String jsonCopy = gson.toJson(spreadsheet);
+      spreadsheetsToStore.add(gson.fromJson(jsonCopy, Spreadsheet.class));
+    }
+
+    storeMany(spreadsheetsToStore);
   }
 
   @Override
@@ -232,8 +248,16 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Spreadsheet spreadsheet = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
-    return new SpreadsheetCsv(spreadsheet, user, recursive).exportCsv(listOf(spreadsheet));
+    return new SpreadsheetCsv(spreadsheet, user, recursive)
+        .exportCsv(listOf(spreadsheet), callback);
   }
 
   @Override

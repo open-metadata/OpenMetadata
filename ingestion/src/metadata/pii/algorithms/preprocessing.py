@@ -18,6 +18,8 @@ from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
 
+MAX_NLP_TEXT_LENGTH = 1_000_000
+
 
 # pylint: disable=too-many-return-statements
 def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:
@@ -26,6 +28,11 @@ def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:
     tailored to our use case, not a generic one.
     """
     if isinstance(value, str):
+        if len(value) > MAX_NLP_TEXT_LENGTH:
+            logger.warning(
+                f"Skipping text field of length {len(value)} as it exceeds maximum NLP length of {MAX_NLP_TEXT_LENGTH} characters"
+            )
+            return None
         return value
     if isinstance(value, (int, float, datetime.datetime, datetime.date)):
         # Values we want to convert to string out of the box

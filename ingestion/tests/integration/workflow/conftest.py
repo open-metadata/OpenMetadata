@@ -52,7 +52,7 @@ pipelineRunId: 948eba5d-94ec-4fc5-b233-29038722db16
 """
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def mysql_container():
     with get_mysql_container(
         MySqlContainerConfigs(container_name=str(uuid.uuid4()))
@@ -60,7 +60,7 @@ def mysql_container():
         yield container
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def mysql_config(mysql_container):
     return MYSQL_CONFIG.format(
         user=mysql_container.username,

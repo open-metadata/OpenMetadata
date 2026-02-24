@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
@@ -1497,5 +1498,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             authRequests);
 
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
+  }
+
+  @Override
+  protected void processChangeEventForBulkImport(
+      EntityRepository<EntityInterface> versioningRepo,
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      CsvImportResult result) {
+    // No-op: change events for affected test suites are emitted
+    // directly from TestCaseCsv.createEntity() where we have
+    // the context of which test suites were touched
+    // this allows us to process changes events when performing
+    // bulk upload at the obs tab level where we have no parent test suites
   }
 }

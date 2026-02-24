@@ -416,15 +416,6 @@ def build_patch(
             updated_operations = JsonPatchUpdater.from_restrict_update_fields(
                 restrict_update_fields
             ).update(patch, override_metadata=override_metadata)
-
-            # if the only operation is to update the sourceHash, we'll skip the patch
-            # since this will only happen when we filter out the REMOVE and REPLACE ops
-            # and if the sourceHash is updated in this case further updates will not be processed
-            if (
-                len(updated_operations) == 1
-                and updated_operations[0].get("path") == "/sourceHash"
-            ):
-                return None
             patch.patch = updated_operations
 
         return patch

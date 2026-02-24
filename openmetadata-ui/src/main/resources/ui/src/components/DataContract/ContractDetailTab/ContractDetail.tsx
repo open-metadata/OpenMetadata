@@ -309,8 +309,16 @@ const ContractDetail: React.FC<{
     if (!contract) {
       return;
     }
-
-    downloadContractYamlFile(contract);
+    try {
+      downloadContractYamlFile(contract);
+      showSuccessToast(
+        t('message.entity-exported-successfully', {
+          entity: t('label.contract'),
+        })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
   }, [contract]);
 
   const handleExportODCSContract = useCallback(async () => {
@@ -747,7 +755,7 @@ const ContractDetail: React.FC<{
             {showContractStatusAlert && (
               <Col className="contract-card-items" span={24}>
                 <AlertBar
-                  defafultExpand
+                  defaultExpand
                   className="h-full"
                   message={latestContractResults?.result ?? ''}
                   type="error"

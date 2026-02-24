@@ -1,9 +1,6 @@
 """Data quality integration tests"""
 import json
-import sys
 from pathlib import Path
-
-import pytest
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -13,12 +10,6 @@ from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
 )
 from metadata.ingestion.ometa.routes import TestDefinition
 from metadata.workflow.data_quality import TestSuiteWorkflow
-
-if not sys.version_info >= (3, 9):
-    pytest.skip(
-        "requires python 3.9+ due to incompatibility with testcontainers",
-        allow_module_level=True,
-    )
 
 
 def test_empty_test_suite(
@@ -39,7 +30,7 @@ def test_empty_test_suite(
     workflow_config = {
         "source": {
             "type": "postgres",
-            "serviceName": "MyTestSuite",
+            "serviceName": f"MyTestSuite_{postgres_service.name.root}",
             "sourceConfig": {
                 "config": {
                     "type": TestSuiteConfigType.TestSuite.value,

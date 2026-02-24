@@ -12,24 +12,22 @@
 """
 OpenMetadata high-level API App test
 """
-from unittest import TestCase
-
-from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.applications.app import App
 
 
-class OMetaTableTest(TestCase):
+class TestOMetaAppAPI:
     """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
+    App API integration tests.
+    Tests read-only operations for built-in applications.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
     """
 
-    service_entity_id = None
-
-    metadata = int_admin_ometa()
-
-    def test_get_app(self):
-        """We can GET an app via the client"""
-        app = self.metadata.get_by_name(entity=App, fqn="SearchIndexingApplication")
-        self.assertIsNotNone(app)
-        self.assertEqual(app.name.root, "SearchIndexingApplication")
+    def test_get_app(self, metadata):
+        """
+        We can GET an app via the client
+        """
+        app = metadata.get_by_name(entity=App, fqn="SearchIndexingApplication")
+        assert app is not None
+        assert app.name.root == "SearchIndexingApplication"

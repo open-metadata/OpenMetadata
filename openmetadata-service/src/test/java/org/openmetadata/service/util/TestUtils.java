@@ -78,6 +78,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
+import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -209,7 +210,9 @@ public final class TestUtils {
       new ApiConnection()
           .withConfig(
               new RestConnection()
-                  .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json")));
+                  .withOpenAPISchemaConnection(
+                      new OpenAPISchemaURL()
+                          .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json"))));
 
   public static final LLMConnection OPENAI_CONNECTION =
       new LLMConnection()
@@ -654,6 +657,19 @@ public final class TestUtils {
         SecurityUtil.addHeaders(target, headers)
             .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, expectedStatus.getStatusCode());
+  }
+
+  public static <T, K> T putExpectStatus(
+      WebTarget target,
+      K request,
+      Class<T> clz,
+      Status expectedStatus,
+      Map<String, String> headers) {
+    Response response =
+        SecurityUtil.addHeaders(target, headers)
+            .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    assertEquals(expectedStatus.getStatusCode(), response.getStatus());
+    return response.readEntity(clz);
   }
 
   public static <T> T putCsv(

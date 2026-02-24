@@ -15,7 +15,10 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../generated/tests/testDefinition';
-import { isExternalTestDefinition } from './TestDefinitionUtils';
+import {
+  isExternalTestDefinition,
+  mapUrlValueToOption,
+} from './TestDefinitionUtils';
 
 describe('TestDefinitionUtils', () => {
   describe('isExternalTestDefinition', () => {
@@ -124,6 +127,84 @@ describe('TestDefinitionUtils', () => {
       } as TestDefinition;
 
       expect(isExternalTestDefinition(otherTest)).toBe(true);
+    });
+  });
+
+  describe('mapUrlValueToOption', () => {
+    const mockOptions = [
+      { key: 'TABLE', label: 'Table' },
+      { key: 'COLUMN', label: 'Column' },
+      { key: 'DATABASE', label: 'Database' },
+    ];
+
+    it('should map value to option label when option is found', () => {
+      const result = mapUrlValueToOption('TABLE', mockOptions);
+
+      expect(result).toEqual({ key: 'TABLE', label: 'Table' });
+    });
+
+    it('should map value to option label for different keys', () => {
+      const result = mapUrlValueToOption('COLUMN', mockOptions);
+
+      expect(result).toEqual({ key: 'COLUMN', label: 'Column' });
+    });
+
+    it('should use value as label when option is not found', () => {
+      const result = mapUrlValueToOption('UNKNOWN_KEY', mockOptions);
+
+      expect(result).toEqual({ key: 'UNKNOWN_KEY', label: 'UNKNOWN_KEY' });
+    });
+
+    it('should use value as label when options array is empty', () => {
+      const result = mapUrlValueToOption('TABLE', []);
+
+      expect(result).toEqual({ key: 'TABLE', label: 'TABLE' });
+    });
+
+    it('should use value as label when options is undefined', () => {
+      const result = mapUrlValueToOption('TABLE');
+
+      expect(result).toEqual({ key: 'TABLE', label: 'TABLE' });
+    });
+
+    it('should handle empty string value', () => {
+      const result = mapUrlValueToOption('', mockOptions);
+
+      expect(result).toEqual({ key: '', label: '' });
+    });
+
+    it('should handle case-sensitive matching', () => {
+      const result = mapUrlValueToOption('table', mockOptions);
+
+      expect(result).toEqual({ key: 'table', label: 'table' });
+    });
+
+    it('should preserve the original value key even when label is different', () => {
+      const customOptions = [{ key: 'TEST_KEY', label: 'Test Label' }];
+      const result = mapUrlValueToOption('TEST_KEY', customOptions);
+
+      expect(result.key).toBe('TEST_KEY');
+      expect(result.label).toBe('Test Label');
+    });
+
+    it('should work with localized labels', () => {
+      const localizedOptions = [
+        { key: 'TABLE', label: 'Tableau' },
+        { key: 'COLUMN', label: 'Colonne' },
+      ];
+      const result = mapUrlValueToOption('TABLE', localizedOptions);
+
+      expect(result).toEqual({ key: 'TABLE', label: 'Tableau' });
+    });
+
+    it('should return consistent structure for found and not found values', () => {
+      const foundResult = mapUrlValueToOption('TABLE', mockOptions);
+      const notFoundResult = mapUrlValueToOption('NOTFOUND', mockOptions);
+
+      expect(foundResult).toHaveProperty('key');
+      expect(foundResult).toHaveProperty('label');
+      expect(notFoundResult).toHaveProperty('key');
+      expect(notFoundResult).toHaveProperty('label');
     });
   });
 });

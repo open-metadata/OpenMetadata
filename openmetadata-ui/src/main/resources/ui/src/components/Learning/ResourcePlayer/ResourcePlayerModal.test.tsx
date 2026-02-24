@@ -27,16 +27,10 @@ jest.mock('./StorylaneTour.component', () => ({
     .mockImplementation(() => <div data-testid="storylane-tour" />),
 }));
 
-jest.mock('./ArticleViewer.component', () => ({
-  ArticleViewer: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="article-viewer" />),
-}));
-
 const mockOnClose = jest.fn();
 
 const createMockResource = (
-  resourceType: 'Video' | 'Storylane' | 'Article',
+  resourceType: 'Video' | 'Storylane',
   overrides?: Partial<LearningResource>
 ): LearningResource => ({
   id: 'test-id',
@@ -97,15 +91,6 @@ describe('ResourcePlayerModal', () => {
     expect(screen.getByTestId('storylane-tour')).toBeInTheDocument();
   });
 
-  it('should render ArticleViewer for Article resource type', () => {
-    const resource = createMockResource('Article');
-    render(
-      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
-    );
-
-    expect(screen.getByTestId('article-viewer')).toBeInTheDocument();
-  });
-
   it('should display resource description', () => {
     const resource = createMockResource('Video');
     render(
@@ -127,7 +112,7 @@ describe('ResourcePlayerModal', () => {
     expect(screen.getByText('Governance')).toBeInTheDocument();
   });
 
-  it('should display formatted duration', () => {
+  it('should display formatted duration with min watch for Video', () => {
     const resource = createMockResource('Video');
     render(
       <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
@@ -159,7 +144,7 @@ describe('ResourcePlayerModal', () => {
     expect(screen.getByText('test-resource')).toBeInTheDocument();
   });
 
-  it('should show +N tag when more than 3 categories', () => {
+  it('should display all category tags when more than 3 categories', () => {
     const resource = createMockResource('Video', {
       categories: [
         'Discovery',
@@ -173,7 +158,11 @@ describe('ResourcePlayerModal', () => {
       <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
     );
 
-    expect(screen.getByText('+2')).toBeInTheDocument();
+    expect(screen.getByText('Discovery')).toBeInTheDocument();
+    expect(screen.getByText('Governance')).toBeInTheDocument();
+    expect(screen.getByText('Observability')).toBeInTheDocument();
+    expect(screen.getByText('Data Quality')).toBeInTheDocument();
+    expect(screen.getByText('Admin')).toBeInTheDocument();
   });
 
   it('should not display duration when not provided', () => {
@@ -200,25 +189,9 @@ describe('ResourcePlayerModal', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('should render description with ellipsis configuration when description is provided', () => {
-    const resource = createMockResource('Video', {
-      description: 'A very long description that should be truncated initially',
-    });
-    render(
-      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
-    );
-
-    const descriptionElement = screen.getByLabelText(
-      /A very long description that should be truncated initially/i
-    );
-
-    expect(descriptionElement).toBeInTheDocument();
-    expect(descriptionElement).toHaveClass('resource-description');
-  });
-
   it('should display unsupported message for unknown resource type', () => {
     const resource = createMockResource('Video', {
-      resourceType: 'Unknown' as 'Video',
+      resourceType: 'UnknownType' as 'Video',
     });
     render(
       <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />

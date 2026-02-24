@@ -1,13 +1,8 @@
-import sys
-
 import pytest
 from sqlalchemy import create_engine
 
 from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.workflow.metadata import MetadataWorkflow
-
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
 @pytest.fixture(scope="module")

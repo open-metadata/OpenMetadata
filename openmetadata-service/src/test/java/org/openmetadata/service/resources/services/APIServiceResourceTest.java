@@ -26,6 +26,7 @@ import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
+import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -97,8 +98,10 @@ public class APIServiceResourceTest extends ServiceResourceTest<ApiService, Crea
         new ApiConnection()
             .withConfig(
                 new RestConnection()
-                    .withOpenAPISchemaURL(
-                        new URI("http://sandbox.open-metadata.org/swagger.json")));
+                    .withOpenAPISchemaConnection(
+                        new OpenAPISchemaURL()
+                            .withOpenAPISchemaURL(
+                                new URI("http://sandbox.open-metadata.org/swagger.json"))));
     ApiService service =
         createAndCheckEntity(
             createRequest(test).withDescription(null).withConnection(connection1),
@@ -106,7 +109,8 @@ public class APIServiceResourceTest extends ServiceResourceTest<ApiService, Crea
 
     RestConnection credentials2 =
         new RestConnection()
-            .withOpenAPISchemaURL(new URI("https://localhost:9400"))
+            .withOpenAPISchemaConnection(
+                new OpenAPISchemaURL().withOpenAPISchemaURL(new URI("https://localhost:9400")))
             .withToken("test");
     ApiConnection connection2 = new ApiConnection().withConfig(credentials2);
 
@@ -161,8 +165,10 @@ public class APIServiceResourceTest extends ServiceResourceTest<ApiService, Crea
             new ApiConnection()
                 .withConfig(
                     new RestConnection()
-                        .withOpenAPISchemaURL(
-                            CommonUtil.getUri("http://localhost:8585/swagger.json"))));
+                        .withOpenAPISchemaConnection(
+                            new OpenAPISchemaURL()
+                                .withOpenAPISchemaURL(
+                                    CommonUtil.getUri("http://localhost:8585/swagger.json")))));
   }
 
   @Override
@@ -219,7 +225,9 @@ public class APIServiceResourceTest extends ServiceResourceTest<ApiService, Crea
       RestConnection restConnection = (RestConnection) expectedConnection.getConfig();
       RestConnection actualESConnection =
           JsonUtils.convertValue(actualConnection.getConfig(), RestConnection.class);
-      assertEquals(restConnection.getOpenAPISchemaURL(), actualESConnection.getOpenAPISchemaURL());
+      assertEquals(
+          restConnection.getOpenAPISchemaConnection(),
+          actualESConnection.getOpenAPISchemaConnection());
     }
   }
 }

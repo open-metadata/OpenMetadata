@@ -101,33 +101,42 @@ export const withDomainFilter = (
         }
       }
 
-      const mustArray = Array.isArray(filter.query?.bool?.must)
-        ? filter.query.bool.must
-        : filter.query?.bool?.must
-        ? [filter.query.bool.must]
-        : [];
+      let mustArray: QueryFieldInterface[] = [];
+      const existingMust = filter.query?.bool?.must;
+      if (Array.isArray(existingMust)) {
+        mustArray = [...existingMust];
+      } else if (existingMust) {
+        mustArray = [existingMust];
+      }
 
-      filter.query.bool = {
-        ...filter.query?.bool,
-        must: [
-          ...mustArray,
-          {
-            bool: {
-              should: [
-                {
-                  term: {
-                    'domains.fullyQualifiedName': activeDomain,
+      const { bool: existingBool, ...nonBoolClauses } = filter.query ?? {};
+      for (const [key, value] of Object.entries(nonBoolClauses)) {
+        mustArray.push({ [key]: value } as QueryFieldInterface);
+      }
+
+      filter.query = {
+        bool: {
+          ...existingBool,
+          must: [
+            ...mustArray,
+            {
+              bool: {
+                should: [
+                  {
+                    term: {
+                      'domains.fullyQualifiedName': activeDomain,
+                    },
                   },
-                },
-                {
-                  prefix: {
-                    'domains.fullyQualifiedName': `${activeDomain}.`,
+                  {
+                    prefix: {
+                      'domains.fullyQualifiedName': `${activeDomain}.`,
+                    },
                   },
-                },
-              ],
-            },
-          } as QueryFieldInterface,
-        ],
+                ],
+              },
+            } as QueryFieldInterface,
+          ],
+        },
       };
 
       config.params = {

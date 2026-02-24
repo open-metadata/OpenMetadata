@@ -22,10 +22,12 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -50,6 +52,7 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     supportsDataProducts = false;
     supportsSoftDelete = false;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // ===================================================================
@@ -1009,5 +1012,40 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     assertNotNull(adminView.getTags());
     assertTrue(
         adminView.getTags().stream().anyMatch(tag -> tag.getTagFQN().equals("PII.Sensitive")));
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Test
+  void test_bulkCreate_duplicateQueryHandledGracefully(TestNamespace ns) {
+    CreateQuery request = createRequest(ns.prefix("dup_bulk_q"), ns);
+    Query existing = createEntity(request);
+    assertNotNull(existing);
+
+    BulkOperationResult result = executeBulkCreate(List.of(request));
+
+    assertNotNull(result);
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateQuery> createRequests) {
+    return SdkClients.adminClient().queries().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateQuery> createRequests) {
+    return SdkClients.adminClient().queries().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateQuery createInvalidRequestForBulk(TestNamespace ns) {
+    CreateQuery request = new CreateQuery();
+    request.setName(ns.prefix("invalid_query"));
+    return request;
   }
 }

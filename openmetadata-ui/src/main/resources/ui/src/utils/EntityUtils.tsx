@@ -49,6 +49,7 @@ import {
 import TagsV1 from '../components/Tag/TagsV1/TagsV1.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  DEFAULT_DOMAIN_VALUE,
   NO_DATA,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
@@ -174,6 +175,19 @@ export const getEntityName = (entity?: {
   displayName?: string;
 }) => {
   return entity?.displayName || entity?.name || '';
+};
+
+export const getDomainDisplayName = (
+  activeDomainEntityRef?: EntityReference,
+  activeDomain?: string
+) => {
+  if (activeDomainEntityRef) {
+    return getEntityName(activeDomainEntityRef);
+  }
+
+  return activeDomain === DEFAULT_DOMAIN_VALUE
+    ? t('label.all-domain-plural')
+    : activeDomain;
 };
 
 export const getEntityLabel = (entity: {
@@ -2719,6 +2733,7 @@ export const getPluralizeEntityName = (entityType?: string) => {
     [EntityType.PIPELINE]: t('label.pipeline-plural'),
     [EntityType.CONTAINER]: t('label.container-plural'),
     [EntityType.DASHBOARD]: t('label.dashboard-plural'),
+    [EntityType.CHART]: t('label.chart-plural'),
     [EntityType.STORED_PROCEDURE]: t('label.stored-procedure-plural'),
     [EntityType.MLMODEL]: t('label.ml-model-plural'),
     [EntityType.DASHBOARD_DATA_MODEL]: t('label.data-model-plural'),

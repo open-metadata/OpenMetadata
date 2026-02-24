@@ -62,7 +62,6 @@ from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -92,6 +91,12 @@ class DagsterSource(PipelineServiceSource):
                 f"Expected DagsterConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
+        self.strip_asset_key_prefix_length = (
+            self.service_connection.stripAssetKeyPrefixLength or 0
+        )
 
     def _get_downstream_tasks(self, job: SolidHandle) -> Optional[List[str]]:
         """Method to get downstream tasks"""
@@ -184,30 +189,23 @@ class DagsterSource(PipelineServiceSource):
     ) -> Iterable[Either[OMetaPipelineStatus]]:
         """Prepare the OMetaPipelineStatus"""
         try:
+            # Convert Dagster timestamps from seconds to milliseconds
             task_status = TaskStatus(
                 name=task_name,
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
-                startTime=(
-                    round(convert_timestamp_to_milliseconds(run.startTime))
-                    if run.startTime
-                    else None
-                ),
-                endTime=(
-                    round(convert_timestamp_to_milliseconds(run.endTime))
-                    if run.endTime
-                    else None
-                ),
+                startTime=int(run.startTime * 1000) if run.startTime else None,
+                endTime=int(run.endTime * 1000) if run.endTime else None,
             )
             pipeline_status = PipelineStatus(
                 taskStatus=[task_status],
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
-                timestamp=Timestamp(
-                    round(convert_timestamp_to_milliseconds(timestamp=run.startTime))
-                ),
+                timestamp=Timestamp(int(run.startTime * 1000))
+                if run.startTime
+                else None,
             )
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
@@ -312,8 +310,12 @@ class DagsterSource(PipelineServiceSource):
                 )
 
                 if not to_result.is_resolved:
+                    normalized_key = asset.assetKey.normalize(
+                        self.strip_asset_key_prefix_length
+                    ).to_string()
                     logger.debug(
-                        f"Could not resolve table for asset: {asset.assetKey.to_string()}"
+                        f"Could not resolve table for asset: {asset.assetKey.to_string()} "
+                        f"(normalized: {normalized_key})"
                     )
                     continue
 
@@ -424,9 +426,12 @@ class DagsterSource(PipelineServiceSource):
 
         Returns: TableResolutionResult with table_fqn and table_entity (or None if not found)
         """
-        asset_key_str = asset.assetKey.to_string()
+        normalized_asset_key = asset.assetKey.normalize(
+            self.strip_asset_key_prefix_length
+        )
+        asset_key_str = normalized_asset_key.to_string()
 
-        parts = asset.assetKey.path
+        parts = normalized_asset_key.path
         if len(parts) == 3:
             database, schema, table = parts
         elif len(parts) == 2:
@@ -437,7 +442,10 @@ class DagsterSource(PipelineServiceSource):
             schema = None
             table = parts[0]
         else:
-            logger.debug(f"Unexpected asset key format: {asset_key_str}")
+            logger.debug(
+                f"Unexpected asset key format after normalization: {asset_key_str} "
+                f"(original: {asset.assetKey.to_string()}, stripped {self.strip_asset_key_prefix_length} segments)"
+            )
             return TableResolutionResult()
 
         if not database or not schema:

@@ -1279,7 +1279,13 @@ export const navigateToSubDomain = async (
  * Navigates to the Input/Output Ports tab on a data product page.
  */
 export const navigateToPortsTab = async (page: Page) => {
+  await page.waitForTimeout(2000);
+
+  const portsViewResponse = page.waitForResponse(
+    (response) => response.url().includes('/portsView')
+  );
   await page.getByTestId('input_output_ports').click();
+  await portsViewResponse;
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -1338,6 +1344,10 @@ export const addInputPortToDataProduct = async (
   const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
   const displayName = get(asset, 'entityResponseData.displayName') ?? name;
 
+  await expect(page.getByTestId('add-input-port-button')).toBeEnabled({
+    timeout: 10000
+  });
+
   await page.getByTestId('add-input-port-button').click();
 
   await page.waitForSelector('[data-testid="asset-selection-modal"]', {
@@ -1376,6 +1386,10 @@ export const addOutputPortToDataProduct = async (
   const name = get(asset, 'entityResponseData.name');
   const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
   const displayName = get(asset, 'entityResponseData.displayName') ?? name;
+
+  await expect(page.getByTestId('add-output-port-button')).toBeEnabled({
+    timeout: 10000
+  });
 
   await page.getByTestId('add-output-port-button').click();
 

@@ -10,14 +10,9 @@
 #  limitations under the License.
 
 """
-OpenMetadata high-level API Chart test
+OpenMetadata high-level API Service test
 """
-from copy import deepcopy
-from unittest import TestCase
 
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardService,
     DashboardServiceType,
@@ -30,46 +25,23 @@ from metadata.generated.schema.entity.services.messagingService import (
     MessagingService,
     MessagingServiceType,
 )
-from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
-)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-class OMetaServiceTest(TestCase):
+class TestOMetaServiceAPI:
     """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
+    Service API integration tests.
+    Tests get_service_or_create for various service types.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    - metadata_ingestion_bot: OpenMetadata client as ingestion-bot (module scope)
     """
 
-    service_entity_id = None
-
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-        ),
-    )
-    admin_metadata = OpenMetadata(server_config)
-
-    # we need to use ingestion bot user for this test since the admin user won't be able to see the password fields
-    ingestion_bot: User = admin_metadata.get_by_name(entity=User, fqn="ingestion-bot")
-    ingestion_bot_auth: AuthenticationMechanism = admin_metadata.get_by_id(
-        entity=AuthenticationMechanism, entity_id=ingestion_bot.id
-    )
-    server_config.securityConfig = OpenMetadataJWTClientConfig(
-        jwtToken=ingestion_bot_auth.config.JWTToken
-    )
-    metadata = OpenMetadata(server_config)
-
-    assert metadata.health_check()
-
-    def test_create_database_service_mysql(self):
+    def test_create_database_service_mysql(self, metadata_ingestion_bot):
         """
         Create a db service from WorkflowSource
         """
@@ -89,8 +61,7 @@ class OMetaServiceTest(TestCase):
 
         workflow_source = WorkflowSource(**data)
 
-        # Create service
-        service: DatabaseService = self.metadata.get_service_or_create(
+        service: DatabaseService = metadata_ingestion_bot.get_service_or_create(
             entity=DatabaseService, config=workflow_source
         )
         assert service
@@ -100,20 +71,18 @@ class OMetaServiceTest(TestCase):
             == "openmetadata_password"
         )
 
-        # Check get
-        assert service == self.metadata.get_service_or_create(
+        assert service == metadata_ingestion_bot.get_service_or_create(
             entity=DatabaseService, config=workflow_source
         )
 
-        # Clean
-        self.metadata.delete(
+        metadata_ingestion_bot.delete(
             entity=DatabaseService,
             entity_id=service.id,
             hard_delete=True,
             recursive=True,
         )
 
-    def test_create_database_service_mssql(self):
+    def test_create_database_service_mssql(self, metadata_ingestion_bot):
         """
         Create a db service from WorkflowSource
         """
@@ -134,8 +103,7 @@ class OMetaServiceTest(TestCase):
 
         workflow_source = WorkflowSource(**data)
 
-        # Create service
-        service: DatabaseService = self.metadata.get_service_or_create(
+        service: DatabaseService = metadata_ingestion_bot.get_service_or_create(
             entity=DatabaseService, config=workflow_source
         )
         assert service
@@ -145,20 +113,18 @@ class OMetaServiceTest(TestCase):
             == "openmetadata_password"
         )
 
-        # Check get
-        assert service == self.metadata.get_service_or_create(
+        assert service == metadata_ingestion_bot.get_service_or_create(
             entity=DatabaseService, config=workflow_source
         )
 
-        # Clean
-        self.metadata.delete(
+        metadata_ingestion_bot.delete(
             entity=DatabaseService,
             entity_id=service.id,
             hard_delete=True,
             recursive=True,
         )
 
-    def test_create_database_service_bigquery(self):
+    def test_create_database_service_bigquery(self, metadata_ingestion_bot):
         """
         Create a db service from WorkflowSource
         """
@@ -189,27 +155,24 @@ class OMetaServiceTest(TestCase):
 
         workflow_source = WorkflowSource(**data)
 
-        # Create service
-        service: DatabaseService = self.metadata.get_service_or_create(
+        service: DatabaseService = metadata_ingestion_bot.get_service_or_create(
             entity=DatabaseService, config=workflow_source
         )
         assert service
         assert service.serviceType == DatabaseServiceType.BigQuery
 
-        # Check get
-        assert service == self.metadata.get_service_or_create(
+        assert service == metadata_ingestion_bot.get_service_or_create(
             entity=DatabaseService, config=workflow_source
         )
 
-        # Clean
-        self.metadata.delete(
+        metadata_ingestion_bot.delete(
             entity=DatabaseService,
             entity_id=service.id,
             hard_delete=True,
             recursive=True,
         )
 
-    def test_create_dashboard_service_looker(self):
+    def test_create_dashboard_service_looker(self, metadata_ingestion_bot):
         """
         Create a db service from WorkflowSource
         """
@@ -229,28 +192,25 @@ class OMetaServiceTest(TestCase):
 
         workflow_source = WorkflowSource(**data)
 
-        # Create service
-        service: DashboardService = self.metadata.get_service_or_create(
+        service: DashboardService = metadata_ingestion_bot.get_service_or_create(
             entity=DashboardService, config=workflow_source
         )
         assert service
         assert service.serviceType == DashboardServiceType.Looker
         assert service.connection.config.clientSecret.get_secret_value() == "secret"
 
-        # Check get
-        assert service == self.metadata.get_service_or_create(
+        assert service == metadata_ingestion_bot.get_service_or_create(
             entity=DashboardService, config=workflow_source
         )
 
-        # Clean
-        self.metadata.delete(
+        metadata_ingestion_bot.delete(
             entity=DashboardService,
             entity_id=service.id,
             hard_delete=True,
             recursive=True,
         )
 
-    def test_create_dashboard_service_tableau(self):
+    def test_create_dashboard_service_tableau(self, metadata_ingestion_bot):
         """
         Create a db service from WorkflowSource
         """
@@ -270,8 +230,7 @@ class OMetaServiceTest(TestCase):
 
         workflow_source = WorkflowSource(**data)
 
-        # Create service
-        service: DashboardService = self.metadata.get_service_or_create(
+        service: DashboardService = metadata_ingestion_bot.get_service_or_create(
             entity=DashboardService, config=workflow_source
         )
         assert service
@@ -280,20 +239,18 @@ class OMetaServiceTest(TestCase):
             service.connection.config.authType.password.get_secret_value() == "tb_pwd"
         )
 
-        # Check get
-        assert service == self.metadata.get_service_or_create(
+        assert service == metadata_ingestion_bot.get_service_or_create(
             entity=DashboardService, config=workflow_source
         )
 
-        # Clean
-        self.metadata.delete(
+        metadata_ingestion_bot.delete(
             entity=DashboardService,
             entity_id=service.id,
             hard_delete=True,
             recursive=True,
         )
 
-    def test_create_messaging_service_kafka(self):
+    def test_create_messaging_service_kafka(self, metadata_ingestion_bot):
         """
         Create a db service from WorkflowSource
         """
@@ -308,32 +265,28 @@ class OMetaServiceTest(TestCase):
 
         workflow_source = WorkflowSource(**data)
 
-        # Create service
-        service: MessagingService = self.metadata.get_service_or_create(
+        service: MessagingService = metadata_ingestion_bot.get_service_or_create(
             entity=MessagingService, config=workflow_source
         )
         assert service
         assert service.serviceType == MessagingServiceType.Kafka
 
-        # Check get
-        assert service == self.metadata.get_service_or_create(
+        assert service == metadata_ingestion_bot.get_service_or_create(
             entity=MessagingService, config=workflow_source
         )
 
-        # Clean
-        self.metadata.delete(
+        metadata_ingestion_bot.delete(
             entity=MessagingService,
             entity_id=service.id,
             hard_delete=True,
             recursive=True,
         )
 
-    def test_create_db_service_without_connection(self):
+    def test_create_db_service_without_connection(self, metadata_ingestion_bot):
         """We can create a service via API without storing the creds"""
-        server_config = deepcopy(self.server_config)
-        server_config.storeServiceConnection = False
-
-        metadata_no_password = OpenMetadata(server_config)
+        config = metadata_ingestion_bot.config.model_copy(deep=True)
+        config.storeServiceConnection = False
+        metadata_no_password = OpenMetadata(config)
 
         data = {
             "type": "mysql",
@@ -351,20 +304,17 @@ class OMetaServiceTest(TestCase):
 
         workflow_source = WorkflowSource(**data)
 
-        # Create service
         service: DatabaseService = metadata_no_password.get_service_or_create(
             entity=DatabaseService, config=workflow_source
         )
         assert service
         assert service.serviceType == DatabaseServiceType.Mysql
-        self.assertIsNone(service.connection)
+        assert service.connection is None
 
-        # Check get
         assert service == metadata_no_password.get_service_or_create(
             entity=DatabaseService, config=workflow_source
         )
 
-        # Clean
         metadata_no_password.delete(
             entity=DatabaseService,
             entity_id=service.id,
@@ -372,13 +322,11 @@ class OMetaServiceTest(TestCase):
             recursive=True,
         )
 
-    def test_create_dashboard_service_without_connection(self):
+    def test_create_dashboard_service_without_connection(self, metadata_ingestion_bot):
         """We can create a service via API without storing the creds"""
-
-        server_config = deepcopy(self.server_config)
-        server_config.storeServiceConnection = False
-
-        metadata_no_password = OpenMetadata(server_config)
+        config = metadata_ingestion_bot.config.model_copy(deep=True)
+        config.storeServiceConnection = False
+        metadata_no_password = OpenMetadata(config)
 
         data = {
             "type": "tableau",
@@ -396,20 +344,17 @@ class OMetaServiceTest(TestCase):
 
         workflow_source = WorkflowSource(**data)
 
-        # Create service
         service: DashboardService = metadata_no_password.get_service_or_create(
             entity=DashboardService, config=workflow_source
         )
         assert service
         assert service.serviceType == DashboardServiceType.Tableau
-        self.assertIsNone(service.connection)
+        assert service.connection is None
 
-        # Check get
         assert service == metadata_no_password.get_service_or_create(
             entity=DashboardService, config=workflow_source
         )
 
-        # Clean
         metadata_no_password.delete(
             entity=DashboardService,
             entity_id=service.id,

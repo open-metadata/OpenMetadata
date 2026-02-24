@@ -11,12 +11,24 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Divider, Row, Space, Typography } from 'antd';
+import type { SxProps, Theme } from '@mui/material';
+import {
+  Box,
+  Divider,
+  Grid,
+  Stack,
+  SvgIcon,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, startCase, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import chunk from 'lodash/chunk';
+import isEmpty from 'lodash/isEmpty';
+import isUndefined from 'lodash/isUndefined';
+import startCase from 'lodash/startCase';
+import toString from 'lodash/toString';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -59,6 +71,33 @@ import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
 import testCaseResultTabClassBase from './TestCaseResultTabClassBase';
+
+function ParameterTooltipText({
+  className,
+  title,
+  valueSx,
+}: {
+  className: string;
+  title: string;
+  valueSx?: SxProps<Theme>;
+}) {
+  return (
+    <Tooltip
+      placement="bottom-start"
+      slotProps={{
+        tooltip: {
+          sx: {
+            maxWidth: '100%',
+          },
+        },
+      }}
+      title={title}>
+      <Typography noWrap className={className} sx={valueSx} variant="body2">
+        {title}
+      </Typography>
+    </Tooltip>
+  );
+}
 
 const TestCaseResultTab = () => {
   const { t } = useTranslation();
@@ -258,58 +297,170 @@ const TestCaseResultTab = () => {
     isVersionPage,
   ]);
 
-  const testCaseParams = useMemo(() => {
+  const parameterItems = useMemo(() => {
+    const items: Array<{ label: string; value: string | React.ReactNode }> = [];
+
     if (isVersionPage) {
-      return getParameterValueDiffDisplay(
-        testCaseData?.changeDescription as ChangeDescription,
-        testCaseData?.parameterValues
-      );
+      // For version page, we'll handle it differently
+      return null;
     }
 
     if (testCaseData?.useDynamicAssertion) {
-      return (
-        <label
-          className="d-inline-flex items-center gap-2 text-grey-muted parameter-value-container"
-          data-testid="dynamic-assertion">
-          <Icon component={StarIcon} /> {t('label.dynamic-assertion')}
-        </label>
-      );
+      items.push({
+        label: t('label.dynamic-assertion'),
+        value: (
+          <label
+            className="d-inline-flex items-center gap-2 parameter-value-text"
+            data-testid="dynamic-assertion">
+            <SvgIcon component={StarIcon} fontSize="small" />{' '}
+            {t('label.dynamic-assertion')}
+          </label>
+        ),
+      });
     } else if (!isEmpty(withoutSqlParams)) {
+      withoutSqlParams.forEach((param) => {
+        items.push({
+          label: param.name ?? '',
+          value: param.value ?? '',
+        });
+      });
+    }
+
+    // Add compute row count to parameters if it should be shown
+    if (showComputeRowCount) {
+      items.push({
+        label: t('label.compute-row-count'),
+        value: computeRowCountDisplay,
+      });
+    }
+
+    return items.length > 0 ? items : null;
+  }, [
+    withoutSqlParams,
+    testCaseData?.useDynamicAssertion,
+    showComputeRowCount,
+    computeRowCountDisplay,
+    isVersionPage,
+  ]);
+
+  const renderParameterRows = useCallback(
+    (items: Array<{ label: string; value: string | React.ReactNode }>) => {
+      if (items.length === 0) {
+        return (
+          <Typography color="text.secondary" variant="body2">
+            {t('label.no-parameter-available')}
+          </Typography>
+        );
+      }
+
+      // Group items into rows of 2
+      const rows = chunk(items, 2);
+
       return (
-        <Space
-          wrap
-          className="parameter-value-container parameter-value"
-          size={6}>
-          {withoutSqlParams.map((param, index) => (
-            <Space key={param.name} size={4}>
-              <Typography.Text className="text-grey-muted">
-                {`${param.name}:`}
-              </Typography.Text>
-              <Typography.Text>{param.value}</Typography.Text>
-              {withoutSqlParams.length - 1 !== index && (
-                <Divider type="vertical" />
-              )}
-            </Space>
-          ))}
-        </Space>
+        <div className="parameter-rows-container">
+          {rows.map((row, rowIndex) => {
+            // Create a stable key from the row items' labels
+            const rowKey = row.map((item) => item.label).join('-');
+
+            return (
+              <div key={rowKey}>
+                <Grid container className="parameter-row" spacing={2}>
+                  {row.map((item) => (
+                    <Grid key={item.label} size={row.length === 1 ? 8 : 6}>
+                      <Stack
+                        alignItems="flex-start"
+                        direction="row"
+                        spacing={0.5}
+                        sx={{ width: '100%' }}>
+                        <ParameterTooltipText
+                          className="parameter-label"
+                          title={`${item.label}:`}
+                        />
+                        {typeof item.value === 'string' ? (
+                          <ParameterTooltipText
+                            className="parameter-value-text"
+                            title={item.value}
+                            valueSx={{ flex: 1, minWidth: 0 }}
+                          />
+                        ) : (
+                          item.value
+                        )}
+                      </Stack>
+                    </Grid>
+                  ))}
+                </Grid>
+                {rowIndex < rows.length - 1 && (
+                  <Divider className="parameter-row-divider" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    },
+    [t]
+  );
+
+  const testCaseParams = useMemo(() => {
+    if (isVersionPage) {
+      // For version page, get the diff display and add compute row count
+      const versionParams = getParameterValueDiffDisplay(
+        testCaseData?.changeDescription as ChangeDescription,
+        testCaseData?.parameterValues
+      );
+
+      // Add compute row count to version page if it should be shown
+      if (showComputeRowCount) {
+        const computeRowCountItem: Array<{
+          label: string;
+          value: string | React.ReactNode;
+        }> = [
+          {
+            label: t('label.compute-row-count'),
+            value: computeRowCountDisplay,
+          },
+        ];
+
+        return (
+          <div>
+            {versionParams}
+            <Divider className="parameter-row-divider" />
+            {renderParameterRows(computeRowCountItem)}
+          </div>
+        );
+      }
+
+      return versionParams;
+    }
+
+    if (!parameterItems || parameterItems.length === 0) {
+      return (
+        <Typography color="text.secondary" variant="body2">
+          {t('label.no-parameter-available')}
+        </Typography>
       );
     }
 
-    return (
-      <Typography.Text type="secondary">
-        {t('label.no-parameter-available')}
-      </Typography.Text>
-    );
-  }, [withoutSqlParams, testCaseData]);
+    return renderParameterRows(parameterItems);
+  }, [
+    parameterItems,
+    testCaseData?.changeDescription,
+    testCaseData?.parameterValues,
+    isVersionPage,
+    showComputeRowCount,
+    computeRowCountDisplay,
+    renderParameterRows,
+  ]);
 
   return (
-    <Row
+    <Grid
+      container
       className="p-md test-case-result-tab"
       data-testid="test-case-result-tab-container"
-      gutter={[20, 20]}>
-      <Col className="transition-all-200ms" span={isTabExpanded ? 18 : 24}>
-        <Row gutter={[0, 20]}>
-          <Col span={24}>
+      spacing={2.5}>
+      <Grid className="transition-all-200ms" size={isTabExpanded ? 9 : 12}>
+        <Stack spacing={2.5} sx={{ width: '100%' }}>
+          <Box sx={{ width: '100%' }}>
             <DescriptionV1
               wrapInCard
               description={description}
@@ -318,71 +469,56 @@ const TestCaseResultTab = () => {
               showCommentsIcon={false}
               onDescriptionUpdate={handleDescriptionChange}
             />
-          </Col>
+          </Box>
 
-          <Col data-testid="parameter-container" span={24}>
-            <Space direction="vertical" size="small">
-              <Space align="center" size={8}>
-                <Typography.Text className="right-panel-label">
-                  {t('label.parameter-plural')}
-                </Typography.Text>
-                {hasEditPermission &&
-                  Boolean(
-                    testCaseData?.parameterValues?.length ||
-                      testCaseData?.useDynamicAssertion
-                  ) && (
-                    <EditIconButton
-                      newLook
-                      data-testid="edit-parameter-icon"
-                      size="small"
-                      title={t('label.edit-entity', {
-                        entity: t('label.parameter'),
-                      })}
-                      onClick={() => setIsParameterEdit(true)}
-                    />
-                  )}
-              </Space>
+          <Box data-testid="parameter-container" sx={{ width: '100%' }}>
+            <div className="parameter-container">
+              <Stack spacing={1} sx={{ width: '100%' }}>
+                <Stack
+                  alignItems="center"
+                  direction="row"
+                  spacing={1}
+                  sx={(theme) => ({
+                    marginBottom: `${theme.spacing(4)} !important`,
+                  })}>
+                  <Typography className="parameter-title" variant="body2">
+                    {t('label.parameter')}
+                  </Typography>
+                  {hasEditPermission &&
+                    Boolean(
+                      testCaseData?.parameterValues?.length ||
+                        testCaseData?.useDynamicAssertion ||
+                        showComputeRowCount
+                    ) && (
+                      <EditIconButton
+                        newLook
+                        data-testid="edit-parameter-icon"
+                        size="small"
+                        title={t('label.edit-entity', {
+                          entity: t('label.parameter'),
+                        })}
+                        onClick={() => setIsParameterEdit(true)}
+                      />
+                    )}
+                </Stack>
 
-              {testCaseParams}
-            </Space>
-          </Col>
-          {showComputeRowCount && (
-            <Col data-testid="computed-row-count-container" span={24}>
-              <Space direction="vertical" size="small">
-                <Space align="center" size={8}>
-                  <Typography.Text className="right-panel-label">
-                    {t('label.compute-row-count')}
-                  </Typography.Text>
-                  {hasEditPermission && !isVersionPage && (
-                    <EditIconButton
-                      newLook
-                      data-testid="edit-compute-row-count-icon"
-                      size="small"
-                      title={t('label.edit-entity', {
-                        entity: t('label.compute-row-count'),
-                      })}
-                      onClick={() => setIsParameterEdit(true)}
-                    />
-                  )}
-                </Space>
-                <Typography.Text>{computeRowCountDisplay}</Typography.Text>
-              </Space>
-            </Col>
-          )}
+                {testCaseParams}
+              </Stack>
+            </div>
+          </Box>
 
           {!isUndefined(withSqlParams) && !isVersionPage ? (
-            <Col>
+            <Box sx={{ width: '100%' }}>
               {withSqlParams.map((param) => (
-                <Row
+                <div
                   className="sql-expression-container"
                   data-testid="sql-expression-container"
-                  gutter={[8, 8]}
                   key={param.name}>
-                  <Col span={24}>
-                    <Space align="center" size={8}>
-                      <Typography.Text className="right-panel-label">
+                  <Stack spacing={1} sx={{ width: '100%' }}>
+                    <Stack alignItems="center" direction="row" spacing={1}>
+                      <Typography className="parameter-title" variant="body2">
                         {startCase(param.name)}
-                      </Typography.Text>
+                      </Typography>
                       {hasEditPermission && (
                         <EditIconButton
                           newLook
@@ -394,9 +530,7 @@ const TestCaseResultTab = () => {
                           onClick={() => setIsParameterEdit(true)}
                         />
                       )}
-                    </Space>
-                  </Col>
-                  <Col span={24}>
+                    </Stack>
                     <SchemaEditor
                       className="custom-code-mirror-theme query-editor-min-h-60"
                       editorClass="table-query-editor"
@@ -407,23 +541,23 @@ const TestCaseResultTab = () => {
                       }}
                       value={param.value ?? ''}
                     />
-                  </Col>
-                </Row>
+                  </Stack>
+                </div>
               ))}
-            </Col>
+            </Box>
           ) : null}
 
           {showAILearningBanner &&
             testCaseData?.useDynamicAssertion &&
             AlertComponent && (
-              <Col span={24}>
+              <Box sx={{ width: '100%' }}>
                 <AlertComponent />
-              </Col>
+              </Box>
             )}
           {testCaseData && (
-            <Col className="test-case-result-tab-graph" span={24}>
+            <Box className="test-case-result-tab-graph" sx={{ width: '100%' }}>
               <TestSummary data={testCaseData} />
-            </Col>
+            </Box>
           )}
 
           {!isEmpty(additionalComponent) &&
@@ -440,12 +574,12 @@ const TestCaseResultTab = () => {
               onUpdate={setTestCase}
             />
           )}
-        </Row>
-      </Col>
+        </Stack>
+      </Grid>
       {isTabExpanded && (
-        <Col className="transition-all-200ms" span={6}>
-          <Row gutter={[20, 20]}>
-            <Col span={24}>
+        <Grid className="transition-all-200ms" size={3}>
+          <Stack spacing={2.5} sx={{ width: '100%' }}>
+            <Box sx={{ width: '100%' }}>
               <TagsContainerV2
                 newLook
                 displayType={DisplayType.READ_MORE}
@@ -457,8 +591,8 @@ const TestCaseResultTab = () => {
                 tagType={TagSource.Classification}
                 onSelectionChange={handleTagSelection}
               />
-            </Col>
-            <Col span={24}>
+            </Box>
+            <Box sx={{ width: '100%' }}>
               <TagsContainerV2
                 newLook
                 displayType={DisplayType.READ_MORE}
@@ -470,11 +604,11 @@ const TestCaseResultTab = () => {
                 tagType={TagSource.Glossary}
                 onSelectionChange={handleTagSelection}
               />
-            </Col>
-          </Row>
-        </Col>
+            </Box>
+          </Stack>
+        </Grid>
       )}
-    </Row>
+    </Grid>
   );
 };
 

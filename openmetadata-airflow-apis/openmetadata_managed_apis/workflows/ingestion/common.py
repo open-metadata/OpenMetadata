@@ -26,6 +26,7 @@ from requests.utils import quote
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.driveService import DriveService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
@@ -78,6 +79,7 @@ logger = workflow_logger()
 ENTITY_CLASS_MAP = {
     "apiService": ApiService,
     "databaseService": DatabaseService,
+    "driveService": DriveService,
     "pipelineService": PipelineService,
     "dashboardService": DashboardService,
     "messagingService": MessagingService,
@@ -169,11 +171,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         except (ValidationError, InvalidWorkflowException) as scoped_error:
             if isinstance(scoped_error, ValidationError):
                 # Let's catch validations of internal Workflow models, not the Workflow itself
-                object_error = (
-                    scoped_error.model.__name__
-                    if scoped_error.model is not None
-                    else "workflow"
-                )
+                object_error = getattr(scoped_error, "title", None) or "workflow"
                 raise ParsingConfigurationError(
                     f"We encountered an error parsing the configuration of your {object_error}.\n"
                     f"{parse_validation_err(scoped_error)}"

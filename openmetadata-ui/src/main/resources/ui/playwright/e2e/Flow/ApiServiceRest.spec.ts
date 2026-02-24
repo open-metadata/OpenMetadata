@@ -20,19 +20,22 @@ import {
   uuid,
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 const apiServiceConfig = {
   name: `pw-api-service-${uuid()}`,
   displayName: `API Service-${uuid()}`,
   description: 'Testing API service',
-  openAPISchemaURL: 'https://example.com/swagger.json',
+  openAPISchemaConnection: {
+    openAPISchemaURL: 'https://example.com/swagger.json',
+  },
   token: '********',
 };
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('API service', () => {
+test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -51,8 +54,8 @@ test.describe('API service', () => {
 
     // step 2
     await page
-      .locator('#root\\/openAPISchemaURL')
-      .fill(apiServiceConfig.openAPISchemaURL);
+      .locator('#root\\/openAPISchemaConnection\\/openAPISchemaURL')
+      .fill(apiServiceConfig.openAPISchemaConnection.openAPISchemaURL);
 
     await page.locator('#root\\/token').fill(apiServiceConfig.token);
     await page.getByTestId('submit-btn').click();

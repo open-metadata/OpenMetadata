@@ -22,6 +22,7 @@ interface SearchConfig {
   onSearchChange: (query: string) => void;
   initialSearchQuery?: string;
   customStyles?: Record<string, string | number>;
+  testId?: string;
 }
 
 export const useSearch = (config: SearchConfig) => {
@@ -72,6 +73,7 @@ export const useSearch = (config: SearchConfig) => {
               </InputAdornment>
             ),
           },
+          htmlInput: config.testId ? { 'data-testid': config.testId } : {},
         }}
         sx={{
           width: config.customStyles?.searchBoxWidth ?? 354,

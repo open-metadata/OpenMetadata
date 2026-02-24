@@ -24,6 +24,8 @@
     "suggestionUpdated",
     "suggestionAccepted",
     "suggestionRejected",
-    "suggestionDeleted"
+    "suggestionDeleted",
+    "userLogin",
+    "userLogout"
   ]
 }

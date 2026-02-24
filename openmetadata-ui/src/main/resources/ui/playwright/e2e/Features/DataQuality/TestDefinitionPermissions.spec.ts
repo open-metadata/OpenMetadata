@@ -216,8 +216,8 @@ test.describe(
     }) => {
       await redirectToHomePage(viewOnlyPage);
 
-      // Navigate to Rules Library
-      await viewOnlyPage.goto('/rules-library');
+      // Navigate to Test Library
+      await viewOnlyPage.goto('/test-library');
 
       // Wait for table to load
       await viewOnlyPage.waitForSelector(
@@ -246,8 +246,8 @@ test.describe(
     }) => {
       await redirectToHomePage(dataConsumerPage);
 
-      // Navigate to Rules Library
-      await dataConsumerPage.goto('/rules-library');
+      // Navigate to Test Library
+      await dataConsumerPage.goto('/test-library');
 
       // Wait for table to load
       await dataConsumerPage.waitForSelector(
@@ -271,13 +271,26 @@ test.describe(
   'Test Definition Permissions - Data Steward',
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` },
   () => {
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await apiContext.post('/api/v1/dataQuality/testDefinitions', {
+        data: {
+          name: `aaaColumnTestDefinition-${uuid()}`,
+          description: `A Column test definition`,
+          entityType: 'COLUMN',
+          testPlatforms: ['OpenMetadata'],
+        },
+      });
+      await afterAction();
+    });
+
     test('should allow viewing and editing but not creating or deleting test definitions', async ({
       dataStewardPage,
     }) => {
       await redirectToHomePage(dataStewardPage);
 
-      // Navigate to Rules Library
-      await dataStewardPage.goto('/rules-library');
+      // Navigate to Test Library
+      await dataStewardPage.goto('/test-library');
 
       // Wait for table to load
       await dataStewardPage.waitForSelector(

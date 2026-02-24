@@ -24,6 +24,8 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     DataflowEntityAttribute,
     DataflowExportResponse,
     Dataset,
+    Datasource,
+    DatasourceConnectionDetails,
     PowerBIDashboard,
     PowerBIReport,
     PowerBiTable,
@@ -1225,3 +1227,69 @@ class PowerBIUnitTest(TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].name.root, "EmptyTable")
         self.assertEqual(len(result[0].children), 0)
+
+    @pytest.mark.order(28)
+    def test_get_dataset_ids_from_report_datasources(self):
+        """
+        Test that _get_dataset_ids_from_report_datasources extracts dataset IDs
+        from the report datasources API response by parsing the
+        connectionDetails.database field with pattern sobe_wowvirtualserver-{DATASET_ID}
+        """
+        from unittest.mock import MagicMock, PropertyMock
+
+        mock_api_client = MagicMock()
+        self.powerbi.client = MagicMock()
+        self.powerbi.client.api_client = mock_api_client
+
+        mock_context = MagicMock()
+        mock_context.workspace.id = "test-workspace-id"
+
+        with patch.object(
+            type(self.powerbi), "context", new_callable=PropertyMock
+        ) as mock_ctx:
+            mock_ctx.return_value.get.return_value = mock_context
+
+            mock_api_client.fetch_report_datasources.return_value = [
+                Datasource(
+                    name="TestDatasource",
+                    datasourceType="AnalysisServices",
+                    connectionDetails=DatasourceConnectionDetails(
+                        server="pbiazure://api.powerbi.com/",
+                        database="sobe_wowvirtualserver-45812303-926b-49b3-9eb2-8c8209acfaa2",
+                    ),
+                    datasourceId="3bb310b9-daee-4442-aa3a-f344038e17d8",
+                    gatewayId="1ce5fe9c-93eb-410e-8cb8-05ec0b7f3ac6",
+                ),
+            ]
+
+            result = self.powerbi._get_dataset_ids_from_report_datasources(
+                report_id="test-report-id"
+            )
+
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0], "45812303-926b-49b3-9eb2-8c8209acfaa2")
+            mock_api_client.fetch_report_datasources.assert_called_once_with(
+                group_id="test-workspace-id", report_id="test-report-id"
+            )
+
+            mock_api_client.fetch_report_datasources.return_value = [
+                Datasource(
+                    name="NoDB",
+                    datasourceType="Web",
+                    connectionDetails=DatasourceConnectionDetails(
+                        server="https://example.com",
+                        database=None,
+                    ),
+                ),
+            ]
+
+            result = self.powerbi._get_dataset_ids_from_report_datasources(
+                report_id="test-report-id"
+            )
+            self.assertEqual(result, [])
+
+            mock_api_client.fetch_report_datasources.return_value = None
+            result = self.powerbi._get_dataset_ids_from_report_datasources(
+                report_id="test-report-id"
+            )
+            self.assertEqual(result, [])

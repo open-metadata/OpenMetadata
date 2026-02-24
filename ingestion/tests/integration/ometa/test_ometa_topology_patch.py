@@ -11,36 +11,18 @@
 """
 Topology Patch Integration Test
 """
-from unittest import TestCase
+import pytest
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceRequest,
-)
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
-    BasicAuth,
-)
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-    DatabaseService,
-    DatabaseServiceType,
-)
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
 from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
@@ -56,8 +38,11 @@ from metadata.ingestion.models.patch_request import (
     ARRAY_ENTITY_FIELDS,
     RESTRICT_UPDATE_LIST,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
+from ..integration_base import generate_name
+from .conftest import _safe_create_or_update
+
+# Module-level tag label constants
 PII_TAG_LABEL = TagLabel(
     tagFQN=TagFQN("PII.Sensitive"),
     labelType=LabelType.Automated,
@@ -83,171 +68,185 @@ PERSONAL_TAG_LABEL = TagLabel(
 )
 
 
-class TopologyPatchTest(TestCase):
-    """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
-    """
-
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+@pytest.fixture(scope="module")
+def topology_users(metadata):
+    """Create users for topology patch tests."""
+    user = _safe_create_or_update(
+        metadata,
+        CreateUserRequest(
+            name="topology-patch-user", email="topologypatchuser@user.com"
         ),
     )
-    metadata = OpenMetadata(server_config)
+    override_user = _safe_create_or_update(
+        metadata,
+        CreateUserRequest(name="override-user", email="overrideuser@user.com"),
+    )
 
-    assert metadata.health_check()
-
-    service = CreateDatabaseServiceRequest(
-        name="test-service-topology-patch",
-        serviceType=DatabaseServiceType.Mysql,
-        connection=DatabaseConnection(
-            config=MysqlConnection(
-                username="username",
-                authType=BasicAuth(
-                    password="password",
-                ),
-                hostPort="http://localhost:1234",
+    owner = EntityReferenceList(
+        root=[
+            EntityReference(
+                id=user.id,
+                type="user",
+                fullyQualifiedName=user.fullyQualifiedName.root,
             )
-        ),
-    )
-    service_type = "databaseService"
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
-
-        user: User = cls.metadata.create_or_update(
-            data=CreateUserRequest(
-                name="topology-patch-user", email="topologypatchuser@user.com"
-            ),
-        )
-        cls.owner = EntityReferenceList(
-            root=[
-                EntityReference(
-                    id=user.id,
-                    type="user",
-                    fullyQualifiedName=user.fullyQualifiedName.root,
-                )
-            ]
-        )
-
-        override_user: User = cls.metadata.create_or_update(
-            data=CreateUserRequest(name="override-user", email="overrideuser@user.com"),
-        )
-        cls.override_owner = EntityReferenceList(
-            root=[
-                EntityReference(
-                    id=override_user.id,
-                    type="user",
-                    fullyQualifiedName=override_user.fullyQualifiedName.root,
-                )
-            ]
-        )
-
-        cls.service_entity = cls.metadata.create_or_update(data=cls.service)
-
-        create_db = CreateDatabaseRequest(
-            name="test-db-topology-patch",
-            service=cls.service_entity.fullyQualifiedName,
-        )
-
-        cls.create_db_entity = cls.metadata.create_or_update(data=create_db)
-
-        create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema-topology-patch",
-            database=cls.create_db_entity.fullyQualifiedName,
-        )
-
-        cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
-
-        columns = [
-            Column(
-                name="column1",
-                dataType=DataType.BIGINT,
-                description=Markdown("test column1"),
-            ),
-            Column(
-                name="column2",
-                displayName="COLUMN TWO",
-                dataType=DataType.BIGINT,
-                description=Markdown("test column2"),
-            ),
-            Column(
-                name="column3",
-                displayName="COLUMN THREE",
-                dataType=DataType.BIGINT,
-                description=Markdown("test column3"),
-                tags=[PII_TAG_LABEL, TIER_TAG_LABEL],
-            ),
-            Column(
-                name="column4",
-                dataType=DataType.BIGINT,
-                description=Markdown("test column4"),
-            ),
-            Column(
-                name="column5",
-                displayName="COLUMN FIVE",
-                dataType=DataType.BIGINT,
-                description=Markdown("test column5"),
-                tags=[PERSONAL_TAG_LABEL],
-            ),
         ]
+    )
+    override_owner = EntityReferenceList(
+        root=[
+            EntityReference(
+                id=override_user.id,
+                type="user",
+                fullyQualifiedName=override_user.fullyQualifiedName.root,
+            )
+        ]
+    )
 
-        create = CreateTableRequest(
-            name="test-topology-patch-table-one",
-            displayName="TABLE ONE",
-            databaseSchema=cls.create_schema_entity.fullyQualifiedName,
-            columns=columns,
-            owners=cls.owner,
-            description=Markdown("TABLE ONE DESCRIPTION"),
+    yield {"owner": owner, "override_owner": override_owner}
+
+    # Cleanup
+    metadata.delete(entity=User, entity_id=user.id, hard_delete=True)
+    metadata.delete(entity=User, entity_id=override_user.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def topology_database(metadata, database_service):
+    """Module-scoped database for topology patch tests."""
+    database_name = generate_name()
+    database_request = CreateDatabaseRequest(
+        name=database_name,
+        service=database_service.fullyQualifiedName,
+    )
+    database = _safe_create_or_update(metadata, database_request)
+
+    yield database
+
+    metadata.delete(entity=Database, entity_id=database.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def topology_schema(metadata, topology_database):
+    """Module-scoped database schema for topology patch tests."""
+    schema_name = generate_name()
+    schema_request = CreateDatabaseSchemaRequest(
+        name=schema_name,
+        database=topology_database.fullyQualifiedName,
+    )
+    schema = _safe_create_or_update(metadata, schema_request)
+
+    yield schema
+
+    metadata.delete(
+        entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True
+    )
+
+
+@pytest.fixture(scope="module")
+def topology_columns():
+    """Create standard column set for topology tests."""
+    return [
+        Column(
+            name="column1",
+            dataType=DataType.BIGINT,
+            description=Markdown("test column1"),
+        ),
+        Column(
+            name="column2",
+            displayName="COLUMN TWO",
+            dataType=DataType.BIGINT,
+            description=Markdown("test column2"),
+        ),
+        Column(
+            name="column3",
+            displayName="COLUMN THREE",
+            dataType=DataType.BIGINT,
+            description=Markdown("test column3"),
+            tags=[PII_TAG_LABEL, TIER_TAG_LABEL],
+        ),
+        Column(
+            name="column4",
+            dataType=DataType.BIGINT,
+            description=Markdown("test column4"),
+        ),
+        Column(
+            name="column5",
+            displayName="COLUMN FIVE",
+            dataType=DataType.BIGINT,
+            description=Markdown("test column5"),
             tags=[PERSONAL_TAG_LABEL],
-        )
-        cls.table_entity_one = cls.metadata.create_or_update(create)
+        ),
+    ]
 
-        create = CreateTableRequest(
-            name="test-topology-patch-table-two",
-            databaseSchema=cls.create_schema_entity.fullyQualifiedName,
-            columns=columns,
-        )
-        cls.table_entity_two = cls.metadata.create_or_update(create)
 
-        create = CreateTableRequest(
-            name="test-topology-patch-table-three",
-            displayName="TABLE THREE",
-            databaseSchema=cls.create_schema_entity.fullyQualifiedName,
-            columns=columns,
-            owners=cls.owner,
-            description=Markdown("TABLE THREE DESCRIPTION"),
-            tags=[PERSONAL_TAG_LABEL],
-        )
-        cls.table_entity_three = cls.metadata.create_or_update(create)
+@pytest.fixture(scope="module")
+def table_entity_one(metadata, topology_schema, topology_columns, topology_users):
+    """First table for random order patch testing."""
+    table_name = generate_name()
+    create = CreateTableRequest(
+        name=table_name,
+        displayName="TABLE ONE",
+        databaseSchema=topology_schema.fullyQualifiedName,
+        columns=topology_columns,
+        owners=topology_users["owner"],
+        description=Markdown("TABLE ONE DESCRIPTION"),
+        tags=[PERSONAL_TAG_LABEL],
+    )
+    table = _safe_create_or_update(metadata, create)
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
+    yield table
 
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn=cls.service.name.root
-            ).id.root
-        )
+    metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
 
-        cls.metadata.delete(
-            entity=DatabaseService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
 
-    def test_topology_patch_table_columns_with_random_order(self):
-        """Check if the table columns are patched"""
+@pytest.fixture(scope="module")
+def table_entity_two(metadata, topology_schema, topology_columns):
+    """Second table for add/delete column testing."""
+    table_name = generate_name()
+    create = CreateTableRequest(
+        name=table_name,
+        databaseSchema=topology_schema.fullyQualifiedName,
+        columns=topology_columns,
+    )
+    table = _safe_create_or_update(metadata, create)
+
+    yield table
+
+    metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def table_entity_three(metadata, topology_schema, topology_columns, topology_users):
+    """Third table for override metadata testing."""
+    table_name = generate_name()
+    create = CreateTableRequest(
+        name=table_name,
+        displayName="TABLE THREE",
+        databaseSchema=topology_schema.fullyQualifiedName,
+        columns=topology_columns,
+        owners=topology_users["owner"],
+        description=Markdown("TABLE THREE DESCRIPTION"),
+        tags=[PERSONAL_TAG_LABEL],
+    )
+    table = _safe_create_or_update(metadata, create)
+
+    yield table
+
+    metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
+
+
+class TestOMetaTopologyPatchAPI:
+    """
+    Topology Patch API integration tests.
+    Tests column patching with various scenarios: random order, add/delete, override.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    - database_service: DatabaseService (module scope)
+    """
+
+    def test_topology_patch_table_columns_with_random_order(
+        self, metadata, table_entity_one, topology_users
+    ):
+        """Check if the table columns are patched with random order."""
         new_columns_list = [
             Column(
                 name="column3",
@@ -272,55 +271,55 @@ class TopologyPatchTest(TestCase):
                 dataType=DataType.BIGINT,
             ),
         ]
-        updated_table = self.table_entity_one.model_copy(deep=True)
+        updated_table = table_entity_one.model_copy(deep=True)
         updated_table.columns = new_columns_list
-        updated_table.owners = self.override_owner
+        updated_table.owners = topology_users["override_owner"]
         updated_table.description = Markdown("TABLE ONE DESCRIPTION OVERRIDEN")
         updated_table.displayName = "TABLE ONE OVERRIDEN"
         updated_table.tags = [PII_TAG_LABEL]
-        self.metadata.patch(
-            entity=type(self.table_entity_one),
-            source=self.table_entity_one,
+        metadata.patch(
+            entity=type(table_entity_one),
+            source=table_entity_one,
             destination=updated_table,
             allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
             restrict_update_fields=RESTRICT_UPDATE_LIST,
             array_entity_fields=ARRAY_ENTITY_FIELDS,
         )
-        table_entity = self.metadata.get_by_id(
-            entity=Table, entity_id=self.table_entity_one.id.root, fields=["*"]
+        table_entity = metadata.get_by_id(
+            entity=Table, entity_id=table_entity_one.id.root, fields=["*"]
         )
-        # table tests
-        self.assertEqual(table_entity.owners.root[0].id, self.owner.root[0].id)
-        self.assertEqual(table_entity.description.root, "TABLE ONE DESCRIPTION")
-        self.assertEqual(table_entity.displayName, "TABLE ONE")
-        self.assertEqual(table_entity.tags[0].tagFQN.root, "PersonalData.Personal")
+        # Table tests - should NOT override (default behavior)
+        assert table_entity.owners.root[0].id == topology_users["owner"].root[0].id
+        assert table_entity.description.root == "TABLE ONE DESCRIPTION"
+        assert table_entity.displayName == "TABLE ONE"
+        assert table_entity.tags[0].tagFQN.root == "PersonalData.Personal"
 
-        # column tests
-        self.assertEqual(table_entity.columns[0].description.root, "test column1")
-        self.assertEqual(table_entity.columns[0].name.root, "column1")
-        self.assertIsNone(table_entity.columns[0].displayName)
-        self.assertEqual(table_entity.columns[1].description.root, "test column2")
-        self.assertEqual(table_entity.columns[1].name.root, "column2")
-        self.assertEqual(table_entity.columns[1].displayName, "COLUMN TWO")
-        self.assertEqual(table_entity.columns[2].description.root, "test column3")
-        self.assertEqual(table_entity.columns[2].name.root, "column3")
-        self.assertEqual(table_entity.columns[2].displayName, "COLUMN THREE")
-        self.assertEqual(table_entity.columns[2].tags[0].tagFQN.root, "PII.Sensitive")
-        self.assertEqual(table_entity.columns[2].tags[1].tagFQN.root, "Tier.Tier2")
-        self.assertEqual(table_entity.columns[3].description.root, "test column4")
-        self.assertEqual(table_entity.columns[3].name.root, "column4")
-        self.assertEqual(table_entity.columns[3].displayName, "COLUMN FOUR")
-        self.assertEqual(table_entity.columns[3].tags[0].tagFQN.root, "PII.Sensitive")
-        self.assertEqual(table_entity.columns[4].description.root, "test column5")
-        self.assertEqual(table_entity.columns[4].name.root, "column5")
-        self.assertEqual(table_entity.columns[4].displayName, "COLUMN FIVE")
-        self.assertEqual(
-            table_entity.columns[4].tags[0].tagFQN.root, "PersonalData.Personal"
-        )
-        self.assertEqual(len(table_entity.columns[4].tags), 1)
+        # Column tests - order should be preserved, values merged
+        assert table_entity.columns[0].description.root == "test column1"
+        assert table_entity.columns[0].name.root == "column1"
+        assert table_entity.columns[0].displayName is None
+        assert table_entity.columns[1].description.root == "test column2"
+        assert table_entity.columns[1].name.root == "column2"
+        assert table_entity.columns[1].displayName == "COLUMN TWO"
+        assert table_entity.columns[2].description.root == "test column3"
+        assert table_entity.columns[2].name.root == "column3"
+        assert table_entity.columns[2].displayName == "COLUMN THREE"
+        assert table_entity.columns[2].tags[0].tagFQN.root == "PII.Sensitive"
+        assert table_entity.columns[2].tags[1].tagFQN.root == "Tier.Tier2"
+        assert table_entity.columns[3].description.root == "test column4"
+        assert table_entity.columns[3].name.root == "column4"
+        assert table_entity.columns[3].displayName == "COLUMN FOUR"
+        assert table_entity.columns[3].tags[0].tagFQN.root == "PII.Sensitive"
+        assert table_entity.columns[4].description.root == "test column5"
+        assert table_entity.columns[4].name.root == "column5"
+        assert table_entity.columns[4].displayName == "COLUMN FIVE"
+        assert table_entity.columns[4].tags[0].tagFQN.root == "PersonalData.Personal"
+        assert len(table_entity.columns[4].tags) == 1
 
-    def test_topology_patch_table_columns_with_add_del(self):
-        """Check if the table columns are patched"""
+    def test_topology_patch_table_columns_with_add_del(
+        self, metadata, table_entity_two
+    ):
+        """Check if the table columns are patched with add/delete."""
         new_columns_list = [
             Column(
                 name="column7",
@@ -336,32 +335,34 @@ class TopologyPatchTest(TestCase):
                 description=Markdown("test column6"),
             ),
         ]
-        updated_table = self.table_entity_two.model_copy(deep=True)
+        updated_table = table_entity_two.model_copy(deep=True)
         updated_table.columns = new_columns_list
-        self.metadata.patch(
-            entity=type(self.table_entity_two),
-            source=self.table_entity_two,
+        metadata.patch(
+            entity=type(table_entity_two),
+            source=table_entity_two,
             destination=updated_table,
             allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
             restrict_update_fields=RESTRICT_UPDATE_LIST,
             array_entity_fields=ARRAY_ENTITY_FIELDS,
         )
-        table_entity = self.metadata.get_by_id(
-            entity=Table, entity_id=self.table_entity_two.id.root
+        table_entity = metadata.get_by_id(
+            entity=Table, entity_id=table_entity_two.id.root
         )
-        self.assertEqual(table_entity.columns[0].description.root, "test column1")
-        self.assertEqual(table_entity.columns[0].name.root, "column1")
-        self.assertEqual(table_entity.columns[1].description.root, "test column3")
-        self.assertEqual(table_entity.columns[1].name.root, "column3")
-        self.assertEqual(table_entity.columns[2].description.root, "test column5")
-        self.assertEqual(table_entity.columns[2].name.root, "column5")
-        self.assertEqual(table_entity.columns[3].description.root, "test column7")
-        self.assertEqual(table_entity.columns[3].name.root, "column7")
-        self.assertEqual(table_entity.columns[4].description.root, "test column6")
-        self.assertEqual(table_entity.columns[4].name.root, "column6")
+        assert table_entity.columns[0].description.root == "test column1"
+        assert table_entity.columns[0].name.root == "column1"
+        assert table_entity.columns[1].description.root == "test column3"
+        assert table_entity.columns[1].name.root == "column3"
+        assert table_entity.columns[2].description.root == "test column5"
+        assert table_entity.columns[2].name.root == "column5"
+        assert table_entity.columns[3].description.root == "test column7"
+        assert table_entity.columns[3].name.root == "column7"
+        assert table_entity.columns[4].description.root == "test column6"
+        assert table_entity.columns[4].name.root == "column6"
 
-    def test_topology_patch_with_override_enabled(self):
-        """Check if the table columns are patched"""
+    def test_topology_patch_with_override_enabled(
+        self, metadata, table_entity_three, topology_users
+    ):
+        """Check if the table columns are patched with override enabled."""
         new_columns_list = [
             Column(
                 name="column7",
@@ -392,54 +393,51 @@ class TopologyPatchTest(TestCase):
                 description=Markdown("test column4 overriden"),
             ),
         ]
-        updated_table = self.table_entity_three.model_copy(deep=True)
+        updated_table = table_entity_three.model_copy(deep=True)
         updated_table.columns = new_columns_list
-        updated_table.owners = self.override_owner
+        updated_table.owners = topology_users["override_owner"]
         updated_table.description = Markdown("TABLE THREE DESCRIPTION OVERRIDEN")
         updated_table.displayName = "TABLE THREE OVERRIDEN"
         updated_table.tags = [PII_TAG_LABEL]
-        self.metadata.patch(
-            entity=type(self.table_entity_three),
-            source=self.table_entity_three,
+        metadata.patch(
+            entity=type(table_entity_three),
+            source=table_entity_three,
             destination=updated_table,
             allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
             restrict_update_fields=RESTRICT_UPDATE_LIST,
             array_entity_fields=ARRAY_ENTITY_FIELDS,
             override_metadata=True,
         )
-        table_entity = self.metadata.get_by_id(
-            entity=Table, entity_id=self.table_entity_three.id.root, fields=["*"]
+        table_entity = metadata.get_by_id(
+            entity=Table, entity_id=table_entity_three.id.root, fields=["*"]
         )
-        # table tests
-        self.assertEqual(table_entity.owners.root[0].id, self.override_owner.root[0].id)
-        self.assertEqual(
-            table_entity.description.root, "TABLE THREE DESCRIPTION OVERRIDEN"
+        # Table tests - SHOULD override (override_metadata=True)
+        assert (
+            table_entity.owners.root[0].id
+            == topology_users["override_owner"].root[0].id
         )
-        self.assertEqual(table_entity.displayName, "TABLE THREE OVERRIDEN")
-        self.assertEqual(table_entity.tags[0].tagFQN.root, "PII.Sensitive")
+        assert table_entity.description.root == "TABLE THREE DESCRIPTION OVERRIDEN"
+        assert table_entity.displayName == "TABLE THREE OVERRIDEN"
+        assert table_entity.tags[0].tagFQN.root == "PII.Sensitive"
 
-        self.assertEqual(
-            table_entity.columns[0].description.root, "test column1 overriden"
-        )
-        self.assertEqual(table_entity.columns[0].name.root, "column1")
-        self.assertEqual(table_entity.columns[0].displayName, "COLUMN ONE OVERRIDEN")
-        self.assertEqual(table_entity.columns[1].description.root, "test column3")
-        self.assertEqual(table_entity.columns[1].name.root, "column3")
-        self.assertEqual(table_entity.columns[1].displayName, "COLUMN THREE OVERRIDEN")
-        self.assertEqual(table_entity.columns[1].tags[0].tagFQN.root, "PII.Sensitive")
-        self.assertEqual(table_entity.columns[1].tags[1].tagFQN.root, "Tier.Tier2")
-        self.assertEqual(
-            table_entity.columns[2].description.root, "test column4 overriden"
-        )
-        self.assertEqual(table_entity.columns[2].name.root, "column4")
-        self.assertIsNone(table_entity.columns[2].displayName)
-        self.assertEqual(table_entity.columns[3].description.root, "test column5")
-        self.assertEqual(table_entity.columns[3].name.root, "column5")
-        self.assertEqual(table_entity.columns[3].displayName, "COLUMN FIVE")
-        self.assertEqual(table_entity.columns[3].tags[0].tagFQN.root, "PII.Sensitive")
-        self.assertEqual(table_entity.columns[4].description.root, "test column7")
-        self.assertEqual(table_entity.columns[4].name.root, "column7")
-        self.assertIsNone(table_entity.columns[4].displayName)
-        self.assertEqual(table_entity.columns[5].description.root, "test column6")
-        self.assertEqual(table_entity.columns[5].name.root, "column6")
-        self.assertEqual(table_entity.columns[5].displayName, "COLUMN SIX")
+        assert table_entity.columns[0].description.root == "test column1 overriden"
+        assert table_entity.columns[0].name.root == "column1"
+        assert table_entity.columns[0].displayName == "COLUMN ONE OVERRIDEN"
+        assert table_entity.columns[1].description.root == "test column3"
+        assert table_entity.columns[1].name.root == "column3"
+        assert table_entity.columns[1].displayName == "COLUMN THREE OVERRIDEN"
+        assert table_entity.columns[1].tags[0].tagFQN.root == "PII.Sensitive"
+        assert table_entity.columns[1].tags[1].tagFQN.root == "Tier.Tier2"
+        assert table_entity.columns[2].description.root == "test column4 overriden"
+        assert table_entity.columns[2].name.root == "column4"
+        assert table_entity.columns[2].displayName is None
+        assert table_entity.columns[3].description.root == "test column5"
+        assert table_entity.columns[3].name.root == "column5"
+        assert table_entity.columns[3].displayName == "COLUMN FIVE"
+        assert table_entity.columns[3].tags[0].tagFQN.root == "PII.Sensitive"
+        assert table_entity.columns[4].description.root == "test column7"
+        assert table_entity.columns[4].name.root == "column7"
+        assert table_entity.columns[4].displayName is None
+        assert table_entity.columns[5].description.root == "test column6"
+        assert table_entity.columns[5].name.root == "column6"
+        assert table_entity.columns[5].displayName == "COLUMN SIX"

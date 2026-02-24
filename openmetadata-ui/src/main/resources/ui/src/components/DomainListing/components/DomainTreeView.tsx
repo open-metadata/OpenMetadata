@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ArrowCircleDown } from '../../../assets/svg/arrow-circle-down.svg';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { BORDER_COLOR } from '../../../constants/constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
@@ -1094,10 +1095,12 @@ const DomainTreeView = ({
 
   return (
     <ResizableLeftPanels
+      showLearningIcon
       firstPanel={{
         className: 'domain-tree-panel border-right border-gray-200',
         minWidth: 280,
         flex: 0.25,
+        title: t('label.domain-plural'),
         children: (
           <Box
             ref={scrollContainerRef}
@@ -1112,6 +1115,8 @@ const DomainTreeView = ({
           </Box>
         ),
       }}
+      learningPageId={LEARNING_PAGE_IDS.DOMAIN}
+      learningTitle={t('label.domain-plural')}
       secondPanel={{
         className: 'domain-details-panel',
         minWidth: 600,

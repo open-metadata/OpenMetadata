@@ -335,14 +335,15 @@ const getGlossaryTermApprovalText = (fieldsChanged: FieldChange[]) => {
   let approvalText = '';
 
   if (statusFieldDiff) {
-    approvalText = t('message.glossary-term-status', {
-      status:
-        statusFieldDiff.newValue === 'Approved'
-          ? t('label.approved')
-          : statusFieldDiff.newValue === 'In Review'
-          ? t('label.in-review')
-          : t('label.rejected'),
-    });
+    let statusLabel: string;
+    if (statusFieldDiff.newValue === 'Approved') {
+      statusLabel = t('label.approved');
+    } else if (statusFieldDiff.newValue === 'In Review') {
+      statusLabel = t('label.in-review');
+    } else {
+      statusLabel = t('label.rejected');
+    }
+    approvalText = t('message.glossary-term-status', { status: statusLabel });
   }
 
   return approvalText;
@@ -369,15 +370,14 @@ const getSummaryText = ({
   let summaryText = '';
 
   if (!isEmpty(filteredFieldsChanged)) {
+    const suffix = isPrefix
+      ? ''
+      : t('label.has-been-action-type-lowercase', {
+          actionType: actionText,
+        });
     summaryText = `${prefix} ${filteredFieldsChanged
       .map(summaryFormatter)
-      .join(', ')} ${
-      !isPrefix
-        ? t('label.has-been-action-type-lowercase', {
-            actionType: actionText,
-          })
-        : ''
-    } `;
+      .join(', ')} ${suffix} `;
   }
 
   const isGlossaryTermStatusUpdated = fieldsChanged.some(
@@ -400,11 +400,12 @@ const getBulkImportSummary = (fieldsUpdated: FieldChange[]) => {
     return null;
   }
 
-  const newValue = isObject(bulkImportField.newValue)
-    ? bulkImportField.newValue
-    : isValidJSONString(bulkImportField.newValue)
-    ? JSON.parse(bulkImportField.newValue)
-    : null;
+  let newValue: unknown = null;
+  if (isObject(bulkImportField.newValue)) {
+    newValue = bulkImportField.newValue;
+  } else if (isValidJSONString(bulkImportField.newValue)) {
+    newValue = JSON.parse(bulkImportField.newValue);
+  }
 
   if (!newValue) {
     return null;
@@ -497,9 +498,9 @@ export const getSummary = ({
 };
 
 export const isMajorVersion = (version1: string, version2: string) => {
-  const v1 = parseFloat(version1);
-  const v2 = parseFloat(version2);
-  const flag = !isNaN(v1) && !isNaN(v2);
+  const v1 = Number.parseFloat(version1);
+  const v2 = Number.parseFloat(version2);
+  const flag = !Number.isNaN(v1) && !Number.isNaN(v2);
   if (flag) {
     return v1 + 1 === v2;
   }
@@ -676,7 +677,7 @@ export const getOwnerDiff = (
 
   const unchangedItems = defaultItems.filter(
     (item: EntityReference) =>
-      !addedItems.find((addedItem: EntityReference) => addedItem.id === item.id)
+      !addedItems.some((addedItem: EntityReference) => addedItem.id === item.id)
   );
 
   const allItems = [
@@ -728,7 +729,7 @@ export const getDomainDiff = (
 
   const unchangedItems = defaultItems.filter(
     (item: EntityReference) =>
-      !addedItems.find((addedItem: EntityReference) => addedItem.id === item.id)
+      !addedItems.some((addedItem: EntityReference) => addedItem.id === item.id)
   );
 
   const allItems = [
@@ -1120,10 +1121,10 @@ export const renderVersionButton = (
 
   const majorVersionChecks = () => {
     return isMajorVersion(
-      parseFloat(currV?.changeDescription?.previousVersion)
+      Number.parseFloat(currV?.changeDescription?.previousVersion)
         .toFixed(1)
         .toString(),
-      parseFloat(currV?.version).toFixed(1).toString()
+      Number.parseFloat(currV?.version).toFixed(1).toString()
     );
   };
 
@@ -1145,9 +1146,9 @@ export const getChangedEntityStatus = (
   newValue?: string
 ) => {
   if (oldValue && newValue) {
-    return oldValue !== newValue
-      ? EntityChangeOperations.UPDATED
-      : EntityChangeOperations.NORMAL;
+    return oldValue === newValue
+      ? EntityChangeOperations.NORMAL
+      : EntityChangeOperations.UPDATED;
   } else if (oldValue && !newValue) {
     return EntityChangeOperations.DELETED;
   } else if (!oldValue && newValue) {
@@ -1209,21 +1210,15 @@ export const getParameterValuesDiff = (
     const newParam = newValues.find((p) => p.name === name);
 
     if (oldParam && newParam) {
-      if (oldParam.value !== newParam.value) {
-        result.push({
-          name: String(name),
-          oldValue: String(oldParam.value),
-          newValue: String(newParam.value),
-          status: EntityChangeOperations.UPDATED,
-        });
-      } else {
-        result.push({
-          name: String(name),
-          oldValue: String(oldParam.value),
-          newValue: String(newParam.value),
-          status: EntityChangeOperations.NORMAL,
-        });
-      }
+      result.push({
+        name: String(name),
+        oldValue: String(oldParam.value),
+        newValue: String(newParam.value),
+        status:
+          oldParam.value === newParam.value
+            ? EntityChangeOperations.NORMAL
+            : EntityChangeOperations.UPDATED,
+      });
     } else if (!oldParam && newParam) {
       result.push({
         name: String(name),
@@ -1305,10 +1300,12 @@ export const getParameterValueDiffDisplay = (
         ) : (
           otherParamDiffs.map((diff, index) => (
             <Space data-testid={diff.name} key={diff.name} size={4}>
-              <Typography.Text className="text-grey-muted">
+              <Typography.Text className="parameter-label">
                 {`${diff.name}:`}
               </Typography.Text>
-              <Typography.Text>{getDiffDisplayValue(diff)}</Typography.Text>
+              <Typography.Text className="parameter-value-text">
+                {getDiffDisplayValue(diff)}
+              </Typography.Text>
               {otherParamDiffs.length - 1 !== index && (
                 <Divider type="vertical" />
               )}

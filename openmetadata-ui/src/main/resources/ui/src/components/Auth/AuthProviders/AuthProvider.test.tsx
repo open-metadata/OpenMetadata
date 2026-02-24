@@ -342,7 +342,6 @@ describe('Test axios response interceptor', () => {
     }
   });
 
-
   it('should not call refresh for auth/refresh api', async () => {
     const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
     const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });

@@ -6,12 +6,31 @@ slug: /main-concepts/metadata-standard/schemas/security/client/saml-sso
 
 SAML (Security Assertion Markup Language) SSO enables users to log in using SAML Identity Providers like Active Directory Federation Services (ADFS), Shibboleth, or other enterprise identity providers.
 
-## <span data-id="clientId">Client ID</span>
+## Setup Workflow
 
-- **Definition:** Client identifier for the SAML authentication configuration.
-- **Example:** saml-client-123
-- **Why it matters:** Used to identify this specific SAML configuration.
-- **Note:** Optional for SAML, mainly used for tracking and configuration management
+To configure SAML authentication, follow these steps:
+
+1. **Get OpenMetadata Service Provider Details** (from this form):
+   - **SP Entity ID** - Auto-generated, read-only field
+   - **Assertion Consumer Service (ACS) URL** - Auto-generated, read-only field
+
+2. **Configure Your Identity Provider**:
+   - Create a new SAML application/service in your IdP (ADFS, Okta, Azure AD, etc.)
+   - **Copy and paste** the SP Entity ID as the Entity ID/Application ID in your IdP
+   - **Copy and paste** the ACS URL as the Reply URL/Callback URL/Consumer URL in your IdP
+   - Configure user attributes and claims mapping in your IdP
+
+3. **Get Identity Provider Details** (from your IdP):
+   - IdP Entity ID
+   - SSO Login URL
+   - IdP X509 Certificate
+
+4. **Complete OpenMetadata Configuration**:
+   - Enter the IdP details in the form below
+   - Configure security settings (signing, encryption)
+   - Save the configuration
+
+**Important:** The SP Entity ID and ACS URL are generated automatically based on your OpenMetadata URL and cannot be changed. You must use these exact values in your IdP configuration for SAML to work.
 
 ## <span data-id="enableSelfSignup">Enable Self Signup</span>
 
@@ -25,7 +44,7 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 
 ### <span data-id="entityId">IdP Entity ID</span>
 
-- **Definition:** Unique identifier for the Identity Provider, usually the same as SSO login URL.
+- **Definition:** Unique identifier for the Identity Provider.
 - **Example:** https://adfs.company.com/adfs/services/trust
 - **Why it matters:** SAML messages use this to identify the IdP.
 - **Note:** Must match exactly what's configured in your IdP
@@ -50,8 +69,8 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 ### <span data-id="nameId">Name ID Format</span>
 
 - **Definition:** Format of the SAML NameID element that identifies users.
-- **Default:** urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress
-- **Example:** urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress
+- **Default:** urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+- **Example:** urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
 - **Why it matters:** Determines how users are identified in SAML assertions.
 - **Note:** Email format is most common and recommended
 
@@ -61,15 +80,24 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 
 - **Definition:** Unique identifier for OpenMetadata as a Service Provider.
 - **Example:** https://openmetadata.company.com
+- **Auto-Generated:** This field is automatically populated based on your OpenMetadata deployment URL.
 - **Why it matters:** IdP uses this to identify OpenMetadata in SAML exchanges.
-- **Note:** Must be configured in your IdP's trusted applications
+- **Note:**
+  - **This field is read-only** - it cannot be edited
+  - **Copy this value** and paste it as the Entity ID (or Application ID) in your SAML Identity Provider configuration
+  - Must match exactly in your IdP's trusted applications list
 
 ### <span data-id="acs">Assertion Consumer Service (ACS) URL</span>
 
 - **Definition:** URL where the IdP sends SAML assertions after authentication.
-- **Example:** https://openmetadata.company.com/callback OR (https://openmetadata.company.com/api/v1/saml/acs)(OLD)
+- **Example:** https://openmetadata.company.com/callback
+- **Auto-Generated:** This field is automatically populated based on your OpenMetadata deployment URL.
 - **Why it matters:** This is where SAML responses are posted after login.
-- **Note:** Must be registered in your IdP configuration
+- **Note:**
+  - **This field is read-only** - it cannot be edited
+  - **Copy this value** and paste it as the ACS URL (also called Reply URL, Callback URL, or Consumer URL) in your SAML Identity Provider configuration
+  - Format is always: `{your-domain}/callback`
+  - Must be registered exactly in your IdP configuration
 
 ### <span data-id="spX509Certificate">SP X509 Certificate</span>
 
@@ -87,13 +115,6 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
   - Keep this secure and encrypted
   - Required if signing or encryption is enabled
 
-### <span data-id="callback">SP Callback URL</span>
-
-- **Definition:** URL where users are redirected after successful authentication.
-- **Example:** https://openmetadata.company.com/callback
-- **Why it matters:** Where users land after successful SAML authentication.
-- **Note:** Usually your OpenMetadata application URL
-
 ## Security Configuration
 
 ### <span data-id="strictMode">Strict Mode</span>
@@ -104,29 +125,13 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 - **Why it matters:** Enhances security by enforcing signature and encryption validation.
 - **Note:** Enable for production environments
 
-### <span data-id="validateXml">Validate XML</span>
-
-- **Definition:** In strict mode, whether to validate XML format of SAML messages.
-- **Default:** false
-- **Example:** true
-- **Why it matters:** Prevents XML-based attacks and ensures valid SAML format.
-- **Note:** Should be enabled with strict mode
-
-### <span data-id="tokenValidity">Token Validity</span>
+### <span data-id="tokenValidity">Token Validity (seconds)</span>
 
 - **Definition:** Validity period (in seconds) for JWT tokens created from SAML response.
 - **Default:** 3600 (1 hour)
 - **Example:** 7200 (2 hours)
-- **Why it matters:** Controls how long users stay logged in.
-- **Note:** Balance security vs usability
-
-### <span data-id="sendEncryptedNameId">Send Encrypted Name ID</span>
-
-- **Definition:** Encrypt Name ID when sending requests from Service Provider.
-- **Default:** false
-- **Example:** true
-- **Why it matters:** Adds extra security for user identification.
-- **Note:** Must be supported by your IdP
+- **Why it matters:** Controls how long users stay logged in after SAML authentication.
+- **Note:** This controls the OpenMetadata JWT token lifetime, not the SAML assertion lifetime
 
 ### <span data-id="sendSignedAuthRequest">Send Signed Auth Request</span>
 
@@ -160,22 +165,6 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 - **Why it matters:** Ensures entire SAML messages are authentic.
 - **Note:** Provides additional security beyond assertion signing
 
-### <span data-id="wantEncryptedAssertions">Want Encrypted Assertions</span>
-
-- **Definition:** Require SAML assertions to be encrypted by IdP.
-- **Default:** false
-- **Example:** true
-- **Why it matters:** Protects sensitive user data in transit.
-- **Note:** Requires SP private key for decryption
-
-### <span data-id="wantAssertionEncrypted">Want Assertion Encrypted</span>
-
-- **Definition:** SP requires the assertion received to be encrypted.
-- **Default:** false
-- **Example:** true
-- **Why it matters:** Ensures all assertion data is encrypted in transit.
-- **Note:** Provides the highest level of data protection
-
 ## Advanced Configuration
 
 ### <span data-id="debugMode">Debug Mode</span>
@@ -188,76 +177,44 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
   - Only enable for troubleshooting
   - Disable in production for security and performance
 
-### <span data-id="keyStoreFilePath">KeyStore File Path</span>
+---
 
-- **Definition:** Path to Java KeyStore file containing certificates and keys.
-- **Example:** /path/to/saml-keystore.jks
-- **Why it matters:** Alternative to inline certificates for key management.
-- **Note:** Use either inline certificates or KeyStore, not both
+## Authorizer Configuration
 
-### <span data-id="keyStoreAlias">KeyStore Alias</span>
+The following settings control authorization and access control across OpenMetadata. These settings apply globally to all authentication providers.
 
-- **Definition:** Alias of the certificate/key pair within the KeyStore.
-- **Example:** saml-sp-cert
-- **Why it matters:** Identifies which certificate to use from the KeyStore.
-- **Note:** Must exist in the specified KeyStore
+### <span data-id="adminPrincipals">Admin Principals</span>
 
-### <span data-id="keyStorePassword">KeyStore Password</span>
+- **Definition:** List of user principals who will have admin access to OpenMetadata.
+- **Example:** ["john.doe", "jane.admin", "admin"]
+- **Why it matters:** These users will have full administrative privileges in OpenMetadata.
+- **Note:**
+  - Use usernames (NOT full email addresses)
+  - At least one admin principal is required
+  - For SAML, username is derived from NameID (if email format, uses part before @)
 
-- **Definition:** Password to access the KeyStore file.
-- **Example:** keystorePassword123
-- **Why it matters:** Required to read certificates from the KeyStore.
+### <span data-id="principalDomain">Principal Domain</span>
 
-## <span data-id="publicKeyUrls">Public Key URLs</span>
+- **Definition:** Default domain for user principals.
+- **Example:** company.com
+- **Why it matters:** Used to construct full user principals when only username is provided.
+- **Note:** Typically your organization's domain
 
-- **Definition:** List of URLs where public keys are published for token verification.
-- **Example:** ["https://yourapp.company.com/.well-known/jwks.json"]
-- **Why it matters:** Used to verify JWT token signatures if SAML generates JWT tokens for OpenMetadata.
-- **Note:** Usually auto-discovered, may be used in hybrid SAML+JWT authentication
+### <span data-id="enforcePrincipalDomain">Enforce Principal Domain</span>
 
-## <span data-id="jwtPrincipalClaims">JWT Principal Claims</span>
+- **Definition:** Whether to enforce that all users belong to the principal domain.
+- **Default:** false
+- **Example:** true
+- **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
+- **Note:** When enabled, only users from the configured principal domain can access OpenMetadata
 
-- **Definition:** JWT claims used to identify the user principal when SAML is combined with JWT tokens.
-- **Example:** ["preferred_username", "email", "sub"]
-- **Why it matters:** Determines which claim from JWT tokens identifies the SAML user.
-- **Note:** Only applicable when SAML authentication generates JWT tokens for OpenMetadata
-  - Order matters; first matching claim is used
+### <span data-id="allowedDomains">Allowed Domains</span>
 
-## <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
-
-- **Definition:** Maps JWT claims to OpenMetadata user attributes for SAML users. (Overrides JWT Principal Claims if set)
-- **Example:** ["email:email", "username:preferred_username"]
-- **Why it matters:** Controls how SAML user information maps to OpenMetadata user profiles.
-- **Note:** Format: "openmetadata_field:saml_claim" or "openmetadata_field:jwt_claim"
-- **Validation Requirements:**
-  - Both `username` and `email` mappings must be present when this field is used
-  - Only `username` and `email` keys are allowed; no other keys are permitted
-  - If validation fails, errors will be displayed on this specific field
-
-## <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
-
-- **Definition:** SAML attribute or JWT claim name containing team/department information for automatic team assignment.
-- **Example:** "department" (for Azure AD department attribute) or "groups" (for group membership)
-- **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their SAML/JWT attributes during login.
-- **How it works:**
-  - For SAML: Extracts the value(s) from the specified SAML attribute (e.g., if set to "department", reads the "department" attribute from SAML assertion)
-  - For JWT/OIDC: Extracts the value(s) from the specified JWT claim (e.g., if set to "department", reads the "department" claim from JWT token)
-  - For array attributes/claims (like "groups"), processes all values in the array
-  - Matches the extracted value(s) against existing team names in OpenMetadata
-  - Assigns the user to all matching teams that are of type "Group"
-  - If a team doesn't exist or is not of type "Group", a warning is logged but authentication continues
-- **Note:** 
-  - The team must already exist in OpenMetadata for assignment to work
-  - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
-  - Team names are case-sensitive and must match exactly
-  - This is useful for Azure AD "department" attribute or similar organizational attributes
-  - Multiple team assignments are supported for array attributes/claims (e.g., "groups")
-
-## <span data-id="tokenValidationAlgorithm">Token Validation Algorithm</span>
-
-- **Definition:** Algorithm used to validate JWT token signatures when SAML uses token-based authentication.
-- **Options:** RS256 | RS384 | RS512
-- **Default:** RS256
-- **Example:** RS256
-- **Why it matters:** Must match the algorithm used to sign tokens in hybrid SAML+JWT setups.
-- **Note:** Only relevant when SAML authentication generates or validates JWT tokens for OpenMetadata
+- **Definition:** List of email domains that are permitted to access OpenMetadata.
+- **Example:** ["company.com", "partner.com"]
+- **Why it matters:** Provides fine-grained control over which email domains can authenticate via SAML.
+- **Note:**
+  - Works in conjunction with `enforcePrincipalDomain`
+  - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
+  - Leave empty or use single `principalDomain` if you only have one domain
+  - Use this field for multi-domain organizations
