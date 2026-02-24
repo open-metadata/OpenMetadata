@@ -2,6 +2,9 @@ package org.openmetadata.sdk.fluent;
 
 import java.util.*;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.GenerateTokenRequest;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.collections.UserCollection;
@@ -118,6 +121,32 @@ public final class Users {
 
   public static User getVersion(String id, Double version) {
     return getClient().users().getVersion(id, version);
+  }
+
+  // ==================== Token Generation ====================
+
+  /**
+   * Generate a JWT token for a user.
+   *
+   * <p>For bot users, the caller must have EDIT permission on the bot. For regular users, only the
+   * user themselves can generate their own token.
+   *
+   * @param userId the user ID
+   * @param expiry the token expiry
+   * @return the JWT auth mechanism with the generated token
+   */
+  public static JWTAuthMechanism generateToken(UUID userId, JWTTokenExpiry expiry) {
+    return getClient().users().generateToken(userId, expiry);
+  }
+
+  /**
+   * Generate a JWT token for a user using the GenerateTokenRequest.
+   *
+   * @param request the generate token request containing user ID and expiry
+   * @return the JWT auth mechanism with the generated token
+   */
+  public static JWTAuthMechanism generateToken(GenerateTokenRequest request) {
+    return getClient().users().generateToken(request);
   }
 
   // ==================== Finding/Retrieval ====================

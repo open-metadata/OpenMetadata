@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
@@ -43,76 +44,84 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const adminTestEntity = new TableClass();
 
-test.describe('Custom properties without custom property config', () => {
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await adminTestEntity.create(apiContext);
-    await afterAction();
-  });
-
-  test.beforeEach('Visit Home Page', async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  propertiesList.forEach((property) => {
-    test.describe(`Add update and delete ${property} custom properties`, () => {
-      Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-        test(`Add ${property} custom property for ${entity.name}`, async ({
-          page,
-        }) => {
-          // Using Date.now() to generate property names in a way that new property will always be
-          // added after existing properties to avoid conflicts due to parallel test executions
-          const propertyName = `pwcp${Date.now()}test${entity.name}`;
-          await settingClick(
-            page,
-            entity.entityApiType as SettingOptionsType,
-            true
-          );
-
-          await addCustomPropertiesForEntity({
-            page,
-            propertyName,
-            customPropertyData: entity,
-            customType: property,
-          });
-
-          await editCreatedProperty(page, propertyName);
-
-          await verifyCustomPropertyInAdvancedSearch(
-            page,
-            propertyName.toUpperCase(), // displayName is in uppercase
-            entity.name.charAt(0).toUpperCase() + entity.name.slice(1),
-            property
-          );
-
-          if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-            await test.step(
-              'Verify Custom Property Persistence on Reload',
-              async () => {
-                const tableName = adminTestEntity.entity.name ?? '';
-                const tableFqn =
-                  adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
-
-                await verifyTableColumnCustomPropertyPersistence({
-                  page,
-                  tableName,
-                  tableFqn,
-                  propertyName,
-                  propertyType: property,
-                });
-              }
-            );
-          }
-
-          await settingClick(
-            page,
-            entity.entityApiType as SettingOptionsType,
-            true
-          );
-
-          await deleteCreatedProperty(page, propertyName);
-        });
-      });
+test.describe(
+  'Custom properties without custom property config',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    test.beforeAll('Setup test data', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await adminTestEntity.create(apiContext);
+      await afterAction();
     });
-  });
-});
+
+    test.beforeEach('Visit Home Page', async ({ page }) => {
+      await redirectToHomePage(page);
+    });
+
+    propertiesList.forEach((property) => {
+      test.describe(
+        `Add update and delete ${property} custom properties`,
+        () => {
+          Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
+            test(`Add ${property} custom property for ${entity.name}`, async ({
+              page,
+            }) => {
+              // Using Date.now() to generate property names in a way that new property will always be
+              // added after existing properties to avoid conflicts due to parallel test executions
+              const propertyName = `pwcp${Date.now()}test${entity.name}`;
+              await settingClick(
+                page,
+                entity.entityApiType as SettingOptionsType,
+                true
+              );
+
+              await addCustomPropertiesForEntity({
+                page,
+                propertyName,
+                customPropertyData: entity,
+                customType: property,
+              });
+
+              await editCreatedProperty(page, propertyName);
+
+              await verifyCustomPropertyInAdvancedSearch(
+                page,
+                propertyName.toUpperCase(), // displayName is in uppercase
+                entity.name.charAt(0).toUpperCase() + entity.name.slice(1),
+                property
+              );
+
+              if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
+                await test.step(
+                  'Verify Custom Property Persistence on Reload',
+                  async () => {
+                    const tableName = adminTestEntity.entity.name ?? '';
+                    const tableFqn =
+                      adminTestEntity.entityResponseData.fullyQualifiedName ??
+                      '';
+
+                    await verifyTableColumnCustomPropertyPersistence({
+                      page,
+                      tableName,
+                      tableFqn,
+                      propertyName,
+                      propertyType: property,
+                    });
+                  }
+                );
+              }
+
+              await settingClick(
+                page,
+                entity.entityApiType as SettingOptionsType,
+                true
+              );
+
+              await deleteCreatedProperty(page, propertyName);
+            });
+          });
+        }
+      );
+    });
+  }
+);

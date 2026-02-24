@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { Glossary } from '../../support/glossary/Glossary';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 
@@ -48,7 +49,7 @@ multiple lines
 
 :smile: emoji`;
 
-test.describe('Markdown', () => {
+test.describe('Markdown', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await glossary.create(apiContext);
