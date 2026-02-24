@@ -861,3 +861,98 @@ test.describe('Data Product Search and Filter', () => {
     }
   });
 });
+
+test.describe('Data Product Technical Name Column', () => {
+  test.slow(true);
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('Technical Name column is visible in table view with correct FQN value', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct = new DataProduct([domain]);
+
+    try {
+      await domain.create(apiContext);
+      await dataProduct.create(apiContext);
+
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      // Verify the table view is displayed by default with the Technical Name header
+      const tableContainer = page.getByTestId('table-view-container');
+      await expect(tableContainer).toBeVisible();
+      await expect(tableContainer).toContainText('Technical Name');
+
+      // Search for the specific data product
+      const searchBox = page
+        .getByTestId('page-layout-v1')
+        .getByPlaceholder('Search');
+
+      await Promise.all([
+        searchBox.fill(dataProduct.data.name),
+        page.waitForResponse(
+          '/api/v1/search/query?q=*&index=data_product_search_index*'
+        ),
+      ]);
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      // Verify the data product row contains the FQN
+      const row = page.getByTestId(dataProduct.data.name);
+      await expect(row).toBeVisible();
+      await expect(row).toContainText(
+        dataProduct.responseData.fullyQualifiedName!
+      );
+    } finally {
+      await dataProduct.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Search data products by technical name (FQN)', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct = new DataProduct([domain]);
+
+    try {
+      await domain.create(apiContext);
+      await dataProduct.create(apiContext);
+
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+
+      // Search using the FQN (technical name) instead of the display name
+      const searchBox = page
+        .getByTestId('page-layout-v1')
+        .getByPlaceholder('Search');
+
+      await Promise.all([
+        searchBox.fill(dataProduct.responseData.fullyQualifiedName!),
+        page.waitForResponse(
+          '/api/v1/search/query?q=*&index=data_product_search_index*'
+        ),
+      ]);
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      // Verify the data product appears in search results
+      await expect(page.getByTestId(dataProduct.data.name)).toBeVisible();
+    } finally {
+      await dataProduct.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+});
