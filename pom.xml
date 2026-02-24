@@ -144,8 +144,8 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.5.19</logback-core.version>
-    <logback-classic.version>1.5.18</logback-classic.version>
+    <logback-core.version>1.5.25</logback-core.version>
+    <logback-classic.version>1.5.25</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
@@ -157,11 +157,27 @@
     <angus-mail.version>2.0.4</angus-mail.version>
     <commonmark.version>0.26.0</commonmark.version>
     <flexmark.version>0.64.8</flexmark.version>
-    <owasp-html-sanitizer.version>20240325.1</owasp-html-sanitizer.version>
+    <owasp-html-sanitizer.version>20260101.1</owasp-html-sanitizer.version>
   </properties>
 
   <dependencyManagement>
     <dependencies>
+      <!-- Security: Force newer versions to fix vulnerabilities -->
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.18.0</version>
+      </dependency>
+      <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>okhttp</artifactId>
+        <version>4.12.0</version>
+      </dependency>
+      <dependency>
+        <groupId>io.projectreactor.netty</groupId>
+        <artifactId>reactor-netty-http</artifactId>
+        <version>1.2.14</version>
+      </dependency>
       <dependency>
         <groupId>org.eclipse.angus</groupId>
         <artifactId>angus-mail</artifactId>
@@ -635,7 +651,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.125.Final</version>
+        <version>4.1.129.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-@import '/node_modules/react-grid-layout/css/styles.css';
-@import '/node_modules/react-resizable/css/styles.css';
+@import 'react-grid-layout/css/styles.css';
+@import 'react-resizable/css/styles.css';
 
 .react-grid-item {
   transition: none;

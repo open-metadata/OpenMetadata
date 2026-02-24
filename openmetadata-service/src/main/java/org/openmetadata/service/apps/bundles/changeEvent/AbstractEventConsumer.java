@@ -332,9 +332,12 @@ public abstract class AbstractEventConsumer
     jobExecutionContext
         .getJobDetail()
         .getJobDataMap()
-        .put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
+        .put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(eventSubscriptionOffset));
 
-    jobExecutionContext.getJobDetail().getJobDataMap().put(ALERT_INFO_KEY, eventSubscription);
+    jobExecutionContext
+        .getJobDetail()
+        .getJobDataMap()
+        .put(ALERT_INFO_KEY, JsonUtils.pojoToJson(eventSubscription));
 
     AlertMetrics metrics =
         new AlertMetrics()

@@ -931,4 +931,66 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     request.setName(ns.prefix("invalid_chart"));
     return request;
   }
+
+  @Test
+  void test_bulkListChartsFromDifferentServices_maintainsCorrectServiceReference(TestNamespace ns) {
+    // Regression test for bug where bulk loading charts incorrectly set all charts
+    // to the first chart's service. This was caused by ChartRepository.fetchAndSetServices()
+    // assuming all charts in a batch belong to the same service.
+
+    // Create two different dashboard services
+    DashboardService metabaseService = DashboardServiceTestFactory.createMetabase(ns);
+    DashboardService lookerService = DashboardServiceTestFactory.createLooker(ns);
+
+    // Create charts under different services
+    CreateChart metabaseChartRequest = new CreateChart();
+    metabaseChartRequest.setName(ns.prefix("bulk_test_metabase_chart"));
+    metabaseChartRequest.setService(metabaseService.getFullyQualifiedName());
+    metabaseChartRequest.setChartType(ChartType.Bar);
+
+    CreateChart lookerChartRequest = new CreateChart();
+    lookerChartRequest.setName(ns.prefix("bulk_test_looker_chart"));
+    lookerChartRequest.setService(lookerService.getFullyQualifiedName());
+    lookerChartRequest.setChartType(ChartType.Line);
+
+    Chart metabaseChart = createEntity(metabaseChartRequest);
+    Chart lookerChart = createEntity(lookerChartRequest);
+
+    // Verify initial service assignments
+    assertEquals(
+        metabaseService.getFullyQualifiedName(),
+        metabaseChart.getService().getFullyQualifiedName());
+    assertEquals(
+        lookerService.getFullyQualifiedName(), lookerChart.getService().getFullyQualifiedName());
+
+    // List all charts (this uses bulk loading internally via setFieldsInBulk)
+    ListParams params = new ListParams();
+    params.setLimit(1000);
+    params.setFields("service");
+    ListResponse<Chart> allCharts = listEntities(params);
+
+    // Find our test charts in the bulk-loaded list
+    Chart foundMetabaseChart =
+        allCharts.getData().stream()
+            .filter(c -> c.getName().equals(metabaseChartRequest.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Metabase chart not found in list"));
+
+    Chart foundLookerChart =
+        allCharts.getData().stream()
+            .filter(c -> c.getName().equals(lookerChartRequest.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Looker chart not found in list"));
+
+    // This assertion would fail before the fix - all charts got the first chart's service
+    assertEquals(
+        metabaseService.getFullyQualifiedName(),
+        foundMetabaseChart.getService().getFullyQualifiedName(),
+        "Chart created under Metabase should retain Metabase as its service after bulk list");
+
+    assertEquals(
+        lookerService.getFullyQualifiedName(),
+        foundLookerChart.getService().getFullyQualifiedName(),
+        "Chart created under Looker should retain Looker as its service after bulk list");
+  }
 }

@@ -82,6 +82,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
@@ -5669,7 +5670,10 @@ public class WorkflowDefinitionResourceIT {
                 new ApiConnection()
                     .withConfig(
                         new RestConnection()
-                            .withOpenAPISchemaURL(java.net.URI.create("http://localhost:8585"))));
+                            .withOpenAPISchemaConnection(
+                                new OpenAPISchemaURL()
+                                    .withOpenAPISchemaURL(
+                                        java.net.URI.create("http://localhost:8585")))));
 
     ApiService apiService = client.apiServices().create(createApiService);
     LOG.debug("Created API service: {}", apiService.getName());

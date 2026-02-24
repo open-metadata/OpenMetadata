@@ -970,14 +970,14 @@ class SnowflakeSource(
         i.e. fetching view definition of all the views in schema storing it
         in cache and using the same cache to fetch the view definition.
 
-        To fetch defintion for other types of tables, we have used the
+        To fetch definition for other types of tables, we have used the
         get_ddl method, since this method only accepts string literal as arguments
         it is not possible to do something like this:
 
         select table_name, schema, get_ddl('table', table_name) from information_schema.tables
         so we have to fetch the ddl for each table individually.
 
-        Alternavies are executing an stroed procedure to automate this but
+        Alternatives are executing an stored procedure to automate this but
         it requires additional permissions like execute which users may not be comfortable doing.
         Or reconstruct the ddl from column types, which we can explore in the future.
         """
@@ -991,6 +991,10 @@ class SnowflakeSource(
                 schema_definition = inspector.get_stream_definition(
                     self.connection, table_name, schema_name
                 )
+            elif table_type == TableType.Stage:
+                # Snowflake Stage does not have a DDL or definition,
+                # so we will return None for stage type
+                pass
             elif self.source_config.includeDDL or table_type == TableType.Dynamic:
                 schema_definition = inspector.get_table_ddl(
                     self.connection, table_name, schema_name

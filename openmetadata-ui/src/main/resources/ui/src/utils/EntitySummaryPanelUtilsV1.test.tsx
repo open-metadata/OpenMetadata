@@ -20,11 +20,22 @@ import {
 } from '@testing-library/react';
 import { EntityType } from '../enums/entity.enum';
 import {
+  Container,
+  DataType as ContainerDataType,
+} from '../generated/entity/data/container';
+import {
+  DataType as SearchIndexDataType,
+  SearchIndex,
+  SearchIndexField,
+} from '../generated/entity/data/searchIndex';
+import {
   Column,
   Table as TableEntity,
   TableType,
 } from '../generated/entity/data/table';
+import { Topic } from '../generated/entity/data/topic';
 import { DataType } from '../generated/settings/settings';
+import { DataTypeTopic, Field } from '../generated/type/schema';
 import { getEntityChildDetailsV1 } from './EntitySummaryPanelUtilsV1';
 
 jest.mock('react-i18next', () => ({
@@ -77,6 +88,7 @@ jest.mock('../components/common/Loader/Loader', () => ({
 }));
 
 jest.mock('../utils/TableUtils', () => ({
+  ...jest.requireActual('../utils/TableUtils'),
   pruneEmptyChildren: jest.fn((columns) => columns),
 }));
 
@@ -970,6 +982,358 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
       await waitFor(() => {
         expect(screen.getByText('label.show-more')).toBeInTheDocument();
       });
+    });
+  });
+});
+
+describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchIndex)', () => {
+  const mockTopicWithNestedFields: Topic = {
+    id: 'topic-id',
+    name: 'test_topic',
+    fullyQualifiedName: 'service.test_topic',
+    messageSchema: {
+      schemaFields: [
+        {
+          name: 'top_level_field',
+          dataType: DataTypeTopic.String,
+          description: 'A top-level field',
+        } as Field,
+        {
+          name: 'parent_record',
+          dataType: DataTypeTopic.Record,
+          description: 'A record with nested children',
+          children: [
+            {
+              name: 'nested_child_field',
+              dataType: DataTypeTopic.String,
+              description: 'A nested child',
+            } as Field,
+            {
+              name: 'another_child',
+              dataType: DataTypeTopic.Int,
+              description: 'Another nested child',
+              children: [
+                {
+                  name: 'deeply_nested',
+                  dataType: DataTypeTopic.String,
+                  description: 'Deeply nested field',
+                } as Field,
+              ],
+            } as Field,
+          ],
+        } as Field,
+      ],
+    },
+  } as Topic;
+
+  const mockContainerWithNestedColumns: Container = {
+    id: 'container-id',
+    name: 'test_container',
+    fullyQualifiedName: 'service.test_container',
+    dataModel: {
+      columns: [
+        {
+          name: 'top_column',
+          dataType: ContainerDataType.String,
+          description: 'Top-level column',
+        },
+        {
+          name: 'struct_column',
+          dataType: ContainerDataType.Struct,
+          description: 'Struct column with children',
+          children: [
+            {
+              name: 'nested_column_child',
+              dataType: ContainerDataType.String,
+              description: 'Nested column child',
+            },
+            {
+              name: 'deep_parent',
+              dataType: ContainerDataType.Struct,
+              description: 'Deep parent',
+              children: [
+                {
+                  name: 'deeply_nested_column',
+                  dataType: ContainerDataType.String,
+                  description: 'Deeply nested column',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  } as Container;
+
+  const mockSearchIndexWithNestedFields: SearchIndex = {
+    id: 'search-index-id',
+    name: 'test_search_index',
+    fullyQualifiedName: 'service.test_search_index',
+    fields: [
+      {
+        name: 'top_si_field',
+        dataType: SearchIndexDataType.Text,
+        description: 'Top-level search index field',
+      } as SearchIndexField,
+      {
+        name: 'nested_si_parent',
+        dataType: SearchIndexDataType.Object,
+        description: 'Parent with nested children',
+        children: [
+          {
+            name: 'nested_si_child',
+            dataType: SearchIndexDataType.Keyword,
+            description: 'Nested search index child',
+          } as SearchIndexField,
+          {
+            name: 'si_deep_parent',
+            dataType: SearchIndexDataType.Object,
+            description: 'Deep parent',
+            children: [
+              {
+                name: 'deeply_nested_si_field',
+                dataType: SearchIndexDataType.Text,
+                description: 'Deeply nested search index field',
+              } as SearchIndexField,
+            ],
+          } as SearchIndexField,
+        ],
+      } as SearchIndexField,
+    ],
+  } as SearchIndex;
+
+  describe('TopicFieldCardsV1 - recursive nested field search', () => {
+    it('should render all top-level fields when no search text is provided', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.TOPIC,
+        mockTopicWithNestedFields,
+        undefined,
+        false,
+        ''
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-top_level_field')).toBeInTheDocument();
+      expect(screen.getByTestId('field-card-parent_record')).toBeInTheDocument();
+    });
+
+    it('should find top-level field by name', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.TOPIC,
+        mockTopicWithNestedFields,
+        undefined,
+        false,
+        'top_level'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-top_level_field')).toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-parent_record')).not.toBeInTheDocument();
+    });
+
+    it('should find nested child field when searching by nested name', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.TOPIC,
+        mockTopicWithNestedFields,
+        undefined,
+        false,
+        'nested_child_field'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-nested_child_field')).toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-top_level_field')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-parent_record')).not.toBeInTheDocument();
+    });
+
+    it('should find deeply nested field when searching by its name', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.TOPIC,
+        mockTopicWithNestedFields,
+        undefined,
+        false,
+        'deeply_nested'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-deeply_nested')).toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-top_level_field')).not.toBeInTheDocument();
+    });
+
+    it('should show no-data when search text matches nothing', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.TOPIC,
+        mockTopicWithNestedFields,
+        undefined,
+        false,
+        'nonexistent_field_xyz'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+    });
+  });
+
+  describe('ContainerFieldCardsV1 - recursive nested column search', () => {
+    it('should render all top-level columns when no search text is provided', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        mockContainerWithNestedColumns,
+        undefined,
+        false,
+        ''
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-top_column')).toBeInTheDocument();
+      expect(screen.getByTestId('field-card-struct_column')).toBeInTheDocument();
+    });
+
+    it('should find top-level column by name', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        mockContainerWithNestedColumns,
+        undefined,
+        false,
+        'top_column'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-top_column')).toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-struct_column')).not.toBeInTheDocument();
+    });
+
+    it('should find nested child column when searching by nested name', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        mockContainerWithNestedColumns,
+        undefined,
+        false,
+        'nested_column_child'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-nested_column_child')).toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-top_column')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-struct_column')).not.toBeInTheDocument();
+    });
+
+    it('should find deeply nested column when searching by its name', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        mockContainerWithNestedColumns,
+        undefined,
+        false,
+        'deeply_nested_column'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-deeply_nested_column')).toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-top_column')).not.toBeInTheDocument();
+    });
+
+    it('should show no-data when search text matches nothing', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        mockContainerWithNestedColumns,
+        undefined,
+        false,
+        'nonexistent_column_xyz'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(
+        screen.getByText('message.no-data-available')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('SearchIndexFieldCardsV1 - recursive nested field search', () => {
+    it('should render all top-level fields when no search text is provided', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.SEARCH_INDEX,
+        mockSearchIndexWithNestedFields,
+        undefined,
+        false,
+        ''
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-top_si_field')).toBeInTheDocument();
+      expect(screen.getByTestId('field-card-nested_si_parent')).toBeInTheDocument();
+    });
+
+    it('should find top-level field by name', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.SEARCH_INDEX,
+        mockSearchIndexWithNestedFields,
+        undefined,
+        false,
+        'top_si_field'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-top_si_field')).toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-nested_si_parent')).not.toBeInTheDocument();
+    });
+
+    it('should find nested child field when searching by nested name', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.SEARCH_INDEX,
+        mockSearchIndexWithNestedFields,
+        undefined,
+        false,
+        'nested_si_child'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-nested_si_child')).toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-top_si_field')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-nested_si_parent')).not.toBeInTheDocument();
+    });
+
+    it('should find deeply nested field when searching by its name', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.SEARCH_INDEX,
+        mockSearchIndexWithNestedFields,
+        undefined,
+        false,
+        'deeply_nested_si_field'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByTestId('field-card-deeply_nested_si_field')).toBeInTheDocument();
+      expect(screen.queryByTestId('field-card-top_si_field')).not.toBeInTheDocument();
+    });
+
+    it('should show no-data when search text matches nothing', () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.SEARCH_INDEX,
+        mockSearchIndexWithNestedFields,
+        undefined,
+        false,
+        'nonexistent_si_field_xyz'
+      );
+
+      render(<div>{result}</div>);
+
+      expect(
+        screen.getByText('message.no-data-available')
+      ).toBeInTheDocument();
     });
   });
 });

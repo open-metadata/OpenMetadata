@@ -186,7 +186,12 @@ public class JobRecoveryManager {
   private List<SearchIndexJob> findOrphanedJobs() {
     List<SearchIndexJob> runningJobs =
         coordinator.getRecentJobs(
-            List.of(IndexJobStatus.INITIALIZING, IndexJobStatus.READY, IndexJobStatus.RUNNING), 10);
+            List.of(
+                IndexJobStatus.INITIALIZING,
+                IndexJobStatus.READY,
+                IndexJobStatus.RUNNING,
+                IndexJobStatus.STOPPING),
+            10);
 
     return runningJobs.stream().filter(this::isJobOrphaned).toList();
   }
@@ -305,17 +310,29 @@ public class JobRecoveryManager {
    * @param job The job to recover
    */
   private void recoverJob(SearchIndexJob job) {
-    List<SearchIndexPartition> processing =
-        coordinator.getPartitions(job.getId(), PartitionStatus.PROCESSING);
-
-    for (SearchIndexPartition partition : processing) {
-      resetPartitionForRetry(partition);
+    boolean lockAcquired = coordinator.tryAcquireReindexLock(job.getId());
+    if (!lockAcquired) {
+      LOG.warn(
+          "Could not acquire lock for job {} during recovery - another server may have claimed it",
+          job.getId());
+      return;
     }
 
-    LOG.info(
-        "Recovered job {}: reset {} processing partitions to pending",
-        job.getId(),
-        processing.size());
+    try {
+      List<SearchIndexPartition> processing =
+          coordinator.getPartitions(job.getId(), PartitionStatus.PROCESSING);
+
+      for (SearchIndexPartition partition : processing) {
+        resetPartitionForRetry(partition);
+      }
+
+      LOG.info(
+          "Recovered job {}: reset {} processing partitions to pending",
+          job.getId(),
+          processing.size());
+    } finally {
+      coordinator.releaseReindexLock(job.getId());
+    }
   }
 
   /**
