@@ -48,7 +48,7 @@ import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext
 @Collection(name = "TestCaseDimensionResults")
 public class TestCaseDimensionResultResource
     extends EntityTimeSeriesResource<TestCaseDimensionResult, TestCaseDimensionResultRepository> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/dimensionResults";
 
   public TestCaseDimensionResultResource(Authorizer authorizer) {
     super(Entity.TEST_CASE_DIMENSION_RESULT, authorizer);

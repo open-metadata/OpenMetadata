@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -61,6 +61,11 @@ export interface PipelineServiceMetadataPipeline {
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?: FilterPattern;
+    /**
+     * Number of days of pipeline run status history to ingest. Only runs within the last N days
+     * will be fetched.
+     */
+    statusLookbackDays?: number;
     /**
      * Pipeline type
      */

@@ -56,6 +56,7 @@ export interface TreeSearchInputProps {
   onBlur: (e: React.FocusEvent) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
   onClear?: () => void;
+  'data-testid'?: string;
 }
 
 const TreeSearchInput: FC<TreeSearchInputProps> = ({
@@ -84,6 +85,7 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
   onBlur,
   onKeyDown,
   onClear,
+  'data-testid': dataTestId,
 }) => {
   const { t } = useTranslation();
   const inputProps = getInputProps();
@@ -98,6 +100,15 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
     setIsFocused(false);
     onBlur(e);
   };
+
+  const inputBasePadding = React.useMemo(() => {
+    const hasEndAdornment = hasClearableValue || loading;
+    if (size === 'small') {
+      return hasEndAdornment ? '6px 39px 6px 6px' : '6px';
+    }
+
+    return hasEndAdornment ? '9px 39px 9px 9px' : '9px';
+  }, [size, hasClearableValue, loading]);
 
   return (
     <Box
@@ -129,7 +140,10 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
         required={required}
         size={size}
         slotProps={{
-          htmlInput: inputProps,
+          htmlInput: {
+            ...inputProps,
+            'data-testid': dataTestId,
+          },
           input: {
             endAdornment: (
               <InputAdornment position="end">
@@ -188,14 +202,7 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
           '& .MuiInputBase-root': {
             position: 'relative',
             flexWrap: 'wrap',
-            padding:
-              size === 'small'
-                ? hasClearableValue || loading
-                  ? '6px 39px 6px 6px'
-                  : '6px'
-                : hasClearableValue || loading
-                ? '9px 39px 9px 9px'
-                : '9px',
+            padding: inputBasePadding,
             '& .MuiInputBase-input': {
               width: 0,
               minWidth: 30,

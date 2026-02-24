@@ -15,7 +15,7 @@ SQL Queries used during ingestion
 import textwrap
 
 TRINO_SQL_STATEMENT = textwrap.dedent(
-    """ 
+    """
     select "query" as query_text,
       "user" as user_name,
       "started" as start_time,
@@ -27,6 +27,8 @@ TRINO_SQL_STATEMENT = textwrap.dedent(
     AND CAST("started" AS date) < date_parse('{end_time}', '%Y-%m-%d %H:%i:%s')
     AND "state" = 'FINISHED'
     {filters}
+    ORDER BY "started"
+    OFFSET {offset}
     LIMIT {result_limit}
     """
 )

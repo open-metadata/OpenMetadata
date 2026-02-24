@@ -71,16 +71,6 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
-    },
-    "inputPorts": {
-      "description": "Input ports - data assets consumed by this data product.",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
-    "outputPorts": {
-      "description": "Output ports - data assets produced/exposed by this data product.",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": null
     }
   },
   "required": [

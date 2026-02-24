@@ -13,6 +13,7 @@
 
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
+import { ServiceCategoryPlural } from '../enums/service.enum';
 import { Include } from '../generated/type/include';
 import { getAlertsFromName } from '../rest/alertsAPI';
 import { getApiCollectionByFQN } from '../rest/apiCollectionsAPI';
@@ -167,7 +168,7 @@ export const getEntityByFqnUtil = (
     case EntityType.API_SERVICE:
     case EntityType.SECURITY_SERVICE:
     case EntityType.METADATA_SERVICE:
-      return getServiceByFQN(entityType, entityFQN);
+      return getServiceByFQN(ServiceCategoryPlural[entityType], entityFQN);
 
     case EntityType.TYPE:
       return getTypeByFQN(entityFQN);

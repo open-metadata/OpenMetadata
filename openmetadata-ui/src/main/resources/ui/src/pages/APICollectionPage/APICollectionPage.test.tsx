@@ -13,6 +13,7 @@
 
 import { render, waitFor } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import { useFqn } from '../../hooks/useFqn';
@@ -89,6 +90,10 @@ jest.mock('../../components/AppRouter/withActivityFeed', () => ({
 
 jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
 jest.mock(
@@ -213,5 +218,27 @@ describe('APICollectionPage', () => {
     expect(getApiCollectionByFQN).toHaveBeenCalledTimes(1);
     expect(getApiEndPoints).toHaveBeenCalledTimes(1);
     expect(getFeedCounts).toHaveBeenCalledTimes(1);
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    const mockApiCollectionDetails = {
+      name: 'test-api-collection',
+      id: '123',
+    };
+
+    (getApiCollectionByFQN as jest.Mock).mockResolvedValueOnce(
+      mockApiCollectionDetails
+    );
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'test-api-collection',
+        }),
+        expect.anything()
+      );
+    });
   });
 });

@@ -1,5 +1,7 @@
+import uuid
+
 import pytest
-from dirty_equals import HasAttributes, IsInstance
+from dirty_equals import Contains, HasAttributes, IsInstance
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -32,9 +34,9 @@ from metadata.workflow.metadata import MetadataWorkflow
 
 
 @pytest.fixture(scope="module")
-def create_service_request(postgres_container: PostgresConnection, tmp_path_factory):
+def create_service_request(postgres_container: PostgresConnection):
     return CreateDatabaseServiceRequest(
-        name="docker_test_" + tmp_path_factory.mktemp("postgres").name,
+        name=f"docker_test_postgres_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.Postgres,
         connection=DatabaseConnection(
             config=PostgresConnection(
@@ -42,7 +44,7 @@ def create_service_request(postgres_container: PostgresConnection, tmp_path_fact
                 authType=BasicAuth(password=postgres_container.password),
                 hostPort=postgres_container.get_container_host_ip()
                 + ":"
-                + postgres_container.get_exposed_port(postgres_container.port),
+                + str(postgres_container.get_exposed_port(postgres_container.port)),
                 database=postgres_container.dbname,
             )
         ),
@@ -132,15 +134,15 @@ def test_it_returns_the_expected_classifications(
     run_autoclassification: AutoClassificationWorkflow,
 ) -> None:
     (
-        customer_id_column,
-        nhs_number_column,
-        dwh_x10_column,
-        user_name_column,
         address_column,
+        customer_id_column,
+        dwh_x10_column,
         dwh_x20_column,
-        timestamp_column,
-        version_column,
+        nhs_number_column,
         order_date_column,
+        timestamp_column,
+        user_name_column,
+        version_column,
     ) = metadata.get_table_columns(
         f"{db_service.fullyQualifiedName.root}.test_db.public.example_table",
         fields=["tags"],
@@ -149,24 +151,45 @@ def test_it_returns_the_expected_classifications(
     assert customer_id_column.tags == []
     assert nhs_number_column.tags == [
         IsInstance(TagLabel)
-        & HasAttributes(tagFQN=HasAttributes(root="PII.Sensitive")),
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains(
+                "Detected by `ContextAwareNhsRecognizer`", "Patterns matched:"
+            ),
+        ),
     ]
     assert dwh_x10_column.tags == [
         IsInstance(TagLabel)
-        & HasAttributes(tagFQN=HasAttributes(root="PII.Sensitive")),
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains("Detected by `EmailRecognizer`", "Patterns matched:"),
+        ),
     ]
     assert user_name_column.tags == [
         IsInstance(TagLabel)
-        & HasAttributes(tagFQN=HasAttributes(root="PII.Sensitive")),
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains("Detected by `SpacyRecognizer`"),
+        ),
     ]
     assert address_column.tags == []
     assert dwh_x20_column.tags == [
         IsInstance(TagLabel)
-        & HasAttributes(tagFQN=HasAttributes(root="PII.Sensitive")),
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains(
+                "Detected by `SanitizedCreditCardRecognizer`", "Patterns matched:"
+            ),
+        ),
     ]
     assert timestamp_column.tags == []
     assert version_column.tags == []
     assert order_date_column.tags == [
         IsInstance(TagLabel)
-        & HasAttributes(tagFQN=HasAttributes(root="PII.NonSensitive")),
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.NonSensitive"),
+            reason=Contains(
+                "Detected by `ValidatedDateRecognizer`", "Patterns matched:"
+            ),
+        ),
     ]

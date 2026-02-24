@@ -34,6 +34,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    this.migrationUtil.migrateFlywayHistory(handle);
+    // Flyway history migration is now handled in MigrationWorkflow.loadMigrations()
+    // before parsing SQL files, to ensure it runs before flyway migrations in force mode
   }
 }

@@ -12,7 +12,6 @@
  */
 
 import { CloseOutlined } from '@mui/icons-material';
-import { Link as MuiLink } from '@mui/material';
 import { GitMerge } from '@untitledui/icons';
 import { Button, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,6 +23,7 @@ import SectionWithEdit from '../../../components/common/SectionWithEdit/SectionW
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
@@ -346,11 +346,11 @@ const EdgeInfoDrawer = ({
                     <span className="d-flex">
                       <GitMerge height={16} width={16} />
                     </span>
-                    <MuiLink
+                    <Typography.Text
                       className="edge-info-drawer-title"
                       data-testid="edge-header-title">
                       {t('label.edge-information')}
-                    </MuiLink>
+                    </Typography.Text>
                   </div>
                 </Tooltip>
               </div>
@@ -372,6 +372,8 @@ const EdgeInfoDrawer = ({
                 <div className="summary-panel-card">
                   <DescriptionSection
                     description={edgeEntity?.description ?? ''}
+                    entityFqn={edgeEntity.fromEntity.fullyQualifiedName}
+                    entityType={EntityType.LINEAGE_EDGE}
                     hasPermission={hasEditAccess}
                     showEditButton={hasEditAccess}
                     onDescriptionUpdate={onDescriptionUpdate}

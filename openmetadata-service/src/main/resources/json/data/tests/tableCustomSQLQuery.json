@@ -46,6 +46,8 @@
     ],
     "supportsRowLevelPassedFailed": true,
     "provider": "system",
-    "dataQualityDimension": "SQL"
+  "enabled": true,
+    "dataQualityDimension": "SQL",
+    "validatorClass": "TableCustomSQLQueryValidator"
   }
   

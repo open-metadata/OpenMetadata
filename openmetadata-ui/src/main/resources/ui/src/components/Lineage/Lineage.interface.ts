@@ -66,10 +66,11 @@ export interface ColumnLevelLineageNode
   > {
   fromEntity: EdgeFromToData;
   toEntity: EdgeFromToData;
+  fromColumn?: string;
+  toColumn?: string;
   pipeline?: EntityReference;
   source?: string;
   sqlQuery?: string;
-  column?: ColumnLineage;
   description?: string;
   pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
   docId?: string;

@@ -26,14 +26,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import {
-  debounce,
-  entries,
-  isEmpty,
-  isUndefined,
-  startCase,
-  uniq,
-} from 'lodash';
+import { debounce, entries, isEmpty, isUndefined, uniq } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,13 +42,15 @@ import {
   DEFAULT_SORT_ORDER,
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
+  TEST_CASE_FILTERS_LABELS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase } from '../../../generated/tests/testCase';
@@ -73,15 +68,21 @@ import {
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import tagClassBase from '../../../utils/TagClassBase';
+import { ExtraTestCaseDropdownOptions } from '../../../utils/TestCaseUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
+import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
+import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
@@ -97,6 +98,7 @@ export const TestCases = () => {
   const { isTestCaseSummaryLoading, testCaseSummary } =
     useDataQualityProvider();
   const { testCase: testCasePermission } = permissions;
+  const { showModal } = useEntityExportModalProvider();
   const [tableOptions, setTableOptions] = useState<DefaultOptionType[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
   const [tagOptions, setTagOptions] = useState<DefaultOptionType[]>([]);
@@ -416,9 +418,32 @@ export const TestCases = () => {
     }
   };
 
+  const extraDropdownContent = useMemo(() => {
+    return ExtraTestCaseDropdownOptions(
+      WILD_CARD_CHAR,
+      {
+        ViewAll:
+          checkPermission(
+            Operation.ViewAll,
+            ResourceEntity.TEST_CASE,
+            permissions
+          ) ?? false,
+        EditAll:
+          checkPermission(
+            Operation.EditAll,
+            ResourceEntity.TEST_CASE,
+            permissions
+          ) ?? false,
+      },
+      false,
+      navigate,
+      showModal
+    );
+  }, [permissions, navigate, showModal]);
+
   const dqTableHeader = useMemo(() => {
     return (
-      <Row gutter={[16, 16]}>
+      <Row align="middle" gutter={[16, 16]}>
         <Col span={16}>
           <PageHeader
             data={{
@@ -427,7 +452,7 @@ export const TestCases = () => {
             }}
           />
         </Col>
-        <Col span={8}>
+        <Col className="d-flex justify-end gap-4" span={8}>
           <Searchbar
             removeMargin
             placeholder={t('label.search-entity', {
@@ -436,10 +461,18 @@ export const TestCases = () => {
             searchValue={searchValue}
             onSearch={(value) => handleSearchParam('searchValue', value)}
           />
+          <ManageButton
+            entityFQN={WILD_CARD_CHAR}
+            entityId=""
+            entityName={WILD_CARD_CHAR}
+            entityType={EntityType.TEST_CASE}
+            extraDropdownContent={extraDropdownContent}
+            isRecursiveDelete={false}
+          />
         </Col>
       </Row>
     );
-  }, [searchValue, handleSearchParam]);
+  }, [searchValue, handleSearchParam, extraDropdownContent]);
 
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => {
@@ -462,7 +495,7 @@ export const TestCases = () => {
   const filterMenu: ItemType[] = useMemo(() => {
     return entries(TEST_CASE_FILTERS).map(([name, filter]) => ({
       key: filter,
-      label: startCase(name),
+      label: TEST_CASE_FILTERS_LABELS[name],
       value: filter,
     }));
   }, []);

@@ -54,6 +54,7 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
@@ -66,6 +67,7 @@ from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
 )
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
+    DataflowExportResponse,
     Dataset,
     Group,
     PowerBIDashboard,
@@ -91,6 +93,10 @@ OWNER_ACCESS_RIGHTS_KEYWORDS = ["owner", "write", "admin"]
 SNOWFLAKE_QUERY_EXPRESSION_KW = "Value.NativeQuery(Snowflake.Databases("
 DATABRICKS_QUERY_EXPRESSION_KW = "Value.NativeQuery(Databricks.Catalogs("
 MAX_PROJECT_FILTER_SIZE = 20
+
+DEFAULT_REPORTS_PREFIX = "reports"
+RDL_REPORT_FORMAT = "RDL"
+RDL_REPORTS_PREFIX = "rdlreports"
 
 
 class PowerbiSource(DashboardServiceSource):
@@ -121,50 +127,72 @@ class PowerbiSource(DashboardServiceSource):
         fetch all the workspace data for non-admin users
         """
         filter_pattern = self.source_config.projectFilterPattern
-        workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
-        for workspace in workspaces:
-            # add the dashboards to the workspace
-            workspace.dashboards.extend(
-                self.client.api_client.fetch_all_org_dashboards(group_id=workspace.id)
-                or []
-            )
-            for dashboard in workspace.dashboards:
-                # add the tiles to the dashboards
-                dashboard.tiles.extend(
-                    self.client.api_client.fetch_all_org_tiles(
-                        group_id=workspace.id, dashboard_id=dashboard.id
+        paginated_filter_patterns = self._paginate_project_filter_pattern(
+            filter_pattern
+        )
+        for filter_pattern in paginated_filter_patterns:
+            workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
+            if workspaces:
+                for workspace in workspaces:
+                    # add the dashboards to the workspace
+                    workspace.dashboards.extend(
+                        self.client.api_client.fetch_all_org_dashboards(
+                            group_id=workspace.id
+                        )
+                        or []
                     )
-                    or []
-                )
+                    for dashboard in workspace.dashboards:
+                        # add the tiles to the dashboards
+                        dashboard.tiles.extend(
+                            self.client.api_client.fetch_all_org_tiles(
+                                group_id=workspace.id, dashboard_id=dashboard.id
+                            )
+                            or []
+                        )
 
-            # add the reports to the workspaces
-            workspace.reports.extend(
-                self.client.api_client.fetch_all_org_reports(group_id=workspace.id)
-                or []
-            )
-
-            # add the datasets to the workspaces
-            workspace.datasets.extend(
-                self.client.api_client.fetch_all_org_datasets(group_id=workspace.id)
-                or []
-            )
-            for dataset in workspace.datasets:
-                # add the tables to the datasets
-                dataset.tables.extend(
-                    self.client.api_client.fetch_dataset_tables(
-                        group_id=workspace.id, dataset_id=dataset.id
+                    # add the reports to the workspaces
+                    workspace.reports.extend(
+                        self.client.api_client.fetch_all_org_reports(
+                            group_id=workspace.id
+                        )
+                        or []
                     )
-                    or []
-                )
-            yield workspace
+
+                    # add the datasets to the workspaces
+                    workspace.datasets.extend(
+                        self.client.api_client.fetch_all_org_datasets(
+                            group_id=workspace.id
+                        )
+                        or []
+                    )
+                    for dataset in workspace.datasets:
+                        # add the tables to the datasets
+                        dataset.tables.extend(
+                            self.client.api_client.fetch_dataset_tables(
+                                group_id=workspace.id, dataset_id=dataset.id
+                            )
+                            or []
+                        )
+                    yield workspace
+            else:
+                logger.error("Unable to fetch any PowerBI workspaces")
 
     def _paginate_project_filter_pattern(self, filter_pattern):
         """
         paginate include filters if more then `20` filters
         in single call
         """
+        if not filter_pattern:
+            # default include filter needed to include all
+            # workspaces
+            return [FilterPattern(includes=[".*"])]
+        # case handling if only exclude filters
+        # are provided.
         paginated_include_filters = [filter_pattern]
         if filter_pattern.includes:
+            # if include filters are present then paginate them
+            # in the batch of `MAX_PROJECT_FILTER_SIZE=20` while
+            # keeping exclude filters same across all batches
             include_filters = [
                 filter_pattern.includes[i : i + MAX_PROJECT_FILTER_SIZE]
                 for i in range(0, len(filter_pattern.includes), MAX_PROJECT_FILTER_SIZE)
@@ -328,11 +356,20 @@ class PowerbiSource(DashboardServiceSource):
             f"{workspace_id}/dashboards/{dashboard_id}?experience=power-bi"
         )
 
-    def _get_report_url(self, workspace_id: str, dashboard_id: str) -> str:
+    def _get_report_url(
+        self, workspace_id: str, dashboard_details: PowerBIReport
+    ) -> str:
         """
         Method to build the dashboard url
         """
         page_id = ""
+        dashboard_id = dashboard_details.id
+        reports_prefix = DEFAULT_REPORTS_PREFIX
+        if (
+            isinstance(dashboard_details.format, str)
+            and dashboard_details.format == RDL_REPORT_FORMAT
+        ):
+            reports_prefix = RDL_REPORTS_PREFIX
         try:
             pages: Optional[
                 List[ReportPage]
@@ -348,7 +385,7 @@ class PowerbiSource(DashboardServiceSource):
         # https://app.powerbi.com/groups/4e57dcbb-***/reports/a2902011-***/098b***?experience=power-bi
         return (
             f"{clean_uri(self.service_connection.hostPort)}/groups/"
-            f"{workspace_id}/reports/{dashboard_id}{page_id}?experience=power-bi"
+            f"{workspace_id}/{reports_prefix}/{dashboard_id}{page_id}?experience=power-bi"
         )
 
     def _get_dataset_url(self, workspace_id: str, dataset_id: str) -> str:
@@ -421,17 +458,23 @@ class PowerbiSource(DashboardServiceSource):
                         owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
                 else:
+                    description = (
+                        Markdown(dashboard_details.description)
+                        if dashboard_details.description
+                        else None
+                    )
                     dashboard_request = CreateDashboardRequest(
                         name=EntityName(dashboard_details.id),
                         dashboardType=DashboardType.Report,
                         sourceUrl=SourceUrl(
                             self._get_report_url(
                                 workspace_id=self.context.get().workspace.id,
-                                dashboard_id=dashboard_details.id,
+                                dashboard_details=dashboard_details,
                             )
                         ),
                         project=self.get_project_name(dashboard_details),
                         displayName=dashboard_details.name,
+                        description=description,
                         service=self.context.get().dashboard_service,
                         owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
@@ -506,7 +549,9 @@ class PowerbiSource(DashboardServiceSource):
                 measure_type = DataType.MEASURE_VISIBLE
                 if measure.isHidden:
                     measure_type = DataType.MEASURE_HIDDEN
-                expression_text = f"Expression : {measure.expression}"
+                expression_text = (
+                    f"Expression : {measure.expression}" if measure.expression else ""
+                )
                 description_text = (
                     f"Description : {measure.description}"
                     if measure.description
@@ -585,6 +630,56 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
+    def _get_dataflow_column_info(
+        self, dataflow_export: DataflowExportResponse
+    ) -> Optional[List[Column]]:
+        """Build columns from dataflow export response entities"""
+        datasource_columns = []
+        for entity in dataflow_export.entities or []:
+            try:
+                parsed_table = {
+                    "dataTypeDisplay": "PowerBI Table",
+                    "dataType": DataType.TABLE,
+                    "name": entity.name,
+                    "displayName": entity.name,
+                    "description": entity.description,
+                    "children": [],
+                }
+                child_columns = []
+                for attribute in entity.attributes or []:
+                    try:
+                        parsed_column = {
+                            "dataTypeDisplay": (
+                                attribute.dataType
+                                if attribute.dataType
+                                else DataType.UNKNOWN.value
+                            ),
+                            "dataType": ColumnTypeParser.get_column_type(
+                                attribute.dataType if attribute.dataType else None
+                            ),
+                            "name": attribute.name,
+                            "displayName": attribute.name,
+                            "description": attribute.description,
+                        }
+                        if (
+                            attribute.dataType
+                            and attribute.dataType == DataType.ARRAY.value
+                        ):
+                            parsed_column["arrayDataType"] = DataType.UNKNOWN
+                        child_columns.append(Column(**parsed_column))
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Error processing dataflow entity attribute: {exc}"
+                        )
+                if child_columns:
+                    parsed_table["children"] = child_columns
+                datasource_columns.append(Column(**parsed_table))
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error to yield dataflow entity column: {exc}")
+        return datasource_columns
+
     def _get_datamodels_list(self) -> List[Union[Dataset, Dataflow]]:
         """
         Get All the Powerbi Datasets
@@ -623,6 +718,16 @@ class PowerbiSource(DashboardServiceSource):
                             workspace_id=self.context.get().workspace.id,
                             dataflow_id=dataset.id,
                         )
+                        # dataflow export api for detailed metadata
+                        # api: https://api.powerbi.com/v1.0/myorg/admin/dataflows/DATAFLOW_ID/export
+                        # doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
+                        dataflow_export = self.client.api_client.fetch_dataflow_export(
+                            dataflow_id=dataset.id
+                        )
+                        if dataflow_export:
+                            datamodel_columns = self._get_dataflow_column_info(
+                                dataflow_export
+                            )
                     else:
                         logger.warning(
                             f"Unknown dataset type: {type(dataset)}, name: {dataset.name}"
@@ -700,6 +805,28 @@ class PowerbiSource(DashboardServiceSource):
                 )
             )
 
+    def _get_dataset_ids_from_report_datasources(self, report_id: str) -> List[str]:
+        """
+        Fetch report datasources and extract dataset IDs from connectionDetails.database.
+        The database field follows the pattern: sobe_wowvirtualserver-{DATASET_ID}
+        """
+        dataset_ids = []
+        workspace_id = self.context.get().workspace.id
+        datasources = self.client.api_client.fetch_report_datasources(
+            group_id=workspace_id, report_id=report_id
+        )
+        if not datasources:
+            return dataset_ids
+        for datasource in datasources:
+            if datasource.connectionDetails and datasource.connectionDetails.database:
+                match = re.match(
+                    r"sobe_wowvirtualserver-(.+)",
+                    datasource.connectionDetails.database,
+                )
+                if match:
+                    dataset_ids.append(match.group(1))
+        return dataset_ids
+
     def create_datamodel_report_lineage(
         self,
         db_service_prefix: Optional[str],
@@ -708,7 +835,6 @@ class PowerbiSource(DashboardServiceSource):
         """
         create the lineage between datamodel and report
         """
-
         try:
             report_fqn = fqn.build(
                 self.metadata,
@@ -720,22 +846,34 @@ class PowerbiSource(DashboardServiceSource):
                 entity=Dashboard,
                 fqn=report_fqn,
             )
+            dataset_ids = []
             if dashboard_details.datasetId:
-                datamodel_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=DashboardDataModel,
-                    service_name=self.context.get().dashboard_service,
-                    data_model_name=dashboard_details.datasetId,
-                )
-                datamodel_entity = self.metadata.get_by_name(
-                    entity=DashboardDataModel,
-                    fqn=datamodel_fqn,
+                dataset_ids = [dashboard_details.datasetId]
+            else:
+                dataset_ids = self._get_dataset_ids_from_report_datasources(
+                    report_id=dashboard_details.id
                 )
 
-                if datamodel_entity and report_entity:
-                    yield self._get_add_lineage_request(
-                        to_entity=report_entity, from_entity=datamodel_entity
+            if dataset_ids:
+                for dataset_id in dataset_ids:
+                    datamodel_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=DashboardDataModel,
+                        service_name=self.context.get().dashboard_service,
+                        data_model_name=dataset_id,
                     )
+                    datamodel_entity = self.metadata.get_by_name(
+                        entity=DashboardDataModel,
+                        fqn=datamodel_fqn,
+                    )
+                    if datamodel_entity and report_entity:
+                        logger.debug(
+                            f"Creating lineage between datamodel={str(dataset_id)} and report={str(dashboard_details.id)}"
+                        )
+                        yield self._get_add_lineage_request(
+                            to_entity=report_entity,
+                            from_entity=datamodel_entity,
+                        )
             else:
                 logger.debug(
                     f"Skipping datamodel and report lineage for"
@@ -745,7 +883,7 @@ class PowerbiSource(DashboardServiceSource):
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
-                    name=f"Datamodel and Report Lineage",
+                    name="Datamodel and Report Lineage",
                     error=(
                         f"Error to yield datamodel and report lineage details: {exc}"
                     ),
@@ -861,6 +999,93 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
+    def _parse_bigquery_source(
+        self, source_expression: str, datamodel_entity: DashboardDataModel
+    ) -> Optional[List[dict]]:
+        """
+        Parse BigQuery source from Power Query M expressions.
+        Handles both direct BigQuery connections and references to dataset expressions.
+
+        Examples:
+        1. Direct: GoogleBigQuery.Database()[Name="project"][Data][Name="dataset",Kind="Schema"][Data][Name="table",Kind="Table"][Data]
+        2. Via expression reference: Source = S_PJ_CODE (where S_PJ_CODE is a dataset expression)
+        """
+        try:
+            # Check if source expression references a dataset expression
+            # Pattern: Source = <expression_name>
+            source_ref_match = re.search(
+                r'Source\s*=\s*([A-Za-z0-9_#"&\s]+?)\s*,',
+                source_expression,
+                re.MULTILINE,
+            )
+
+            if source_ref_match:
+                ref_name = (
+                    source_ref_match.group(1).strip().strip('"').strip("#").strip('"')
+                )
+                logger.debug(
+                    f"Table source references expression: {ref_name}, resolving..."
+                )
+
+                # Fetch the dataset to get its expressions
+                dataset = self._fetch_dataset_from_workspace(datamodel_entity.name.root)
+                if dataset and dataset.expressions:
+                    for dexpression in dataset.expressions:
+                        if dexpression.name == ref_name and dexpression.expression:
+                            logger.debug(
+                                f"Found referenced expression '{ref_name}', checking for BigQuery"
+                            )
+                            # Recursively parse the referenced expression
+                            return self._parse_bigquery_source(
+                                dexpression.expression, datamodel_entity
+                            )
+
+            # Check if this is a direct BigQuery connection
+            if "GoogleBigQuery.Database" not in source_expression:
+                return None
+
+            logger.debug(f"Found GoogleBigQuery.Database in expression")
+
+            # Extract project, dataset (schema), and table from BigQuery M expression
+            # Pattern: [Name="project"][Data][Name="dataset",Kind="Schema"][Data][Name="table",Kind="Table"]
+
+            # Extract all Name= patterns
+            name_matches = re.findall(
+                r'\[Name="([^"]+)"(?:,Kind="([^"]+)")?\]', source_expression
+            )
+
+            if not name_matches:
+                logger.debug("No Name patterns found in BigQuery expression")
+                return None
+
+            # BigQuery structure: project -> dataset (Schema) -> table (Table/View)
+            project = None
+            dataset = None
+            table_name = None
+
+            for name, kind in name_matches:
+                if kind == "Schema":
+                    dataset = name
+                elif kind == "Table" or kind == "View":
+                    table_name = name
+                elif not kind and not project:
+                    # First Name without Kind is likely the project
+                    project = name
+
+            logger.debug(
+                f"Extracted BigQuery info: project={project}, dataset={dataset}, table={table_name}"
+            )
+
+            if table_name:
+                return [{"database": project, "schema": dataset, "table": table_name}]
+
+            return None
+
+        except Exception as exc:
+            logger.debug(f"Error to parse BigQuery table source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
     def _parse_snowflake_query_source(
         self, source_expression: str
     ) -> Optional[List[dict]]:
@@ -918,7 +1143,10 @@ class PowerbiSource(DashboardServiceSource):
 
             try:
                 parser = LineageParser(
-                    parser_query, dialect=Dialect.SNOWFLAKE, timeout_seconds=30
+                    parser_query,
+                    dialect=Dialect.SNOWFLAKE,
+                    timeout_seconds=30,
+                    parser_type=self.get_query_parser_type(),
                 )
                 query_hash = parser.query_hash
             except Exception as parser_exc:
@@ -1050,7 +1278,11 @@ class PowerbiSource(DashboardServiceSource):
         if dataset and dataset.expressions:
             try:
                 if DATABRICKS_QUERY_EXPRESSION_KW in source_expression:
-                    return parse_databricks_native_query_source(source_expression)
+                    return parse_databricks_native_query_source(
+                        source_expression,
+                        dataset,
+                        parser_type=self.get_query_parser_type(),
+                    )
                 else:
                     return self._parse_catalog_table_definition(
                         source_expression, datamodel_entity
@@ -1099,6 +1331,13 @@ class PowerbiSource(DashboardServiceSource):
             if isinstance(table_info_list, List):
                 return table_info_list
 
+            # parse bigquery source
+            table_info_list = self._parse_bigquery_source(
+                source_expression, datamodel_entity
+            )
+            if isinstance(table_info_list, List):
+                return table_info_list
+
             # parse databricks source
             table_info_list = self._parse_databricks_source(
                 source_expression, datamodel_entity
@@ -1132,6 +1371,10 @@ class PowerbiSource(DashboardServiceSource):
             table_info_list = self._parse_table_info_from_source_exp(
                 table, datamodel_entity
             )
+            if not table_info_list:
+                # if tables are not found from source expression
+                # try establishing lineage using powerbi's table name
+                table_info_list = [{"table": table.name}]
             if isinstance(table_info_list, List):
                 for table_info in table_info_list:
                     table_name = table_info.get("table") or table.name

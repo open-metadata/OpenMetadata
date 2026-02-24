@@ -13,6 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import com.google.gson.Gson;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Bot;
@@ -24,6 +28,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.bots.BotResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class BotRepository extends EntityRepository<Bot> {
@@ -41,7 +46,7 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   @Override
-  public void setFields(Bot entity, Fields fields) {
+  public void setFields(Bot entity, Fields fields, RelationIncludes relationIncludes) {
     entity.withBotUser(getBotUser(entity));
   }
 
@@ -72,6 +77,26 @@ public class BotRepository extends EntityRepository<Bot> {
     entity.withBotUser(null);
     store(entity, update);
     entity.withBotUser(botUser);
+  }
+
+  @Override
+  public void storeEntities(List<Bot> entities) {
+    List<Bot> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (Bot entity : entities) {
+      EntityReference botUser = entity.getBotUser();
+      String jsonCopy = gson.toJson(entity.withBotUser(null));
+      entitiesToStore.add(gson.fromJson(jsonCopy, Bot.class));
+      entity.withBotUser(botUser);
+    }
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Bot> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Bot::getId).toList();
+    deleteFromMany(ids, Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
   @Override

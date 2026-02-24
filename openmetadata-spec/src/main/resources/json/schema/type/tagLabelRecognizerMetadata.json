@@ -1,0 +1,62 @@
+{
+  "$id": "https://open-metadata.org/schema/type/tagLabelRecognizerMetadata.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TagLabelRecognizerMetadata",
+  "description": "Metadata about the recognizer that applied a tag, including scoring and pattern information.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.TagLabelRecognizerMetadata",
+  "properties": {
+    "recognizerId": {
+      "description": "Unique identifier of the recognizer that applied this tag",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "recognizerName": {
+      "description": "Human-readable name of the recognizer",
+      "type": "string"
+    },
+    "score": {
+      "description": "Confidence score assigned by the recognizer (0.0 to 1.0)",
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "target": {
+      "description": "What the recognizer analyzed to apply this tag",
+      "type": "string",
+      "enum": ["content", "column_name"]
+    },
+    "patterns": {
+      "description": "Details of patterns that matched during recognition",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/patternMatch"
+      }
+    }
+  },
+  "required": ["recognizerId", "recognizerName", "score"],
+  "additionalProperties": false,
+  "definitions": {
+    "patternMatch": {
+      "type": "object",
+      "description": "Information about a pattern that matched during recognition",
+      "properties": {
+        "name": {
+          "description": "Name of the pattern that matched",
+          "type": "string"
+        },
+        "regex": {
+          "description": "Regular expression or pattern definition",
+          "type": "string"
+        },
+        "score": {
+          "description": "Confidence score for this specific pattern match",
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        }
+      },
+      "required": ["name", "score"],
+      "additionalProperties": false
+    }
+  }
+}

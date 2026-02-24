@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
@@ -36,6 +35,7 @@ import org.openmetadata.schema.api.events.EventsRecord;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
+import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -45,10 +45,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -101,8 +103,33 @@ public class EventSubscriptionScheduler {
     Properties properties = new Properties();
     properties.put("org.quartz.scheduler.instanceName", SCHEDULER_NAME);
     properties.put("org.quartz.scheduler.instanceId", "AUTO");
+    properties.put("org.quartz.scheduler.skipUpdateCheck", "true");
+    properties.put("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
     properties.put("org.quartz.threadPool.threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
-    properties.put("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore");
+    properties.put("org.quartz.threadPool.threadPriority", "5");
+    properties.put("org.quartz.jobStore.misfireThreshold", "60000");
+    properties.put("org.quartz.jobStore.class", "org.quartz.impl.jdbcjobstore.JobStoreTX");
+    properties.put("org.quartz.jobStore.useProperties", "true");
+    properties.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
+    properties.put("org.quartz.jobStore.isClustered", "true");
+    properties.put("org.quartz.jobStore.dataSource", "myDS");
+    properties.put("org.quartz.dataSource.myDS.maxConnections", "5");
+    properties.put("org.quartz.dataSource.myDS.validationQuery", "select 1");
+    properties.put(
+        "org.quartz.dataSource.myDS.driver", config.getDataSourceFactory().getDriverClass());
+    properties.put("org.quartz.dataSource.myDS.URL", config.getDataSourceFactory().getUrl());
+    properties.put("org.quartz.dataSource.myDS.user", config.getDataSourceFactory().getUser());
+    properties.put(
+        "org.quartz.dataSource.myDS.password", config.getDataSourceFactory().getPassword());
+    if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
+      properties.put(
+          "org.quartz.jobStore.driverDelegateClass",
+          "org.quartz.impl.jdbcjobstore.StdJDBCDelegate");
+    } else {
+      properties.put(
+          "org.quartz.jobStore.driverDelegateClass",
+          "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate");
+    }
 
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(properties);
@@ -147,7 +174,6 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  @Transaction
   public void addSubscriptionPublisher(EventSubscription eventSubscription, boolean reinstall)
       throws SchedulerException,
           ClassNotFoundException,
@@ -211,9 +237,9 @@ public class EventSubscriptionScheduler {
   private JobDetail jobBuilder(
       AbstractEventConsumer publisher, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put(ALERT_INFO_KEY, eventSubscription);
+    dataMap.put(ALERT_INFO_KEY, JsonUtils.pojoToJson(eventSubscription));
     EventSubscriptionOffset startingOffset = getStartingOffset(eventSubscription.getId());
-    dataMap.put(ALERT_OFFSET_KEY, startingOffset);
+    dataMap.put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(startingOffset));
     JobBuilder jobBuilder =
         JobBuilder.newJob(publisher.getClass())
             .withIdentity(jobIdentity, ALERT_JOB_GROUP)
@@ -234,7 +260,6 @@ public class EventSubscriptionScheduler {
     return new SubscriptionStatus().withStatus(status).withTimestamp(System.currentTimeMillis());
   }
 
-  @Transaction
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
     deleteEventSubscriptionPublisher(eventSubscription);
@@ -243,7 +268,6 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  @Transaction
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
       throws SchedulerException {
     alertsScheduler.deleteJob(new JobKey(deletedEntity.getId().toString(), ALERT_JOB_GROUP));
@@ -252,7 +276,6 @@ public class EventSubscriptionScheduler {
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
   }
 
-  @Transaction
   public void deleteSuccessfulAndFailedEventsRecordByAlert(UUID id) {
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
@@ -342,6 +365,10 @@ public class EventSubscriptionScheduler {
   }
 
   public long getRelevantUnprocessedEvents(UUID subscriptionId) {
+    // Fetch subscription ONCE before the loop to avoid N+1 query problem
+    // Previously, getEventSubscription was called for each event in the stream
+    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+
     long offset =
         getEventSubscriptionOffset(subscriptionId)
             .map(EventSubscriptionOffset::getCurrentOffset)
@@ -351,12 +378,9 @@ public class EventSubscriptionScheduler {
         .map(
             eventJson -> {
               ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(
-                      event, getEventSubscription(subscriptionId).getFilteringRules())
-                  ? event
-                  : null;
+              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
             })
-        .filter(Objects::nonNull) // Remove null entries (events that did not pass filtering)
+        .filter(Objects::nonNull)
         .count();
   }
 
@@ -434,6 +458,9 @@ public class EventSubscriptionScheduler {
 
   public List<ChangeEvent> getRelevantUnprocessedEvents(
       UUID subscriptionId, int limit, int paginationOffset) {
+    // Fetch subscription ONCE before the loop to avoid N+1 query problem
+    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+
     long offset =
         getEventSubscriptionOffset(subscriptionId)
             .map(EventSubscriptionOffset::getCurrentOffset)
@@ -446,12 +473,9 @@ public class EventSubscriptionScheduler {
         .map(
             eventJson -> {
               ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(
-                      event, getEventSubscription(subscriptionId).getFilteringRules())
-                  ? event
-                  : null;
+              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
             })
-        .filter(Objects::nonNull) // Remove null entries (events that did not pass filtering)
+        .filter(Objects::nonNull)
         .toList();
   }
 
@@ -641,6 +665,41 @@ public class EventSubscriptionScheduler {
       LOG.error("Failed to convert status to SubscriptionStatus: {}", status, e);
       return null;
     }
+  }
+
+  private static final String AUDIT_LOG_JOB_GROUP = "OMAuditLogJobGroup";
+  private static final String AUDIT_LOG_JOB_ID = "AuditLogConsumerJob";
+  private static final int AUDIT_LOG_POLL_INTERVAL_SECONDS = 5;
+
+  /**
+   * Schedules the audit log consumer to periodically read from change_event table and write to
+   * audit_log table. Uses @DisallowConcurrentExecution to ensure only one instance runs at a time
+   * in multi-server setups.
+   */
+  public void scheduleAuditLogConsumer() throws SchedulerException {
+    JobKey jobKey = new JobKey(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP);
+
+    // Check if already scheduled
+    if (alertsScheduler.checkExists(jobKey)) {
+      LOG.info("Audit log consumer job already scheduled");
+      return;
+    }
+
+    JobDetail jobDetail =
+        JobBuilder.newJob(AuditLogConsumer.class).withIdentity(jobKey).storeDurably().build();
+
+    Trigger trigger =
+        TriggerBuilder.newTrigger()
+            .withIdentity(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP)
+            .withSchedule(
+                SimpleScheduleBuilder.repeatSecondlyForever(AUDIT_LOG_POLL_INTERVAL_SECONDS))
+            .startNow()
+            .build();
+
+    alertsScheduler.scheduleJob(jobDetail, trigger);
+    LOG.info(
+        "Audit log consumer scheduled with poll interval: {} seconds",
+        AUDIT_LOG_POLL_INTERVAL_SECONDS);
   }
 
   public static void shutDown() throws SchedulerException {

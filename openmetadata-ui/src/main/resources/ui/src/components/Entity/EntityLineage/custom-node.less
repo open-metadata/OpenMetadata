@@ -31,7 +31,7 @@
 // Node default state
 .lineage-node {
   width: 100%;
-  max-width: 320px; //  Max width of Lineage Node, in case of long columns names
+  max-width: 400px; //  Max width of Lineage Node, in case of long columns names
   border: 1px solid @lineage-border;
   border-radius: 10px;
   overflow: hidden;
@@ -77,18 +77,40 @@
     .label-container {
       .custom-node-label-container {
         width: 100%;
-        .lineage-breadcrumb {
+
+        .lineage-breadcrumbs {
           .lineage-breadcrumb-item {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-size: 12px;
+            max-width: 80px;
+          }
+
+          .lineage-breadcrumb-item-separator {
+            position: relative;
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            margin: 0 6px 0 4px;
+
+            &::after {
+              content: '';
+              position: absolute;
+              inset: 1px;
+              border-top: 1px solid @grey-400;
+              border-right: 1px solid @grey-400;
+              transform: rotate(45deg);
+            }
           }
         }
+
         .entity-header-name {
           .node-service-type::after {
             content: '|';
             margin-left: 6px;
           }
+
           svg {
             width: 18px;
             color: @grey-4;
@@ -99,8 +121,15 @@
           padding: 8px 16px 0 16px;
 
           .entity-service-icon svg {
-            height: 28px;
-            width: 28px;
+            height: 32px;
+            width: 32px;
+            margin-bottom: 6px;
+          }
+
+          .entity-service-icon img {
+            height: 32px;
+            width: 32px;
+            margin-bottom: 6px;
           }
 
           &.with-footer::after {
@@ -114,11 +143,27 @@
         }
 
         .entity-footer {
-          padding: 8px 16px 8px 16px;
-          background-color: #ffffff;
           display: flex;
           justify-content: space-between;
           gap: 20px;
+          padding: 8px 16px;
+
+          &__entity-type-and-dropdown {
+            display: flex;
+            gap: 6px;
+
+            .MuiChip-root {
+              background-color: @grey-9;
+              border-color: @grey-15;
+              color: @grey-600;
+            }
+          }
+
+          &__test-summary-and-filter {
+            display: flex;
+            gap: 6px;
+          }
+
           .test-summary-and-mapping {
             display: flex;
             gap: 5px;
@@ -128,7 +173,7 @@
             min-width: fit-content;
             padding: 2px @size-xs 2px @size-sm;
             border: none;
-            border-radius: 16px;
+            border-radius: 8px;
             box-shadow: none;
 
             background-color: @primary-1;
@@ -168,6 +213,7 @@
             border: 1px solid transparent;
             width: 25px;
             height: 25px;
+
             svg {
               width: 14px;
             }
@@ -184,22 +230,26 @@
         }
       }
     }
+
     .column-container {
       min-height: 48px;
       padding: 12px;
       padding-top: 0;
-      background-color: @grey-1;
+      background-color: @grey-9;
 
       .inside-current-page-item {
         margin-top: 0px;
         display: block;
+
         .custom-node-header-column-tracing {
           display: block;
         }
       }
+
       .outside-current-page-item:has(.custom-node-column-container) {
         display: none;
       }
+
       .outside-current-page-item:has(.custom-node-header-column-tracing) {
         display: block;
         margin-top: 0px;
@@ -230,6 +280,7 @@
           border-radius: 0;
         }
       }
+
       .custom-node-column-container {
         padding: 6px 8px;
         background-color: inherit;
@@ -271,6 +322,7 @@
           }
         }
       }
+
       &:not(.any-column-selected) {
         .custom-node-column-container {
           &:hover {
@@ -282,11 +334,25 @@
     }
   }
 
+  &.columns-expanded {
+    .lineage-node-content {
+      .label-container {
+        .custom-node-label-container {
+          .entity-footer {
+            background-color: @grey-9;
+          }
+        }
+      }
+    }
+  }
+
   &.custom-node-header-active {
     background-color: #eff8ff;
+
     .lineage-node-content {
       .label-container {
         background-color: #eff8ff;
+
         .custom-node-label-container {
           .entity-footer {
             background-color: #eff8ff;
@@ -294,25 +360,30 @@
         }
       }
     }
+
     .lineage-node-badge-container {
       background-color: #eff8ff;
     }
 
     &.columns-expanded {
       background-color: @primary-1;
+
       .lineage-node-content {
         .label-container {
           background-color: @primary-1;
+
           .custom-node-label-container {
             .entity-footer {
               background-color: #eff8ff;
             }
           }
         }
+
         .column-container {
           background-color: #eff8ff;
         }
       }
+
       .lineage-node-badge-container {
         background-color: @primary-1;
       }
@@ -321,9 +392,11 @@
 
   &.custom-node-header-active.data-quality-failed-custom-node-header {
     background-color: #fffbfa;
+
     .lineage-node-content {
       .label-container {
         background-color: #fffbfa;
+
         .custom-node-label-container {
           .entity-footer {
             background-color: #fffbfa;
@@ -331,6 +404,7 @@
         }
       }
     }
+
     .lineage-node-badge-container {
       background-color: #fffbfa;
       border-color: #d92d20;
@@ -346,12 +420,14 @@
       .lineage-node-content {
         .label-container {
           background-color: #fee4e2;
+
           .custom-node-label-container {
             .entity-footer {
               background-color: #fffbfa;
             }
           }
         }
+
         .column-container {
           background-color: #fffbfa;
         }
@@ -373,23 +449,24 @@
             content: none;
           }
         }
-        .entity-footer {
-          background-color: @grey-1;
-        }
       }
     }
+
     .column-container {
       .custom-node-column-container.custom-node-header-column-tracing {
         background-color: @primary-1;
         border-left-color: @primary-6;
+
         &:hover {
           background-color: @primary-1;
         }
       }
+
       &.any-column-selected {
         .custom-node-column-container.custom-node-header-column-tracing {
           background-color: @indigo-100;
           border-left-color: @indigo-600;
+
           &:hover {
             background-color: @indigo-100;
             border-left-color: @indigo-600;
@@ -496,6 +573,7 @@
 
   .lineage-node {
     border-color: @primary-color;
+
     .lineage-node-badge-container {
       border-color: rgb(53, 111, 231);
     }
@@ -503,9 +581,11 @@
 
   .data-quality-failed-custom-node-header {
     border-color: @red-3;
+
     .lineage-node-badge-container {
       border-color: @red-3;
     }
+
     .lineage-node-content {
       .column-container {
         .custom-node-column-container {
@@ -513,6 +593,7 @@
             background-color: #fef3f2;
             color: #bc1b06;
             border-left-color: #d92d20;
+
             .profiler-item {
               color: black;
             }
@@ -563,7 +644,10 @@
   .lineage-node-handle.react-flow__handle-right {
     right: -10px;
   }
+
   .lineage-node-handle-expand-all {
+    display: flex;
+    align-items: center;
     width: max-content !important;
     min-width: 20px !important;
     height: 20px !important;
@@ -571,14 +655,27 @@
     border-color: @lineage-border !important;
     background: @white !important;
     top: min(58px, 50%) !important;
-    left: 100%;
-    transform: translate(-50%, -50%);
 
     gap: 1px;
     border: 1px solid;
+    transition: transform 0.2s ease;
 
-    &:hover {
-      transform: translate(-10px, -50%);
+    &.react-flow__handle-right {
+      left: 100%;
+      transform: translate(-50%, -50%);
+
+      &:hover {
+        transform: translate(-10px, -50%);
+      }
+    }
+
+    &.react-flow__handle-left {
+      left: -10px;
+
+      &:hover {
+        flex-direction: row-reverse;
+        transform: translate(calc(-100% + 20px), -50%);
+      }
     }
 
     svg {
@@ -588,6 +685,7 @@
       width: 18px;
       height: 18px;
       border-radius: 3px;
+
       &:hover {
         color: @primary-color;
         background-color: #eff8ff;
@@ -597,11 +695,12 @@
     .lineage-expand-icons-separator::after {
       content: '';
       position: absolute;
-      left: 19px;
+      left: 50%;
       top: 2px;
       width: 1px;
       height: 14px;
       background: @blue-20;
+      transform: translateX(-50%);
     }
   }
 }
@@ -633,7 +732,7 @@
   z-index: 1; // Adding as column text and data type should be behind handles
 
   &.react-flow__handle-left {
-    left: -6px;
+    left: -10px;
   }
 
   &.react-flow__handle-right {
@@ -649,6 +748,7 @@
   svg {
     width: 16px;
   }
+
   svg:first-child {
     border-right: 1px solid @grey-15;
     width: 22px;

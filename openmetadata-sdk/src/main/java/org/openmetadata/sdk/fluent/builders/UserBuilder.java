@@ -18,6 +18,13 @@ public class UserBuilder {
   private final OpenMetadataClient client;
   private final CreateUser request;
 
+  /**
+   * Create a new UserBuilder with the given client.
+   */
+  public static UserBuilder create(OpenMetadataClient client) {
+    return new UserBuilder(client);
+  }
+
   public UserBuilder(OpenMetadataClient client) {
     this.client = client;
     this.request = new CreateUser();
@@ -70,31 +77,14 @@ public class UserBuilder {
    * Create and return the created entity.
    */
   public User create() {
-    CreateUser createRequest = build();
-    // Convert CreateUser to User
-    User entity = new User();
-    entity.setName(createRequest.getName());
-    if (createRequest.getDisplayName() != null)
-      entity.setDisplayName(createRequest.getDisplayName());
-    if (createRequest.getDescription() != null)
-      entity.setDescription(createRequest.getDescription());
-    // TODO: Map other fields as needed
-    return client.users().create(entity);
+    return client.users().create(build());
   }
 
   /**
-   * Create or update (upsert).
+   * Set the user's email address.
    */
-  public User createOrUpdate() {
-    CreateUser createRequest = build();
-    // Convert CreateUser to User
-    User entity = new User();
-    entity.setName(createRequest.getName());
-    if (createRequest.getDisplayName() != null)
-      entity.setDisplayName(createRequest.getDisplayName());
-    if (createRequest.getDescription() != null)
-      entity.setDescription(createRequest.getDescription());
-    // TODO: Map other fields as needed
-    return client.users().upsert(entity);
+  public UserBuilder email(String email) {
+    request.setEmail(email);
+    return this;
   }
 }

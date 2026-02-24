@@ -1,0 +1,75 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.learning-drawer {
+  .ant-drawer-header {
+    padding: @padding-md @padding-lg;
+    border-bottom: 1px solid @border-color-1;
+  }
+
+  .ant-drawer-header-title {
+    flex: 1;
+  }
+
+  .ant-drawer-body {
+    padding: @padding-md;
+    background-color: @grey-50;
+  }
+
+  .learning-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .learning-drawer-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: @font-semibold;
+    color: @grey-900;
+  }
+
+  .learning-drawer-close {
+    font-size: 14px;
+    color: @grey-500;
+    cursor: pointer;
+    padding: @padding-xs;
+    border-radius: @border-rad-base;
+    transition: all 0.2s ease;
+
+    &:hover {
+      color: @grey-700;
+      background-color: @grey-100;
+    }
+  }
+
+  .learning-drawer-content {
+    height: 100%;
+  }
+
+  .learning-drawer-cards {
+    display: flex;
+    flex-direction: column;
+    gap: @size-sm;
+  }
+
+  .learning-drawer-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+  }
+}

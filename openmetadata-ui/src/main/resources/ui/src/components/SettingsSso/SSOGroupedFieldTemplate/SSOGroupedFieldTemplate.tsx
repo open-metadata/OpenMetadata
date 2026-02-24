@@ -16,10 +16,11 @@ import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Space } from 'antd';
+import { Button, Collapse, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../constants/Services.constant';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import './sso-grouped-field-template.less';
@@ -27,6 +28,7 @@ import { FieldGroup, PropertyMap } from './SSOGroupedFieldTemplate.interface';
 
 export const SSOGroupedFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
   (props: ObjectFieldTemplateProps) => {
+    const { t } = useTranslation();
     const { formContext, idSchema, title, onAddClick, schema, properties } =
       props;
 
@@ -380,21 +382,30 @@ export const SSOGroupedFieldTemplate: FunctionComponent<ObjectFieldTemplateProps
         })}
 
         {!isEmpty(advancedProperties) && (
-          <div
-            className={classNames({
-              'sso-field-group-box sso-field-group-spaced': shouldApplyGrouping,
-              'default-object-field': !shouldApplyGrouping,
-            })}>
-            {advancedProperties.map((element, index) => (
+          <Collapse
+            destroyInactivePanel
+            className={classNames('sso-advanced-properties-collapse', {
+              'm-t-sm': shouldApplyGrouping,
+            })}
+            expandIconPosition="end">
+            <Collapse.Panel header={t('label.advanced-config')} key="1">
               <div
-                className={classNames('property-wrapper', {
-                  'additional-fields': schema.additionalProperties,
-                })}
-                key={`${element.content.key}-${index}`}>
-                {element.content}
+                className={classNames({
+                  'sso-field-group-box': shouldApplyGrouping,
+                  'default-object-field': !shouldApplyGrouping,
+                })}>
+                {advancedProperties.map((element, index) => (
+                  <div
+                    className={classNames('property-wrapper', {
+                      'additional-fields': schema.additionalProperties,
+                    })}
+                    key={`${element.content.key}-${index}`}>
+                    {element.content}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </Collapse.Panel>
+          </Collapse>
         )}
       </Fragment>
     );

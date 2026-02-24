@@ -17,6 +17,7 @@ export interface DataProductsDetailsPageProps {
   isVersionsView?: boolean;
   onUpdate: (dataProductDetails: DataProduct) => Promise<void>;
   onDelete: () => Promise<void>;
+  onRefresh?: () => Promise<void>;
   isFollowing?: boolean;
   isFollowingLoading?: boolean;
   handleFollowingClick?: () => void;
@@ -25,4 +26,5 @@ export interface DataProductsDetailsPageProps {
 export enum DataProductTabs {
   DOCUMENTATION = 'documentation',
   ASSETS = 'assets',
+  CONTRACT = 'contract',
 }

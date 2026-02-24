@@ -70,3 +70,10 @@ export const ASSET_FILTER_NAMES = [
   'Service',
   'Service Type',
 ];
+
+export const KEY_PROFILE_METRICS = [
+  'Uniqueness',
+  'Nullness',
+  'Distinct',
+  'Value Count',
+];

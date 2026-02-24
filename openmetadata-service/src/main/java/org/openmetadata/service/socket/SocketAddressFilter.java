@@ -84,4 +84,16 @@ public class SocketAddressFilter implements Filter {
             : null;
     jwtFilter.checkValidationsForToken(claims, token, userName, impersonatedBy);
   }
+
+  public static void checkForUsernameAndImpersonationValidation(
+      String token, Map<String, Claim> claims, JwtFilter jwtFilter) {
+    String userName =
+        SecurityUtil.findUserNameFromClaims(
+            jwtFilter.getJwtPrincipalClaimsMapping(), jwtFilter.getJwtPrincipalClaims(), claims);
+    String impersonatedBy =
+        claims.containsKey(JwtFilter.IMPERSONATED_USER_CLAIM)
+            ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
+            : null;
+    jwtFilter.checkValidationsForToken(claims, token, userName, impersonatedBy);
+  }
 }

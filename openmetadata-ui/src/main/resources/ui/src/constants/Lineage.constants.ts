@@ -42,6 +42,10 @@ export const entityData = [
     label: 'label.dashboard-plural',
   },
   {
+    type: SearchIndex.STORED_PROCEDURE,
+    label: 'label.stored-procedure-plural',
+  },
+  {
     type: SearchIndex.TOPIC,
     label: 'label.topic-plural',
   },
@@ -183,8 +187,8 @@ export const IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS = [
   'nodeDepth',
   'toEntity',
   'fromEntity',
-  'column.toColumn',
-  'column.fromColumns',
+  'toColumn',
+  'fromColumn',
 ];
 
 export const IMPACT_ANALYSIS_STATIC_COLUMNS = ['name', 'column'];

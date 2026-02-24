@@ -16,6 +16,7 @@ from enum import Enum
 
 from sqlalchemy import and_, join, sql
 from sqlalchemy.engine import reflection
+from sqlalchemy.sql import sqltypes as sa_types
 
 from metadata.utils.logger import ingestion_logger
 
@@ -38,6 +39,67 @@ class DB2CLIDriverVersions(Enum):
     V11_5_8 = "11.5.8"
     V11_5_9 = "11.5.9"
     V12_1_0 = "12.1.0"
+
+
+@reflection.cache
+def get_columns_os390(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    """Override OS390Reflector.get_columns to handle empty/unrecognized types
+    gracefully instead of emitting SAWarnings."""
+    current_schema = self.denormalize_name(schema or self.default_schema_name)
+    table_name = self.denormalize_name(table_name)
+    syscols = self.sys_columns
+
+    query = (
+        sql.select(
+            syscols.c.colname,
+            syscols.c.typename,
+            syscols.c.defaultval,
+            syscols.c.nullable,
+            syscols.c.length,
+            syscols.c.scale,
+            syscols.c.generated,
+            syscols.c.remark,
+        )
+        .where(
+            and_(
+                syscols.c.tabschema == current_schema,
+                syscols.c.tabname == table_name,
+            )
+        )
+        .order_by(syscols.c.colno)
+    )
+    sa_columns = []
+    for r in connection.execute(query):
+        coltype = r[1].strip().upper() if r[1] else ""
+        if coltype in ["DECIMAL", "NUMERIC"]:
+            coltype = self.ischema_names.get(coltype)(int(r[4]), int(r[5]))
+        elif coltype in ["CHARACTER", "CHAR", "VARCHAR", "GRAPHIC", "VARGRAPHIC"]:
+            coltype = self.ischema_names.get(coltype)(int(r[4]))
+        elif coltype and coltype in self.ischema_names:
+            coltype = self.ischema_names[coltype]
+        else:
+            if not coltype:
+                logger.warning(f"Empty type for column '{r[0]}' - ingesting as UNKNOWN")
+            else:
+                logger.warning(
+                    f"Did not recognize type '{coltype}' of column '{r[0]}'"
+                    " - ingesting as UNKNOWN"
+                )
+            coltype = sa_types.NULLTYPE
+
+        sa_columns.append(
+            {
+                "name": self.normalize_name(r[0]),
+                "type": coltype,
+                "nullable": r[3] == "Y",
+                "default": r[2] or None,
+                "autoincrement": r[6] not in (" ", None),
+                "comment": r[7] or None,
+            }
+        )
+    return sa_columns
 
 
 @reflection.cache

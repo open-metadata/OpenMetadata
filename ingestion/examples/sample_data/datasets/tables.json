@@ -5249,7 +5249,15 @@
         "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
         "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
       },
-      "tags": [],
+      "tags": [
+        {
+          "tagFQN": "PII.Sensitive",
+          "description": "Customer details",
+          "source": "Classification",
+          "labelType": "Manual",
+          "state": "Confirmed"
+        }
+      ],
       "usageSummary": {
         "dailyStats": {
           "count": 73,
@@ -33203,6 +33211,430 @@
         "name": "sample_data.ecommerce_db.shopify",
         "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
         "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+      }
+    },
+    {
+      "name": "openmetadata-table-bench",
+      "description": "This table serves as a testing playground for askCollate on different tasks. The main content is food-related products.",
+      "version": 0.1,
+      "updatedAt": 1767784950622,
+      "updatedBy": "admin",
+      "href": "http://localhost:8585/api/v1/tables/bench-table-uuid-12345",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE openmetadata_table_bench(product_id VARCHAR(50) PRIMARY KEY, product_name VARCHAR(200), category VARCHAR(100), price DECIMAL(10,2), country VARCHAR(50), description TEXT)",
+      "retentionPeriod": "30D",
+      "columns": [
+        {
+          "name": "product_id",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Unique identifier for the food product.",
+          "tags": [],
+          "ordinalPosition": 1
+        },
+        {
+          "name": "product_name",
+          "dataType": "VARCHAR",
+          "dataLength": 200,
+          "dataTypeDisplay": "varchar",
+          "description": "Name of the food product or dish.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "category",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Category of the food product (e.g., Dairy, Bakery, Produce, Spices, Beverages, Proteins).",
+          "tags": [],
+          "ordinalPosition": 3
+        },
+        {
+          "name": "price",
+          "dataType": "DECIMAL",
+          "dataTypeDisplay": "decimal(10,2)",
+          "description": "Price of the product in USD.",
+          "tags": [],
+          "ordinalPosition": 4
+        },
+        {
+          "name": "country",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Country of origin for the product.",
+          "tags": [],
+          "ordinalPosition": 5
+        },
+        {
+          "name": "description",
+          "dataType": "TEXT",
+          "dataTypeDisplay": "text",
+          "description": "Detailed description of the product, including ingredients or preparation notes.",
+          "tags": [],
+          "ordinalPosition": 6
+        },
+        {
+          "name": "organic",
+          "dataType": "BOOLEAN",
+          "dataTypeDisplay": "boolean",
+          "description": "Indicates whether the product is organic.",
+          "tags": [],
+          "ordinalPosition": 7
+        },
+        {
+          "name": "calories_per_serving",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": "Approximate calories per standard serving.",
+          "tags": [],
+          "ordinalPosition": 8
+        },
+        {
+          "name": "allergens",
+          "dataType": "VARCHAR",
+          "dataLength": 200,
+          "dataTypeDisplay": "varchar",
+          "description": "List of common allergens present (e.g., nuts, dairy, gluten).",
+          "tags": [],
+          "ordinalPosition": 9
+        },
+        {
+          "name": "shelf_life_days",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": "Typical shelf life in days from production date.",
+          "tags": [],
+          "ordinalPosition": 10
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "product_id"
+          ]
+        }
+      ],
+      "database": {
+        "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+      },
+      "tags": [
+        {
+          "tagFQN": "Tier.Tier4",
+          "description": "Tier 4 data - testing and benchmarking purposes",
+          "source": "Classification",
+          "labelType": "Manual",
+          "state": "Confirmed"
+        }
+      ],
+      "usageSummary": {
+        "dailyStats": {
+          "count": 15,
+          "percentileRank": 20
+        },
+        "weeklyStats": {
+          "count": 85,
+          "percentileRank": 25
+        },
+        "monthlyStats": {
+          "count": 320,
+          "percentileRank": 30
+        },
+        "date": "2025-01-07"
+      },
+      "followers": [],
+      "databaseSchema": {
+        "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+        "type": "databaseSchema",
+        "name": "sample_data.ecommerce_db.shopify",
+        "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+      },
+      "sampleData": {
+        "columns": [
+          "product_id",
+          "product_name",
+          "category",
+          "price",
+          "country",
+          "description",
+          "organic",
+          "calories_per_serving",
+          "allergens",
+          "shelf_life_days"
+        ],
+        "rows": [
+          [
+            "FP-001",
+            "Organic Extra Virgin Olive Oil",
+            "Oils & Condiments",
+            "24.99",
+            "Italy",
+            "Cold-pressed olive oil from Tuscany, perfect for salads and cooking. Rich in antioxidants and heart-healthy fats.",
+            true,
+            120,
+            "None",
+            730
+          ],
+          [
+            "FP-002",
+            "Artisan Sourdough Bread",
+            "Bakery",
+            "6.50",
+            "France",
+            "Traditional French sourdough made with organic wheat flour and natural starter culture. Crusty exterior with soft, tangy interior.",
+            true,
+            220,
+            "Gluten, Wheat",
+            3
+          ],
+          [
+            "FP-003",
+            "Aged Parmigiano Reggiano",
+            "Dairy",
+            "18.75",
+            "Italy",
+            "24-month aged Parmigiano Reggiano DOP. Nutty, complex flavor perfect for grating over pasta or enjoying with wine.",
+            false,
+            110,
+            "Dairy, Milk",
+            90
+          ],
+          [
+            "FP-004",
+            "Hawaiian Kona Coffee Beans",
+            "Beverages",
+            "32.00",
+            "USA",
+            "Premium whole bean coffee from the Kona district of Hawaii. Medium roast with smooth, rich flavor and low acidity.",
+            true,
+            5,
+            "None",
+            365
+          ],
+          [
+            "FP-005",
+            "Wild-Caught Alaskan Salmon Fillet",
+            "Proteins",
+            "22.50",
+            "USA",
+            "Fresh wild-caught sockeye salmon, rich in omega-3 fatty acids. Perfect for grilling, baking, or pan-searing.",
+            false,
+            280,
+            "Fish",
+            2
+          ],
+          [
+            "FP-006",
+            "Organic Honeycrisp Apples",
+            "Produce",
+            "4.99",
+            "USA",
+            "Crisp, sweet-tart apples grown organically in Washington State. Great for snacking or baking.",
+            true,
+            95,
+            "None",
+            30
+          ],
+          [
+            "FP-007",
+            "Japanese Matcha Green Tea Powder",
+            "Beverages",
+            "28.00",
+            "Japan",
+            "Ceremonial grade matcha from Uji, Kyoto. Vibrant green color, smooth taste, rich in antioxidants and L-theanine.",
+            true,
+            3,
+            "None",
+            180
+          ],
+          [
+            "FP-008",
+            "Belgian Dark Chocolate (72% Cacao)",
+            "Sweets",
+            "8.95",
+            "Belgium",
+            "Premium dark chocolate made from single-origin Ecuadorian cacao beans. Intense, complex flavor with notes of cherry and espresso.",
+            true,
+            170,
+            "Dairy, Soy",
+            365
+          ],
+          [
+            "FP-009",
+            "Spanish Saffron Threads",
+            "Spices",
+            "45.00",
+            "Spain",
+            "Premium saffron threads from La Mancha region. Adds distinctive flavor and golden color to paella, risotto, and desserts.",
+            false,
+            0,
+            "None",
+            1095
+          ],
+          [
+            "FP-010",
+            "Greek Kalamata Olives",
+            "Oils & Condiments",
+            "7.25",
+            "Greece",
+            "Authentic Kalamata olives cured in red wine vinegar and olive oil. Deep purple color, rich meaty texture, perfect for Mediterranean dishes.",
+            true,
+            90,
+            "None",
+            90
+          ],
+          [
+            "FP-011",
+            "Grass-Fed Ribeye Steak",
+            "Proteins",
+            "28.99",
+            "Australia",
+            "Premium grass-fed beef ribeye, well-marbled for maximum flavor. Raised without antibiotics or hormones.",
+            false,
+            320,
+            "None",
+            7
+          ],
+          [
+            "FP-012",
+            "Thai Jasmine Rice",
+            "Grains",
+            "12.50",
+            "Thailand",
+            "Aromatic long-grain jasmine rice with subtle floral aroma. Fluffy texture, perfect accompaniment to curries and stir-fries.",
+            false,
+            205,
+            "None",
+            730
+          ],
+          [
+            "FP-013",
+            "Vermont Maple Syrup - Grade A",
+            "Sweets",
+            "16.00",
+            "USA",
+            "Pure maple syrup tapped from Vermont sugar maples. Rich amber color, perfect balance of sweet and earthy flavors.",
+            true,
+            52,
+            "None",
+            365
+          ],
+          [
+            "FP-014",
+            "French Champagne Vinegar",
+            "Oils & Condiments",
+            "11.75",
+            "France",
+            "Delicate vinegar made from champagne grapes. Light, crisp acidity perfect for vinaigrettes and marinades.",
+            false,
+            0,
+            "Sulfites",
+            1095
+          ],
+          [
+            "FP-015",
+            "Organic Quinoa Tricolor",
+            "Grains",
+            "9.99",
+            "Peru",
+            "Blend of white, red, and black quinoa varieties. Complete protein source, gluten-free, nutty flavor and fluffy texture.",
+            true,
+            222,
+            "None",
+            730
+          ],
+          [
+            "FP-016",
+            "Italian Balsamic Vinegar of Modena",
+            "Oils & Condiments",
+            "35.00",
+            "Italy",
+            "Traditional balsamic vinegar aged 12 years in wooden barrels. Thick, sweet-tart syrup perfect for drizzling over strawberries or parmesan.",
+            false,
+            20,
+            "Sulfites",
+            3650
+          ],
+          [
+            "FP-017",
+            "Organic Blueberries",
+            "Produce",
+            "5.99",
+            "USA",
+            "Fresh organic blueberries packed with antioxidants. Sweet and tangy, perfect for smoothies, pancakes, or snacking.",
+            true,
+            84,
+            "None",
+            7
+          ],
+          [
+            "FP-018",
+            "Indian Basmati Rice",
+            "Grains",
+            "14.25",
+            "India",
+            "Aged basmati rice with distinctive nutty aroma. Long, slender grains that remain separate when cooked.",
+            false,
+            191,
+            "None",
+            730
+          ],
+          [
+            "FP-019",
+            "Free-Range Chicken Eggs",
+            "Dairy",
+            "6.50",
+            "USA",
+            "Farm-fresh eggs from free-range chickens. Rich orange yolks, superior flavor and nutrition.",
+            true,
+            70,
+            "Eggs",
+            35
+          ],
+          [
+            "FP-020",
+            "Norwegian Smoked Salmon",
+            "Proteins",
+            "19.99",
+            "Norway",
+            "Premium Atlantic salmon cold-smoked over beechwood. Silky texture, delicate smoky flavor, perfect for bagels or canapés.",
+            false,
+            117,
+            "Fish",
+            21
+          ]
+        ]
+      },
+      "customMetrics": [
+        {
+          "name": "CountOfOrganicProducts",
+          "expression": "SELECT COUNT(product_id) FROM openmetadata_table_bench WHERE organic = true"
+        },
+        {
+          "name": "AveragePriceByCategory",
+          "expression": "SELECT category, AVG(price) FROM openmetadata_table_bench GROUP BY category"
+        }
+      ],
+      "sourceUrl": "http://localhost:8080/openmetadata-table-bench",
+      "certification": {
+        "tagLabel": {
+          "tagFQN": "Certification.Bronze",
+          "name": "Bronze",
+          "description": "Bronze certification level for data quality and reliability",
+          "source": "Classification",
+          "labelType": "Manual",
+          "state": "Confirmed"
+        },
+        "appliedDate": 1767799745051,
+        "expiryDate": 1799335745051
       }
     }
   ]

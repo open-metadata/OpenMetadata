@@ -68,7 +68,7 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import calculate_execution_time
-from metadata.utils.filters import filter_by_schema
+from metadata.utils.filters import filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.owner_utils import get_owner_from_config
 from metadata.utils.tag_utils import get_tag_label
@@ -551,9 +551,11 @@ class DatabaseServiceSource(
             )
             if filter_by_schema(
                 self.source_config.databaseFilterPattern,
-                database_fqn
-                if self.source_config.useFqnForFiltering
-                else database_name,
+                (
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else database_name
+                ),
             ):
                 if add_to_status:
                     self.status.filter(database_fqn, "Database Filtered Out")
@@ -579,6 +581,31 @@ class DatabaseServiceSource(
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
             yield schema_fqn if return_fqn else schema_name
+
+    def is_stored_procedure_filtered(self, stored_procedure_name: str) -> bool:
+        """
+        Check if a stored procedure should be filtered based on the filter pattern.
+        """
+        stored_procedure_fqn = fqn.build(
+            self.metadata,
+            entity_type=StoredProcedure,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
+            procedure_name=stored_procedure_name,
+        )
+
+        if filter_by_stored_procedure(
+            getattr(self.source_config, "storedProcedureFilterPattern", None),
+            (
+                stored_procedure_fqn
+                if self.source_config.useFqnForFiltering
+                else stored_procedure_name
+            ),
+        ):
+            logger.debug(f"Stored Procedure {stored_procedure_fqn} filtered out")
+            return True
+        return False
 
     def get_database_owner_ref(
         self, database_name: str

@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
+import i18n from './i18next/LocalUtil';
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replace(/ /g, slugString);
@@ -46,19 +47,19 @@ export const stringToDOMElement = function (strHTML: string): HTMLElement {
 export const ordinalize = (num: number): string => {
   const mod10 = num % 10;
   const mod100 = num % 100;
-  let ordinalSuffix: string;
+  let ordinalSuffixKey: string;
 
   if (mod10 === 1 && mod100 !== 11) {
-    ordinalSuffix = 'st';
+    ordinalSuffixKey = 'ordinal-suffix-st';
   } else if (mod10 === 2 && mod100 !== 12) {
-    ordinalSuffix = 'nd';
+    ordinalSuffixKey = 'ordinal-suffix-nd';
   } else if (mod10 === 3 && mod100 !== 13) {
-    ordinalSuffix = 'rd';
+    ordinalSuffixKey = 'ordinal-suffix-rd';
   } else {
-    ordinalSuffix = 'th';
+    ordinalSuffixKey = 'ordinal-suffix-th';
   }
 
-  return num + ordinalSuffix;
+  return num + i18n.t(`label.${ordinalSuffixKey}`);
 };
 
 export const getJSONFromString = (data: string): string | null => {
@@ -326,3 +327,34 @@ export const jsonToCSV = <T extends JSONRecord>(
   // Combine all CSV rows and add newline character to form final CSV string
   return csvRows.join('\n');
 };
+
+/**
+ * Removes file-attachment <div> elements that do not have a valid data-url attribute.
+ *
+ * This utility parses the provided HTML string, finds all div elements with
+ * `data-type="file-attachment"`, and removes those where `data-url` is missing
+ * or empty.
+ *
+ * @param htmlString - HTML content as a string
+ * @returns A cleaned HTML string with invalid file-attachment divs removed
+ */
+export function removeAttachmentsWithoutUrl(htmlString: string): string {
+  if (!htmlString.includes('data-type="file-attachment"')) {
+    return htmlString;
+  }
+
+  const parser = new DOMParser();
+  const doc: Document = parser.parseFromString(htmlString, 'text/html');
+
+  const attachments: NodeListOf<HTMLDivElement> =
+    doc.querySelectorAll<HTMLDivElement>('div[data-type="file-attachment"]');
+
+  attachments.forEach((div: HTMLDivElement) => {
+    const url: string | null = div.getAttribute('data-url');
+    if (!url) {
+      div.remove();
+    }
+  });
+
+  return doc.body.innerHTML;
+}

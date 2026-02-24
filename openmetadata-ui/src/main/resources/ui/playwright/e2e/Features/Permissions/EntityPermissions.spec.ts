@@ -76,7 +76,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
   const entityType = entity.getType();
 
   test.describe(`${entityType} Permissions`, () => {
-    const customPropertyName = `pw${entityType}CustomProperty${uuid()}`;
+    const customPropertyName = `pw${entityType.replace(/\s+/g, '')}CustomProperty${uuid()}`;
 
     test.beforeAll('Setup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);

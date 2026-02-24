@@ -33,6 +33,7 @@ export const DataProductsSelectListV1 = ({
   popoverProps,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
   fetchOptions,
+  multiSelect = true,
 }: DataProductsSelectListV1Props) => {
   const { t } = useTranslation();
 
@@ -89,6 +90,7 @@ export const DataProductsSelectListV1 = ({
     <EntitySelectableList
       config={config}
       listHeight={listHeight}
+      multiSelect={multiSelect}
       popoverProps={popoverProps}
       selectedItems={selectedDataProducts}
       onCancel={onCancel}

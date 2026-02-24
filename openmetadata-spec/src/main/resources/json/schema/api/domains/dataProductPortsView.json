@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/api/domains/dataProductPortsView.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataProductPortsView",
+  "description": "Combined view of input and output ports for a data product, optimized for lineage-like visualization with independent pagination for each port type. Returns full entity details for each port.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.domains.DataProductPortsView",
+  "definitions": {
+    "paginatedEntities": {
+      "type": "object",
+      "description": "A paginated list of full entity objects with total count",
+      "javaType": "org.openmetadata.schema.api.domains.PaginatedEntities",
+      "properties": {
+        "data": {
+          "description": "List of full entity objects in the current page",
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "default": []
+        },
+        "paging": {
+          "description": "Pagination information including offset and total count",
+          "$ref": "../../type/paging.json"
+        }
+      },
+      "required": ["data", "paging"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "entity": {
+      "description": "Reference to the data product entity",
+      "$ref": "../../type/entityReference.json"
+    },
+    "inputPorts": {
+      "description": "Paginated list of input ports - full entity details of data assets consumed by this data product",
+      "$ref": "#/definitions/paginatedEntities"
+    },
+    "outputPorts": {
+      "description": "Paginated list of output ports - full entity details of data assets produced/exposed by this data product",
+      "$ref": "#/definitions/paginatedEntities"
+    }
+  },
+  "required": ["entity", "inputPorts", "outputPorts"],
+  "additionalProperties": false
+}

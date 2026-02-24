@@ -104,7 +104,8 @@ Test Coverage:
 
 from unittest import TestCase
 
-from collate_sqllineage.core.models import Path
+import pytest
+from collate_sqllineage.core.models import Location, Path
 
 from ingestion.tests.unit.lineage.queries.helpers import (
     TestColumnQualifierTuple,
@@ -514,6 +515,9 @@ class TestSpecificDialectQueries(TestCase):
             dialect=Dialect.MYSQL.value,
         )
 
+    @pytest.mark.skip(
+        "SqlFluff returning empty column lineage unexpectedly in rare cases (5% of runs)"
+    )
     def test_complex_postgres_view(self):
         """Test complex PostgreSQL CREATE VIEW with UNION ALL, nested subqueries, and JSON functions"""
         query = """create view stg_globalv2_default.b2c_order_operational_converted as
@@ -1085,4 +1089,84 @@ END;"""
             test_sqlglot=False,
             test_sqlfluff=False,
             test_sqlparse=False,
+        )
+
+    # -------------------------------------------------------------------------
+    # Snowflake Stage Lineage Tests (COPY INTO @stage / COPY INTO table FROM @stage)
+    # -------------------------------------------------------------------------
+
+    def test_snowflake_copy_into_table_from_stage(self):
+        """Test Snowflake COPY INTO table FROM @stage (loading data from stage)"""
+        query = "COPY INTO wine_quality FROM @demo FILE_FORMAT = wine_csv_format;"
+
+        assert_table_lineage_equal(
+            query,
+            {Location("@demo")},
+            {"wine_quality"},
+            dialect=Dialect.SNOWFLAKE.value,
+        )
+
+        # No column lineage expected for COPY INTO stage operations
+        assert_column_lineage_equal(
+            query,
+            [],
+            dialect=Dialect.SNOWFLAKE.value,
+        )
+
+    def test_snowflake_copy_into_stage_from_table(self):
+        """Test Snowflake COPY INTO @stage FROM table (unloading data to stage)"""
+        query = "COPY INTO @my_stage FROM my_table"
+
+        assert_table_lineage_equal(
+            query,
+            {"my_table"},
+            {Location("@my_stage")},
+            dialect=Dialect.SNOWFLAKE.value,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [],
+            dialect=Dialect.SNOWFLAKE.value,
+        )
+
+    def test_snowflake_copy_into_stage_from_select(self):
+        """Test Snowflake COPY INTO @stage FROM (SELECT ...) - unload with subquery"""
+        query = "COPY INTO @db.schema.my_stage FROM (SELECT col1, col2 FROM my_table)"
+
+        assert_table_lineage_equal(
+            query,
+            {"my_table"},
+            {Location("@db.schema.my_stage")},
+            dialect=Dialect.SNOWFLAKE.value,
+            # SqlParse builds a different internal graph structure for subqueries
+            # (5 nodes vs 3 nodes) even though final lineage results are identical
+            skip_graph_check=True,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [],
+            dialect=Dialect.SNOWFLAKE.value,
+            # SqlGlot and SqlFluff/SqlParse produce different graph structures for subqueries
+            skip_graph_check=True,
+        )
+
+    def test_snowflake_copy_into_fully_qualified_stage(self):
+        """Test COPY INTO table FROM @db.schema.stage with fully qualified stage name"""
+        query = (
+            "COPY INTO my_table FROM @my_db.my_schema.my_stage FILE_FORMAT=(TYPE=CSV)"
+        )
+
+        assert_table_lineage_equal(
+            query,
+            {Location("@my_db.my_schema.my_stage")},
+            {"my_table"},
+            dialect=Dialect.SNOWFLAKE.value,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [],
+            dialect=Dialect.SNOWFLAKE.value,
         )

@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore" schemaVersion="2.3" id="CV_STAR_JOIN2_INPUT_NAME" applyPrivilegeType="SQL_ANALYTIC_PRIVILEGE" defaultClient="$$client$$" defaultLanguage="$$language$$" hierarchiesSQLEnabled="false" translationRelevant="true" visibility="reportingEnabled" calculationScenarioType="TREE_BASED" dataCategory="CUBE" enforceSqlExecution="false" executionSemantic="UNDEFINED">
+  <origin/>
+  <descriptions defaultDescription="CV_STAR_JOIN2_label"/>
+  <metadata changedAt="2026-01-07 16:36:16.209"/>
+  <localVariables/>
+  <variableMappings/>
+  <informationModelLayout relativeWidthScenario="35"/>
+  <dataSources>
+    <DataSource id="CV_DEV_SALES" type="CALCULATION_VIEW">
+      <viewAttributes allViewAttributes="true"/>
+      <resourceUri>/my-package/calculationviews/CV_DEV_SALES</resourceUri>
+    </DataSource>
+    <DataSource id="CV_ORDERS" type="CALCULATION_VIEW">
+      <viewAttributes allViewAttributes="true"/>
+      <resourceUri>/my-package/calculationviews/CV_ORDERS</resourceUri>
+    </DataSource>
+    <DataSource id="CV_ORDER_DIM" type="CALCULATION_VIEW">
+      <viewAttributes allViewAttributes="true"/>
+      <resourceUri>/my-package/calculationviews/CV_ORDER_DIM</resourceUri>
+    </DataSource>
+    <DataSource id="CV_SALESOVERVIEW" type="CALCULATION_VIEW">
+      <viewAttributes allViewAttributes="true"/>
+      <resourceUri>/my-package/calculationviews/CV_SALESOVERVIEW</resourceUri>
+    </DataSource>
+    <DataSource id="CV_SALESOVERVIEW_1" type="CALCULATION_VIEW">
+      <viewAttributes allViewAttributes="true"/>
+      <resourceUri>/my-package/calculationviews/CV_SALESOVERVIEW</resourceUri>
+    </DataSource>
+    <DataSource id="CV_BASE" type="CALCULATION_VIEW">
+      <viewAttributes allViewAttributes="true"/>
+      <resourceUri>/my-package/calculationviews/CV_BASE</resourceUri>
+    </DataSource>
+  </dataSources>
+  <calculationViews>
+    <calculationView xsi:type="Calculation:ProjectionView" id="Projection_3">
+      <descriptions/>
+      <viewAttributes>
+        <viewAttribute id="AMOUNT"/>
+        <viewAttribute id="PRODUCT"/>
+        <viewAttribute id="ID"/>
+      </viewAttributes>
+      <calculatedViewAttributes>
+        <calculatedViewAttribute datatype="VARCHAR" id="TOTAL_PROJ_3" length="256" expressionLanguage="COLUMN_ENGINE">
+          <formula>string(&quot;AMOUNT&quot;) + ' , ' +  &quot;PRODUCT&quot;</formula>
+        </calculatedViewAttribute>
+      </calculatedViewAttributes>
+      <input node="#CV_DEV_SALES">
+        <mapping xsi:type="Calculation:AttributeMapping" target="AMOUNT" source="AMOUNT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRODUCT" source="PRODUCT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="ID" source="ID"/>
+      </input>
+    </calculationView>
+    <calculationView xsi:type="Calculation:ProjectionView" id="Projection_1">
+      <descriptions/>
+      <viewAttributes>
+        <viewAttribute id="ORDER_ID"/>
+        <viewAttribute id="CUSTOMER_ID"/>
+        <viewAttribute id="QUANTITY"/>
+        <viewAttribute id="PRICE"/>
+        <viewAttribute id="TOTAL_AMOUNT"/>
+      </viewAttributes>
+      <calculatedViewAttributes>
+        <calculatedViewAttribute datatype="DECIMAL" id="TOTAL_PROJ_1" length="34" scale="2" expressionLanguage="COLUMN_ENGINE">
+          <formula>&quot;PRICE&quot; *  &quot;QUANTITY&quot;</formula>
+        </calculatedViewAttribute>
+      </calculatedViewAttributes>
+      <input node="#CV_ORDERS">
+        <mapping xsi:type="Calculation:AttributeMapping" target="ORDER_ID" source="ORDER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CUSTOMER_ID" source="CUSTOMER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="QUANTITY" source="QUANTITY"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRICE" source="PRICE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL_AMOUNT" source="TOTAL_AMOUNT"/>
+      </input>
+    </calculationView>
+    <calculationView xsi:type="Calculation:UnionView" id="Union_1">
+      <descriptions/>
+      <viewAttributes>
+        <viewAttribute id="ORDER_ID" transparentFilter="false"/>
+        <viewAttribute id="CUSTOMER_ID" transparentFilter="false"/>
+        <viewAttribute id="QUANTITY" transparentFilter="false"/>
+        <viewAttribute id="PRICE" transparentFilter="false"/>
+        <viewAttribute id="TOTAL_AMOUNT" transparentFilter="false"/>
+        <viewAttribute id="TOTAL_PROJ_1" transparentFilter="false"/>
+        <viewAttribute id="AMOUNT" transparentFilter="false"/>
+        <viewAttribute id="PRODUCT" transparentFilter="false"/>
+        <viewAttribute id="ID" transparentFilter="false"/>
+        <viewAttribute id="TOTAL_PROJ_3" transparentFilter="false"/>
+        <viewAttribute id="YEARS_WITH_COMPANY" transparentFilter="false"/>
+        <viewAttribute id="NAME" transparentFilter="false"/>
+        <viewAttribute id="CUSTOMER_ID_1" transparentFilter="false"/>
+        <viewAttribute id="EMAIL" transparentFilter="false"/>
+      </viewAttributes>
+      <calculatedViewAttributes/>
+      <input emptyUnionBehavior="NO_ROW" node="#Projection_3">
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="ORDER_ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="CUSTOMER_ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="QUANTITY" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="PRICE" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_AMOUNT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_PROJ_1" null="true" value=""/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="AMOUNT" source="AMOUNT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRODUCT" source="PRODUCT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="ID" source="ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL_PROJ_3" source="TOTAL_PROJ_3"/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="YEARS_WITH_COMPANY" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="NAME" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="CUSTOMER_ID_1" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="EMAIL" null="true" value=""/>
+      </input>
+      <input emptyUnionBehavior="NO_ROW" node="#Projection_1">
+        <mapping xsi:type="Calculation:AttributeMapping" target="ORDER_ID" source="ORDER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CUSTOMER_ID" source="CUSTOMER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="QUANTITY" source="QUANTITY"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRICE" source="PRICE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL_AMOUNT" source="TOTAL_AMOUNT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL_PROJ_1" source="TOTAL_PROJ_1"/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="AMOUNT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="PRODUCT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_PROJ_3" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="YEARS_WITH_COMPANY" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="NAME" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="CUSTOMER_ID_1" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="EMAIL" null="true" value=""/>
+      </input>
+      <input emptyUnionBehavior="NO_ROW" node="#CV_ORDER_DIM">
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="ORDER_ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="CUSTOMER_ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="QUANTITY" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="PRICE" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_AMOUNT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_PROJ_1" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="AMOUNT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="PRODUCT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_PROJ_3" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="YEARS_WITH_COMPANY" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="NAME" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="CUSTOMER_ID_1" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="EMAIL" null="true" value=""/>
+      </input>
+      <input emptyUnionBehavior="NO_ROW" node="#CV_SALESOVERVIEW">
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="ORDER_ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="CUSTOMER_ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="QUANTITY" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="PRICE" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_AMOUNT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_PROJ_1" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="AMOUNT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="PRODUCT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_PROJ_3" null="true" value=""/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="YEARS_WITH_COMPANY" source="YEARS_WITH_COMPANY"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="NAME" source="NAME"/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="CUSTOMER_ID_1" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="EMAIL" null="true" value=""/>
+      </input>
+      <input emptyUnionBehavior="NO_ROW" node="#CV_SALESOVERVIEW_1">
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="ORDER_ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="CUSTOMER_ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="QUANTITY" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="PRICE" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_AMOUNT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_PROJ_1" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="AMOUNT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="PRODUCT" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="ID" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="TOTAL_PROJ_3" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="YEARS_WITH_COMPANY" null="true" value=""/>
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="NAME" null="true" value=""/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CUSTOMER_ID_1" source="CUSTOMER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="EMAIL" source="EMAIL"/>
+      </input>
+    </calculationView>
+    <calculationView xsi:type="Calculation:JoinView" id="Join_1" joinOrder="OUTSIDE_IN">
+      <descriptions/>
+      <viewAttributes>
+        <viewAttribute id="CUSTOMER_ID_1" transparentFilter="false"/>
+        <viewAttribute id="QUANTITY" transparentFilter="false"/>
+        <viewAttribute id="PRICE" transparentFilter="false"/>
+        <viewAttribute id="TOTAL_AMOUNT" transparentFilter="false"/>
+        <viewAttribute id="TOTAL_PROJ_1" transparentFilter="false"/>
+        <viewAttribute id="AMOUNT" transparentFilter="false"/>
+        <viewAttribute id="PRODUCT" transparentFilter="false"/>
+        <viewAttribute id="ID" transparentFilter="false"/>
+        <viewAttribute id="TOTAL_PROJ_3" transparentFilter="false"/>
+        <viewAttribute id="YEARS_WITH_COMPANY" transparentFilter="false"/>
+        <viewAttribute id="NAME" transparentFilter="false"/>
+        <viewAttribute id="CUSTOMER_ID_1_1" transparentFilter="false"/>
+        <viewAttribute id="ORDER_ID" transparentFilter="false"/>
+        <viewAttribute id="PRICE_1"/>
+        <viewAttribute id="QUANTITY_1"/>
+        <viewAttribute id="ORDER_ID_1"/>
+        <viewAttribute id="CUSTOMER_ID"/>
+        <viewAttribute id="EMAIL" transparentFilter="false"/>
+      </viewAttributes>
+      <calculatedViewAttributes>
+        <calculatedViewAttribute datatype="DECIMAL" id="TOTAL_JOIN_1" length="34" expressionLanguage="COLUMN_ENGINE">
+          <formula>&quot;PRICE&quot; * &quot;QUANTITY&quot;</formula>
+        </calculatedViewAttribute>
+        <calculatedViewAttribute datatype="VARCHAR" id="TOTAL2_JOIN_1" length="256" expressionLanguage="COLUMN_ENGINE">
+          <formula>string(&quot;AMOUNT&quot;) + ' , ' + &quot;PRODUCT&quot;</formula>
+        </calculatedViewAttribute>
+        <calculatedViewAttribute datatype="VARCHAR" id="RENAMED_UNION_1_COLUMN" length="2560" expressionLanguage="COLUMN_ENGINE">
+          <formula>string(&quot;CUSTOMER_ID_1&quot;) + ' ' + string(&quot;CUSTOMER_ID_1_1&quot;) + ' ' + string(&quot;YEARS_WITH_COMPANY&quot;) + ' ' + &quot;EMAIL&quot; + ' ' + string(&quot;ORDER_ID_1&quot;)</formula>
+        </calculatedViewAttribute>
+      </calculatedViewAttributes>
+      <input node="#Union_1">
+        <mapping xsi:type="Calculation:AttributeMapping" target="CUSTOMER_ID_1" source="CUSTOMER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="QUANTITY" source="QUANTITY"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRICE" source="PRICE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL_AMOUNT" source="TOTAL_AMOUNT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL_PROJ_1" source="TOTAL_PROJ_1"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="AMOUNT" source="AMOUNT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRODUCT" source="PRODUCT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="ID" source="ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL_PROJ_3" source="TOTAL_PROJ_3"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="YEARS_WITH_COMPANY" source="YEARS_WITH_COMPANY"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="NAME" source="NAME"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CUSTOMER_ID_1_1" source="CUSTOMER_ID_1"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="ORDER_ID" source="ORDER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="EMAIL" source="EMAIL"/>
+      </input>
+      <input node="#CV_BASE">
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRICE_1" source="PRICE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="QUANTITY_1" source="QUANTITY"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="ORDER_ID_1" source="ORDER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CUSTOMER_ID" source="CUSTOMER_ID"/>
+      </input>
+    </calculationView>
+  </calculationViews>
+  <logicalModel id="Join_1">
+    <descriptions/>
+    <attributes>
+      <attribute id="TOTAL_AMOUNT" order="4" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="TOTAL_AMOUNT_label"/>
+        <keyMapping columnObjectName="Join_1" columnName="TOTAL_AMOUNT"/>
+      </attribute>
+      <attribute id="PRODUCT" order="7" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="PRODUCT"/>
+        <keyMapping columnObjectName="Join_1" columnName="PRODUCT"/>
+      </attribute>
+      <attribute id="TOTAL_PROJ_3" order="9" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="TOTAL_PROJ_3"/>
+        <keyMapping columnObjectName="Join_1" columnName="TOTAL_PROJ_3"/>
+      </attribute>
+      <attribute id="TOTAL2_JOIN_1" order="11" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="TOTAL2_JOIN_1"/>
+        <keyMapping columnObjectName="Join_1" columnName="TOTAL2_JOIN_1"/>
+      </attribute>
+      <attribute id="NAME" order="13" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="NAME"/>
+        <keyMapping columnObjectName="Join_1" columnName="NAME"/>
+      </attribute>
+      <attribute id="RENAMED_UNION_1_COLUMN" order="15" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="RENAMED_UNION_1_COLUMN"/>
+        <keyMapping columnObjectName="Join_1" columnName="RENAMED_UNION_1_COLUMN"/>
+      </attribute>
+      <attribute id="EMAIL_1" order="22" attributeHierarchyActive="false" displayAttribute="false" transparentFilter="false">
+        <descriptions defaultDescription="EMAIL"/>
+        <keyMapping columnObjectName="Join_1" columnName="EMAIL"/>
+      </attribute>
+      <attribute id="ORDER_ID_1$local">
+        <descriptions defaultDescription="ORDER_ID"/>
+        <keyMapping columnObjectName="Join_1" columnName="ORDER_ID_1"/>
+      </attribute>
+    </attributes>
+    <calculatedAttributes>
+      <calculatedAttribute id="EMAIL" hidden="false" order="21" semanticType="empty" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="EMAIL"/>
+        <keyCalculation datatype="VARCHAR" expressionLanguage="COLUMN_ENGINE" length="256">
+          <formula>if(isnull(&quot;EMAIL_1&quot;), &quot;EMAIL_1&quot;, 'example-default@myemail.com')</formula>
+        </keyCalculation>
+      </calculatedAttribute>
+    </calculatedAttributes>
+    <privateDataFoundation>
+      <tableProxies/>
+      <joins/>
+      <layout>
+        <shapes/>
+      </layout>
+    </privateDataFoundation>
+    <baseMeasures>
+      <measure id="CUSTOMER_ID_1_1" order="1" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="CUSTOMER_ID"/>
+        <measureMapping columnObjectName="Join_1" columnName="CUSTOMER_ID_1"/>
+      </measure>
+      <measure id="QUANTITY_1" order="2" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="QUANTITY"/>
+        <measureMapping columnObjectName="Join_1" columnName="QUANTITY"/>
+      </measure>
+      <measure id="PRICE_1" order="3" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="PRICE"/>
+        <measureMapping columnObjectName="Join_1" columnName="PRICE"/>
+      </measure>
+      <measure id="TOTAL_PROJ_1" order="5" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="TOTAL_PROJ_1"/>
+        <measureMapping columnObjectName="Join_1" columnName="TOTAL_PROJ_1"/>
+      </measure>
+      <measure id="AMOUNT" order="6" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="AMOUNT"/>
+        <measureMapping columnObjectName="Join_1" columnName="AMOUNT"/>
+      </measure>
+      <measure id="ID" order="8" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="ID"/>
+        <measureMapping columnObjectName="Join_1" columnName="ID"/>
+      </measure>
+      <measure id="TOTAL_JOIN_1" order="10" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="TOTAL_JOIN_1"/>
+        <measureMapping columnObjectName="Join_1" columnName="TOTAL_JOIN_1"/>
+      </measure>
+      <measure id="YEARS_WITH_COMPANY" order="12" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="YEARS_WITH_COMPANY"/>
+        <measureMapping columnObjectName="Join_1" columnName="YEARS_WITH_COMPANY"/>
+      </measure>
+      <measure id="CUSTOMER_ID_1_1_1" order="14" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="CUSTOMER_ID"/>
+        <measureMapping columnObjectName="Join_1" columnName="CUSTOMER_ID_1_1"/>
+      </measure>
+      <measure id="QUANTITY_1_1" order="16" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="QUANTITY"/>
+        <measureMapping columnObjectName="Join_1" columnName="QUANTITY_1"/>
+      </measure>
+      <measure id="ORDER_ID_1" order="17" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="ORDER_ID"/>
+        <measureMapping columnObjectName="Join_1" columnName="ORDER_ID"/>
+      </measure>
+      <measure id="PRICE_1_1" order="18" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="PRICE"/>
+        <measureMapping columnObjectName="Join_1" columnName="PRICE_1"/>
+      </measure>
+      <measure id="ORDER_ID_1_1" order="19" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="ORDER_ID"/>
+        <measureMapping columnObjectName="Join_1" columnName="ORDER_ID_1"/>
+      </measure>
+      <measure id="CUSTOMER_ID_1" order="20" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="CUSTOMER_ID"/>
+        <measureMapping columnObjectName="Join_1" columnName="CUSTOMER_ID"/>
+      </measure>
+    </baseMeasures>
+    <calculatedMeasures/>
+    <restrictedMeasures/>
+    <localDimensions/>
+    <sharedDimensions>
+      <logicalJoin associatedObjectUri="/my-package/calculationviews/CV_ORDER_DIM">
+        <attributes>
+          <attributeRef>#ORDER_ID_1$local</attributeRef>
+        </attributes>
+        <associatedAttributeNames>
+          <attributeName>ORDER_ID</attributeName>
+        </associatedAttributeNames>
+        <properties joinOperator="Equal" joinType="referential"/>
+        <associatedAttributeFeatures/>
+      </logicalJoin>
+    </sharedDimensions>
+  </logicalModel>
+  <layout>
+    <shapes>
+      <shape expanded="true" modelObjectName="Output" modelObjectNameSpace="MeasureGroup">
+        <upperLeftCorner x="40" y="85"/>
+        <rectangleSize height="0" width="0"/>
+      </shape>
+      <shape expanded="true" modelObjectName="Projection_3" modelObjectNameSpace="CalculationView">
+        <upperLeftCorner x="200" y="490"/>
+        <rectangleSize height="-1" width="-1"/>
+      </shape>
+      <shape expanded="true" modelObjectName="Projection_1" modelObjectNameSpace="CalculationView">
+        <upperLeftCorner x="30" y="500"/>
+        <rectangleSize height="-1" width="-1"/>
+      </shape>
+      <shape expanded="true" modelObjectName="Union_1" modelObjectNameSpace="CalculationView">
+        <upperLeftCorner x="30" y="297"/>
+        <rectangleSize height="-1" width="-1"/>
+      </shape>
+      <shape expanded="true" modelObjectName="Join_1" modelObjectNameSpace="CalculationView">
+        <upperLeftCorner x="30" y="200"/>
+        <rectangleSize height="-1" width="-1"/>
+      </shape>
+      <shape modelObjectName="Join_1" modelObjectNameSpace="StarJoinViewNodeInput" modelObjectType="repository">
+        <upperLeftCorner x="457" y="38"/>
+      </shape>
+      <shape modelObjectName="/my-package/calculationviews/CV_ORDER_DIM" modelObjectNameSpace="StarJoinViewNodeSharedCV" modelObjectType="repository">
+        <upperLeftCorner x="105" y="172"/>
+      </shape>
+    </shapes>
+  </layout>
+</Calculation:scenario>

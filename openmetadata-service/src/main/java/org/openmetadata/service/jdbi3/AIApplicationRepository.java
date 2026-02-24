@@ -19,6 +19,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.AIApplicationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 @Repository
@@ -38,7 +39,8 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
   }
 
   @Override
-  public void setFields(AIApplication aiApplication, Fields fields) {
+  public void setFields(
+      AIApplication aiApplication, Fields fields, RelationIncludes relationIncludes) {
     // No additional fields to set beyond base entity fields
   }
 

@@ -306,6 +306,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
       <ResizableLeftPanels
+        showLearningIcon
         className="content-height-with-resizable-panel"
         firstPanel={{
           className: 'content-resizable-panel-container',
@@ -470,6 +471,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         },
                         ['description', 'displayName']
                       )}
+                      key={
+                        entityDetails.entityType +
+                        '-' +
+                        entityDetails.fullyQualifiedName
+                      }
                       panelPath="explore"
                     />
                   </Col>

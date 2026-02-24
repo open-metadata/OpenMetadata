@@ -124,14 +124,20 @@ def pretty_print_time_duration(duration: Union[int, float]) -> str:
     duration = duration - hours * 3600
     minutes = divmod(duration, 60)[0]
     duration = duration - minutes * 60
-    seconds = round(divmod(duration, 60)[1], 2)
+    seconds = divmod(duration, 1)[0]
+    duration = duration - seconds
+    milliseconds = duration * 1000
+
+    # Format with proper zero-padding for alignment when part of larger time units
     if days:
-        return f"{days}day(s) {hours}h {minutes}m {seconds}s"
+        return f"{int(days)}day(s) {int(hours):02d}h {int(minutes):02d}m {int(seconds):02d}s {milliseconds:07.3f}ms"
     if hours:
-        return f"{hours}h {minutes}m {seconds}s"
+        return f"{int(hours)}h {int(minutes):02d}m {int(seconds):02d}s {milliseconds:07.3f}ms"
     if minutes:
-        return f"{minutes}m {seconds}s"
-    return f"{seconds}s"
+        return f"{int(minutes)}m {int(seconds):02d}s {milliseconds:07.3f}ms"
+    if seconds:
+        return f"{int(seconds)}s {milliseconds:07.3f}ms"
+    return f"{milliseconds:.3f}ms"
 
 
 def get_start_and_end(duration: int = 0) -> Tuple[datetime, datetime]:
@@ -438,17 +444,37 @@ def is_safe_sql_query(sql_query: str) -> bool:
         "ROLLBACK",
         "SAVEPOINT",
         "SET TRANSACTION",
+        "INTO OUTFILE",
+        "INTO DUMPFILE",
+        "LOAD_FILE",
+        "COPY",
+        "PG_READ_FILE",
+        "PG_WRITE_FILE",
+        "PG_READ_BINARY_FILE",
+        "LO_IMPORT",
+        "LO_EXPORT",
+        "LO_FROM_BYTEA",
+        "LO_GET",
+        "EXEC",
+        "EXECUTE",
+        "XP_CMDSHELL",
+        "XP_REGREAD",
+        "XP_REGWRITE",
+        "XP_SERVICECONTROL",
+        "SP_OACREATE",
+        "SP_OAMETHOD",
     }
 
     if sql_query is None:
         return True
 
     parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)
+    # We split the tokens by "(" to capture cases like "INSERT(...)", "UPDATE(...), etc."
     for parsed_query in parsed_queries:
-        validation = [
-            token.normalized in forbiden_token for token in parsed_query.tokens
-        ]
-        if any(validation):
+        if any(
+            token.normalized.upper().split("(")[0] in forbiden_token
+            for token in parsed_query.tokens
+        ):
             return False
     return True
 

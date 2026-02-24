@@ -20,6 +20,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.reports.ReportResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class ReportRepository extends EntityRepository<Report> {
@@ -34,7 +35,7 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public void setFields(Report report, Fields fields) {
+  public void setFields(Report report, Fields fields, RelationIncludes relationIncludes) {
     report.setService(getService(report)); // service is a default field
     if (report.getUsageSummary() == null) {
       report.withUsageSummary(

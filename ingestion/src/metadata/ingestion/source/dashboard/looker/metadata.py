@@ -1231,6 +1231,7 @@ class LookerSource(DashboardServiceSource):
                 f"create view {view_name} as {sql_query}",
                 self._get_db_dialect(db_service_name),
                 timeout_seconds=30,
+                parser_type=self.get_query_parser_type(),
             )
             if lineage_parser.source_tables:
                 self._parsed_views[view_name] = sql_query

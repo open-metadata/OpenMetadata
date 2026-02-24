@@ -663,14 +663,14 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
     TestUtils.delete(getResource("tables/" + tableId), Table.class, ADMIN_AUTH_HEADERS);
     System.out.println("✓ Soft-deleted dedicated test table");
 
-    // Step 3: Search with include_deleted=true should return deleted table with deleted=true
+    // Step 3: Search with includeDeleted=true should return deleted table with deleted=true
     Map<String, Object> searchWithDeleted =
         createSearchToolCallWithDeletedParam(deletionTestTableName, 5, Entity.TABLE, true);
     JsonNode deletedResult = executeToolCall(searchWithDeleted);
     validateDeletedFieldPresence(deletedResult, true);
-    System.out.println("✓ Deleted table has deleted=true when include_deleted=true");
+    System.out.println("✓ Deleted table has deleted=true when includeDeleted=true");
 
-    // Step 4: Search without include_deleted should exclude deleted entities
+    // Step 4: Search without includeDeleted should exclude deleted entities
     Map<String, Object> searchDefault =
         McpTestUtils.createSearchMetadataToolCall(deletionTestTableName, 5, Entity.TABLE);
     JsonNode defaultResult = executeToolCall(searchDefault);
@@ -680,14 +680,14 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
     System.out.println("✓ deleted field correctly included in all search responses");
   }
 
-  // Helper: Create search call with include_deleted parameter
+  // Helper: Create search call with includeDeleted parameter
   private Map<String, Object> createSearchToolCallWithDeletedParam(
       String query, int limit, String entityType, boolean includeDeleted) {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("query", query);
     arguments.put("limit", limit);
-    arguments.put("entity_type", entityType);
-    arguments.put("include_deleted", includeDeleted);
+    arguments.put("entityType", entityType);
+    arguments.put("includeDeleted", includeDeleted);
     arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
 
     return McpTestUtils.createToolCallRequest("search_metadata", arguments);

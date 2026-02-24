@@ -41,6 +41,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.domains.CreateDomain;
@@ -2639,5 +2640,66 @@ public class EventSubscriptionResourceTest
     validParams.put("alertType", "Observability");
     ResultList<EventSubscription> validResults = listEntities(validParams, ADMIN_AUTH_HEADERS);
     assertNotNull(validResults, "Valid alertType should work correctly");
+  }
+
+  @Test
+  void post_createWithNullDestinationConfig_400() {
+    CreateEventSubscription request = createRequest("nullConfig");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Destination configuration is required for Email type");
+  }
+
+  @Test
+  void post_createWithEmptyEmailReceivers_400() {
+    CreateEventSubscription request = createRequest("emptyReceivers");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    destination.setConfig(new EmailAlertConfig());
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Email destination requires at least one email address in 'receivers'");
+  }
+
+  @Test
+  void post_createWithInvalidEmailFormat_400() {
+    CreateEventSubscription request = createRequest("invalidEmail");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    EmailAlertConfig emailConfig =
+        new EmailAlertConfig().withReceivers(new HashSet<>(List.of("invalid-email")));
+    destination.setConfig(emailConfig);
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid email format: 'invalid-email'");
+  }
+
+  @Test
+  void post_createWithMissingWebhookEndpoint_400() {
+    CreateEventSubscription request = createRequest("missingEndpoint");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.WEBHOOK);
+    destination.setConfig(new Webhook());
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Webhook destination requires an 'endpoint' URL");
   }
 }

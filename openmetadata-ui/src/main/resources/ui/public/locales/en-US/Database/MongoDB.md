@@ -36,6 +36,11 @@ In the case of MongoDB, we won't have a Database as such. If you'd like to see y
 $$
 
 $$section
+### Database Schema $(id="databaseSchema")
+This is an optional parameter. When set, the value will be used to restrict the metadata reading to a single database (corresponding to the value passed in this field). When left blank, OpenMetadata will scan all the databases.
+$$
+
+$$section
 ### Connection Options $(id="connectionOptions")
 Additional connection options to build the URL that can be sent to service during the connection. The connectionOptions parameter is specific to the connection method being used. For example, if you are using SSL encryption, you might set the connectionOptions parameter to {'ssl': 'true', 'sslTrustStore': '/path/to/truststore'}.
 $$

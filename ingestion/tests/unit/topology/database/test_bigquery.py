@@ -18,7 +18,7 @@ import types
 from copy import deepcopy
 from typing import Dict
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from sqlalchemy import Integer, String
 
@@ -51,6 +51,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
@@ -462,23 +463,11 @@ class BigqueryUnitTest(TestCase):
             either.right for either in self.bq_source.yield_database(MOCK_DB_NAME)
         ]
 
-    def test_yield_database_schema(self):
-        def schema_comment_query(query: str):
-            if query.strip().startswith(
-                "SELECT option_value as schema_description FROM"
-            ):
-                result = Mock()
-                mock_result = Mock()
-                mock_result.schema_description = (
-                    '"Some description with it\'s own\\nnew line"'
-                )
-                result.result.return_value = [mock_result]
-                return result
-            else:
-                raise NotImplementedError
-
-        self.bq_source.client.query = schema_comment_query
-
+    @patch(
+        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_schema_description"
+    )
+    def test_yield_database_schema(self, get_schema_description):
+        get_schema_description.return_value = "Some description with it's own\nnew line"
         assert EXPTECTED_DATABASE_SCHEMA == [
             either.right
             for either in self.bq_source.yield_database_schema(
@@ -521,14 +510,10 @@ class BigqueryUnitTest(TestCase):
                     table[0]
                 ]  # pylint: disable=cell-var-from-loop
             )
-            self.bq_source.inspector.get_columns = (
-                lambda table_name, schema, table_type, db_name: MOCK_COLUMN_DATA[
-                    i
-                ]  # pylint: disable=cell-var-from-loop
-            )
-            self.bq_source.inspector.get_table_ddl = (
-                lambda table_name, schema, db_name: None  # pylint: disable=cell-var-from-loop
-            )
+            self.bq_source._get_columns_internal = lambda schema_name, table_name, db_name, inspector, table_type,: MOCK_COLUMN_DATA[
+                i
+            ]  # pylint: disable=cell-var-from-loop
+
             self.bq_source.inspector.get_table_comment = lambda table_name, schema: {
                 "text": table[2]
             }  # pylint: disable=cell-var-from-loop
@@ -541,6 +526,82 @@ class BigqueryUnitTest(TestCase):
                 either.right
                 for either in self.bq_source.yield_table((table[0], table[1]))
             ]
+
+    def test_get_stored_procedures(self):
+        """
+        Test fetching stored procedures with filter
+        """
+        self.bq_source.source_config.includeStoredProcedures = True
+        self.bq_source.source_config.storedProcedureFilterPattern = FilterPattern(
+            excludes=["sp_exclude"]
+        )
+
+        mock_engine = MagicMock()
+        self.bq_source.engine = mock_engine
+
+        # Mock rows
+        row1 = {
+            "name": "sp_include",
+            "definition": "def1",
+            "language": "SQL",
+        }
+        row2 = {
+            "name": "sp_exclude",
+            "definition": "def2",
+            "language": "SQL",
+        }
+
+        mock_engine.execute.return_value.all.return_value = [row1, row2]
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_include")
+
+    @patch("metadata.utils.credentials.auth.default")
+    def test_usage_location_passed_to_client_and_engine(self, mock_auth_default):
+        """
+        Test usageLocation is correctly passed to BigQuery client and added to engine URL
+        """
+        from google.auth.credentials import Credentials
+
+        from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+            BigQueryConnection,
+        )
+        from metadata.ingestion.source.database.bigquery.helper import (
+            get_inspector_details,
+        )
+
+        mock_credentials = Mock(spec=Credentials)
+        mock_auth_default.return_value = (mock_credentials, "test-project")
+
+        config_with_location = deepcopy(
+            mock_bq_config["source"]["serviceConnection"]["config"]
+        )
+        config_with_location["usageLocation"] = "eu"
+
+        service_connection = BigQueryConnection.model_validate(config_with_location)
+
+        result = get_inspector_details(
+            database_name="test-project", service_connection=service_connection
+        )
+        assert "location=eu" in str(result.engine.url)
+        assert result.client._location == "eu"
+
+        config_without_location = deepcopy(
+            mock_bq_config["source"]["serviceConnection"]["config"]
+        )
+        config_without_location["usageLocation"] = None
+
+        service_connection_null = BigQueryConnection.model_validate(
+            config_without_location
+        )
+
+        result_null = get_inspector_details(
+            database_name="test-project", service_connection=service_connection_null
+        )
+        assert "location=eu" not in str(result_null.engine.url)
+        assert result_null.client._location is None
 
 
 class BigqueryLineageSourceTest(TestCase):

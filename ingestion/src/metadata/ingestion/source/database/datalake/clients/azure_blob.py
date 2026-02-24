@@ -62,6 +62,15 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
         self._client.close()
 
     def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:
+        if bucket_name:
+            # If bucket_name is specified, only test access to that specific container
+            # This avoids requiring list_containers permission at storage account level
+            def get_container(client: BlobServiceClient):
+                container_client = client.get_container_client(bucket_name)
+                container_client.get_container_properties()
+
+            return partial(get_container, self._client)
+
         def list_buckets(client: BlobServiceClient):
             conn = client.list_containers(name_starts_with="")
             list(conn)

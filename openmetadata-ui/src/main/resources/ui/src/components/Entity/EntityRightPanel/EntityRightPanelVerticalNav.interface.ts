@@ -21,7 +21,9 @@ export enum EntityRightPanelTab {
 }
 
 export interface EntityRightPanelVerticalNavProps {
+  verticalNavConatinerclassName?: string;
   isSideDrawer?: boolean;
+  isColumnDetailPanel?: boolean;
   activeTab: EntityRightPanelTab;
   entityType: EntityType;
   onTabChange: (tab: EntityRightPanelTab) => void;

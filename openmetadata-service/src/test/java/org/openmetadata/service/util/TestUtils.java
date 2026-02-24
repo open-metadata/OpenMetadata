@@ -50,8 +50,17 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
@@ -69,6 +78,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
+import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -200,7 +210,9 @@ public final class TestUtils {
       new ApiConnection()
           .withConfig(
               new RestConnection()
-                  .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json")));
+                  .withOpenAPISchemaConnection(
+                      new OpenAPISchemaURL()
+                          .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json"))));
 
   public static final LLMConnection OPENAI_CONNECTION =
       new LLMConnection()
@@ -278,6 +290,16 @@ public final class TestUtils {
     // changes in a session
     MINOR_UPDATE, // PUT/PATCH made backward compatible minor version change
     MAJOR_UPDATE // PUT/PATCH made backward incompatible minor version change
+  }
+
+  public static String plurializeEntityType(String entityType) {
+    if (entityType.endsWith("s")) {
+      return entityType + "es";
+    } else if (entityType.endsWith("y")) {
+      return entityType.substring(0, entityType.length() - 1) + "ies";
+    } else {
+      return entityType + "s";
+    }
   }
 
   private TestUtils() {}
@@ -612,16 +634,19 @@ public final class TestUtils {
   public static <K> void put(
       WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
       throws HttpResponseException {
+    // Use empty string when request is null - Jersey requires non-null entity for PUT
+    Object body = request != null ? request : "";
     Response response =
         SecurityUtil.addHeaders(target, headers)
-            .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+            .method("PUT", Entity.entity(body, MediaType.APPLICATION_JSON));
     readResponse(response, expectedStatus.getStatusCode());
   }
 
   public static void put(WebTarget target, Status expectedStatus, Map<String, String> headers)
       throws HttpResponseException {
     Invocation.Builder builder = SecurityUtil.addHeaders(target, headers);
-    Response response = builder.method("PUT");
+    // Send empty string entity for PUT without body - Jersey requires entity for PUT method
+    Response response = builder.method("PUT", Entity.entity("", MediaType.APPLICATION_JSON));
     readResponse(response, expectedStatus.getStatusCode());
   }
 
@@ -632,6 +657,19 @@ public final class TestUtils {
         SecurityUtil.addHeaders(target, headers)
             .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, expectedStatus.getStatusCode());
+  }
+
+  public static <T, K> T putExpectStatus(
+      WebTarget target,
+      K request,
+      Class<T> clz,
+      Status expectedStatus,
+      Map<String, String> headers) {
+    Response response =
+        SecurityUtil.addHeaders(target, headers)
+            .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    assertEquals(expectedStatus.getStatusCode(), response.getStatus());
+    return response.readEntity(clz);
   }
 
   public static <T> T putCsv(
@@ -787,7 +825,7 @@ public final class TestUtils {
         EntityUtil.mergeTags(updatedExpectedList, derived);
       }
     }
-    assertTrue(compareListsIgnoringOrder(updatedExpectedList, actualList));
+    assertTrue(compareTagsIgnoringOrder(updatedExpectedList, actualList));
   }
 
   public static void validateTagLabel(TagLabel label) {
@@ -972,6 +1010,25 @@ public final class TestUtils {
     }
 
     return actual.size() == exists;
+  }
+
+  private static List<ImmutableTriple<String, TagSource, TagLabel.LabelType>>
+      convertTagLabelsToComparableTriples(List<TagLabel> tagLabels) {
+    return tagLabels.stream()
+        .map(
+            label ->
+                new ImmutableTriple<>(label.getTagFQN(), label.getSource(), label.getLabelType()))
+        .collect(Collectors.toList());
+  }
+
+  public static boolean compareTagsIgnoringOrder(List<TagLabel> expected, List<TagLabel> actual) {
+    return compareListsIgnoringOrder(
+        convertTagLabelsToComparableTriples(expected), convertTagLabelsToComparableTriples(actual));
+  }
+
+  public static boolean isTagsSuperSet(List<TagLabel> superset, List<TagLabel> subset) {
+    return convertTagLabelsToComparableTriples(superset)
+        .containsAll(convertTagLabelsToComparableTriples(subset));
   }
 
   public static void assertStyle(Style expected, Style actual) {

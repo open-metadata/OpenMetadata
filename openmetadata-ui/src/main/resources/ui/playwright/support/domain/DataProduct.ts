@@ -19,10 +19,21 @@ import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Domain } from './Domain';
 import { SubDomain } from './SubDomain';
+import { getEncodedFqn } from '../../utils/entity';
 
 type UserTeamRef = {
   name: string;
   type: string;
+};
+
+export type AssetReference = {
+  id: string;
+  type: string;
+  name?: string;
+  displayName?: string;
+  fullyQualifiedName?: string;
+  description?: string;
+  deleted?: boolean;
 };
 
 type ResponseDataType = {
@@ -65,6 +76,7 @@ export class DataProduct extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
+    // Use responseData.fullyQualifiedName if available (after create), otherwise fall back to data.fullyQualifiedName
     if (this.createDomain) {
       await Promise.all(
         this.domains.map((domain) => domain.create(apiContext))
@@ -73,10 +85,17 @@ export class DataProduct extends EntityClass {
 
     this.data.domains = this.subDomains?.length
       ? this.subDomains.map(
-          (subDomain) => subDomain.data.fullyQualifiedName ?? ''
+          (subDomain) =>
+            subDomain.responseData?.fullyQualifiedName ??
+            subDomain.data.fullyQualifiedName ??
+            ''
         ) ?? []
-      : this.domains.map((domain) => domain.data.fullyQualifiedName ?? '') ??
-        [];
+      : this.domains.map(
+          (domain) =>
+            domain.responseData?.fullyQualifiedName ??
+            domain.data.fullyQualifiedName ??
+            ''
+        ) ?? [];
 
     const response = await apiContext.post('/api/v1/dataProducts', {
       data: this.data,
@@ -104,5 +123,172 @@ export class DataProduct extends EntityClass {
     );
 
     return response.body;
+  }
+  
+  private getFqn() {
+    return this.data?.fullyQualifiedName ?? this.data.name;
+  }
+
+  async addAssets(
+    apiContext: APIRequestContext,
+    assets: AssetReference[]
+  ) {
+    const response = await apiContext.put(
+      `/api/v1/dataProducts/${encodeURIComponent(
+        this.getFqn()
+      )}/assets/add`,
+      {
+        data: { assets },
+      }
+    );
+
+    const data = await response.json();
+    this.responseData = data;
+
+    return data;
+  }
+
+  async addInputPorts(
+    apiContext: APIRequestContext,
+    assets: { id: string; type: string }[]
+  ) {
+    const response = await apiContext.put(
+      `/api/v1/dataProducts/name/${getEncodedFqn(
+        this.getFqn()
+      )}/inputPorts/add`,
+      {
+        data: { assets },
+      }
+    );
+
+    return response.json();
+  }
+
+  async addOutputPorts(
+    apiContext: APIRequestContext,
+    assets: { id: string; type: string }[]
+  ) {
+    const response = await apiContext.put(
+      `/api/v1/dataProducts/name/${getEncodedFqn(
+        this.getFqn()
+      )}/outputPorts/add`,
+      {
+        data: { assets },
+      }
+    );
+
+    return response.json();
+  }
+
+  async removeInputPorts(
+    apiContext: APIRequestContext,
+    assets: { id: string; type: string }[]
+  ) {
+    const response = await apiContext.put(
+      `/api/v1/dataProducts/name/${getEncodedFqn(
+        this.getFqn()
+      )}/inputPorts/remove`,
+      {
+        data: { assets },
+      }
+    );
+
+    return response.json();
+  }
+
+  async removeOutputPorts(
+    apiContext: APIRequestContext,
+    assets: { id: string; type: string }[]
+  ) {
+    const response = await apiContext.put(
+      `/api/v1/dataProducts/name/${getEncodedFqn(
+        this.getFqn()
+      )}/outputPorts/remove`,
+      {
+        data: { assets },
+      }
+    );
+
+    return response.json();
+  }
+
+  async getInputPorts(
+    apiContext: APIRequestContext,
+    params?: { limit?: number; offset?: number; fields?: string }
+  ) {
+    const queryParams = new URLSearchParams();
+    if (params?.limit !== undefined) {
+      queryParams.set('limit', params.limit.toString());
+    }
+    if (params?.offset !== undefined) {
+      queryParams.set('offset', params.offset.toString());
+    }
+    if (params?.fields) {
+      queryParams.set('fields', params.fields);
+    }
+    const queryString = queryParams.toString();
+    const url = `/api/v1/dataProducts/name/${getEncodedFqn(
+      this.getFqn()
+    )}/inputPorts${queryString ? `?${queryString}` : ''}`;
+
+    const response = await apiContext.get(url);
+
+    return response.json();
+  }
+
+  async getOutputPorts(
+    apiContext: APIRequestContext,
+    params?: { limit?: number; offset?: number; fields?: string }
+  ) {
+    const queryParams = new URLSearchParams();
+    if (params?.limit !== undefined) {
+      queryParams.set('limit', params.limit.toString());
+    }
+    if (params?.offset !== undefined) {
+      queryParams.set('offset', params.offset.toString());
+    }
+    if (params?.fields) {
+      queryParams.set('fields', params.fields);
+    }
+    const queryString = queryParams.toString();
+    const url = `/api/v1/dataProducts/name/${getEncodedFqn(
+      this.getFqn()
+    )}/outputPorts${queryString ? `?${queryString}` : ''}`;
+
+    const response = await apiContext.get(url);
+
+    return response.json();
+  }
+
+  async getPortsView(
+    apiContext: APIRequestContext,
+    params?: {
+      inputLimit?: number;
+      inputOffset?: number;
+      outputLimit?: number;
+      outputOffset?: number;
+    }
+  ) {
+    const queryParams = new URLSearchParams();
+    if (params?.inputLimit !== undefined) {
+      queryParams.set('inputLimit', params.inputLimit.toString());
+    }
+    if (params?.inputOffset !== undefined) {
+      queryParams.set('inputOffset', params.inputOffset.toString());
+    }
+    if (params?.outputLimit !== undefined) {
+      queryParams.set('outputLimit', params.outputLimit.toString());
+    }
+    if (params?.outputOffset !== undefined) {
+      queryParams.set('outputOffset', params.outputOffset.toString());
+    }
+    const queryString = queryParams.toString();
+    const url = `/api/v1/dataProducts/name/${getEncodedFqn(
+      this.getFqn()
+    )}/portsView${queryString ? `?${queryString}` : ''}`;
+
+    const response = await apiContext.get(url);
+
+    return response.json();
   }
 }

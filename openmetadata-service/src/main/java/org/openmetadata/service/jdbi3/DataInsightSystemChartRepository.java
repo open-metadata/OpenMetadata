@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,10 +32,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.datainsight.system.DataInsightSystemChartResource;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +45,6 @@ import org.slf4j.LoggerFactory;
 public class DataInsightSystemChartRepository extends EntityRepository<DataInsightCustomChart> {
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartRepository.class);
 
-  public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
   private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   public static final String TIMESTAMP_FIELD = "@timestamp";
 
@@ -98,7 +100,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
   public DataInsightSystemChartRepository() {
     super(
-        COLLECTION_PATH,
+        DataInsightSystemChartResource.COLLECTION_PATH,
         DATA_INSIGHT_CUSTOM_CHART,
         DataInsightCustomChart.class,
         Entity.getCollectionDAO().dataInsightCustomChartDAO(),
@@ -637,7 +639,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   }
 
   @Override
-  public void setFields(DataInsightCustomChart entity, EntityUtil.Fields fields) {
+  public void setFields(
+      DataInsightCustomChart entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     /* Nothing to do */
   }
 
@@ -654,6 +657,17 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   @Override
   public void storeEntity(DataInsightCustomChart entity, boolean update) {
     store(entity, update);
+  }
+
+  @Override
+  public void storeEntities(List<DataInsightCustomChart> entities) {
+    List<DataInsightCustomChart> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (DataInsightCustomChart entity : entities) {
+      String jsonCopy = gson.toJson(entity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, DataInsightCustomChart.class));
+    }
+    storeMany(entitiesToStore);
   }
 
   @Override

@@ -75,7 +75,7 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
       - name: Install Playwright Browsers
-        run: npx playwright@1.51.1 install --with-deps
+        run: npx playwright@1.57.0 install --with-deps
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
@@ -108,7 +108,7 @@ jobs:
           PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
           PLAYWRIGHT_PROJECT_ID: ${{ steps.cypress-project-id.outputs.CYPRESS_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
-          PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+          PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.PLAYWRIGHT_BQ_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
           PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
           PLAYWRIGHT_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}

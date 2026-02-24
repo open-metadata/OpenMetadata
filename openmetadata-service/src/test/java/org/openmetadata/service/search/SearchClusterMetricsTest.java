@@ -23,12 +23,12 @@ import os.org.opensearch.client.opensearch.cluster.stats.ClusterIndices;
 import os.org.opensearch.client.opensearch.cluster.stats.ClusterIndicesShards;
 import os.org.opensearch.client.opensearch.cluster.stats.ClusterNodeCount;
 import os.org.opensearch.client.opensearch.cluster.stats.ClusterNodes;
-import os.org.opensearch.client.opensearch.nodes.Cpu;
-import os.org.opensearch.client.opensearch.nodes.Jvm;
-import os.org.opensearch.client.opensearch.nodes.MemoryStats;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
-import os.org.opensearch.client.opensearch.nodes.OperatingSystem;
-import os.org.opensearch.client.opensearch.nodes.Stats;
+import os.org.opensearch.client.opensearch.nodes.stats.Jvm;
+import os.org.opensearch.client.opensearch.nodes.stats.JvmMemoryStats;
+import os.org.opensearch.client.opensearch.nodes.stats.OperatingSystem;
+import os.org.opensearch.client.opensearch.nodes.stats.OperatingSystemCpuStats;
+import os.org.opensearch.client.opensearch.nodes.stats.Stats;
 
 public class SearchClusterMetricsTest {
 
@@ -178,7 +178,7 @@ public class SearchClusterMetricsTest {
     when(nodes.count()).thenReturn(nodeCount);
     when(clusterStats.nodes()).thenReturn(nodes);
 
-    when(shards.total()).thenReturn(10.0);
+    when(shards.total()).thenReturn(Integer.valueOf(10));
     when(indices.shards()).thenReturn(shards);
     when(clusterStats.indices()).thenReturn(indices);
     when(indices.shards()).thenReturn(shards);
@@ -190,18 +190,18 @@ public class SearchClusterMetricsTest {
     NodesStatsResponse nodesStats = mock(NodesStatsResponse.class);
     Stats nodeStats = mock(Stats.class);
     OperatingSystem os = mock(OperatingSystem.class);
-    Cpu cpu = mock(Cpu.class);
+    OperatingSystemCpuStats cpu = mock(OperatingSystemCpuStats.class);
     Jvm jvm = mock(Jvm.class);
-    MemoryStats mem = mock(MemoryStats.class);
+    JvmMemoryStats mem = mock(JvmMemoryStats.class);
 
-    when(cpu.percent()).thenReturn(25);
+    when(cpu.percent()).thenReturn(Double.valueOf(25.0));
     when(os.cpu()).thenReturn(cpu);
     when(nodeStats.os()).thenReturn(os);
 
     when(nodeStats.jvm()).thenReturn(jvm);
     when(jvm.mem()).thenReturn(mem);
-    when(mem.usedInBytes()).thenReturn(536870912L); // 512MB
-    when(mem.totalInBytes()).thenReturn(1073741824L); // 1GB
+    when(mem.heapUsedInBytes()).thenReturn(536870912L); // 512MB
+    when(mem.heapMaxInBytes()).thenReturn(1073741824L); // 1GB
 
     Map<String, Stats> nodesMap = new HashMap<>();
     nodesMap.put("node1", nodeStats);

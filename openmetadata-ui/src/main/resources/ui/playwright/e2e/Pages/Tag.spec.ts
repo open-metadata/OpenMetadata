@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -38,6 +38,7 @@ import {
   submitForm,
   validateForm,
   verifyCertificationTagPageUI,
+  verifyEntityTypeFilterInTagAssets,
   verifyTagPageUI,
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
@@ -167,7 +168,11 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-    await adminPage.getByTestId('color-color-input').fill('#6366f1');
+    await adminPage.getByTestId('icon-picker-btn').click();
+    await adminPage.getByRole('button', { name: `Select icon Cube01` }).click();
+    await adminPage
+      .getByRole('button', { name: 'Select color #F14C75' })
+      .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.locator('button[type="submit"]').click();
@@ -232,6 +237,10 @@ test.describe('Tag Page with Admin Roles', () => {
       await addAssetsToTag(adminPage, assets, tag1);
     });
 
+    await test.step('Verify EntityType Filter', async () => {
+      await verifyEntityTypeFilterInTagAssets(adminPage, assets);
+    });
+
     await test.step('Delete Asset', async () => {
       await removeAssetsFromTag(adminPage, assets, tag1);
       await assetCleanup();
@@ -250,11 +259,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await adminPage.click('[data-testid="add-new-tag-button"]');
 
-    await adminPage.waitForSelector('.ant-modal-content', {
-      state: 'visible',
-    });
-
-    await expect(adminPage.locator('.ant-modal-content')).toBeVisible();
+    await expect(adminPage.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(adminPage);
 
@@ -318,9 +323,9 @@ test.describe('Tag Page with Admin Roles', () => {
     await classification1.visitPage(adminPage);
 
     // Verify toggle is visible and enabled (tag is enabled by default)
-    const tagToggle = adminPage.getByTestId(
-      `tag-disable-toggle-${tag1.data.name}`
-    );
+    const tagToggle = adminPage
+      .getByTestId(`tag-disable-toggle-${tag1.data.name}`)
+      .getByRole('switch');
 
     await expect(tagToggle).toBeVisible();
     await expect(tagToggle).toBeChecked();
@@ -355,9 +360,9 @@ test.describe('Tag Page with Admin Roles', () => {
   }) => {
     await classification.visitPage(adminPage);
 
-    const tagToggle = adminPage.getByTestId(
-      `tag-disable-toggle-${tag.data.name}`
-    );
+    const tagToggle = adminPage
+      .getByTestId(`tag-disable-toggle-${tag.data.name}`)
+      .getByRole('switch');
 
     // Verify toggle is enabled when classification is enabled
     await expect(tagToggle).toBeEnabled();
@@ -438,6 +443,10 @@ test.describe('Tag Page with Data Consumer Roles', () => {
       await addAssetsToTag(dataConsumerPage, assets, tag);
     });
 
+    await test.step('Verify EntityType Filter', async () => {
+      await verifyEntityTypeFilterInTagAssets(dataConsumerPage, assets);
+    });
+
     await test.step('Delete Asset', async () => {
       await removeAssetsFromTag(dataConsumerPage, assets, tag);
       await assetCleanup();
@@ -450,9 +459,9 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     await classification.visitPage(dataConsumerPage);
 
     // Verify toggle is visible but disabled for data consumer user (no EditAll permission)
-    const tagToggle = dataConsumerPage.getByTestId(
-      `tag-disable-toggle-${tag.data.name}`
-    );
+    const tagToggle = dataConsumerPage
+      .getByTestId(`tag-disable-toggle-${tag.data.name}`)
+      .getByRole('switch');
 
     await expect(tagToggle).toBeVisible();
     await expect(tagToggle).toBeDisabled();
@@ -500,6 +509,10 @@ test.describe('Tag Page with Data Steward Roles', () => {
 
     await test.step('Add Asset ', async () => {
       await addAssetsToTag(dataStewardPage, assets, tag);
+    });
+
+    await test.step('Verify EntityType Filter', async () => {
+      await verifyEntityTypeFilterInTagAssets(dataStewardPage, assets);
     });
 
     await test.step('Delete Asset', async () => {

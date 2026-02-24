@@ -84,7 +84,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         </Link>
       </>
     );
-  }, [entityType, task, taskDetails]);
+  }, [entityType, task, taskDetails, t]);
 
   const entityName = useMemo(() => {
     return task?.entityRef

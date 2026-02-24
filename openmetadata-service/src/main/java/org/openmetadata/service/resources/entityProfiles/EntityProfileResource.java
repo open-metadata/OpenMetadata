@@ -56,6 +56,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Hidden
 public class EntityProfileResource
     extends EntityTimeSeriesResource<EntityProfile, EntityProfileRepository> {
+  public static final String COLLECTION_PATH = "/v1/entity/profiles";
+
   public EntityProfileResource(Authorizer authorizer) {
     super(Entity.ENTITY_PROFILE, authorizer);
   }

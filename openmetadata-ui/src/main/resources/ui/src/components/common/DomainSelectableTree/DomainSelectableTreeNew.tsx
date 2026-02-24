@@ -68,6 +68,8 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   initialDomains,
   dropdownRef,
   handleDropdownChange,
+  isClearable = true,
+  open,
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -401,6 +403,10 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
 
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
+      if (selectedKeys.length === 0 && !isClearable) {
+        return;
+      }
+
       const selectedData = [];
       for (const item of selectedKeys) {
         const domain = domainMapper[item as string];
@@ -603,7 +609,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
         <Select
           className="custom-domain-edit-select"
           dropdownRender={() => treeContent}
-          dropdownStyle={{ maxHeight: '200px' }}
+          dropdownStyle={{ maxHeight: 'fit-content' }}
           filterOption={false}
           maxTagCount={3}
           maxTagPlaceholder={(omittedValues) => (
@@ -612,6 +618,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
             </span>
           )}
           mode={isMultiple ? 'multiple' : undefined}
+          open={open}
           options={domains.map((domain) => ({
             value: domain?.fullyQualifiedName,
             label: domain?.name,

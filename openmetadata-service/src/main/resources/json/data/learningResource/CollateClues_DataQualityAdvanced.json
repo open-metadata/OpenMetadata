@@ -1,0 +1,16 @@
+{
+  "name": "CollateClues_DataQualityAdvanced",
+  "displayName": "Collate Clues: Advanced Data Quality",
+  "description": "Dive deeper into Data Quality features and learn advanced testing and monitoring capabilities.",
+  "resourceType": "Video",
+  "categories": ["DataQuality", "Observability"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=jIrQ-CsLEgg",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "dataObservability"},
+    {"pageId": "dataQuality"}
+  ],
+  "status": "Active"
+}

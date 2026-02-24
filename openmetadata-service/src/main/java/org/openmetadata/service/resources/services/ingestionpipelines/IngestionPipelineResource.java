@@ -112,7 +112,7 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   private IngestionPipelineMapper mapper;
-  public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
+  public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   static final String FIELDS = "owners,followers";
@@ -432,9 +432,18 @@ public class IngestionPipelineResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     IngestionPipeline ingestionPipeline =
-        getInternal(uriInfo, securityContext, id, fieldsParam, include);
+        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
       ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
     }
@@ -512,9 +521,18 @@ public class IngestionPipelineResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     IngestionPipeline ingestionPipeline =
-        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
       ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
     }
@@ -1336,10 +1354,22 @@ public class IngestionPipelineResource
       ingestionPipeline.getSourceConfig().setConfig(null);
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, ingestionPipeline).build();
-    ingestionPipeline.setOpenMetadataServerConnection(
-        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+
+    // SECURITY: Only include OpenMetadataServerConnection for deploy operations
+    // (forceNotMask=true).
+    // The connection contains the bot's JWT token which should NOT be exposed in GET/LIST
+    // responses.
+    // For API responses, we nullify this field to prevent token leakage.
+    if (forceNotMask) {
+      OpenMetadataConnection openMetadataServerConnection =
+          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, ingestionPipeline)
+              .build();
+      ingestionPipeline.setOpenMetadataServerConnection(
+          secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+    } else {
+      ingestionPipeline.setOpenMetadataServerConnection(null);
+    }
+
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
       EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
     }

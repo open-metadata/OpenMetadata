@@ -36,6 +36,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
+    SNOWFLAKE_GET_STAGES,
     SNOWFLAKE_GET_STREAM_DEFINITION,
     SNOWFLAKE_GET_STREAM_NAMES,
     SNOWFLAKE_GET_TABLE_DDL,
@@ -49,11 +50,14 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
 )
 from metadata.utils import fqn
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
+
+logger = ingestion_logger()
 
 dialect = SnowflakeDialect()
 Query = str
@@ -168,6 +172,20 @@ def get_stream_names_reflection(self, schema=None, **kw):
         )
 
 
+def get_stage_names_reflection(self, schema=None, **kw):
+    """Return all stage names in `schema`.
+
+    :param schema: Optional, retrieve names from a non-default schema.
+        For special quoting, use :class:`.quoted_name`.
+
+    """
+
+    with self._operation_context() as conn:  # pylint: disable=protected-access
+        return self.dialect.get_stage_names(
+            conn, schema, info_cache=self.info_cache, **kw
+        )
+
+
 def _get_query_map(
     incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]
 ):
@@ -189,7 +207,11 @@ def _get_query_parameters(
     """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {
         "schema": fqn.unquote_name(schema),
-        "is_transient": "YES" if include_transient_tables else "NO",
+        "include_transient_tables": (
+            "TRUE"
+            if include_transient_tables
+            else "COALESCE(IS_TRANSIENT, 'NO') != 'YES'"
+        ),
         "include_views": "TRUE" if include_views else "TABLE_TYPE != 'VIEW'",
     }
 
@@ -245,6 +267,7 @@ def _get_table_type(table_type: str) -> TableType:
         "EXTERNAL TABLE": TableType.External,
         "TRANSIENT TABLE": TableType.Transient,
         "DYNAMIC TABLE": TableType.Dynamic,
+        "ICEBERG TABLE": TableType.Iceberg,
     }
     return table_type_map.get(table_type, TableType.Regular)
 
@@ -291,6 +314,23 @@ def get_stream_names(self, connection, schema, **kw):
     return result
 
 
+def get_stage_names(self, connection, schema, **kw):
+    """Return all stage names in schema."""
+    parameters = {"schema": fqn.unquote_name(schema)}
+    cursor = connection.execute(SNOWFLAKE_GET_STAGES.format(**parameters))
+    result = SnowflakeTableList(
+        tables=[
+            SnowflakeTable(
+                name=self.normalize_name(row[1]),
+                deleted=None,
+                type_=TableType.Stage,
+            )
+            for row in cursor
+        ]
+    )
+    return result
+
+
 @reflection.cache
 def get_view_definition(
     self, connection, table_name, schema=None, **kw
@@ -307,9 +347,12 @@ def get_view_definition(
 
     # If the view definition is not found via optimized query,
     # we need to get the view definition from the view ddl
+    logger.debug(
+        f"View definition not found via optimized query for {schema}.{table_name}, falling back to DDL query"
+    )
 
     schema = schema or self.default_schema_name
-    view_name = f"{schema}.{table_name}" if schema else table_name
+    view_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
     cursor = connection.execute(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name))
     try:
         result = cursor.fetchone()
@@ -328,7 +371,7 @@ def get_stream_definition(  # pylint: disable=unused-argument
     Gets the stream definition
     """
     schema = schema or self.default_schema_name
-    stream_name = f"{schema}.{stream_name}" if schema else stream_name
+    stream_name = f'"{schema}"."{stream_name}"' if schema else f'"{stream_name}"'
     cursor = connection.execute(
         SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name)
     )
@@ -395,6 +438,7 @@ def get_schema_columns(self, connection, schema, **kw):
         comment,
         identity_start,
         identity_increment,
+        ordinal_position,
     ) in result:
         table_name = self.normalize_name(fqn.quote_name(table_name))
         column_name = self.normalize_name(column_name)
@@ -445,6 +489,7 @@ def get_schema_columns(self, connection, schema, **kw):
                     if current_table_pks
                     else False
                 ),
+                "ordinal_position": ordinal_position,
             }
         )
         if is_identity == "YES":
@@ -599,7 +644,7 @@ def get_table_ddl(
     Gets the Table DDL
     """
     schema = schema or self.default_schema_name
-    table_name = f"{schema}.{table_name}" if schema else table_name
+    table_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
     cursor = connection.execute(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name))
     try:
         result = cursor.fetchone()

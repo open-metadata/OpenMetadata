@@ -2,7 +2,7 @@
 
 # Integration
 
-> **1 Components** | **5 Files** | **52 Tests** | **55 Scenarios** 🚀
+> **1 Components** | **7 Files** | **59 Tests** | **63 Scenarios** 🚀
 
 ## Table of Contents
 - [Connectors](#connectors)
@@ -126,6 +126,24 @@
 </details>
 
 <details open>
+<summary>📄 <b>ServiceCreationPermissions.spec.ts</b> (6 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/ServiceCreationPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ServiceCreationPermissions.spec.ts)
+
+### Service Creation with isOwner() Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Service Creation with isOwner() Permissions** - User with service creation permission can create a new database service | User with service creation permission can create a new database service |
+| 2 | **Service Creation with isOwner() Permissions** - User can view but cannot modify services they do not own | User can view but cannot modify services they do not own |
+| 3 | **Service Creation with isOwner() Permissions** - User can update connection details of their own service | User can update connection details of their own service |
+| 4 | **Service Creation with isOwner() Permissions** - Different user can view but cannot modify service owned by another user | Different user can view but cannot modify service owned by another user |
+| 5 | **Service Creation with isOwner() Permissions** - Owner can delete their own service | Owner can delete their own service |
+| 6 | **Service Creation with isOwner() Permissions** - Owner can update description of their service | Owner can update description of their service |
+
+</details>
+
+<details open>
 <summary>📄 <b>ServiceForm.spec.ts</b> (4 tests, 4 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/ServiceForm.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ServiceForm.spec.ts)
@@ -138,6 +156,21 @@
 | 2 | **Service form functionality** - Verify SSL cert upload with long filename and UI overflow handling | SSL cert upload with long filename and UI overflow handling |
 | 3 | **Service form functionality** - Verify service name field validation errors | Service name field validation errors |
 | 4 | **Service form functionality** - Verify if string input inside oneOf config works properly | If string input inside oneOf config works properly |
+
+</details>
+
+<details open>
+<summary>📄 <b>ApiCollection.spec.ts</b> (1 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts)
+
+### API Collection Entity Special Test Cases
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **API Collection Entity Special Test Cases** - Verify Owner Propagation: owner should be propagated to the API Collection's API Endpoint | Owner Propagation: owner should be propagated to the API Collection's API Endpoint |
+| | ↳ *Verify user Owner Propagation: owner should be propagated to the API Collection's API Endpoint* | |
+| | ↳ *Verify team Owner Propagation: owner should be propagated to the API Collection's API Endpoint* | |
 
 </details>
 

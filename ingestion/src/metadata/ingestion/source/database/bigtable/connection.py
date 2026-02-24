@@ -110,7 +110,7 @@ def test_connection(
     test_fn = {
         "GetInstances": tester.list_instances,
         "GetTables": tester.list_tables,
-        "GetRows": tester.get_row,
+        "ReadRows": tester.get_row,
     }
 
     return test_connection_steps(

@@ -71,7 +71,7 @@ export const createCustomMetric = async ({
   await page.locator('[data-testid="custom-metric"]').click();
 
   const customMetricResponse = page.waitForResponse(
-    '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all'
+    '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all*'
   );
 
   // validate redirection and cancel button

@@ -26,6 +26,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -58,6 +59,7 @@ import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
@@ -118,14 +120,48 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
+  public void storeEntities(List<SearchIndex> searchIndexes) {
+    List<SearchIndex> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (SearchIndex searchIndex : searchIndexes) {
+      EntityReference service = searchIndex.getService();
+      List<SearchIndexField> fieldsWithTags = null;
+      if (searchIndex.getFields() != null) {
+        fieldsWithTags = searchIndex.getFields();
+        searchIndex.setFields(cloneWithoutTags(fieldsWithTags));
+        searchIndex.getFields().forEach(field -> field.setTags(null));
+      }
+
+      searchIndex.withService(null);
+
+      String jsonCopy = gson.toJson(searchIndex);
+      entitiesToStore.add(gson.fromJson(jsonCopy, SearchIndex.class));
+
+      if (fieldsWithTags != null) {
+        searchIndex.setFields(fieldsWithTags);
+      }
+      searchIndex.withService(service);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<SearchIndex> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(SearchIndex::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+  }
+
+  @Override
   public void storeRelationships(SearchIndex searchIndex) {
     addServiceRelationship(searchIndex, searchIndex.getService());
   }
 
   @Override
-  public void setFields(SearchIndex searchIndex, Fields fields) {
+  public void setFields(SearchIndex searchIndex, Fields fields, RelationIncludes relationIncludes) {
     searchIndex.setService(getContainer(searchIndex.getId()));
-    searchIndex.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(searchIndex) : null);
     if (searchIndex.getFields() != null) {
       getFieldTags(fields.contains(FIELD_TAGS), searchIndex.getFields());
     }
@@ -520,7 +556,13 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
           "searchIndexSettings",
           original.getSearchIndexSettings(),
           updated.getSearchIndexSettings());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
       recordChange("indexType", original.getIndexType(), updated.getIndexType());
     }
 

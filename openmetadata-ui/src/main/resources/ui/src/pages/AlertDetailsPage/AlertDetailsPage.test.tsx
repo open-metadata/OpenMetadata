@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -107,11 +108,18 @@ jest.mock('../../components/common/Loader/Loader', () =>
 );
 
 jest.mock('../../components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
-    .fn()
-    .mockImplementation(({ onUpdate }) => (
-      <div onClick={() => onUpdate({})}>OwnerLabel</div>
-    )),
+  OwnerLabel: jest.fn().mockImplementation(({ onUpdate }) => (
+    <button
+      tabIndex={0}
+      onClick={() => onUpdate({})}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onUpdate({});
+        }
+      }}>
+      OwnerLabel
+    </button>
+  )),
 }));
 
 jest.mock('../../utils/DataAssetsHeader.utils', () => ({
@@ -252,5 +260,20 @@ describe('AlertDetailsPage', () => {
 
     expect(screen.queryByTestId('edit-button')).toBeNull();
     expect(screen.queryByTestId('delete-button')).toBeNull();
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    await act(async () => {
+      render(<AlertDetailsPage isNotificationAlert />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: mockAlertDetails.name,
+      }),
+      expect.anything()
+    );
   });
 });

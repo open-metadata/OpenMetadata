@@ -83,7 +83,11 @@ test(
 
       await expect(page.getByTestId('deploy-button')).toBeVisible();
 
+      const deployResponse = page.waitForResponse(
+        '/api/v1/services/ingestionPipelines/deploy/*'
+      );
       await page.getByTestId('deploy-button').click();
+      await deployResponse;
 
       await page.waitForSelector('[data-testid="body-text"]', {
         state: 'detached',
@@ -105,6 +109,25 @@ test(
      * @description Opens pipeline actions, enters edit flow, adjusts the weekly schedule segment, deploys, and
      * validates the updated success messaging before returning to the service view.
      */
+    await test.step('Verify test case count column displays correct values', async () => {
+      await page.getByRole('tab', { name: 'Pipeline' }).click();
+
+      // Verify the pipeline with selected test case shows count "1"
+      const pipelineRow = page.getByRole('row', {
+        name: new RegExp(pipelineName),
+      });
+      await expect(
+        pipelineRow.getByTestId(new RegExp('test-case-count-'))
+      ).toContainText('1');
+
+      // Verify the default pipeline shows "All" for test case count
+      const defaultPipelineTestCaseCount = page
+        .getByTestId('ingestion-list-table')
+        .getByTestId(new RegExp('test-case-count-'))
+        .filter({ hasNotText: '1' });
+      await expect(defaultPipelineTestCaseCount.first()).toContainText('All');
+    });
+
     await test.step('Update the pipeline', async () => {
       await page.getByRole('tab', { name: 'Pipeline' }).click();
       await page
@@ -126,7 +149,12 @@ test(
         .getByTestId('week-segment-day-option-container')
         .getByText('W')
         .click();
+      const updateDeployResponse = page.waitForResponse(
+        '/api/v1/services/ingestionPipelines/deploy/*'
+      );
       await page.getByTestId('deploy-button').click();
+      await updateDeployResponse;
+
       await page.waitForSelector('[data-testid="body-text"]', {
         state: 'detached',
       });
@@ -223,6 +251,15 @@ test(
     await page.getByRole('tab', { name: 'Data Quality' }).click();
 
     await page.getByRole('tab', { name: 'Pipeline' }).click();
+
+    // Verify the pipeline shows count "2" for 2 selected test cases
+    const pipelineRow = page.getByRole('row', {
+      name: new RegExp(pipeline?.['name']),
+    });
+    await expect(
+      pipelineRow.getByTestId(new RegExp('test-case-count-'))
+    ).toContainText('2');
+
     await page
       .getByRole('row', {
         name: new RegExp(pipeline?.['name']),
@@ -246,7 +283,12 @@ test(
       page.getByTestId(`checkbox-${testCaseNames[0]}`)
     ).not.toBeChecked();
 
+    const editDeployResponse = page.waitForResponse(
+      '/api/v1/services/ingestionPipelines/deploy/*'
+    );
     await page.getByTestId('deploy-button').click();
+    await editDeployResponse;
+
     await page.waitForSelector('[data-testid="body-text"]', {
       state: 'detached',
     });
@@ -258,6 +300,15 @@ test(
     await page.getByTestId('view-service-button').click();
 
     await page.getByRole('tab', { name: 'Pipeline' }).click();
+
+    // Verify the pipeline now shows count "1" after unchecking one test case
+    const updatedPipelineRow = page.getByRole('row', {
+      name: new RegExp(pipeline?.['name']),
+    });
+    await expect(
+      updatedPipelineRow.getByTestId(new RegExp('test-case-count-'))
+    ).toContainText('1');
+
     await page
       .getByRole('row', {
         name: new RegExp(pipeline?.['name']),

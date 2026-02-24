@@ -19,5 +19,6 @@ export const TASK_TYPES = {
   RequestTestCaseFailureResolution:
     'message.request-test-case-failure-resolution-message',
   RequestApproval: 'message.request-approval-message',
+  RecognizerFeedbackApproval: 'message.recognizer-feedback-approval-message',
   Generic: 'message.request-tags-message',
 };

@@ -12,17 +12,24 @@
  */
 
 import { TooltipPlacement } from 'antd/es/tooltip';
+import { EntityType } from '../../../enums/entity.enum';
 
 export interface EntityTitleSectionProps {
   entityDetails: {
+    id?: string;
     entityType?: string;
     name?: string;
     displayName?: string;
     fullyQualifiedName?: string;
+    description?: string;
     [key: string]: unknown;
   };
   entityLink: string | { pathname: string };
+  entityType?: EntityType;
   tooltipPlacement?: TooltipPlacement;
   testId?: string;
   className?: string;
+  hasEditPermission?: boolean;
+  entityDisplayName?: string;
+  onDisplayNameUpdate?: (updatedDisplayName: string) => void;
 }
