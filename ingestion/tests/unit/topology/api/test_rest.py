@@ -47,7 +47,9 @@ mock_rest_config = {
         "serviceConnection": {
             "config": {
                 "type": "Rest",
-                "openAPISchemaURL": "https://petstore3.swagger.io/api/v3/openapi.json",
+                "openAPISchemaConnection": {
+                    "openAPISchemaURL": "https://petstore3.swagger.io/api/v3/openapi.json"
+                },
                 "docURL": "https://petstore3.swagger.io/",
             }
         },

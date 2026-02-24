@@ -10,17 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton, Typography } from 'antd';
-
-interface TeamAssetCountProps {
-  count: number | null;
-  isLoading: boolean;
+/**
+ * Open API Schema File Path Connection Config
+ */
+export interface OpenAPISchemaFilePath {
+    /**
+     * Path to a local OpenAPI schema file.
+     */
+    openAPISchemaFilePath: string;
 }
-
-export const TeamAssetCount = ({ count, isLoading }: TeamAssetCountProps) => {
-  if (isLoading) {
-    return <Skeleton.Input active size="small" style={{ width: 30, height: 20 }} />;
-  }
-
-  return <Typography.Text data-testid="asset-count">{count ?? 0}</Typography.Text>;
-};
