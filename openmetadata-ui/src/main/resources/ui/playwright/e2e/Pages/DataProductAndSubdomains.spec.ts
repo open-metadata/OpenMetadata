@@ -869,7 +869,7 @@ test.describe('Data Product Technical Name Column', () => {
     await redirectToHomePage(page);
   });
 
-  test('Technical Name column is visible in table view with correct FQN value', async ({
+  test('Technical Name column is visible in table view with correct name value', async ({
     page,
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
@@ -907,12 +907,10 @@ test.describe('Data Product Technical Name Column', () => {
         state: 'detached',
       });
 
-      // Verify the data product row contains the FQN
+      // Verify the data product row contains the technical name
       const row = page.getByTestId(dataProduct.data.name);
       await expect(row).toBeVisible();
-      await expect(row).toContainText(
-        dataProduct.responseData.fullyQualifiedName!
-      );
+      await expect(row).toContainText(dataProduct.responseData.name);
     } finally {
       await dataProduct.delete(apiContext);
       await domain.delete(apiContext);
@@ -920,7 +918,7 @@ test.describe('Data Product Technical Name Column', () => {
     }
   });
 
-  test('Search data products by technical name (FQN)', async ({ page }) => {
+  test('Search data products by technical name', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const dataProduct = new DataProduct([domain]);
@@ -931,13 +929,13 @@ test.describe('Data Product Technical Name Column', () => {
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
 
-      // Search using the FQN (technical name) instead of the display name
+      // Search using the technical name
       const searchBox = page
         .getByTestId('page-layout-v1')
         .getByPlaceholder('Search');
 
       await Promise.all([
-        searchBox.fill(dataProduct.responseData.fullyQualifiedName!),
+        searchBox.fill(dataProduct.responseData.name),
         page.waitForResponse(
           '/api/v1/search/query?q=*&index=data_product_search_index*'
         ),
