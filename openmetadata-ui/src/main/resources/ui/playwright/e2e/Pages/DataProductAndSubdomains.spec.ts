@@ -862,14 +862,14 @@ test.describe('Data Product Search and Filter', () => {
   });
 });
 
-test.describe('Data Product Technical Name Column', () => {
+test.describe('Data Product Name Column', () => {
   test.slow(true);
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
 
-  test('Technical Name column is visible in table view with correct name value', async ({
+  test('Name column is visible in table view with correct value', async ({
     page,
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
@@ -907,7 +907,7 @@ test.describe('Data Product Technical Name Column', () => {
         state: 'detached',
       });
 
-      // Verify the data product row contains the technical name
+      // Verify the data product row contains the name
       const row = page.getByTestId(dataProduct.data.name);
       await expect(row).toBeVisible();
       await expect(row).toContainText(dataProduct.responseData.name);
@@ -918,7 +918,7 @@ test.describe('Data Product Technical Name Column', () => {
     }
   });
 
-  test('Search data products by technical name', async ({ page }) => {
+  test('Search data products by name', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const dataProduct = new DataProduct([domain]);
@@ -929,7 +929,7 @@ test.describe('Data Product Technical Name Column', () => {
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
 
-      // Search using the technical name
+      // Search using the name
       const searchBox = page
         .getByTestId('page-layout-v1')
         .getByPlaceholder('Search');
