@@ -94,7 +94,9 @@ class TestRedshiftUtils(unittest.TestCase):
 
     def test_materialized_view_definition_with_create(self):
         """Test that view definition with CREATE MATERIALIZED VIEW is not modified"""
-        self.mock_view.view_definition = "CREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
+        self.mock_view.view_definition = (
+            "CREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
+        )
 
         result = get_view_definition(
             self.mock_self,
@@ -110,7 +112,9 @@ class TestRedshiftUtils(unittest.TestCase):
 
     def test_materialized_view_definition_without_create(self):
         """Test that materialized view definition without CREATE gets CREATE VIEW prepended"""
-        self.mock_view.view_definition = "SELECT * FROM table1 JOIN table2 ON table1.id = table2.id"
+        self.mock_view.view_definition = (
+            "SELECT * FROM table1 JOIN table2 ON table1.id = table2.id"
+        )
 
         result = get_view_definition(
             self.mock_self,
