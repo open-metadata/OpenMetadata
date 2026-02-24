@@ -24,13 +24,14 @@ dotenv.config();
  */
 export default defineConfig({
   testDir: './playwright/e2e',
+  testMatch: '**/BulkImport.spec.ts',
   outputDir: './playwright/output/test-results',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 4 : undefined,
   maxFailures: 500,
@@ -52,8 +53,8 @@ export default defineConfig({
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    /* Collect trace only for failed tests */
+    trace: 'retain-on-failure',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
 
@@ -78,6 +79,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      repeatEach: 10,
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
       grepInvert: [/@data-insight/, /@ingestion/, /@sample-data/, /@basic/],
