@@ -15,6 +15,8 @@ Snowflake lineage module
 import traceback
 from typing import Iterator
 
+from sqlalchemy import text
+
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.snowflake.queries import (
@@ -86,11 +88,13 @@ class SnowflakeLineageSource(
                     rows = conn.execution_options(
                         stream_results=True, max_row_buffer=100
                     ).execute(
-                        self.get_sql_statement(
-                            start_time=self.start,
-                            end_time=self.end,
-                            offset=offset,
-                            limit=batch_size,
+                        text(
+                            self.get_sql_statement(
+                                start_time=self.start,
+                                end_time=self.end,
+                                offset=offset,
+                                limit=batch_size,
+                            )
                         )
                     )
                     for row in rows:

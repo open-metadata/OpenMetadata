@@ -45,6 +45,8 @@ def get_view_definition(self, connection, table_name, schema=None):
 def get_table_names_and_type(_, connection, schema=None, **kw):
     if schema:
         query_sql = query + f" WHERE TABLE_SCHEMA = '{schema}'"
+    else:
+        query_sql = query
     rows = connection.execute(text(query_sql))
     return list(rows)
 
@@ -54,8 +56,7 @@ def get_table_comment(_, connection, table_name, schema=None, **kw):
     comment = None
     rows = connection.execute(
         sql.text(DORIS_TABLE_COMMENTS),
-        {"table_name": table_name, "schema": schema},
-        **kw,
+        {"table_name": table_name, "schema": schema, **kw},
     )
     for table_comment in rows:
         comment = table_comment

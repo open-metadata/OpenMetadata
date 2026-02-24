@@ -15,7 +15,7 @@ from abc import ABC
 from datetime import datetime
 from typing import Iterable, Optional
 
-from sqlalchemy import text
+from sqlalchemy import event
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -95,17 +95,19 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
 
     def set_session_query_tag(self) -> None:
         """
-        Method to set query tag for current session
+        Register a pool event on the engine so that every connection
+        checked out from the pool gets the QUERY_TAG set automatically.
+        In SA 2.0, each engine.connect() may return a different pooled
+        connection, so setting the tag on a single connection is not enough.
         """
         if self.service_connection.queryTag:
-            with self.engine.connect() as conn:
-                conn.execute(
-                    text(
-                        SNOWFLAKE_SESSION_TAG_QUERY.format(
-                            query_tag=self.service_connection.queryTag
-                        )
-                    )
-                )
+            query_tag = self.service_connection.queryTag
+
+            @event.listens_for(self.engine, "connect")
+            def _set_query_tag(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute(SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=query_tag))
+                cursor.close()
 
     def get_table_query(self) -> Iterable[TableQuery]:
         self.set_session_query_tag()

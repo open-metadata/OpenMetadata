@@ -15,6 +15,8 @@ import traceback
 from datetime import timedelta
 from typing import Iterable
 
+from sqlalchemy import text
+
 from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.lineage.masker import mask_query
@@ -81,7 +83,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
                             limit=batch_size,
                         )
                         with engine.connect() as conn:
-                            rows = conn.execute(query)
+                            rows = conn.execute(text(query))
                             queries = []
                             row_count = 0
                             for row in rows:

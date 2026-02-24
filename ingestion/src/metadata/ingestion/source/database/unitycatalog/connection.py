@@ -138,8 +138,8 @@ def test_connection(
         in the sql statement
         """
         try:
-            connection = engine.connect()
-            connection.execute(text(statement)).fetchone()
+            with engine.connect() as connection:
+                connection.execute(text(statement)).fetchone()
         except DatabaseError as soe:
             logger.debug(f"Failed to fetch catalogs due to: {soe}")
 
