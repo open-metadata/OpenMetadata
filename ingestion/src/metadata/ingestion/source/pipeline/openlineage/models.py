@@ -97,7 +97,7 @@ class TopicDetails:
     and used to match against messaging service bootstrapServers.
     """
     name: str
-    broker_hostname: str = None
+    broker_hostname: str
 
 
 @dataclass
