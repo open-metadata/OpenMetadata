@@ -15,10 +15,10 @@ OpenLineage source to extract metadata from Kafka or Kinesis events
 import json
 import time
 import traceback
-from urllib.parse import urlparse
 from collections import defaultdict
 from itertools import groupby, product
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+from urllib.parse import urlparse
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -27,9 +27,6 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.services.messagingService import (
-    MessagingService,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     KafkaBrokerConfig,
     KinesisBrokerConfig,
@@ -38,6 +35,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.openLineageC
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -196,7 +194,9 @@ class OpenlineageSource(PipelineServiceSource):
 
         broker_hostname = urlparse(namespace).hostname
         if not broker_hostname:
-            raise ValueError(f"Could not extract broker hostname from namespace: {namespace}")
+            raise ValueError(
+                f"Could not extract broker hostname from namespace: {namespace}"
+            )
 
         return TopicDetails(name=name, broker_hostname=broker_hostname)
 
@@ -237,9 +237,7 @@ class OpenlineageSource(PipelineServiceSource):
 
                 for svc in services:
                     try:
-                        bootstrap_servers = (
-                            svc.connection.config.bootstrapServers or ""
-                        )
+                        bootstrap_servers = svc.connection.config.bootstrapServers or ""
                         svc_fqn = svc.fullyQualifiedName.root
                         for broker in bootstrap_servers.split(","):
                             hostname = broker.strip().split(":")[0]
@@ -288,9 +286,7 @@ class OpenlineageSource(PipelineServiceSource):
             topic = self.metadata.get_by_name(Topic, topic_fqn)
 
             if not topic:
-                logger.warning(
-                    f"Topic not found in OpenMetadata: {topic_fqn}"
-                )
+                logger.warning(f"Topic not found in OpenMetadata: {topic_fqn}")
 
             return topic
 
@@ -574,9 +570,7 @@ class OpenlineageSource(PipelineServiceSource):
                         )
 
                 elif entity_details.entity_type == "topic":
-                    topic_entity = self._get_topic_entity(
-                        entity_details.topic_details
-                    )
+                    topic_entity = self._get_topic_entity(entity_details.topic_details)
 
                     if topic_entity:
                         entity_list.append(

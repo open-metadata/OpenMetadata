@@ -1156,7 +1156,6 @@ class OpenLineageUnitTest(unittest.TestCase):
             if req.edge.lineageDetails and req.edge.lineageDetails.columnsLineage:
                 self.assertGreater(len(req.edge.lineageDetails.columnsLineage), 0)
 
-
     def test_entity_detection_kafka_namespace_returns_topic(self):
         """Test that _get_entity_details correctly identifies Kafka topics vs tables
         based on the namespace prefix, exercising the full detection path including
@@ -1208,14 +1207,18 @@ class OpenLineageUnitTest(unittest.TestCase):
     def test_topic_details_missing_fields_raises_value_error(self):
         """Test that _get_topic_details raises ValueError when namespace or name is missing."""
         with self.assertRaises(ValueError):
-            OpenlineageSource._get_topic_details({"name": "topic1"})  # missing namespace
+            OpenlineageSource._get_topic_details(
+                {"name": "topic1"}
+            )  # missing namespace
 
         with self.assertRaises(ValueError):
             OpenlineageSource._get_topic_details(
                 {"namespace": "kafka://broker:9092"}
             )  # missing name
 
-    def _run_lineage_with_kafka_broker(self, ol_event, get_by_name_fn, extra_patches=None):
+    def _run_lineage_with_kafka_broker(
+        self, ol_event, get_by_name_fn, extra_patches=None
+    ):
         """Run yield_pipeline_lineage_details with a kafka-broker:9092 messaging service
         mock and return the AddLineageRequest results."""
         mock_svc = Mock()
@@ -1239,7 +1242,9 @@ class OpenLineageUnitTest(unittest.TestCase):
             )
 
         return [
-            r.right for r in results if r.right and isinstance(r.right, AddLineageRequest)
+            r.right
+            for r in results
+            if r.right and isinstance(r.right, AddLineageRequest)
         ]
 
     def test_yield_pipeline_lineage_with_kafka_topic_input_and_kafka_topic_output(self):
@@ -1261,11 +1266,32 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_pipeline.id.root = pipeline_id
 
         ol_event = OpenLineageEvent(
-            run_facet={"facets": {"parent": {"job": {"name": "kafka-to-kafka-job", "namespace": "test-namespace"}}}},
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "kafka-to-kafka-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
             job={"name": "kafka-to-kafka-job", "namespace": "test-namespace"},
             event_type="COMPLETE",
-            inputs=[{"name": "input-topic", "namespace": "kafka://kafka-broker:9092", "facets": {}}],
-            outputs=[{"name": "output-topic", "namespace": "kafka://kafka-broker:9092", "facets": {}}],
+            inputs=[
+                {
+                    "name": "input-topic",
+                    "namespace": "kafka://kafka-broker:9092",
+                    "facets": {},
+                }
+            ],
+            outputs=[
+                {
+                    "name": "output-topic",
+                    "namespace": "kafka://kafka-broker:9092",
+                    "facets": {},
+                }
+            ],
         )
 
         from metadata.generated.schema.entity.data.topic import Topic
@@ -1306,15 +1332,36 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_pipeline.id.root = pipeline_id
 
         ol_event = OpenLineageEvent(
-            run_facet={"facets": {"parent": {"job": {"name": "kafka-to-table-job", "namespace": "test-namespace"}}}},
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "kafka-to-table-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
             job={"name": "kafka-to-table-job", "namespace": "test-namespace"},
             event_type="COMPLETE",
-            inputs=[{"name": "input-events-topic", "namespace": "kafka://kafka-broker:9092", "facets": {}}],
-            outputs=[{"name": "public.output_table", "namespace": "postgres://db:5432", "facets": {}}],
+            inputs=[
+                {
+                    "name": "input-events-topic",
+                    "namespace": "kafka://kafka-broker:9092",
+                    "facets": {},
+                }
+            ],
+            outputs=[
+                {
+                    "name": "public.output_table",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
         )
 
-        from metadata.generated.schema.entity.data.topic import Topic
         from metadata.generated.schema.entity.data.table import Table
+        from metadata.generated.schema.entity.data.topic import Topic
 
         def get_by_name(entity, fqn, **kwargs):
             if entity == Topic:
@@ -1326,11 +1373,19 @@ class OpenLineageUnitTest(unittest.TestCase):
             return None
 
         extra_patches = [
-            patch.object(self.open_lineage_source, "_get_table_fqn", return_value="db-service.public.output_table"),
-            patch.object(self.open_lineage_source, "get_create_table_request", return_value=None),
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn",
+                return_value="db-service.public.output_table",
+            ),
+            patch.object(
+                self.open_lineage_source, "get_create_table_request", return_value=None
+            ),
         ]
 
-        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
+        lineage_requests = self._run_lineage_with_kafka_broker(
+            ol_event, get_by_name, extra_patches
+        )
 
         self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge

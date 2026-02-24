@@ -89,6 +89,7 @@ class TableDetails:
     schema: str
     database: Optional[str] = None
 
+
 @dataclass
 class TopicDetails:
     """
@@ -96,6 +97,7 @@ class TopicDetails:
     broker_hostname is extracted from the OpenLineage kafka:// namespace
     and used to match against messaging service bootstrapServers.
     """
+
     name: str
     broker_hostname: str
 
@@ -105,6 +107,7 @@ class EntityDetails:
     """
     Union type for either table or topic details.
     """
+
     entity_type: str
     table_details: Optional[TableDetails] = None
     topic_details: Optional[TopicDetails] = None
