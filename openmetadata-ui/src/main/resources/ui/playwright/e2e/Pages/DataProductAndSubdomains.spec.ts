@@ -886,10 +886,10 @@ test.describe('Data Product Technical Name Column', () => {
         state: 'detached',
       });
 
-      // Verify the table view is displayed by default with the Technical Name header
+      // Verify the table view is displayed by default with the Name header
       const tableContainer = page.getByTestId('table-view-container');
       await expect(tableContainer).toBeVisible();
-      await expect(tableContainer).toContainText('Technical Name');
+      await expect(tableContainer).toContainText('Name');
 
       // Search for the specific data product
       const searchBox = page

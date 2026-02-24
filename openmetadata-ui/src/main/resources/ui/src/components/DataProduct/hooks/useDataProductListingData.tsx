@@ -56,7 +56,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
       { key: 'name', labelKey: 'label.data-product', render: 'entityName' },
       {
         key: 'name',
-        labelKey: 'label.technical-name',
+        labelKey: 'label.name',
         render: 'text',
       },
       { key: 'owners', labelKey: 'label.owner', render: 'owners' },
