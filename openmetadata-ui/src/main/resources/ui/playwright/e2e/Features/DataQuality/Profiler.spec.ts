@@ -85,12 +85,20 @@ const validateProfilerAccessForRole = async (
   const listColumnResponse = await listColumnApiCall;
 
   expect(listColumnResponse.status()).toBe(200);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const columnNameCell = page
+    .locator(`[data-row-key*="${tableInstance.entity.columns[1].name}"]`)
+    .getByText(tableInstance.entity.columns[1].name);
+
+  await expect(columnNameCell).toBeVisible();
+  await expect(columnNameCell).toBeEnabled();
 
   const getProfilerInfo = page.waitForResponse(
     '/api/v1/tables/*/columnProfile?*'
   );
   await page
-    .locator(`[data-row-key="${tableInstance.entity.columns[1].name}"]`)
+    .locator(`[data-row-key*="${tableInstance.entity.columns[1].name}"]`)
     .getByText(tableInstance.entity.columns[1].name)
     .click();
   await getProfilerInfo;
