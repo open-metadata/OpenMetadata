@@ -120,6 +120,8 @@ test.describe.serial('Certification Dropdown', () => {
       ).not.toBeVisible();
 
       await closeCertificationDropdown(page);
+
+      await setCertificationClassificationDisabled(apiContext, false);
     } finally {
       await setCertificationClassificationDisabled(apiContext, false);
       await tag.delete(apiContext);
