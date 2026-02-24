@@ -1083,3 +1083,31 @@ export const hasFieldValidationErrors = (
     'errors' in axiosError.response.data
   );
 };
+
+/**
+ * Creates a keydown event handler that prevents form submission when Enter is pressed in input fields
+ * This prevents array field tags from being removed when Enter is pressed in other fields
+ * @returns Event handler function for keydown events
+ */
+export const createFormKeyDownHandler = () => {
+  return (e: KeyboardEvent) => {
+    if (
+      e.key === 'Enter' &&
+      e.target &&
+      (e.target as HTMLElement).tagName !== 'TEXTAREA'
+    ) {
+      const target = e.target as HTMLElement;
+
+      if (
+        target.tagName === 'INPUT' ||
+        target.classList.contains('ant-input')
+      ) {
+        const isInSelectTags = target.closest('.ant-select-selector');
+        if (!isInSelectTags) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    }
+  };
+};

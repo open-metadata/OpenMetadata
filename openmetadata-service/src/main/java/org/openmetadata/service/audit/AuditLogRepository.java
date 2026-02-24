@@ -18,6 +18,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -122,18 +123,19 @@ public class AuditLogRepository {
    * populated. Runs asynchronously using a virtual thread to avoid blocking the caller.
    */
   public void writeAuthEvent(EventType eventType, String userName, UUID userId) {
-    Thread.startVirtualThread(
-        () -> {
-          ChangeEvent changeEvent =
-              new ChangeEvent()
-                  .withId(UUID.randomUUID())
-                  .withEventType(eventType)
-                  .withEntityType(Entity.USER)
-                  .withEntityId(userId)
-                  .withUserName(userName)
-                  .withTimestamp(System.currentTimeMillis());
-          write(changeEvent);
-        });
+    AsyncService.getInstance()
+        .execute(
+            () -> {
+              ChangeEvent changeEvent =
+                  new ChangeEvent()
+                      .withId(UUID.randomUUID())
+                      .withEventType(eventType)
+                      .withEntityType(Entity.USER)
+                      .withEntityId(userId)
+                      .withUserName(userName)
+                      .withTimestamp(System.currentTimeMillis());
+              write(changeEvent);
+            });
   }
 
   /** Determine actor type from username pattern - agents, bots, or regular users. */

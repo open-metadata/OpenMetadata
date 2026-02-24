@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { styled } from '@mui/material/styles';
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import {
@@ -24,7 +25,6 @@ import {
   useState,
 } from 'react';
 import { useLocation } from 'react-router-dom';
-import { styled } from '@mui/material/styles';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import AlertBar from '../AlertBar/AlertBar';
