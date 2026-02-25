@@ -262,7 +262,7 @@
     },
     {
       "name": "patch_entity",
-      "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch.",
+      "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -276,7 +276,7 @@
           },
           "patch": {
             "type": "string",
-            "description": "JSONPatch as String format."
+            "description": "JSONPatch operations as a JSON array string. Each operation has 'op' (add/remove/replace), 'path' (JSON Pointer starting with /), and 'value'. Field paths MUST use plural names for array fields: /domains, /owners, /tags, /reviewers. Example to set a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-uuid>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]."
           }
         },
         "required": [
