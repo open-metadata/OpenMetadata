@@ -108,6 +108,7 @@ export const SsoRolesSelectField = (props: FieldProps) => {
           disabled={props.disabled}
           id={id}
           mode="multiple"
+          optionFilterProp="label"
           options={roleOptions}
           placeholder={placeholder}
           status={hasError ? 'error' : undefined}
