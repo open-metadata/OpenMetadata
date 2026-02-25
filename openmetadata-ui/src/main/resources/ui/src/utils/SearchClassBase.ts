@@ -602,12 +602,7 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutTier() {
-    return [
-      EntityType.GLOSSARY_TERM,
-      EntityType.TAG,
-      EntityType.DATA_PRODUCT,
-      EntityType.TEST_CASE,
-    ];
+    return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.TEST_CASE];
   }
 
   public getServiceIcon(source: SearchSourceAlias) {
