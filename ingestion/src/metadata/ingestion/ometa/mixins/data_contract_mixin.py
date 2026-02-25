@@ -15,6 +15,7 @@ To be used by OpenMetadata class
 """
 import traceback
 from typing import Any, Optional
+from urllib.parse import quote_plus
 
 from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
@@ -529,7 +530,7 @@ class OMetaDataContractMixin:
                 f"?entityId={model_str(entity_id)}&entityType={entity_type}"
             )
             if object_name:
-                url += f"&objectName={object_name}"
+                url += f"&objectName={quote_plus(object_name)}"
             resp = self.client.post(
                 url, data=yaml_content, headers={"Content-Type": "application/x-yaml"}
             )

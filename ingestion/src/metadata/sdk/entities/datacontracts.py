@@ -269,9 +269,6 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         Get the effective data contract for an entity
         """
         client = cls._get_client()
-        rest_client = getattr(client, "client", None)
-        if rest_client is None:
-            return client.get_data_contract_by_entity_id(entity_id, entity_type)
         return client.get_data_contract_by_entity_id(entity_id, entity_type)
 
     @classmethod
