@@ -68,7 +68,9 @@ public class CreateMetricTool implements McpTool {
     }
     try {
       createMetric.setMetricExpression(
-          new MetricExpression().withLanguage(MetricExpressionLanguage.fromValue(lang)).withCode(code));
+          new MetricExpression()
+              .withLanguage(MetricExpressionLanguage.fromValue(lang))
+              .withCode(code));
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException(
           "Parameter 'metricExpressionLanguage' has invalid value '"
