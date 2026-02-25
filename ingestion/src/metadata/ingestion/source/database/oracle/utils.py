@@ -427,9 +427,9 @@ def get_indexes_preserve_case(
 
     if schema is not None:
         params["schema"] = schema
-        text += "AND a.table_owner = :schema "
+        text += " AND a.table_owner = :schema "
 
-    text += "ORDER BY a.index_name, a.column_position"
+    text += " ORDER BY a.index_name, a.column_position"
     text = text % {"dblink": dblink}
 
     rp = connection.execute(sql.text(text), params)
