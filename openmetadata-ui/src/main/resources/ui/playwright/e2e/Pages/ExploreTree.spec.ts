@@ -192,29 +192,34 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         '/api/v1/search/query?q=&index=dataAsset*'
       );
       await page.getByTestId('explore-tree-title-Tags').click();
-      await tagsSearchRes;
+      const tagsSearchResponse = await tagsSearchRes;
+
+      expect(tagsSearchResponse.status()).toBe(200);
     });
 
     await test.step(
       'Click parent classification breadcrumb from a tag result',
       async () => {
         await waitForAllLoadersToDisappear(page);
-        const breadcrumbLink = page
-          .getByTestId('breadcrumb-link')
-          .first()
-          .getByRole('link');
+        const classificationBreadcrumb = page
+          .locator('[data-testid="breadcrumb-link"] a[href*="/tags/"]')
+          .first();
 
-        await expect(breadcrumbLink).toBeVisible();
+        await expect(classificationBreadcrumb).toBeVisible();
+        await expect(classificationBreadcrumb).toBeEnabled();
 
         const classificationsRes = page.waitForResponse(
           '/api/v1/classifications*'
         );
         const tagsTableRes = page.waitForResponse('/api/v1/tags*');
 
-        await breadcrumbLink.click();
+        await classificationBreadcrumb.click();
 
-        await classificationsRes;
-        await tagsTableRes;
+        const classificationResponse = await classificationsRes;
+        const tagsTableResponse = await tagsTableRes;
+
+        expect(classificationResponse.status()).toBe(200);
+        expect(tagsTableResponse.status()).toBe(200);
       }
     );
 
@@ -224,13 +229,14 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await waitForAllLoadersToDisappear(page);
 
         await expect(
-          page.getByTestId('side-panel-classification').first()
-        ).toBeVisible();
+          page.getByTestId('side-panel-classification')
+        ).not.toHaveCount(0);
 
         await expect(page.getByTestId('tags-container')).toBeVisible();
 
         await expect(page.getByTestId('table')).toBeVisible();
 
+        // Verify all table column headers are correct
         const headers = await page
           .locator('.ant-table-thead > tr > .ant-table-cell')
           .allTextContents();
