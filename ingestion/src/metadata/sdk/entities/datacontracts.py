@@ -14,7 +14,8 @@ from metadata.generated.schema.entity.datacontract.odcs.odcsDataContract import 
 )
 from metadata.generated.schema.type.basic import Uuid
 from metadata.sdk.entities.base import BaseEntity
-from metadata.sdk.types import OMetaClient, UuidLike
+from metadata.sdk.types import OMetaClient
+from uuid import UUID
 
 
 @dataclass
@@ -192,7 +193,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         return DataContract
 
     @classmethod
-    def export_odcs(cls, contract_id: UuidLike) -> ODCSExportOperation:
+    def export_odcs(cls, contract_id: UUID) -> ODCSExportOperation:
         """Export a DataContract to ODCS format.
 
         Args:
@@ -233,7 +234,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         )
 
     @classmethod
-    def import_odcs(cls, entity_id: UuidLike, entity_type: str) -> ODCSImportOperation:
+    def import_odcs(cls, entity_id: UUID, entity_type: str) -> ODCSImportOperation:
         """Import a DataContract from ODCS format.
 
         Args:
@@ -263,26 +264,20 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         )
 
     @classmethod
-    def get_by_entity(
-        cls, entity_id: UuidLike, entity_type: str
-    ) -> Optional[DataContract]:
+    def get_by_entity(cls, entity_id: UUID, entity_type: str) -> Optional[DataContract]:
         """
         Get the effective data contract for an entity
         """
         client = cls._get_client()
-        return client.get_data_contract_by_entity_id(
-            Uuid(cls._stringify_identifier(entity_id)), entity_type
-        )
+        return client.get_data_contract_by_entity_id(Uuid(entity_id), entity_type)
 
     @classmethod
-    def validate_by_entity(cls, entity_id: UuidLike, entity_type: str) -> Optional[Any]:
+    def validate_by_entity(cls, entity_id: UUID, entity_type: str) -> Optional[Any]:
         """
         Validate a data contract for an entity
         """
         client = cls._get_client()
-        return client.validate_data_contract_by_entity_id(
-            Uuid(cls._stringify_identifier(entity_id)), entity_type
-        )
+        return client.validate_data_contract_by_entity_id(Uuid(entity_id), entity_type)
 
     @classmethod
     def validate_request(cls, request: Any) -> Optional[Any]:
@@ -303,7 +298,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
     @classmethod
     def validate_odcs_yaml(
         cls,
-        entity_id: UuidLike,
+        entity_id: UUID,
         entity_type: str,
         yaml_content: str,
         object_name: Optional[str] = None,
@@ -313,7 +308,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         """
         client = cls._get_client()
         return client.validate_odcs_yaml(
-            Uuid(cls._stringify_identifier(entity_id)),
+            Uuid(entity_id),
             entity_type,
             yaml_content,
             object_name,
@@ -328,11 +323,9 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         return client.parse_odcs_yaml(yaml_content)
 
     @classmethod
-    def delete_results_before(cls, contract_id: UuidLike, timestamp: int) -> bool:
+    def delete_results_before(cls, contract_id: UUID, timestamp: int) -> bool:
         """
         Delete all data contract results before a specific timestamp
         """
         client = cls._get_client()
-        return client.delete_data_contract_results_before(
-            Uuid(cls._stringify_identifier(contract_id)), timestamp
-        )
+        return client.delete_data_contract_results_before(Uuid(contract_id), timestamp)
