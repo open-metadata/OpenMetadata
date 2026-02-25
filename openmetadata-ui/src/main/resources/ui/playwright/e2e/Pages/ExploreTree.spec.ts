@@ -45,6 +45,7 @@ import {
   testCopyLinkButton,
   updateDisplayNameForEntity,
   validateCopiedLinkFormat,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
   Bucket,
@@ -162,6 +163,85 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await expect(
           page.getByTestId('search-dropdown-Data Assets')
         ).toContainText('Data Assets: metric');
+      }
+    );
+  });
+
+  test('Verify Tags navigation via Governance tree and breadcrumb renders page correctly', async ({
+    page,
+  }) => {
+    await test.step('Expand Governance node in explore tree', async () => {
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('explore-tree-title-Governance')
+      ).toBeVisible();
+
+      await page
+        .locator('div')
+        .filter({ hasText: /^Governance$/ })
+        .locator('svg')
+        .first()
+        .click();
+    });
+
+    await test.step('Click on Tags under Governance', async () => {
+      await expect(page.getByTestId('explore-tree-title-Tags')).toBeVisible();
+
+      const tagsSearchRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=dataAsset*'
+      );
+      await page.getByTestId('explore-tree-title-Tags').click();
+      await tagsSearchRes;
+    });
+
+    await test.step(
+      'Click parent classification breadcrumb from a tag result',
+      async () => {
+        await waitForAllLoadersToDisappear(page);
+        const breadcrumbLink = page
+          .getByTestId('breadcrumb-link')
+          .first()
+          .getByRole('link');
+
+        await expect(breadcrumbLink).toBeVisible();
+
+        const classificationsRes = page.waitForResponse(
+          '/api/v1/classifications*'
+        );
+        const tagsTableRes = page.waitForResponse('/api/v1/tags*');
+
+        await breadcrumbLink.click();
+
+        await classificationsRes;
+        await tagsTableRes;
+      }
+    );
+
+    await test.step(
+      'Verify full Tags page renders with left panel, table and headers',
+      async () => {
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('side-panel-classification').first()
+        ).toBeVisible();
+
+        await expect(page.getByTestId('tags-container')).toBeVisible();
+
+        await expect(page.getByTestId('table')).toBeVisible();
+
+        const headers = await page
+          .locator('.ant-table-thead > tr > .ant-table-cell')
+          .allTextContents();
+
+        expect(headers).toEqual([
+          'Enabled',
+          'Tag',
+          'Display Name',
+          'Description',
+          'Actions',
+        ]);
       }
     );
   });
