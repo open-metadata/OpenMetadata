@@ -23,13 +23,13 @@ on:
       - reopened
       - ready_for_review
     paths-ignore:
-      - ".github/**"
-      - "openmetadata-dist/**"
-      - "docker/**"
-      - "!docker/development/docker-compose.yml"
-      - "!docker/development/docker-compose-postgres.yml"
-      - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
-      - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
+      - '.github/**'
+      - 'openmetadata-dist/**'
+      - 'docker/**'
+      - '!docker/development/docker-compose.yml'
+      - '!docker/development/docker-compose-postgres.yml'
+      - 'openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**'
+      - 'openmetadata-ui/src/main/resources/ui/playwright/docs/**'
 
 permissions:
   contents: read
@@ -72,9 +72,9 @@ jobs:
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'safe to test'
+          pull-request-number: '${{ github.event.pull_request.number }}'
           disable-reviews: true # To not auto approve changes
 
       - name: Checkout
@@ -94,17 +94,17 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.10"
+          python-version: '3.10'
           # Pass different args depending on the shardIndex:
           # - shard 2: run with ingestion setup
           # - other shards: skip ingestion setup
           args: ${{ matrix.shardIndex == 2 && '-d postgresql' || '-d postgresql -i false' }}
-          ingestion_dependency: "all"
+          ingestion_dependency: 'all'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
+          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
@@ -114,31 +114,10 @@ jobs:
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
-            echo "🔹 Running DataAssetRules-only tests on shard 1"
-
-            # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
-            npx playwright test \
-              --project=setup \
-              --project=DataAssetRulesEnabled \
-              --project=DataAssetRulesDisabled \
-              --project=Basic \
-          
-          elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
-            echo "🔹 Running ingestion tests on shard 2"
-            
-            # run ingestion framework tests
-            npx playwright test \
-              --project=ingestion \
-
+          if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
+            npx playwright test --grep @ingestion --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
           else
-            # Shards 3-6 handle chromium tests (4 workers total)
-            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 2 ))
-            echo "🔹 Running all other tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/4"
-            npx playwright test \
-              --project=chromium \
-              --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/4
+            npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
           fi
 
         env:

@@ -31,6 +31,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
+  repeatEach: 5,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 4 : undefined,
   maxFailures: 500,
@@ -53,7 +54,7 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
 
@@ -80,8 +81,12 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
-      grepInvert: [/@data-insight/, /@ingestion/, /@sample-data/, /@basic/],
+      grepInvert: [/@data-insight/],
       teardown: 'entity-data-teardown',
+      testMatch: [
+        '**/CustomProperties-part1.spec.ts',
+        '**/CustomProperties-part2.spec.ts',
+      ],
       testIgnore: [
         '**/nightly/**',
         '**/DataAssetRulesEnabled.spec.ts',
