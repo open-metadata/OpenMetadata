@@ -1077,14 +1077,14 @@ export const editColumnCustomProperty = async (
       .getByTestId('edit-table-type-property-modal')
       .getByRole('textbox')
       .fill(testValue);
-    await page.locator('div.rdg-cell-pw-column1').last().press('Enter');
+    await page.keyboard.press('Enter', { delay: 100 });
 
     await page.locator('div.rdg-cell-pw-column2').last().dblclick();
     await page
       .getByTestId('edit-table-type-property-modal')
       .getByRole('textbox')
       .fill('row1col2');
-    await page.locator('div.rdg-cell-pw-column2').last().press('Enter');
+    await page.keyboard.press('Enter', { delay: 100 });
 
     await page.locator('[data-testid="update-table-type-property"]').click();
   } else if (
