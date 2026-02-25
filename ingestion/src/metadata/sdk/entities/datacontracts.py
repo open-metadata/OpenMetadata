@@ -12,6 +12,7 @@ from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.datacontract.odcs.odcsDataContract import (
     ODCSDataContract,
 )
+from metadata.generated.schema.type.basic import Uuid
 from metadata.sdk.entities.base import BaseEntity
 from metadata.sdk.types import OMetaClient, UuidLike
 
@@ -269,7 +270,9 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         Get the effective data contract for an entity
         """
         client = cls._get_client()
-        return client.get_data_contract_by_entity_id(entity_id, entity_type)
+        return client.get_data_contract_by_entity_id(
+            Uuid(cls._stringify_identifier(entity_id)), entity_type
+        )
 
     @classmethod
     def validate_by_entity(cls, entity_id: UuidLike, entity_type: str) -> Optional[Any]:
@@ -277,7 +280,9 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         Validate a data contract for an entity
         """
         client = cls._get_client()
-        return client.validate_data_contract_by_entity_id(entity_id, entity_type)
+        return client.validate_data_contract_by_entity_id(
+            Uuid(cls._stringify_identifier(entity_id)), entity_type
+        )
 
     @classmethod
     def validate_request(cls, request: Any) -> Optional[Any]:
@@ -308,7 +313,10 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         """
         client = cls._get_client()
         return client.validate_odcs_yaml(
-            entity_id, entity_type, yaml_content, object_name
+            Uuid(cls._stringify_identifier(entity_id)),
+            entity_type,
+            yaml_content,
+            object_name,
         )
 
     @classmethod
@@ -325,4 +333,6 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         Delete all data contract results before a specific timestamp
         """
         client = cls._get_client()
-        return client.delete_data_contract_results_before(contract_id, timestamp)
+        return client.delete_data_contract_results_before(
+            Uuid(cls._stringify_identifier(contract_id)), timestamp
+        )
