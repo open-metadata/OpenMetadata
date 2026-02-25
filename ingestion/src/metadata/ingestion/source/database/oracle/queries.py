@@ -59,8 +59,8 @@ WHERE u.oracle_maintained = 'N'
 ORACLE_ALL_TABLE_COMMENTS_PRESERVE_CASE = textwrap.dedent(
     """
 SELECT
-    comments table_comment,
-    table_name,
+    comments "table_comment",
+    table_name "table_name",
     owner "schema"
 FROM DBA_TAB_COMMENTS
 where comments is not null and owner not in ('SYSTEM', 'SYS')
