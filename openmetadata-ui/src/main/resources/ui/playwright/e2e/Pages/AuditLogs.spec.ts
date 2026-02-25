@@ -333,23 +333,46 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const firstEntityItem = page.locator('.ant-dropdown-menu-item').first();
         await expect(firstEntityItem).toBeVisible();
 
-        const tableOption = page.getByTestId('table');
-        await expect(tableOption).toBeVisible();
+        const entityNameSpan = firstEntityItem.locator(
+          '.dropdown-option-label'
+        );
+        const entityText = await entityNameSpan.textContent();
+        const entityType = entityText?.trim() || '';
+        expect(entityType).not.toBe('');
+
+        // Flakiness guard: `data-testid` is rendered on the inner option
+        // container (not on `.ant-dropdown-menu-item`), so reading it from the
+        // parent can return null intermittently.
+        const entityTypeTestId = await firstEntityItem
+          .locator('.d-flex > [data-testid]')
+          .first()
+          .getAttribute('data-testid');
+        expect(entityTypeTestId).toBeTruthy();
+        const selectedEntityTypeTestId = entityTypeTestId as string;
+
+        const searchInput = page.getByTestId('search-input');
+        await searchInput.fill(entityType);
+
+        const entityOption = page.getByTestId(selectedEntityTypeTestId);
+        await expect(entityOption).toBeVisible();
 
         const auditLogResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/audit/logs') &&
-            response.url().includes('entityType=')
+            response.url().includes('userName=admin') &&
+            response.url().includes(`entityType=${selectedEntityTypeTestId}`) &&
+            response.request().method() === 'GET'
         );
 
-        await tableOption.click();
+        await entityOption.click();
         await page.getByTestId('update-btn').click();
         const response = await auditLogResponse;
         expect(response.status()).toBe(200);
+        await page.waitForSelector('.ant-skeleton', { state: 'detached' });
 
         const entityFilterTag = page.getByTestId('filter-chip-entityType');
         await expect(entityFilterTag).toBeVisible();
-        await expect(entityFilterTag).toContainText('Table');
+        await expect(entityFilterTag).toContainText(entityType);
 
         const responseUrl = response.url();
         expect(responseUrl).toContain('userName=');
