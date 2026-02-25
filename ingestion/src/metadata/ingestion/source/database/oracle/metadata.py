@@ -12,6 +12,7 @@
 # pylint: disable=protected-access
 """Oracle source module"""
 import traceback
+import types
 from typing import Iterable, Optional
 
 from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
@@ -56,15 +57,20 @@ from metadata.ingestion.source.database.oracle.queries import (
 from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
     _get_constraint_data,
+    denormalize_name,
     get_all_view_definitions,
     get_columns,
+    get_indexes_preserve_case,
     get_mview_names,
     get_mview_names_dialect,
     get_table_comment,
+    get_table_comment_preserve_case,
     get_table_names,
     get_view_definition,
+    get_view_definition_preserve_case,
     get_view_names,
     get_view_names_dialect,
+    normalize_name,
 )
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -108,6 +114,20 @@ class OracleSource(CommonDbSourceService):
     Implements the necessary methods to extract
     Database metadata from Oracle Source
     """
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
+        if getattr(self.service_connection, "preserveIdentifierCase", False):
+            dialect = self.engine.dialect
+            dialect.normalize_name = types.MethodType(normalize_name, dialect)
+            dialect.denormalize_name = types.MethodType(denormalize_name, dialect)
+            dialect.get_table_comment = types.MethodType(
+                get_table_comment_preserve_case, dialect
+            )
+            dialect.get_view_definition = types.MethodType(
+                get_view_definition_preserve_case, dialect
+            )
+            dialect.get_indexes = types.MethodType(get_indexes_preserve_case, dialect)
 
     @classmethod
     def create(
@@ -164,8 +184,11 @@ class OracleSource(CommonDbSourceService):
     def _get_stored_procedures_internal(
         self, query: str
     ) -> Iterable[OracleStoredObject]:
+        schema = self.context.get().database_schema
+        if not getattr(self.service_connection, "preserveIdentifierCase", False):
+            schema = schema.upper()
         results: FetchObjectList = self.engine.execute(
-            query.format(schema=self.context.get().database_schema.upper())
+            query.format(schema=schema)
         ).all()
         results = self.process_result(data=results)
         for row in results.items():

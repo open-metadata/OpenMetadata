@@ -32,7 +32,10 @@ def get_all_table_comments(self, connection, query):
     self.current_db: str = connection.engine.url.database
     result = connection.execute(query)
     for table in result:
-        self.all_table_comments[(table.table_name, table.schema)] = table.table_comment
+        table_dict = {k.lower(): v for k, v in dict(table._mapping).items()}
+        self.all_table_comments[
+            (table_dict["table_name"], table_dict["schema"])
+        ] = table_dict["table_comment"]
 
 
 def get_table_comment_wrapper(self, connection, query, table_name, schema=None):
