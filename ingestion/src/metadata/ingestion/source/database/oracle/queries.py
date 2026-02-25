@@ -31,11 +31,11 @@ ORACLE_ALL_VIEW_DEFINITIONS = textwrap.dedent(
 SELECT
     LOWER(v.view_name) AS "view_name",
     LOWER(v.owner) AS "schema",
-    text AS view_def,
+    text AS "view_def",
     CASE
         WHEN text IS NOT NULL THEN NULL
         ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
-    END AS view_ddl
+    END AS "view_ddl"
 FROM DBA_VIEWS v
 JOIN DBA_USERS u
     ON v.owner = u.username
@@ -44,11 +44,11 @@ UNION ALL
 SELECT
     LOWER(m.mview_name) AS "view_name",
     LOWER(m.owner) AS "schema",
-    query AS view_def,
+    query AS "view_def",
     CASE
         WHEN query IS NOT NULL THEN NULL
         ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
-    END AS view_ddl
+    END AS "view_ddl"
 FROM DBA_MVIEWS m
 JOIN DBA_USERS u
     ON m.owner = u.username
@@ -73,11 +73,11 @@ ORACLE_ALL_VIEW_DEFINITIONS_PRESERVE_CASE = textwrap.dedent(
 SELECT
     v.view_name AS "view_name",
     v.owner AS "schema",
-    text AS view_def,
+    text AS "view_def",
     CASE
         WHEN text IS NOT NULL THEN NULL
         ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
-    END AS view_ddl
+    END AS "view_ddl"
 FROM DBA_VIEWS v
 JOIN DBA_USERS u
     ON v.owner = u.username
@@ -86,11 +86,11 @@ UNION ALL
 SELECT
     m.mview_name AS "view_name",
     m.owner AS "schema",
-    query AS view_def,
+    query AS "view_def",
     CASE
         WHEN query IS NOT NULL THEN NULL
         ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
-    END AS view_ddl
+    END AS "view_ddl"
 FROM DBA_MVIEWS m
 JOIN DBA_USERS u
     ON m.owner = u.username
