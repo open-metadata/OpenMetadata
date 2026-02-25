@@ -21,6 +21,9 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
 )
+from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline import (
+    LineageInformation,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -179,9 +182,9 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.open_lineage_source.context.get().pipeline_service = (
             MOCK_PIPELINE_SERVICE.name.root
         )
-        self.open_lineage_source.source_config.lineageInformation = {
-            "dbServiceNames": ["skun"]
-        }
+        self.open_lineage_source.source_config.lineageInformation = LineageInformation(
+            dbServiceNames=["skun"]
+        )
 
         # Kinesis source
         kinesis_config = OpenMetadataWorkflowConfig.model_validate(
@@ -197,9 +200,9 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.open_lineage_kinesis_source.context.get().pipeline_service = (
             MOCK_PIPELINE_SERVICE.name.root
         )
-        self.open_lineage_kinesis_source.source_config.lineageInformation = {
-            "dbServiceNames": ["skun"]
-        }
+        self.open_lineage_kinesis_source.source_config.lineageInformation = (
+            LineageInformation(dbServiceNames=["skun"])
+        )
 
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
