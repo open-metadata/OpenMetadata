@@ -20,7 +20,57 @@ import '../../test/unit/mocks/mui.mock';
 import IncidentManager from './IncidentManager.component';
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {
-  return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
+  return jest
+    .fn()
+    .mockImplementation(
+      (props: {
+        pagingHandler?: (params: { currentPage: number }) => void;
+        currentPage?: number;
+        onShowSizeChange?: (size: number) => void;
+      }) => (
+        <div data-testid="pagination">
+          <span>NextPrevious.component</span>
+          <button
+            data-testid="pagination-next"
+            type="button"
+            onClick={() =>
+              props.pagingHandler?.({
+                currentPage: (props.currentPage ?? 1) + 1,
+              })
+            }>
+            Next
+          </button>
+          <button
+            data-testid="pagination-previous"
+            type="button"
+            onClick={() =>
+              props.pagingHandler?.({
+                currentPage: (props.currentPage ?? 1) - 1,
+              })
+            }>
+            Previous
+          </button>
+          <button
+            data-testid="pagination-page-2"
+            type="button"
+            onClick={() => props.pagingHandler?.({ currentPage: 2 })}>
+            Page 2
+          </button>
+          <button
+            data-testid="pagination-page-3"
+            type="button"
+            onClick={() => props.pagingHandler?.({ currentPage: 3 })}>
+            Page 3
+          </button>
+          <button
+            data-testid="pagination-page-size-25"
+            type="button"
+            onClick={() => props.onShowSizeChange?.(25)}>
+            Page size 25
+          </button>
+        </div>
+      )
+    );
 });
 jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
   return jest.fn().mockImplementation(({ handleDateRangeChange }) => (
@@ -64,16 +114,26 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('../../hooks/paging/usePaging', () => ({
-  usePaging: jest.fn().mockReturnValue({
-    currentPage: 1,
-    showPagination: true,
-    pageSize: 10,
-    handlePageChange: jest.fn(),
-    handlePagingChange: jest.fn(),
-    handlePageSizeChange: jest.fn(),
-  }),
-}));
+jest.mock('../../hooks/paging/usePaging', () => {
+  const mockHandlePageChange = jest.fn();
+  const mockHandlePagingChange = jest.fn();
+  const mockHandlePageSizeChange = jest.fn();
+
+  return {
+    usePaging: jest.fn().mockReturnValue({
+      currentPage: 1,
+      paging: { after: '', before: '', total: 25 },
+      showPagination: true,
+      pageSize: 10,
+      handlePageChange: mockHandlePageChange,
+      handlePagingChange: mockHandlePagingChange,
+      handlePageSizeChange: mockHandlePageSizeChange,
+    }),
+    mockHandlePageChange,
+    mockHandlePagingChange,
+    mockHandlePageSizeChange,
+  };
+});
 jest.mock('../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatusFromSearch: jest
     .fn()
@@ -142,7 +202,149 @@ describe('IncidentManagerPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('Incident should be fetch with updated time', async () => {
+  it('should call list incident API on page load', async () => {
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    expect(getListTestCaseIncidentStatusFromSearch).toHaveBeenCalledWith({
+      limit: 10,
+      offset: 0,
+      latest: true,
+      include: 'non-deleted',
+      originEntityFQN: undefined,
+      domain: undefined,
+    });
+  });
+
+  it('should handle test case search', async () => {
+    const mockSearchQuery = require('../../rest/searchAPI').searchQuery;
+    mockSearchQuery.mockResolvedValue({
+      hits: {
+        hits: [
+          {
+            _source: {
+              fullyQualifiedName: 'test_case_1',
+              name: 'test_case_1',
+              entityType: 'testCase',
+            },
+          },
+        ],
+      },
+    });
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const select = await screen.findByTestId('test-case-select');
+
+    expect(select).toBeInTheDocument();
+  });
+
+  it('should handle status change', async () => {
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const select = await screen.findByTestId('status-select');
+    const selectBox = select.querySelector('.ant-select-selector');
+
+    expect(selectBox).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.mouseDown(selectBox!);
+    });
+
+    const resolvedOption = await screen.findByText('label.resolved');
+
+    await act(async () => {
+      fireEvent.click(resolvedOption);
+    });
+
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: expect.stringContaining(
+          'testCaseResolutionStatusType=Resolved'
+        ),
+      }),
+      expect.anything()
+    );
+  });
+
+  it('should handle assignee change', async () => {
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const assigneeBtn = await screen.findByTestId('assignee-change-btn');
+
+    await act(async () => {
+      fireEvent.click(assigneeBtn);
+    });
+
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: expect.stringContaining('assignee=user1'),
+      }),
+      expect.anything()
+    );
+  });
+
+  it('should handle severity update', async () => {
+    const mockGetList = getListTestCaseIncidentStatusFromSearch as jest.Mock;
+    const updateTestCaseIncidentById =
+      require('../../rest/incidentManagerAPI').updateTestCaseIncidentById;
+
+    mockGetList.mockResolvedValue({
+      data: [
+        {
+          id: 'test-id',
+          testCaseReference: {
+            fullyQualifiedName:
+              'sample_service.sample_db.sample_schema.sample_table.test_case',
+            name: 'test-name',
+          },
+          testCaseResolutionStatusType: 'New',
+          severity: 'Severity1',
+        },
+      ],
+      paging: { total: 1 },
+    });
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const severityBtn = await screen.findByTestId('severity-update');
+
+    await act(async () => {
+      fireEvent.click(severityBtn);
+    });
+
+    expect(updateTestCaseIncidentById).toHaveBeenCalledWith(
+      'test-id',
+      expect.anything() // json patch
+    );
+  });
+
+  it('Incident should be fetch with updated time from URL', async () => {
+    const mockUseCustomLocation = require('../../hooks/useCustomLocation/useCustomLocation');
+    mockUseCustomLocation.mockImplementation(() => ({
+      search: QueryString.stringify({
+        endTs: 1710161424255,
+        startTs: 1709556624254,
+      }),
+    }));
+
     const mockGetListTestCaseIncidentStatus =
       getListTestCaseIncidentStatusFromSearch as jest.Mock;
     await act(async () => {
@@ -159,6 +361,7 @@ describe('IncidentManagerPage', () => {
       endTs: 1710161424255,
       latest: true,
       limit: 10,
+      offset: 0,
       startTs: 1709556624254,
       include: 'non-deleted',
       domain: undefined,
@@ -183,6 +386,7 @@ describe('IncidentManagerPage', () => {
       endTs: 1710161424255,
       latest: true,
       limit: 10,
+      offset: 0,
       startTs: 1709556624254,
       include: 'deleted',
       domain: undefined,
@@ -204,5 +408,135 @@ describe('IncidentManagerPage', () => {
     });
 
     expect(screen.getByText('label.table')).toBeInTheDocument();
+  });
+
+  describe('pagination', () => {
+    beforeEach(() => {
+      const usePagingModule = require('../../hooks/paging/usePaging');
+      const {
+        usePaging,
+        mockHandlePageChange,
+        mockHandlePagingChange,
+        mockHandlePageSizeChange,
+      } = usePagingModule;
+      usePaging.mockReturnValue({
+        currentPage: 1,
+        paging: { after: '', before: '', total: 25 },
+        showPagination: true,
+        pageSize: 10,
+        handlePageChange: mockHandlePageChange,
+        handlePagingChange: mockHandlePagingChange,
+        handlePageSizeChange: mockHandlePageSizeChange,
+      });
+      (getListTestCaseIncidentStatusFromSearch as jest.Mock).mockResolvedValue({
+        data: [],
+        paging: { after: '', before: '', total: 25 },
+      });
+      mockHandlePageChange.mockClear();
+      mockHandlePagingChange.mockClear();
+      mockHandlePageSizeChange.mockClear();
+    });
+
+    it('should fetch next page when Next is clicked', async () => {
+      const { mockHandlePageChange } = require('../../hooks/paging/usePaging');
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      const nextButton = await screen.findByTestId('pagination-next');
+      await act(async () => {
+        fireEvent.click(nextButton);
+      });
+
+      expect(getListTestCaseIncidentStatusFromSearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          limit: 10,
+          offset: 10,
+        })
+      );
+      expect(mockHandlePageChange).toHaveBeenCalledWith(2);
+    });
+
+    it('should fetch previous page when Previous is clicked', async () => {
+      const usePagingModule = require('../../hooks/paging/usePaging');
+      const { usePaging, mockHandlePageChange } = usePagingModule;
+      usePaging.mockReturnValue({
+        currentPage: 2,
+        paging: { after: '', before: '', total: 25 },
+        showPagination: true,
+        pageSize: 10,
+        handlePageChange: mockHandlePageChange,
+        handlePagingChange: usePagingModule.mockHandlePagingChange,
+        handlePageSizeChange: jest.fn(),
+      });
+
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      const previousButton = await screen.findByTestId('pagination-previous');
+      await act(async () => {
+        fireEvent.click(previousButton);
+      });
+
+      expect(getListTestCaseIncidentStatusFromSearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          limit: 10,
+          offset: 0,
+        })
+      );
+      expect(mockHandlePageChange).toHaveBeenCalledWith(1);
+    });
+
+    it('should fetch correct page when page number is clicked', async () => {
+      const { mockHandlePageChange } = require('../../hooks/paging/usePaging');
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      const page2Button = await screen.findByTestId('pagination-page-2');
+      await act(async () => {
+        fireEvent.click(page2Button);
+      });
+
+      expect(getListTestCaseIncidentStatusFromSearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          limit: 10,
+          offset: 10,
+        })
+      );
+      expect(mockHandlePageChange).toHaveBeenCalledWith(2);
+
+      const page3Button = await screen.findByTestId('pagination-page-3');
+      await act(async () => {
+        fireEvent.click(page3Button);
+      });
+
+      expect(getListTestCaseIncidentStatusFromSearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          limit: 10,
+          offset: 20,
+        })
+      );
+      expect(mockHandlePageChange).toHaveBeenCalledWith(3);
+    });
+
+    it('should call handlePageSizeChange when page size dropdown is used', async () => {
+      const {
+        mockHandlePageSizeChange,
+      } = require('../../hooks/paging/usePaging');
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      const pageSizeButton = await screen.findByTestId(
+        'pagination-page-size-25'
+      );
+      await act(async () => {
+        fireEvent.click(pageSizeButton);
+      });
+
+      expect(mockHandlePageSizeChange).toHaveBeenCalledWith(25);
+    });
   });
 });
