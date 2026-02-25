@@ -178,10 +178,10 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       ).toBeVisible();
 
       await page
-        .locator('div')
-        .filter({ hasText: /^Governance$/ })
-        .locator('svg')
-        .first()
+        .locator('.ant-tree-treenode', {
+          has: page.getByTestId('explore-tree-title-Governance'),
+        })
+        .locator('.ant-tree-switcher')
         .click();
     });
 
