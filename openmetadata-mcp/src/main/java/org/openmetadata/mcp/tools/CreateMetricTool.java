@@ -58,29 +58,22 @@ public class CreateMetricTool implements McpTool {
 
     String lang = (String) params.get("metricExpressionLanguage");
     String code = (String) params.get("metricExpressionCode");
-    boolean hasLang = lang != null && !lang.isBlank();
-    boolean hasCode = code != null && !code.isBlank();
-    if (hasLang && hasCode) {
-      try {
-        createMetric.setMetricExpression(
-            new MetricExpression()
-                .withLanguage(MetricExpressionLanguage.fromValue(lang))
-                .withCode(code));
-      } catch (IllegalArgumentException e) {
-        throw new IllegalArgumentException(
-            "Parameter 'metricExpressionLanguage' has invalid value '"
-                + lang
-                + "'. Valid values are: SQL, Java, JavaScript, Python, External");
-      }
-    } else if (hasLang || hasCode) {
-      String missing = hasLang ? "metricExpressionCode" : "metricExpressionLanguage";
-      String provided = hasLang ? "metricExpressionLanguage" : "metricExpressionCode";
+    if (lang == null || lang.isBlank()) {
       throw new IllegalArgumentException(
-          "Parameter '"
-              + missing
-              + "' is required when '"
-              + provided
-              + "' is provided. Both 'metricExpressionLanguage' and 'metricExpressionCode' must be specified together.");
+          "Parameter 'metricExpressionLanguage' is required. Valid values are: SQL, Java, JavaScript, Python, External");
+    }
+    if (code == null || code.isBlank()) {
+      throw new IllegalArgumentException(
+          "Parameter 'metricExpressionCode' is required. Provide the expression that computes this metric (e.g. a SQL query).");
+    }
+    try {
+      createMetric.setMetricExpression(
+          new MetricExpression().withLanguage(MetricExpressionLanguage.fromValue(lang)).withCode(code));
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          "Parameter 'metricExpressionLanguage' has invalid value '"
+              + lang
+              + "'. Valid values are: SQL, Java, JavaScript, Python, External");
     }
 
     if (params.containsKey("metricType")) {

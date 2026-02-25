@@ -478,7 +478,7 @@
           },
           "metricExpressionCode": {
             "type": "string",
-            "description": "The code or query that computes the metric value. Required when metricExpressionLanguage is provided."
+            "description": "The code or query that computes the metric value (e.g. a SQL SELECT statement)."
           },
           "metricType": {
             "type": "string",
@@ -528,7 +528,7 @@
             }
           }
         },
-        "required": ["name"]
+        "required": ["name", "metricExpressionLanguage", "metricExpressionCode"]
       }
     },
     {
