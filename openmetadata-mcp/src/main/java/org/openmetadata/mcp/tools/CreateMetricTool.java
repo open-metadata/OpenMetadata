@@ -50,21 +50,33 @@ public class CreateMetricTool implements McpTool {
     createMetric.setName(name);
 
     if (params.containsKey("description")) {
-      createMetric.setDescription((String) params.get("description"));
+      Object descRaw = params.get("description");
+      if (!(descRaw instanceof String)) {
+        throw new IllegalArgumentException(
+            "Parameter 'description' must be a string. Received: " + descRaw);
+      }
+      createMetric.setDescription((String) descRaw);
     }
     if (params.containsKey("displayName")) {
-      createMetric.setDisplayName((String) params.get("displayName"));
+      Object displayNameRaw = params.get("displayName");
+      if (!(displayNameRaw instanceof String)) {
+        throw new IllegalArgumentException(
+            "Parameter 'displayName' must be a string. Received: " + displayNameRaw);
+      }
+      createMetric.setDisplayName((String) displayNameRaw);
     }
 
-    String lang = (String) params.get("metricExpressionLanguage");
-    String code = (String) params.get("metricExpressionCode");
-    if (lang == null || lang.isBlank()) {
+    Object langRaw = params.get("metricExpressionLanguage");
+    if (!(langRaw instanceof String lang) || lang.isBlank()) {
       throw new IllegalArgumentException(
-          "Parameter 'metricExpressionLanguage' is required. Valid values are: SQL, Java, JavaScript, Python, External");
+          "Parameter 'metricExpressionLanguage' is required and must be a non-blank string. Valid values are: SQL, Java, JavaScript, Python, External. Received: "
+              + langRaw);
     }
-    if (code == null || code.isBlank()) {
+    Object codeRaw = params.get("metricExpressionCode");
+    if (!(codeRaw instanceof String code) || code.isBlank()) {
       throw new IllegalArgumentException(
-          "Parameter 'metricExpressionCode' is required. Provide the expression that computes this metric (e.g. a SQL query).");
+          "Parameter 'metricExpressionCode' is required and must be a non-blank string. Provide the expression that computes this metric (e.g. a SQL query). Received: "
+              + codeRaw);
     }
     try {
       createMetric.setMetricExpression(
@@ -79,9 +91,13 @@ public class CreateMetricTool implements McpTool {
     }
 
     if (params.containsKey("metricType")) {
-      String rawValue = (String) params.get("metricType");
+      Object rawValue = params.get("metricType");
+      if (!(rawValue instanceof String)) {
+        throw new IllegalArgumentException(
+            "Parameter 'metricType' must be a string. Received: " + rawValue);
+      }
       try {
-        createMetric.setMetricType(MetricType.fromValue(rawValue));
+        createMetric.setMetricType(MetricType.fromValue((String) rawValue));
       } catch (IllegalArgumentException e) {
         throw new IllegalArgumentException(
             "Parameter 'metricType' has invalid value '"
@@ -90,9 +106,13 @@ public class CreateMetricTool implements McpTool {
       }
     }
     if (params.containsKey("granularity")) {
-      String rawValue = (String) params.get("granularity");
+      Object rawValue = params.get("granularity");
+      if (!(rawValue instanceof String)) {
+        throw new IllegalArgumentException(
+            "Parameter 'granularity' must be a string. Received: " + rawValue);
+      }
       try {
-        createMetric.setGranularity(MetricGranularity.fromValue(rawValue));
+        createMetric.setGranularity(MetricGranularity.fromValue((String) rawValue));
       } catch (IllegalArgumentException e) {
         throw new IllegalArgumentException(
             "Parameter 'granularity' has invalid value '"
@@ -101,9 +121,13 @@ public class CreateMetricTool implements McpTool {
       }
     }
     if (params.containsKey("unitOfMeasurement")) {
-      String rawValue = (String) params.get("unitOfMeasurement");
+      Object rawValue = params.get("unitOfMeasurement");
+      if (!(rawValue instanceof String)) {
+        throw new IllegalArgumentException(
+            "Parameter 'unitOfMeasurement' must be a string. Received: " + rawValue);
+      }
       try {
-        createMetric.setUnitOfMeasurement(MetricUnitOfMeasurement.fromValue(rawValue));
+        createMetric.setUnitOfMeasurement(MetricUnitOfMeasurement.fromValue((String) rawValue));
       } catch (IllegalArgumentException e) {
         throw new IllegalArgumentException(
             "Parameter 'unitOfMeasurement' has invalid value '"
@@ -112,7 +136,12 @@ public class CreateMetricTool implements McpTool {
       }
     }
     if (params.containsKey("customUnitOfMeasurement")) {
-      createMetric.setCustomUnitOfMeasurement((String) params.get("customUnitOfMeasurement"));
+      Object customUnitRaw = params.get("customUnitOfMeasurement");
+      if (!(customUnitRaw instanceof String)) {
+        throw new IllegalArgumentException(
+            "Parameter 'customUnitOfMeasurement' must be a string. Received: " + customUnitRaw);
+      }
+      createMetric.setCustomUnitOfMeasurement((String) customUnitRaw);
     }
     if (params.containsKey("owners")) {
       CommonUtils.setOwners(createMetric, params);
