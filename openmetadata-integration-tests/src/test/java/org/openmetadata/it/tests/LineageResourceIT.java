@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -580,11 +582,19 @@ public class LineageResourceIT {
     return client.pipelines().create(createPipeline);
   }
 
-  private void addLineage(OpenMetadataClient client, EntityReference from, EntityReference to)
-      throws Exception {
+  private void addLineage(OpenMetadataClient client, EntityReference from, EntityReference to) {
     AddLineage addLineage =
         new AddLineage().withEdge(new EntitiesEdge().withFromEntity(from).withToEntity(to));
-    client.lineage().addLineage(addLineage);
+    Awaitility.await("Add lineage edge")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              client.lineage().addLineage(addLineage);
+              return true;
+            });
   }
 
   private void addLineage(OpenMetadataClient client, Table from, Table to) throws Exception {
