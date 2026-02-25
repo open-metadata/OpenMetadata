@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
+import {
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
+} from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
@@ -33,7 +36,7 @@ import { test } from '../fixtures/pages';
 const dashboardEntity = new DashboardServiceClass();
 const dashboard = new DashboardClass();
 
-test.describe('Dashboards', () => {
+test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -94,110 +97,120 @@ test.describe('Dashboards', () => {
   });
 });
 
-test.describe('Dashboard and Charts deleted toggle', () => {
-  test.slow(true);
+test.describe(
+  'Dashboard and Charts deleted toggle',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    test.slow(true);
 
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll('Setup pre-requests', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    await dashboard.create(apiContext);
+      await dashboard.create(apiContext);
 
-    await afterAction();
-  });
+      await afterAction();
+    });
 
-  test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+    test.afterAll('Clean up', async ({ browser }) => {
+      const { afterAction, apiContext } = await performAdminLogin(browser);
 
-    await dashboard.delete(apiContext);
-    await afterAction();
-  });
+      await dashboard.delete(apiContext);
+      await afterAction();
+    });
 
-  test.beforeEach('Visit home page', async ({ page }) => {
-    await redirectToHomePage(page);
-  });
+    test.beforeEach('Visit home page', async ({ page }) => {
+      await redirectToHomePage(page);
+    });
 
-  test('should be able to toggle between deleted and non-deleted charts', async ({
-    page,
-  }) => {
-    await dashboard.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
-
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-    await page.click('[data-testid="manage-button"]');
-    await page.click('[data-testid="delete-button"]');
-
-    await page.waitForSelector('[role="dialog"].ant-modal');
-
-    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-    await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-    const deleteResponse = page.waitForResponse(
-      `/api/v1/${EntityTypeEndpoint.Dashboard}/async/*?hardDelete=false&recursive=true`
-    );
-    await page.click('[data-testid="confirm-button"]');
-
-    await deleteResponse;
-    await page.waitForLoadState('networkidle');
-
-    await toastNotification(
+    test('should be able to toggle between deleted and non-deleted charts', async ({
       page,
-      /(deleted successfully!|Delete operation initiated)/,
-      BIG_ENTITY_DELETE_TIMEOUT
-    );
+    }) => {
+      await dashboard.visitEntityPage(page);
+      await page.waitForLoadState('networkidle');
 
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    // Retry mechanism for checking deleted badge
-    let deletedBadge = page.locator('[data-testid="deleted-badge"]');
-    let attempts = 0;
-    const maxAttempts = 5;
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-    while (attempts < maxAttempts) {
-      const isVisible = await deletedBadge.isVisible();
-      if (isVisible) {
-        break;
+      await page.click('[data-testid="manage-button"]');
+      await page.click('[data-testid="delete-button"]');
+
+      await page.waitForSelector('[role="dialog"].ant-modal');
+
+      await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+      await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+      const deleteResponse = page.waitForResponse(
+        `/api/v1/${EntityTypeEndpoint.Dashboard}/async/*?hardDelete=false&recursive=true`
+      );
+      await page.click('[data-testid="confirm-button"]');
+
+      await deleteResponse;
+      await page.waitForLoadState('networkidle');
+
+      await toastNotification(
+        page,
+        /(deleted successfully!|Delete operation initiated)/,
+        BIG_ENTITY_DELETE_TIMEOUT
+      );
+
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      // Retry mechanism for checking deleted badge
+      let deletedBadge = page.locator('[data-testid="deleted-badge"]');
+      let attempts = 0;
+      const maxAttempts = 5;
+
+      while (attempts < maxAttempts) {
+        const isVisible = await deletedBadge.isVisible();
+        if (isVisible) {
+          break;
+        }
+
+        attempts++;
+        if (attempts < maxAttempts) {
+          await page.reload();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+          deletedBadge = page.locator('[data-testid="deleted-badge"]');
+        }
       }
 
-      attempts++;
-      if (attempts < maxAttempts) {
-        await page.reload();
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-        deletedBadge = page.locator('[data-testid="deleted-badge"]');
-      }
-    }
+      await expect(deletedBadge).toHaveText('Deleted');
+      await expect(
+        page.getByTestId('charts-table').getByTestId('no-data-placeholder')
+      ).toBeVisible();
 
-    await expect(deletedBadge).toHaveText('Deleted');
-    await expect(
-      page.getByTestId('charts-table').getByTestId('no-data-placeholder')
-    ).toBeVisible();
+      await page.getByTestId('show-deleted').click();
 
-    await page.getByTestId('show-deleted').click();
+      await expect(
+        page.getByTestId('charts-table').getByTestId('no-data-placeholder')
+      ).not.toBeVisible();
 
-    await expect(
-      page.getByTestId('charts-table').getByTestId('no-data-placeholder')
-    ).not.toBeVisible();
+      await restoreEntity(page);
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-    await restoreEntity(page);
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await expect(
+        page.getByTestId('charts-table').getByTestId('no-data-placeholder')
+      ).toBeVisible();
 
-    await expect(
-      page.getByTestId('charts-table').getByTestId('no-data-placeholder')
-    ).toBeVisible();
+      await page.getByTestId('show-deleted').click();
 
-    await page.getByTestId('show-deleted').click();
-
-    await expect(
-      page.getByTestId('charts-table').getByTestId('no-data-placeholder')
-    ).not.toBeVisible();
-  });
-});
+      await expect(
+        page.getByTestId('charts-table').getByTestId('no-data-placeholder')
+      ).not.toBeVisible();
+    });
+  }
+);
 
 test.describe('Data Model', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('expand / collapse should not appear after updating nested fields for dashboardDataModels', async ({
@@ -239,107 +252,111 @@ test.describe('Data Model', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   });
 });
 
-test.describe('Data Model with special characters in name', () => {
-  const uniqueId = uuid();
-  const serviceNameWithDot = `pw.dashboard.service-${uniqueId}`;
-  const dataModelName = `pw-data-model-${uniqueId}`;
-  let serviceResponseData: { fullyQualifiedName: string };
-  let dataModelResponseData: { fullyQualifiedName: string; name: string };
+test.describe(
+  'Data Model with special characters in name',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    const uniqueId = uuid();
+    const serviceNameWithDot = `pw.dashboard.service-${uniqueId}`;
+    const dataModelName = `pw-data-model-${uniqueId}`;
+    let serviceResponseData: { fullyQualifiedName: string };
+    let dataModelResponseData: { fullyQualifiedName: string; name: string };
 
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll('Setup pre-requests', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/dashboardServices',
-      {
-        data: {
-          name: serviceNameWithDot,
-          serviceType: 'PowerBI',
-          connection: {
-            config: {
-              type: 'PowerBI',
-              clientId: 'test-client-id',
-              clientSecret: 'test-client-secret',
-              tenantId: 'test-tenant-id',
+      const serviceResponse = await apiContext.post(
+        '/api/v1/services/dashboardServices',
+        {
+          data: {
+            name: serviceNameWithDot,
+            serviceType: 'PowerBI',
+            connection: {
+              config: {
+                type: 'PowerBI',
+                clientId: 'test-client-id',
+                clientSecret: 'test-client-secret',
+                tenantId: 'test-tenant-id',
+              },
             },
           },
-        },
-      }
-    );
+        }
+      );
 
-    expect(serviceResponse.ok()).toBeTruthy();
+      expect(serviceResponse.ok()).toBeTruthy();
 
-    serviceResponseData = await serviceResponse.json();
+      serviceResponseData = await serviceResponse.json();
 
-    const dataModelResponse = await apiContext.post(
-      '/api/v1/dashboard/datamodels',
-      {
-        data: {
-          name: dataModelName,
-          displayName: dataModelName,
-          description: `Data model for service with dots in name`,
-          service: serviceNameWithDot,
-          columns: [
-            {
-              name: 'column_1',
-              dataType: 'VARCHAR',
-              dataLength: 256,
-              dataTypeDisplay: 'varchar',
-              description: 'Test column',
-            },
-          ],
-          dataModelType: 'PowerBIDataModel',
-        },
-      }
-    );
+      const dataModelResponse = await apiContext.post(
+        '/api/v1/dashboard/datamodels',
+        {
+          data: {
+            name: dataModelName,
+            displayName: dataModelName,
+            description: `Data model for service with dots in name`,
+            service: serviceNameWithDot,
+            columns: [
+              {
+                name: 'column_1',
+                dataType: 'VARCHAR',
+                dataLength: 256,
+                dataTypeDisplay: 'varchar',
+                description: 'Test column',
+              },
+            ],
+            dataModelType: 'PowerBIDataModel',
+          },
+        }
+      );
 
-    expect(dataModelResponse.ok()).toBeTruthy();
+      expect(dataModelResponse.ok()).toBeTruthy();
 
-    dataModelResponseData = await dataModelResponse.json();
+      dataModelResponseData = await dataModelResponse.json();
 
-    await afterAction();
-  });
-
-  test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-
-    await apiContext.delete(
-      `/api/v1/services/dashboardServices/name/${encodeURIComponent(
-        serviceResponseData.fullyQualifiedName
-      )}?recursive=true&hardDelete=true`
-    );
-
-    await afterAction();
-  });
-
-  test('should display data model when service name contains dots', async ({
-    page,
-  }) => {
-    await page.goto(
-      `/service/dashboardServices/${encodeURIComponent(
-        serviceNameWithDot
-      )}/data-model`
-    );
-
-    await page.waitForLoadState('networkidle');
-    await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
-
-    await page.waitForSelector('.ant-spin', {
-      state: 'detached',
+      await afterAction();
     });
 
-    const dataModelLink = page.getByTestId(
-      `data-model-${dataModelResponseData.name}`
-    );
+    test.afterAll('Clean up', async ({ browser }) => {
+      const { afterAction, apiContext } = await performAdminLogin(browser);
 
-    await expect(dataModelLink).toBeVisible();
-    await expect(dataModelLink).toHaveText(dataModelResponseData.name);
+      await apiContext.delete(
+        `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+          serviceResponseData.fullyQualifiedName
+        )}?recursive=true&hardDelete=true`
+      );
 
-    await dataModelLink.click();
-    await page.waitForLoadState('networkidle');
+      await afterAction();
+    });
 
-    await expect(page.getByTestId('entity-header-name')).toContainText(
-      dataModelName
-    );
-  });
-});
+    test('should display data model when service name contains dots', async ({
+      page,
+    }) => {
+      await page.goto(
+        `/service/dashboardServices/${encodeURIComponent(
+          serviceNameWithDot
+        )}/data-model`
+      );
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+
+      await page.waitForSelector('.ant-spin', {
+        state: 'detached',
+      });
+
+      const dataModelLink = page.getByTestId(
+        `data-model-${dataModelResponseData.name}`
+      );
+
+      await expect(dataModelLink).toBeVisible();
+      await expect(dataModelLink).toHaveText(dataModelResponseData.name);
+
+      await dataModelLink.click();
+      await page.waitForLoadState('networkidle');
+
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        dataModelName
+      );
+    });
+  }
+);
