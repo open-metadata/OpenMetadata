@@ -87,7 +87,18 @@ export default defineConfig({
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
+        '**/BulkImport*.spec.ts',
       ],
+    },
+    {
+      name: 'bulkImport',
+      testMatch: '**/BulkImport*.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        trace: 'retain-on-failure',
+      },
+      dependencies: ['setup', 'entity-data-setup'],
+      teardown: 'entity-data-teardown',
     },
     {
       name: 'entity-data-teardown',

@@ -78,6 +78,13 @@ test.describe.serial('System Level Certification Tags', () => {
       ).toBeVisible();
 
       await closeCertificationDropdown(page);
+
+      // Re-enable as soon as the assertion is done — this test runs after the
+      // chromium project but can still overlap with the bulkImport project
+      // (which has no dependency on this project). Minimising the disabled
+      // window prevents Certification.Gold from being absent when BulkImport
+      // tests try to select it.
+      await setTagDisabledByFqn(apiContext, disabledTagFqn, false);
     } finally {
       await setTagDisabledByFqn(apiContext, disabledTagFqn, false);
       await afterAction();
@@ -102,6 +109,10 @@ test.describe.serial('System Level Certification Tags', () => {
       }
 
       await closeCertificationDropdown(page);
+
+      // Re-enable immediately — see note in the test above about overlap with
+      // the bulkImport project.
+      await setCertificationClassificationDisabled(apiContext, false);
     } finally {
       await setCertificationClassificationDisabled(apiContext, false);
       await afterAction();
