@@ -20,6 +20,7 @@ export type CustomFixtures = {
   editDescriptionPage: Page;
   editTagsPage: Page;
   editGlossaryTermPage: Page;
+  viewOnlyPage: Page;
   ownerPage: Page;
 };
 
@@ -77,6 +78,14 @@ export const test = base.extend<CustomFixtures>({
   editGlossaryTermPage: async ({ browser }, use) => {
     const page = await browser.newPage({
       storageState: 'playwright/.auth/editGlossaryTerm.json',
+    });
+
+    await use(page);
+    await page.close();
+  },
+  viewOnlyPage: async ({ browser }, use) => {
+    const page = await browser.newPage({
+      storageState: 'playwright/.auth/viewOnly.json',
     });
 
     await use(page);
