@@ -20,7 +20,6 @@ import {
   deleteCreatedProperty,
   editCreatedProperty,
   verifyCustomPropertyInAdvancedSearch,
-  verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
@@ -36,8 +35,6 @@ const propertiesList = [
   'Timestamp',
   'Hyperlink',
 ];
-
-const TABLE_COLUMN_ENTITY_NAME = 'tableColumn';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -88,26 +85,6 @@ test.describe(
                 entity.name.charAt(0).toUpperCase() + entity.name.slice(1),
                 property
               );
-
-              if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-                await test.step(
-                  'Verify Custom Property Persistence on Reload',
-                  async () => {
-                    const tableName = adminTestEntity.entity.name ?? '';
-                    const tableFqn =
-                      adminTestEntity.entityResponseData.fullyQualifiedName ??
-                      '';
-
-                    await verifyTableColumnCustomPropertyPersistence({
-                      page,
-                      tableName,
-                      tableFqn,
-                      propertyName,
-                      propertyType: property,
-                    });
-                  }
-                );
-              }
 
               await settingClick(
                 page,

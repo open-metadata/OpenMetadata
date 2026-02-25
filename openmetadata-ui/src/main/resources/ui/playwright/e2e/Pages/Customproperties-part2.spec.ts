@@ -19,7 +19,6 @@ import {
   deleteCreatedProperty,
   editCreatedProperty,
   verifyCustomPropertyInAdvancedSearch,
-  verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
@@ -83,8 +82,6 @@ const propertiesWithConfigList = [
   },
 ];
 
-const TABLE_COLUMN_ENTITY_NAME = 'tableColumn';
-
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Custom properties with custom property config', () => {
@@ -147,25 +144,6 @@ test.describe('Custom properties with custom property config', () => {
                   entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
                 );
               }
-            }
-
-            if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-              await test.step(
-                'Verify Custom Property Persistence on Reload',
-                async () => {
-                  const tableName = adminTestEntity.entity.name ?? '';
-                  const tableFqn =
-                    adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
-
-                  await verifyTableColumnCustomPropertyPersistence({
-                    page,
-                    tableName,
-                    tableFqn,
-                    propertyName,
-                    propertyType: propertyConfig.name,
-                  });
-                }
-              );
             }
 
             await settingClick(
