@@ -902,14 +902,11 @@ test.describe('SSO Configuration Tests', () => {
     test('should open a dropdown with role options when clicked', async ({
       page,
     }) => {
-      const rolesResponsePromise = page.waitForResponse('**/roles**');
-
       const field = page.getByTestId(
         'sso-configuration-form-array-field-template-authReassignRoles'
       );
 
       await field.click();
-      await rolesResponsePromise;
 
       const dropdown = page.locator('.ant-select-dropdown').last();
 
