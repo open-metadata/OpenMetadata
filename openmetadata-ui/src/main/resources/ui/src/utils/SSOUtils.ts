@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Auth0Icon from '../assets/img/icon-auth0.png';
+import Auth0Icon from '../assets/img/icon-auth0.svg';
 import CognitoIcon from '../assets/img/icon-aws-cognito.png';
 import AzureIcon from '../assets/img/icon-azure.png';
 import GoogleIcon from '../assets/img/icon-google.png';

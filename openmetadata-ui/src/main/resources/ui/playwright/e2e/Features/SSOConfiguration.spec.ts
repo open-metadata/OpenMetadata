@@ -881,4 +881,230 @@ test.describe('SSO Configuration Tests', () => {
       await expect(roleMappingWidget).not.toBeVisible();
     });
   });
+
+  test.describe('LDAP Auth Reassign Roles Field', () => {
+    test.beforeEach(async ({ page }) => {
+      await selectSSOProvider(page, 'ldap');
+    });
+
+    test('should render authReassignRoles as a searchable multi-select dropdown', async ({
+      page,
+    }) => {
+      const field = page.getByTestId(
+        'sso-configuration-form-array-field-template-authReassignRoles'
+      );
+
+      await expect(field).toBeVisible();
+      // Verify it contains a searchable combobox, not a plain tags input
+      await expect(field.getByRole('combobox')).toBeVisible();
+    });
+
+    test('should open a dropdown with role options when clicked', async ({
+      page,
+    }) => {
+      const rolesResponsePromise = page.waitForResponse('**/roles**');
+
+      const field = page.getByTestId(
+        'sso-configuration-form-array-field-template-authReassignRoles'
+      );
+
+      await field.click();
+      await rolesResponsePromise;
+
+      const dropdown = page.locator('.ant-select-dropdown').last();
+
+      await expect(dropdown).toBeVisible();
+      await expect(
+        dropdown.locator('.ant-select-item-option')
+      ).not.toHaveCount(0);
+    });
+
+    test('should allow selecting a role from the dropdown', async ({
+      page,
+    }) => {
+      const field = page.getByTestId(
+        'sso-configuration-form-array-field-template-authReassignRoles'
+      );
+
+      await field.click();
+
+      const dropdown = page.locator('.ant-select-dropdown').last();
+
+      await expect(dropdown).toBeVisible();
+
+      const firstOption = dropdown
+        .locator('.ant-select-item-option:not(.ant-select-item-option-disabled)')
+        .first();
+
+      await firstOption.click();
+
+      await expect(field.locator('.ant-select-selection-item')).toHaveCount(1);
+    });
+
+    test('should remove a selected role via its remove button', async ({
+      page,
+    }) => {
+      const field = page.getByTestId(
+        'sso-configuration-form-array-field-template-authReassignRoles'
+      );
+
+      await field.click();
+
+      const dropdown = page.locator('.ant-select-dropdown').last();
+      const firstOption = dropdown
+        .locator('.ant-select-item-option:not(.ant-select-item-option-disabled)')
+        .first();
+
+      await firstOption.click();
+      await expect(field.locator('.ant-select-selection-item')).toHaveCount(1);
+
+      await field.locator('.ant-select-selection-item-remove').click();
+
+      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
+    });
+
+    test('should filter role options based on typed search text', async ({
+      page,
+    }) => {
+      const field = page.getByTestId(
+        'sso-configuration-form-array-field-template-authReassignRoles'
+      );
+
+      await field.click();
+
+      const dropdown = page.locator('.ant-select-dropdown').last();
+
+      await expect(dropdown).toBeVisible();
+
+      await field.locator('input').fill('Data');
+
+      const filteredOptions = dropdown.locator(
+        '.ant-select-item-option:not(.ant-select-item-option-disabled)'
+      );
+
+      await expect(filteredOptions).not.toHaveCount(0);
+    });
+
+    test('should not create arbitrary tags from typed input', async ({
+      page,
+    }) => {
+      const field = page.getByTestId(
+        'sso-configuration-form-array-field-template-authReassignRoles'
+      );
+
+      await field.click();
+      await field.locator('input').fill('NonExistentRoleXYZ123');
+      await field.locator('input').press('Enter');
+
+      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
+    });
+  });
+});
+
+test.describe('SSO Back Navigation', () => {
+  const mockOktaConfig = {
+    authenticationConfiguration: {
+      provider: 'okta',
+      providerName: 'Test Okta Provider',
+      authority: 'https://test.okta.com',
+      clientId: 'test-client-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      publicKeyUrls: [],
+      jwtPrincipalClaims: ['email', 'preferred_username', 'roles', 'groups'],
+      enableSelfSignup: false,
+    },
+    authorizerConfiguration: {
+      className: 'org.openmetadata.service.security.DefaultAuthorizer',
+      containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+      adminPrincipals: ['admin'],
+      principalDomain: 'open-metadata.org',
+      enforcePrincipalDomain: false,
+      enableSecureSocketConnection: false,
+    },
+  };
+
+  test('should navigate to /settings when pressing back if SSO is already configured', async ({
+    page,
+  }) => {
+    await page.route('**/system/security/config', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(mockOktaConfig),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    // Establish /settings as the history entry just before /settings/sso
+    await page.goto('/settings');
+    await page.goto('/settings/sso');
+
+    // Component detects existing Okta config and replaces /settings/sso with /settings/sso?provider=okta
+    await page.waitForURL('**/settings/sso?provider=okta');
+
+    await page.goBack();
+
+    // Should land on /settings, skipping /settings/sso entirely
+    await page.waitForURL(/\/settings$/);
+
+    expect(page.url()).not.toContain('/settings/sso');
+  });
+
+  test('should stay on /settings/sso when pressing back if SSO is not configured', async ({
+    page,
+  }) => {
+    await page.route('**/system/security/config', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            authenticationConfiguration: {
+              provider: 'basic',
+              providerName: '',
+              authority: '',
+              clientId: '',
+              callbackUrl: '',
+              publicKeyUrls: [],
+              jwtPrincipalClaims: [],
+              enableSelfSignup: false,
+            },
+            authorizerConfiguration: {
+              className:
+                'org.openmetadata.service.security.DefaultAuthorizer',
+              containerRequestFilter:
+                'org.openmetadata.service.security.JwtFilter',
+              adminPrincipals: ['admin'],
+              principalDomain: 'open-metadata.org',
+              enforcePrincipalDomain: false,
+              enableSecureSocketConnection: false,
+            },
+          }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    const configResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/system/security/config') &&
+        response.request().method() === 'GET'
+    );
+
+    await page.goto('/settings/sso');
+    const response = await configResponse;
+
+    expect(response.status()).toBe(200);
+
+    // With basic config, URL stays at /settings/sso and shows provider selector
+    await page.waitForURL('**/settings/sso');
+
+    await expect(page.locator('.provider-selector-container')).toBeVisible();
+
+    expect(page.url()).not.toContain('provider=');
+  });
 });
