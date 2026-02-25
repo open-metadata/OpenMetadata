@@ -14,7 +14,7 @@ Mixin class containing Data Contract specific methods
 To be used by OpenMetadata class
 """
 import traceback
-from typing import Optional
+from typing import Any, Optional
 
 from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
@@ -154,6 +154,33 @@ class OMetaDataContractMixin:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Error getting data contract result {model_str(result_id)} for {model_str(data_contract_id)}: {err}"
+            )
+        return None
+
+    def get_data_contract_by_entity_id(
+        self, entity_id: Uuid, entity_type: str
+    ) -> Optional[DataContract]:
+        """
+        Get the effective data contract for an entity
+
+        Args:
+            entity_id: UUID of the entity
+            entity_type: Type of the entity (e.g., 'table', 'topic')
+
+        Returns:
+            DataContract if successful, None otherwise
+        """
+        try:
+            resp = self.client.get(
+                f"{self.get_suffix(DataContract)}/entity"
+                f"?entityId={model_str(entity_id)}&entityType={entity_type}"
+            )
+            if resp:
+                return DataContract(**resp)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error getting data contract by entity id {model_str(entity_id)}: {err}"
             )
         return None
 
@@ -432,3 +459,120 @@ class OMetaDataContractMixin:
                 f"Error creating/updating ODCS YAML contract for entity {model_str(entity_id)}: {err}"
             )
         return None
+
+    def validate_data_contract_by_entity_id(
+        self, entity_id: Uuid, entity_type: str
+    ) -> Optional[DataContractResult]:
+        """
+        Validate a data contract for an entity
+        """
+        try:
+            resp = self.client.post(
+                f"{self.get_suffix(DataContract)}/entity/validate"
+                f"?entityId={model_str(entity_id)}&entityType={entity_type}"
+            )
+            if resp:
+                return DataContractResult(**resp)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error validating data contract for entity {model_str(entity_id)}: {err}"
+            )
+        return None
+
+    def validate_data_contract_request(self, create_request: Any) -> Optional[Any]:
+        """
+        Validate a CreateDataContract request without creating
+        """
+        try:
+            resp = self.client.post(
+                f"{self.get_suffix(DataContract)}/validate",
+                data=create_request.model_dump_json(),
+            )
+            if resp:
+                return resp
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error validating data contract request: {err}")
+        return None
+
+    def validate_data_contract_request_yaml(self, yaml_content: str) -> Optional[Any]:
+        """
+        Validate a CreateDataContract request from YAML without creating
+        """
+        try:
+            resp = self.client.post(
+                f"{self.get_suffix(DataContract)}/validate/yaml",
+                data=yaml_content,
+                headers={"Content-Type": "application/x-yaml"},
+            )
+            if resp:
+                return resp
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error validating data contract yaml: {err}")
+        return None
+
+    def validate_odcs_yaml(
+        self,
+        entity_id: Uuid,
+        entity_type: str,
+        yaml_content: str,
+        object_name: Optional[str] = None,
+    ) -> Optional[Any]:
+        """
+        Validate ODCS YAML without importing
+        """
+        try:
+            url = (
+                f"{self.get_suffix(DataContract)}/odcs/validate/yaml"
+                f"?entityId={model_str(entity_id)}&entityType={entity_type}"
+            )
+            if object_name:
+                url += f"&objectName={object_name}"
+            resp = self.client.post(
+                url, data=yaml_content, headers={"Content-Type": "application/x-yaml"}
+            )
+            if resp:
+                return resp
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error validating ODCS yaml for {model_str(entity_id)}: {err}"
+            )
+        return None
+
+    def parse_odcs_yaml(self, yaml_content: str) -> Optional[Any]:
+        """
+        Parse ODCS YAML and return metadata
+        """
+        try:
+            resp = self.client.post(
+                f"{self.get_suffix(DataContract)}/odcs/parse/yaml",
+                data=yaml_content,
+                headers={"Content-Type": "application/x-yaml"},
+            )
+            if resp:
+                return resp
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error parsing ODCS yaml: {err}")
+        return None
+
+    def delete_data_contract_results_before(
+        self, data_contract_id: Uuid, timestamp: int
+    ) -> bool:
+        """
+        Delete all data contract results before a specific timestamp
+        """
+        try:
+            self.client.delete(
+                f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/results/before/{timestamp}"
+            )
+            return True
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error deleting data contract results before {timestamp} for {model_str(data_contract_id)}: {err}"
+            )
+        return False

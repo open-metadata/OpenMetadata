@@ -1,6 +1,7 @@
 """
 DataContracts entity SDK with fluent API for ODCS import/export
 """
+
 from dataclasses import dataclass, field
 from typing import Any, Optional, Type
 
@@ -259,3 +260,72 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
             entity_id=cls._stringify_identifier(entity_id),
             entity_type=entity_type,
         )
+
+    @classmethod
+    def get_by_entity(
+        cls, entity_id: UuidLike, entity_type: str
+    ) -> Optional[DataContract]:
+        """
+        Get the effective data contract for an entity
+        """
+        client = cls._get_client()
+        rest_client = getattr(client, "client", None)
+        if rest_client is None:
+            return client.get_data_contract_by_entity_id(entity_id, entity_type)
+        return client.get_data_contract_by_entity_id(entity_id, entity_type)
+
+    @classmethod
+    def validate_by_entity(cls, entity_id: UuidLike, entity_type: str) -> Optional[Any]:
+        """
+        Validate a data contract for an entity
+        """
+        client = cls._get_client()
+        return client.validate_data_contract_by_entity_id(entity_id, entity_type)
+
+    @classmethod
+    def validate_request(cls, request: Any) -> Optional[Any]:
+        """
+        Validate a CreateDataContract request without creating
+        """
+        client = cls._get_client()
+        return client.validate_data_contract_request(request)
+
+    @classmethod
+    def validate_request_yaml(cls, yaml_content: str) -> Optional[Any]:
+        """
+        Validate a CreateDataContract request from YAML without creating
+        """
+        client = cls._get_client()
+        return client.validate_data_contract_request_yaml(yaml_content)
+
+    @classmethod
+    def validate_odcs_yaml(
+        cls,
+        entity_id: UuidLike,
+        entity_type: str,
+        yaml_content: str,
+        object_name: Optional[str] = None,
+    ) -> Optional[Any]:
+        """
+        Validate ODCS YAML without importing
+        """
+        client = cls._get_client()
+        return client.validate_odcs_yaml(
+            entity_id, entity_type, yaml_content, object_name
+        )
+
+    @classmethod
+    def parse_odcs_yaml(cls, yaml_content: str) -> Optional[Any]:
+        """
+        Parse ODCS YAML and return metadata
+        """
+        client = cls._get_client()
+        return client.parse_odcs_yaml(yaml_content)
+
+    @classmethod
+    def delete_results_before(cls, contract_id: UuidLike, timestamp: int) -> bool:
+        """
+        Delete all data contract results before a specific timestamp
+        """
+        client = cls._get_client()
+        return client.delete_data_contract_results_before(contract_id, timestamp)

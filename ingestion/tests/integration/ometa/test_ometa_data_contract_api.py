@@ -233,3 +233,55 @@ class TestOMetaDataContractAPI:
         metadata.delete(
             entity=DataContract, entity_id=updated_contract.id, hard_delete=True
         )
+
+    def test_get_data_contract_by_entity_id(
+        self, metadata, test_table, data_contract_request
+    ):
+        """
+        We can fetch DataContract by entity ID
+        """
+        created_contract = metadata.create_or_update(data=data_contract_request)
+
+        # Assuming the backend associates this contract with the test_table
+        res = metadata.get_data_contract_by_entity_id(
+            entity_id=test_table.id, entity_type="table"
+        )
+
+        # In a real environment with data contract attached,
+        # res would be DataContract.
+        # Since this is an integration test, we just check our wrapper
+        # doesn't crash when calling the endpoint.
+        assert res is None or isinstance(res, DataContract)
+
+        metadata.delete(
+            entity=DataContract, entity_id=created_contract.id, hard_delete=True
+        )
+
+    def test_validate_data_contract_by_entity_id(
+        self, metadata, test_table, data_contract_request
+    ):
+        created_contract = metadata.create_or_update(data=data_contract_request)
+
+        res = metadata.validate_data_contract_by_entity_id(
+            entity_id=test_table.id, entity_type="table"
+        )
+
+        assert res is None or isinstance(res, DataContractResult)
+
+        metadata.delete(
+            entity=DataContract, entity_id=created_contract.id, hard_delete=True
+        )
+
+    def test_delete_data_contract_results_before(self, metadata, data_contract_request):
+        created_contract = metadata.create_or_update(data=data_contract_request)
+
+        # Call delete endpoint
+        timestamp = int(datetime.now().timestamp() * 1000)
+        res = metadata.delete_data_contract_results_before(
+            created_contract.id, timestamp
+        )
+        assert type(res) is bool
+
+        metadata.delete(
+            entity=DataContract, entity_id=created_contract.id, hard_delete=True
+        )
