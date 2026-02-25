@@ -351,12 +351,15 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         raise DBTConfigException(f"Error fetching dbt files from dbt Cloud: {exc}")
 
 
-def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
+def get_blobs_grouped_by_dir(blobs: Iterable[str]) -> Dict[str, List[str]]:
     """
     Method to group the objs by the dir
     """
     blob_grouped_by_directory = defaultdict(list)
+    total_blobs_scanned = 0
+    total_matched = 0
     for blob in blobs:
+        total_blobs_scanned += 1
         subdirectory = os.path.dirname(blob)
         blob_file_name = os.path.basename(blob)
         # We'll be processing multiple run_result files from a single dir
@@ -368,6 +371,11 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
             or DBT_SOURCES_FILE_NAME == blob_file_name.lower()
         ):
             blob_grouped_by_directory[subdirectory].append(blob)
+            total_matched += 1
+    logger.debug(
+        f"Scanned {total_blobs_scanned} blobs, found {total_matched} dbt artifacts "
+        f"across {len(blob_grouped_by_directory)} directories"
+    )
     return blob_grouped_by_directory
 
 
@@ -477,8 +485,11 @@ def _(config: DbtS3Config):
             if prefix:
                 kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
 
+            logger.debug(f"Listing S3 objects in s3://{current_bucket}/{prefix or ''}")
             try:
-                s3_objects = list(list_s3_objects(client, **kwargs))
+                blob_grouped = get_blobs_grouped_by_dir(
+                    blobs=(obj["Key"] for obj in list_s3_objects(client, **kwargs))
+                )
             except Exception as exc:
                 error_msg = str(exc).lower()
                 if "nosuchbucket" in error_msg:
@@ -494,10 +505,6 @@ def _(config: DbtS3Config):
                 raise DBTConfigException(
                     f"Failed to list objects in S3 bucket '{current_bucket}': {exc}"
                 ) from exc
-
-            blob_grouped = get_blobs_grouped_by_dir(
-                blobs=[key["Key"] for key in s3_objects]
-            )
 
             if not blob_grouped:
                 prefix_path = prefix or ""
@@ -574,12 +581,16 @@ def _(config: DbtGcsConfig):
 
         for bucket in buckets:
             try:
-                obj_list = list(
-                    client.list_blobs(bucket.name, prefix=prefix if prefix else None)
+                logger.debug(
+                    f"Listing GCS objects in gs://{bucket.name}/{prefix or ''}"
                 )
-
                 blob_grouped = get_blobs_grouped_by_dir(
-                    blobs=[blob.name for blob in obj_list]
+                    blobs=(
+                        blob.name
+                        for blob in client.list_blobs(
+                            bucket.name, prefix=prefix if prefix else None
+                        )
+                    )
                 )
 
                 if not blob_grouped:
@@ -675,15 +686,14 @@ def _(config: DbtAzureConfig):
         for container_client in containers:
             container_name = container_client.container_name
             try:
-                if prefix:
-                    blob_list = list(
-                        container_client.list_blobs(name_starts_with=prefix)
-                    )
-                else:
-                    blob_list = list(container_client.list_blobs())
-
+                logger.debug(
+                    f"Listing Azure blobs in container '{container_name}/{prefix or ''}'"
+                )
+                blob_iter = container_client.list_blobs(
+                    name_starts_with=prefix if prefix else None
+                )
                 blob_grouped = get_blobs_grouped_by_dir(
-                    blobs=[blob.name for blob in blob_list]
+                    blobs=(blob.name for blob in blob_iter)
                 )
 
                 if not blob_grouped:
