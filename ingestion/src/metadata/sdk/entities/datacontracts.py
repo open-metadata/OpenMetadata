@@ -4,6 +4,7 @@ DataContracts entity SDK with fluent API for ODCS import/export
 
 from dataclasses import dataclass, field
 from typing import Any, Optional, Type
+from uuid import UUID
 
 from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
@@ -15,7 +16,6 @@ from metadata.generated.schema.entity.datacontract.odcs.odcsDataContract import 
 from metadata.generated.schema.type.basic import Uuid
 from metadata.sdk.entities.base import BaseEntity
 from metadata.sdk.types import OMetaClient
-from uuid import UUID
 
 
 @dataclass
