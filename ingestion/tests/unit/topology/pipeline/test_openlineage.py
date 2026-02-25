@@ -830,13 +830,10 @@ class OpenLineageUnitTest(unittest.TestCase):
             "RUNNING event with empty inputs/outputs should not produce any lineage requests",
         )
 
-
     def _build_mock_kinesis_client(self, events):
         mock_kinesis = MagicMock()
         mock_paginator = MagicMock()
-        mock_paginator.paginate.return_value = [
-            {"Shards": [{"ShardId": "shard-0001"}]}
-        ]
+        mock_paginator.paginate.return_value = [{"Shards": [{"ShardId": "shard-0001"}]}]
         mock_kinesis.get_paginator.return_value = mock_paginator
 
         mock_kinesis.get_shard_iterator.return_value = {
@@ -950,9 +947,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         """Test Kinesis polling with no records."""
         mock_kinesis = MagicMock()
         mock_paginator = MagicMock()
-        mock_paginator.paginate.return_value = [
-            {"Shards": [{"ShardId": "shard-0001"}]}
-        ]
+        mock_paginator.paginate.return_value = [{"Shards": [{"ShardId": "shard-0001"}]}]
         mock_kinesis.get_paginator.return_value = mock_paginator
         mock_kinesis.get_shard_iterator.return_value = {
             "ShardIterator": "test-iterator"
