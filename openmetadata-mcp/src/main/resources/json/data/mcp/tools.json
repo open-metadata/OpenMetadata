@@ -526,6 +526,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of the domains this metric belongs to (e.g. 'Finance', 'Marketing'). Assigns the metric to a domain for governance and access control.",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": ["name", "metricExpressionLanguage", "metricExpressionCode"]

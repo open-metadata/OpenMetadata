@@ -133,6 +133,9 @@ public class CreateMetricTool implements McpTool {
       }
       createMetric.setTags(tags);
     }
+    if (params.containsKey("domains")) {
+      createMetric.setDomains(JsonUtils.readOrConvertValues(params.get("domains"), String.class));
+    }
 
     MetricMapper mapper = new MetricMapper();
     Metric metric =
