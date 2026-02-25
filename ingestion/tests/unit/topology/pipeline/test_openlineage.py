@@ -409,6 +409,77 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
         self.assertEqual(result, expected)
 
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn"
+    )
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map"
+    )
+    def test_get_column_lineage_normalizes_caps_columns_to_lowercase(
+        self, mock_build_map, mock_get_table_fqn
+    ):
+        """Test that CAPS column names from OL events are normalized to lowercase in column FQNs."""
+        mock_get_table_fqn.side_effect = (
+            lambda table_details: f"database.schema.{table_details.name}"
+        )
+        mock_build_map.return_value = {
+            "sqlserver:/host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
+        }
+
+        inputs = [
+            {
+                "name": "hk_schema.CASE_TEST_SOURCE",
+                "facets": {},
+                "namespace": "sqlserver://host:1433",
+            },
+        ]
+        outputs = [
+            {
+                "name": "hk_schema.CASE_TEST_TARGET",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            "FIRST_NAME": {
+                                "inputFields": [
+                                    {
+                                        "field": "FIRST_NAME",
+                                        "namespace": "sqlserver://host:1433",
+                                        "name": "hk_schema.CASE_TEST_SOURCE",
+                                    }
+                                ]
+                            },
+                            "LAST_NAME": {
+                                "inputFields": [
+                                    {
+                                        "field": "LAST_NAME",
+                                        "namespace": "sqlserver://host:1433",
+                                        "name": "hk_schema.CASE_TEST_SOURCE",
+                                    }
+                                ]
+                            },
+                        }
+                    }
+                },
+            }
+        ]
+        result = self.open_lineage_source._get_column_lineage(inputs, outputs)
+
+        expected = {
+            "database.schema.case_test_target": {
+                "database.schema.case_test_source": [
+                    ColumnLineage(
+                        toColumn="database.schema.case_test_target.first_name",
+                        fromColumns=["database.schema.case_test_source.first_name"],
+                    ),
+                    ColumnLineage(
+                        toColumn="database.schema.case_test_target.last_name",
+                        fromColumns=["database.schema.case_test_source.last_name"],
+                    ),
+                ],
+            }
+        }
+        self.assertEqual(result, expected)
+
     def test_get_column_lineage__invalid_inputs_outputs_structure(self):
         """Test with invalid input and output structure."""
         inputs = [{"invalid": "data"}]
@@ -431,6 +502,33 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = self.open_lineage_source._get_table_details(data)
         self.assertEqual(result.name, "table")
         self.assertEqual(result.schema, "schema")
+
+    def test_get_table_details_normalizes_caps_symlinks_to_lowercase(self):
+        """Test that CAPS table/schema names from symlinks are normalized to lowercase."""
+        data = {
+            "facets": {
+                "symlinks": {
+                    "identifiers": [{"name": "PROJECT.SCHEMA.CASE_TEST_SOURCE"}]
+                }
+            }
+        }
+        result = self.open_lineage_source._get_table_details(data)
+        self.assertEqual(result.name, "case_test_source")
+        self.assertEqual(result.schema, "schema")
+
+    def test_get_table_details_normalizes_caps_name_to_lowercase(self):
+        """Test that CAPS table/schema names from name attribute are normalized to lowercase."""
+        data = {"name": "HK_SCHEMA.CASE_TEST_SOURCE"}
+        result = self.open_lineage_source._get_table_details(data)
+        self.assertEqual(result.name, "case_test_source")
+        self.assertEqual(result.schema, "hk_schema")
+
+    def test_get_table_details_normalizes_mixed_case_to_lowercase(self):
+        """Test that mixed-case names are normalized to lowercase."""
+        data = {"name": "MySchema.MyTable"}
+        result = self.open_lineage_source._get_table_details(data)
+        self.assertEqual(result.name, "mytable")
+        self.assertEqual(result.schema, "myschema")
 
     def test_get_table_details_invalid_data_missing_symlinks_and_name(self):
         """Test with invalid data missing both symlinks and name."""

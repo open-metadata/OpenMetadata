@@ -135,7 +135,9 @@ class OpenlineageSource(PipelineServiceSource):
         # we take last two elements to explicitly collect schema and table names
         # in BigQuery Open Lineage events name_parts would be list of 3 elements as first one is GCP Project ID
         # however, concept of GCP Project ID is not represented in Open Metadata and hence - we need to skip this part
-        return TableDetails(name=name_parts[-1], schema=name_parts[-2])
+        # Normalize to lowercase for case-insensitive FQN matching: different connectors
+        # may store names in different cases (e.g. Trino lowercases, Spark preserves original)
+        return TableDetails(name=name_parts[-1].lower(), schema=name_parts[-2].lower())
 
     def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
         try:
@@ -346,8 +348,8 @@ class OpenlineageSource(PipelineServiceSource):
                         (
                             output_table_fqn,
                             ol_name_to_fqn_map.get(input_table_ol_name),
-                            f"{output_table_fqn}.{field_name}",
-                            f'{ol_name_to_fqn_map.get(input_table_ol_name)}.{input_field.get("field")}',
+                            f"{output_table_fqn}.{field_name.lower()}",
+                            f'{ol_name_to_fqn_map.get(input_table_ol_name)}.{input_field.get("field", "").lower()}',
                         )
                     )
 
