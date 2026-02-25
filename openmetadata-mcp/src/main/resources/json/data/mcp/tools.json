@@ -454,6 +454,84 @@
       }
     },
     {
+      "name": "create_metric",
+      "description": "Creates a new Metric entity in OpenMetadata. A Metric represents a measurable business or technical KPI (e.g. daily revenue, error rate). Use this to register new metrics with optional expression, type, granularity, and unit of measurement. Metric can be expressed in SQL, Python, Java, or JavaScript.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the metric. Must be unique and must not contain '::'."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the metric in Markdown format."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the metric."
+          },
+          "metricExpressionLanguage": {
+            "type": "string",
+            "description": "Language used to define the metric expression.",
+            "enum": ["SQL", "Java", "JavaScript", "Python", "External"]
+          },
+          "metricExpressionCode": {
+            "type": "string",
+            "description": "The code or query that computes the metric value. Required when metricExpressionLanguage is provided."
+          },
+          "metricType": {
+            "type": "string",
+            "description": "Type of the metric.",
+            "enum": ["COUNT", "SUM", "AVERAGE", "RATIO", "PERCENTAGE", "MIN", "MAX", "MEDIAN", "MODE", "STANDARD_DEVIATION", "VARIANCE", "OTHER"]
+          },
+          "granularity": {
+            "type": "string",
+            "description": "Time granularity at which the metric is computed.",
+            "enum": ["SECOND", "MINUTE", "HOUR", "DAY", "WEEK", "MONTH", "QUARTER", "YEAR"]
+          },
+          "unitOfMeasurement": {
+            "type": "string",
+            "description": "Unit of measurement for the metric value.",
+            "enum": ["COUNT", "DOLLARS", "PERCENTAGE", "TIMESTAMP", "SIZE", "REQUESTS", "EVENTS", "TRANSACTIONS", "OTHER"]
+          },
+          "customUnitOfMeasurement": {
+            "type": "string",
+            "description": "Custom unit of measurement string. Required only when unitOfMeasurement is 'OTHER'."
+          },
+          "owners": {
+            "type": "array",
+            "description": "List of OpenMetadata usernames or team names to set as owners of this metric.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "List of OpenMetadata usernames or team names to set as reviewers of this metric.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "relatedMetrics": {
+            "type": "array",
+            "description": "Fully qualified names of related metrics (e.g. 'DailyRevenue', 'WeeklyRevenue').",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag FQNs to apply to this metric (e.g. 'Tier.Tier1', 'PII.Sensitive').",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name"]
+      }
+    },
+    {
       "name": "root_cause_analysis",
       "description": "Performs comprehensive root cause analysis via data quality lineage. First identifies upstream failures that may be causing issues for the specified asset. If failures are found, automatically analyzes downstream impact to show which assets may be affected. Returns both upstream root causes and downstream impact analysis. In the response 'status' indicates whether upstream failures were found. If 'status' is 'failed', the 'upstreamAnalysis' can be used to identify the nodes and edges leading to failures and downstreamAnalysis can tell what all nodes in downstream are impacted. If 'status' is 'success', it means no upstream failures were found, and downstream impact analysis was not performed.",
       "parameters": {
