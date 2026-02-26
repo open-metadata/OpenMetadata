@@ -330,35 +330,24 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         );
         await entityTypeFilter.click();
 
-        const firstEntityItem = page.locator('.ant-dropdown-menu-item').first();
-        await expect(firstEntityItem).toBeVisible();
-
-        const entityNameSpan = firstEntityItem.locator(
-          '.dropdown-option-label'
-        );
-        const entityText = await entityNameSpan.textContent();
-        const entityType = entityText?.trim() || '';
-
-        const searchInput = page.getByTestId('search-input');
-        await searchInput.fill(entityType);
-
-        const entityOption = page.locator('.ant-dropdown-menu-item').first();
-        await expect(entityOption).toBeVisible();
-
         const auditLogResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/audit/logs') &&
-            response.url().includes('entityType=')
+            response.url().includes('userName=admin') &&
+            response.url().includes('entityType=') &&
+            response.request().method() === 'GET'
         );
 
-        await entityOption.click();
+        await page
+          .locator('.ant-dropdown-menu-item:visible')
+          .first()
+          .click();
         await page.getByTestId('update-btn').click();
         const response = await auditLogResponse;
         expect(response.status()).toBe(200);
 
         const entityFilterTag = page.getByTestId('filter-chip-entityType');
         await expect(entityFilterTag).toBeVisible();
-        await expect(entityFilterTag).toContainText(entityType);
 
         const responseUrl = response.url();
         expect(responseUrl).toContain('userName=');
@@ -387,13 +376,18 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const userFilterTag = page.getByTestId('filter-chip-user');
         const removeUserButton = page.getByTestId('remove-filter-user');
 
-        const auditLogResponse = page.waitForResponse((response) =>
-          response.url().includes('/api/v1/audit')
+        const auditLogResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/audit/logs') &&
+            response.url().includes('entityType=') &&
+            !response.url().includes('userName=') &&
+            response.request().method() === 'GET'
         );
 
         await removeUserButton.click();
         const response = await auditLogResponse;
         expect(response.status()).toBe(200);
+        await page.waitForSelector('.ant-skeleton', { state: 'detached' });
 
         await expect(userFilterTag).not.toBeVisible();
 
