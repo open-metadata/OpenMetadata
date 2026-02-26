@@ -93,9 +93,8 @@ import {
   SSOConfigurationFormProps,
   UISchemaObject,
 } from './SSOConfigurationForm.interface';
-import SsoConfigurationFormArrayFieldTemplate, {
-  SsoRolesSelectField,
-} from './SsoConfigurationFormArrayFieldTemplate';
+import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
+import SsoRolesSelectField from './SsoRolesSelectField';
 
 const widgets = {
   SelectWidget: SelectWidget,
