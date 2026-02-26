@@ -16,14 +16,21 @@ import {
   LONG_DESCRIPTION,
   LONG_DESCRIPTION_END_TEXT,
 } from '../../constant/domain';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
+import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { PersonaClass } from '../../support/persona/PersonaClass';
+import { AdminClass } from '../../support/user/AdminClass';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
   getApiContext,
   redirectToHomePage,
+  toastNotification,
   uuid,
   visitGlossaryPage,
 } from '../../utils/common';
@@ -33,7 +40,8 @@ import {
   verifyDescriptionRequiresScroll,
   verifyEndOfDescriptionReachable,
 } from '../../utils/domain';
-import { sidebarClick } from '../../utils/sidebar';
+import { navigateToPersonaWithPagination } from '../../utils/persona';
+import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 test.describe('Long Description Visibility', () => {
@@ -43,6 +51,10 @@ test.describe('Long Description Visibility', () => {
   let dataProductData: DataProduct['data'];
   let glossary: Glossary;
   let glossaryTerm: GlossaryTerm;
+  let persona: PersonaClass;
+  let adminUser: AdminClass;
+  let regularUser: UserClass;
+  let table: TableClass;
 
   test.beforeAll(
     'Setup entities with long descriptions',
@@ -98,10 +110,65 @@ test.describe('Long Description Visibility', () => {
       glossaryTerm.data.description = LONG_DESCRIPTION;
       await glossaryTerm.create(apiContext);
 
+      // Persona + Table for customized detail page test
+      persona = new PersonaClass();
+      await persona.create(apiContext);
+
+      adminUser = new AdminClass();
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
+
+      regularUser = new UserClass();
+      await regularUser.create(apiContext);
+      await regularUser.setAdminRole(apiContext);
+
+      await regularUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/personas/0',
+            value: {
+              id: persona.responseData.id,
+              name: persona.responseData.name,
+              displayName: persona.responseData.displayName,
+              fullyQualifiedName:
+                persona.responseData.fullyQualifiedName,
+              type: 'persona',
+            },
+          },
+          {
+            op: 'add',
+            path: '/defaultPersona',
+            value: {
+              id: persona.responseData.id,
+              name: persona.responseData.name,
+              displayName: persona.responseData.displayName,
+              fullyQualifiedName:
+                persona.responseData.fullyQualifiedName,
+              type: 'persona',
+            },
+          },
+        ],
+      });
+
+      table = new TableClass();
+      table.entity.description = LONG_DESCRIPTION;
+      await table.create(apiContext);
+
       await afterAction();
       await adminPage.close();
     }
   );
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await persona.delete(apiContext);
+    await adminUser.delete(apiContext);
+    await regularUser.delete(apiContext);
+    await table.delete(apiContext);
+    await afterAction();
+  });
 
   // ── Domain ──
 
@@ -328,5 +395,120 @@ test.describe('Long Description Visibility', () => {
 
     await descContainer.getByTestId('expand-collapse-icon').click();
     await expect(descContainer).toHaveClass(/\bexpanded\b/);
+  });
+
+  // ── Customized Table Detail Page ──
+
+  test('Customized Table detail page Description widget shows long description', async ({
+    browser,
+  }) => {
+    // Admin: Customize Table detail page for persona
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await redirectToHomePage(adminPage);
+
+    const personaListResponse =
+      adminPage.waitForResponse('/api/v1/personas?*');
+    await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+    await personaListResponse;
+    await navigateToPersonaWithPagination(
+      adminPage,
+      persona.data.name,
+      true
+    );
+    await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+    await adminPage.waitForLoadState('networkidle');
+
+    await adminPage.getByText('Data Assets').click();
+    await adminPage.getByText('Table', { exact: true }).click();
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Add custom tab
+    await adminPage.getByRole('button', { name: 'Add tab' }).click();
+    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await adminPage.getByTestId('add-tab-input').fill('Description Tab');
+
+    const addButton = adminPage
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Add' });
+    await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
+    await expect(addButton).toBeEnabled();
+    await addButton.click();
+
+    await expect(
+      adminPage.getByTestId('tab-Description Tab')
+    ).toBeVisible();
+
+    // Wait for dialog to close
+    await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
+    await adminPage
+      .locator('.ant-modal-wrap')
+      .waitFor({ state: 'detached' });
+
+    // Add Description widget to custom tab
+    const addWidgetButton = adminPage
+      .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
+      .getByTestId('add-widget-button');
+    await addWidgetButton.waitFor({ state: 'visible' });
+    await expect(addWidgetButton).toBeEnabled();
+    await addWidgetButton.click();
+    await adminPage
+      .getByTestId('widget-info-tabs')
+      .waitFor({ state: 'visible' });
+
+    await adminPage
+      .getByTestId('add-widget-modal')
+      .getByTestId('Description-widget')
+      .click();
+    await adminPage
+      .getByTestId('add-widget-modal')
+      .getByTestId('add-widget-button')
+      .click();
+
+    await adminPage
+      .getByTestId('widget-info-tabs')
+      .waitFor({ state: 'hidden' });
+
+    // Save customization
+    await adminPage.getByTestId('save-button').click();
+    await toastNotification(
+      adminPage,
+      /^Page layout (created|updated) successfully\.$/
+    );
+    await adminPage.close();
+
+    // User: Validate long description in custom tab
+    const userPage = await browser.newPage();
+    await regularUser.login(userPage);
+    await redirectToHomePage(userPage);
+
+    await table.visitEntityPage(userPage);
+    await userPage.waitForLoadState('networkidle');
+    await userPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(
+      userPage.getByRole('tab', { name: 'Description Tab' })
+    ).toBeVisible();
+    await userPage.getByRole('tab', { name: 'Description Tab' }).click();
+
+    const descriptionWidget = userPage
+      .getByTestId(/KnowledgePanel.Description-/)
+      .locator('visible=true');
+    await expect(descriptionWidget).toBeVisible();
+
+    // Widget truncates long content behind a "more" button
+    const moreButton = descriptionWidget.getByRole('button', {
+      name: 'more',
+    });
+    await expect(moreButton).toBeVisible();
+    await moreButton.click();
+
+    await verifyEndOfDescriptionReachable(descriptionWidget, userPage);
+
+    await userPage.close();
   });
 });
