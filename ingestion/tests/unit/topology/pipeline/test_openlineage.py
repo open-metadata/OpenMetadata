@@ -1119,13 +1119,11 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         def mock_get_uuid_by_name(entity, fqn):
             if fqn == "testService.shopify.raw_product_catalog":
-                return Mock(id="69fc8906-4a4a-45ab-9a54-9cc2d399e10e")
+                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             elif fqn == "testService.shopify.fact_order_new5":
-                return Mock(id="59fc8906-4a4a-45ab-9a54-9cc2d399e10e")
+                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             else:
-                z = Mock()
-                z.id.root = "79fc8906-4a4a-45ab-9a54-9cc2d399e10e"
-                return z
+                return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
 
         mock_get_entity.side_effect = t_fqn_build_side_effect
 
