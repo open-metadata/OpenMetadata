@@ -936,8 +936,8 @@ class PowerBIUnitTest(TestCase):
     @pytest.mark.order(17)
     def test_paginate_project_filter_pattern_includes_under_limit(self):
         """
-        Test _paginate_project_filter_pattern with include filters under the limit (20)
-        Should return a single batch with all include filters
+        Test _paginate_project_filter_pattern with include filters = 15
+        Should return two batches
         """
         includes = [f"workspace{i}" for i in range(15)]
         filter_pattern = FilterPattern(includes=includes)
@@ -951,7 +951,7 @@ class PowerBIUnitTest(TestCase):
     def test_paginate_project_filter_pattern_includes_at_limit(self):
         """
         Test _paginate_project_filter_pattern with exactly 20 include filters
-        Should return a two batches
+        Should return two batches
         """
         includes = [f"workspace{i}" for i in range(20)]
         filter_pattern = FilterPattern(includes=includes)
@@ -965,7 +965,7 @@ class PowerBIUnitTest(TestCase):
     @pytest.mark.order(19)
     def test_paginate_project_filter_pattern_includes_over_limit(self):
         """
-        Test _paginate_project_filter_pattern with include filters over the limit (20)
+        Test _paginate_project_filter_pattern with include filters over the limit = 45
         Should paginate into multiple batches
         """
         includes = [f"workspace{i}" for i in range(45)]

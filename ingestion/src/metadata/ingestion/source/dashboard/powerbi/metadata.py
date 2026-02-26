@@ -186,7 +186,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _paginate_project_filter_pattern(self, filter_pattern):
         """
-        paginate include filters if more then `20` filters
+        paginate include filters if more then `10` filters
         in single call
         """
         if not filter_pattern:
