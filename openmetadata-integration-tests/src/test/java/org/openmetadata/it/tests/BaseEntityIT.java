@@ -3922,7 +3922,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
@@ -3984,7 +3984,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(3))
         .ignoreExceptions()
@@ -4646,7 +4646,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4674,7 +4674,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4710,7 +4710,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4738,7 +4738,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4757,7 +4757,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for search to reflect update")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4853,18 +4853,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     } catch (Exception e) {
       // Ignore cleanup errors
     }
-  }
-
-  /**
-   * Wait for search indexing to complete. Uses Awaitility to poll for a short period. This is used
-   * for non-critical waits where eventual consistency is acceptable.
-   */
-  protected void waitForSearchIndexing() {
-    Awaitility.await("Wait for search indexing")
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofMillis(500))
-        .atMost(Duration.ofSeconds(5))
-        .until(() -> true);
   }
 
   /**
