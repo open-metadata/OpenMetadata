@@ -32,6 +32,8 @@ class ILikeCount(StaticMetric):
     add_props(expression="j%")(Metrics.ILIKE_COUNT.value)
     """
 
+    schema_metric_type = MetricType.iLikeCount
+
     expression: str
 
     @classmethod

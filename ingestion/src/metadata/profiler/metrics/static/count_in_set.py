@@ -43,6 +43,8 @@ class CountInSet(StaticMetric):
     add_props(values=["John"])(Metrics.COUNT_IN_SET.value)
     """
 
+    schema_metric_type = MetricType.countInSet
+
     values: List[str]
 
     @classmethod

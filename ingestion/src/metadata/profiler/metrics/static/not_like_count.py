@@ -32,6 +32,8 @@ class NotLikeCount(StaticMetric):
     add_props(expression="j%")(Metrics.NOT_LIKE_COUNT.value)
     """
 
+    schema_metric_type = MetricType.notLikeCount
+
     expression: str
 
     @classmethod

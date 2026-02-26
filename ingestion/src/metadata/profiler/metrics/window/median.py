@@ -51,6 +51,8 @@ class Median(StaticMetric, PercentilMixin):
     - For a quantifiable value, return the usual Median
     """
 
+    schema_metric_type = MetricType.median
+
     @classmethod
     def name(cls):
         return MetricType.median.value

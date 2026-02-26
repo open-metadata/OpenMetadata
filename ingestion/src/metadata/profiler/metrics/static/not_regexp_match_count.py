@@ -46,6 +46,8 @@ class NotRegexCount(StaticMetric):
     add_props(expression="j%")(Metrics.NOT_REGEX_COUNT.value)
     """
 
+    schema_metric_type = MetricType.notRegexCount
+
     expression: str
 
     @classmethod

@@ -61,6 +61,8 @@ class ColumnNames(StaticMetric):
     add_props(table=table)(Metrics.COLUMN_NAMES.value)
     """
 
+    schema_metric_type = MetricType.columnNames
+
     table: DeclarativeMeta
 
     @classmethod

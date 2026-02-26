@@ -24,7 +24,7 @@ import sqlalchemy.types
 from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Column as SAColumn
 from sqlalchemy import literal, select
 from sqlalchemy.engine import make_url
@@ -83,7 +83,7 @@ class SchemaDiffResult(BaseModel):
 
     serviceType: str
     fullyQualifiedTableName: str
-    schema: Dict[str, Dict[str, str]]
+    schema_: Dict[str, Dict[str, str]] = Field(validation_alias="schema")
 
 
 class ColumnDiffResult(BaseModel):

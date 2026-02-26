@@ -190,6 +190,8 @@ class System(SystemMetric):
     This is supported only for BigQuery, Snowflake, and Redshift
     """
 
+    schema_metric_type = MetricType.system
+
     @classmethod
     def is_col_metric(cls) -> bool:
         """

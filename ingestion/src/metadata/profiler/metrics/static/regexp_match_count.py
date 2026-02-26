@@ -46,6 +46,8 @@ class RegexCount(StaticMetric):
     add_props(expression="j.*")(Metrics.REGEX_COUNT.value)
     """
 
+    schema_metric_type = MetricType.regexCount
+
     expression: str
 
     @classmethod

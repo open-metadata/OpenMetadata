@@ -60,6 +60,8 @@ class ColumnCount(StaticMetric):
     add_props(table=table)(Metrics.COLUMN_COUNT.value)
     """
 
+    schema_metric_type = MetricType.columnCount
+
     table: DeclarativeMeta
 
     @classmethod
