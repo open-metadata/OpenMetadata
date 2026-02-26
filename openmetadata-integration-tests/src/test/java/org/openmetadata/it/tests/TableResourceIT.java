@@ -1671,6 +1671,32 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals("Test data model", updated.getDataModel().getDescription());
   }
 
+  @Test
+  void put_tableUpdatePreservesDataModel(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createRequest = createRequest(ns.prefix("preserve_datamodel_table"), ns);
+    Table table = createEntity(createRequest);
+
+    // Add dataModel via the dedicated endpoint (simulates dbt ingestion)
+    DataModel dataModel =
+        new DataModel().withModelType(DataModel.ModelType.DBT).withSql("select * from test;");
+    client.tables().updateDataModel(table.getId(), dataModel);
+
+    Table beforeUpdate = client.tables().get(table.getId().toString(), "dataModel");
+    assertNotNull(beforeUpdate.getDataModel());
+    assertEquals("select * from test;", beforeUpdate.getDataModel().getSql());
+
+    // Simulate database ingestion re-run: PUT /tables with CreateTableRequest (no dataModel)
+    createRequest.setDescription("updated description");
+    client.tables().createOrUpdate(createRequest);
+
+    // dataModel must be preserved after the re-ingestion PUT
+    Table afterUpdate = client.tables().get(table.getId().toString(), "dataModel");
+    assertNotNull(afterUpdate.getDataModel(), "dataModel was cleared by a PUT table update");
+    assertEquals("select * from test;", afterUpdate.getDataModel().getSql());
+  }
+
   // ===================================================================
   // COLUMN GET VALIDATION TESTS
   // ===================================================================
