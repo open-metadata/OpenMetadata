@@ -518,7 +518,7 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
-    const customPropertyName = `pwCustomProperty${uuid()}`;
+    const customPropertyName = `pw${uuid()}cp${Date.now()}`;
     const payload = {
       name: customPropertyName,
       description: customPropertyName,
@@ -1046,7 +1046,9 @@ export const editColumnCustomProperty = async (
     await page.keyboard.press('Enter', { delay: 100 });
 
     await page.locator('[data-testid="update-table-type-property"]').click();
-  } else if (['entityReference', 'entityReferenceList'].includes(propertyType)) {
+  } else if (
+    ['entityReference', 'entityReferenceList'].includes(propertyType)
+  ) {
     const [value] = testValue.split(',');
     const input = page.getByTestId('asset-select-list').getByRole('combobox');
     await input.click();
@@ -1253,7 +1255,14 @@ export const updateCustomPropertyInRightPanel = async (data: {
   if (await searchContainer.isVisible()) {
     await searchContainer.getByTestId('searchbar').fill(propertyName);
   }
-  await page.waitForTimeout(800);
+
+  // Since the search is client side, can't wait on APIs and names are unique,
+  // waiting for only single custom property card to be visible
+  // to ensure stability of the next click operations
+  await expect(
+    page.getByTestId('custom-property-right-panel-card')
+  ).toHaveCount(1);
+
   const container = page
     .locator('.entity-summary-panel-container')
     .getByTestId(propertyName);
