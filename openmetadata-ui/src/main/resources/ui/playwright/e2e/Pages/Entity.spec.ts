@@ -10,9 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import {
+  APIRequestContext,
+  test as base,
+  expect,
+  Page,
+} from '@playwright/test';
 import { isUndefined } from 'lodash';
+import { Column, Table } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { DATA_CONSUMER_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -23,6 +30,7 @@ import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { DirectoryClass } from '../../support/entity/DirectoryClass';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityType } from '../../support/entity/EntityDataClass.interface';
 import { FileClass } from '../../support/entity/FileClass';
@@ -46,14 +54,17 @@ import {
   getToken,
   redirectToHomePage,
   removeSingleSelectDomain,
-  toastNotification,
   uuid,
   verifyDomainPropagation,
 } from '../../utils/common';
 import {
+  createCustomPropertyForEntity,
+  CustomProperty,
   CustomPropertyTypeByName,
   updateCustomPropertyInRightPanel,
+  verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
+import { getCurrentMillis } from '../../utils/dateTime';
 import {
   addMultiOwner,
   closeColumnDetailPanel,
@@ -62,11 +73,8 @@ import {
   removeOwnersFromList,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import { visitServiceDetailsPage } from '../../utils/service';
-import { getCurrentMillis } from '../../utils/dateTime';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
-import { Column, Table } from '../../../src/generated/entity/data/table';
+import { visitServiceDetailsPage } from '../../utils/service';
 
 const entities = {
   'Api Endpoint': ApiEndpointClass,
@@ -1214,7 +1222,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const columns = tableResponse?.columns || [];
 
             const nestedParent = columns.find(
-              (col: Column) => col.name === (entity as TableClass).columnsName[2]
+              (col: Column) =>
+                col.name === (entity as TableClass).columnsName[2]
             );
 
             if (!nestedParent) {
@@ -1228,7 +1237,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const nestedParentFQN = nestedParent.fullyQualifiedName;
 
             const arrayColumn = nestedParent.children?.find(
-              (col: Column) => col.name === (entity as TableClass).columnsName[4]
+              (col: Column) =>
+                col.name === (entity as TableClass).columnsName[4]
             );
 
             if (!arrayColumn) {
@@ -1713,308 +1723,292 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       }
 
       if (entity.type === 'Table') {
-        test(
-          'Column detail panel - Data Quality tab shows test cases',
-          async ({ page }) => {
-            test.slow();
+        test('Column detail panel - Data Quality tab shows test cases', async ({
+          page,
+        }) => {
+          test.slow();
 
-            const { apiContext, afterAction } = await getApiContext(page);
-            const tableEntity = entity as TableClass;
-            const tableFQN =
-              entity.entityResponseData?.['fullyQualifiedName'];
-            const columnName = tableEntity.columnsName[0];
-            let testCase1Name = '';
-            let testCase2Name = '';
+          const { apiContext, afterAction } = await getApiContext(page);
+          const tableEntity = entity as TableClass;
+          const tableFQN = entity.entityResponseData?.['fullyQualifiedName'];
+          const columnName = tableEntity.columnsName[0];
+          let testCase1Name = '';
+          let testCase2Name = '';
 
-            try {
-              await tableEntity.createTestSuiteAndPipelines(apiContext);
+          try {
+            await tableEntity.createTestSuiteAndPipelines(apiContext);
 
-              const testCase1 = await tableEntity.createTestCase(apiContext, {
-                name: `pw_col_dq_success_${uuid()}`,
-                entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-                testDefinition: 'columnValueLengthsToBeBetween',
-                parameterValues: [
-                  { name: 'minLength', value: 1 },
-                  { name: 'maxLength', value: 10 },
-                ],
-              });
+            const testCase1 = await tableEntity.createTestCase(apiContext, {
+              name: `pw_col_dq_success_${uuid()}`,
+              entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
+              testDefinition: 'columnValueLengthsToBeBetween',
+              parameterValues: [
+                { name: 'minLength', value: 1 },
+                { name: 'maxLength', value: 10 },
+              ],
+            });
 
-              const testCase2 = await tableEntity.createTestCase(apiContext, {
-                name: `pw_col_dq_failed_${uuid()}`,
-                entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-                testDefinition: 'columnValueLengthsToBeBetween',
-                parameterValues: [
-                  { name: 'minLength', value: 100 },
-                  { name: 'maxLength', value: 200 },
-                ],
-              });
+            const testCase2 = await tableEntity.createTestCase(apiContext, {
+              name: `pw_col_dq_failed_${uuid()}`,
+              entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
+              testDefinition: 'columnValueLengthsToBeBetween',
+              parameterValues: [
+                { name: 'minLength', value: 100 },
+                { name: 'maxLength', value: 200 },
+              ],
+            });
 
-              testCase1Name = testCase1.name;
-              testCase2Name = testCase2.name;
+            testCase1Name = testCase1.name;
+            testCase2Name = testCase2.name;
 
-              await tableEntity.addTestCaseResult(
-                apiContext,
-                testCase1.fullyQualifiedName,
-                { testCaseStatus: 'Success', timestamp: getCurrentMillis() }
-              );
+            await tableEntity.addTestCaseResult(
+              apiContext,
+              testCase1.fullyQualifiedName,
+              { testCaseStatus: 'Success', timestamp: getCurrentMillis() }
+            );
 
-              await tableEntity.addTestCaseResult(
-                apiContext,
-                testCase2.fullyQualifiedName,
-                {
-                  testCaseStatus: 'Failed',
-                  result: 'Column value length exceeded maximum',
-                  timestamp: getCurrentMillis(),
-                }
-              );
+            await tableEntity.addTestCaseResult(
+              apiContext,
+              testCase2.fullyQualifiedName,
+              {
+                testCaseStatus: 'Failed',
+                result: 'Column value length exceeded maximum',
+                timestamp: getCurrentMillis(),
+              }
+            );
 
-              await test.step(
-                'Open column detail panel and navigate to DQ tab',
-                async () => {
-                  await redirectToHomePage(page);
-                  await entity.visitEntityPage(page);
+            await test.step(
+              'Open column detail panel and navigate to DQ tab',
+              async () => {
+                await redirectToHomePage(page);
+                await entity.visitEntityPage(page);
 
-                  await page.getByTestId(entity.childrenTabId ?? '').click();
-                  await waitForAllLoadersToDisappear(page);
+                await page.getByTestId(entity.childrenTabId ?? '').click();
+                await waitForAllLoadersToDisappear(page);
 
-                  await openColumnDetailPanel({
-                    page,
-                    rowSelector,
-                    columnId: entity.childrenSelectorId ?? '',
-                    columnNameTestId: 'column-name',
-                    entityType: entity.type as EntityType,
-                  });
+                await openColumnDetailPanel({
+                  page,
+                  rowSelector,
+                  columnId: entity.childrenSelectorId ?? '',
+                  columnNameTestId: 'column-name',
+                  entityType: entity.type as EntityType,
+                });
 
-                  const dqTabResponsePromise = page.waitForResponse(
-                    (response) =>
-                      response
-                        .url()
-                        .includes('/api/v1/dataQuality/testCases') 
-                  );
-                  await page.getByTestId('data-quality-tab').click();
-                  const dqTabResponse = await dqTabResponsePromise;
-                  expect(dqTabResponse.status()).toBe(200);
-                  await waitForAllLoadersToDisappear(page);
-                }
-              );
+                const dqTabResponsePromise = page.waitForResponse((response) =>
+                  response.url().includes('/api/v1/dataQuality/testCases')
+                );
+                await page.getByTestId('data-quality-tab').click();
+                const dqTabResponse = await dqTabResponsePromise;
+                expect(dqTabResponse.status()).toBe(200);
+                await waitForAllLoadersToDisappear(page);
+              }
+            );
 
-              await test.step(
-                'Verify stat cards and filter by failed',
-                async () => {
-                  const panelContainer = page.locator('.column-detail-panel');
-                  const dqContent = panelContainer.locator(
-                    '.data-quality-tab-container'
-                  );
+            await test.step(
+              'Verify stat cards and filter by failed',
+              async () => {
+                const panelContainer = page.locator('.column-detail-panel');
+                const dqContent = panelContainer.locator(
+                  '.data-quality-tab-container'
+                );
 
-                  await expect(dqContent).toBeVisible();
+                await expect(dqContent).toBeVisible();
 
-                  const successStat = panelContainer.locator(
-                    '[data-testid="data-quality-stat-card-success"]'
-                  );
-                  const failedStat = panelContainer.locator(
-                    '[data-testid="data-quality-stat-card-failed"]'
-                  );
+                const successStat = panelContainer.locator(
+                  '[data-testid="data-quality-stat-card-success"]'
+                );
+                const failedStat = panelContainer.locator(
+                  '[data-testid="data-quality-stat-card-failed"]'
+                );
 
-                  await expect(successStat).toBeVisible();
-                  await expect(failedStat).toBeVisible();
+                await expect(successStat).toBeVisible();
+                await expect(failedStat).toBeVisible();
 
-                  await expect(successStat).toHaveText('1Passed');
-                  await expect(failedStat).toHaveText('1Failed');
+                await expect(successStat).toHaveText('1Passed');
+                await expect(failedStat).toHaveText('1Failed');
 
-                  await clickDataQualityStatCard(page, 'failed');
+                await clickDataQualityStatCard(page, 'failed');
 
-                  const testCaseCardsSection = dqContent.locator(
-                    '.test-case-cards-section'
-                  );
+                const testCaseCardsSection = dqContent.locator(
+                  '.test-case-cards-section'
+                );
 
-                  await expect(testCaseCardsSection).toBeVisible();
+                await expect(testCaseCardsSection).toBeVisible();
 
-                  const failedCards =
-                    testCaseCardsSection.locator('.test-case-card');
+                const failedCards =
+                  testCaseCardsSection.locator('.test-case-card');
 
-                  await expect(failedCards).toHaveCount(1);
+                await expect(failedCards).toHaveCount(1);
 
-                  const failedCard = failedCards.first();
+                const failedCard = failedCards.first();
 
-                  await expect(
-                    failedCard.locator('.test-case-name')
-                  ).toContainText(testCase2Name);
-                  
-                }
-              );
+                await expect(
+                  failedCard.locator('.test-case-name')
+                ).toContainText(testCase2Name);
+              }
+            );
 
-              await test.step(
-                'Filter by success and verify test case card',
-                async () => {
-                  const panelContainer = page.locator('.column-detail-panel');
-                  const dqContent = panelContainer.locator(
-                    '.data-quality-tab-container'
-                  );
-                  await clickDataQualityStatCard(page, 'success');
+            await test.step(
+              'Filter by success and verify test case card',
+              async () => {
+                const panelContainer = page.locator('.column-detail-panel');
+                const dqContent = panelContainer.locator(
+                  '.data-quality-tab-container'
+                );
+                await clickDataQualityStatCard(page, 'success');
 
-                  const testCaseCardsSection = dqContent.locator(
-                    '.test-case-cards-section'
-                  );
-                  const successCards =
-                    testCaseCardsSection.locator('.test-case-card');
+                const testCaseCardsSection = dqContent.locator(
+                  '.test-case-cards-section'
+                );
+                const successCards =
+                  testCaseCardsSection.locator('.test-case-card');
 
-                  await expect(successCards).toHaveCount(1);
-                  await expect(
-                    successCards.first().locator('.test-case-name')
-                  ).toContainText(testCase1Name);
+                await expect(successCards).toHaveCount(1);
+                await expect(
+                  successCards.first().locator('.test-case-name')
+                ).toContainText(testCase1Name);
 
-                  await closeColumnDetailPanel(page);
-                }
-              );
-            } finally {
-              await afterAction();
-            }
+                await closeColumnDetailPanel(page);
+              }
+            );
+          } finally {
+            await afterAction();
           }
-        );
+        });
 
-        test(
-          'Column detail panel - Data Quality Incidents tab',
-          async ({ page }) => {
-            test.slow();
+        test('Column detail panel - Data Quality Incidents tab', async ({
+          page,
+        }) => {
+          test.slow();
 
-            const { apiContext, afterAction } = await getApiContext(page);
-            const tableEntity = entity as TableClass;
-            const tableFQN =
-              entity.entityResponseData?.['fullyQualifiedName'];
-            const columnName = tableEntity.columnsName[0];
+          const { apiContext, afterAction } = await getApiContext(page);
+          const tableEntity = entity as TableClass;
+          const tableFQN = entity.entityResponseData?.['fullyQualifiedName'];
+          const columnName = tableEntity.columnsName[0];
 
-            try {
-              await tableEntity.createTestSuiteAndPipelines(apiContext);
+          try {
+            await tableEntity.createTestSuiteAndPipelines(apiContext);
 
-              const testCase = await tableEntity.createTestCase(apiContext, {
-                name: `pw_col_incident_${uuid()}`,
-                entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-                testDefinition: 'columnValueLengthsToBeBetween',
-                parameterValues: [
-                  { name: 'minLength', value: 100 },
-                  { name: 'maxLength', value: 200 },
-                ],
-              });
+            const testCase = await tableEntity.createTestCase(apiContext, {
+              name: `pw_col_incident_${uuid()}`,
+              entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
+              testDefinition: 'columnValueLengthsToBeBetween',
+              parameterValues: [
+                { name: 'minLength', value: 100 },
+                { name: 'maxLength', value: 200 },
+              ],
+            });
 
-              await tableEntity.addTestCaseResult(
-                apiContext,
-                testCase.fullyQualifiedName,
-                {
-                  testCaseStatus: 'Failed',
-                  result: 'Column value length exceeded maximum',
-                  timestamp: getCurrentMillis(),
+            await tableEntity.addTestCaseResult(
+              apiContext,
+              testCase.fullyQualifiedName,
+              {
+                testCaseStatus: 'Failed',
+                result: 'Column value length exceeded maximum',
+                timestamp: getCurrentMillis(),
+              }
+            );
+
+            await test.step(
+              'Open column detail panel and navigate to Incidents tab',
+              async () => {
+                await redirectToHomePage(page);
+                await entity.visitEntityPage(page);
+
+                await page.getByTestId(entity.childrenTabId ?? '').click();
+                await waitForAllLoadersToDisappear(page);
+
+                await openColumnDetailPanel({
+                  page,
+                  rowSelector,
+                  columnId: entity.childrenSelectorId ?? '',
+                  columnNameTestId: 'column-name',
+                  entityType: entity.type as EntityType,
+                });
+
+                const dqTabResponsePromise = page.waitForResponse((response) =>
+                  response.url().includes('/api/v1/dataQuality/testCases')
+                );
+                await page.getByTestId('data-quality-tab').click();
+                const dqTabResponse = await dqTabResponsePromise;
+                expect(dqTabResponse.status()).toBe(200);
+
+                await waitForAllLoadersToDisappear(page);
+
+                const dqContent = page
+                  .locator('.column-detail-panel')
+                  .locator('.data-quality-tab-container');
+
+                await expect(dqContent).toBeVisible();
+
+                await dqContent
+                  .locator('.data-quality-tabs')
+                  .getByRole('tab', { name: /incidents/i })
+                  .click();
+                await waitForAllLoadersToDisappear(page);
+              }
+            );
+
+            await test.step(
+              'Verify incidents stats container and cards',
+              async () => {
+                const panelContainer = page.locator('.column-detail-panel');
+                const dqContent = panelContainer.locator(
+                  '.data-quality-tab-container'
+                );
+                const incidentsTabContent = dqContent.locator(
+                  '.incidents-tab-content'
+                );
+
+                await expect(incidentsTabContent).toBeVisible();
+
+                const incidentStatsContainer = incidentsTabContent.locator(
+                  '.incidents-stats-container'
+                );
+
+                await expect(incidentStatsContainer).toBeVisible();
+
+                await expect(
+                  incidentStatsContainer.locator('.incident-stat-card.new-card')
+                ).toBeVisible();
+                await expect(
+                  incidentStatsContainer.locator('.incident-stat-card.ack-card')
+                ).toBeVisible();
+                await expect(
+                  incidentStatsContainer.locator(
+                    '.incident-stat-card.assigned-card'
+                  )
+                ).toBeVisible();
+                await expect(
+                  incidentStatsContainer.locator('.resolved-section')
+                ).toBeVisible();
+
+                const incidentCardsSection = incidentsTabContent.locator(
+                  '.incident-cards-section'
+                );
+
+                await expect(incidentCardsSection).toBeVisible();
+
+                const incidentCards =
+                  incidentCardsSection.locator('.test-case-card');
+                const cardCount = await incidentCards.count();
+
+                if (cardCount > 0) {
+                  const assigneeSection = incidentCards
+                    .first()
+                    .locator('.test-case-detail-item')
+                    .filter({ hasText: /assignee/i });
+
+                  await expect(assigneeSection).toBeVisible();
                 }
-              );
 
-              await test.step(
-                'Open column detail panel and navigate to Incidents tab',
-                async () => {
-                  await redirectToHomePage(page);
-                  await entity.visitEntityPage(page);
-
-                  await page.getByTestId(entity.childrenTabId ?? '').click();
-                  await waitForAllLoadersToDisappear(page);
-
-                  await openColumnDetailPanel({
-                    page,
-                    rowSelector,
-                    columnId: entity.childrenSelectorId ?? '',
-                    columnNameTestId: 'column-name',
-                    entityType: entity.type as EntityType,
-                  });
-
-                  const dqTabResponsePromise = page.waitForResponse(
-                    (response) =>
-                      response
-                        .url()
-                        .includes('/api/v1/dataQuality/testCases') 
-                  );
-                  await page.getByTestId('data-quality-tab').click();
-                  const dqTabResponse = await dqTabResponsePromise;
-                  expect(dqTabResponse.status()).toBe(200);
-
-                  await waitForAllLoadersToDisappear(page);
-
-                  const dqContent = page
-                    .locator('.column-detail-panel')
-                    .locator('.data-quality-tab-container');
-
-                  await expect(dqContent).toBeVisible();
-
-                  
-                  await dqContent
-                    .locator('.data-quality-tabs')
-                    .getByRole('tab', { name: /incidents/i })
-                    .click();
-                  await waitForAllLoadersToDisappear(page);
-                }
-              );
-
-              await test.step(
-                'Verify incidents stats container and cards',
-                async () => {
-                  const panelContainer = page.locator('.column-detail-panel');
-                  const dqContent = panelContainer.locator(
-                    '.data-quality-tab-container'
-                  );
-                  const incidentsTabContent = dqContent.locator(
-                    '.incidents-tab-content'
-                  );
-
-                  await expect(incidentsTabContent).toBeVisible();
-
-                  const incidentStatsContainer = incidentsTabContent.locator(
-                    '.incidents-stats-container'
-                  );
-
-                  await expect(incidentStatsContainer).toBeVisible();
-
-                  await expect(
-                    incidentStatsContainer.locator(
-                      '.incident-stat-card.new-card'
-                    )
-                  ).toBeVisible();
-                  await expect(
-                    incidentStatsContainer.locator(
-                      '.incident-stat-card.ack-card'
-                    )
-                  ).toBeVisible();
-                  await expect(
-                    incidentStatsContainer.locator(
-                      '.incident-stat-card.assigned-card'
-                    )
-                  ).toBeVisible();
-                  await expect(
-                    incidentStatsContainer.locator('.resolved-section')
-                  ).toBeVisible();
-
-                  const incidentCardsSection = incidentsTabContent.locator(
-                    '.incident-cards-section'
-                  );
-
-                  await expect(incidentCardsSection).toBeVisible();
-
-                  const incidentCards =
-                    incidentCardsSection.locator('.test-case-card');
-                  const cardCount = await incidentCards.count();
-
-                  if (cardCount > 0) {
-                    const assigneeSection = incidentCards
-                      .first()
-                      .locator('.test-case-detail-item')
-                      .filter({ hasText: /assignee/i });
-
-                    await expect(assigneeSection).toBeVisible();
-                  }
-
-                  await closeColumnDetailPanel(page);
-                }
-              );
-            } finally {
-              await afterAction();
-            }
+                await closeColumnDetailPanel(page);
+              }
+            );
+          } finally {
+            await afterAction();
           }
-        );
+        });
       }
     }
 
@@ -2115,6 +2109,60 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         );
 
         await entity.cleanupCustomProperty(apiContext);
+        await afterAction();
+      });
+    }
+
+    if (entity.type === 'Table') {
+      const properties = Object.values(CustomPropertyTypeByName);
+      let customPropertyValue: Record<
+        string,
+        {
+          value: string;
+          newValue: string;
+          property: CustomProperty;
+        }
+      >;
+      let cleanupUser: (apiContext: APIRequestContext) => Promise<void>;
+      let users: Record<string, string>;
+
+      const prepareCustomProperty = async (apiContext: APIRequestContext) => {
+        const data = await createCustomPropertyForEntity(
+          apiContext,
+          EntityTypeEndpoint.TableColumn
+        );
+
+        customPropertyValue = data.customProperties;
+        cleanupUser = data.cleanupUser;
+        users = data.userNames;
+      };
+
+      test('Set & update column-level custom property', async ({ page }) => {
+        test.slow(true);
+        const { apiContext, afterAction } = await getApiContext(page);
+
+        await prepareCustomProperty(apiContext);
+
+        const columnFqn =
+          (entity as TableClass).entityResponseData.columns[0]
+            .fullyQualifiedName ?? '';
+
+        for (const type of properties) {
+          await test.step(
+            `Set ${type} custom property on column and verify in UI`,
+            async () => {
+              await verifyTableColumnCustomPropertyPersistence({
+                page,
+                columnFqn,
+                propertyName: customPropertyValue[type].property.name,
+                propertyType: type,
+                users,
+              });
+            }
+          );
+        }
+
+        await cleanupUser(apiContext);
         await afterAction();
       });
     }
