@@ -175,9 +175,14 @@ export const tokenExpirationForDays = async (page: Page) => {
       `ccc d'th' MMMM, yyyy`
     );
 
-    const saveTokenResponse = page.waitForResponse('/api/v1/users');
+    // Wait for the new generateToken API endpoint
+    const generateTokenResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/generateToken') &&
+        response.request().method() === 'POST'
+    );
     await page.click('[data-testid="save-edit"]');
-    await saveTokenResponse;
+    await generateTokenResponse;
 
     await expect(
       page.locator('[data-testid="center-panel"] [data-testid="revoke-button"]')
@@ -192,6 +197,69 @@ export const tokenExpirationForDays = async (page: Page) => {
   }
 };
 
+/**
+ * Verifies the POST /api/v1/users/generateToken API contract:
+ * - Request body contains `id` (UUID) and `JWTTokenExpiry`
+ * - Response status is 200
+ * - Response body contains `JWTToken`
+ *
+ * This test ensures the new generateToken endpoint works correctly
+ * and prevents regression (see PR #25052).
+ */
+export const verifyGenerateTokenAPIContract = async (page: Page) => {
+  await getCreatedBot(page, {
+    botName,
+    botDisplayName: BOT_DETAILS.updatedBotName,
+  });
+
+  await revokeToken(page, true);
+
+  // Click on dropdown and select '7 days' expiry
+  await page.click('[data-testid="token-expiry"]');
+  await page.locator('text=7 days').click();
+
+  // Intercept the POST /api/v1/users/generateToken call
+  const generateTokenResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/generateToken') &&
+      response.request().method() === 'POST'
+  );
+  await page.click('[data-testid="save-edit"]');
+  const generateTokenResponse = await generateTokenResponsePromise;
+
+  // Validate HTTP status
+  expect(generateTokenResponse.status()).toBe(200);
+
+  // Validate request body has the expected shape
+  const requestBody = generateTokenResponse.request().postDataJSON();
+
+  expect(requestBody).toHaveProperty('id');
+  expect(requestBody).toHaveProperty('JWTTokenExpiry');
+  expect(requestBody.id).toBeTruthy();
+  expect(requestBody.JWTTokenExpiry).toBe('7');
+
+  // Verify the new endpoint does NOT require all user details
+  // that the old createUserWithPut approach used to send (regression for PR #25052)
+  expect(requestBody).not.toHaveProperty('botName');
+  expect(requestBody).not.toHaveProperty('description');
+  expect(requestBody).not.toHaveProperty('displayName');
+  expect(requestBody).not.toHaveProperty('email');
+  expect(requestBody).not.toHaveProperty('isAdmin');
+  expect(requestBody).not.toHaveProperty('isBot');
+  expect(requestBody).not.toHaveProperty('name');
+
+  // Validate response body contains a JWT token
+  const responseBody = await generateTokenResponse.json();
+
+  expect(responseBody).toHaveProperty('JWTToken');
+  expect(responseBody.JWTToken).toBeTruthy();
+
+  // Verify UI reflects the successful token generation
+  await expect(
+    page.locator('[data-testid="center-panel"] [data-testid="revoke-button"]')
+  ).toBeVisible();
+};
+
 export const tokenExpirationUnlimitedDays = async (page: Page) => {
   await revokeToken(page, true);
 
@@ -199,10 +267,15 @@ export const tokenExpirationUnlimitedDays = async (page: Page) => {
   await page.click('[data-testid="token-expiry"]');
   // Select unlimited days
   await page.getByText('Unlimited').click();
+  // Wait for the new generateToken API endpoint
+  const generateTokenResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/generateToken') &&
+      response.request().method() === 'POST'
+  );
   // Save the selected changes
-  const saveTokenResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-edit"]');
-  await saveTokenResponse;
+  await generateTokenResponse;
 
   // Verify the updated expiry time
   const revokeButton = page.locator(
@@ -260,7 +333,14 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
 
   await expect(page.getByTestId('save-edit')).toBeVisible();
 
+  // Wait for the new generateToken API endpoint
+  const generateTokenResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/generateToken') &&
+      response.request().method() === 'POST'
+  );
   await page.getByTestId('save-edit').click();
+  await generateTokenResponse;
 
   await redirectToHomePage(page);
 };

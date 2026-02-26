@@ -25,6 +25,9 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -81,8 +84,13 @@ class TopologyRunnerMixin(Generic[C]):
             node_producer = getattr(self, node.producer)
             yield from node_producer() or []
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error running node producer: {exc}")
+            self.status.failed(
+                StackTraceError(
+                    name=f"Producer {node.producer}",
+                    error=f"Error running node producer: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def _multithread_process_node(
         self, node: TopologyNode, threads: int
@@ -278,9 +286,12 @@ class TopologyRunnerMixin(Generic[C]):
                     for entity_request in node_post_process() or []:
                         yield entity_request
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Could not run Post Process `{process}` due to [{exc}]"
+                    self.status.failed(
+                        StackTraceError(
+                            name=f"Post Process {process}",
+                            error=f"Error running node post process: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
                     )
 
     def _init_cache_dict(

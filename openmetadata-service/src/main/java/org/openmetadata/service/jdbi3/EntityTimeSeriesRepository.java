@@ -273,6 +273,52 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return listWithOffset(offset, filter, limitParam, startTs, endTs, latest, false);
   }
 
+  @SuppressWarnings("unchecked")
+  public ResultList<T> listAfterKeyset(
+      ListFilter filter,
+      int limitParam,
+      long afterTs,
+      String afterFQNHash,
+      int cachedTotal,
+      boolean skipErrors) {
+    List<T> entityList = new ArrayList<>();
+    List<EntityError> errors = new ArrayList<>();
+    if (limitParam > 0) {
+      List<EntityTimeSeriesDAO.TimeSeriesRow> rows =
+          timeSeriesDao.listAfterKeyset(filter, limitParam + 1, afterTs, afterFQNHash);
+      boolean hasMoreData = rows.size() > limitParam;
+      List<EntityTimeSeriesDAO.TimeSeriesRow> rowsToProcess =
+          hasMoreData ? rows.subList(0, limitParam) : rows;
+      List<String> jsons =
+          rowsToProcess.stream().map(EntityTimeSeriesDAO.TimeSeriesRow::json).toList();
+      Map<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
+      entityList = (List<T>) entityListMap.get("entityList");
+      if (skipErrors) {
+        errors = (List<EntityError>) entityListMap.get("errors");
+      }
+
+      String afterCursor = null;
+      if (hasMoreData) {
+        EntityTimeSeriesDAO.TimeSeriesRow lastRow = rowsToProcess.get(rowsToProcess.size() - 1);
+        afterCursor = lastRow.timestamp() + "|" + lastRow.entityFQNHash();
+      }
+      if (errors == null || errors.isEmpty()) {
+        return getResultList(entityList, null, afterCursor, cachedTotal);
+      }
+      return getResultList(entityList, null, afterCursor, cachedTotal, errors);
+    } else {
+      return getResultList(entityList, null, null, cachedTotal);
+    }
+  }
+
+  public String getCursorAtOffset(ListFilter filter, int offset) {
+    EntityTimeSeriesDAO.TimeSeriesRow row = timeSeriesDao.getCursorAtOffset(filter, offset);
+    if (row == null) {
+      return null;
+    }
+    return RestUtil.encodeCursor(row.timestamp() + "|" + row.entityFQNHash());
+  }
+
   public T getLatestRecord(String recordFQN) {
     String jsonRecord = timeSeriesDao.getLatestRecord(recordFQN);
     if (jsonRecord == null) {

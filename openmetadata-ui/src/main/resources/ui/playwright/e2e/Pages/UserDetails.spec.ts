@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
+import { TableClass } from '../../support/entity/TableClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -22,8 +24,6 @@ import { getApiContext, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitUserProfilePage } from '../../utils/user';
 import { redirectToUserPage } from '../../utils/userDetails';
-import { TableClass } from '../../support/entity/TableClass';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
@@ -82,34 +82,36 @@ test.describe('User with different Roles', () => {
     await afterAction();
   });
 
-  test('Admin user can get all the teams hierarchy and edit teams', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({
-    adminPage,
-  }) => {
-    await redirectToUserPage(adminPage);
+  test(
+    'Admin user can get all the teams hierarchy and edit teams',
+    PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
+    async ({ adminPage }) => {
+      await redirectToUserPage(adminPage);
 
-    // Check if the avatar is visible
-    await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
+      // Check if the avatar is visible
+      await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
 
-    await adminPage.getByTestId('edit-teams-button').click();
+      await adminPage.getByTestId('edit-teams-button').click();
 
-    await expect(adminPage.getByTestId('team-select')).toBeVisible();
+      await expect(adminPage.getByTestId('team-select')).toBeVisible();
 
-    await adminPage.waitForSelector('.ant-tree-select-dropdown', {
-      state: 'visible',
-    });
+      await adminPage.waitForSelector('.ant-tree-select-dropdown', {
+        state: 'visible',
+      });
 
-    await adminPage
-      .locator('.ant-select-tree-title')
-      .filter({ hasText: 'Accounting' })
-      .first()
-      .click();
+      await adminPage
+        .locator('.ant-select-tree-title')
+        .filter({ hasText: 'Accounting' })
+        .first()
+        .click();
 
-    await adminPage.getByTestId('teams-edit-save-btn').click();
+      await adminPage.getByTestId('teams-edit-save-btn').click();
 
-    await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
-      'Accounting'
-    );
-  });
+      await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
+        'Accounting'
+      );
+    }
+  );
 
   test('Create team with domain and verify visibility of inherited domain in user profile after team removal', async ({
     adminPage,
@@ -625,9 +627,7 @@ test.describe('User with different Roles', () => {
 
       await expect(incorrectAssetCard).not.toBeVisible();
 
-      await expect(
-        adminPage.getByText('No records found')
-      ).toBeVisible();
+      await expect(adminPage.getByText('No records found')).toBeVisible();
 
       const rightPanel = adminPage.getByTestId(
         'entity-summary-panel-container'

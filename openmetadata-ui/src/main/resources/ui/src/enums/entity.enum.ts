@@ -174,6 +174,7 @@ export enum TabSpecificField {
   USER_COUNT = 'userCount',
   VIEW_DEFINITION = 'viewDefinition',
   VOTES = 'votes',
+  CERTIFICATION = 'certification',
   DIRECTORY_TYPE = 'directoryType',
   NUMBER_OF_FILES = 'numberOfFiles',
   NUMBER_OF_SUB_DIRECTORIES = 'numberOfSubDirectories',

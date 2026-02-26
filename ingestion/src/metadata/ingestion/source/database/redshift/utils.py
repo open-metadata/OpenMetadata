@@ -412,9 +412,19 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
     """
     view = self._get_redshift_relation(connection, view_name, schema, **kw)
+
+    # Remove "WITH NO SCHEMA BINDING" clause
     pattern = re.compile("WITH NO SCHEMA BINDING", re.IGNORECASE)
     view_definition = str(sa.text(pattern.sub("", view.view_definition)))
-    create_view_pattern = re.compile(r"CREATE\s+VIEW", re.IGNORECASE)
+
+    # If the view definition does not contain a CREATE VIEW statement (including
+    # variants like CREATE OR REPLACE VIEW, CREATE OR REPLACE MATERIALIZED VIEW,
+    # or CREATE EXTERNAL VIEW), add a CREATE VIEW prefix to make sure the lineage
+    # parser can parse it correctly.
+    create_view_pattern = re.compile(
+        r"CREATE\s+(OR\s+REPLACE\s+)?(EXTERNAL\s+|MATERIALIZED\s+)?VIEW",
+        re.IGNORECASE,
+    )
     if not create_view_pattern.search(view_definition):
         view_definition = (
             f"CREATE VIEW {view.schema}.{view.relname} AS {view_definition}"
