@@ -79,9 +79,9 @@ public class AppsResourceIT {
   private void waitForAppJobCompletion(String appName) {
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
     Awaitility.await("Wait for app job completion: " + appName)
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofMinutes(3))
         .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
         .until(
             () -> {
@@ -91,8 +91,11 @@ public class AppsResourceIT {
                       "/v1/apps/name/" + appName + "/runs/latest",
                       null,
                       AppRunRecord.class);
-              if (latestRun == null || latestRun.getStatus() == null) {
+              if (latestRun == null) {
                 return true;
+              }
+              if (latestRun.getStatus() == null) {
+                return false;
               }
               String status = latestRun.getStatus().value();
               return "SUCCESS".equals(status)
