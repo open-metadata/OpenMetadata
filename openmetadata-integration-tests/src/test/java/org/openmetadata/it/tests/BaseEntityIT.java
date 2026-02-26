@@ -4861,23 +4861,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    */
   protected String searchForEntity(String entityId) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    String query = "id:" + entityId;
-    return client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.GET, "/v1/search/query?q=" + query + "&index=" + getSearchIndexName(), null);
+    return client.search().query("id:" + entityId).index(getSearchIndexName()).size(1).execute();
   }
 
-  /**
-   * Search all entities of this type.
-   * Subclasses should override to use entity-specific search.
-   */
   protected String searchEntities() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    return client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.GET, "/v1/search/query?q=*&index=" + getSearchIndexName(), null);
+    return client.search().query("*").index(getSearchIndexName()).execute();
   }
 
   // ===================================================================
