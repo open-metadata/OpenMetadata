@@ -114,10 +114,31 @@ jobs:
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
-            npx playwright test --grep @ingestion --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
+            echo "🔹 Running DataAssetRules-only tests on shard 1"
+
+            # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
+            npx playwright test \
+              --project=setup \
+              --project=DataAssetRulesEnabled \
+              --project=DataAssetRulesDisabled \
+              --project=Basic \
+
+          elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
+            echo "🔹 Running ingestion tests on shard 2"
+            
+            # run ingestion framework tests
+            npx playwright test \
+              --project=ingestion \
+
           else
-            npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+            # Shards 3-6 handle chromium tests (4 workers total)
+            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 2 ))
+            echo "🔹 Running all other tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/4"
+            npx playwright test \
+              --project=chromium \
+              --grep-invert @dataAssetRules \
+              --shard=${CHROMIUM_SHARD}/4
           fi
 
         env:
