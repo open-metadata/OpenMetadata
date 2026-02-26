@@ -14,7 +14,7 @@ Python API REST wrapper and helpers
 import time
 import traceback
 from datetime import datetime, timezone
-from json import JSONDecodeError
+from requests.exceptions import JSONDecodeError
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
