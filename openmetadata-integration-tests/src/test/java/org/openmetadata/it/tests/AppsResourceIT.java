@@ -76,51 +76,34 @@ public class AppsResourceIT {
     Apps.setDefaultClient(SdkClients.adminClient());
   }
 
-  private void waitForAppJobCompletion(String appName) throws Exception {
+  private void waitForAppJobCompletion(String appName) {
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
-    int maxRetries = 60; // Increase retries for longer-running jobs in CI
-    int retryCount = 0;
-
-    while (retryCount < maxRetries) {
-      try {
-        AppRunRecord latestRun =
-            httpClient.execute(
-                HttpMethod.GET,
-                "/v1/apps/name/" + appName + "/runs/latest",
-                null,
-                AppRunRecord.class);
-
-        if (latestRun == null || latestRun.getStatus() == null) {
-          // No run record exists yet - safe to proceed
-          return;
-        }
-
-        String status = latestRun.getStatus().value();
-
-        // Check if the job is in a terminal state
-        if ("SUCCESS".equals(status) || "FAILED".equals(status) || "COMPLETED".equals(status)) {
-          // Job is complete - add a small buffer to allow scheduler to fully clean up
-          Thread.sleep(500);
-          return;
-        }
-
-        // Job is still running (RUNNING, STARTED, ACTIVE, PENDING_STATUS_UPDATE, etc.)
-        // Continue waiting
-      } catch (Exception e) {
-        // On errors (like 500), the job might be starting - continue waiting
-        // Don't log each error to avoid noise in tests
-        if (retryCount % 10 == 0) {
-          // Log every 10th retry to show we're still trying
-          System.out.println(
-              "waitForAppJobCompletion: waiting for " + appName + ", attempt " + retryCount);
-        }
-      }
-      Thread.sleep(500);
-      retryCount++;
+    try {
+      Awaitility.await("Wait for app job completion: " + appName)
+          .atMost(Duration.ofSeconds(30))
+          .pollDelay(Duration.ofMillis(500))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                AppRunRecord latestRun =
+                    httpClient.execute(
+                        HttpMethod.GET,
+                        "/v1/apps/name/" + appName + "/runs/latest",
+                        null,
+                        AppRunRecord.class);
+                if (latestRun == null || latestRun.getStatus() == null) {
+                  return true;
+                }
+                String status = latestRun.getStatus().value();
+                return "SUCCESS".equals(status)
+                    || "FAILED".equals(status)
+                    || "COMPLETED".equals(status);
+              });
+    } catch (org.awaitility.core.ConditionTimeoutException e) {
+      // Best-effort wait — the app may be continuously running under parallel test load.
+      // The subsequent trigger call handles "already running" with its own retry.
     }
-    // After max retries, log a warning and proceed
-    System.out.println(
-        "waitForAppJobCompletion: max retries reached for " + appName + ", proceeding anyway");
   }
 
   @Test
@@ -389,15 +372,23 @@ public class AppsResourceIT {
               return true;
             });
 
-    Thread.sleep(2000);
-
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
-    AppRunRecord latestRun =
-        httpClient.execute(
-            HttpMethod.GET, "/v1/apps/name/" + appName + "/runs/latest", null, AppRunRecord.class);
-
-    assertNotNull(latestRun);
-    assertNotNull(latestRun.getStatus());
+    Awaitility.await("Wait for app run record to be available")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              AppRunRecord run =
+                  httpClient.execute(
+                      HttpMethod.GET,
+                      "/v1/apps/name/" + appName + "/runs/latest",
+                      null,
+                      AppRunRecord.class);
+              assertNotNull(run);
+              assertNotNull(run.getStatus());
+            });
   }
 
   @Test
@@ -410,39 +401,36 @@ public class AppsResourceIT {
     Map<String, Object> config = new HashMap<>();
     config.put("batchSize", 1234);
 
-    // Retry trigger with backoff in case a previous job is still finishing up
-    int maxTriggerRetries = 10;
-    boolean triggered = false;
-    Exception lastException = null;
+    Awaitility.await("Trigger app with custom config")
+        .atMost(Duration.ofMinutes(2))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(3))
+        .ignoreExceptionsMatching(
+            e -> e.getMessage() != null && e.getMessage().contains("already running"))
+        .until(
+            () -> {
+              httpClient.execute(
+                  HttpMethod.POST, "/v1/apps/trigger/" + appName, config, Void.class);
+              return true;
+            });
 
-    for (int i = 0; i < maxTriggerRetries && !triggered; i++) {
-      try {
-        httpClient.execute(HttpMethod.POST, "/v1/apps/trigger/" + appName, config, Void.class);
-        triggered = true;
-      } catch (Exception e) {
-        lastException = e;
-        if (e.getMessage() != null && e.getMessage().contains("already running")) {
-          // Job is still running from previous test, wait and retry
-          Thread.sleep(2000);
-        } else {
-          throw e; // Re-throw if it's a different error
-        }
-      }
-    }
-
-    if (!triggered && lastException != null) {
-      throw lastException;
-    }
-
-    Thread.sleep(2000);
-
-    AppRunRecord latestRun =
-        httpClient.execute(
-            HttpMethod.GET, "/v1/apps/name/" + appName + "/runs/latest", null, AppRunRecord.class);
-
-    assertNotNull(latestRun);
-    assertNotNull(latestRun.getConfig());
-    assertEquals(1234, latestRun.getConfig().get("batchSize"));
+    Awaitility.await("Wait for app run with custom config")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              AppRunRecord run =
+                  httpClient.execute(
+                      HttpMethod.GET,
+                      "/v1/apps/name/" + appName + "/runs/latest",
+                      null,
+                      AppRunRecord.class);
+              assertNotNull(run);
+              assertNotNull(run.getConfig());
+              assertEquals(1234, run.getConfig().get("batchSize"));
+            });
   }
 
   @Test

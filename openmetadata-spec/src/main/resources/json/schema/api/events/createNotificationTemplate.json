@@ -29,7 +29,7 @@
       "description": "Handlebars template content for rendering notifications",
       "type": "string",
       "minLength": 1,
-      "maxLength": 10240
+      "maxLength": 65536
     },
     "owners": {
       "description": "Owners of this template",

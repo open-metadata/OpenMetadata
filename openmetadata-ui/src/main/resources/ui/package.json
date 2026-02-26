@@ -94,7 +94,7 @@
     "cookie-storage": "^6.1.0",
     "cronstrue": "^2.53.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
-    "diff": "^5.2.2",
+    "diff": "^8.0.3",
     "dompurify": "^3.2.4",
     "elkjs": "^0.9.3",
     "eventemitter3": "^5.0.1",

@@ -26,11 +26,13 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -211,7 +213,17 @@ public class UserMetricsResourceIT {
     try {
       usersApi.getByName(newUser.getName());
 
-      Thread.sleep(2000);
+      Awaitility.await("Wait for user metrics to reflect new user")
+          .atMost(Duration.ofSeconds(30))
+          .pollDelay(Duration.ofMillis(500))
+          .pollInterval(Duration.ofSeconds(1))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                Map<String, Object> m = getUserMetrics();
+                int total = (Integer) m.get("total_users");
+                return total > initialTotalUsers;
+              });
 
       Map<String, Object> updatedMetrics = getUserMetrics();
       log.info("Updated metrics after activity: {}", updatedMetrics);
@@ -277,7 +289,6 @@ public class UserMetricsResourceIT {
       User user = usersApi.create(createUser);
       try {
         usersApi.getByName(user.getName());
-        Thread.sleep(1000);
       } finally {
         Map<String, String> deleteParams = new HashMap<>();
         deleteParams.put("hardDelete", "true");
@@ -285,7 +296,16 @@ public class UserMetricsResourceIT {
       }
     }
 
-    Thread.sleep(3000);
+    Awaitility.await("Wait for metrics to reflect user activity")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              Map<String, Object> m = getUserMetrics();
+              return m.get("last_activity") != null;
+            });
 
     Map<String, Object> metrics = getUserMetrics();
     log.info("Metrics after multiple users: {}", metrics);
