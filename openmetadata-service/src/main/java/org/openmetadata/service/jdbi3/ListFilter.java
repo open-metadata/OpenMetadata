@@ -479,7 +479,7 @@ public class ListFilter extends Filter<ListFilter> {
 
     if (entityFQN != null) {
       if (includeAllTests) {
-        queryParams.put("entityFQNLikePrefix", escape(entityFQN) + Entity.SEPARATOR + "%");
+        queryParams.put("entityFQNLikePrefix", entityFQN + Entity.SEPARATOR + "%");
         queryParams.put("entityFQNExact", entityFQN);
         conditions.add("(entityFQN LIKE :entityFQNLikePrefix OR entityFQN = :entityFQNExact)");
       } else {
