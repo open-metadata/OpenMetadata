@@ -10,9 +10,10 @@
 #  limitations under the License.
 
 """
-OpenLineage source to extract metadata from Kafka events
+OpenLineage source to extract metadata from Kafka or Kinesis events
 """
 import json
+import time
 import traceback
 from collections import defaultdict
 from itertools import groupby, product
@@ -25,6 +26,8 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
+    KafkaBrokerConfig,
+    KinesisBrokerConfig,
     OpenLineageConnection,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -69,13 +72,15 @@ class OpenlineageSource(PipelineServiceSource):
     Implements the necessary methods of PipelineServiceSource to facilitate registering OpenLineage pipelines with
     metadata into Open Metadata.
 
-    Works under the assumption that OpenLineage integrations produce events to Kafka topic, which is a source of events
-    for this connector.
+    Works under the assumption that OpenLineage integrations produce events to Kafka topic or Kinesis stream,
+    which is a source of events for this connector.
 
     Only OpenLineage events that indicate successfull data movement (COMPLETE, RUNNING, START) are taken into account in this connector.
 
     Configuring OpenLineage integrations: https://openlineage.io/docs/integrations/about
     """
+
+    _db_service_names_warned: bool = False
 
     @classmethod
     def create(
@@ -135,9 +140,20 @@ class OpenlineageSource(PipelineServiceSource):
         # we take last two elements to explicitly collect schema and table names
         # in BigQuery Open Lineage events name_parts would be list of 3 elements as first one is GCP Project ID
         # however, concept of GCP Project ID is not represented in Open Metadata and hence - we need to skip this part
-        return TableDetails(name=name_parts[-1], schema=name_parts[-2])
+        # Normalize to lowercase for case-insensitive FQN matching: different connectors
+        # may store names in different cases (e.g. Trino lowercases, Spark preserves original)
+        return TableDetails(name=name_parts[-1].lower(), schema=name_parts[-2].lower())
 
     def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
+        if not self.get_db_service_names():
+            if not self._db_service_names_warned:
+                logger.warning(
+                    "No Database Service Names configured in Lineage Information. "
+                    "Skipping table/schema FQN resolution. Configure 'Database Service "
+                    "Names' in the pipeline metadata ingestion to enable lineage."
+                )
+                self._db_service_names_warned = True
+            return None
         try:
             return self._get_table_fqn_from_om(table_details)
         except FQNNotFoundException:
@@ -241,6 +257,9 @@ class OpenlineageSource(PipelineServiceSource):
         :param table: single object from inputs/outputs facet
         :return: request to create the entity (if needed)
         """
+        if not self.get_db_service_names():
+            return None
+
         om_table_fqn = None
 
         try:
@@ -346,8 +365,8 @@ class OpenlineageSource(PipelineServiceSource):
                         (
                             output_table_fqn,
                             ol_name_to_fqn_map.get(input_table_ol_name),
-                            f"{output_table_fqn}.{field_name}",
-                            f'{ol_name_to_fqn_map.get(input_table_ol_name)}.{input_field.get("field")}',
+                            f"{output_table_fqn}.{field_name.lower()}",
+                            f'{ol_name_to_fqn_map.get(input_table_ol_name)}.{input_field.get("field", "").lower()}',
                         )
                     )
 
@@ -448,21 +467,30 @@ class OpenlineageSource(PipelineServiceSource):
 
     def get_pipelines_list(self) -> Optional[List[Any]]:
         """Get List of all pipelines"""
+        broker = self.service_connection.brokerConfig
+
+        if isinstance(broker, KafkaBrokerConfig):
+            yield from self._poll_kafka(broker)
+        elif isinstance(broker, KinesisBrokerConfig):
+            yield from self._poll_kinesis(broker)
+        else:
+            raise InvalidSourceException(
+                f"Unsupported broker config type: {type(broker)}"
+            )
+
+    def _poll_kafka(self, broker: KafkaBrokerConfig) -> Iterable[OpenLineageEvent]:
+        """Poll events from Kafka topic."""
         try:
             consumer = self.client
             session_active = True
             empty_msg_cnt = 0
-            pool_timeout = self.service_connection.poolTimeout
+            pool_timeout = broker.poolTimeout
             while session_active:
                 message = consumer.poll(timeout=pool_timeout)
                 if message is None:
                     logger.debug("no new messages")
                     empty_msg_cnt += 1
-                    if (
-                        empty_msg_cnt * pool_timeout
-                        > self.service_connection.sessionTimeout
-                    ):
-                        # There is no new messages, timeout is passed
+                    if empty_msg_cnt * pool_timeout > broker.sessionTimeout:
                         session_active = False
                 else:
                     logger.debug(f"new message {message.value()}")
@@ -482,13 +510,72 @@ class OpenlineageSource(PipelineServiceSource):
 
         except Exception as e:
             traceback.print_exc()
-
             raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")
 
         finally:
             # Close down consumer to commit final offsets.
             # @todo address this
             consumer.close()
+
+    def _poll_kinesis(self, broker: KinesisBrokerConfig) -> Iterable[OpenLineageEvent]:
+        """Poll events from Kinesis Data Stream."""
+        try:
+            kinesis_client = self.client
+            shards = []
+            paginator = kinesis_client.get_paginator("list_shards")
+            for page in paginator.paginate(StreamName=broker.streamName):
+                shards.extend(page.get("Shards", []))
+
+            iterator_type = broker.consumerOffsets.value
+            pool_timeout = broker.poolTimeout
+            session_timeout = broker.sessionTimeout
+            empty_response_time = 0.0
+
+            for shard in shards:
+                shard_id = shard["ShardId"]
+                iterator_resp = kinesis_client.get_shard_iterator(
+                    StreamName=broker.streamName,
+                    ShardId=shard_id,
+                    ShardIteratorType=iterator_type,
+                )
+                shard_iterator = iterator_resp["ShardIterator"]
+
+                while shard_iterator and empty_response_time <= session_timeout:
+                    response = kinesis_client.get_records(
+                        ShardIterator=shard_iterator,
+                        Limit=100,
+                    )
+                    records = response.get("Records", [])
+                    shard_iterator = response.get("NextShardIterator")
+
+                    if not records:
+                        empty_response_time += pool_timeout
+                        time.sleep(pool_timeout)
+                        continue
+
+                    empty_response_time = 0.0
+                    for record in records:
+                        try:
+                            data = json.loads(record["Data"])
+                            _result = message_to_open_lineage_event(data)
+                            result = self._filter_event_by_types(
+                                _result,
+                                [
+                                    EventType.COMPLETE,
+                                    EventType.RUNNING,
+                                    EventType.START,
+                                ],
+                            )
+                            if result:
+                                yield result
+                        except Exception as e:
+                            logger.debug(e)
+
+                    time.sleep(pool_timeout)
+
+        except Exception as e:
+            traceback.print_exc()
+            raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)

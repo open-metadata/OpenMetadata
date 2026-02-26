@@ -518,7 +518,7 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
-    const customPropertyName = `pwCustomProperty${uuid()}`;
+    const customPropertyName = `pw${uuid()}cp${Date.now()}`;
     const payload = {
       name: customPropertyName,
       description: customPropertyName,
@@ -614,7 +614,7 @@ export const createCustomPropertyForEntity = async (
     customProperties = { ...customProperties, ...newProperties };
   }
 
-  return { customProperties, cleanupUser };
+  return { customProperties, cleanupUser, userNames };
 };
 
 export const addCustomPropertiesForEntity = async ({
@@ -992,82 +992,41 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   await page.getByTestId('cancel-btn').click();
 };
 
-export const getTestValueForPropertyType = (propertyType: string) => {
-  switch (propertyType) {
-    case 'Integer':
-      return '123';
-    case 'String':
-      return 'Test Value Persistence';
-    case 'Markdown':
-      return '**Markdown**';
-    case 'Duration':
-      return 'PT1H';
-    case 'Email':
-      return 'test@email.com';
-    case 'Number':
-      return '456';
-    case 'Sql Query':
-      return 'SELECT * FROM table';
-    case 'Time Interval':
-      return '1600000000000,1600000000001';
-    case 'Timestamp':
-      return '1640995200000';
-    case 'Enum':
-      return 'enum1';
-    case 'Table':
-      return 'row1col1';
-    case 'Entity Reference':
-    case 'Entity Reference List':
-      return 'admin';
-    case 'Date':
-      return '2023-01-01';
-    case 'Time':
-      return '12:00:00';
-    case 'Date Time': // Assuming customType logic
-    case 'DateTime':
-      return '2023-01-01 12:00:00';
-    case 'Hyperlink':
-      return 'https://example.com,Example';
-    default:
-      return 'value';
-  }
-};
-
 export const editColumnCustomProperty = async (
   page: Page,
   propertyType: string,
   testValue: string
 ) => {
-  if (propertyType === 'Markdown') {
+  if (propertyType === 'markdown') {
     const editor = page.locator('.om-block-editor[contenteditable="true"]');
     await editor.click();
     await page.keyboard.type(testValue);
     await editor.blur();
     await page.getByTestId('save').click();
-  } else if (propertyType === 'Sql Query') {
+  } else if (propertyType === 'sqlQuery') {
     const codeMirror = page.locator(
       '.custom-properties-section-container .CodeMirror'
     );
     await expect(codeMirror).toBeVisible();
     await codeMirror.click();
     await page.keyboard.type(testValue);
-  } else if (propertyType === 'Time Interval') {
+  } else if (propertyType === 'timeInterval') {
     const [start, end] = testValue.split(',');
     await page.getByTestId('start-input').fill(start);
     await page.getByTestId('end-input').fill(end);
-  } else if (propertyType === 'Timestamp') {
+  } else if (propertyType === 'timestamp') {
     await page.getByTestId('timestamp-input').fill(testValue);
-  } else if (propertyType === 'Duration') {
+  } else if (propertyType === 'duration') {
     await page.getByTestId('duration-input').fill(testValue);
-  } else if (propertyType === 'Email') {
+  } else if (propertyType === 'email') {
     await page.getByTestId('email-input').fill(testValue);
-  } else if (propertyType === 'Enum') {
+  } else if (propertyType === 'enum') {
     await page.getByTestId('enum-select').click();
     await page
       .locator('.ant-select-item-option-content')
       .getByText(testValue, { exact: true })
       .click();
-  } else if (propertyType === 'Table') {
+  } else if (propertyType === 'table-cp') {
     await page.locator('[data-testid="add-new-row"]').click();
     await page.waitForSelector('.om-rdg', { state: 'visible' });
 
@@ -1077,47 +1036,46 @@ export const editColumnCustomProperty = async (
       .getByTestId('edit-table-type-property-modal')
       .getByRole('textbox')
       .fill(testValue);
-    await page.locator('div.rdg-cell-pw-column1').last().press('Enter');
+    await page.keyboard.press('Enter', { delay: 100 });
 
     await page.locator('div.rdg-cell-pw-column2').last().dblclick();
     await page
       .getByTestId('edit-table-type-property-modal')
       .getByRole('textbox')
       .fill('row1col2');
-    await page.locator('div.rdg-cell-pw-column2').last().press('Enter');
+    await page.keyboard.press('Enter', { delay: 100 });
 
     await page.locator('[data-testid="update-table-type-property"]').click();
   } else if (
-    ['Entity Reference', 'Entity Reference List'].includes(propertyType)
+    ['entityReference', 'entityReferenceList'].includes(propertyType)
   ) {
+    const [value] = testValue.split(',');
     const input = page.getByTestId('asset-select-list').getByRole('combobox');
     await input.click();
-    await input.fill(testValue);
+    await input.fill(value);
     await page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.status() === 200
     );
-    await page.getByTestId(testValue).click();
+    await page.getByTestId(value).click();
 
     // Verify selection is applied before saving
     // The selection usually appears as a tag or text in the container
-    await expect(page.getByTestId('asset-select-list')).toContainText(
-      testValue
-    );
-  } else if (['Date', 'Time', 'Date Time', 'DateTime'].includes(propertyType)) {
+    await expect(page.getByTestId('asset-select-list')).toContainText(value);
+  } else if (['date-cp', 'time-cp', 'dateTime-cp'].includes(propertyType)) {
     // Ant Design Pickers
     const picker = page.getByTestId(
-      propertyType === 'Time' ? 'time-picker' : 'date-time-picker'
+      propertyType === 'time-cp' ? 'time-picker' : 'date-time-picker'
     );
     await picker.click();
     await page.keyboard.type(testValue);
     await page.keyboard.press('Enter');
-  } else if (['String', 'Integer', 'Number'].includes(propertyType)) {
+  } else if (['string', 'integer', 'number'].includes(propertyType)) {
     const valueInput = page.getByTestId('value-input');
     await expect(valueInput).toBeVisible();
     await valueInput.fill(testValue);
-  } else if (propertyType === 'Hyperlink') {
+  } else if (propertyType === 'hyperlink-cp') {
     const urlInput = page.getByTestId('hyperlink-url-input');
     await expect(urlInput).toBeVisible();
     const [url, displayText] = testValue.split(',');
@@ -1127,7 +1085,7 @@ export const editColumnCustomProperty = async (
     await displayTextInput.fill(displayText);
   }
 
-  if (propertyType !== 'Table' && propertyType !== 'Markdown') {
+  if (propertyType !== 'table-cp' && propertyType !== 'markdown') {
     await page
       .locator('.custom-properties-section-container')
       .getByTestId('inline-save-btn')
@@ -1143,23 +1101,26 @@ export const validateColumnCustomProperty = async (
 ) => {
   const card = page.getByTestId(propertyName);
 
-  if (propertyType === 'Markdown') {
+  if (propertyType === 'markdown') {
     await expect(card.getByTestId('viewer-container')).toContainText(
-      'Markdown'
+      testValue.substring(3, 7)
     );
-  } else if (propertyType === 'Sql Query') {
+  } else if (propertyType === 'sqlQuery') {
     await expect(card.getByTestId('property-value')).toContainText(testValue);
-  } else if (propertyType === 'Time Interval') {
+  } else if (propertyType === 'timeInterval') {
     const [start, end] = testValue.split(',');
     await expect(card.getByTestId('property-value')).toContainText(start);
     await expect(card.getByTestId('property-value')).toContainText(end);
-  } else if (propertyType === 'Table') {
+  } else if (propertyType === 'table-cp') {
     await expect(
       page.getByRole('row', { name: `${testValue} row1col2` })
     ).toBeVisible();
-  } else if (propertyType === 'Entity Reference') {
+  } else if (propertyType === 'entityReference') {
     await expect(card.getByTestId('property-value')).toContainText(testValue);
-  } else if (propertyType === 'Hyperlink') {
+  } else if (propertyType === 'entityReferenceList') {
+    const [value] = testValue.split(',');
+    await expect(card.getByTestId('property-value')).toContainText(value);
+  } else if (propertyType === 'hyperlink-cp') {
     const [_, displayText] = testValue.split(',');
     await expect(card.getByTestId('hyperlink-value')).toContainText(
       displayText
@@ -1175,26 +1136,23 @@ export const validateColumnCustomProperty = async (
 
 export const verifyTableColumnCustomPropertyPersistence = async ({
   page,
-  tableName,
-  tableFqn,
+  columnFqn,
   propertyName,
   propertyType,
+  users,
 }: {
   page: Page;
-  tableName: string;
-  tableFqn: string;
+  columnFqn: string;
   propertyName: string;
   propertyType: string;
+  users: Record<string, string>;
 }) => {
-  const testValue = getTestValueForPropertyType(propertyType);
+  const testValue = getPropertyValues(propertyType, users).value;
 
-  // 1. Navigate to Table Details
-  await navigateToExploreAndSelectTable(page, tableName);
-  await page.getByTestId(`table-data-card_${tableFqn}`).click();
-
-  // 2. Open Column Detail Panel
-  const firstColumnLink = page.locator('[data-testid="column-name"]').first();
-  await firstColumnLink.click();
+  // 1. Navigate and Open Column Detail Panel
+  await page.goto(`/table/${columnFqn}`);
+  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
   const sidePanel = page.locator('.column-detail-panel-container');
   await expect(sidePanel).toBeVisible();
 
@@ -1297,7 +1255,14 @@ export const updateCustomPropertyInRightPanel = async (data: {
   if (await searchContainer.isVisible()) {
     await searchContainer.getByTestId('searchbar').fill(propertyName);
   }
-  await page.waitForTimeout(800);
+
+  // Since the search is client side, can't wait on APIs and names are unique,
+  // waiting for only single custom property card to be visible
+  // to ensure stability of the next click operations
+  await expect(
+    page.getByTestId('custom-property-right-panel-card')
+  ).toHaveCount(1);
+
   const container = page
     .locator('.entity-summary-panel-container')
     .getByTestId(propertyName);

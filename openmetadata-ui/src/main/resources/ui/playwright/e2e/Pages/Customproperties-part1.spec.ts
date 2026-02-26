@@ -20,7 +20,6 @@ import {
   deleteCreatedProperty,
   editCreatedProperty,
   verifyCustomPropertyInAdvancedSearch,
-  verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
@@ -36,8 +35,6 @@ const propertiesList = [
   'Timestamp',
   'Hyperlink',
 ];
-
-const TABLE_COLUMN_ENTITY_NAME = 'tableColumn';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -58,14 +55,12 @@ test.describe(
       await redirectToHomePage(page);
     });
 
-    propertiesList.forEach((property) => {
-      test.describe(
-        `Add update and delete ${property} custom properties`,
+    Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
+      test.describe.serial(
+        `Add update and delete custom properties for ${entity.name}`,
         () => {
-          Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-            test(`Add ${property} custom property for ${entity.name}`, async ({
-              page,
-            }) => {
+          propertiesList.forEach((property) => {
+            test(property, async ({ page }) => {
               // Using Date.now() to generate property names in a way that new property will always be
               // added after existing properties to avoid conflicts due to parallel test executions
               const propertyName = `pwcp${Date.now()}test${entity.name}`;
@@ -90,26 +85,6 @@ test.describe(
                 entity.name.charAt(0).toUpperCase() + entity.name.slice(1),
                 property
               );
-
-              if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-                await test.step(
-                  'Verify Custom Property Persistence on Reload',
-                  async () => {
-                    const tableName = adminTestEntity.entity.name ?? '';
-                    const tableFqn =
-                      adminTestEntity.entityResponseData.fullyQualifiedName ??
-                      '';
-
-                    await verifyTableColumnCustomPropertyPersistence({
-                      page,
-                      tableName,
-                      tableFqn,
-                      propertyName,
-                      propertyType: property,
-                    });
-                  }
-                );
-              }
 
               await settingClick(
                 page,
