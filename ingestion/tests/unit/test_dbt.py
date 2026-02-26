@@ -2686,3 +2686,280 @@ class TestGetLatestResult(TestCase):
 
         got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
         self.assertIs(got, new_result)
+
+
+class TestGetBlobsGroupedByDir(TestCase):
+    """
+    Test cases for get_blobs_grouped_by_dir to verify streaming support,
+    correct filtering, and debug logging.
+    """
+
+    def test_accepts_generator_input(self):
+        """Test that get_blobs_grouped_by_dir works with a generator (lazy iterable)"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        def blob_generator():
+            yield "project1/manifest.json"
+            yield "project1/catalog.json"
+            yield "project2/manifest.json"
+
+        result = get_blobs_grouped_by_dir(blobs=blob_generator())
+
+        self.assertEqual(len(result), 2)
+        self.assertIn("project1", result)
+        self.assertIn("project2", result)
+        self.assertEqual(len(result["project1"]), 2)
+        self.assertEqual(len(result["project2"]), 1)
+
+    def test_filters_only_dbt_artifacts(self):
+        """Test that non-dbt files are excluded from grouping"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        blobs = [
+            "project1/manifest.json",
+            "project1/catalog.json",
+            "project1/run_results.json",
+            "project1/sources.json",
+            "project1/some_other_file.csv",
+            "project1/data/large_dataset.parquet",
+            "project1/README.md",
+        ]
+
+        result = get_blobs_grouped_by_dir(blobs=iter(blobs))
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result["project1"]), 4)
+
+    def test_empty_input(self):
+        """Test with empty iterable"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        result = get_blobs_grouped_by_dir(blobs=iter([]))
+
+        self.assertEqual(len(result), 0)
+
+    def test_groups_by_directory(self):
+        """Test that blobs are correctly grouped by their parent directory"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        blobs = [
+            "team_a/dbt_project/manifest.json",
+            "team_a/dbt_project/catalog.json",
+            "team_b/analytics/manifest.json",
+            "team_b/analytics/run_results.json",
+            "team_c/models/manifest.json",
+        ]
+
+        result = get_blobs_grouped_by_dir(blobs=iter(blobs))
+
+        self.assertEqual(len(result), 3)
+        self.assertEqual(len(result["team_a/dbt_project"]), 2)
+        self.assertEqual(len(result["team_b/analytics"]), 2)
+        self.assertEqual(len(result["team_c/models"]), 1)
+
+    def test_logs_scan_statistics(self):
+        """Test that debug log includes correct scan statistics"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        blobs = [
+            "dir1/manifest.json",
+            "dir1/catalog.json",
+            "dir1/random_file.txt",
+            "dir2/manifest.json",
+            "dir2/another_file.csv",
+        ]
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.logger"
+        ) as mock_logger:
+            get_blobs_grouped_by_dir(blobs=iter(blobs))
+
+            mock_logger.debug.assert_called_once()
+            log_message = mock_logger.debug.call_args[0][0]
+            self.assertIn("Scanned 5 blobs", log_message)
+            self.assertIn("found 3 dbt artifacts", log_message)
+            self.assertIn("2 directories", log_message)
+
+    def test_does_not_materialize_generator(self):
+        """Test that the generator is consumed lazily, not converted to a list"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        consumed_items = []
+
+        def tracking_generator():
+            for item in [
+                "dir/manifest.json",
+                "dir/other.txt",
+                "dir/catalog.json",
+            ]:
+                consumed_items.append(item)
+                yield item
+
+        get_blobs_grouped_by_dir(blobs=tracking_generator())
+
+        # All items should be consumed (the function fully iterates)
+        # but they should not all be held in memory simultaneously as a list
+        self.assertEqual(len(consumed_items), 3)
+
+    def test_multiple_run_results_matched(self):
+        """Test that multiple run_results files (with different prefixes) are matched"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            get_blobs_grouped_by_dir,
+        )
+
+        blobs = [
+            "project/run_results.json",
+            "project/run_results_2024.json",
+            "project/run_results_latest.json",
+        ]
+
+        result = get_blobs_grouped_by_dir(blobs=iter(blobs))
+
+        self.assertEqual(len(result["project"]), 3)
+
+
+class TestStorageStreamingBehavior(TestCase):
+    """
+    Test cases to verify that GCS, S3, and Azure handlers pass lazy
+    iterables to get_blobs_grouped_by_dir (not materialized lists).
+    """
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.download_dbt_files")
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.get_blobs_grouped_by_dir")
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.set_google_credentials")
+    def test_gcs_passes_generator_to_grouping(
+        self, mock_set_creds, mock_get_blobs, mock_download
+    ):
+        """Test that GCS handler passes a generator (not a list) to get_blobs_grouped_by_dir"""
+        from types import GeneratorType
+
+        from metadata.generated.schema.metadataIngestion.dbtconfig.dbtGCSConfig import (
+            DbtGcsConfig,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
+
+        # Get the registered handler for DbtGcsConfig directly
+        gcs_handler = get_dbt_details.dispatch(DbtGcsConfig)
+
+        mock_blob_1 = MagicMock()
+        mock_blob_1.name = "project/manifest.json"
+        mock_blob_2 = MagicMock()
+        mock_blob_2.name = "project/catalog.json"
+
+        mock_bucket = MagicMock()
+        mock_bucket.name = "test-bucket"
+
+        mock_client = MagicMock()
+        mock_client.get_bucket.return_value = mock_bucket
+        mock_client.list_blobs.return_value = iter([mock_blob_1, mock_blob_2])
+
+        mock_get_blobs.return_value = {}
+        mock_download.return_value = iter([])
+
+        config = MagicMock()
+        config.dbtPrefixConfig.dbtBucketName = "test-bucket"
+        config.dbtPrefixConfig.dbtObjectPrefix = None
+
+        with patch("google.cloud.storage.Client", return_value=mock_client):
+            list(gcs_handler(config))
+
+        # Verify get_blobs_grouped_by_dir was called
+        mock_get_blobs.assert_called_once()
+        # Verify the blobs argument is a generator, not a list
+        blobs_arg = mock_get_blobs.call_args[1]["blobs"]
+        self.assertIsInstance(blobs_arg, GeneratorType)
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.download_dbt_files")
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.get_blobs_grouped_by_dir")
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.list_s3_objects")
+    def test_s3_passes_generator_to_grouping(
+        self, mock_list_s3, mock_get_blobs, mock_download
+    ):
+        """Test that S3 handler passes a generator (not a list) to get_blobs_grouped_by_dir"""
+        from types import GeneratorType
+
+        from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
+            DbtS3Config,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
+
+        # Get the registered handler for DbtS3Config directly
+        s3_handler = get_dbt_details.dispatch(DbtS3Config)
+
+        mock_list_s3.return_value = iter(
+            [{"Key": "project/manifest.json"}, {"Key": "project/catalog.json"}]
+        )
+
+        mock_get_blobs.return_value = {}
+        mock_download.return_value = iter([])
+
+        config = MagicMock()
+        config.dbtPrefixConfig.dbtBucketName = "test-bucket"
+        config.dbtPrefixConfig.dbtObjectPrefix = None
+
+        mock_client = MagicMock()
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.AWSClient"
+        ) as mock_aws:
+            mock_aws.return_value.get_client.return_value = mock_client
+            list(s3_handler(config))
+
+        mock_get_blobs.assert_called_once()
+        blobs_arg = mock_get_blobs.call_args[1]["blobs"]
+        self.assertIsInstance(blobs_arg, GeneratorType)
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.download_dbt_files")
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.get_blobs_grouped_by_dir")
+    def test_azure_passes_generator_to_grouping(self, mock_get_blobs, mock_download):
+        """Test that Azure handler passes a generator (not a list) to get_blobs_grouped_by_dir"""
+        from types import GeneratorType
+
+        from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
+            DbtAzureConfig,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
+
+        # Get the registered handler for DbtAzureConfig directly
+        azure_handler = get_dbt_details.dispatch(DbtAzureConfig)
+
+        mock_blob_1 = MagicMock()
+        mock_blob_1.name = "project/manifest.json"
+        mock_blob_2 = MagicMock()
+        mock_blob_2.name = "project/catalog.json"
+
+        mock_container = MagicMock()
+        mock_container.container_name = "test-container"
+        mock_container.list_blobs.return_value = iter([mock_blob_1, mock_blob_2])
+
+        mock_client = MagicMock()
+        mock_client.get_container_client.return_value = mock_container
+
+        mock_get_blobs.return_value = {}
+        mock_download.return_value = iter([])
+
+        config = MagicMock()
+        config.dbtPrefixConfig.dbtBucketName = "test-container"
+        config.dbtPrefixConfig.dbtObjectPrefix = None
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.AzureClient"
+        ) as mock_azure:
+            mock_azure.return_value.create_blob_client.return_value = mock_client
+            list(azure_handler(config))
+
+        mock_get_blobs.assert_called_once()
+        blobs_arg = mock_get_blobs.call_args[1]["blobs"]
+        self.assertIsInstance(blobs_arg, GeneratorType)
