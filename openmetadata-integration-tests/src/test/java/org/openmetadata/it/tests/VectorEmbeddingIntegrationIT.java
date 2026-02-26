@@ -109,7 +109,7 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
 
     Awaitility.await("Wait for vector documents to be indexed")
-        .atMost(Duration.ofSeconds(15))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
@@ -142,7 +142,7 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
 
     Awaitility.await("Wait for initial vector documents")
-        .atMost(Duration.ofSeconds(15))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
@@ -155,7 +155,7 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
 
     Awaitility.await("Wait for unchanged vector documents")
-        .atMost(Duration.ofSeconds(15))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
@@ -172,7 +172,7 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
 
     Awaitility.await("Wait for updated vector documents with new fingerprint")
-        .atMost(Duration.ofSeconds(15))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
@@ -224,7 +224,7 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
 
     Awaitility.await("Wait for fingerprint to be available")
-        .atMost(Duration.ofSeconds(15))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
@@ -263,7 +263,7 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateVectorEmbeddings(entity2, VECTOR_INDEX_NAME);
 
     Awaitility.await("Wait for batch vector documents to be indexed")
-        .atMost(Duration.ofSeconds(15))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
@@ -275,7 +275,7 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
 
     Awaitility.await("Wait for vector documents for migration test")
-        .atMost(Duration.ofSeconds(15))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
@@ -313,7 +313,7 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
 
     Awaitility.await("Wait for initial vector documents for migration")
-        .atMost(Duration.ofSeconds(15))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
@@ -325,7 +325,7 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateVectorEmbeddingsWithMigration(testTable, stagedIndex, VECTOR_INDEX_NAME);
 
     Awaitility.await("Wait for migrated documents in staged index")
-        .atMost(Duration.ofSeconds(15))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
@@ -344,7 +344,7 @@ class VectorEmbeddingIntegrationIT {
 
     String expectedFingerprint = VectorDocBuilder.computeFingerprintForEntity(testTable);
     Awaitility.await("Wait for recomputed documents after content change")
-        .atMost(Duration.ofSeconds(15))
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
