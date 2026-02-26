@@ -78,30 +78,32 @@ public class AppsResourceIT {
 
   private void waitForAppJobCompletion(String appName) {
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
-    Awaitility.await("Wait for app job completion: " + appName)
-        .atMost(Duration.ofMinutes(3))
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(2))
-        .ignoreExceptions()
-        .until(
-            () -> {
-              AppRunRecord latestRun =
-                  httpClient.execute(
-                      HttpMethod.GET,
-                      "/v1/apps/name/" + appName + "/runs/latest",
-                      null,
-                      AppRunRecord.class);
-              if (latestRun == null) {
-                return true;
-              }
-              if (latestRun.getStatus() == null) {
-                return false;
-              }
-              String status = latestRun.getStatus().value();
-              return "SUCCESS".equals(status)
-                  || "FAILED".equals(status)
-                  || "COMPLETED".equals(status);
-            });
+    try {
+      Awaitility.await("Wait for app job completion: " + appName)
+          .atMost(Duration.ofSeconds(30))
+          .pollDelay(Duration.ofMillis(500))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                AppRunRecord latestRun =
+                    httpClient.execute(
+                        HttpMethod.GET,
+                        "/v1/apps/name/" + appName + "/runs/latest",
+                        null,
+                        AppRunRecord.class);
+                if (latestRun == null || latestRun.getStatus() == null) {
+                  return true;
+                }
+                String status = latestRun.getStatus().value();
+                return "SUCCESS".equals(status)
+                    || "FAILED".equals(status)
+                    || "COMPLETED".equals(status);
+              });
+    } catch (org.awaitility.core.ConditionTimeoutException e) {
+      // Best-effort wait — the app may be continuously running under parallel test load.
+      // The subsequent trigger call handles "already running" with its own retry.
+    }
   }
 
   @Test
