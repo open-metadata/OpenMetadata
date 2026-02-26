@@ -62,6 +62,15 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.powerbi.constants import (
+    DATABRICKS_QUERY_EXPRESSION_KW,
+    DEFAULT_REPORTS_PREFIX,
+    MAX_PROJECT_FILTER_SIZE,
+    OWNER_ACCESS_RIGHTS_KEYWORDS,
+    RDL_REPORT_FORMAT,
+    RDL_REPORTS_PREFIX,
+    SNOWFLAKE_QUERY_EXPRESSION_KW,
+)
 from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
     parse_databricks_native_query_source,
 )
@@ -89,16 +98,6 @@ from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-from metadata.ingestion.source.dashboard.powerbi.constants import (
-    DATABRICKS_QUERY_EXPRESSION_KW,
-    DEFAULT_REPORTS_PREFIX,
-    MAX_PROJECT_FILTER_SIZE,
-    OWNER_ACCESS_RIGHTS_KEYWORDS,
-    RDL_REPORT_FORMAT,
-    RDL_REPORTS_PREFIX,
-    SNOWFLAKE_QUERY_EXPRESSION_KW,
-)
 
 
 class PowerbiSource(DashboardServiceSource):
