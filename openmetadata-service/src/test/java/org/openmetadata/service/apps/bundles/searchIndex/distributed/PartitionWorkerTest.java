@@ -69,7 +69,7 @@ class PartitionWorkerTest {
 
   @Test
   void testBatchResult_Record() {
-    PartitionWorker.BatchResult result = new PartitionWorker.BatchResult(95, 5, 0);
+    PartitionWorker.BatchResult result = new PartitionWorker.BatchResult(95, 5, 0, null);
 
     assertEquals(95, result.successCount());
     assertEquals(5, result.failedCount());
@@ -218,9 +218,9 @@ class PartitionWorkerTest {
 
   @Test
   void testBatchResultEquality() {
-    PartitionWorker.BatchResult result1 = new PartitionWorker.BatchResult(100, 5, 0);
-    PartitionWorker.BatchResult result2 = new PartitionWorker.BatchResult(100, 5, 0);
-    PartitionWorker.BatchResult result3 = new PartitionWorker.BatchResult(100, 10, 0);
+    PartitionWorker.BatchResult result1 = new PartitionWorker.BatchResult(100, 5, 0, null);
+    PartitionWorker.BatchResult result2 = new PartitionWorker.BatchResult(100, 5, 0, null);
+    PartitionWorker.BatchResult result3 = new PartitionWorker.BatchResult(100, 10, 0, null);
 
     assertEquals(result1, result2);
     assertFalse(result1.equals(result3));

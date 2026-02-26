@@ -205,6 +205,7 @@ const IncidentManager = ({
       try {
         const { data, paging } = await getListTestCaseIncidentStatusFromSearch({
           limit: pageSize,
+          offset: params.offset ?? 0,
           latest: true,
           include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
           originEntityFQN: tableDetails?.fullyQualifiedName,
@@ -277,19 +278,11 @@ const IncidentManager = ({
     }
   };
 
-  const handlePagingClick = ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => {
-    if (cursorType) {
-      fetchTestCaseIncidents({
-        ...filters,
-        [cursorType]: paging?.[cursorType],
-        offset: paging?.[cursorType]
-          ? parseInt(paging?.[cursorType] ?? '', 10)
-          : undefined,
-      });
-    }
+  const handlePagingClick = ({ currentPage }: PagingHandlerParams) => {
+    fetchTestCaseIncidents({
+      ...filters,
+      offset: (currentPage - 1) * pageSize,
+    });
     handlePageChange(currentPage);
   };
 
@@ -300,6 +293,7 @@ const IncidentManager = ({
       pagingHandler: handlePagingClick,
       pageSize,
       onShowSizeChange: handlePageSizeChange,
+      isNumberBased: true,
     }),
     [paging, currentPage, handlePagingClick, pageSize, handlePageSizeChange]
   );

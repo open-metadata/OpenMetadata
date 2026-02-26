@@ -10536,27 +10536,27 @@ public interface CollectionDAO {
         value =
             "INSERT INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
                 + "actor_type, impersonated_by, service_name, "
-                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
+                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, search_text, created_at) "
                 + "VALUES (:changeEventId::uuid, :eventTs, :eventType, :userName, "
                 + ":actorType, :impersonatedBy, :serviceName, "
-                + ":entityType, :entityId::uuid, :entityFQN, :entityFQNHash, :eventJson, :createdAt) "
+                + ":entityType, :entityId::uuid, :entityFQN, :entityFQNHash, :eventJson, :searchText, :createdAt) "
                 + "ON CONFLICT (change_event_id) DO NOTHING",
         connectionType = POSTGRES)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT IGNORE INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
                 + "actor_type, impersonated_by, service_name, "
-                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
+                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, search_text, created_at) "
                 + "VALUES (:changeEventId, :eventTs, :eventType, :userName, "
                 + ":actorType, :impersonatedBy, :serviceName, "
-                + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt)",
+                + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :searchText, :createdAt)",
         connectionType = MYSQL)
     void insert(@BindBean AuditLogRecord record);
 
     @SqlQuery(
         "SELECT id, change_event_id, event_ts, event_type, user_name, "
             + "actor_type, impersonated_by, service_name, "
-            + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at "
+            + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, search_text, created_at "
             + "FROM audit_log_event <condition> <orderClause> LIMIT :limit")
     List<AuditLogRecord> list(
         @Define("condition") String condition,
@@ -10570,7 +10570,7 @@ public interface CollectionDAO {
         @Bind("eventType") String eventType,
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
-        @Bind("searchPattern") String searchPattern,
+        @Bind("searchTerm") String searchTerm,
         @Bind("afterEventTs") Long afterEventTs,
         @Bind("afterId") Long afterId,
         @Bind("limit") int limit);
@@ -10587,7 +10587,7 @@ public interface CollectionDAO {
         @Bind("eventType") String eventType,
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
-        @Bind("searchPattern") String searchPattern);
+        @Bind("searchTerm") String searchTerm);
 
     @ConnectionAwareSqlUpdate(
         value =

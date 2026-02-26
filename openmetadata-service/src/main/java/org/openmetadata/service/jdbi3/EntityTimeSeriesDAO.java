@@ -183,6 +183,55 @@ public interface EntityTimeSeriesDAO {
         getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), limit, offset);
   }
 
+  record TimeSeriesRow(String json, long timestamp, String entityFQNHash) {}
+
+  class TimeSeriesRowMapper implements RowMapper<TimeSeriesRow> {
+    @Override
+    public TimeSeriesRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new TimeSeriesRow(
+          rs.getString("json"), rs.getLong("timestamp"), rs.getString("entityFQNHash"));
+    }
+  }
+
+  @SqlQuery(
+      "SELECT json, timestamp, entityFQNHash FROM <table> <cond> "
+          + "AND (timestamp > :afterTs OR (timestamp = :afterTs AND entityFQNHash > :afterFQNHash)) "
+          + "ORDER BY timestamp ASC, entityFQNHash ASC LIMIT :limit")
+  @RegisterRowMapper(TimeSeriesRowMapper.class)
+  List<TimeSeriesRow> listAfterKeyset(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Bind("limit") int limit,
+      @Bind("afterTs") long afterTs,
+      @Bind("afterFQNHash") String afterFQNHash);
+
+  default List<TimeSeriesRow> listAfterKeyset(
+      ListFilter filter, int limit, long afterTs, String afterFQNHash) {
+    return listAfterKeyset(
+        getTimeSeriesTableName(),
+        filter.getQueryParams(),
+        filter.getCondition(),
+        limit,
+        afterTs,
+        afterFQNHash);
+  }
+
+  @SqlQuery(
+      "SELECT json, timestamp, entityFQNHash FROM <table> <cond> "
+          + "ORDER BY timestamp ASC, entityFQNHash ASC LIMIT 1 OFFSET :offset")
+  @RegisterRowMapper(TimeSeriesRowMapper.class)
+  TimeSeriesRow getCursorAtOffset(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Bind("offset") int offset);
+
+  default TimeSeriesRow getCursorAtOffset(ListFilter filter, int offset) {
+    return getCursorAtOffset(
+        getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), offset);
+  }
+
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE <table> set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json -> '$.operation' = :operation",
