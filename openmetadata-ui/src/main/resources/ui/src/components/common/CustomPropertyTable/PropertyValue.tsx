@@ -51,7 +51,10 @@ import {
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
 import {
+  AUTO_HEIGHT_TYPES,
   HYPERLINK_TYPE_CUSTOM_PROPERTY,
+  NO_OVERFLOW_TOGGLE_TYPES,
+  SCROLLABLE_WRAPPER_TYPES,
   TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
@@ -1060,7 +1063,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
   const getValueElement = () => {
     const propertyValue = getPropertyValue();
-    const isScrollableType = ['table-cp'].includes(propertyType.name || '');
+    const isScrollableType = SCROLLABLE_WRAPPER_TYPES.includes(
+      propertyType.name || ''
+    );
 
     const renderedValue =
       !isUndefined(value) || isTableType ? (
@@ -1092,12 +1097,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     const isMarkdownWithValue = propertyType.name === 'markdown' && value;
     const isOverflowing =
       (contentRef.current.scrollHeight > 32 || isMarkdownWithValue) &&
-      ![
-        'entityReference',
-        'entityReferenceList',
-        'table-cp',
-        'sqlQuery',
-      ].includes(propertyType.name || '') &&
+      !NO_OVERFLOW_TOGGLE_TYPES.includes(propertyType.name || '') &&
       !isRenderedInRightPanel;
 
     setIsOverflowing(isOverflowing);
@@ -1114,9 +1114,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           className="text-grey-body property-name"
           data-testid="property-name">
           {getEntityName(property)}
-          {isArray(value)
+          {propertyType.name === 'entityReferenceList' && isArray(value)
             ? ` (${value.length})`
-            : isArray(value?.rows)
+            : propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY &&
+              isArray(value?.rows)
             ? ` (${value.rows.length})`
             : null}
         </Typography.Text>
@@ -1151,9 +1152,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           style={{
             height:
               containerStyleFlag ||
-              ['entityReferenceList', 'table-cp', 'sqlQuery'].includes(
-                propertyType.name || ''
-              )
+              AUTO_HEIGHT_TYPES.includes(propertyType.name || '')
                 ? 'auto'
                 : '32px',
           }}>
