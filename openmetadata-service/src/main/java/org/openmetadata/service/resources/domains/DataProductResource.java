@@ -82,7 +82,8 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   private final DataProductMapper mapper = new DataProductMapper();
-  static final String FIELDS = "domains,owners,reviewers,experts,extension,tags,followers";
+  static final String FIELDS =
+      "domains,owners,reviewers,experts,extension,tags,followers,votes,certification";
   static final String PORT_FIELDS =
       "owners,tags,followers,domains,votes,extension"; // Common fields across all entity types
 
@@ -847,6 +848,33 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     }
 
     return Response.ok(dataContract).build();
+  }
+
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for an Entity",
+      description = "Update vote for an Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Valid org.openmetadata.schema.api.VoteRequest request) {
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
   }
 
   @DELETE

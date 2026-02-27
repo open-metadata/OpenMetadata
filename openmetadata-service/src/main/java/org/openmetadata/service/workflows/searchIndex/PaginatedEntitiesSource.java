@@ -271,6 +271,80 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     return result;
   }
 
+  public ResultList<? extends EntityInterface> readNextKeyset(String keysetCursor)
+      throws SearchIndexException {
+    LOG.debug("[PaginatedEntitiesSource] Fetching keyset batch of size: {}", batchSize);
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    ResultList<? extends EntityInterface> result;
+    try {
+      result =
+          entityRepository.listAfterKeyset(
+              filter,
+              batchSize,
+              keysetCursor,
+              cachedTotalCount,
+              true,
+              Entity.getFields(entityType, fields));
+
+      int warningsCount = 0;
+      if (result.getErrors() != null && !result.getErrors().isEmpty()) {
+        List<EntityError> realErrors = new ArrayList<>();
+        for (EntityError error : result.getErrors()) {
+          if (isEntityNotFoundError(error)) {
+            warningsCount++;
+            LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
+          } else {
+            realErrors.add(error);
+          }
+        }
+        result.setErrors(realErrors);
+        result.setWarningsCount(warningsCount);
+      }
+
+      LOG.debug(
+          "[PaginatedEntitiesSource] Keyset batch stats — Submitted: {} Success: {} Failed: {} Warnings: {}",
+          batchSize,
+          result.getData().size(),
+          result.getErrors() != null ? result.getErrors().size() : 0,
+          warningsCount);
+
+    } catch (Exception e) {
+      LOG.error(
+          "Error reading keyset batch for entityType: {} with cursor: {}",
+          entityType,
+          keysetCursor,
+          e);
+      IndexingError indexingError =
+          new IndexingError()
+              .withErrorSource(READER)
+              .withSuccessCount(0)
+              .withMessage(
+                  String.format(
+                      "Failed to read keyset batch for entityType: %s. Error: %s",
+                      entityType, e.getMessage()))
+              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
+      throw new SearchIndexException(indexingError);
+    }
+    return result;
+  }
+
+  public List<String> findBoundaryCursors(int numReaders, int totalRecords) {
+    List<String> cursors = new ArrayList<>();
+    if (numReaders <= 1 || totalRecords <= 0) {
+      return cursors;
+    }
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    int recordsPerReader = totalRecords / numReaders;
+    for (int i = 1; i < numReaders; i++) {
+      int offset = i * recordsPerReader;
+      String cursor = entityRepository.getCursorAtOffset(filter, offset);
+      if (cursor != null) {
+        cursors.add(cursor);
+      }
+    }
+    return cursors;
+  }
+
   @Override
   public void reset() {
     cursor.set(null);

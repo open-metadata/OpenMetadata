@@ -1909,6 +1909,10 @@ public class TableRepository extends EntityRepository<Table> {
       Table updatedTable = updated;
       DatabaseUtil.validateColumns(updatedTable.getColumns());
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
+      if (updatedTable.getDataModel() == null && origTable.getDataModel() != null) {
+        updatedTable.withDataModel(origTable.getDataModel());
+      }
+      recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel());
       updateTableConstraints(origTable, updatedTable, operation);
       updateProcessedLineage(origTable, updatedTable);
       updateColumns(
