@@ -1093,6 +1093,17 @@ export interface CollateAIAppConfig {
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
+     * Per-entity-type override for time series max days. Keys are entity type names (e.g.
+     * testCaseResult, queryCostRecord), values are number of days. Entities not listed here use
+     * the default Time Series Max Days value.
+     */
+    timeSeriesEntityDays?: { [key: string]: number };
+    /**
+     * Maximum age in days for time series data during reindexing. Only records from the last N
+     * days will be indexed. Set to 0 or -1 to index all data.
+     */
+    timeSeriesMaxDays?: number;
+    /**
      * Enable distributed indexing to scale reindexing across multiple servers with fault
      * tolerance and parallel processing
      */
