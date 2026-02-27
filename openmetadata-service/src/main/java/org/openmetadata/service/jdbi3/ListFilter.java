@@ -5,9 +5,13 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -135,8 +139,14 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     }
 
+    Set<String> validStatuses =
+        Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
     List<String> statusValues =
-        Arrays.stream(entityStatus.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+        Arrays.stream(entityStatus.split(","))
+            .map(String::trim)
+            .filter(Predicate.not(String::isEmpty))
+            .filter(validStatuses::contains)
+            .toList();
 
     if (statusValues.isEmpty()) {
       return "";

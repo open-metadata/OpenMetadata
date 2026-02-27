@@ -63,6 +63,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -1747,7 +1748,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       String validatedStatuses =
           Arrays.stream(entityStatus.split(","))
               .map(String::trim)
-              .filter(s -> !s.isEmpty())
+              .filter(Predicate.not(String::isEmpty))
               .filter(validStatuses::contains)
               .map(s -> "'" + s + "'")
               .collect(Collectors.joining(","));
