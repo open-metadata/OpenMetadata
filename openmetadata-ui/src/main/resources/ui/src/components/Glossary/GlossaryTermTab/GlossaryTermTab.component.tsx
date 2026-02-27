@@ -159,7 +159,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     useState<boolean>(false);
   const [statusDropdownSelection, setStatusDropdownSelection] = useState<
     string[]
-  >(['all', ...Object.values(EntityStatus)]);
+  >([EntityStatus.Approved, EntityStatus.Draft, EntityStatus.InReview]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([
     ...statusDropdownSelection,
   ]);
@@ -273,27 +273,22 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       let data;
       let pagingResponse: Paging | undefined;
 
-      // Determine if status filter is active (not showing all statuses)
-      // If 'all' is selected, no filtering is needed
       const isStatusFilterActive = !selectedStatus.includes('all');
+      const entityStatusParam = isStatusFilterActive
+        ? selectedStatus.filter((s) => s !== 'all').join(',')
+        : undefined;
 
-      // Use search API when search term OR status filter is active
-      if (searchTerm || isStatusFilterActive) {
+      // Use search API if search term is present
+      if (searchTerm) {
         const currentOffset = loadMore ? searchPaging.offset : 0;
-
-        // Filter out 'all' from the statuses list since it's a UI-only option
-        const statusesToFilter = isStatusFilterActive
-          ? selectedStatus.filter((s) => s !== 'all')
-          : undefined;
-
         const response = await searchGlossaryTermsPaginated({
-          q: searchTerm || undefined,
+          q: searchTerm,
           glossaryFqn: activeGlossary?.fullyQualifiedName,
           limit: PAGE_SIZE_LARGE,
           offset: currentOffset,
           fields:
             'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
-          entityStatus: statusesToFilter?.join(','),
+          entityStatus: entityStatusParam,
         });
         data = response.data;
         pagingResponse = response.paging;
@@ -310,11 +305,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           hasMore,
         });
       } else {
-        // Use regular listing API when no search term AND no status filter
+        // Use regular listing API when no search term
         const response = await getFirstLevelGlossaryTermsPaginated(
           activeGlossary?.fullyQualifiedName || '',
           PAGE_SIZE_LARGE,
-          loadMore ? paging.after : undefined
+          loadMore ? paging.after : undefined,
+          entityStatusParam
         );
         data = response.data;
         pagingResponse = response.paging;
@@ -997,22 +993,19 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const handleCheckboxChange = useCallback(
     (key: string, checked: boolean) => {
-      const setCheckedList = setStatusDropdownSelection;
-
       const optionsToUse = GLOSSARY_TERM_STATUS_OPTIONS;
 
       if (key === 'all') {
         if (checked) {
-          const newCheckedList = [
+          setStatusDropdownSelection([
             'all',
             ...optionsToUse.map((option) => option.value),
-          ];
-          setCheckedList(newCheckedList);
+          ]);
         } else {
-          setCheckedList([]);
+          setStatusDropdownSelection([]);
         }
       } else {
-        setCheckedList((prev: string[]) => {
+        setStatusDropdownSelection((prev: string[]) => {
           const newCheckedList = checked
             ? [...prev, key]
             : prev.filter((item) => item !== key);
@@ -1029,7 +1022,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         });
       }
     },
-    [columns, setStatusDropdownSelection]
+    [setStatusDropdownSelection]
   );
 
   const handleStatusSelectionDropdownSave = () => {
@@ -1352,8 +1345,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         parent: isUndefined(movedGlossaryTerm.to)
           ? null
           : {
-              fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
-            },
+            fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
+          },
       };
       const jsonPatch = compare(movedGlossaryTerm.from, newTermData);
 
@@ -1374,18 +1367,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     record,
     index
   ) =>
-    ({
-      index,
-      handleMoveRow,
-      handleTableHover,
-      record,
-    } as DraggableBodyRowProps<GlossaryTerm>);
+  ({
+    index,
+    handleMoveRow,
+    handleTableHover,
+    record,
+  } as DraggableBodyRowProps<GlossaryTerm>);
 
   const onTableHeader: TableProps<ModifiedGlossaryTerm>['onHeaderRow'] = () =>
-    ({
-      handleMoveRow,
-      handleTableHover,
-    } as DraggableBodyRowProps<GlossaryTerm>);
+  ({
+    handleMoveRow,
+    handleTableHover,
+  } as DraggableBodyRowProps<GlossaryTerm>);
 
   const onDragConfirmationModalClose = useCallback(() => {
     setIsModalOpen(false);
@@ -1439,8 +1432,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return [];
     }
 
-    // Status filtering is now done server-side via ES query
-    // No client-side filtering needed
     return processTermsWithLoadMore(glossaryTerms);
   }, [glossaryTerms, processTermsWithLoadMore]);
 
@@ -1457,9 +1448,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       activeGlossary &&
       previousGlossaryFQN === activeGlossary?.fullyQualifiedName
     ) {
-      // Only fetch if we're on the same glossary (not switching glossaries)
-      // Reset search pagination when search term or status filter changes
-      setSearchPaging({ offset: 0, total: undefined, hasMore: true });
+      if (searchTerm) {
+        setSearchPaging({ offset: 0, total: undefined, hasMore: true });
+      }
       fetchAllTerms();
     }
   }, [searchTerm, selectedStatus]);
@@ -1467,6 +1458,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   // Check if this is due to search or filter returning no results
   const isSearchActive = Boolean(searchTerm && searchTerm.trim().length > 0);
   const isStatusFilterActive = !selectedStatus.includes('all');
+  const hasNoTerms = isEmpty(glossaryTerms);
 
   const glossaryPlaceholderText = useMemo(() => {
     if (isSearchActive && searchTerm) {
@@ -1478,6 +1470,31 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
     return 'No Glossary Terms';
   }, [isSearchActive, isStatusFilterActive, searchTerm]);
+
+  // Special case: if there are truly no terms in the glossary at all (not just search results)
+  // and no search is active, show the full placeholder
+  if (hasNoTerms && !isSearchActive && !isStatusFilterActive && !isTableLoading) {
+    return (
+      <div className="h-full" ref={tableContainerRef}>
+        <ErrorPlaceHolder
+          className="p-md p-b-lg border-none"
+          doc={GLOSSARIES_DOCS}
+          heading={t('label.glossary-term')}
+          permission={permissions.Create}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.glossary-term'),
+          })}
+          placeholderText={t('message.no-glossary-term')}
+          type={
+            permissions.Create && glossaryTermStatus === EntityStatus.Approved
+              ? ERROR_PLACEHOLDER_TYPE.CREATE
+              : ERROR_PLACEHOLDER_TYPE.NO_DATA
+          }
+          onClick={handleAddGlossaryTermClick}
+        />
+      </div>
+    );
+  }
 
   return (
     <Row className={className} gutter={[0, 16]}>
@@ -1516,16 +1533,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               {/* Show infinite scroll trigger if there are more results */}
               {((!searchTerm && paging.after !== undefined) ||
                 (searchTerm && searchPaging.hasMore)) && (
-                <div
-                  className="m-t-md m-b-md text-center p-y-lg"
-                  ref={infiniteScrollRef}
-                  style={{ minHeight: '80px', background: 'transparent' }}>
-                  {isLoadingMore && <Loader size="small" />}
-                </div>
-              )}
+                  <div
+                    className="m-t-md m-b-md text-center p-y-lg"
+                    ref={infiniteScrollRef}
+                    style={{ minHeight: '80px', background: 'transparent' }}>
+                    {isLoadingMore && <Loader size="small" />}
+                  </div>
+                )}
             </>
           ) : (
-            // Show empty state within the table container
+            // Show empty state within the table container when search returns no results
             // This keeps the search bar and filters visible
             <Table
               resizableColumns
@@ -1539,32 +1556,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               extraTableFilters={extraTableFilters}
               loading={isTableLoading}
               locale={{
-                emptyText:
-                  isSearchActive || isStatusFilterActive ? (
-                    <ErrorPlaceHolder
-                      className="p-md"
-                      placeholderText={glossaryPlaceholderText}
-                      type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-                    />
-                  ) : (
-                    <ErrorPlaceHolder
-                      className="p-md p-b-lg border-none"
-                      doc={GLOSSARIES_DOCS}
-                      heading={t('label.glossary-term')}
-                      permission={permissions.Create}
-                      permissionValue={t('label.create-entity', {
-                        entity: t('label.glossary-term'),
-                      })}
-                      placeholderText={t('message.no-glossary-term')}
-                      type={
-                        permissions.Create &&
-                        glossaryTermStatus === EntityStatus.Approved
-                          ? ERROR_PLACEHOLDER_TYPE.CREATE
-                          : ERROR_PLACEHOLDER_TYPE.NO_DATA
-                      }
-                      onClick={handleAddGlossaryTermClick}
-                    />
-                  ),
+                emptyText: (
+                  <ErrorPlaceHolder
+                    className="p-md"
+                    placeholderText={glossaryPlaceholderText}
+                    type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+                  />
+                ),
               }}
               pagination={false}
               rowClassName={getRowClassName}

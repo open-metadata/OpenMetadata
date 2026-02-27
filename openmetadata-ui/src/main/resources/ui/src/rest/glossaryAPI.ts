@@ -343,7 +343,8 @@ export type GlossaryTermWithChildren = Omit<GlossaryTerm, 'children'> & {
 export const getFirstLevelGlossaryTermsPaginated = async (
   parentFQN: string,
   pageSize = 50,
-  after?: string
+  after?: string,
+  entityStatus?: string
 ) => {
   const apiUrl = `/glossaryTerms`;
 
@@ -359,6 +360,7 @@ export const getFirstLevelGlossaryTermsPaginated = async (
       ],
       limit: pageSize,
       after: after,
+      entityStatus,
     },
   });
 
