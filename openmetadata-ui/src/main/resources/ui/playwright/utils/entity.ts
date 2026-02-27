@@ -675,11 +675,13 @@ export const updateDescriptionForChildren = async (
   const modalEditor = modal.locator(descriptionBox);
   await expect(modalEditor).toBeVisible();
   await modalEditor.click();
-  await modalEditor.clear();
-  // Do NOT call fill('') when clearing: fill() mutates the DOM directly which
-  // causes ProseMirror to detect an unexpected external change and reconcile by
-  // reverting to its cached state.  clear() already removes content via keyboard
-  // events that ProseMirror owns, so it is sufficient on its own for removal.
+
+  // Playwright's clear() and fill('') can be unreliable with ProseMirror's internal state.
+  // Instead, select all text and delete it using keyboard events to ensure ProseMirror
+  // accurately detects and processes the changes.
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Backspace');
+
   if (description) {
     await modalEditor.fill(description);
   }
