@@ -372,25 +372,24 @@ public class SystemResource {
       SearchSettings mergedSettings =
           searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
       settingName.setConfigValue(mergedSettings);
-    }
-    Response response = systemRepository.createOrUpdate(settingName);
-    // Explicitly invalidate the cache to ensure latest settings are fetched
-    SettingsCache.invalidateSettings(settingName.getConfigType().value());
 
-    if (SettingsType.SEARCH_SETTINGS
-        .value()
-        .equalsIgnoreCase(settingName.getConfigType().toString())) {
-      SearchSettings saved =
-          JsonUtils.convertValue(settingName.getConfigValue(), SearchSettings.class);
-      if (saved.getGlobalSettings() != null
-          && saved.getGlobalSettings().getKeywordWeight() != null
-          && saved.getGlobalSettings().getSemanticWeight() != null) {
-        Entity.getSearchRepository()
-            .updateHybridSearchPipeline(
-                saved.getGlobalSettings().getKeywordWeight(),
-                saved.getGlobalSettings().getSemanticWeight());
+      if (mergedSettings.getGlobalSettings() != null
+          && mergedSettings.getGlobalSettings().getKeywordWeight() != null
+          && mergedSettings.getGlobalSettings().getSemanticWeight() != null) {
+        try {
+          Entity.getSearchRepository()
+              .updateHybridSearchPipeline(
+                  mergedSettings.getGlobalSettings().getKeywordWeight(),
+                  mergedSettings.getGlobalSettings().getSemanticWeight());
+        } catch (Exception e) {
+          LOG.error("Failed to update hybrid search pipeline", e);
+          throw new SystemSettingsException(
+              "Failed to update hybrid search pipeline: " + e.getMessage());
+        }
       }
     }
+    Response response = systemRepository.createOrUpdate(settingName);
+    SettingsCache.invalidateSettings(settingName.getConfigType().value());
 
     return response;
   }
