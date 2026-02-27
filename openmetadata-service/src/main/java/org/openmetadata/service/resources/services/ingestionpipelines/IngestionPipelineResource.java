@@ -1288,7 +1288,7 @@ public class IngestionPipelineResource
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
-        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
     // Flag the ingestion pipeline with streamable logs only if configured and enabled for use
     if (repository.isS3LogStorageEnabled()
         && repository.getLogStorageConfiguration().getEnabled()) {
@@ -1320,7 +1320,7 @@ public class IngestionPipelineResource
     }
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
-        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
     return pipelineServiceClient.runPipeline(ingestionPipeline, service);
   }
 
