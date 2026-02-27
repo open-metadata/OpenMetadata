@@ -150,6 +150,14 @@ del MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT["run"]["facets"]["parent"]["job"]["
 MALFORMED_NESTED_STRUCTURE_EVENT = copy.deepcopy(VALID_EVENT)
 MALFORMED_NESTED_STRUCTURE_EVENT["run"]["facets"]["parent"]["job"] = "Not a dict"
 
+EVENT_WITHOUT_PARENT_FACET = {
+    "run": {"facets": {}},
+    "inputs": [],
+    "outputs": [],
+    "eventType": "COMPLETE",
+    "job": {"name": "standalone-job", "namespace": "standalone-namespace"},
+}
+
 with open(
     f"{Path(__file__).parent}/../../resources/datasets/openlineage_event.json"
 ) as ol_file:
@@ -233,14 +241,44 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertIsInstance(result, OpenLineageEvent)
 
     def test_message_to_ol_event_missing_run_facets_parent_job_name(self):
-        """Test conversion with missing 'run.facets.parent.job.name' field."""
-        with self.assertRaises(ValueError):
-            message_to_open_lineage_event(MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT)
+        """Test that parent facet is optional - missing parent job name is allowed."""
+        result = message_to_open_lineage_event(MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT)
+        self.assertIsInstance(result, OpenLineageEvent)
 
     def test_message_to_ol_event_malformed_nested_structure(self):
-        """Test conversion with a malformed nested structure."""
-        with self.assertRaises(TypeError):
-            message_to_open_lineage_event(MALFORMED_NESTED_STRUCTURE_EVENT)
+        """Test that parent facet is optional - malformed parent structure is allowed."""
+        result = message_to_open_lineage_event(MALFORMED_NESTED_STRUCTURE_EVENT)
+        self.assertIsInstance(result, OpenLineageEvent)
+
+    def test_render_pipeline_name_falls_back_to_job_when_no_parent_facet(self):
+        """Test that pipeline name uses job namespace/name when parent facet is absent."""
+        event = message_to_open_lineage_event(EVENT_WITHOUT_PARENT_FACET)
+        result = OpenlineageSource._render_pipeline_name(event)
+        self.assertEqual(result, "standalone-namespace-standalone-job")
+
+    def test_render_pipeline_name_falls_back_to_job_when_parent_job_name_missing(self):
+        """Test that pipeline name falls back to job fields when parent.job.name is missing."""
+        event = message_to_open_lineage_event(MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT)
+        result = OpenlineageSource._render_pipeline_name(event)
+        self.assertEqual(result, "test-namespace-test-job")
+
+    def test_render_pipeline_name_falls_back_to_job_when_parent_job_malformed(self):
+        """Test that pipeline name falls back to job fields when parent.job is not a dict."""
+        event = message_to_open_lineage_event(MALFORMED_NESTED_STRUCTURE_EVENT)
+        result = OpenlineageSource._render_pipeline_name(event)
+        self.assertEqual(result, "test-namespace-test-job")
+
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_event_without_parent_facet(self, mock_consumer_class):
+        """Test that events without a parent facet are processed successfully."""
+        self.setup_mock_consumer_with_kafka_event(EVENT_WITHOUT_PARENT_FACET)
+
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "COMPLETE")
 
     def test_poll_message_receives_message(self):
         """Test if poll_message receives a kafka  message."""

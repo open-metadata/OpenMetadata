@@ -197,16 +197,21 @@ class OpenlineageSource(PipelineServiceSource):
     @classmethod
     def _render_pipeline_name(cls, pipeline_details: OpenLineageEvent) -> str:
         """
-        Renders pipeline name from parent facet of run facet. It is our expectation that every OL event contains parent
-        run facet so we can always create pipeline entities and link them to lineage events.
+        Construct a pipeline name from an OpenLineage event. If the event's run facet
+        contains a parent job reference, the pipeline name is derived from the parent's
+        namespace and name. Otherwise, it falls back to the top-level job's namespace and name.
 
         :param run_facet: Open Lineage run facet
         :return: pipeline name (not fully qualified name)
         """
         run_facet = pipeline_details.run_facet
 
-        namespace = run_facet["facets"]["parent"]["job"]["namespace"]
-        name = run_facet["facets"]["parent"]["job"]["name"]
+        try:
+            namespace = run_facet["facets"]["parent"]["job"]["namespace"]
+            name = run_facet["facets"]["parent"]["job"]["name"]
+        except (KeyError, TypeError):
+            namespace = pipeline_details.job["namespace"]
+            name = pipeline_details.job["name"]
 
         return f"{namespace}-{name}"
 
