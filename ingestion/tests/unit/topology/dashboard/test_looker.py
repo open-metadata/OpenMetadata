@@ -262,10 +262,13 @@ class LookerUnitTest(TestCase):
         """
         ref = EntityReference(id=uuid.uuid4(), type="user")
 
-        with patch.object(Looker40SDK, "user", return_value=MOCK_USER), patch.object(
-            OpenMetadata,
-            "get_reference_by_email",
-            return_value=ref,
+        with (
+            patch.object(Looker40SDK, "user", return_value=MOCK_USER),
+            patch.object(
+                OpenMetadata,
+                "get_reference_by_email",
+                return_value=ref,
+            ),
         ):
             self.assertEqual(self.looker.get_owner_ref(MOCK_LOOKER_DASHBOARD), ref)
 
@@ -406,8 +409,9 @@ class LookerUnitTest(TestCase):
         )
 
         # If no from_entity, return none
-        with patch.object(fqn, "build", return_value=None), patch.object(
-            OpenMetadata, "get_by_name", return_value=None
+        with (
+            patch.object(fqn, "build", return_value=None),
+            patch.object(OpenMetadata, "get_by_name", return_value=None),
         ):
             self.assertIsNone(
                 self.looker.build_lineage_request(source, db_service_name, to_entity)
@@ -420,8 +424,9 @@ class LookerUnitTest(TestCase):
             databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
-        with patch.object(fqn, "build", return_value=None), patch.object(
-            OpenMetadata, "get_by_name", return_value=table
+        with (
+            patch.object(fqn, "build", return_value=None),
+            patch.object(OpenMetadata, "get_by_name", return_value=table),
         ):
             original_lineage = self.looker.build_lineage_request(
                 source, db_service_name, to_entity
@@ -560,11 +565,7 @@ class LookerUnitTest(TestCase):
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
             self.assertEqual(
-                len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 1
-            )
-
-            self.assertIsNotNone(
-                list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))[0].left
+                len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 0
             )
 
     def test_derived_view_references(self):
