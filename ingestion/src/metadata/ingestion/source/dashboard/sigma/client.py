@@ -200,6 +200,8 @@ class SigmaApiClient:
             )
             if not pages.entries:
                 return None
+            for page in pages.entries:
+                elements_list.extend(self.get_page_elements(workbook_id, page.pageId))
             while pages.nextPage:
                 pages = WorkBookPageResponse.model_validate(
                     self.client.get(
