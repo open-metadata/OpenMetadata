@@ -138,7 +138,7 @@ describe('CanvasUtils', () => {
     it('returns increased height for node with columns', () => {
       const node = createMockNode('node1', 5);
 
-      expect(getNodeHeight(node, true, 5)).toBe(334.25);
+      expect(getNodeHeight(node, true, 5)).toBe(286.25);
     });
 
     it('adds extra height for root node', () => {
@@ -150,7 +150,7 @@ describe('CanvasUtils', () => {
     it('combines column and root node height adjustments', () => {
       const node = createMockNode('node1', 5, true);
 
-      expect(getNodeHeight(node, true, 5)).toBe(344.25);
+      expect(getNodeHeight(node, true, 5)).toBe(296.25);
     });
   });
 

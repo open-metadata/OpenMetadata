@@ -114,8 +114,9 @@ export function getNodeHeight(
 }
 
 const getNodeYPadding = (node: Node): number => {
-  const columnsLength = node.data.node.columns?.length ?? 0;
-  const sourceYPadding = columnsLength > 0 ? 48 : 0;
+  const { children } = getEntityChildrenAndLabel(node.data.node);
+
+  const sourceYPadding = children.length > 0 ? 48 : 0;
 
   // Add padding for the node's border
   return sourceYPadding;
@@ -143,8 +144,10 @@ function getColumnLineageData(
     return null;
   }
 
+  const { children } = getEntityChildrenAndLabel(node.data.node);
+
   const isFilterActive = nodeFilterMap.get(nodeId) ?? false;
-  const totalColumns = node.data.node.flattenColumns?.length ?? 0;
+  const totalColumns = children?.length ?? 0;
   const navigationNeeded = !isFilterActive && columnIds.length !== totalColumns;
 
   return {
@@ -562,13 +565,12 @@ function getCacheKey(
   const targetPos = targetNode
     ? `${targetNode.position.x},${targetNode.position.y},${targetNode.width},${targetNode.height}`
     : '';
-  const columnsKey = columnsInCurrentPages
-    ? Array.from(columnsInCurrentPages.entries())
-        .map(([k, v]) => `${k}:${v.join(',')}`)
-        .join('|')
-    : '';
+  const srcCols =
+    (sourceNode && columnsInCurrentPages?.get(sourceNode.id)?.join(',')) ?? '';
+  const tgtCols =
+    (targetNode && columnsInCurrentPages?.get(targetNode.id)?.join(',')) ?? '';
 
-  return `${edgeId}|${sourcePos}|${targetPos}|${columnsKey}`;
+  return `${edgeId}|${sourcePos}|${targetPos}|${srcCols}|${tgtCols}`;
 }
 
 export const computePathDataForEdge = (

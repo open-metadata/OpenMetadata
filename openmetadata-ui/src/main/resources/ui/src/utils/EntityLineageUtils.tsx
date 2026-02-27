@@ -1,3 +1,4 @@
+/* eslint-disable no-case-declarations */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -93,8 +94,12 @@ import {
 import { AddLineage, EntitiesEdge } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import { PipelineViewMode } from '../generated/configuration/lineageSettings';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import { Container } from '../generated/entity/data/container';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { Column } from '../generated/entity/data/table';
+import { SearchIndex } from '../generated/entity/data/searchIndex';
+import { Table } from '../generated/entity/data/table';
+import { Topic } from '../generated/entity/data/topic';
 import { ColumnLineage, LineageDetails } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
@@ -583,7 +588,7 @@ export const getEntityChildrenAndLabel = (node: LineageNodeType) => {
     { data: EntityChildren; label: string; childrenCount: number }
   > = {
     [EntityType.TABLE]: {
-      data: node.flattenColumns ?? node.columns ?? [],
+      data: node.flattenChildren ?? node.columns ?? [],
       label: t('label.column-plural'),
       childrenCount: node.columns?.length ?? 0,
     },
@@ -598,22 +603,23 @@ export const getEntityChildrenAndLabel = (node: LineageNodeType) => {
       childrenCount: node.mlFeatures?.length ?? 0,
     },
     [EntityType.DASHBOARD_DATA_MODEL]: {
-      data: node.flattenColumns ?? node.columns ?? [],
+      data: node.flattenChildren ?? node.columns ?? [],
       label: t('label.column-plural'),
       childrenCount: node.columns?.length ?? 0,
     },
     [EntityType.CONTAINER]: {
-      data: node.dataModel?.columns ?? [],
+      data: node.flattenChildren ?? node.dataModel?.columns ?? [],
       label: t('label.column-plural'),
       childrenCount: node.dataModel?.columns?.length ?? 0,
     },
     [EntityType.TOPIC]: {
-      data: node.messageSchema?.schemaFields ?? [],
+      data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
       label: t('label.field-plural'),
       childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
     },
     [EntityType.API_ENDPOINT]: {
       data:
+        node.flattenChildren ??
         node?.responseSchema?.schemaFields ??
         node?.requestSchema?.schemaFields ??
         [],
@@ -624,7 +630,7 @@ export const getEntityChildrenAndLabel = (node: LineageNodeType) => {
         0,
     },
     [EntityType.SEARCH_INDEX]: {
-      data: node.fields ?? [],
+      data: node.flattenChildren ?? node.fields ?? [],
       label: t('label.field-plural'),
       childrenCount: node.fields?.length ?? 0,
     },
@@ -1390,9 +1396,12 @@ const handleNodePagination = (
   return { newNode: loadMoreNode, newEdge: loadMoreEdge };
 };
 
-const flattenColumn = (column: Column, depth: number): Flatten<Column>[] => {
-  const result = [
-    { ...omit<Column>(column, ['children']), depth } as Flatten<Column>,
+const flattenColumn = <T extends { children?: T[]; dataType: string }>(
+  column: T,
+  depth: number
+): Flatten<T>[] => {
+  const result: Flatten<T>[] = [
+    { ...omit(column, ['children']), depth } as Flatten<T>,
   ];
 
   if (
@@ -1408,8 +1417,79 @@ const flattenColumn = (column: Column, depth: number): Flatten<Column>[] => {
   return result;
 };
 
-const flatItems = (columns: Column[]) =>
-  columns.flatMap((column) => flattenColumn(column as Column, 0));
+const flatItems = <T extends { children?: T[]; dataType: string }>(
+  columns: T[]
+) => columns.flatMap((column) => flattenColumn(column as T, 0));
+
+const getFlattenChildrenFromEntity = (
+  entity: EntityReference
+): EntityChildren => {
+  const children: EntityChildren = [];
+
+  const entityType = 'entityType' in entity ? entity.entityType : '';
+
+  switch (entityType) {
+    case EntityType.TABLE:
+    case EntityType.DASHBOARD_DATA_MODEL:
+      const tableData = entity as unknown as Table;
+      children.push(...flatItems(tableData.columns));
+
+      break;
+    case EntityType.CONTAINER:
+      const dataModelColumns =
+        (entity as unknown as Container).dataModel?.columns ?? [];
+      children.push(...flatItems(dataModelColumns));
+
+      break;
+    case EntityType.TOPIC:
+      const messageSchemaFields =
+        (entity as unknown as Topic).messageSchema?.schemaFields ?? [];
+      children.push(...flatItems(messageSchemaFields));
+
+      break;
+    case EntityType.API_ENDPOINT:
+      const apiEndpointFields =
+        (entity as unknown as APIEndpoint).responseSchema?.schemaFields ??
+        (entity as unknown as APIEndpoint).requestSchema?.schemaFields ??
+        [];
+      children.push(...flatItems(apiEndpointFields));
+
+      break;
+    case EntityType.SEARCH_INDEX:
+      const searchIndexFields = (entity as unknown as SearchIndex).fields ?? [];
+      children.push(...flatItems(searchIndexFields));
+
+      break;
+  }
+
+  return children;
+};
+
+export const getNodeLineageData = (node: EntityReference) => {
+  return {
+    ...(pick(node, [
+      'id',
+      'type',
+      'columns',
+      'fullyQualifiedName',
+      'name',
+      'displayName',
+      'upstreamLineage',
+      'entityType',
+      'dataModel',
+      'deleted',
+      'mlFeatures',
+      'charts',
+      'messageSchema',
+      'responseSchema',
+      'requestSchema',
+      'fields',
+      'serviceType',
+      'testSuite',
+    ]) as unknown as LineageEntityReference),
+    ...{ flattenChildren: getFlattenChildrenFromEntity(node) },
+  };
+};
 
 const processNodeArray = (
   nodes: Record<string, NodeData>,
@@ -1418,29 +1498,7 @@ const processNodeArray = (
   return Object.values(nodes).map(
     (node: NodeData) =>
       ({
-        ...(pick(node.entity, [
-          'id',
-          'type',
-          'columns',
-          'fullyQualifiedName',
-          'name',
-          'displayName',
-          'upstreamLineage',
-          'entityType',
-          'dataModel',
-          'deleted',
-          'mlFeatures',
-          'charts',
-          'messageSchema',
-          'responseSchema',
-          'requestSchema',
-          'fields',
-          'serviceType',
-          'testSuite',
-        ]) as unknown as LineageEntityReference),
-        ...('columns' in node.entity
-          ? { flattenColumns: flatItems(node.entity.columns as Column[]) }
-          : {}),
+        ...getNodeLineageData(node.entity),
         paging: {
           entityUpstreamCount: node.paging?.entityUpstreamCount ?? 0,
           entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,

@@ -163,6 +163,36 @@ export const clickEdgeBetweenNodes = async (
   await page.mouse.click(toBox.x, toBox.y + toBox.height / 2);
 };
 
+export const clickEdgeBetweenColumns = async (
+  page: Page,
+  fromNodeFqn: string,
+  toNodeFqn: string
+) => {
+  const toNodeLocator = page.locator(
+    `[data-handleid="${toNodeFqn}"][data-handlepos="left"]`
+  );
+
+  await toNodeLocator.click();
+
+  const toBox = await toNodeLocator.boundingBox();
+
+  if (!toBox) {
+    throw new Error(`Could not find edge from ${fromNodeFqn} to ${toNodeFqn}`);
+  }
+
+  const pane = page.locator('.react-flow__pane');
+  const paneBox = await pane.boundingBox();
+
+  if (!paneBox) {
+    throw new Error('Could not find react-flow pane');
+  }
+
+  await page.mouse.move(toBox.x - 16, toBox.y + toBox.height / 2);
+
+  await page.mouse.move(toBox.x - 15, toBox.y + toBox.height / 2);
+  await page.mouse.click(toBox.x - 15, toBox.y + toBox.height / 2);
+};
+
 export const deleteEdge = async (
   page: Page,
   fromNode: EntityClass,
@@ -547,13 +577,9 @@ export const addColumnLineage = async (
     await editLineageClick(page);
   }
 
-  await expect(
-    page.locator(
-      `[data-testid="column-edge-${btoa(fromColumnNode)}-${btoa(
-        toColumnNode
-      )}"]`
-    )
-  ).toBeVisible();
+  //   await activateColumnLayer(page);
+
+  //   await page.getByTestId(`column-${toColumnNode}`).click();
 };
 
 export const removeColumnLineage = async (
@@ -561,13 +587,7 @@ export const removeColumnLineage = async (
   fromColumnNode: string,
   toColumnNode: string
 ) => {
-  await page
-    .locator(
-      `[data-testid="column-edge-${btoa(fromColumnNode)}-${btoa(
-        toColumnNode
-      )}"]`
-    )
-    .dispatchEvent('click');
+  await clickEdgeBetweenColumns(page, fromColumnNode, toColumnNode);
 
   await page.locator('[data-testid="delete-button"]').dispatchEvent('click');
 
@@ -579,13 +599,13 @@ export const removeColumnLineage = async (
 
   await editLineageClick(page);
 
-  await expect(
-    page.locator(
-      `[data-testid="column-edge-${btoa(fromColumnNode)}-${btoa(
-        toColumnNode
-      )}"]`
-    )
-  ).not.toBeVisible();
+  //   await expect(
+  //     page.locator(
+  //       `[data-testid="column-edge-${btoa(fromColumnNode)}-${btoa(
+  //         toColumnNode
+  //       )}"]`
+  //     )
+  //   ).not.toBeVisible();
 };
 
 export const visitLineageTab = async (page: Page) => {

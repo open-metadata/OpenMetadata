@@ -26,11 +26,11 @@ export interface NodeChildrenProps {
 
 export type EntityChildrenItem =
   | Flatten<Column>
-  | Column
-  | EntityReference
-  | MlFeature
-  | Field
-  | SearchIndexField;
+  | Flatten<Field>
+  | Flatten<EntityReference>
+  | Flatten<MlFeature>
+  | Flatten<Field>
+  | Flatten<SearchIndexField>;
 
 export type EntityChildren = EntityChildrenItem[];
 

@@ -71,11 +71,11 @@ const NodeChildren = ({
       node &&
       LINEAGE_COLUMN_NODE_SUPPORTED.includes(node.entityType as EntityType)
     );
-  }, []);
+  }, [node.entityType]);
 
   const { children: entityChildren, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
-    []
+    [node]
   );
 
   const currentNodeColumnsWithLineage = useMemo(() => {

@@ -17,7 +17,6 @@ import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { Chart } from '../../generated/entity/data/chart';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
 import { SearchIndexField } from '../../generated/entity/data/searchIndex';
-import { Column } from '../../generated/entity/data/table';
 import { MessageSchemaObject } from '../../generated/entity/data/topic';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/tests/testCase';
@@ -28,7 +27,7 @@ import {
   TableSearchSource,
 } from '../../interface/search.interface';
 import { FormattedDatabaseServiceType } from '../../utils/EntityUtils.interface';
-import { Flatten } from '../Entity/EntityLineage/NodeChildren/NodeChildren.interface';
+import { EntityChildren } from '../Entity/EntityLineage/NodeChildren/NodeChildren.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 
 export interface LineageProps {
@@ -155,7 +154,7 @@ export interface LineageNodeType
   upstreamExpandPerformed?: boolean;
   downstreamExpandPerformed?: boolean;
   upstreamLineage?: EsLineageData[];
-  flattenColumns?: Flatten<Column>[];
+  flattenChildren?: EntityChildren;
   dataModel?: ContainerDataModel;
   mlFeatures?: MlFeature[];
   charts?: Chart[];

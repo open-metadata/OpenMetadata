@@ -218,15 +218,14 @@ const ColumnContentInner = ({
   className = '',
 }: ColumnContentProps) => {
   const { onColumnMouseEnter } = useLineageProvider();
-  const {
-    selectedColumn,
-    setSelectedColumn,
-    setTracedColumns,
-    isEditMode,
-    tracedColumns,
-  } = useLineageStore();
+  const { selectedColumn, setSelectedColumn, setTracedColumns, isEditMode } =
+    useLineageStore();
 
   const { fullyQualifiedName } = column;
+
+  const isColumnTraced = useLineageStore((state) =>
+    state.tracedColumns.has(fullyQualifiedName ?? '')
+  );
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -271,9 +270,7 @@ const ColumnContentInner = ({
   return (
     <div
       className={classNames(`custom-node-column-container ${className}`, {
-        'custom-node-header-column-tracing': tracedColumns.has(
-          fullyQualifiedName ?? ''
-        ),
+        'custom-node-header-column-tracing': isColumnTraced,
       })}
       data-testid={`column-${fullyQualifiedName}`}
       style={{

@@ -117,6 +117,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       activeNode: undefined,
       selectedNode: undefined,
       selectedEdge: undefined,
+      selectedColumn: undefined,
     });
   },
 

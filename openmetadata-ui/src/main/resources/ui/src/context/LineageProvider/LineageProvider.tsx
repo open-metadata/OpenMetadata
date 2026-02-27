@@ -113,6 +113,7 @@ import {
   getLoadingStatusValue,
   getModalBodyText,
   getNewLineageConnectionDetails,
+  getNodeLineageData,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
   getViewportForLineageExport,
@@ -1417,7 +1418,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               id: selectedEntity.id,
               data: {
                 saved: false,
-                node: selectedEntity,
+                node: getNodeLineageData(selectedEntity),
               },
             };
           } else {

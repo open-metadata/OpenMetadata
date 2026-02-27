@@ -61,7 +61,6 @@ jest.mock(
   '../../../Entity/EntityLineage/EdgeInteractionOverlay.component',
   () => ({
     EdgeInteractionOverlay: ({
-      hoveredEdge,
       onPipelineClick,
       onEdgeRemove,
     }: {
@@ -70,7 +69,6 @@ jest.mock(
       onEdgeRemove?: () => void;
     }) => (
       <div
-        data-hovered-edge={hoveredEdge?.id || 'none'}
         data-testid="edge-interaction-overlay"
         onClick={() => {
           onPipelineClick?.();
@@ -138,14 +136,14 @@ describe('CanvasLayerWrapper', () => {
     expect(renderer).toHaveAttribute('data-hover-edge', 'edge-1');
   });
 
-  it('passes hoverEdge to EdgeInteractionOverlay', () => {
+  it('passes hoverEdge to canvas-edge-renderer', () => {
     const { getByTestId } = render(
       <CanvasLayerWrapper {...defaultProps} hoverEdge={mockEdge} />
     );
 
-    const overlay = getByTestId('edge-interaction-overlay');
+    const overlay = getByTestId('canvas-edge-renderer');
 
-    expect(overlay).toHaveAttribute('data-hovered-edge', 'edge-1');
+    expect(overlay).toHaveAttribute('data-hover-edge', 'edge-1');
   });
 
   it('passes onEdgeClick callback to CanvasEdgeRenderer', () => {
@@ -216,10 +214,6 @@ describe('CanvasLayerWrapper', () => {
     const renderer = getByTestId('canvas-edge-renderer');
 
     expect(renderer).toHaveAttribute('data-hover-edge', 'none');
-
-    const overlay = getByTestId('edge-interaction-overlay');
-
-    expect(overlay).toHaveAttribute('data-hovered-edge', 'none');
   });
 
   it('handles empty dqHighlightedEdges set', () => {

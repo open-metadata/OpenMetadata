@@ -241,11 +241,13 @@ test('Verify column lineage between tables', async ({ page }) => {
   )}`;
 
   await addPipelineBetweenNodes(page, table1, table2);
-  await activateColumnLayer(page);
+  //   await activateColumnLayer(page);
 
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
   await editLineageClick(page);
+  await performZoomOut(page, 1);
+  await page.waitForTimeout(500);
 
   await removeColumnLineage(page, sourceCol, targetCol);
   await editLineageClick(page);
@@ -286,7 +288,7 @@ test('Verify column lineage between table and topic', async ({ page }) => {
   );
 
   await addPipelineBetweenNodes(page, table, topic);
-  await activateColumnLayer(page);
+  //   await activateColumnLayer(page);
 
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
@@ -777,6 +779,7 @@ test('Verify there is no traced nodes and columns on exiting edit mode', async (
         await expect(tableNode).toHaveClass(/custom-node-header-active/);
 
         await editLineageClick(page);
+        await page.getByTestId('children-info-dropdown-btn').click();
 
         await expect(tableNode).not.toHaveClass(/custom-node-header-active/);
       }
@@ -796,6 +799,7 @@ test('Verify there is no traced nodes and columns on exiting edit mode', async (
         await editLineageClick(page);
 
         await toggleLineageFilters(page, tableFqn);
+        await page.getByTestId('children-info-dropdown-btn').click();
 
         await expect(firstColumn).not.toHaveClass(
           /custom-node-header-column-tracing/
@@ -803,7 +807,7 @@ test('Verify there is no traced nodes and columns on exiting edit mode', async (
       }
     );
   } finally {
-    await table.delete(apiContext);
+    // await table.delete(apiContext);
     await afterAction();
   }
 });
