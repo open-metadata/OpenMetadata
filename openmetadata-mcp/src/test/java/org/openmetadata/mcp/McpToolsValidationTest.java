@@ -827,9 +827,9 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
     assertThat(firstResult.has("text")).isTrue();
     JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
     assertThat(response.has("upstreamDepth")).isTrue();
-    assertThat(response.get("upstreamDepth").asInt()).isLessThanOrEqualTo(10);
+    assertThat(response.get("upstreamDepth").asInt()).isEqualTo(10);
     assertThat(response.has("downstreamDepth")).isTrue();
-    assertThat(response.get("downstreamDepth").asInt()).isLessThanOrEqualTo(10);
+    assertThat(response.get("downstreamDepth").asInt()).isEqualTo(10);
 
     System.out.println("✓ root_cause_analysis depth clamping working correctly");
   }
