@@ -32,10 +32,6 @@ export interface CreateMlModelService {
      */
     domains?: string[];
     /**
-     * Status of the entity.
-     */
-    entityStatus?: EntityStatus;
-    /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
     ingestionRunner?: EntityReference;
@@ -313,21 +309,6 @@ export enum MlModelServiceType {
     SageMaker = "SageMaker",
     Sklearn = "Sklearn",
     VertexAI = "VertexAI",
-}
-
-/**
- * Status of the entity.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
 }
 
 /**
