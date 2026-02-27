@@ -232,7 +232,12 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                       + "`directChildrenOf` parameter.",
               schema = @Schema(type = "string"))
           @QueryParam("directChildrenOf")
-          String parentTermFQNParam) {
+          String parentTermFQNParam,
+      @Parameter(
+              description =
+                  "Filter by entity status (comma-separated: Approved,Draft,In Review,Rejected,Deprecated,Unprocessed)")
+          @QueryParam("entityStatus")
+          String entityStatus) {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
 
@@ -273,7 +278,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("parent", fqn)
-            .addQueryParam("directChildrenOf", parentTermFQNParam);
+            .addQueryParam("directChildrenOf", parentTermFQNParam)
+            .addQueryParam("entityStatus", entityStatus);
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging

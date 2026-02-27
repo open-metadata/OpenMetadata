@@ -2193,6 +2193,99 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   private static class GlossaryTermResultList extends ResultList<GlossaryTerm> {}
 
   @Test
+  void test_listGlossaryTermsWithEntityStatusFilter(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a dedicated glossary for this test
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("status_list_glossary"))
+            .withDescription("Glossary for entityStatus list filter test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    // Create two terms - both start as APPROVED (default status when no reviewers)
+    CreateGlossaryTerm request1 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("list_approved_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that will stay approved");
+    GlossaryTerm approvedTerm = createEntity(request1);
+    assertEquals(EntityStatus.APPROVED, approvedTerm.getEntityStatus());
+
+    CreateGlossaryTerm request2 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("list_draft_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that will be changed to draft");
+    GlossaryTerm draftTerm = createEntity(request2);
+    assertEquals(EntityStatus.APPROVED, draftTerm.getEntityStatus());
+
+    // Update second term to DRAFT status
+    draftTerm.setEntityStatus(EntityStatus.DRAFT);
+    GlossaryTerm updatedDraftTerm = client.glossaryTerms().update(draftTerm.getId(), draftTerm);
+    assertEquals(EntityStatus.DRAFT, updatedDraftTerm.getEntityStatus());
+
+    // List with APPROVED status filter - only approved term should be returned
+    ListParams approvedParams = new ListParams();
+    approvedParams.setLimit(100);
+    approvedParams.addQueryParam("glossary", glossary.getId().toString());
+    approvedParams.addQueryParam("entityStatus", EntityStatus.APPROVED.value());
+    ListResponse<GlossaryTerm> approvedTerms = client.glossaryTerms().list(approvedParams);
+
+    assertNotNull(approvedTerms);
+    assertNotNull(approvedTerms.getData());
+    java.util.List<GlossaryTerm> ourApprovedTerms =
+        approvedTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedDraftTerm.getName()))
+            .toList();
+    assertEquals(1, ourApprovedTerms.size(), "Only approved term should be returned from list API");
+    assertEquals(approvedTerm.getName(), ourApprovedTerms.getFirst().getName());
+
+    // List with DRAFT status filter - only draft term should be returned
+    ListParams draftParams = new ListParams();
+    draftParams.setLimit(100);
+    draftParams.addQueryParam("glossary", glossary.getId().toString());
+    draftParams.addQueryParam("entityStatus", EntityStatus.DRAFT.value());
+    ListResponse<GlossaryTerm> draftTerms = client.glossaryTerms().list(draftParams);
+
+    assertNotNull(draftTerms);
+    assertNotNull(draftTerms.getData());
+    java.util.List<GlossaryTerm> ourDraftTerms =
+        draftTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedDraftTerm.getName()))
+            .toList();
+    assertEquals(1, ourDraftTerms.size(), "Only draft term should be returned from list API");
+    assertEquals(updatedDraftTerm.getName(), ourDraftTerms.getFirst().getName());
+
+    // List with multiple status filter (APPROVED,DRAFT) - both terms should be returned
+    ListParams multiParams = new ListParams();
+    multiParams.setLimit(100);
+    multiParams.addQueryParam("glossary", glossary.getId().toString());
+    multiParams.addQueryParam("entityStatus", "Approved,Draft");
+    ListResponse<GlossaryTerm> multiStatusTerms = client.glossaryTerms().list(multiParams);
+
+    assertNotNull(multiStatusTerms);
+    assertNotNull(multiStatusTerms.getData());
+    java.util.List<GlossaryTerm> ourMultiTerms =
+        multiStatusTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedDraftTerm.getName()))
+            .toList();
+    assertEquals(
+        2,
+        ourMultiTerms.size(),
+        "Both terms should be returned with multi-status filter on list API");
+  }
+
+  @Test
   void test_glossaryTermEntityStatusFiltering(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
