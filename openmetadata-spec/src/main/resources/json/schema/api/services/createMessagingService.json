@@ -56,10 +56,6 @@
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
-    },
-    "entityStatus": {
-      "description": "Status of the entity.",
-      "$ref": "../../type/status.json"
     }
   },
   "required": ["name", "serviceType"],

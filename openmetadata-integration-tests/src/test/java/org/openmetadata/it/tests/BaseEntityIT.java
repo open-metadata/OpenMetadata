@@ -2625,14 +2625,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_entityStatus(TestNamespace ns) {
     // Only test if entity has entityStatus field (check if getEntityStatus method exists)
-    K createRequest = createMinimalRequest(ns);
-    T entity = createEntity(createRequest);
-
-    // Skip test for GlossaryTerm due to different entityStatus implementation
-    if (entity.getClass().getSimpleName().equals("GlossaryTerm")) {
-      log.info("Skipping entityStatus test for GlossaryTerm - has different implementation");
+    if ("glossaryTerm".equals(getEntityType())) {
+      log.info(
+          "Skipping entityStatus test for GlossaryTerm - has different entityStatus implementation");
       return;
     }
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
 
     try {
       // Check if entity supports entityStatus

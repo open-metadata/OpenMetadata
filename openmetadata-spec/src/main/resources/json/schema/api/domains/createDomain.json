@@ -60,10 +60,6 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
-    },
-    "entityStatus": {
-      "description": "Status of the entity.",
-      "$ref": "../../type/status.json"
     }
   },
   "required": [

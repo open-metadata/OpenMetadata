@@ -126,7 +126,6 @@ class DatabaseServiceBuilderPy:
             dataProducts=None,
             domains=None,
             ingestionRunner=None,
-            entityStatus=None,
         )
 
     def create(self):
