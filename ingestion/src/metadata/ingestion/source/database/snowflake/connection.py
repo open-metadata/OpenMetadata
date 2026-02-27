@@ -97,9 +97,9 @@ def execute_inspector_func(engine_wrapper: SnowflakeEngineWrapper, func_name: st
     _init_database(engine_wrapper)
     with engine_wrapper.engine.connect() as conn:
         conn.execute(text(f'USE DATABASE "{engine_wrapper.database_name}"'))
-    inspector = inspect(engine_wrapper.engine)
-    inspector_fn = getattr(inspector, func_name)
-    inspector_fn()
+        inspector = inspect(conn)
+        inspector_fn = getattr(inspector, func_name)
+        inspector_fn()
 
 
 def test_table_query(engine_wrapper: SnowflakeEngineWrapper, statement: str):
