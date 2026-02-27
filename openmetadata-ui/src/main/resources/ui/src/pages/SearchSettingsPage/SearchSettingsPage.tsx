@@ -69,6 +69,8 @@ const SearchSettingsPage = () => {
   const [selectedFieldValueBoost, setSelectedFieldValueBoost] = useState<
     FieldValueBoost | undefined
   >();
+  const [hybridWeightsChanged, setHybridWeightsChanged] =
+    useState<boolean>(false);
 
   const settingCategoryData = useMemo(
     () => getSearchSettingCategories(permissions, isAdminUser ?? false),
@@ -364,9 +366,63 @@ const SearchSettingsPage = () => {
           {showHybridSearchWeights && (
             <Row className="p-x-xs m-t-lg" gutter={0}>
               <Col span={24}>
-                <Typography.Title className="text-sm font-semibold" level={5}>
-                  {t('label.hybrid-search-weight-plural')}
-                </Typography.Title>
+                <Row align="middle" justify="space-between">
+                  <Typography.Title
+                    className="text-sm font-semibold m-b-0"
+                    level={5}>
+                    {t('label.hybrid-search-weight-plural')}
+                  </Typography.Title>
+                  <Button
+                    data-testid="hybrid-weights-save-btn"
+                    disabled={!hybridWeightsChanged || isUpdating}
+                    loading={isUpdating}
+                    type="primary"
+                    onClick={async () => {
+                      if (!searchConfig) {
+                        return;
+                      }
+                      const semanticWeight =
+                        searchConfig.globalSettings?.semanticWeight ?? 0.4;
+                      const keywordWeight =
+                        Math.round((1 - semanticWeight) * 10) / 10;
+                      try {
+                        setIsUpdating(true);
+                        const configData = {
+                          config_type: SettingType.SearchSettings,
+                          config_value: {
+                            ...searchConfig,
+                            globalSettings: {
+                              ...searchConfig.globalSettings,
+                              semanticWeight,
+                              keywordWeight,
+                            },
+                          },
+                        };
+                        const { data } = await updateSettingsConfig(
+                          configData as Settings
+                        );
+                        const updatedConfig =
+                          data.config_value as SearchSettings;
+                        setSearchConfig(updatedConfig);
+                        setAppPreferences({
+                          ...appPreferences,
+                          searchConfig: updatedConfig,
+                        });
+                        setHybridWeightsChanged(false);
+                        showSuccessToast(
+                          t('server.update-entity-success', {
+                            entity: t('label.search-setting-plural'),
+                          })
+                        );
+                      } catch (error) {
+                        showErrorToast(error as AxiosError);
+                      } finally {
+                        setIsUpdating(false);
+                      }
+                    }}>
+                    {t('label.save')}
+                  </Button>
+                </Row>
               </Col>
               <Col span={24}>
                 <Row align="middle" className="p-y-xs" gutter={16}>
@@ -403,45 +459,7 @@ const SearchSettingsPage = () => {
                             keywordWeight: Math.round((1 - val) * 10) / 10,
                           },
                         });
-                      }}
-                      onChangeComplete={async (val: number) => {
-                        if (!searchConfig) {
-                          return;
-                        }
-                        const keywordWeight = Math.round((1 - val) * 10) / 10;
-                        try {
-                          setIsUpdating(true);
-                          const configData = {
-                            config_type: SettingType.SearchSettings,
-                            config_value: {
-                              ...searchConfig,
-                              globalSettings: {
-                                ...searchConfig.globalSettings,
-                                semanticWeight: val,
-                                keywordWeight,
-                              },
-                            },
-                          };
-                          const { data } = await updateSettingsConfig(
-                            configData as Settings
-                          );
-                          const updatedConfig =
-                            data.config_value as SearchSettings;
-                          setSearchConfig(updatedConfig);
-                          setAppPreferences({
-                            ...appPreferences,
-                            searchConfig: updatedConfig,
-                          });
-                          showSuccessToast(
-                            t('server.update-entity-success', {
-                              entity: t('label.search-setting-plural'),
-                            })
-                          );
-                        } catch (error) {
-                          showErrorToast(error as AxiosError);
-                        } finally {
-                          setIsUpdating(false);
-                        }
+                        setHybridWeightsChanged(true);
                       }}
                     />
                   </Col>
