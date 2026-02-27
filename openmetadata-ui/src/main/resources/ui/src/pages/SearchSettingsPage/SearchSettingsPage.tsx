@@ -46,6 +46,7 @@ import {
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingsPathWithFqn } from '../../utils/RouterUtils';
+import searchSettingsClassBase from '../../utils/SearchSettingsClassBase';
 import { getSearchSettingCategories } from '../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './search-settings.less';
@@ -80,6 +81,11 @@ const SearchSettingsPage = () => {
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.search')
       ),
+    []
+  );
+
+  const hybridSearchWeightSettings = useMemo(
+    () => searchSettingsClassBase.getHybridSearchWeightSettings(),
     []
   );
 
@@ -355,6 +361,38 @@ const SearchSettingsPage = () => {
               </Col>
             ))}
           </Row>
+          {hybridSearchWeightSettings.length > 0 && (
+            <Row className="p-x-xs m-t-lg" gutter={0}>
+              <Col span={24}>
+                <Typography.Title className="text-sm font-semibold" level={5}>
+                  {t('label.hybrid-search-weight-plural')}
+                </Typography.Title>
+              </Col>
+              <Row
+                className="p-x-xs global-settings-cards-container"
+                gutter={0}>
+                {hybridSearchWeightSettings.map(
+                  ({ key, label, max, min, step }) => (
+                    <Col className="global-setting-card" key={key}>
+                      <GlobalSettingItem
+                        label={t(label)}
+                        max={max}
+                        min={min}
+                        step={step}
+                        value={searchConfig?.globalSettings?.[key] ?? 0}
+                        onUpdate={(value) =>
+                          handleUpdateSearchConfig({
+                            field: key,
+                            value,
+                          })
+                        }
+                      />
+                    </Col>
+                  )
+                )}
+              </Row>
+            </Row>
+          )}
           <Row className="boosts-section m-t-lg" gutter={[0, 16]}>
             <Collapse
               accordion
