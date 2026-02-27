@@ -19,8 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { TagLabel } from '../../../generated/type/tagLabel';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
@@ -109,7 +109,7 @@ const TierWidget = () => {
   const content = isEditing ? (
     <TierCard
       currentTier={tier?.tagFQN}
-      footerActionButtonsClassName='p-x-md'
+      footerActionButtonsClassName="p-x-md"
       popoverProps={{
         open: true,
         onOpenChange: (visible: boolean) => {

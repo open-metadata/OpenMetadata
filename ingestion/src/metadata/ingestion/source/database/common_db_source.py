@@ -656,14 +656,9 @@ class CommonDbSourceService(
             database_name = column.get("referred_database")
         else:
             database_name = self.context.get().database
-        referred_table_fqn = fqn.build(
-            metadata=self.metadata,
-            entity_type=Table,
-            table_name=column.get("referred_table"),
-            schema_name=column.get("referred_schema"),
-            database_name=database_name,
-            service_name=self.context.get().database_service,
-        )
+
+        referred_table_fqn = f"{self.context.get().database_service}.{database_name}.{column.get('referred_schema')}.{column.get('referred_table')}"
+
         referred_table = self.metadata.get_by_name(entity=Table, fqn=referred_table_fqn)
         if referred_table:
             for referred_column in column.get("referred_columns"):
