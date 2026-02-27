@@ -190,7 +190,7 @@ class OracleSource(CommonDbSourceService):
             schema = schema.upper()
         with self.engine.connect() as conn:
             results: FetchObjectList = conn.execute(
-                text(query.format(schema=self.context.get().database_schema.upper()))
+                text(query.format(schema=schema))
             ).all()
         results = self.process_result(data=results)
         for row in results.items():
