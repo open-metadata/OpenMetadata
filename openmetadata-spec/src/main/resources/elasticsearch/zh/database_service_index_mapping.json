@@ -401,6 +401,10 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       }
     }
   }
