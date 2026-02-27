@@ -19,18 +19,74 @@ import {
   deleteCreatedProperty,
   editCreatedProperty,
   verifyCustomPropertyInAdvancedSearch,
-  verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
-const TABLE_COLUMN_ENTITY_NAME = 'tableColumn';
+type CustomPropertyEntity =
+  typeof CUSTOM_PROPERTIES_ENTITIES[keyof typeof CUSTOM_PROPERTIES_ENTITIES];
 
-// use the admin user to login
+const propertiesWithConfigList = [
+  {
+    name: 'Enum',
+    getConfig: (entity: CustomPropertyEntity) => ({
+      enumConfig: entity.enumConfig,
+    }),
+    editPropertyType: 'Enum',
+    verifyAdvancedSearch: true,
+  },
+  {
+    name: 'Table',
+    getConfig: (entity: CustomPropertyEntity) => ({
+      tableConfig: entity.tableConfig,
+    }),
+    editPropertyType: 'Table',
+    verifyAdvancedSearch: true,
+    searchTableColumns: true,
+  },
+  {
+    name: 'Entity Reference',
+    getConfig: (entity: CustomPropertyEntity) => ({
+      entityReferenceConfig: entity.entityReferenceConfig,
+    }),
+    editPropertyType: 'Entity Reference',
+    verifyAdvancedSearch: true,
+  },
+  {
+    name: 'Entity Reference List',
+    getConfig: (entity: CustomPropertyEntity) => ({
+      entityReferenceConfig: entity.entityReferenceConfig,
+    }),
+    editPropertyType: 'Entity Reference List',
+    verifyAdvancedSearch: true,
+  },
+  {
+    name: 'Date',
+    getConfig: (entity: CustomPropertyEntity) => ({
+      formatConfig: entity.dateFormatConfig,
+    }),
+    verifyAdvancedSearch: false,
+  },
+  {
+    name: 'Time',
+    getConfig: (entity: CustomPropertyEntity) => ({
+      formatConfig: entity.timeFormatConfig,
+    }),
+    verifyAdvancedSearch: true,
+  },
+  {
+    name: 'Date Time',
+    getConfig: (entity: CustomPropertyEntity) => ({
+      formatConfig: entity.dateTimeFormatConfig,
+    }),
+    verifyAdvancedSearch: true,
+  },
+];
+
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const adminTestEntity = new TableClass();
-
 test.describe('Custom properties with custom property config', () => {
+  const adminTestEntity = new TableClass();
+
   test.beforeAll('Setup test data', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await adminTestEntity.create(apiContext);
@@ -41,407 +97,65 @@ test.describe('Custom properties with custom property config', () => {
     await redirectToHomePage(page);
   });
 
-  test.describe('Add update and delete Enum custom properties', () => {
-    Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-      test(`Add Enum custom property for ${entity.name}`, async ({ page }) => {
-        const propertyName = `pwcp${Date.now()}test${entity.name}`;
-        await settingClick(
-          page,
-          entity.entityApiType as SettingOptionsType,
-          true
-        );
-
-        await addCustomPropertiesForEntity({
-          page,
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Enum',
-          enumConfig: entity.enumConfig,
-        });
-
-        await editCreatedProperty(page, propertyName, 'Enum');
-
-        await verifyCustomPropertyInAdvancedSearch(
-          page,
-          propertyName.toUpperCase(), // displayName is in uppercase
-          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
-        );
-
-        if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-          await test.step(
-            'Verify Custom Property Persistence on Reload',
-            async () => {
-              const tableName = adminTestEntity.entity.name ?? '';
-              const tableFqn =
-                adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
-
-              await verifyTableColumnCustomPropertyPersistence({
-                page,
-                tableName,
-                tableFqn,
-                propertyName,
-                propertyType: 'Enum',
-              });
-            }
-          );
-        }
-
-        await settingClick(
-          page,
-          entity.entityApiType as SettingOptionsType,
-          true
-        );
-
-        await deleteCreatedProperty(page, propertyName);
-      });
-    });
-  });
-
-  test.describe('Add update and delete Table custom properties', () => {
-    Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-      test(`Add Table custom property for ${entity.name}`, async ({ page }) => {
-        const propertyName = `pwcp${Date.now()}test${entity.name}`;
-        await settingClick(
-          page,
-          entity.entityApiType as SettingOptionsType,
-          true
-        );
-
-        await addCustomPropertiesForEntity({
-          page,
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Table',
-          tableConfig: entity.tableConfig,
-        });
-
-        await editCreatedProperty(page, propertyName, 'Table');
-
-        await verifyCustomPropertyInAdvancedSearch(
-          page,
-          propertyName.toUpperCase(), // displayName is in uppercase
-          entity.name.charAt(0).toUpperCase() + entity.name.slice(1),
-          'Table',
-          entity.tableConfig.columns
-        );
-
-        if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-          await test.step(
-            'Verify Custom Property Persistence on Reload',
-            async () => {
-              const tableName = adminTestEntity.entity.name ?? '';
-              const tableFqn =
-                adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
-
-              await verifyTableColumnCustomPropertyPersistence({
-                page,
-                tableName,
-                tableFqn,
-                propertyName,
-                propertyType: 'Table',
-              });
-            }
-          );
-        }
-
-        await settingClick(
-          page,
-          entity.entityApiType as SettingOptionsType,
-          true
-        );
-
-        await deleteCreatedProperty(page, propertyName);
-      });
-    });
-  });
-
-  test.describe(
-    'Add update and delete Entity Reference custom properties',
-    () => {
-      Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-        test(`Add Entity Reference custom property for ${entity.name}`, async ({
-          page,
-        }) => {
-          const propertyName = `pwcp${Date.now()}test${entity.name}`;
-          await settingClick(
-            page,
-            entity.entityApiType as SettingOptionsType,
-            true
-          );
-
-          await addCustomPropertiesForEntity({
-            page,
-            propertyName,
-            customPropertyData: entity,
-            customType: 'Entity Reference',
-            entityReferenceConfig: entity.entityReferenceConfig,
-          });
-
-          await editCreatedProperty(page, propertyName, 'Entity Reference');
-
-          await verifyCustomPropertyInAdvancedSearch(
-            page,
-            propertyName.toUpperCase(), // displayName is in uppercase
-            entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
-          );
-
-          if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-            await test.step(
-              'Verify Custom Property Persistence on Reload',
-              async () => {
-                const tableName = adminTestEntity.entity.name ?? '';
-                const tableFqn =
-                  adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
-
-                await verifyTableColumnCustomPropertyPersistence({
-                  page,
-                  tableName,
-                  tableFqn,
-                  propertyName,
-                  propertyType: 'Entity Reference',
-                });
-              }
+  Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
+    test.describe.serial(
+      `Add update and delete custom properties for ${entity.name}`,
+      () => {
+        propertiesWithConfigList.forEach((propertyConfig) => {
+          test(propertyConfig.name, async ({ page }) => {
+            const propertyName = `pwcp${Date.now()}test${entity.name}`;
+            await settingClick(
+              page,
+              entity.entityApiType as SettingOptionsType,
+              true
             );
-          }
 
-          await settingClick(
-            page,
-            entity.entityApiType as SettingOptionsType,
-            true
-          );
+            await addCustomPropertiesForEntity({
+              page,
+              propertyName,
+              customPropertyData: entity,
+              customType: propertyConfig.name,
+              ...propertyConfig.getConfig(entity),
+            });
 
-          await deleteCreatedProperty(page, propertyName);
-        });
-      });
-    }
-  );
+            if (propertyConfig.editPropertyType) {
+              await editCreatedProperty(
+                page,
+                propertyName,
+                propertyConfig.editPropertyType
+              );
+            } else {
+              await editCreatedProperty(page, propertyName);
+            }
 
-  test.describe(
-    'Add update and delete Entity Reference List custom properties',
-    () => {
-      Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-        test(`Add Entity Reference list custom property for ${entity.name}`, async ({
-          page,
-        }) => {
-          const propertyName = `pwcp${Date.now()}test${entity.name}`;
-          await settingClick(
-            page,
-            entity.entityApiType as SettingOptionsType,
-            true
-          );
-
-          await addCustomPropertiesForEntity({
-            page,
-            propertyName,
-            customPropertyData: entity,
-            customType: 'Entity Reference List',
-            entityReferenceConfig: entity.entityReferenceConfig,
-          });
-
-          await editCreatedProperty(
-            page,
-            propertyName,
-            'Entity Reference List'
-          );
-
-          await verifyCustomPropertyInAdvancedSearch(
-            page,
-            propertyName.toUpperCase(), // displayName is in uppercase
-            entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
-          );
-
-          if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-            await test.step(
-              'Verify Custom Property Persistence on Reload',
-              async () => {
-                const tableName = adminTestEntity.entity.name ?? '';
-                const tableFqn =
-                  adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
-
-                await verifyTableColumnCustomPropertyPersistence({
+            if (propertyConfig.verifyAdvancedSearch) {
+              if (propertyConfig.searchTableColumns) {
+                await verifyCustomPropertyInAdvancedSearch(
                   page,
-                  tableName,
-                  tableFqn,
-                  propertyName,
-                  propertyType: 'Entity Reference List',
-                });
+                  propertyName.toUpperCase(),
+                  entity.name.charAt(0).toUpperCase() + entity.name.slice(1),
+                  propertyConfig.name,
+                  entity.tableConfig.columns
+                );
+              } else {
+                await verifyCustomPropertyInAdvancedSearch(
+                  page,
+                  propertyName.toUpperCase(),
+                  entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
+                );
               }
+            }
+
+            await settingClick(
+              page,
+              entity.entityApiType as SettingOptionsType,
+              true
             );
-          }
 
-          await settingClick(
-            page,
-            entity.entityApiType as SettingOptionsType,
-            true
-          );
-
-          await deleteCreatedProperty(page, propertyName);
+            await deleteCreatedProperty(page, propertyName);
+          });
         });
-      });
-    }
-  );
-
-  test.describe('Add update and delete Date custom properties', () => {
-    Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-      test(`Add Date custom property for ${entity.name}`, async ({ page }) => {
-        const propertyName = `pwcp${Date.now()}test${entity.name}`;
-        await settingClick(
-          page,
-          entity.entityApiType as SettingOptionsType,
-          true
-        );
-
-        await addCustomPropertiesForEntity({
-          page,
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Date',
-          formatConfig: entity.dateFormatConfig,
-        });
-
-        await editCreatedProperty(page, propertyName);
-
-        if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-          await test.step(
-            'Verify Custom Property Persistence on Reload',
-            async () => {
-              const tableName = adminTestEntity.entity.name ?? '';
-              const tableFqn =
-                adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
-
-              await verifyTableColumnCustomPropertyPersistence({
-                page,
-                tableName,
-                tableFqn,
-                propertyName,
-                propertyType: 'Date',
-              });
-            }
-          );
-        }
-
-        await settingClick(
-          page,
-          entity.entityApiType as SettingOptionsType,
-          true
-        );
-
-        await deleteCreatedProperty(page, propertyName);
-      });
-    });
-  });
-
-  test.describe('Add update and delete Time custom properties', () => {
-    Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-      test(`Add Time custom property for ${entity.name}`, async ({ page }) => {
-        const propertyName = `pwcp${Date.now()}test${entity.name}`;
-        await settingClick(
-          page,
-          entity.entityApiType as SettingOptionsType,
-          true
-        );
-
-        await addCustomPropertiesForEntity({
-          page,
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Time',
-          formatConfig: entity.timeFormatConfig,
-        });
-
-        await editCreatedProperty(page, propertyName);
-
-        await verifyCustomPropertyInAdvancedSearch(
-          page,
-          propertyName.toUpperCase(), // displayName is in uppercase
-          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
-        );
-
-        if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-          await test.step(
-            'Verify Custom Property Persistence on Reload',
-            async () => {
-              const tableName = adminTestEntity.entity.name ?? '';
-              const tableFqn =
-                adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
-
-              await verifyTableColumnCustomPropertyPersistence({
-                page,
-                tableName,
-                tableFqn,
-                propertyName,
-                propertyType: 'Time',
-              });
-            }
-          );
-        }
-
-        await settingClick(
-          page,
-          entity.entityApiType as SettingOptionsType,
-          true
-        );
-
-        await deleteCreatedProperty(page, propertyName);
-      });
-    });
-  });
-
-  test.describe('Add update and delete DateTime custom properties', () => {
-    Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-      test(`Add DateTime custom property for ${entity.name}`, async ({
-        page,
-      }) => {
-        const propertyName = `pwcp${Date.now()}test${entity.name}`;
-        await settingClick(
-          page,
-          entity.entityApiType as SettingOptionsType,
-          true
-        );
-
-        await addCustomPropertiesForEntity({
-          page,
-          propertyName,
-          customPropertyData: entity,
-          customType: 'Date Time',
-          formatConfig: entity.dateTimeFormatConfig,
-        });
-
-        await editCreatedProperty(page, propertyName);
-
-        await verifyCustomPropertyInAdvancedSearch(
-          page,
-          propertyName.toUpperCase(), // displayName is in uppercase
-          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
-        );
-
-        if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-          await test.step(
-            'Verify Custom Property Persistence on Reload',
-            async () => {
-              const tableName = adminTestEntity.entity.name ?? '';
-              const tableFqn =
-                adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
-
-              await verifyTableColumnCustomPropertyPersistence({
-                page,
-                tableName,
-                tableFqn,
-                propertyName,
-                propertyType: 'Date Time',
-              });
-            }
-          );
-        }
-
-        await settingClick(
-          page,
-          entity.entityApiType as SettingOptionsType,
-          true
-        );
-
-        await deleteCreatedProperty(page, propertyName);
-      });
-    });
+      }
+    );
   });
 });

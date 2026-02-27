@@ -262,7 +262,7 @@
     },
     {
       "name": "patch_entity",
-      "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch.",
+      "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -276,7 +276,7 @@
           },
           "patch": {
             "type": "string",
-            "description": "JSONPatch as String format."
+            "description": "JSONPatch operations as a JSON array string. Each operation has 'op' (add/remove/replace), 'path' (JSON Pointer starting with /), and 'value'. Field paths MUST use plural names for array fields: /domains, /owners, /tags, /reviewers. Example to set a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-uuid>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]."
           }
         },
         "required": [
@@ -451,6 +451,91 @@
           "testDefinitionName",
           "parameterValues"
         ]
+      }
+    },
+    {
+      "name": "create_metric",
+      "description": "Creates a new Metric entity in OpenMetadata. A Metric represents a measurable business or technical KPI (e.g. daily revenue, error rate). Use this to register new metrics with optional expression, type, granularity, and unit of measurement. Metric can be expressed in SQL, Python, Java, or JavaScript.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the metric. Must be unique and must not contain '::'."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the metric in Markdown format."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the metric."
+          },
+          "metricExpressionLanguage": {
+            "type": "string",
+            "description": "Language used to define the metric expression.",
+            "enum": ["SQL", "Java", "JavaScript", "Python", "External"]
+          },
+          "metricExpressionCode": {
+            "type": "string",
+            "description": "The code or query that computes the metric value (e.g. a SQL SELECT statement)."
+          },
+          "metricType": {
+            "type": "string",
+            "description": "Type of the metric.",
+            "enum": ["COUNT", "SUM", "AVERAGE", "RATIO", "PERCENTAGE", "MIN", "MAX", "MEDIAN", "MODE", "STANDARD_DEVIATION", "VARIANCE", "OTHER"]
+          },
+          "granularity": {
+            "type": "string",
+            "description": "Time granularity at which the metric is computed.",
+            "enum": ["SECOND", "MINUTE", "HOUR", "DAY", "WEEK", "MONTH", "QUARTER", "YEAR"]
+          },
+          "unitOfMeasurement": {
+            "type": "string",
+            "description": "Unit of measurement for the metric value.",
+            "enum": ["COUNT", "DOLLARS", "PERCENTAGE", "TIMESTAMP", "SIZE", "REQUESTS", "EVENTS", "TRANSACTIONS", "OTHER"]
+          },
+          "customUnitOfMeasurement": {
+            "type": "string",
+            "description": "Custom unit of measurement string. Required only when unitOfMeasurement is 'OTHER'."
+          },
+          "owners": {
+            "type": "array",
+            "description": "List of OpenMetadata usernames or team names to set as owners of this metric.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reviewers": {
+            "type": "array",
+            "description": "List of OpenMetadata usernames or team names to set as reviewers of this metric.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "relatedMetrics": {
+            "type": "array",
+            "description": "Fully qualified names of related metrics (e.g. 'DailyRevenue', 'WeeklyRevenue').",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag FQNs to apply to this metric (e.g. 'Tier.Tier1', 'PII.Sensitive').",
+            "items": {
+              "type": "string"
+            }
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of the domains this metric belongs to (e.g. 'Finance', 'Marketing'). Assigns the metric to a domain for governance and access control.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "metricExpressionLanguage", "metricExpressionCode"]
       }
     },
     {

@@ -397,8 +397,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     );
   });
 
-  // Audit log search api has very high latency due to which the test is getting timeout
-  test.fixme('should search audit logs', async ({ page }) => {
+  test('should search audit logs', async ({ page }) => {
     await test.step('Enter search term and press Enter', async () => {
       const searchInput = page.getByPlaceholder('Search audit logs');
       await searchInput.fill('admin');
@@ -438,8 +437,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
   });
 
-  // Audit log search api has very high latency due to which the test is getting timeout
-  test.fixme('should support case-insensitive search', async ({ page }) => {
+  test('should support case-insensitive search', async ({ page }) => {
     await test.step('Search with lowercase term', async () => {
       const searchInput = page.getByPlaceholder('Search audit logs');
       await searchInput.fill('admin');
@@ -685,8 +683,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 });
 
 // Test audit log search functionality with existing data
-// Audit log search api has very high latency due to which the test is getting timeout
-test.describe.fixme(
+test.describe(
   'Audit Logs - Search Functionality',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
@@ -811,51 +808,48 @@ test.describe(
       });
     });
 
-    // Audit log search api has very high latency due to which the test is getting timeout
-    test.fixme(
-      'should include filters and search in export request',
-      async ({ page }) => {
-        await redirectToHomePage(page);
-        await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
+    test('should include filters and search in export request', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
 
-        await page.getByTestId('export-audit-logs-button').waitFor({
+      await page.getByTestId('export-audit-logs-button').waitFor({
+        state: 'visible',
+      });
+
+      await test.step('Enter a search term', async () => {
+        const searchInput = page.getByPlaceholder('Search audit logs');
+        await searchInput.fill('admin');
+
+        const auditResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/audit')
+        );
+        await searchInput.press('Enter');
+        await auditResponse;
+        await page.waitForSelector('.ant-skeleton', {
+          state: 'detached',
+        });
+      });
+
+      await test.step('Open Export modal', async () => {
+        const exportButton = page.getByTestId('export-audit-logs-button');
+        await exportButton.click();
+
+        await page.waitForSelector('.ant-modal-content', {
           state: 'visible',
         });
+      });
 
-        await test.step('Enter a search term', async () => {
-          const searchInput = page.getByPlaceholder('Search audit logs');
-          await searchInput.fill('admin');
+      await test.step(
+        'Select date range and verify export includes search term',
+        async () => {
+          const dateRangePicker = page.getByTestId('export-date-range-picker');
+          await dateRangePicker.click();
 
-          const auditResponse = page.waitForResponse((response) =>
-            response.url().includes('/api/v1/audit')
-          );
-          await searchInput.press('Enter');
-          await auditResponse;
-          await page.waitForSelector('.ant-skeleton', {
-            state: 'detached',
-          });
-        });
-
-        await test.step('Open Export modal', async () => {
-          const exportButton = page.getByTestId('export-audit-logs-button');
-          await exportButton.click();
-
-          await page.waitForSelector('.ant-modal-content', {
+          await page.waitForSelector('.ant-picker-dropdown', {
             state: 'visible',
           });
-        });
-
-        await test.step(
-          'Select date range and verify export includes search term',
-          async () => {
-            const dateRangePicker = page.getByTestId(
-              'export-date-range-picker'
-            );
-            await dateRangePicker.click();
-
-            await page.waitForSelector('.ant-picker-dropdown', {
-              state: 'visible',
-            });
 
             const todayCell = page
               .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
@@ -863,22 +857,21 @@ test.describe(
             await todayCell.click();
             await todayCell.click();
 
-            const exportApiCall = page.waitForRequest(
-              (request) =>
-                request.url().includes('/api/v1/audit/logs/export') &&
-                request.url().includes('q=admin')
-            );
+          const exportApiCall = page.waitForRequest(
+            (request) =>
+              request.url().includes('/api/v1/audit/logs/export') &&
+              request.url().includes('q=admin')
+          );
 
-            const exportOkButton = page.locator(
-              '.ant-modal-footer button.ant-btn-primary'
-            );
-            await exportOkButton.click();
+          const exportOkButton = page.locator(
+            '.ant-modal-footer button.ant-btn-primary'
+          );
+          await exportOkButton.click();
 
-            await exportApiCall;
-          }
-        );
-      }
-    );
+          await exportApiCall;
+        }
+      );
+    });
 
     test('should validate export response structure', async ({ page }) => {
       await redirectToHomePage(page);

@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -1671,6 +1670,32 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table updated = client.tables().updateDataModel(table.getId(), dataModel);
     assertNotNull(updated.getDataModel());
     assertEquals("Test data model", updated.getDataModel().getDescription());
+  }
+
+  @Test
+  void put_tableUpdatePreservesDataModel(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createRequest = createRequest(ns.prefix("preserve_datamodel_table"), ns);
+    Table table = createEntity(createRequest);
+
+    // Add dataModel via the dedicated endpoint (simulates dbt ingestion)
+    DataModel dataModel =
+        new DataModel().withModelType(DataModel.ModelType.DBT).withSql("select * from test;");
+    client.tables().updateDataModel(table.getId(), dataModel);
+
+    Table beforeUpdate = client.tables().get(table.getId().toString(), "dataModel");
+    assertNotNull(beforeUpdate.getDataModel());
+    assertEquals("select * from test;", beforeUpdate.getDataModel().getSql());
+
+    // Simulate database ingestion re-run: PUT /tables with CreateTableRequest (no dataModel)
+    createRequest.setDescription("updated description");
+    client.tables().createOrUpdate(createRequest);
+
+    // dataModel must be preserved after the re-ingestion PUT
+    Table afterUpdate = client.tables().get(table.getId().toString(), "dataModel");
+    assertNotNull(afterUpdate.getDataModel(), "dataModel was cleared by a PUT table update");
+    assertEquals("select * from test;", afterUpdate.getDataModel().getSql());
   }
 
   // ===================================================================
@@ -3598,15 +3623,25 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     withDesc.setColumns(cols3);
     Table tableWithDesc = client.tables().create(withDesc);
 
-    // Wait for indexing (Elasticsearch needs time to index)
-    Thread.sleep(2000);
+    // Poll until the last created table is indexed using SDK search API
+    Awaitility.await("Wait for tables to be indexed in search")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + tableWithDesc.getId())
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              return searchResponse.contains("\"id\":\"" + tableWithDesc.getId() + "\"");
+            });
 
-    // Search using REST client to Elasticsearch directly
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
-
-      // Refresh index to make documents searchable
-      refreshSearchIndex(searchClient);
-
       // Create search request for tables with missing descriptions
       String searchQuery =
           "{"
@@ -3671,15 +3706,25 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Table table = client.tables().create(req);
 
-    // Wait for indexing
-    Thread.sleep(2000);
+    // Poll until the table is indexed in search using SDK search API
+    Awaitility.await("Wait for searchable table to be indexed")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + table.getId())
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              return searchResponse.contains("\"id\":\"" + table.getId() + "\"");
+            });
 
-    // Search for tables containing "email" in columns
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
-
-      // Refresh index to make documents searchable
-      refreshSearchIndex(searchClient);
-
       String searchQuery =
           "{"
               + "  \"query\": {"
@@ -3819,55 +3864,23 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               .allMatch(d -> d.getInherited() != null && d.getInherited()),
           "All table domains should be marked as inherited");
 
-      // Wait for Elasticsearch indexing using Awaitility
-      try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
-        String tableId = table.getId().toString();
-        AtomicReference<String> responseBodyRef = new AtomicReference<>();
-
-        Awaitility.await("Wait for table to appear in search index")
-            .pollInterval(Duration.ofMillis(500))
-            .atMost(Duration.ofSeconds(30))
-            .ignoreExceptions()
-            .until(
-                () -> {
-                  refreshSearchIndex(searchClient);
-
-                  String tableSearchQuery =
-                      "{"
-                          + "  \"size\": 1,"
-                          + "  \"query\": {"
-                          + "    \"bool\": {"
-                          + "      \"must\": ["
-                          + "        { \"term\": { \"_id\": \""
-                          + tableId
-                          + "\" } }"
-                          + "      ]"
-                          + "    }"
-                          + "  }"
-                          + "}";
-
-                  Request request =
-                      new Request("POST", "/" + getTableSearchIndexName() + "/_search");
-                  request.setJsonEntity(tableSearchQuery);
-                  Response response = searchClient.performRequest(request);
-
-                  if (response.getStatusCode() != 200) {
-                    return false;
-                  }
-
-                  String body =
-                      new String(
-                          response.getEntity().getContent().readAllBytes(),
-                          java.nio.charset.StandardCharsets.UTF_8);
-                  responseBodyRef.set(body);
-                  return body.contains(tableId);
-                });
-
-        // Verify the table appears in search results
-        String responseBody = responseBodyRef.get();
-        assertTrue(responseBody.contains(tableId));
-        assertTrue(responseBody.contains("\"total\""));
-      }
+      String tableId = table.getId().toString();
+      Awaitility.await("Wait for table to appear in search index")
+          .pollDelay(Duration.ofMillis(500))
+          .pollInterval(Duration.ofSeconds(2))
+          .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                String searchResponse =
+                    client
+                        .search()
+                        .query("id:" + tableId)
+                        .index("table_search_index")
+                        .size(1)
+                        .execute();
+                return searchResponse.contains("\"id\":\"" + tableId + "\"");
+              });
     } finally {
       // Re-enable multi-domain rule after test (only if we successfully disabled it)
       if (rulesAvailable) {
@@ -4451,59 +4464,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
    */
   private String getTableSearchIndexName() {
     return "openmetadata_table_search_index";
-  }
-
-  /**
-   * Ensure Elasticsearch index exists. If not, wait for it to be created by SearchIndexHandler.
-   * The index is created lazily when the first table is indexed.
-   */
-  private void ensureSearchIndexExists(Rest5Client searchClient) throws Exception {
-    String indexName = getTableSearchIndexName();
-    Request checkRequest = new Request("HEAD", "/" + indexName);
-
-    // Try to check if index exists
-    try {
-      searchClient.performRequest(checkRequest);
-      // Index exists, we're good
-      System.out.println("Index " + indexName + " already exists");
-    } catch (Exception e) {
-      // Index doesn't exist yet - wait for SearchIndexHandler to create it
-      // This happens asynchronously after table creation
-      System.out.println(
-          "Index " + indexName + " doesn't exist yet, waiting up to 30 seconds for creation...");
-
-      // Wait up to 30 seconds for index to be created (SearchIndexHandler processes async)
-      for (int i = 0; i < 60; i++) {
-        Thread.sleep(500);
-        try {
-          searchClient.performRequest(checkRequest);
-          System.out.println("Index " + indexName + " now exists after " + ((i + 1) * 500) + "ms");
-          return;
-        } catch (Exception ignored) {
-          // Still doesn't exist, keep waiting
-          if (i % 10 == 9) {
-            System.out.println(
-                "Still waiting for index creation... (" + ((i + 1) * 500) + "ms elapsed)");
-          }
-        }
-      }
-
-      // If we get here, index still doesn't exist after 30 seconds
-      throw new RuntimeException("Index " + indexName + " was not created after 30 seconds");
-    }
-  }
-
-  /**
-   * Refresh Elasticsearch index to make sure all documents are searchable.
-   * Must be called after creating/updating entities before searching.
-   */
-  private void refreshSearchIndex(Rest5Client searchClient) throws Exception {
-    // First ensure index exists
-    ensureSearchIndexExists(searchClient);
-
-    // Now refresh it
-    Request refreshRequest = new Request("POST", "/" + getTableSearchIndexName() + "/_refresh");
-    searchClient.performRequest(refreshRequest);
   }
 
   // ===================================================================

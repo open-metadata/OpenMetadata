@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { APIRequestContext, expect, Page } from '@playwright/test';
+import test, {
+  APIRequestContext,
+  expect,
+  Locator,
+  Page,
+} from '@playwright/test';
 import { get, isEmpty, isUndefined } from 'lodash';
+import { LONG_DESCRIPTION_END_TEXT } from '../constant/domain';
 import { SidebarItem } from '../constant/sidebar';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
 import { TagClass } from '../support/tag/TagClass';
@@ -1678,4 +1684,33 @@ export const assignDomainToEntity = async (
       },
     ],
   });
+};
+
+export const verifyDescriptionRequiresScroll = async (
+  container: Locator,
+  page: Page
+) => {
+  const lateContent = container.getByText(LONG_DESCRIPTION_END_TEXT);
+
+  await expect(lateContent).toBeAttached();
+  await expect(lateContent).not.toBeInViewport();
+
+  await lateContent.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+
+  await expect(lateContent).toBeInViewport();
+};
+
+export const verifyEndOfDescriptionReachable = async (
+  container: Locator,
+  page: Page
+) => {
+  const lateContent = container.getByText(LONG_DESCRIPTION_END_TEXT);
+
+  await expect(lateContent).toBeAttached();
+
+  await lateContent.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+
+  await expect(lateContent).toBeInViewport();
 };
