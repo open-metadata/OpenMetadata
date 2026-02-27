@@ -206,6 +206,7 @@ class UnitycatalogSource(
                             else catalog_name
                         ),
                     ):
+                        self._catalog_cache.pop(catalog_name, None)
                         self.status.filter(
                             database_fqn,
                             "Database (Catalog ID) Filtered Out",
