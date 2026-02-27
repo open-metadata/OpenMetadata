@@ -11,18 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  MenuItem,
-  Pagination,
-  Select,
-  SelectChangeEvent,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { ArrowLeft, ArrowRight } from '@untitledui/icons';
-import { useMemo } from 'react';
+import classNames from 'classnames';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PAGE_SIZE,
@@ -48,11 +40,12 @@ interface PaginationControlsConfig {
   rowsPerPageOptions?: number[];
   loading?: boolean;
   prevNextOnly?: boolean;
+  hideIndexPagination?: boolean;
 }
 
 export const usePaginationControls = (config: PaginationControlsConfig) => {
   const { t } = useTranslation();
-  const theme = useTheme();
+  const [isPageSizeOpen, setIsPageSizeOpen] = useState(false);
 
   const goToFirstPage = () => config.onPageChange(1);
   const goToLastPage = () => config.onPageChange(config.totalPages);
@@ -75,14 +68,6 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
       : rowsPerPageOptions[0];
   }, [rowsPerPageOptions, config.pageSize]);
 
-  const handlePageSizeChange = (event: SelectChangeEvent<number>) => {
-    const newPageSize = event.target.value;
-    if (config.onPageSizeChange) {
-      config.onPageSizeChange(newPageSize);
-    }
-  };
-
-  // Calculate displayed rows range
   const displayedRowsRange = useMemo(() => {
     const start = (config.currentPage - 1) * config.pageSize + 1;
     const end = Math.min(
@@ -93,111 +78,152 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
     return { start, end };
   }, [config.currentPage, config.pageSize, config.totalEntities]);
 
-  // Inline implementation copying exact EntityPagination styling
+  const paginationItems = useMemo(() => {
+    const items: (number | 'ellipsis-start' | 'ellipsis-end')[] = [];
+    const total = config.totalPages;
+    const current = config.currentPage;
+
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) {
+        items.push(i);
+      }
+    } else {
+      items.push(1);
+      if (current > 3) {
+        items.push('ellipsis-start');
+      }
+      const rangeStart = Math.max(2, current - 1);
+      const rangeEnd = Math.min(total - 1, current + 1);
+      for (let i = rangeStart; i <= rangeEnd; i++) {
+        items.push(i);
+      }
+      if (current < total - 2) {
+        items.push('ellipsis-end');
+      }
+      items.push(total);
+    }
+
+    return items;
+  }, [config.currentPage, config.totalPages]);
+
   const paginationControls = useMemo(
     () => (
-      <Box
-        data-testid="pagination"
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderTop: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
-          pt: 3.5,
-          px: 6,
-          pb: 5,
-        }}>
+      <div
+        className="tw:flex tw:items-center tw:justify-between tw:border-t tw:border-border-secondary tw:py-4 tw:px-5"
+        data-testid="pagination">
         <Button
           color="secondary"
           data-testid="previous"
-          disabled={config.currentPage === 1}
-          size="small"
-          startIcon={
-            <ArrowLeft
-              style={{ color: theme.palette.allShades?.gray?.[400] }}
-            />
-          }
-          variant="contained"
+          iconLeading={<ArrowLeft className="tw:size-4" />}
+          isDisabled={config.currentPage === 1}
+          size="sm"
           onClick={() => config.onPageChange(config.currentPage - 1)}>
           {t('label.previous')}
         </Button>
 
-        {!config.prevNextOnly && (
-          <Pagination
-            hideNextButton
-            hidePrevButton
-            count={config.totalPages}
-            page={config.currentPage}
-            shape="rounded"
-            variant="outlined"
-            onChange={(_, page) => config.onPageChange(page)}
-          />
+        {!config.prevNextOnly && !config.hideIndexPagination && (
+          <div className="tw:flex tw:items-center tw:gap-1">
+            {paginationItems.map((item) => {
+              if (item === 'ellipsis-start' || item === 'ellipsis-end') {
+                return (
+                  <span
+                    className="tw:px-2 tw:text-sm tw:text-secondary"
+                    key={item}>
+                    ...
+                  </span>
+                );
+              }
+
+              const isCurrentPage = item === config.currentPage;
+              const pageButtonClassName = classNames(
+                'tw:flex tw:size-9 tw:cursor-pointer tw:items-center tw:justify-center',
+                'tw:rounded-md tw:border tw:text-sm tw:font-medium tw:outline-hidden',
+                'tw:transition tw:duration-100 tw:ease-linear',
+                {
+                  'tw:border-border-secondary tw:bg-brand-solid tw:text-white':
+                    isCurrentPage,
+                  'tw:border-transparent tw:text-secondary tw:hover:bg-primary_hover tw:hover:text-secondary_hover':
+                    !isCurrentPage,
+                }
+              );
+
+              return (
+                <button
+                  className={pageButtonClassName}
+                  key={item}
+                  onClick={() => config.onPageChange(item)}>
+                  {item}
+                </button>
+              );
+            })}
+          </div>
         )}
 
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-          }}>
+        <div className="tw:flex tw:items-center tw:gap-3">
           {!config.prevNextOnly && config.onPageSizeChange && (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-              }}>
-              <Typography
-                sx={{
-                  fontSize: theme.typography.pxToRem(14),
-                  color: theme.palette.text.secondary,
-                  whiteSpace: 'nowrap',
-                  marginRight: theme.spacing(1),
-                }}>
+            <div className="tw:flex tw:items-center tw:gap-2">
+              <p className="tw:m-0 tw:whitespace-nowrap tw:text-sm tw:text-secondary">
                 {`${formatNumberWithComma(
                   displayedRowsRange.start
                 )}-${formatNumberWithComma(displayedRowsRange.end)} ${t(
                   'label.of'
                 )} ${formatNumberWithComma(config.totalEntities)}`}
-              </Typography>
-              <Select
-                data-testid="rows-per-page-select"
-                size="small"
-                sx={{
-                  '&.MuiOutlinedInput-root .MuiOutlinedInput-input': {
-                    fontSize: `${theme.typography.pxToRem(14)}`,
-                  },
-                  '& .MuiOutlinedInput-input.MuiInputBase-inputSizeSmall': {
-                    padding: '6px 32px 6px 12px !important',
-                  },
-                }}
-                value={selectedPageSize}
-                onChange={handlePageSizeChange}>
-                {rowsPerPageOptions.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </Select>
-            </Box>
+              </p>
+              <Dropdown.Root
+                isOpen={isPageSizeOpen}
+                onOpenChange={setIsPageSizeOpen}>
+                <Button
+                  color="secondary"
+                  data-testid="rows-per-page-select"
+                  size="sm">
+                  {selectedPageSize}
+                </Button>
+                <Dropdown.Popover className="tw:w-max">
+                  <div className="tw:py-1">
+                    {rowsPerPageOptions.map((option) => {
+                      const isSelected = selectedPageSize === option;
+                      const optionClassName = classNames(
+                        'tw:block tw:w-full tw:cursor-pointer tw:px-4 tw:py-2',
+                        'tw:text-left tw:text-sm tw:font-normal tw:outline-hidden',
+                        'tw:transition tw:duration-100 tw:ease-linear',
+                        {
+                          'tw:bg-brand-solid tw:font-semibold tw:text-white tw:hover:bg-brand-solid_hover':
+                            isSelected,
+                          'tw:text-secondary tw:hover:bg-primary_hover tw:hover:text-secondary_hover':
+                            !isSelected,
+                        }
+                      );
+
+                      return (
+                        <button
+                          className={optionClassName}
+                          data-testid={`option-${option}`}
+                          key={option}
+                          onClick={() => {
+                            config.onPageSizeChange?.(option);
+                            setIsPageSizeOpen(false);
+                          }}>
+                          {option}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Dropdown.Popover>
+              </Dropdown.Root>
+            </div>
           )}
 
           <Button
             color="secondary"
             data-testid="next"
-            disabled={config.currentPage >= config.totalPages}
-            endIcon={
-              <ArrowRight
-                style={{ color: theme.palette.allShades?.gray?.[400] }}
-              />
-            }
-            size="small"
-            variant="contained"
+            iconTrailing={<ArrowRight className="tw:size-4" />}
+            isDisabled={config.currentPage >= config.totalPages}
+            size="sm"
             onClick={() => config.onPageChange(config.currentPage + 1)}>
             {t('label.next')}
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </div>
     ),
     [
       config.currentPage,
@@ -207,10 +233,12 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
       config.onPageChange,
       config.onPageSizeChange,
       config.prevNextOnly,
+      config.hideIndexPagination,
       rowsPerPageOptions,
       displayedRowsRange,
       selectedPageSize,
-      theme,
+      paginationItems,
+      isPageSizeOpen,
       t,
     ]
   );

@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton, Tooltip } from '@openmetadata/ui-core-components';
+import { Select, Skeleton, Tooltip } from '@openmetadata/ui-core-components';
 import { HelpCircle } from '@untitledui/icons';
-import { Select } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { format } from 'date-fns';
 import { isEmpty, split, toLower } from 'lodash';
@@ -62,9 +61,14 @@ const DimensionalityTab = () => {
   const { dimensionColumnsOptions, selectedColumn } = useMemo(() => {
     const column = split(dimensionKey || '', '=')[0];
 
+    const options = testCase?.dimensionColumns?.map((column) => ({
+      id: column,
+      label: column,
+    }));
+
     return {
-      dimensionColumnsOptions: testCase?.dimensionColumns ?? [],
-      selectedColumn: column ?? testCase?.dimensionColumns?.[0],
+      dimensionColumnsOptions: options ?? [],
+      selectedColumn: column || testCase?.dimensionColumns?.[0],
     };
   }, [testCase, dimensionKey]);
 
@@ -91,8 +95,11 @@ const DimensionalityTab = () => {
     });
   };
 
-  const handleDimensionChange = (value: string) => {
-    setSelectedDimension(value);
+  const handleDimensionChange = (value: string | number | null) => {
+    if (!value) {
+      return;
+    }
+    setSelectedDimension(String(value));
   };
 
   const fetchDimensionColumnData = async () => {
@@ -223,7 +230,7 @@ const DimensionalityTab = () => {
       render: (dimensionValue: string, record) => {
         return (
           <Link
-            className="tw:text-sm tw:font-normal tw:text-primary hover:tw:underline"
+            className="tw:text-text-brand-secondary"
             to={getTestCaseDimensionsDetailPagePath(
               testCase?.fullyQualifiedName || '',
               record.result.dimensionKey || ''
@@ -273,25 +280,25 @@ const DimensionalityTab = () => {
   }, [isLoading, pipelineLink]);
 
   return (
-    <div className="tw:flex tw:flex-col tw:p-10 tw:gap-14">
-      <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-15">
-        <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-5">
+    <div className="tw:flex tw:flex-col tw:p-5 tw:gap-6">
+      <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-7.5">
+        <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-2.5">
           <p className="tw:m-0 tw:text-[13px] tw:font-medium tw:whitespace-nowrap tw:text-primary">
             {`${t('label.select-dimension')}:`}
           </p>
           <Select
             className="tw:min-w-37.5"
             data-testid="dimension-select"
-            options={dimensionColumnsOptions.map((column) => ({
-              label: column,
-              value: column,
-            }))}
-            size="small"
-            value={selectedDimension}
-            onChange={handleDimensionChange}
-          />
+            items={dimensionColumnsOptions}
+            size="sm"
+            value={selectedDimension ?? null}
+            onChange={handleDimensionChange}>
+            {(item) => (
+              <Select.Item id={item.id} key={item.id} label={item.label} />
+            )}
+          </Select>
         </div>
-        <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-5">
+        <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-2.5">
           <p className="tw:m-0 tw:text-[13px] tw:font-medium tw:whitespace-nowrap tw:text-primary">
             {`${t('label.date')}:`}
           </p>
@@ -308,7 +315,7 @@ const DimensionalityTab = () => {
         noDataPlaceholder
       ) : (
         <>
-          <div className="tw:p-8 tw:shadow-none tw:border tw:border-border-secondary tw:rounded-[10px]">
+          <div className="tw:p-4 tw:shadow-none tw:border tw:border-border-secondary tw:rounded-[10px]">
             <DimensionalityHeatmap
               data={dimensionData}
               endDate={dateRange.endTs}
@@ -317,7 +324,7 @@ const DimensionalityTab = () => {
             />
           </div>
           <div>
-            <p className="tw:m-0 tw:mb-5 tw:text-sm tw:font-medium tw:text-primary">
+            <p className="tw:m-0 tw:mb-2.5 tw:text-sm tw:font-medium tw:text-primary">
               {t('label.entity-text-table', {
                 entityText: selectedDimension || '',
               })}
