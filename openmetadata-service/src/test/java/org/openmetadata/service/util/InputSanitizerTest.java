@@ -91,8 +91,7 @@ class InputSanitizerTest {
 
   @Test
   void testSanitize_PreserveMultipleEntityLinks() {
-    String input =
-        "See <#E::table::db.schema.table1> and <#E::database::db> for more";
+    String input = "See <#E::table::db.schema.table1> and <#E::database::db> for more";
     String sanitized = InputSanitizer.sanitize(input);
     assertTrue(sanitized.contains("<#E::table::db.schema.table1>"));
     assertTrue(sanitized.contains("<#E::database::db>"));
@@ -186,5 +185,66 @@ class InputSanitizerTest {
     String input = "<img src=\"data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9YWxlcnQoMSk+\">";
     String sanitized = InputSanitizer.sanitize(input);
     assertFalse(sanitized.contains("data:"));
+  }
+
+  @Test
+  void testSanitize_EntityLinkRequiresStructure() {
+    String input = "<#E::notvalid>";
+    String sanitized = InputSanitizer.sanitize(input);
+    assertFalse(sanitized.contains("<#E::notvalid>"));
+  }
+
+  @Test
+  void testSanitize_EntityLinkEntityTypeMustStartWithLetter() {
+    String input = "<#E::123invalid::fqn>";
+    String sanitized = InputSanitizer.sanitize(input);
+    assertFalse(sanitized.contains("<#E::123invalid::fqn>"));
+  }
+
+  @Test
+  void testSanitize_PreserveEntityLinkWithFields() {
+    String input = "<#E::table::db.schema.table::columns::col1::tags>";
+    String sanitized = InputSanitizer.sanitize(input);
+    assertTrue(sanitized.contains("<#E::table::db.schema.table::columns::col1::tags>"));
+  }
+
+  @Test
+  void testSanitize_PreserveEntityLinkWithDescription() {
+    String input = "<#E::table::db.schema.table::description>";
+    String sanitized = InputSanitizer.sanitize(input);
+    assertTrue(sanitized.contains("<#E::table::db.schema.table::description>"));
+  }
+
+  @Test
+  void testSanitize_StyleAttributeStripped() {
+    String input = "<div style=\"background:url('https://evil.com/track');\">content</div>";
+    String sanitized = InputSanitizer.sanitize(input);
+    assertFalse(sanitized.contains("style"));
+    assertFalse(sanitized.contains("background"));
+    assertTrue(sanitized.contains("content"));
+  }
+
+  @Test
+  void testSanitize_StyleExpressionAttack() {
+    String input = "<span style=\"width:expression(alert(1))\">text</span>";
+    String sanitized = InputSanitizer.sanitize(input);
+    assertFalse(sanitized.contains("expression"));
+    assertFalse(sanitized.contains("alert"));
+  }
+
+  @Test
+  void testSanitize_ClassAttributePreserved() {
+    String input = "<div class=\"custom-class\">content</div>";
+    String sanitized = InputSanitizer.sanitize(input);
+    assertTrue(sanitized.contains("class"));
+    assertTrue(sanitized.contains("custom-class"));
+  }
+
+  @Test
+  void testSanitize_EntityLinkXssSmuggling_NoAngleBrackets() {
+    String input = "<#E::table::fqn\"><img/src=x onerror=alert(1)>";
+    String sanitized = InputSanitizer.sanitize(input);
+    assertFalse(sanitized.contains("onerror"));
+    assertFalse(sanitized.contains("alert"));
   }
 }

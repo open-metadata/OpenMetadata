@@ -30,13 +30,13 @@ import org.owasp.html.PolicyFactory;
 public class InputSanitizer {
 
   private static final Pattern ENTITY_LINK_PATTERN =
-      Pattern.compile("<#E::[a-zA-Z0-9_.:\\-/]+>");
+      Pattern.compile("<#E::[a-zA-Z][a-zA-Z0-9]*(?:::[a-zA-Z0-9_.\\-/]+)+>");
   private static final String ENTITY_LINK_PLACEHOLDER = "__OM_ENTITY_LINK_%d__";
 
   private static final PolicyFactory CONTENT_POLICY =
       new HtmlPolicyBuilder()
           .allowElements("p", "br", "div", "span")
-          .allowAttributes("style", "class")
+          .allowAttributes("class")
           .onElements("div", "span", "p", "pre", "code")
           .allowElements("ul", "ol", "li")
           .allowElements("strong", "b", "em", "i", "u", "s", "del", "mark")
