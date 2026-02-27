@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Collapse, Row, Switch, Typography } from 'antd';
+import { Button, Col, Collapse, Row, Slider, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -84,8 +84,8 @@ const SearchSettingsPage = () => {
     []
   );
 
-  const hybridSearchWeightSettings = useMemo(
-    () => searchSettingsClassBase.getHybridSearchWeightSettings(),
+  const showHybridSearchWeights = useMemo(
+    () => searchSettingsClassBase.showHybridSearchWeights(),
     []
   );
 
@@ -361,36 +361,100 @@ const SearchSettingsPage = () => {
               </Col>
             ))}
           </Row>
-          {hybridSearchWeightSettings.length > 0 && (
+          {showHybridSearchWeights && (
             <Row className="p-x-xs m-t-lg" gutter={0}>
               <Col span={24}>
                 <Typography.Title className="text-sm font-semibold" level={5}>
                   {t('label.hybrid-search-weight-plural')}
                 </Typography.Title>
               </Col>
-              <Row
-                className="p-x-xs global-settings-cards-container"
-                gutter={0}>
-                {hybridSearchWeightSettings.map(
-                  ({ key, label, max, min, step }) => (
-                    <Col className="global-setting-card" key={key}>
-                      <GlobalSettingItem
-                        label={t(label)}
-                        max={max}
-                        min={min}
-                        step={step}
-                        value={searchConfig?.globalSettings?.[key] ?? 0}
-                        onUpdate={(value) =>
-                          handleUpdateSearchConfig({
-                            field: key,
-                            value,
-                          })
+              <Col span={24}>
+                <Row align="middle" className="p-y-xs" gutter={16}>
+                  <Col flex="100px">
+                    <Typography.Text>
+                      {t('label.keyword')}:{' '}
+                      {(
+                        1 -
+                        (searchConfig?.globalSettings?.semanticWeight ?? 0.4)
+                      ).toFixed(1)}
+                    </Typography.Text>
+                  </Col>
+                  <Col flex="auto">
+                    <Slider
+                      disabled={isUpdating}
+                      max={1}
+                      min={0}
+                      step={0.1}
+                      tooltip={{
+                        formatter: (val) => `${t('label.semantic')}: ${val}`,
+                      }}
+                      value={
+                        searchConfig?.globalSettings?.semanticWeight ?? 0.4
+                      }
+                      onChange={(val: number) => {
+                        if (!searchConfig) {
+                          return;
                         }
-                      />
-                    </Col>
-                  )
-                )}
-              </Row>
+                        setSearchConfig({
+                          ...searchConfig,
+                          globalSettings: {
+                            ...searchConfig.globalSettings,
+                            semanticWeight: val,
+                            keywordWeight: Math.round((1 - val) * 10) / 10,
+                          },
+                        });
+                      }}
+                      onChangeComplete={async (val: number) => {
+                        if (!searchConfig) {
+                          return;
+                        }
+                        const keywordWeight = Math.round((1 - val) * 10) / 10;
+                        try {
+                          setIsUpdating(true);
+                          const configData = {
+                            config_type: SettingType.SearchSettings,
+                            config_value: {
+                              ...searchConfig,
+                              globalSettings: {
+                                ...searchConfig.globalSettings,
+                                semanticWeight: val,
+                                keywordWeight,
+                              },
+                            },
+                          };
+                          const { data } = await updateSettingsConfig(
+                            configData as Settings
+                          );
+                          const updatedConfig =
+                            data.config_value as SearchSettings;
+                          setSearchConfig(updatedConfig);
+                          setAppPreferences({
+                            ...appPreferences,
+                            searchConfig: updatedConfig,
+                          });
+                          showSuccessToast(
+                            t('server.update-entity-success', {
+                              entity: t('label.search-setting-plural'),
+                            })
+                          );
+                        } catch (error) {
+                          showErrorToast(error as AxiosError);
+                        } finally {
+                          setIsUpdating(false);
+                        }
+                      }}
+                    />
+                  </Col>
+                  <Col flex="100px">
+                    <Typography.Text>
+                      {t('label.semantic')}:{' '}
+                      {(
+                        searchConfig?.globalSettings?.semanticWeight ?? 0.4
+                      ).toFixed(1)}
+                    </Typography.Text>
+                  </Col>
+                </Row>
+              </Col>
             </Row>
           )}
           <Row className="boosts-section m-t-lg" gutter={[0, 16]}>

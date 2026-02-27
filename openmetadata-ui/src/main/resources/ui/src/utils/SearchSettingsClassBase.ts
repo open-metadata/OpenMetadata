@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Property } from '../pages/SearchSettingsPage/searchSettings.interface';
 
 class SearchSettingsClassBase {
-  public getHybridSearchWeightSettings(): Property[] {
-    return [];
+  public showHybridSearchWeights(): boolean {
+    return false;
   }
 }
 
