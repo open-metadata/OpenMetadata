@@ -80,6 +80,18 @@ public class SearchSettingsHandler {
             MAX_ANALYZED_OFFSET,
             "maxAnalyzedOffset");
       }
+      if (globalSettings.getKeywordWeight() != null) {
+        validateWeightRange(globalSettings.getKeywordWeight(), "keywordWeight");
+      }
+      if (globalSettings.getSemanticWeight() != null) {
+        validateWeightRange(globalSettings.getSemanticWeight(), "semanticWeight");
+      }
+    }
+  }
+
+  private void validateWeightRange(double value, String field) {
+    if (value < 0.0 || value > 1.0) {
+      throw new SystemSettingsException(String.format("%s must be between 0.0 and 1.0", field));
     }
   }
 
@@ -129,6 +141,16 @@ public class SearchSettingsHandler {
         incomingGlobalSettings != null && incomingGlobalSettings.getEnableAccessControl() != null
             ? incomingGlobalSettings.getEnableAccessControl()
             : defaultGlobalSettings.getEnableAccessControl());
+
+    mergedGlobalSettings.setKeywordWeight(
+        incomingGlobalSettings != null && incomingGlobalSettings.getKeywordWeight() != null
+            ? incomingGlobalSettings.getKeywordWeight()
+            : defaultGlobalSettings.getKeywordWeight());
+
+    mergedGlobalSettings.setSemanticWeight(
+        incomingGlobalSettings != null && incomingGlobalSettings.getSemanticWeight() != null
+            ? incomingGlobalSettings.getSemanticWeight()
+            : defaultGlobalSettings.getSemanticWeight());
 
     // Keep these settings from default - these are system controlled
     mergedGlobalSettings.setAggregations(defaultGlobalSettings.getAggregations());

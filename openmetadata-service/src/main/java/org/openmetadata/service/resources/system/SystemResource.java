@@ -376,6 +376,22 @@ public class SystemResource {
     Response response = systemRepository.createOrUpdate(settingName);
     // Explicitly invalidate the cache to ensure latest settings are fetched
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
+
+    if (SettingsType.SEARCH_SETTINGS
+        .value()
+        .equalsIgnoreCase(settingName.getConfigType().toString())) {
+      SearchSettings saved =
+          JsonUtils.convertValue(settingName.getConfigValue(), SearchSettings.class);
+      if (saved.getGlobalSettings() != null
+          && saved.getGlobalSettings().getKeywordWeight() != null
+          && saved.getGlobalSettings().getSemanticWeight() != null) {
+        Entity.getSearchRepository()
+            .updateHybridSearchPipeline(
+                saved.getGlobalSettings().getKeywordWeight(),
+                saved.getGlobalSettings().getSemanticWeight());
+      }
+    }
+
     return response;
   }
 

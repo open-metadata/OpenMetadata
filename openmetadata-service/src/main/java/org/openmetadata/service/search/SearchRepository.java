@@ -109,6 +109,7 @@ import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
@@ -128,6 +129,7 @@ import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -349,6 +351,22 @@ public class SearchRepository {
           nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
       double semanticWeight =
           nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
+
+      try {
+        SearchSettings ss =
+            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+        if (ss != null && ss.getGlobalSettings() != null) {
+          if (ss.getGlobalSettings().getKeywordWeight() != null) {
+            keywordWeight = ss.getGlobalSettings().getKeywordWeight();
+          }
+          if (ss.getGlobalSettings().getSemanticWeight() != null) {
+            semanticWeight = ss.getGlobalSettings().getSemanticWeight();
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
+      }
+
       ((OpenSearchVectorService) vectorIndexService)
           .ensureHybridSearchPipeline(keywordWeight, semanticWeight);
 
