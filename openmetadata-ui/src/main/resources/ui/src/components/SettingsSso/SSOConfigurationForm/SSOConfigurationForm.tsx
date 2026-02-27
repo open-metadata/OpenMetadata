@@ -94,6 +94,7 @@ import {
   UISchemaObject,
 } from './SSOConfigurationForm.interface';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
+import SsoRolesSelectField from './SsoRolesSelectField';
 
 const widgets = {
   SelectWidget: SelectWidget,
@@ -328,6 +329,7 @@ const SSOConfigurationFormRJSF = ({
 
   const customFields: RegistryFieldsType = {
     ArrayField: SsoConfigurationFormArrayFieldTemplate,
+    RolesSelectField: SsoRolesSelectField,
   };
 
   const schema = useMemo(() => {
