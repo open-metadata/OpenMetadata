@@ -894,6 +894,7 @@
     "hour": "시간",
     "http-config-source": "HTTP 설정 소스",
     "http-method": "HTTP 메서드",
+    "hybrid-search-weight-plural": "Hybrid Search Weights",
     "hyper-parameter-plural": "하이퍼 파라미터들",
     "hyperlink": "하이퍼링크",
     "icon": "Icon",
