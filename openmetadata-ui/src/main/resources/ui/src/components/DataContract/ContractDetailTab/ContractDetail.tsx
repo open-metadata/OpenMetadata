@@ -501,7 +501,6 @@ const ContractDetail: React.FC<{
 
               <Dropdown
                 destroyPopupOnHide
-                data-testid="contract-action-dropdown"
                 getPopupContainer={getPopupContainer}
                 menu={{
                   items: contractActionsItems,
