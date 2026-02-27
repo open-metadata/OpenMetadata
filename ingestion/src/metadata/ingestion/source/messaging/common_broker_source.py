@@ -152,9 +152,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     schemaFields=schema_fields if schema_fields is not None else [],
                 )
             else:
-                topic.messageSchema = Topic(
-                    schemaText="", schemaType=SchemaType.Other, schemaFields=[]
-                )
+                topic.messageSchema = Topic()
             yield Either(right=topic)
             self.register_record(topic_request=topic)
 
