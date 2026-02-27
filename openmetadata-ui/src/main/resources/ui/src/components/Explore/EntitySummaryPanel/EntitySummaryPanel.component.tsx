@@ -167,7 +167,7 @@ export default function EntitySummaryPanel({
   }, [entityDetails?.details?.id]);
 
   const entityType = useMemo(() => {
-    return get(entityDetails, 'details.entityType') as EntityType;
+    return get(entityDetails, 'details.entityType');
   }, [entityDetails]);
 
   const fetchResourcePermission = async (entityFqn: string) => {
@@ -296,6 +296,18 @@ export default function EntitySummaryPanel({
       const fetchFn = entityFetchMap[entityType];
       if (fetchFn) {
         entityPromise = fetchFn(fqn);
+      } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+        entityPromise = entityUtilClassBase.getEntityByFqn(
+          entityType,
+          fqn,
+          'owners,domains,tags'
+        );
+      } else {
+        entityPromise = entityUtilClassBase.getEntityByFqn(
+          entityType,
+          fqn,
+          'owners,domains,tags,extension'
+        );
       }
 
       if (entityPromise) {
@@ -445,7 +457,9 @@ export default function EntitySummaryPanel({
       }
 
       try {
-        const apiFunc = entityUpdateMap[entityType];
+        const apiFunc =
+          entityUpdateMap[entityType] ??
+          entityUtilClassBase.getEntityPatchAPI(entityType);
         if (apiFunc && id) {
           const res = await apiFunc(id, jsonPatch);
           setEntityData((prev: EntityData) => ({
@@ -520,7 +534,9 @@ export default function EntitySummaryPanel({
       }
 
       try {
-        const apiFunc = entityUpdateMap[entityType];
+        const apiFunc =
+          entityUpdateMap[entityType] ??
+          entityUtilClassBase.getEntityPatchAPI(entityType);
         if (apiFunc && id) {
           const res = await apiFunc(id, jsonPatch);
           setEntityData((prev: EntityData) => ({
@@ -585,7 +601,9 @@ export default function EntitySummaryPanel({
         }
 
         try {
-          const apiFunc = entityUpdateMap[entityType];
+          const apiFunc =
+            entityUpdateMap[entityType] ??
+            entityUtilClassBase.getEntityPatchAPI(entityType);
           if (apiFunc && id) {
             const res = await apiFunc(id, jsonPatch);
             setEntityData((prev: EntityData) => ({
@@ -896,7 +914,9 @@ export default function EntitySummaryPanel({
             )}
             <DataQualityTab
               entityFQN={entityDetails.details.fullyQualifiedName || ''}
-              entityType={entityType}
+              hasViewTests={
+                entityPermissions.ViewTests || entityPermissions.ViewAll
+              }
             />
           </>
         );

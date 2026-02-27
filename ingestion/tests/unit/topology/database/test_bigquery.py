@@ -527,6 +527,105 @@ class BigqueryUnitTest(TestCase):
                 for either in self.bq_source.yield_table((table[0], table[1]))
             ]
 
+    def test_topology_runner_error_handling(self):
+        """
+        TopologyRunnerMixin._run_node_post_process and _run_node_producer both
+        record any exception as a status failure (not just log it) and yield
+        nothing on error, but yield normally on success.
+
+        Base class methods are called directly via TopologyRunnerMixin to bypass
+        any subclass overrides.
+        """
+        from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+        from metadata.ingestion.models.topology import NodeStage, TopologyNode
+
+        _dummy_stage = NodeStage(type_=DatabaseSchema, processor="dummy")
+
+        # --- post_process: error is recorded as status failure ---
+        node = TopologyNode(
+            producer="get_schemas",
+            stages=[_dummy_stage],
+            post_process=["failing_post_process"],
+        )
+
+        def failing_post_process():
+            raise RuntimeError("something went wrong")
+
+        self.bq_source.failing_post_process = failing_post_process
+        initial_failures = len(self.bq_source.status.failures)
+
+        results = list(TopologyRunnerMixin._run_node_post_process(self.bq_source, node))
+
+        assert results == []
+        assert len(self.bq_source.status.failures) == initial_failures + 1
+        assert (
+            self.bq_source.status.failures[-1].name
+            == "Post Process failing_post_process"
+        )
+
+        # --- post_process: success yields entity normally ---
+        sentinel = object()
+        success_pp_node = TopologyNode(
+            producer="get_schemas",
+            stages=[_dummy_stage],
+            post_process=["successful_post_process"],
+        )
+
+        def successful_post_process():
+            yield sentinel
+
+        self.bq_source.successful_post_process = successful_post_process
+        failures_before = len(self.bq_source.status.failures)
+
+        results = list(
+            TopologyRunnerMixin._run_node_post_process(self.bq_source, success_pp_node)
+        )
+
+        assert results == [sentinel]
+        assert len(self.bq_source.status.failures) == failures_before
+
+        # --- node_producer: error is recorded as status failure ---
+        error_producer_node = TopologyNode(
+            producer="failing_producer",
+            stages=[_dummy_stage],
+        )
+
+        def failing_producer():
+            raise RuntimeError("producer failed")
+
+        self.bq_source.failing_producer = failing_producer
+        initial_failures = len(self.bq_source.status.failures)
+
+        results = list(
+            TopologyRunnerMixin._run_node_producer(self.bq_source, error_producer_node)
+        )
+
+        assert results == []
+        assert len(self.bq_source.status.failures) == initial_failures + 1
+        assert self.bq_source.status.failures[-1].name == "Producer failing_producer"
+
+        # --- node_producer: success yields entity normally ---
+        sentinel2 = object()
+        success_producer_node = TopologyNode(
+            producer="successful_producer",
+            stages=[_dummy_stage],
+        )
+
+        def successful_producer():
+            yield sentinel2
+
+        self.bq_source.successful_producer = successful_producer
+        failures_before = len(self.bq_source.status.failures)
+
+        results = list(
+            TopologyRunnerMixin._run_node_producer(
+                self.bq_source, success_producer_node
+            )
+        )
+
+        assert results == [sentinel2]
+        assert len(self.bq_source.status.failures) == failures_before
+
     def test_get_stored_procedures(self):
         """
         Test fetching stored procedures with filter
