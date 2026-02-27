@@ -676,20 +676,36 @@ export const updateDescriptionForChildren = async (
   await expect(modalEditor).toBeVisible();
   await modalEditor.click();
   await modalEditor.clear();
-  await modalEditor.fill(description);
+  // Do NOT call fill('') when clearing: fill() mutates the DOM directly which
+  // causes ProseMirror to detect an unexpected external change and reconcile by
+  // reverting to its cached state.  clear() already removes content via keyboard
+  // events that ProseMirror owns, so it is sufficient on its own for removal.
+  if (description) {
+    await modalEditor.fill(description);
+  }
 
   // REMOVED: toHaveText check - rich text editor may have formatting that makes exact match unreliable
   // The final verification after save is sufficient
 
-  // Wait for API response
+  // Wait for API response — use a function predicate so we only match the
+  // write request (PUT/PATCH) and never accidentally resolve on a concurrent
+  // background GET to the same endpoint (common source of flakiness).
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||
     entityEndpoint === 'dashboard/datamodels'
   ) {
-    updateRequest = page.waitForResponse('/api/v1/columns/name/*');
+    updateRequest = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/columns/name/') &&
+        ['PUT', 'PATCH'].includes(response.request().method())
+    );
   } else {
-    updateRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+    updateRequest = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/${entityEndpoint}/`) &&
+        ['PUT', 'PATCH'].includes(response.request().method())
+    );
   }
 
   const saveButton = page.getByTestId('save');
@@ -709,10 +725,12 @@ export const updateDescriptionForChildren = async (
   });
 
   // Verify the description was updated in the UI
+  // Use a generous timeout: parallel runs under CPU load can delay row re-renders
+  // beyond Playwright's default 5 s, causing false failures on the remove step.
   if (isEmpty(description)) {
     await expect(
       page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
-    ).toContainText('No Description');
+    ).toContainText('No Description', { timeout: 15000 });
   } else {
     await expect(
       page
