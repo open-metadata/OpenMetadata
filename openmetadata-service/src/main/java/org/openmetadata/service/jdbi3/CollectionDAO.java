@@ -3941,15 +3941,14 @@ public interface CollectionDAO {
             String fqnhash,
         @Bind("termName") String termName);
 
-    // Search glossary terms by name, displayName, and description using LIKE queries
+    // Search glossary terms by name and displayName using LIKE queries
     // The displayName column is a generated column added in migration 1.9.3
     // entityStatus filtering uses generated column added in migration 1.12.2
     @SqlQuery(
         "SELECT json FROM glossary_term_entity WHERE deleted = FALSE "
             + "AND fqnHash LIKE :parentHash "
             + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
-            + "OR LOWER(COALESCE(displayName, '')) LIKE LOWER(:searchTerm) "
-            + "OR LOWER(COALESCE(description, '')) LIKE LOWER(:searchTerm)) "
+            + "OR LOWER(COALESCE(displayName, '')) LIKE LOWER(:searchTerm)) "
             + "<statusCondition> "
             + "ORDER BY name "
             + "LIMIT :limit OFFSET :offset")
