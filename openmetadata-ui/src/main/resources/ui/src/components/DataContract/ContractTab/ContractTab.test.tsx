@@ -33,6 +33,7 @@ import { ContractTab } from './ContractTab';
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn(() => ({
     getEntityPermission: jest.fn().mockResolvedValue({}),
+    getResourcePermission: jest.fn().mockResolvedValue({}),
   })),
 }));
 
@@ -52,7 +53,6 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
       id: 'table-1',
       name: 'test-table',
     },
-    permissions: { EditAll: false },
   })),
 }));
 
@@ -432,7 +432,6 @@ describe('ContractTab', () => {
 
       mockUseGenericContext.mockReturnValue({
         data: { id: 'table-2', name: 'different-table' },
-        permissions: { EditAll: false },
       });
 
       rerender(<ContractTab />);
@@ -452,7 +451,6 @@ describe('ContractTab', () => {
       ).useGenericContext;
       mockUseGenericContext.mockReturnValue({
         data: undefined,
-        permissions: undefined,
       });
 
       expect(() => {
@@ -510,18 +508,16 @@ describe('ContractTab', () => {
   });
 
   describe('Permissions', () => {
-    const mockUseGenericContext = () =>
-      jest.requireMock('../../Customization/GenericProvider/GenericProvider')
-        .useGenericContext;
-
-    it('should pass hasEditPermission=false when no contract and entity lacks EditAll', async () => {
+    it('should pass hasEditPermission=false when no contract and dataContract resource lacks Create', async () => {
       (getContractByEntityId as jest.Mock).mockRejectedValue(
         new Error('Not found')
       );
-      mockUseGenericContext().mockReturnValue({
-        data: { id: 'table-1', name: 'test-table' },
-        permissions: { EditAll: false },
-      });
+      jest
+        .requireMock('../../../context/PermissionProvider/PermissionProvider')
+        .usePermissionProvider.mockReturnValue({
+          getEntityPermission: jest.fn().mockResolvedValue({}),
+          getResourcePermission: jest.fn().mockResolvedValue({ Create: false }),
+        });
 
       render(<ContractTab />);
 
@@ -534,14 +530,16 @@ describe('ContractTab', () => {
       );
     });
 
-    it('should pass hasEditPermission=true when no contract and entity has EditAll', async () => {
+    it('should pass hasEditPermission=true when no contract and dataContract resource has Create', async () => {
       (getContractByEntityId as jest.Mock).mockRejectedValue(
         new Error('Not found')
       );
-      mockUseGenericContext().mockReturnValue({
-        data: { id: 'table-1', name: 'test-table' },
-        permissions: { EditAll: true },
-      });
+      jest
+        .requireMock('../../../context/PermissionProvider/PermissionProvider')
+        .usePermissionProvider.mockReturnValue({
+          getEntityPermission: jest.fn().mockResolvedValue({}),
+          getResourcePermission: jest.fn().mockResolvedValue({ Create: true }),
+        });
 
       render(<ContractTab />);
 
@@ -562,6 +560,7 @@ describe('ContractTab', () => {
         .requireMock('../../../context/PermissionProvider/PermissionProvider')
         .usePermissionProvider.mockReturnValue({
           getEntityPermission: mockGetEntityPermission,
+          getResourcePermission: jest.fn().mockResolvedValue({}),
         });
 
       render(<ContractTab />);
@@ -583,6 +582,7 @@ describe('ContractTab', () => {
         .requireMock('../../../context/PermissionProvider/PermissionProvider')
         .usePermissionProvider.mockReturnValue({
           getEntityPermission: mockGetEntityPermission,
+          getResourcePermission: jest.fn().mockResolvedValue({}),
         });
 
       render(<ContractTab />);

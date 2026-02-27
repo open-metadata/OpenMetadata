@@ -36,15 +36,17 @@ import { ContractDetail } from '../ContractDetailTab/ContractDetail';
 import './contract-tab.less';
 
 export const ContractTab = () => {
-  const { data: entityData, permissions: entityPermissions } =
-    useGenericContext();
-  const { getEntityPermission } = usePermissionProvider();
+  const { data: entityData } = useGenericContext();
+  const { getEntityPermission, getResourcePermission } =
+    usePermissionProvider();
   const { t } = useTranslation();
   const [tabMode, setTabMode] = useState<DataContractTabMode>(
     DataContractTabMode.VIEW
   );
   const [contract, setContract] = useState<DataContract>();
   const [contractPermissions, setContractPermissions] =
+    useState<OperationPermission>();
+  const [dataContractResourcePermissions, setDataContractResourcePermissions] =
     useState<OperationPermission>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
@@ -53,7 +55,7 @@ export const ContractTab = () => {
 
   const hasEditPermission = contract
     ? Boolean(contractPermissions?.EditAll)
-    : Boolean(entityPermissions?.EditAll);
+    : Boolean(dataContractResourcePermissions?.Create);
 
   const fetchContractPermissions = async (contractId: string) => {
     try {
@@ -67,6 +69,17 @@ export const ContractTab = () => {
     }
   };
 
+  const fetchDataContractResourcePermissions = async () => {
+    try {
+      const permissions = await getResourcePermission(
+        ResourceEntity.DATA_CONTRACT
+      );
+      setDataContractResourcePermissions(permissions);
+    } catch {
+      setDataContractResourcePermissions(undefined);
+    }
+  };
+
   const fetchContract = async () => {
     try {
       setIsLoading(true);
@@ -76,10 +89,13 @@ export const ContractTab = () => {
       setContract(fetchedContract);
       if (fetchedContract?.id) {
         await fetchContractPermissions(fetchedContract.id);
+      } else {
+        await fetchDataContractResourcePermissions();
       }
     } catch {
       setContract(undefined);
       setContractPermissions(undefined);
+      await fetchDataContractResourcePermissions();
     } finally {
       setIsLoading(false);
     }
