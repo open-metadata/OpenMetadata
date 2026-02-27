@@ -1060,15 +1060,24 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
   const getValueElement = () => {
     const propertyValue = getPropertyValue();
+    const isScrollableType = ['table-cp'].includes(propertyType.name || '');
 
-    // if value is not undefined or property is a table type(at least show the columns), return the property value
-    return !isUndefined(value) || isTableType ? (
-      propertyValue
-    ) : (
-      <span className="text-grey-muted" data-testid="no-data">
-        {t('label.not-set')}
-      </span>
-    );
+    const renderedValue =
+      !isUndefined(value) || isTableType ? (
+        isScrollableType ? (
+          <div className="custom-property-scrollable-container w-full">
+            {propertyValue}
+          </div>
+        ) : (
+          propertyValue
+        )
+      ) : (
+        <span className="text-grey-muted" data-testid="no-data">
+          {t('label.not-set')}
+        </span>
+      );
+
+    return renderedValue;
   };
 
   const toggleExpand = () => {
@@ -1082,8 +1091,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
     const isMarkdownWithValue = propertyType.name === 'markdown' && value;
     const isOverflowing =
-      (contentRef.current.scrollHeight > 30 || isMarkdownWithValue) &&
-      propertyType.name !== 'entityReference' &&
+      (contentRef.current.scrollHeight > 32 || isMarkdownWithValue) &&
+      ![
+        'entityReference',
+        'entityReferenceList',
+        'table-cp',
+        'sqlQuery',
+      ].includes(propertyType.name || '') &&
       !isRenderedInRightPanel;
 
     setIsOverflowing(isOverflowing);
@@ -1100,6 +1114,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           className="text-grey-body property-name"
           data-testid="property-name">
           {getEntityName(property)}
+          {isArray(value)
+            ? ` (${value.length})`
+            : isArray(value?.rows)
+            ? ` (${value.rows.length})`
+            : null}
         </Typography.Text>
         {property.description && (
           <Tooltip
@@ -1130,7 +1149,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           data-testid="property-value"
           ref={contentRef}
           style={{
-            height: containerStyleFlag ? 'auto' : '30px',
+            height:
+              containerStyleFlag ||
+              ['entityReferenceList', 'table-cp', 'sqlQuery'].includes(
+                propertyType.name || ''
+              )
+                ? 'auto'
+                : '32px',
           }}>
           {showInput ? getPropertyInput() : getValueElement()}
           {hasEditPermissions && !showInput && (
