@@ -32,6 +32,11 @@ public class TableService extends EntityServiceBase<Table> {
     return httpClient.execute(HttpMethod.POST, basePath, request, Table.class);
   }
 
+  // Create or update table using CreateTable request (PUT /tables)
+  public Table createOrUpdate(CreateTable request) throws OpenMetadataException {
+    return httpClient.execute(HttpMethod.PUT, basePath, request, Table.class);
+  }
+
   // ===================================================================
   // COLUMNS OPERATIONS
   // ===================================================================

@@ -18,7 +18,8 @@ export interface Domain {
     /**
      * Data assets collection that is part of this domain.
      */
-    assets?: EntityReference[];
+    assets?:        EntityReference[];
+    certification?: AssetCertification;
     /**
      * Change that lead to this version of the entity.
      */
@@ -105,6 +106,10 @@ export interface Domain {
      * Metadata version of the entity.
      */
     version?: number;
+    /**
+     * Votes on the entity.
+     */
+    votes?: Votes;
 }
 
 /**
@@ -166,116 +171,18 @@ export interface EntityReference {
 }
 
 /**
- * Change that lead to this version of the entity.
- *
- * Description of the change.
+ * Defines the Asset Certification schema.
  */
-export interface ChangeDescription {
-    changeSummary?: { [key: string]: ChangeSummary };
+export interface AssetCertification {
     /**
-     * Names of fields added during the version changes.
+     * The date when the certification was applied.
      */
-    fieldsAdded?: FieldChange[];
+    appliedDate: number;
     /**
-     * Fields deleted during the version changes with old value before deleted.
+     * The date when the certification expires.
      */
-    fieldsDeleted?: FieldChange[];
-    /**
-     * Fields modified during the version changes with old and new values.
-     */
-    fieldsUpdated?: FieldChange[];
-    /**
-     * When a change did not result in change, this could be same as the current version.
-     */
-    previousVersion?: number;
-}
-
-export interface ChangeSummary {
-    changedAt?: number;
-    /**
-     * Name of the user or bot who made this change
-     */
-    changedBy?:    string;
-    changeSource?: ChangeSource;
-    [property: string]: any;
-}
-
-/**
- * The source of the change. This will change based on the context of the change (example:
- * manual vs programmatic)
- */
-export enum ChangeSource {
-    Automated = "Automated",
-    Derived = "Derived",
-    Ingested = "Ingested",
-    Manual = "Manual",
-    Propagated = "Propagated",
-    Suggested = "Suggested",
-}
-
-export interface FieldChange {
-    /**
-     * Name of the entity field that changed.
-     */
-    name?: string;
-    /**
-     * New value of the field. Note that this is a JSON string and use the corresponding field
-     * type to deserialize it.
-     */
-    newValue?: any;
-    /**
-     * Previous value of the field. Note that this is a JSON string and use the corresponding
-     * field type to deserialize it.
-     */
-    oldValue?: any;
-}
-
-/**
- * Domain type
- *
- * Type of a domain
- */
-export enum DomainType {
-    Aggregate = "Aggregate",
-    ConsumerAligned = "Consumer-aligned",
-    SourceAligned = "Source-aligned",
-}
-
-/**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * Cover image configuration for the entity.
-     */
-    coverImage?: CoverImage;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
-}
-
-/**
- * Cover image configuration for the entity.
- *
- * Cover image configuration for an entity. This is used to display a banner or header image
- * for entities like Domain, Glossary, Data Product, etc.
- */
-export interface CoverImage {
-    /**
-     * Position of the cover image in CSS background-position format. Supports keywords (top,
-     * center, bottom) or pixel values (e.g., '20px 30px').
-     */
-    position?: string;
-    /**
-     * URL of the cover image.
-     */
-    url?: string;
+    expiryDate: number;
+    tagLabel:   TagLabel;
 }
 
 /**
@@ -435,4 +342,141 @@ export enum TagSource {
 export enum State {
     Confirmed = "Confirmed",
     Suggested = "Suggested",
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
+}
+
+/**
+ * Change that lead to this version of the entity.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
+    /**
+     * Names of fields added during the version changes.
+     */
+    fieldsAdded?: FieldChange[];
+    /**
+     * Fields deleted during the version changes with old value before deleted.
+     */
+    fieldsDeleted?: FieldChange[];
+    /**
+     * Fields modified during the version changes with old and new values.
+     */
+    fieldsUpdated?: FieldChange[];
+    /**
+     * When a change did not result in change, this could be same as the current version.
+     */
+    previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
+}
+
+export interface FieldChange {
+    /**
+     * Name of the entity field that changed.
+     */
+    name?: string;
+    /**
+     * New value of the field. Note that this is a JSON string and use the corresponding field
+     * type to deserialize it.
+     */
+    newValue?: any;
+    /**
+     * Previous value of the field. Note that this is a JSON string and use the corresponding
+     * field type to deserialize it.
+     */
+    oldValue?: any;
+}
+
+/**
+ * Domain type
+ *
+ * Type of a domain
+ */
+export enum DomainType {
+    Aggregate = "Aggregate",
+    ConsumerAligned = "Consumer-aligned",
+    SourceAligned = "Source-aligned",
+}
+
+/**
+ * Votes on the entity.
+ *
+ * This schema defines the Votes for a Data Asset.
+ */
+export interface Votes {
+    /**
+     * List of all the Users who downVoted
+     */
+    downVoters?: EntityReference[];
+    /**
+     * Total down-votes the entity has
+     */
+    downVotes?: number;
+    /**
+     * List of all the Users who upVoted
+     */
+    upVoters?: EntityReference[];
+    /**
+     * Total up-votes the entity has
+     */
+    upVotes?: number;
 }

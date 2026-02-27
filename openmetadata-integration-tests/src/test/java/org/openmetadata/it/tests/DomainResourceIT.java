@@ -20,8 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -442,47 +444,61 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
    * Queries by domain ID to avoid complex FQN queries that can exceed
    * Elasticsearch clause limits.
    */
-  private void verifyDomainInSearch(String expectedFqn, String domainId) throws Exception {
+  private void verifyDomainInSearch(String expectedFqn, String domainId) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Give search a moment to be updated (updates happen during rename but ES needs
-    // a moment)
-    Thread.sleep(500);
+    Awaitility.await("Domain " + domainId + " should appear in search with FQN " + expectedFqn)
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + domainId)
+                      .index("domain_search_index")
+                      .size(1)
+                      .execute();
 
-    // Query search index by ID (simpler query, avoids "too many nested clauses"
-    // error)
-    String searchResponse =
-        client.search().query("id:" + domainId).index("domain_search_index").size(1).execute();
-
-    // Verify the response contains the expected domain with correct FQN
-    assertTrue(
-        searchResponse.contains("\"id\":\"" + domainId + "\""),
-        "Search index should contain domain with ID: " + domainId);
-    assertTrue(
-        searchResponse.contains("\"fullyQualifiedName\":\"" + expectedFqn + "\""),
-        "Search index should contain domain with FQN: " + expectedFqn);
+              assertTrue(
+                  searchResponse.contains("\"id\":\"" + domainId + "\""),
+                  "Search index should contain domain with ID: " + domainId);
+              assertTrue(
+                  searchResponse.contains("\"fullyQualifiedName\":\"" + expectedFqn + "\""),
+                  "Search index should contain domain with FQN: " + expectedFqn);
+            });
   }
 
   /**
    * Verify domain does NOT exist in search index with the given FQN.
    * Searches by partial FQN match to verify old FQN is not in the index.
    */
-  private void verifyDomainNotInSearch(String fqn) throws Exception {
+  private void verifyDomainNotInSearch(String fqn) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Extract just the domain name from the FQN to search by name field (simpler
-    // query)
     String domainName = fqn.contains(".") ? fqn.substring(fqn.lastIndexOf(".") + 1) : fqn;
 
-    // Query search index by name to find any matching domains
-    String searchResponse =
-        client.search().query("name:" + domainName).index("domain_search_index").size(10).execute();
+    Awaitility.await("Old FQN " + fqn + " should disappear from search")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("name:" + domainName)
+                      .index("domain_search_index")
+                      .size(10)
+                      .execute();
 
-    // Verify the response does NOT contain the old FQN
-    // It might contain the renamed domain with a new FQN, but not the old one
-    assertFalse(
-        searchResponse.contains("\"fullyQualifiedName\":\"" + fqn + "\""),
-        "Search index should NOT contain domain with old FQN: " + fqn);
+              assertFalse(
+                  searchResponse.contains("\"fullyQualifiedName\":\"" + fqn + "\""),
+                  "Search index should NOT contain domain with old FQN: " + fqn);
+            });
   }
 
   // ===================================================================
@@ -854,8 +870,22 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     String analyticsV2OldFqn = analyticsV2.getFullyQualifiedName();
     String childOldFqn = child.getFullyQualifiedName();
 
-    // Wait for initial indexing
-    Thread.sleep(2000);
+    Awaitility.await("Wait for initial indexing of child domain")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + child.getId())
+                      .index("domain_search_index")
+                      .size(1)
+                      .execute();
+              return searchResponse.contains("\"id\":\"" + child.getId() + "\"");
+            });
 
     String newAnalyticsName = "insights_" + ns.shortPrefix();
     analytics.setName(newAnalyticsName);
@@ -1033,8 +1063,22 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     String oldAnalyticsProdFqn = analyticsProd.getFullyQualifiedName();
     String oldChildFqn = child.getFullyQualifiedName();
 
-    // Wait for initial indexing
-    Thread.sleep(2000);
+    Awaitility.await("Wait for initial indexing of child domain")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + child.getId())
+                      .index("domain_search_index")
+                      .size(1)
+                      .execute();
+              return searchResponse.contains("\"id\":\"" + child.getId() + "\"");
+            });
 
     // Rename "analytics" to "insights"
     String newAnalyticsName = "insights_" + ns.shortPrefix();
