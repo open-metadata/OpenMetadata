@@ -30,14 +30,20 @@ public interface BulkSink {
   @FunctionalInterface
   interface FailureCallback {
     /**
-     * Called when a document fails to index in ES/OpenSearch.
+     * Called when a document fails to index.
      *
      * @param entityType The type of entity that failed
      * @param entityId The ID of the entity (from document ID), may be null for build failures
      * @param entityFqn The FQN of the entity, may be null if not available
-     * @param errorMessage The error message from ES/OpenSearch
+     * @param errorMessage The error message describing the failure
+     * @param stage The pipeline stage where the failure occurred (PROCESS or SINK)
      */
-    void onFailure(String entityType, String entityId, String entityFqn, String errorMessage);
+    void onFailure(
+        String entityType,
+        String entityId,
+        String entityFqn,
+        String errorMessage,
+        IndexingFailureRecorder.FailureStage stage);
   }
 
   /**

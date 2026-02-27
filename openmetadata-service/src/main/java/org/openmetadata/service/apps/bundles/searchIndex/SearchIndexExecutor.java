@@ -337,9 +337,17 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private void handleSinkFailure(
-      String entityType, String entityId, String entityFqn, String errorMessage) {
+      String entityType,
+      String entityId,
+      String entityFqn,
+      String errorMessage,
+      IndexingFailureRecorder.FailureStage stage) {
     if (failureRecorder != null) {
-      failureRecorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+      if (stage == IndexingFailureRecorder.FailureStage.PROCESS) {
+        failureRecorder.recordProcessFailure(entityType, entityId, entityFqn, errorMessage);
+      } else {
+        failureRecorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+      }
     }
   }
 

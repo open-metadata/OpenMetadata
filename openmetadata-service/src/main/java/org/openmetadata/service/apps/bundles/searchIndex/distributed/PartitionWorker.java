@@ -28,6 +28,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -444,6 +445,15 @@ public class PartitionWorker {
 
     if (statsTracker != null) {
       statsTracker.recordReaderBatch(readSuccessCount, readErrorCount, warningsCount);
+    }
+
+    if (failureRecorder != null && readErrorCount > 0) {
+      for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
+        String entityId =
+            entityError.getEntity() != null ? entityError.getEntity().toString() : null;
+        failureRecorder.recordReaderEntityFailure(
+            entityType, entityId, null, entityError.getMessage());
+      }
     }
 
     Map<String, Object> contextData = createContextData(entityType, statsTracker);

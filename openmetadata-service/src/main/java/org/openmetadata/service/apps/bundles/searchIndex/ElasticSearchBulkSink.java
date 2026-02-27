@@ -276,7 +276,8 @@ public class ElasticSearchBulkSink implements BulkSink {
             entityTypeName,
             entity.getId() != null ? entity.getId().toString() : null,
             entity.getFullyQualifiedName(),
-            e.getMessage());
+            e.getMessage(),
+            IndexingFailureRecorder.FailureStage.PROCESS);
       }
     } catch (Exception e) {
       LOG.error(
@@ -292,7 +293,8 @@ public class ElasticSearchBulkSink implements BulkSink {
             entityTypeName,
             entity.getId() != null ? entity.getId().toString() : null,
             entity.getFullyQualifiedName(),
-            e.getMessage());
+            e.getMessage(),
+            IndexingFailureRecorder.FailureStage.PROCESS);
       }
     }
   }
@@ -334,7 +336,8 @@ public class ElasticSearchBulkSink implements BulkSink {
             entityType,
             entity.getId() != null ? entity.getId().toString() : null,
             null,
-            e.getMessage());
+            e.getMessage(),
+            IndexingFailureRecorder.FailureStage.PROCESS);
       }
     } catch (Exception e) {
       LOG.error(
@@ -349,7 +352,8 @@ public class ElasticSearchBulkSink implements BulkSink {
             entityType,
             entity.getId() != null ? entity.getId().toString() : null,
             null,
-            e.getMessage());
+            e.getMessage(),
+            IndexingFailureRecorder.FailureStage.PROCESS);
       }
     }
   }
@@ -785,7 +789,12 @@ public class ElasticSearchBulkSink implements BulkSink {
               tracker.recordSink(StatsResult.FAILED);
             }
             if (failureCallback != null) {
-              failureCallback.onFailure(entityType, docId, null, error.getMessage());
+              failureCallback.onFailure(
+                  entityType,
+                  docId,
+                  null,
+                  error.getMessage(),
+                  IndexingFailureRecorder.FailureStage.SINK);
             }
           }
         }
@@ -818,7 +827,8 @@ public class ElasticSearchBulkSink implements BulkSink {
             tracker.recordSink(StatsResult.FAILED);
           }
           if (failureCallback != null) {
-            failureCallback.onFailure(entityType, docId, null, failureMessage);
+            failureCallback.onFailure(
+                entityType, docId, null, failureMessage, IndexingFailureRecorder.FailureStage.SINK);
           }
         } else {
           // Clean up on success

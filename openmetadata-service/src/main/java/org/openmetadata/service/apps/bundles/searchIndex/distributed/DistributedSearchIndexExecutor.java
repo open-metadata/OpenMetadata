@@ -378,9 +378,13 @@ public class DistributedSearchIndexExecutor {
 
     // Set up failure callback on the sink to record sink failures
     bulkSink.setFailureCallback(
-        (entityType, entityId, entityFqn, errorMessage) -> {
+        (entityType, entityId, entityFqn, errorMessage, stage) -> {
           if (failureRecorder != null) {
-            failureRecorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+            if (stage == IndexingFailureRecorder.FailureStage.PROCESS) {
+              failureRecorder.recordProcessFailure(entityType, entityId, entityFqn, errorMessage);
+            } else {
+              failureRecorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+            }
           }
         });
 
