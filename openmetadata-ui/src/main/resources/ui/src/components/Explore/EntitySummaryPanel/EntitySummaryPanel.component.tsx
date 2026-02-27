@@ -296,6 +296,12 @@ export default function EntitySummaryPanel({
       const fetchFn = entityFetchMap[entityType];
       if (fetchFn) {
         entityPromise = fetchFn(fqn);
+      } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+        entityPromise = entityUtilClassBase.getEntityByFqn(
+          entityType,
+          fqn,
+          'owners,domains,tags'
+        );
       } else {
         entityPromise = entityUtilClassBase.getEntityByFqn(
           entityType,
