@@ -33,7 +33,6 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     ColumnProfilerConfig,
     DataType,
-    Histogram,
     Table,
     TableProfile,
     TableProfilerConfig,
@@ -254,9 +253,6 @@ class ProfilerTest(TestCase):
             thirdQuartile=31.5,
             interQuartileRange=1.0,
             nonParametricSkew=0.0,
-            histogram=Histogram(
-                boundaries=["30.000 to 31.260", "31.260 and up"], frequencies=[3, 1]
-            ),
         )
 
     def test_cardinality_distribution(self):

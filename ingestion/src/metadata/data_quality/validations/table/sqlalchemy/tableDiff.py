@@ -260,8 +260,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             # Also exclude key columns since they are handled separately and should not be in extra_columns
             common_columns = list(
                 (
-                    set(column_diff.schemaTable1.schema.keys())
-                    & set(column_diff.schemaTable2.schema.keys())
+                    set(column_diff.schemaTable1.schema_.keys())
+                    & set(column_diff.schemaTable2.schema_.keys())
                 )
                 - set(column_diff.changed)
                 - set(self.runtime_params.table1.key_columns or [])
