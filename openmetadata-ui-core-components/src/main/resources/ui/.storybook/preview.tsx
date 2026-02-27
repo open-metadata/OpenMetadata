@@ -1,5 +1,6 @@
 import type { Preview, StoryFn } from "@storybook/react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
+import "../src/styles/globals.css";
 
 const defaultTheme = createTheme();
 
