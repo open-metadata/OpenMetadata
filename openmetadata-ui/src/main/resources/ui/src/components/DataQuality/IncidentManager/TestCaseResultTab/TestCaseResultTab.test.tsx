@@ -240,6 +240,65 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = false;
   });
 
+  it('when useDynamicAssertion is false, dynamic assertion label should not be present and parameters can be present', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = false;
+    mockUseTestCaseStore.testCase.parameterValues = [
+      { name: 'columnCount', value: '10' },
+      { name: 'sqlExpression', value: 'select * from t' },
+    ];
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('parameter-container');
+
+    expect(screen.queryByTestId('dynamic-assertion')).not.toBeInTheDocument();
+    expect(screen.getByText('columnCount:')).toBeInTheDocument();
+    expect(screen.getByText('10')).toBeInTheDocument();
+  });
+
+  it('when useDynamicAssertion is true, dynamic assertion should be present and parameters except compute row count should be absent', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = true;
+    mockUseTestCaseStore.testCase.parameterValues = [
+      { name: 'columnCount', value: '10' },
+      { name: 'sqlExpression', value: 'select * from t' },
+    ];
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('parameter-container');
+
+    expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
+    expect(screen.queryByText('columnCount:')).not.toBeInTheDocument();
+    expect(screen.queryByText('10')).not.toBeInTheDocument();
+  });
+
+  it('when useDynamicAssertion is true, compute row count can still be present', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = true;
+    mockUseTestCaseStore.testCase.computePassedFailedRowCount = true;
+    mockUseTestCaseStore.testCase.parameterValues = [
+      { name: 'columnCount', value: '10' },
+      { name: 'sqlExpression', value: 'select * from t' },
+    ];
+    mockGetTestDefinitionById.mockResolvedValue({
+      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+      name: 'tableColumnCountToEqual',
+      supportsRowLevelPassedFailed: true,
+    });
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('parameter-container');
+
+    expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
+    expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
+    expect(screen.queryByText('columnCount:')).not.toBeInTheDocument();
+
+    mockUseTestCaseStore.testCase.useDynamicAssertion = false;
+    mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
+    mockUseTestCaseStore.testCase.parameterValues =
+      mockTestCaseData.parameterValues;
+  });
+
   it('Should show edit button, for useDynamicAssertion', async () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = true;
     render(<TestCaseResultTab />);
