@@ -252,6 +252,7 @@ import json
 import sys
 import time
 import random
+import uuid
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
@@ -308,7 +309,12 @@ def make_request(url, data=None, method="GET", headers=None, retries=3):
         req = urllib.request.Request(url, data=encoded, headers=headers, method=method)
         try:
             with urllib.request.urlopen(req, timeout=60) as resp:
-                return resp.status, json.loads(resp.read().decode("utf-8"))
+                body = resp.read().decode("utf-8")
+                try:
+                    parsed = json.loads(body) if body.strip() else {}
+                except json.JSONDecodeError:
+                    parsed = body
+                return resp.status, parsed
         except urllib.error.HTTPError as e:
             try:
                 body = e.read().decode("utf-8")
@@ -611,7 +617,8 @@ if NUM_API_COLLECTIONS > 0 or NUM_API_ENDPOINTS > 0:
         "name": "test-api-service",
         "serviceType": "Rest",
         "connection": {"config": {"type": "Rest",
-                                  "openAPISchemaURL": "http://api.example.com/openapi.json"}},
+                                  "openAPISchemaConnection": {
+                                      "openAPISchemaURL": "http://api.example.com/openapi.json"}}},
     })
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -825,22 +832,21 @@ if search_service_fqn and NUM_SEARCH_INDEXES > 0:
     create_entity_batch("searchIndexes", NUM_SEARCH_INDEXES, search_idx_payload)
 
 # ── Queries ──────────────────────────────────────────────────────────────────
-if NUM_QUERIES > 0:
+if NUM_QUERIES > 0 and db_service_fqn:
     def query_payload(idx):
         return {
             "__url__": f"{SERVER_URL}/api/v1/queries",
-            "__method__": "POST",
             "name": f"query_{idx:06d}",
             "query": f"SELECT * FROM table_{idx % max(1, NUM_TABLES):07d} WHERE id = {idx}",
+            "service": db_service_fqn,
             "description": f"Test query {idx}",
-            "duration": random.uniform(0.1, 10.0),
         }
 
     create_entity_batch("queries", NUM_QUERIES, query_payload)
 
 # ── Dashboard Data Models ────────────────────────────────────────────────────
 if dashboard_service_fqn and NUM_DASHBOARD_DATA_MODELS > 0:
-    dm_types = ["BigQuery", "Looker"]
+    dm_types = ["MetabaseDataModel", "SupersetDataModel", "TableauDataModel"]
 
     def data_model_payload(idx):
         return {
@@ -882,7 +888,7 @@ if NUM_DATA_PRODUCTS > 0 and domain_fqns:
         return {
             "__url__": f"{SERVER_URL}/api/v1/dataProducts",
             "name": f"data_product_{idx:04d}",
-            "domain": domain_fqns[idx % len(domain_fqns)],
+            "domains": [domain_fqns[idx % len(domain_fqns)]],
             "displayName": f"Test Data Product {idx}",
             "description": f"Test data product {idx}",
         }
@@ -916,26 +922,32 @@ if NUM_TEST_SUITES > 0:
                         collect_fn=collect_test_suite)
 
 if NUM_TEST_CASES > 0 and collected_table_ids:
-    test_definitions = [
-        "columnValuesToBeBetween",
-        "columnValuesToBeNotNull",
-        "columnValuesToBeUnique",
-        "tableRowCountToEqual",
-        "tableColumnCountToEqual",
+    table_level_defs = [
+        ("tableRowCountToEqual", [{"name": "value", "value": "100"}]),
+        ("tableColumnCountToEqual", [{"name": "columnCount", "value": "4"}]),
     ]
+    column_level_defs = [
+        ("columnValuesToBeNotNull", []),
+        ("columnValuesToBeUnique", []),
+    ]
+    column_names = ["id", "name", "created_at", "data"]
 
     def test_case_payload(idx):
         table_id, table_fqn = collected_table_ids[idx % len(collected_table_ids)]
-        payload = {
+        if idx % 3 == 0:
+            defn, params = table_level_defs[idx % len(table_level_defs)]
+            entity_link = f"<#E::table::{table_fqn}>"
+        else:
+            defn, params = column_level_defs[idx % len(column_level_defs)]
+            col = column_names[idx % len(column_names)]
+            entity_link = f"<#E::table::{table_fqn}::columns::{col}>"
+        return {
             "__url__": f"{SERVER_URL}/api/v1/dataQuality/testCases",
             "name": f"testCase_{idx:06d}",
-            "entityLink": f"<#E::table::{table_fqn}>",
-            "testDefinition": test_definitions[idx % len(test_definitions)],
-            "testSuite": test_suite_fqns[idx % len(test_suite_fqns)] if test_suite_fqns else f"testSuite_0000",
-            "description": f"Test case {idx}",
-            "parameterValues": [],
+            "entityLink": entity_link,
+            "testDefinition": defn,
+            "parameterValues": params,
         }
-        return payload
 
     def collect_test_case(idx, resp):
         with collect_lock:
@@ -1026,15 +1038,15 @@ if NUM_TEST_CASE_RESULTS > 0 and collected_test_case_fqns:
 
     def tc_result_payload(idx):
         fqn = collected_test_case_fqns[idx % len(collected_test_case_fqns)]
+        encoded_fqn = urllib.request.quote(fqn, safe="")
         ts = base_ts - (idx * 3600000)  # 1 hour apart
         return {
-            "__url__": f"{SERVER_URL}/api/v1/dataQuality/testCases/testCaseResults",
+            "__url__": f"{SERVER_URL}/api/v1/dataQuality/testCases/testCaseResults/{encoded_fqn}",
             "__method__": "POST",
-            "testCaseFQN": fqn,
-            "result": f"Test result {idx}",
-            "testCaseStatus": statuses[idx % len(statuses)],
             "timestamp": ts,
-            "testResultValue": [{"name": "value", "value": str(random.uniform(0, 100))}],
+            "testCaseStatus": statuses[idx % len(statuses)],
+            "result": f"Test result {idx}",
+            "testResultValue": [{"name": "value", "value": str(round(random.uniform(0, 100), 2))}],
         }
 
     create_entity_batch("testCaseResults", NUM_TEST_CASE_RESULTS, tc_result_payload,
@@ -1050,19 +1062,23 @@ if NUM_ENTITY_REPORT_DATA > 0:
     def entity_report_payload(idx):
         ts = base_ts - (idx * 86400000)  # 1 day apart
         e_type = entity_types_for_report[idx % len(entity_types_for_report)]
+        entity_count = random.randint(1, 1000)
+        has_owner = random.randint(0, entity_count)
         return {
             "__url__": f"{SERVER_URL}/api/v1/analytics/dataInsights/data",
             "__method__": "POST",
+            "timestamp": ts,
             "reportDataType": "entityReportData",
-            "data": [{
-                "timestamp": ts,
+            "data": {
                 "entityType": e_type,
                 "entityTier": f"Tier.Tier{(idx % 5) + 1}",
+                "serviceName": "test-service-distributed",
                 "completedDescriptions": random.randint(0, 100),
                 "missingDescriptions": random.randint(0, 50),
-                "hasOwner": random.random() > 0.3,
-                "entityCount": random.randint(1, 1000),
-            }],
+                "hasOwner": has_owner,
+                "missingOwner": entity_count - has_owner,
+                "entityCount": entity_count,
+            },
         }
 
     create_entity_batch("entityReportData", NUM_ENTITY_REPORT_DATA, entity_report_payload,
@@ -1075,14 +1091,15 @@ if NUM_WEB_ANALYTIC_VIEWS > 0:
         return {
             "__url__": f"{SERVER_URL}/api/v1/analytics/dataInsights/data",
             "__method__": "POST",
+            "timestamp": ts,
             "reportDataType": "webAnalyticEntityViewReportData",
-            "data": [{
-                "timestamp": ts,
+            "data": {
                 "entityType": "table",
                 "entityFqn": f"test-service-distributed.test_db_0000.public.table_{idx % max(1, NUM_TABLES):07d}",
+                "entityHref": f"{SERVER_URL}/table/test-service-distributed.test_db_0000.public.table_{idx % max(1, NUM_TABLES):07d}",
+                "owner": f"user_{idx % 50}",
                 "views": random.randint(1, 500),
-                "sessionId": f"session_{idx:06d}",
-            }],
+            },
         }
 
     create_entity_batch("webAnalyticViews", NUM_WEB_ANALYTIC_VIEWS, web_view_payload,
@@ -1095,15 +1112,17 @@ if NUM_WEB_ANALYTIC_ACTIVITY > 0:
         return {
             "__url__": f"{SERVER_URL}/api/v1/analytics/dataInsights/data",
             "__method__": "POST",
+            "timestamp": ts,
             "reportDataType": "webAnalyticUserActivityReportData",
-            "data": [{
-                "timestamp": ts,
+            "data": {
                 "userName": f"testuser_{idx % max(1, NUM_USERS):05d}",
-                "pageViews": random.randint(1, 100),
-                "sessions": random.randint(1, 20),
-                "sessionDuration": random.uniform(10, 3600),
+                "userId": str(uuid.uuid4()),
+                "team": "test-team",
+                "totalSessions": random.randint(1, 20),
+                "totalSessionDuration": random.randint(10, 3600),
+                "totalPageView": random.randint(1, 100),
                 "lastSession": ts,
-            }],
+            },
         }
 
     create_entity_batch("webAnalyticActivity", NUM_WEB_ANALYTIC_ACTIVITY,
@@ -1113,19 +1132,24 @@ if NUM_WEB_ANALYTIC_ACTIVITY > 0:
 if NUM_RAW_COST_ANALYSIS > 0:
     def raw_cost_payload(idx):
         ts = base_ts - (idx * 86400000)
+        if collected_table_ids:
+            table_id, table_fqn = collected_table_ids[idx % len(collected_table_ids)]
+        else:
+            table_id = str(uuid.uuid4())
+            table_fqn = f"test-service-distributed.test_db_0000.public.table_{idx % max(1, NUM_TABLES):07d}"
         return {
             "__url__": f"{SERVER_URL}/api/v1/analytics/dataInsights/data",
             "__method__": "POST",
+            "timestamp": ts,
             "reportDataType": "rawCostAnalysisReportData",
-            "data": [{
-                "timestamp": ts,
+            "data": {
                 "entity": {
-                    "fullyQualifiedName": f"test-service-distributed.test_db_0000.public.table_{idx % max(1, NUM_TABLES):07d}",
-                    "entityType": "table",
+                    "id": table_id,
+                    "type": "table",
+                    "fullyQualifiedName": table_fqn,
                 },
-                "totalCost": round(random.uniform(0.01, 100.0), 2),
-                "count": random.randint(1, 10000),
-            }],
+                "sizeInByte": round(random.uniform(100.0, 100000.0), 2),
+            },
         }
 
     create_entity_batch("rawCostAnalysis", NUM_RAW_COST_ANALYSIS, raw_cost_payload,
@@ -1138,16 +1162,35 @@ if NUM_AGG_COST_ANALYSIS > 0:
         return {
             "__url__": f"{SERVER_URL}/api/v1/analytics/dataInsights/data",
             "__method__": "POST",
+            "timestamp": ts,
             "reportDataType": "aggregatedCostAnalysisReportData",
-            "data": [{
-                "timestamp": ts,
+            "data": {
                 "entityType": "table",
                 "serviceName": "test-service-distributed",
-                "totalCost": round(random.uniform(1.0, 1000.0), 2),
+                "serviceType": "BigQuery",
+                "totalSize": round(random.uniform(1000.0, 1000000.0), 2),
                 "totalCount": random.randint(100, 100000),
-                "unusedDataCount": random.randint(0, 1000),
-                "frequentlyUsedDataCount": random.randint(0, 5000),
-            }],
+                "unusedDataAssets": {
+                    "count": {"threeDays": random.randint(1, 50), "sevenDays": random.randint(1, 40),
+                              "fourteenDays": random.randint(1, 30), "thirtyDays": random.randint(1, 20),
+                              "sixtyDays": random.randint(1, 10)},
+                    "size": {"threeDays": random.randint(100, 10000), "sevenDays": random.randint(100, 9000),
+                             "fourteenDays": random.randint(100, 8000), "thirtyDays": random.randint(100, 7000),
+                             "sixtyDays": random.randint(100, 6000)},
+                    "totalSize": random.randint(1000, 50000),
+                    "totalCount": random.randint(1, 50),
+                },
+                "frequentlyUsedDataAssets": {
+                    "count": {"threeDays": random.randint(1, 10), "sevenDays": random.randint(1, 20),
+                              "fourteenDays": random.randint(1, 30), "thirtyDays": random.randint(1, 40),
+                              "sixtyDays": random.randint(1, 50)},
+                    "size": {"threeDays": random.randint(1000, 50000), "sevenDays": random.randint(1000, 60000),
+                             "fourteenDays": random.randint(1000, 70000), "thirtyDays": random.randint(1000, 80000),
+                             "sixtyDays": random.randint(1000, 90000)},
+                    "totalSize": random.randint(1000, 100000),
+                    "totalCount": random.randint(1, 50),
+                },
+            },
         }
 
     create_entity_batch("aggCostAnalysis", NUM_AGG_COST_ANALYSIS, agg_cost_payload,
