@@ -304,13 +304,6 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
-  protected void preDelete(Metric entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkDeleteAllowedByTaskAssignee(entity, METRIC, deletedBy);
-    }
-  }
-
-  @Override
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     return super.getTaskWorkflow(threadContext);

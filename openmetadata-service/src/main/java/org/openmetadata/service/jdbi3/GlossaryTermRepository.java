@@ -813,13 +813,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  protected void preDelete(GlossaryTerm entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkDeleteAllowedByTaskAssignee(entity, GLOSSARY_TERM, deletedBy);
-    }
-  }
-
-  @Override
   protected void postDelete(GlossaryTerm entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     // Cleanup all the tag labels using this glossary term

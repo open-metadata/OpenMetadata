@@ -1711,10 +1711,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               + "and can only be removed by removing the entity from the Data Product or by creating "
               + "an entity-specific contract that overrides the inherited one.");
     }
-
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkDeleteAllowedByTaskAssignee(entity, DATA_CONTRACT, deletedBy);
-    }
   }
 
   public static void checkUpdatedByReviewer(DataContract dataContract, String updatedBy) {

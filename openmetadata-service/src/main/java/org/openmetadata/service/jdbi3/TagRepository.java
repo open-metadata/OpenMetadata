@@ -926,13 +926,6 @@ public class TagRepository extends EntityRepository<Tag> {
     }
   }
 
-  @Override
-  protected void preDelete(Tag entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkDeleteAllowedByTaskAssignee(entity, TAG, deletedBy);
-    }
-  }
-
   private void closeApprovalTask(Tag entity, String comment) {
     MessageParser.EntityLink about =
         new MessageParser.EntityLink(TAG, entity.getFullyQualifiedName());

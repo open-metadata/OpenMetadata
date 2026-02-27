@@ -1290,13 +1290,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  @Override
-  protected void preDelete(TestCase entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkDeleteAllowedByTaskAssignee(entity, TEST_CASE, deletedBy);
-    }
-  }
-
   private void closeApprovalTask(TestCase entity, String comment) {
     MessageParser.EntityLink about =
         new MessageParser.EntityLink(TEST_CASE, entity.getFullyQualifiedName());

@@ -193,7 +193,6 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Votes;
@@ -227,7 +226,6 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.rdf.RdfUpdater;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.rules.RuleEngine;
@@ -6806,33 +6804,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!isAssignee) {
       throw new AuthorizationException(notTaskAssignee(user));
     }
-  }
-
-  /**
-   * Called from entity-specific {@code preDelete} when the entity is in {@code IN_REVIEW} status.
-   * Verifies that:
-   *
-   * <ol>
-   *   <li>an open approval task exists for the entity, AND</li>
-   *   <li>the person requesting the deletion is an assignee of that task.</li>
-   * </ol>
-   *
-   * If no open task exists the deletion is allowed (workflow may not have started yet).
-   */
-  protected static void checkDeleteAllowedByTaskAssignee(
-      EntityInterface entity, String entityType, String deletedBy) {
-    MessageParser.EntityLink about =
-        new MessageParser.EntityLink(entityType, entity.getFullyQualifiedName());
-    FeedRepository feedRepository = Entity.getFeedRepository();
-    Thread openTask;
-    try {
-      openTask = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-    } catch (EntityNotFoundException e) {
-      // No open task – allow the deletion
-      return;
-    }
-    // Task exists: only the assignee may delete
-    checkUpdatedByTaskAssignee(openTask, deletedBy);
   }
 
   // Validate if a given column exists in the table

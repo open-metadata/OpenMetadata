@@ -973,13 +973,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return super.getTaskWorkflow(threadContext);
   }
 
-  @Override
-  protected void preDelete(DataProduct entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkDeleteAllowedByTaskAssignee(entity, DATA_PRODUCT, deletedBy);
-    }
-  }
-
   public static void checkUpdatedByReviewer(DataProduct dataProduct, String updatedBy) {
     // Only list of allowed reviewers can change the status from DRAFT to APPROVED
     List<EntityReference> reviewers = dataProduct.getReviewers();
