@@ -158,6 +158,30 @@ class InputSanitizerTest {
   }
 
   @Test
+  void testSanitize_EntityLinkXssSmuggling_ImgOnerror() {
+    String input = "<#E::x::\"<img src=x onerror=alert(1)>";
+    String sanitized = InputSanitizer.sanitize(input);
+    assertFalse(sanitized.contains("onerror"));
+    assertFalse(sanitized.contains("alert"));
+  }
+
+  @Test
+  void testSanitize_EntityLinkXssSmuggling_ScriptTag() {
+    String input = "<#E::x::<script>alert('xss')</script>>";
+    String sanitized = InputSanitizer.sanitize(input);
+    assertFalse(sanitized.contains("<script>"));
+    assertFalse(sanitized.contains("alert"));
+  }
+
+  @Test
+  void testSanitize_EntityLinkXssSmuggling_SvgOnload() {
+    String input = "<#E::x::<svg onload=alert(1)>";
+    String sanitized = InputSanitizer.sanitize(input);
+    assertFalse(sanitized.contains("onload"));
+    assertFalse(sanitized.contains("<svg"));
+  }
+
+  @Test
   void testSanitize_BlockDataProtocol() {
     String input = "<img src=\"data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9YWxlcnQoMSk+\">";
     String sanitized = InputSanitizer.sanitize(input);

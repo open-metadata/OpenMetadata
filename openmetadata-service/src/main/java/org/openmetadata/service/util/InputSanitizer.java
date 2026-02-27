@@ -29,7 +29,8 @@ import org.owasp.html.PolicyFactory;
 @UtilityClass
 public class InputSanitizer {
 
-  private static final Pattern ENTITY_LINK_PATTERN = Pattern.compile("<#E::[^>]+>");
+  private static final Pattern ENTITY_LINK_PATTERN =
+      Pattern.compile("<#E::[a-zA-Z0-9_.:\\-/]+>");
   private static final String ENTITY_LINK_PLACEHOLDER = "__OM_ENTITY_LINK_%d__";
 
   private static final PolicyFactory CONTENT_POLICY =
