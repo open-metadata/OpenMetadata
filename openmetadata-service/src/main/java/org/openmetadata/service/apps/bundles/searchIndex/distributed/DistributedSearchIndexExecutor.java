@@ -139,7 +139,7 @@ public class DistributedSearchIndexExecutor {
 
   public DistributedSearchIndexExecutor(CollectionDAO collectionDAO, int partitionSize) {
     this.collectionDAO = collectionDAO;
-    PartitionCalculator calculator = new PartitionCalculator(partitionSize);
+    PartitionCalculator calculator = new PartitionCalculator(partitionSize, MAX_WORKER_THREADS);
     this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO, calculator);
     this.recoveryManager = new JobRecoveryManager(collectionDAO, partitionSize);
     this.serverId = ServerIdentityResolver.getInstance().getServerId();

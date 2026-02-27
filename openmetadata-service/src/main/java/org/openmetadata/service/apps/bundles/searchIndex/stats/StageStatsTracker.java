@@ -136,6 +136,24 @@ public class StageStatsTracker {
     return pendingSinkOps.get();
   }
 
+  /**
+   * Reconcile any remaining pending sink operations by recording them as successful. This should
+   * only be called after the bulk processor has been flushed — at that point, submitted records are
+   * either written or would have been reported as failures through the error handler. Pending ops
+   * that remain are callbacks that didn't fire in time, not actual write failures.
+   */
+  public void reconcilePendingSinkOps() {
+    long remaining = pendingSinkOps.getAndSet(0);
+    if (remaining > 0) {
+      sink.add((int) remaining, 0, 0);
+      LOG.info(
+          "Reconciled {} pending sink operations as successful for job {} entity {}",
+          remaining,
+          jobId,
+          entityType);
+    }
+  }
+
   public void recordVector(StatsResult result) {
     vector.record(result);
     checkFlush();

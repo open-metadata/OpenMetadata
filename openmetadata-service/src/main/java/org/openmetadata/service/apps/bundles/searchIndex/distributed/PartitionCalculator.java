@@ -94,13 +94,19 @@ public class PartitionCalculator {
           "aggregatedCostAnalysisReportData");
 
   private final int partitionSize;
+  private final int minPartitionsPerEntity;
 
   public PartitionCalculator() {
-    this(DEFAULT_PARTITION_SIZE);
+    this(DEFAULT_PARTITION_SIZE, 1);
   }
 
   public PartitionCalculator(int partitionSize) {
+    this(partitionSize, 1);
+  }
+
+  public PartitionCalculator(int partitionSize, int minPartitionsPerEntity) {
     this.partitionSize = Math.clamp(partitionSize, MIN_PARTITION_SIZE, MAX_PARTITION_SIZE);
+    this.minPartitionsPerEntity = Math.max(1, minPartitionsPerEntity);
   }
 
   /**
@@ -171,6 +177,13 @@ public class PartitionCalculator {
     // Calculate partition count with overflow protection
     long numPartitionsLong =
         (totalCount + adjustedPartitionSizeLong - 1) / adjustedPartitionSizeLong;
+
+    // Ensure minimum partitions so all workers stay busy (e.g. testCaseResult with
+    // only 4 partitions leaves 6 of 10 workers idle for minutes)
+    if (numPartitionsLong < minPartitionsPerEntity && totalCount >= minPartitionsPerEntity) {
+      numPartitionsLong = minPartitionsPerEntity;
+      adjustedPartitionSizeLong = (totalCount + numPartitionsLong - 1) / numPartitionsLong;
+    }
 
     // Enforce per-entity-type limit and adjust partition size if needed
     if (numPartitionsLong > MAX_PARTITIONS_PER_ENTITY_TYPE) {
