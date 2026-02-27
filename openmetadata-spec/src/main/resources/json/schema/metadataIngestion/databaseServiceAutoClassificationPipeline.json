@@ -75,7 +75,7 @@
       "title": "Sample Data Rows Count"
     },
     "classificationLanguage": {
-      "description": "Language to use for auto classification recognizers. Only recognizers that support this language will be used.",
+      "description": "Language to use for auto classification recognizers. Use 'any' to run all recognizers regardless of their configured language. For specific languages, only recognizers that support that language will be used.",
       "$ref": "../type/classificationLanguages.json",
       "default": "en",
       "title": "Classification Language"

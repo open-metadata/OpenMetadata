@@ -705,8 +705,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "getCsvDocumentation",
       summary = "Get CSV documentation for team import/export")
-  public String getCsvDocumentation(
-      @Context SecurityContext securityContext, @PathParam("name") String name) {
+  public String getCsvDocumentation(@Context SecurityContext securityContext) {
     return JsonUtils.pojoToJson(TeamCsv.DOCUMENTATION);
   }
 

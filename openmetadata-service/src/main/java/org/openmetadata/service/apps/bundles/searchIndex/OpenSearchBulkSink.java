@@ -62,6 +62,10 @@ public class OpenSearchBulkSink implements BulkSink {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
+  private static final int MAX_CONCURRENT_DOC_BUILDS = 8;
+  private static final Semaphore DOC_BUILD_SEMAPHORE = new Semaphore(MAX_CONCURRENT_DOC_BUILDS);
+  private static final ExecutorService DOC_BUILD_EXECUTOR =
+      Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("doc-build-", 0).factory());
 
   /** Callback interface for reporting sink statistics per entity type. */
   public interface SinkStatsCallback {
@@ -189,9 +193,22 @@ public class OpenSearchBulkSink implements BulkSink {
       // Check if these are time series entities
       if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
         List<EntityTimeSeriesInterface> tsEntities = (List<EntityTimeSeriesInterface>) entities;
-        for (EntityTimeSeriesInterface entity : tsEntities) {
-          addTimeSeriesEntity(entity, indexName, entityType, tracker);
-        }
+        List<CompletableFuture<Void>> futures =
+            tsEntities.stream()
+                .map(
+                    entity ->
+                        CompletableFuture.runAsync(
+                            () -> {
+                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
+                              try {
+                                addTimeSeriesEntity(entity, indexName, entityType, tracker);
+                              } finally {
+                                DOC_BUILD_SEMAPHORE.release();
+                              }
+                            },
+                            DOC_BUILD_EXECUTOR))
+                .toList();
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
         ReindexContext reindexContext =
@@ -199,15 +216,29 @@ public class OpenSearchBulkSink implements BulkSink {
                 ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
                 : null;
 
-        // Add entities to search index
-        for (EntityInterface entity : entityInterfaces) {
-          addEntity(entity, indexName, recreateIndex, reindexContext, tracker);
-        }
+        // Add entities to search index in parallel
+        List<CompletableFuture<Void>> futures =
+            entityInterfaces.stream()
+                .map(
+                    entity ->
+                        CompletableFuture.runAsync(
+                            () -> {
+                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
+                              try {
+                                addEntity(
+                                    entity, indexName, recreateIndex, reindexContext, tracker);
+                              } finally {
+                                DOC_BUILD_SEMAPHORE.release();
+                              }
+                            },
+                            DOC_BUILD_EXECUTOR))
+                .toList();
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
 
         // Process vector embeddings in batch (no-op in base class)
         if (embeddingsEnabled) {
           addEntitiesToVectorIndexBatch(
-              bulkProcessor, entityInterfaces, recreateIndex, reindexContext);
+              bulkProcessor, entityInterfaces, recreateIndex, reindexContext, tracker);
         }
       }
     } catch (Exception e) {
@@ -499,7 +530,8 @@ public class OpenSearchBulkSink implements BulkSink {
       CustomBulkProcessor bulkProcessor,
       List<EntityInterface> entities,
       boolean recreateIndex,
-      ReindexContext reindexContext) {
+      ReindexContext reindexContext,
+      StageStatsTracker tracker) {
     if (entities.isEmpty()) {
       return;
     }
@@ -546,9 +578,11 @@ public class OpenSearchBulkSink implements BulkSink {
 
       if (existingFp != null && existingFp.equals(currentFp) && srcIdx != null) {
         submitVectorTask(
-            () -> processMigration(vectorService, srcIdx, tgtIdx, parentId, currentFp, entity));
+            () ->
+                processMigration(
+                    vectorService, srcIdx, tgtIdx, parentId, currentFp, entity, tracker));
       } else {
-        submitVectorTask(() -> processEmbedding(vectorService, entity, tgtIdx));
+        submitVectorTask(() -> processEmbedding(vectorService, entity, tgtIdx, tracker));
       }
     }
   }
@@ -559,30 +593,43 @@ public class OpenSearchBulkSink implements BulkSink {
       String targetIndex,
       String parentId,
       String fingerprint,
-      EntityInterface entity) {
+      EntityInterface entity,
+      StageStatsTracker tracker) {
     try {
       if (vectorService.copyExistingVectorDocuments(
           sourceIndex, targetIndex, parentId, fingerprint)) {
         vectorSuccess.incrementAndGet();
+        if (tracker != null) {
+          tracker.recordVector(StatsResult.SUCCESS);
+        }
       } else {
-        processEmbedding(vectorService, entity, targetIndex);
+        processEmbedding(vectorService, entity, targetIndex, tracker);
       }
     } catch (Exception e) {
       LOG.warn(
           "Vector migration failed for parent_id={}, falling back to recomputation: {}",
           parentId,
           e.getMessage());
-      processEmbedding(vectorService, entity, targetIndex);
+      processEmbedding(vectorService, entity, targetIndex, tracker);
     }
   }
 
   private void processEmbedding(
-      OpenSearchVectorService vectorService, EntityInterface entity, String targetIndex) {
+      OpenSearchVectorService vectorService,
+      EntityInterface entity,
+      String targetIndex,
+      StageStatsTracker tracker) {
     try {
       vectorService.updateVectorEmbeddings(entity, targetIndex);
       vectorSuccess.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordVector(StatsResult.SUCCESS);
+      }
     } catch (Exception e) {
       vectorFailed.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordVector(StatsResult.FAILED);
+      }
       LOG.error("Vector embedding failed for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
   }

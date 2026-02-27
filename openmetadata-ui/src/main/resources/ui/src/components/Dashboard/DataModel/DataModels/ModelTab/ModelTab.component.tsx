@@ -467,7 +467,7 @@ const ModelTab = () => {
         }}
         pagination={false}
         rowClassName={getRowClassName}
-        rowKey="name"
+        rowKey="fullyQualifiedName"
         scroll={{ x: 1200 }}
         searchProps={searchProps}
         size="small"

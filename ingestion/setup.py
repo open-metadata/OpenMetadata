@@ -145,6 +145,7 @@ base_requirements = {
     "azure-keyvault-secrets",  # Azure Key Vault SM
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",  # LineageParser
+    "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
     "google-cloud-secret-manager==2.24.0",
@@ -194,7 +195,6 @@ plugins: Dict[str, Set[str]] = {
     "azure-sso": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
     "bigquery": {
-        "cachetools",
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
@@ -361,7 +361,6 @@ plugins: Dict[str, Set[str]] = {
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
     "sample-data": {
-        "cachetools",
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
@@ -400,6 +399,7 @@ dev = {
     "pre-commit",
     "pycln",
     "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
+    "basedpyright~=1.14",
     # For publishing
     "twine",
     "build",
@@ -428,9 +428,9 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "basedpyright~=1.14",
     "pytest==7.0.1",
     "pytest-cov",
+    "pytest-xdist~=3.5",
     "pytest-order",
     "dirty-equals",
     # install dbt dependency
@@ -474,14 +474,11 @@ test = {
     *plugins["datalake-gcs"],
     *plugins["pgspider"],
     *plugins["clickhouse"],
-    *plugins["mssql"],
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
-    VERSIONS["pyiceberg"],
-    VERSIONS["pydoris"],
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],

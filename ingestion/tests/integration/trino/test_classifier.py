@@ -4,10 +4,12 @@ from time import sleep
 
 import pytest
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,
 )
+from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
@@ -28,28 +30,36 @@ def _run_classifier_with_retry(
     run_workflow,
     ingestion_config,
     classifier_config,
+    metadata: OpenMetadata,
     max_retries=3,
     delay=30,
 ):
     """Run classifier workflow with retry logic for flaky elasticsearch issues."""
     last_error = None
     logger.info("Running trino metadata ingestion workflow")
-
+    run_workflow(MetadataWorkflow, ingestion_config)
     for attempt in range(max_retries):
-        logger.info(
-            "Trino classification workflow attempt %d of %d",
-            attempt + 1,
-            max_retries,
-        )
+        search_cache.clear()
         try:
-            run_workflow(MetadataWorkflow, ingestion_config)
+            logger.info(
+                "Trino classification workflow attempt %d of %d",
+                attempt + 1,
+                max_retries,
+            )
             run_workflow(AutoClassificationWorkflow, classifier_config)
             return
         except Exception as e:
             last_error = e
 
+            logger.info("Trino classification workflow failed with exception %s", e)
+            logger.info("Recreating indexes")
+            metadata.reindex()
+
             if attempt < max_retries - 1:
-                sleep(delay)
+                while True:
+                    sleep(delay)
+                    if not metadata.is_reindex_app_running():
+                        break
 
     raise last_error
 
@@ -63,16 +73,17 @@ def run_classifier(
     ingestion_config,
     sampling_only_classifier_config,
     create_test_data,
-    request,
 ):
     _run_classifier_with_retry(
         run_workflow,
         ingestion_config,
         sampling_only_classifier_config,
+        int_admin_ometa(),
     )
     return ingestion_config
 
 
+@pytest.mark.flaky(reruns=3, reruns_delay=30)
 @pytest.mark.parametrize(
     "table_name",
     (

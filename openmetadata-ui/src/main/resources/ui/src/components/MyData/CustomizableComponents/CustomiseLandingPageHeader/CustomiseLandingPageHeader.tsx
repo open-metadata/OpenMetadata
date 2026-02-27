@@ -39,7 +39,7 @@ import {
   CustomPrevArrow,
 } from '../../../../utils/CustomizableLandingPageUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getDomainDisplayName } from '../../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
@@ -138,6 +138,11 @@ const CustomiseLandingPageHeader = ({
     [updateActiveDomain, navigate]
   );
 
+  const domainDisplayName = useMemo(
+    () => getDomainDisplayName(activeDomainEntityRef, activeDomain),
+    [activeDomainEntityRef, activeDomain, t]
+  );
+
   const navigateToEntity = (data: {
     entityType: string;
     fullyQualifiedName: string;
@@ -221,9 +226,7 @@ const CustomiseLandingPageHeader = ({
                     width={22}
                   />
                   <Typography.Text className="text-sm font-medium domain-title">
-                    {activeDomainEntityRef
-                      ? getEntityName(activeDomainEntityRef)
-                      : activeDomain}
+                    {domainDisplayName}
                   </Typography.Text>
                   <DropdownIcon
                     className="dropdown-icon"

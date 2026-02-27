@@ -13,7 +13,6 @@
 Integration tests for CockroachTableMetricComputer against a real CockroachDB database.
 """
 
-import sys
 from unittest.mock import Mock
 
 import pytest
@@ -27,10 +26,6 @@ from metadata.profiler.orm.functions.table_metric_computer import (
     CockroachTableMetricComputer,
 )
 from metadata.profiler.processor.runner import QueryRunner
-
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
-
 
 Base = declarative_base()
 
@@ -52,6 +47,10 @@ class NonExistentModel(Base):
 def crdb_engine():
     container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
     with container as container:
+        container.exec(
+            "cockroach sql --insecure -e "
+            "'GRANT SELECT ON TABLE system.table_statistics TO cockroach'"
+        )
         engine = create_engine(container.get_connection_url())
         engine.execute(
             "CREATE TABLE IF NOT EXISTS public.metric_computer_test "
@@ -63,11 +62,10 @@ def crdb_engine():
         )
         engine.execute("ANALYZE metric_computer_test")
         yield engine
-        engine.execute("DROP TABLE IF EXISTS public.metric_computer_test")
         engine.dispose()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def session(crdb_engine):
     session = create_and_bind_session(crdb_engine)
     yield session

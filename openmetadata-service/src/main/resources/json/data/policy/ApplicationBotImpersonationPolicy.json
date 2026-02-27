@@ -1,0 +1,18 @@
+{
+  "name": "ApplicationBotImpersonationPolicy",
+  "displayName": "Application Bot Impersonation Policy",
+  "fullyQualifiedName": "ApplicationBotImpersonationPolicy",
+  "description": "Policy for application Bots that are allowed to impersonate users.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "ApplicationBotImpersonationRule-Allow",
+      "description" : "Allow application bots to impersonate users",
+      "resources" : ["All"],
+      "operations": ["Impersonate"],
+      "effect": "allow"
+    }
+  ]
+}

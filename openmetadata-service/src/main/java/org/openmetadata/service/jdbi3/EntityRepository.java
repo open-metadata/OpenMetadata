@@ -106,6 +106,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URI;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -132,6 +133,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -291,6 +294,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
+
+  private static final ExecutorService FIELD_FETCH_EXECUTOR =
+      Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("field-fetch-", 0).factory());
 
   private static final LoadingCache<String, Integer> COUNT_CACHE =
       CacheBuilder.newBuilder()
@@ -1114,17 +1120,63 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public ResultList<T> listAfterKeyset(
+      ListFilter filter,
+      int limitParam,
+      String after,
+      int cachedTotal,
+      boolean skipErrors,
+      Fields fields) {
+    List<T> entities = new ArrayList<>();
+    List<EntityError> errors = new ArrayList<>();
+    if (limitParam > 0) {
+      Map<String, String> cursorMap =
+          parseCursorMap(after == null || after.isEmpty() ? "" : RestUtil.decodeCursor(after));
+      String afterName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
+      String afterId = cursorMap.get("id");
+      List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
+      boolean hasMoreData = jsons.size() > limitParam;
+      List<String> jsonsToProcess = hasMoreData ? jsons.subList(0, limitParam) : jsons;
+
+      Iterator<Either<T, EntityError>> iterator = serializeJsons(jsonsToProcess, fields, null);
+      while (iterator.hasNext()) {
+        Either<T, EntityError> either = iterator.next();
+        if (either.right().isPresent()) {
+          if (!skipErrors) {
+            throw new RuntimeException(either.right().get().getMessage());
+          } else {
+            errors.add(either.right().get());
+            if (!isEntityNotFoundError(either.right().get())) {
+              LOG.error("[listAfterKeyset] Failed for Entity : {}", either.right().get());
+            } else {
+              LOG.debug(
+                  "[listAfterKeyset] Stale reference detected: {}",
+                  either.right().get().getMessage());
+            }
+          }
+        } else {
+          entities.add(either.left().get());
+        }
+      }
+
+      String afterCursor = null;
+      if (hasMoreData && !entities.isEmpty()) {
+        afterCursor = getCursorValue(entities.get(entities.size() - 1));
+      }
+      return getResultList(entities, errors, null, afterCursor, cachedTotal);
+    } else {
+      return getResultList(entities, errors, null, null, cachedTotal);
+    }
+  }
+
   @SuppressWarnings("unchecked")
   Map<String, String> parseCursorMap(String param) {
-    Map<String, String> cursorMap;
     if (param == null) {
-      cursorMap = Map.of("name", null, "id", null);
+      return Map.of("name", null, "id", null);
     } else if (nullOrEmpty(param)) {
-      cursorMap = Map.of("name", "", "id", "");
-    } else {
-      cursorMap = JsonUtils.readValue(param, Map.class);
+      return Map.of("name", "", "id", "");
     }
-    return cursorMap;
+    return JsonUtils.readValue(param, Map.class);
   }
 
   public ResultList<T> listBefore(
@@ -1162,6 +1214,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Map<String, String> cursorMap =
         Map.of("name", entity.getName(), "id", String.valueOf(entity.getId()));
     return JsonUtils.pojoToJson(cursorMap);
+  }
+
+  public String getCursorAtOffset(ListFilter filter, int offset) {
+    List<String> jsons = dao.listAfter(filter, 1, offset);
+    if (jsons.isEmpty()) {
+      return null;
+    }
+    T entity = JsonUtils.readValue(jsons.get(0), entityClass);
+    return RestUtil.encodeCursor(getCursorValue(entity));
   }
 
   public final T getVersion(UUID id, String version) {
@@ -6678,13 +6739,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public static void validateColumn(Table table, String columnName, Boolean caseSensitive) {
     if (Boolean.FALSE.equals(caseSensitive)) {
       boolean validColumn =
-          table.getColumns().stream().anyMatch(col -> col.getName().equalsIgnoreCase(columnName));
+          table.getColumns().stream()
+              .filter(Objects::nonNull)
+              .anyMatch(col -> col.getName().equalsIgnoreCase(columnName));
       if (!validColumn && !columnName.equalsIgnoreCase("all")) {
         throw new IllegalArgumentException("Invalid column name " + columnName);
       }
     } else {
       boolean validColumn =
-          table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+          table.getColumns().stream()
+              .filter(Objects::nonNull)
+              .anyMatch(col -> col.getName().equals(columnName));
       if (!validColumn && !columnName.equalsIgnoreCase("all")) {
         throw new IllegalArgumentException("Invalid column name " + columnName);
       }
@@ -6692,7 +6757,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void fetchAndSetFields(List<T> entities, Fields fields) {
-    fieldFetchers.values().forEach(fetcher -> fetcher.accept(entities, fields));
+    if (fieldFetchers.size() <= 1) {
+      fieldFetchers.values().forEach(fetcher -> fetcher.accept(entities, fields));
+      return;
+    }
+    List<CompletableFuture<Void>> futures =
+        fieldFetchers.values().stream()
+            .map(
+                fetcher ->
+                    CompletableFuture.runAsync(
+                        () -> fetcher.accept(entities, fields), FIELD_FETCH_EXECUTOR))
+            .toList();
+    CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
   }
 
   private void fetchAndSetOwners(List<T> entities, Fields fields) {
@@ -7945,12 +8021,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
           } catch (Exception e) {
             long entityDuration = System.nanoTime() - entityStartTime;
             entityLatenciesNanos.add(entityDuration);
-            recordEntityMetrics(entityType, entityDuration, 0, false);
-            failedRequests.add(
-                new BulkResponse()
-                    .withRequest(entity.getFullyQualifiedName())
-                    .withStatus(Status.BAD_REQUEST.getStatusCode())
-                    .withMessage(e.getMessage()));
+            if (isDuplicateKeyException(e)) {
+              LOG.debug(
+                  "Entity already exists (duplicate key), treating as success: {}",
+                  entity.getFullyQualifiedName());
+              recordEntityMetrics(entityType, entityDuration, 0, true);
+              successRequests.add(
+                  new BulkResponse()
+                      .withRequest(entity.getFullyQualifiedName())
+                      .withStatus(Status.OK.getStatusCode()));
+            } else {
+              recordEntityMetrics(entityType, entityDuration, 0, false);
+              failedRequests.add(
+                  new BulkResponse()
+                      .withRequest(entity.getFullyQualifiedName())
+                      .withStatus(Status.BAD_REQUEST.getStatusCode())
+                      .withMessage(e.getMessage()));
+            }
           }
         }
       }
@@ -8119,6 +8206,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public BulkOperationResult bulkCreateOrUpdateEntities(
       UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
     return bulkCreateOrUpdateEntitiesSequential(uriInfo, entities, userName, existingByFqn);
+  }
+
+  private static boolean isDuplicateKeyException(Exception e) {
+    Throwable cause = e.getCause();
+    if (cause instanceof SQLException sqlEx) {
+      // MySQL: error code 1062 = ER_DUP_ENTRY
+      // PostgreSQL: SQL state "23505" = unique_violation
+      return sqlEx.getErrorCode() == 1062 || "23505".equals(sqlEx.getSQLState());
+    }
+    return false;
   }
 
   private void recordEntityMetrics(

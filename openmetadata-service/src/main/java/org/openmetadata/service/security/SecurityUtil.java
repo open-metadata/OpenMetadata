@@ -238,6 +238,66 @@ public final class SecurityUtil {
                         + jwtPrincipalClaimsOrder));
   }
 
+  /**
+   * Extracts display name from SSO claims with profile scope.
+   *
+   * <p>This method attempts to extract a user's display name from SSO token claims in the
+   * following priority order:
+   *
+   * <ol>
+   *   <li>Direct 'name' claim (if present)
+   *   <li>Combination of 'given_name' + 'family_name' (if both present)
+   *   <li>Returns null if neither pattern is found
+   * </ol>
+   *
+   * @param claims Map of claims from the SSO token (typically from profile scope)
+   * @return The extracted display name, or null if no suitable claims found
+   */
+  public static String extractDisplayNameFromClaims(Map<String, ?> claims) {
+    if (claims == null || claims.isEmpty()) {
+      return null;
+    }
+
+    // Try direct name claims (name, displayName, displayname)
+    String nameClaim = getClaimOrObject(claims.get("name"));
+    if (!nullOrEmpty(nameClaim)) {
+      return nameClaim.trim();
+    }
+
+    String displayNameClaim = getClaimOrObject(claims.get("displayname"));
+    if (!nullOrEmpty(displayNameClaim)) {
+      return displayNameClaim.trim();
+    }
+
+    // Fall back to combining first + last name variations
+    String givenName = getClaimOrObject(claims.get("given_name"));
+    if (nullOrEmpty(givenName)) {
+      givenName = getClaimOrObject(claims.get("givenname"));
+    }
+    if (nullOrEmpty(givenName)) {
+      givenName = getClaimOrObject(claims.get("firstname"));
+    }
+
+    String familyName = getClaimOrObject(claims.get("family_name"));
+    if (nullOrEmpty(familyName)) {
+      familyName = getClaimOrObject(claims.get("familyname"));
+    }
+    if (nullOrEmpty(familyName)) {
+      familyName = getClaimOrObject(claims.get("lastname"));
+    }
+
+    if (!nullOrEmpty(givenName) && !nullOrEmpty(familyName)) {
+      return (givenName.trim() + " " + familyName.trim()).trim();
+    } else if (!nullOrEmpty(givenName)) {
+      return givenName.trim();
+    } else if (!nullOrEmpty(familyName)) {
+      return familyName.trim();
+    }
+
+    // No suitable display name found
+    return null;
+  }
+
   public static void validatePrincipalClaimsMapping(Map<String, String> mapping) {
     if (!nullOrEmpty(mapping)) {
       String username = mapping.get(USERNAME_CLAIM_KEY);

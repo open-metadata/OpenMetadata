@@ -16,6 +16,8 @@ import uuid
 from unittest import TestCase
 
 import pytest
+from collate_sqllineage.core.models import Location
+from collate_sqllineage.core.models import Table as LineageTable
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.models import Dialect
@@ -334,4 +336,131 @@ class SqlLineageTest(TestCase):
             self.assertIsNone(
                 result,
                 f"Query should be filtered: {query}",
+            )
+
+    # -------------------------------------------------------------------------
+    # Snowflake Stage Lineage Tests
+    # -------------------------------------------------------------------------
+
+    def test_copy_into_stage_from_table_not_filtered(self):
+        """
+        Test that Snowflake COPY INTO @stage FROM table (unload) statements
+        are NOT filtered out, as they provide lineage from tables to stages.
+        """
+        snowflake_unload_queries = [
+            "COPY INTO @my_stage FROM my_table",
+            "COPY INTO @db.schema.stage FROM (SELECT * FROM t)",
+            "copy into @stage/path FROM table1",
+            "COPY INTO @~/ FROM my_table FILE_FORMAT = (TYPE = CSV COMPRESSION = GZIP)",
+            "COPY INTO @~/staged FROM sales_data",
+            "COPY INTO @my_stage/daily/2024/ FROM reporting.public.daily_metrics",
+            "COPY INTO @external_stage/path/ FROM (SELECT col1 FROM src_table WHERE id > 100)",
+        ]
+
+        for query in snowflake_unload_queries:
+            result = LineageParser.clean_raw_query(query)
+            self.assertIsNotNone(
+                result,
+                f"COPY INTO @stage FROM table should NOT be filtered: {query}",
+            )
+
+    def test_stage_lineage_source_as_location_type(self):
+        """
+        Verify that COPY INTO table FROM @stage returns Location as source
+        and Table as target with correct types.
+        """
+        query = "COPY INTO wine_quality FROM @demo FILE_FORMAT = wine_csv_format;"
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser.source_tables), 1)
+        self.assertEqual(len(parser.target_tables), 1)
+        self.assertIsInstance(parser.source_tables[0], Location)
+        self.assertNotIsInstance(parser.source_tables[0], LineageTable)
+
+    def test_stage_lineage_target_as_location_type(self):
+        """
+        Verify that COPY INTO @stage FROM table returns Table as source
+        and Location as target with correct types.
+        """
+        query = "COPY INTO @my_stage FROM my_table"
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser.source_tables), 1)
+        self.assertEqual(len(parser.target_tables), 1)
+        self.assertNotIsInstance(parser.target_tables[0], LineageTable)
+        self.assertIsInstance(parser.target_tables[0], Location)
+
+    def test_stage_lineage_fully_qualified_names(self):
+        """
+        Test stage lineage with fully qualified database.schema.stage names
+        for both source and target directions.
+        """
+        # Stage as source (loading data into table)
+        query_load = "COPY INTO db.schema.target_table FROM @db.schema.my_stage"
+        parser_load = LineageParser(query_load, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser_load.source_tables), 1)
+        self.assertEqual(len(parser_load.target_tables), 1)
+        self.assertIsInstance(parser_load.source_tables[0], Location)
+        self.assertEqual(str(parser_load.source_tables[0]), "db.schema.my_stage")
+        self.assertEqual(str(parser_load.target_tables[0]), "db.schema.target_table")
+
+        # Stage as target (unloading data from table)
+        query_unload = "COPY INTO @db.schema.my_stage FROM db.schema.source_table"
+        parser_unload = LineageParser(query_unload, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser_unload.source_tables), 1)
+        self.assertEqual(len(parser_unload.target_tables), 1)
+        self.assertIsInstance(parser_unload.target_tables[0], Location)
+        self.assertEqual(str(parser_unload.source_tables[0]), "db.schema.source_table")
+        self.assertEqual(str(parser_unload.target_tables[0]), "db.schema.my_stage")
+
+    def test_stage_lineage_unload_with_select_subquery(self):
+        """
+        Test COPY INTO @stage FROM (SELECT ...) extracts the underlying
+        source table correctly from the subquery.
+        """
+        query = (
+            "COPY INTO @external_stage/path/ FROM "
+            "(SELECT col1, col2 FROM db.schema.source_table WHERE id > 100)"
+        )
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser.source_tables), 1)
+        self.assertEqual(len(parser.target_tables), 1)
+        self.assertEqual(str(parser.source_tables[0]), "db.schema.source_table")
+        self.assertIsInstance(parser.target_tables[0], Location)
+
+    def test_stage_lineage_user_stage(self):
+        """
+        Test COPY INTO with user stage (@~/) is properly handled.
+        """
+        query = "COPY INTO @~/ FROM my_table FILE_FORMAT = (TYPE = CSV)"
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser.source_tables), 1)
+        self.assertEqual(len(parser.target_tables), 1)
+        self.assertIsInstance(parser.source_tables[0], LineageTable)
+        self.assertIsInstance(parser.target_tables[0], Location)
+
+    def test_stage_lineage_with_file_format_options(self):
+        """
+        Test that file format options don't interfere with lineage parsing.
+        """
+        queries = [
+            "COPY INTO my_table FROM @stage FILE_FORMAT = (TYPE = CSV SKIP_HEADER = 1)",
+            "COPY INTO my_table FROM @stage FILE_FORMAT = wine_csv_format",
+            "COPY INTO @stage FROM my_table FILE_FORMAT = (TYPE = PARQUET)",
+            "COPY INTO my_table FROM @stage PATTERN='.*[.]csv'",
+        ]
+
+        for query in queries:
+            parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+            self.assertTrue(
+                len(parser.source_tables) > 0,
+                f"Expected source tables for query: {query}",
+            )
+            self.assertTrue(
+                len(parser.target_tables) > 0,
+                f"Expected target tables for query: {query}",
             )

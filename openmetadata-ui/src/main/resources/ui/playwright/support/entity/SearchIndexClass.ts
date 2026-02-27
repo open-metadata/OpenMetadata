@@ -12,25 +12,18 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  DataType,
+  SearchIndex,
+  SearchIndexField,
+} from '../../../src/generated/entity/data/searchIndex';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import {
-  EntityTypeEndpoint,
-  ResponseDataType,
-  ResponseDataWithServiceType,
-} from './Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
-export interface SearchIndexChildrenDetails {
-  name: string;
-  dataType: string;
-  dataTypeDisplay: string;
-  description: string;
-  tags: unknown[];
-  children?: Array<SearchIndexChildrenDetails>;
-}
 export class SearchIndexClass extends EntityClass {
   service: {
     name: string;
@@ -48,29 +41,21 @@ export class SearchIndexClass extends EntityClass {
       };
     };
   };
-  private searchIndexName: string;
-  private fqn: string;
+  private readonly searchIndexName: string;
+  private readonly fqn: string;
 
-  children: Array<SearchIndexChildrenDetails>;
+  children: SearchIndexField[];
 
   entity: {
     name: string;
     displayName: string;
     description: string;
     service: string;
-    fields: Array<{
-      name: string;
-      dataType: string;
-      dataTypeDisplay: string;
-      description: string;
-      tags: unknown[];
-      children?: unknown[];
-    }>;
+    fields: SearchIndexField[];
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
-  entityResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
+  entityResponseData: SearchIndex = {} as SearchIndex;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.SearchIndex);
@@ -98,42 +83,42 @@ export class SearchIndexClass extends EntityClass {
     this.children = [
       {
         name: `name${uuid()}`,
-        dataType: 'TEXT',
+        dataType: DataType.Text,
         dataTypeDisplay: 'text',
         description: 'Table Entity Name.',
         tags: [],
       },
       {
         name: `databaseSchema${uuid()}`,
-        dataType: 'TEXT',
+        dataType: DataType.Text,
         dataTypeDisplay: 'text',
         description: 'Table Entity Database Schema.',
         tags: [],
       },
       {
         name: `description${uuid()}`,
-        dataType: 'TEXT',
+        dataType: DataType.Text,
         dataTypeDisplay: 'text',
         description: 'Table Entity Description.',
         tags: [],
       },
       {
         name: `columns${uuid()}`,
-        dataType: 'NESTED',
+        dataType: DataType.Nested,
         dataTypeDisplay: 'nested',
         description: 'Table Columns.',
         tags: [],
         children: [
           {
             name: `name${uuid()}`,
-            dataType: 'TEXT',
+            dataType: DataType.Text,
             dataTypeDisplay: 'text',
             description: 'Column Name.',
             tags: [],
             children: [
               {
                 name: `child_column${uuid()}`,
-                dataType: 'TEXT',
+                dataType: DataType.Text,
                 dataTypeDisplay: 'text',
                 description: 'Child Column Name.',
                 tags: [],
@@ -142,7 +127,7 @@ export class SearchIndexClass extends EntityClass {
           },
           {
             name: `description${uuid()}`,
-            dataType: 'TEXT',
+            dataType: DataType.Text,
             dataTypeDisplay: 'text',
             description: 'Column Description.',
             tags: [],
@@ -180,6 +165,9 @@ export class SearchIndexClass extends EntityClass {
     this.serviceResponseData = await serviceResponse.json();
     this.entityResponseData = await entityResponse.json();
 
+    this.childrenSelectorId =
+      this.entityResponseData.fields[0].fullyQualifiedName ?? '';
+
     return {
       service: serviceResponse.body,
       entity: entityResponse.body,
@@ -194,7 +182,7 @@ export class SearchIndexClass extends EntityClass {
     patchData: Operation[];
   }) {
     const response = await apiContext.patch(
-      `/api/v1/searchIndexes/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      `/api/v1/searchIndexes/name/${this.entityResponseData?.fullyQualifiedName}`,
       {
         data: patchData,
         headers: {
@@ -217,10 +205,7 @@ export class SearchIndexClass extends EntityClass {
     };
   }
 
-  public set(data: {
-    entity: ResponseDataWithServiceType;
-    service: ResponseDataType;
-  }): void {
+  public set(data: { entity: SearchIndex; service: ResponseDataType }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
   }
@@ -228,9 +213,9 @@ export class SearchIndexClass extends EntityClass {
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
+      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
       dataTestId: `${
-        this.entityResponseData.service.name ?? this.service.name
+        this.entityResponseData.service?.name ?? this.service.name
       }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
@@ -238,7 +223,7 @@ export class SearchIndexClass extends EntityClass {
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/searchServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
+        this.serviceResponseData?.fullyQualifiedName ?? ''
       )}?recursive=true&hardDelete=true`
     );
 

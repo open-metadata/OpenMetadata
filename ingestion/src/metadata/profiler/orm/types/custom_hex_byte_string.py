@@ -14,7 +14,7 @@ Expand sqlalchemy types to map them to OpenMetadata DataType
 """
 # pylint: disable=duplicate-code,abstract-method
 import traceback
-from typing import Optional
+from typing import Optional, Union
 
 import chardet
 from sqlalchemy.sql.sqltypes import String, TypeDecorator
@@ -38,16 +38,19 @@ class HexByteString(TypeDecorator):
         return str
 
     @staticmethod
-    def validate(value: bytes):
+    def validate(value: Union[bytes, bytearray, memoryview]):
         """
         Make sure the data is of correct type
         """
-        if not isinstance(value, (memoryview, bytes, bytearray)):
+        if not isinstance(value, (bytes, bytearray, memoryview)):
             raise TypeError(
-                f"HexByteString columns support only bytes values. Received {type(value).__name__}."
+                f"HexByteString columns support only bytes-like values (bytes, bytearray, memoryview)."
+                f" Received {type(value).__name__}."
             )
 
-    def process_result_value(self, value: Optional[bytes], dialect) -> Optional[str]:
+    def process_result_value(
+        self, value: Optional[Union[bytes, bytearray, memoryview]], dialect
+    ) -> Optional[str]:
         """This is executed during result retrieval
 
         Args:
@@ -82,7 +85,7 @@ class HexByteString(TypeDecorator):
                 logger.debug("Failed to parse bytes value as string: %s", exc)
                 logger.debug(traceback.format_exc())
 
-        return value.hex()
+        return bytes_value.hex()
 
     def process_literal_param(self, value, dialect):
         self.validate(value)
