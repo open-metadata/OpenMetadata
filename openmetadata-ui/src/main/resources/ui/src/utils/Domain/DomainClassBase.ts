@@ -61,6 +61,8 @@ export interface DomainDetailPageTabProps {
 type DomainWidgetKeys =
   | DetailPageWidgetKeys.DESCRIPTION
   | DetailPageWidgetKeys.OWNERS
+  | DetailPageWidgetKeys.TIER
+  | DetailPageWidgetKeys.CERTIFICATION
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
   | DetailPageWidgetKeys.EXPERTS
@@ -74,6 +76,8 @@ class DomainClassBase {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 4,
       [DetailPageWidgetKeys.OWNERS]: 1.5,
+      [DetailPageWidgetKeys.TIER]: 1.5,
+      [DetailPageWidgetKeys.CERTIFICATION]: 1.5,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.EXPERTS]: 2,
@@ -138,11 +142,27 @@ class DomainClassBase {
         static: false,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TIER],
+        i: DetailPageWidgetKeys.TIER,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CERTIFICATION],
+        i: DetailPageWidgetKeys.CERTIFICATION,
+        w: 2,
+        x: 6,
+        y: 2,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
-        y: 1,
+        y: 3,
         static: false,
       },
       {
@@ -150,7 +170,7 @@ class DomainClassBase {
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
-        y: 2,
+        y: 4,
         static: false,
       },
       {
@@ -158,7 +178,7 @@ class DomainClassBase {
         i: DetailPageWidgetKeys.EXPERTS,
         w: 2,
         x: 6,
-        y: 3,
+        y: 5,
         static: false,
       },
       {
@@ -166,7 +186,7 @@ class DomainClassBase {
         i: DetailPageWidgetKeys.DOMAIN_TYPE,
         w: 2,
         x: 6,
-        y: 4,
+        y: 6,
         static: false,
       },
       {
@@ -174,7 +194,7 @@ class DomainClassBase {
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
-        y: 5,
+        y: 7,
         static: false,
       },
     ];
@@ -221,6 +241,10 @@ class DomainClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
       case DetailPageWidgetKeys.OWNERS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.OWNERS];
+      case DetailPageWidgetKeys.TIER:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TIER];
+      case DetailPageWidgetKeys.CERTIFICATION:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CERTIFICATION];
       case DetailPageWidgetKeys.TAGS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.GLOSSARY_TERMS:

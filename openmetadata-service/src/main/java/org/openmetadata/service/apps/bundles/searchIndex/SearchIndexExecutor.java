@@ -10,6 +10,7 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARG
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -86,6 +87,7 @@ public class SearchIndexExecutor implements AutoCloseable {
   private static final String QUERY_COST_RESULT_WARNING =
       "Found incorrect entity type 'queryCostResult', correcting to 'queryCostRecord'";
 
+  private static final int MAX_READERS_PER_ENTITY = 5;
   private static final int MAX_PRODUCER_THREADS = 20;
   private static final int MAX_CONSUMER_THREADS = 20;
   private static final int MAX_TOTAL_THREADS = 50;
@@ -148,6 +150,11 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   record ThreadConfiguration(int numProducers, int numConsumers) {}
+
+  @FunctionalInterface
+  interface KeysetBatchReader {
+    ResultList<?> readNextKeyset(String cursor) throws SearchIndexException;
+  }
 
   static class MemoryInfo {
     final long maxMemory;
@@ -292,6 +299,9 @@ public class SearchIndexExecutor implements AutoCloseable {
 
     reIndexFromStartToEnd(clusterMetrics, entities);
     closeSinkIfNeeded();
+    // Promote anything yet to be promoted such as vector search indexes which is not part of
+    // entities set
+    finalizeReindex();
 
     return buildResult();
   }
@@ -828,24 +838,67 @@ public class SearchIndexExecutor implements AutoCloseable {
   private void processEntityType(
       String entityType, CountDownLatch producerLatch, int fixedBatchSize) {
     try {
-      listeners.onEntityTypeStarted(entityType, getTotalEntityRecords(entityType));
-
       int totalEntityRecords = getTotalEntityRecords(entityType);
-      int loadPerThread = calculateNumberOfThreads(totalEntityRecords, fixedBatchSize);
+      listeners.onEntityTypeStarted(entityType, totalEntityRecords);
 
-      // Initialize per-entity batch tracking for promotion
-      int batchCount = totalEntityRecords > 0 ? loadPerThread : 0;
-      entityBatchCounters.put(entityType, new AtomicInteger(batchCount));
       entityBatchFailures.put(entityType, new AtomicInteger(0));
 
       if (totalEntityRecords > 0) {
-        for (int i = 0; i < loadPerThread; i++) {
-          int currentOffset = i * fixedBatchSize;
-          producerExecutor.submit(() -> processBatch(entityType, currentOffset, producerLatch));
+        int numReaders =
+            Math.min(
+                calculateNumberOfThreads(totalEntityRecords, fixedBatchSize),
+                MAX_READERS_PER_ENTITY);
+        entityBatchCounters.put(entityType, new AtomicInteger(numReaders));
+
+        if (TIME_SERIES_ENTITIES.contains(entityType)) {
+          submitReaders(
+              entityType,
+              totalEntityRecords,
+              fixedBatchSize,
+              numReaders,
+              producerLatch,
+              () -> {
+                PaginatedEntityTimeSeriesSource source =
+                    new PaginatedEntityTimeSeriesSource(
+                        entityType,
+                        fixedBatchSize,
+                        getSearchIndexFields(entityType),
+                        totalEntityRecords);
+                return source::readWithCursor;
+              },
+              (readers, total) -> {
+                List<String> cursors = new ArrayList<>();
+                int perReader = total / readers;
+                for (int i = 1; i < readers; i++) {
+                  cursors.add(RestUtil.encodeCursor(String.valueOf(i * perReader)));
+                }
+                return cursors;
+              });
+        } else {
+          PaginatedEntitiesSource entSource =
+              new PaginatedEntitiesSource(
+                  entityType, fixedBatchSize, getSearchIndexFields(entityType), totalEntityRecords);
+          submitReaders(
+              entityType,
+              totalEntityRecords,
+              fixedBatchSize,
+              numReaders,
+              producerLatch,
+              () -> {
+                PaginatedEntitiesSource source =
+                    new PaginatedEntitiesSource(
+                        entityType,
+                        fixedBatchSize,
+                        getSearchIndexFields(entityType),
+                        totalEntityRecords);
+                return source::readNextKeyset;
+              },
+              entSource::findBoundaryCursors);
         }
       } else {
-        // No records to process - promote immediately if recreating indexes
+        entityBatchCounters.put(entityType, new AtomicInteger(1));
         promoteEntityIndexIfReady(entityType);
+        producerLatch.countDown();
       }
 
       StepStats entityStats =
@@ -855,6 +908,156 @@ public class SearchIndexExecutor implements AutoCloseable {
       listeners.onEntityTypeCompleted(entityType, entityStats);
     } catch (Exception e) {
       LOG.error("Error processing entity type {}", entityType, e);
+    }
+  }
+
+  private void submitReaders(
+      String entityType,
+      int totalRecords,
+      int fixedBatchSize,
+      int numReaders,
+      CountDownLatch producerLatch,
+      java.util.function.Supplier<KeysetBatchReader> readerFactory,
+      java.util.function.BiFunction<Integer, Integer, List<String>> boundaryFinder) {
+    if (numReaders == 1) {
+      KeysetBatchReader reader = readerFactory.get();
+      producerExecutor.submit(
+          () ->
+              processKeysetBatches(
+                  entityType, totalRecords, fixedBatchSize, null, reader, producerLatch));
+      return;
+    }
+
+    List<String> boundaries = boundaryFinder.apply(numReaders, totalRecords);
+    int actualReaders = boundaries.size() + 1;
+    int recordsPerReader = totalRecords / actualReaders;
+
+    if (actualReaders < numReaders) {
+      LOG.warn(
+          "Boundary discovery for {} returned {} cursors (expected {}), using {} readers",
+          entityType,
+          boundaries.size(),
+          numReaders - 1,
+          actualReaders);
+      entityBatchCounters.get(entityType).set(actualReaders);
+      for (int j = 0; j < numReaders - actualReaders; j++) {
+        producerLatch.countDown();
+      }
+    }
+
+    for (int i = 0; i < actualReaders; i++) {
+      String startCursor = (i == 0) ? null : boundaries.get(i - 1);
+      int limit =
+          (i == actualReaders - 1)
+              ? totalRecords - recordsPerReader * (actualReaders - 1)
+              : recordsPerReader;
+      KeysetBatchReader readerSource = readerFactory.get();
+      final int readerLimit = limit;
+      producerExecutor.submit(
+          () ->
+              processKeysetBatches(
+                  entityType,
+                  readerLimit,
+                  fixedBatchSize,
+                  startCursor,
+                  readerSource,
+                  producerLatch));
+    }
+  }
+
+  private void processKeysetBatches(
+      String entityType,
+      int recordLimit,
+      int fixedBatchSize,
+      String startCursor,
+      KeysetBatchReader batchReader,
+      CountDownLatch producerLatch) {
+    boolean hadFailure = false;
+    try {
+      String keysetCursor = startCursor;
+      int processed = 0;
+
+      while (processed < recordLimit && !stopped.get()) {
+        long backpressureWaitStart = System.currentTimeMillis();
+        while (isBackpressureActive()) {
+          if (stopped.get()) {
+            return;
+          }
+          long elapsed = System.currentTimeMillis() - backpressureWaitStart;
+          if (elapsed > 15_000) {
+            LOG.warn("Backpressure wait timeout for {}, proceeding anyway", entityType);
+            break;
+          }
+          Thread.sleep(500);
+        }
+
+        try {
+          ResultList<?> result = batchReader.readNextKeyset(keysetCursor);
+          if (result == null || result.getData().isEmpty()) {
+            break;
+          }
+
+          int readerSuccessCount = result.getData().size();
+          int readerFailedCount = listOrEmpty(result.getErrors()).size();
+          int readerWarningsCount =
+              result.getWarningsCount() != null ? result.getWarningsCount() : 0;
+          updateReaderStats(readerSuccessCount, readerFailedCount, readerWarningsCount);
+
+          StepStats batchStats =
+              new StepStats()
+                  .withSuccessRecords(readerSuccessCount)
+                  .withFailedRecords(readerFailedCount)
+                  .withWarningRecords(readerWarningsCount);
+          updateStats(entityType, batchStats);
+
+          if (!result.getData().isEmpty() && !stopped.get()) {
+            IndexingTask<?> task = new IndexingTask<>(entityType, result, processed);
+            taskQueue.put(task);
+          }
+
+          processed += readerSuccessCount + readerFailedCount + readerWarningsCount;
+          keysetCursor = result.getPaging() != null ? result.getPaging().getAfter() : null;
+          if (keysetCursor == null) {
+            break;
+          }
+        } catch (SearchIndexException e) {
+          hadFailure = true;
+          LOG.error("Error reading keyset batch for {}", entityType, e);
+          if (failureRecorder != null) {
+            failureRecorder.recordReaderFailure(
+                entityType, e.getMessage(), ExceptionUtils.getStackTrace(e));
+          }
+          listeners.onError(entityType, e.getIndexingError(), stats.get());
+          int failedCount =
+              e.getIndexingError() != null && e.getIndexingError().getFailedCount() != null
+                  ? e.getIndexingError().getFailedCount()
+                  : fixedBatchSize;
+          updateReaderStats(0, failedCount, 0);
+          updateStats(
+              entityType, new StepStats().withSuccessRecords(0).withFailedRecords(failedCount));
+          processed += fixedBatchSize;
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Interrupted during keyset processing of {}", entityType);
+    } catch (Exception e) {
+      hadFailure = true;
+      if (!stopped.get()) {
+        LOG.error("Error in keyset processing for {}", entityType, e);
+      }
+    } finally {
+      producerLatch.countDown();
+      if (hadFailure) {
+        AtomicInteger failures = entityBatchFailures.get(entityType);
+        if (failures != null) {
+          failures.incrementAndGet();
+        }
+      }
+      AtomicInteger remaining = entityBatchCounters.get(entityType);
+      if (remaining != null && remaining.decrementAndGet() == 0) {
+        promoteEntityIndexIfReady(entityType);
+      }
     }
   }
 
@@ -913,20 +1116,18 @@ public class SearchIndexExecutor implements AutoCloseable {
       return;
     }
 
-    // Check if already promoted (avoid double promotion)
-    if (promotedEntities.contains(entityType)) {
+    if (!promotedEntities.add(entityType)) {
       LOG.debug("Entity '{}' already promoted, skipping.", entityType);
       return;
     }
 
-    // Determine success based on whether there were any batch failures
     AtomicInteger failures = entityBatchFailures.get(entityType);
     boolean entitySuccess = failures == null || failures.get() == 0;
 
-    // Build entity context and promote
     Optional<String> stagedIndexOpt = recreateContext.getStagedIndex(entityType);
     if (stagedIndexOpt.isEmpty()) {
       LOG.debug("No staged index found for entity '{}', skipping promotion.", entityType);
+      promotedEntities.remove(entityType);
       return;
     }
 
@@ -938,7 +1139,6 @@ public class SearchIndexExecutor implements AutoCloseable {
           entitySuccess,
           stagedIndexOpt.get());
       defaultHandler.promoteEntityIndex(entityContext, entitySuccess);
-      promotedEntities.add(entityType);
     }
   }
 
@@ -1112,15 +1312,13 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private int getTotalLatchCount(Set<String> entities, int fixedBatchSize) {
-    if (stats.get() == null) {
-      return entities.size();
-    }
-
     return entities.stream()
         .mapToInt(
             entityType -> {
-              int totalRecords = getTotalEntityRecords(entityType);
-              return calculateNumberOfThreads(totalRecords, fixedBatchSize);
+              int total = getTotalEntityRecords(entityType);
+              if (total <= 0) return 1;
+              return Math.min(
+                  calculateNumberOfThreads(total, fixedBatchSize), MAX_READERS_PER_ENTITY);
             })
         .sum();
   }

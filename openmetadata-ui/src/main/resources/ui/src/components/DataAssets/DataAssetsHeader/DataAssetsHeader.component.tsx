@@ -763,7 +763,10 @@ export const DataAssetsHeader = ({
             />
             <Divider className="self-center vertical-divider" type="vertical" />
             {tierSuggestionRender ?? (
-              <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
+              <TierCard
+                currentTier={tier?.tagFQN}
+                footerActionButtonsClassName="p-x-md"
+                updateTier={onTierUpdate}>
                 <Space
                   className="d-flex align-start"
                   data-testid="header-tier-container">

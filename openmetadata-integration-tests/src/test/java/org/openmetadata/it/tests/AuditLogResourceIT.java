@@ -1901,4 +1901,149 @@ public class AuditLogResourceIT {
           "actorType should be USER, BOT, or AGENT, got: " + actorType);
     }
   }
+
+  // ==================== Full-Text Search Tests ====================
+  // These tests verify the search_text column and full-text search behavior
+
+  @Test
+  void test_search_returnsRelevantResults() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("q", "admin");
+    params.put("limit", "20");
+
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    assertNotNull(response);
+
+    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+    java.util.List<Map<String, Object>> data =
+        (java.util.List<Map<String, Object>>) result.get("data");
+
+    assertFalse(data == null || data.isEmpty(), "Search for 'admin' should return results");
+
+    for (Map<String, Object> entry : data) {
+      String userName = (String) entry.get("userName");
+      assertEquals("admin", userName, "Search for 'admin' should return entries by admin user");
+    }
+  }
+
+  @Test
+  void test_search_byEntityFQNContent() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary with a known name
+    String glossaryName = "SearchFQNTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"FQN Search Test\", \"description\": \"Test FQN in search_text\"}",
+            glossaryName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    try {
+      waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityCreated");
+
+      // Search by the glossary name (which is part of the FQN)
+      Map<String, String> params = new HashMap<>();
+      params.put("q", glossaryName);
+      params.put("limit", "10");
+
+      String response = executeGet(client, AUDIT_LOGS_PATH, params);
+      assertNotNull(response);
+
+      Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+      java.util.List<Map<String, Object>> data =
+          (java.util.List<Map<String, Object>>) result.get("data");
+
+      assertFalse(
+          data == null || data.isEmpty(),
+          "Search for entity FQN '" + glossaryName + "' should return results");
+
+      boolean found = false;
+      for (Map<String, Object> entry : data) {
+        String entityFqn = (String) entry.get("entityFQN");
+        if (glossaryFqn.equals(entityFqn)) {
+          found = true;
+          break;
+        }
+      }
+      assertTrue(found, "Search results should include the created glossary");
+    } finally {
+      deleteGlossary(client, glossaryId);
+    }
+  }
+
+  @Test
+  void test_search_byFieldChangeContent() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String glossaryName =
+        "SearchFieldTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String uniqueDescription = "UniqueSearchToken_" + System.currentTimeMillis();
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"Field Change Search\", \"description\": \"Original\"}",
+            glossaryName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    try {
+      waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityCreated");
+
+      // Update the description with a unique token
+      String patchJson =
+          String.format(
+              "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"%s\"}]",
+              uniqueDescription);
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PATCH,
+              "/v1/glossaries/" + glossaryId,
+              patchJson,
+              RequestOptions.builder()
+                  .header("Content-Type", "application/json-patch+json")
+                  .build());
+
+      // Wait for the update event to appear
+      waitForAuditLogEntryMultipleTypes(
+          client,
+          glossaryFqn,
+          "glossary",
+          java.util.List.of("entityUpdated", "entityFieldsChanged"));
+
+      // Search by the unique description token (field change content)
+      Map<String, String> params = new HashMap<>();
+      params.put("q", uniqueDescription);
+      params.put("limit", "10");
+
+      String response = executeGet(client, AUDIT_LOGS_PATH, params);
+      assertNotNull(response);
+
+      Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+      java.util.List<Map<String, Object>> data =
+          (java.util.List<Map<String, Object>>) result.get("data");
+
+      assertFalse(
+          data == null || data.isEmpty(),
+          "Search for field change content '" + uniqueDescription + "' should return results");
+    } finally {
+      deleteGlossary(client, glossaryId);
+    }
+  }
 }

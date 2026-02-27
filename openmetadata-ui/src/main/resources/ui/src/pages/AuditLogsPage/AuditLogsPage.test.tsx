@@ -83,8 +83,6 @@ jest.mock('../../components/PageHeader/PageHeader.component', () =>
   jest.fn().mockReturnValue(<div data-testid="page-header">Page Header</div>)
 );
 
-
-
 jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
   jest
     .fn()
@@ -116,9 +114,7 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
               }}>
               {pageSize} / label.page
               {pageSizeOptions?.map((size: number) => (
-                <button
-                  key={size}
-                  onClick={() => onShowSizeChange(size)}>
+                <button key={size} onClick={() => onShowSizeChange(size)}>
                   {size} / label.page
                 </button>
               ))}
@@ -839,7 +835,9 @@ describe('AuditLogsPage', () => {
 
       await waitFor(() => {
         // Just verify the main header is present
-        expect(screen.getByTestId('audit-logs-page-header')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('audit-logs-page-header')
+        ).toBeInTheDocument();
       });
     });
 
@@ -874,7 +872,9 @@ describe('AuditLogsPage', () => {
       });
 
       // Check default page size (25)
-      const pageSizeDropdown = screen.getByTestId('page-size-selection-dropdown');
+      const pageSizeDropdown = screen.getByTestId(
+        'page-size-selection-dropdown'
+      );
 
       expect(pageSizeDropdown).toHaveTextContent('25 / label.page');
 
@@ -884,9 +884,11 @@ describe('AuditLogsPage', () => {
 
       // Verify getAuditLogs called with new limit
       await waitFor(() => {
-        expect(mockGetAuditLogs).toHaveBeenCalledWith(expect.objectContaining({
-          limit: 50
-        }));
+        expect(mockGetAuditLogs).toHaveBeenCalledWith(
+          expect.objectContaining({
+            limit: 50,
+          })
+        );
       });
     });
   });
@@ -919,8 +921,6 @@ describe('AuditLogsPage', () => {
       });
     });
   });
-
-
 
   describe('Security - XSS Prevention', () => {
     it('handles audit log entries with XSS payloads in data', async () => {

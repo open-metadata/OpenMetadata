@@ -4,7 +4,9 @@
 	"serviceConnection": {
 		"config": {
 			"type": "Rest",
-			"openAPISchemaURL": "https://docs.open-metadata.org/swagger.html",
+			"openAPISchemaConnection": {
+				"openAPISchemaURL": "https://docs.open-metadata.org/swagger.html"
+			},
     		"token":"token"
 		}
 	},

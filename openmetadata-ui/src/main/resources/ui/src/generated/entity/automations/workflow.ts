@@ -977,9 +977,9 @@ export interface ConfigObject {
      */
     docURL?: string;
     /**
-     * Open API Schema URL.
+     * OpenAPI Schema source config. Either a URL or a file path must be provided.
      */
-    openAPISchemaURL?: string;
+    openAPISchemaConnection?: OpenAPISchemaConnection;
     /**
      * Supports Metadata Extraction.
      */
@@ -1690,6 +1690,20 @@ export interface ConfigObject {
      */
     oracleConnectionType?: OracleConnectionType;
     /**
+     * Controls how Oracle identifier names (tables, columns, schemas) are stored in
+     * OpenMetadata. When disabled (default), Oracle's UPPERCASE unquoted identifiers (e.g.
+     * EMPLOYEES) are not guaranteed to be stored as-is — identifiers with the same letters but
+     * different case (e.g. unquoted EMPLOYEES and quoted 'employees') will collide into the
+     * same name. When enabled, names are stored exactly as Oracle persists them, which solves
+     * same-name collisions between quoted and unquoted identifiers. WARNING: enabling this
+     * after data has already been ingested with the default setting will change the stored
+     * names of all existing tables, columns, schemas, and constraints — breaking attached tags,
+     * descriptions, lineage, data quality tests, and any other metadata associated with those
+     * entities. If you must switch, soft-delete all previously ingested entities before
+     * re-ingesting.
+     */
+    preserveIdentifierCase?: boolean;
+    /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      *
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
@@ -2272,8 +2286,6 @@ export interface ConfigObject {
     schemaRegistryURL?: string;
     /**
      * security.protocol consumer config property
-     *
-     * Kafka security protocol config
      */
     securityProtocol?: KafkaSecurityProtocol;
     /**
@@ -2350,33 +2362,9 @@ export interface ConfigObject {
      */
     uiHostPort?: string;
     /**
-     * service type of the messaging source
+     * Event broker configuration. Choose between Kafka and Kinesis.
      */
-    brokersUrl?: string;
-    /**
-     * consumer group name
-     */
-    consumerGroupName?: string;
-    /**
-     * initial Kafka consumer offset
-     */
-    consumerOffsets?: InitialConsumerOffsets;
-    /**
-     * max allowed wait time
-     */
-    poolTimeout?: number;
-    /**
-     * SASL Configuration details.
-     */
-    saslConfig?: SASLClientConfig;
-    /**
-     * max allowed inactivity time
-     */
-    sessionTimeout?: number;
-    /**
-     * topic from where Open lineage events will be pulled
-     */
-    topicName?: string;
+    brokerConfig?: BrokerConfiguration;
     /**
      * We support username/password or No Authentication
      */
@@ -2847,6 +2835,8 @@ export enum AuthMechanismEnum {
  *
  * AWS credentials configs.
  *
+ * AWS credentials configuration.
+ *
  * Authentication type to connect to Apache Ranger.
  *
  * Configuration for connecting to Ranger Basic Auth.
@@ -3024,6 +3014,8 @@ export interface AuthenticationType {
 
 /**
  * AWS credentials configs.
+ *
+ * AWS credentials configuration.
  */
 export interface AWSCredentials {
     /**
@@ -3224,6 +3216,125 @@ export enum AuthenticationEnum {
 }
 
 /**
+ * Event broker configuration. Choose between Kafka and Kinesis.
+ *
+ * Kafka broker configuration for OpenLineage events.
+ *
+ * AWS Kinesis Data Streams configuration for OpenLineage events.
+ */
+export interface BrokerConfiguration {
+    /**
+     * Kafka bootstrap servers URL.
+     */
+    brokersUrl?: string;
+    /**
+     * Kafka consumer group name.
+     */
+    consumerGroupName?: string;
+    /**
+     * Initial Kafka consumer offset.
+     *
+     * Initial Kinesis shard iterator type.
+     */
+    consumerOffsets?: InitialConsumerOffsets;
+    /**
+     * Max allowed wait time.
+     *
+     * Poll interval in seconds.
+     */
+    poolTimeout?: number;
+    /**
+     * SASL Configuration details.
+     */
+    saslConfig?: SASLClientConfig;
+    /**
+     * Kafka security protocol config.
+     */
+    securityProtocol?: KafkaSecurityProtocol;
+    /**
+     * Max allowed inactivity time.
+     *
+     * Max inactivity timeout in seconds.
+     */
+    sessionTimeout?: number;
+    /**
+     * SSL Configuration details.
+     */
+    sslConfig?: ConsumerConfigSSLClass;
+    /**
+     * Topic from where OpenLineage events will be pulled.
+     */
+    topicName?: string;
+    /**
+     * AWS credentials configuration.
+     */
+    awsConfig?: AWSCredentials;
+    /**
+     * Kinesis Data Stream name.
+     */
+    streamName?: string;
+}
+
+/**
+ * Initial Kafka consumer offset.
+ *
+ * Initial Kinesis shard iterator type.
+ */
+export enum InitialConsumerOffsets {
+    Earliest = "earliest",
+    InitialConsumerOffsetsLATEST = "LATEST",
+    Latest = "latest",
+    TrimHorizon = "TRIM_HORIZON",
+}
+
+/**
+ * SASL Configuration details.
+ *
+ * SASL client configuration.
+ */
+export interface SASLClientConfig {
+    /**
+     * SASL security mechanism
+     */
+    saslMechanism?: SaslMechanismType;
+    /**
+     * The SASL authentication password.
+     */
+    saslPassword?: string;
+    /**
+     * The SASL authentication username.
+     */
+    saslUsername?: string;
+}
+
+/**
+ * sasl.mechanism Consumer Config property
+ *
+ * SASL Mechanism consumer config property
+ *
+ * SASL security mechanism
+ */
+export enum SaslMechanismType {
+    Gssapi = "GSSAPI",
+    Oauthbearer = "OAUTHBEARER",
+    Plain = "PLAIN",
+    ScramSHA256 = "SCRAM-SHA-256",
+    ScramSHA512 = "SCRAM-SHA-512",
+}
+
+/**
+ * Kafka security protocol config.
+ *
+ * security.protocol consumer config property
+ */
+export enum KafkaSecurityProtocol {
+    Plaintext = "PLAINTEXT",
+    SSL = "SSL",
+    SaslPlaintext = "SASL_PLAINTEXT",
+    SaslSSL = "SASL_SSL",
+}
+
+/**
  * Iceberg Catalog configuration.
  */
 export interface IcebergCatalog {
@@ -3310,6 +3421,8 @@ export interface IcebergFileSystem {
 
 /**
  * AWS credentials configs.
+ *
+ * AWS credentials configuration.
  *
  * Azure Cloud Credentials
  *
@@ -3583,6 +3696,8 @@ export interface ConfigSourceConnection {
  * GCP Credentials for Google Drive API
  *
  * AWS credentials configs.
+ *
+ * AWS credentials configuration.
  */
 export interface Credentials {
     /**
@@ -4009,6 +4124,8 @@ export interface DataStorageConfig {
 
 /**
  * AWS credentials configs.
+ *
+ * AWS credentials configuration.
  */
 export interface AwsCredentials {
     /**
@@ -4128,14 +4245,6 @@ export enum ConnectionType {
     Mysql = "Mysql",
     Postgres = "Postgres",
     SQLite = "SQLite",
-}
-
-/**
- * initial Kafka consumer offset
- */
-export enum InitialConsumerOffsets {
-    Earliest = "earliest",
-    Latest = "latest",
 }
 
 /**
@@ -4548,6 +4657,24 @@ export interface NifiCredentialsConfiguration {
 }
 
 /**
+ * OpenAPI Schema source config. Either a URL or a file path must be provided.
+ *
+ * Open API Schema URL Connection Config
+ *
+ * Open API Schema File Path Connection Config
+ */
+export interface OpenAPISchemaConnection {
+    /**
+     * Open API Schema URL.
+     */
+    openAPISchemaURL?: string;
+    /**
+     * Path to a local OpenAPI schema file.
+     */
+    openAPISchemaFilePath?: string;
+}
+
+/**
  * Connect with oracle by either passing service name or database schema name.
  */
 export interface OracleConnectionType {
@@ -4667,41 +4794,6 @@ export enum RunMode {
 }
 
 /**
- * SASL Configuration details.
- *
- * SASL client configuration.
- */
-export interface SASLClientConfig {
-    /**
-     * SASL security mechanism
-     */
-    saslMechanism?: SaslMechanismType;
-    /**
-     * The SASL authentication password.
-     */
-    saslPassword?: string;
-    /**
-     * The SASL authentication username.
-     */
-    saslUsername?: string;
-}
-
-/**
- * sasl.mechanism Consumer Config property
- *
- * SASL Mechanism consumer config property
- *
- * SASL security mechanism
- */
-export enum SaslMechanismType {
-    Gssapi = "GSSAPI",
-    Oauthbearer = "OAUTHBEARER",
-    Plain = "PLAIN",
-    ScramSHA256 = "SCRAM-SHA-256",
-    ScramSHA512 = "SCRAM-SHA-512",
-}
-
-/**
  * SQLAlchemy driver scheme options.
  *
  * Mongo connection scheme options.
@@ -4758,18 +4850,6 @@ export enum SearchIndexMappingLanguage {
     Jp = "JP",
     Ru = "RU",
     Zh = "ZH",
-}
-
-/**
- * security.protocol consumer config property
- *
- * Kafka security protocol config
- */
-export enum KafkaSecurityProtocol {
-    Plaintext = "PLAINTEXT",
-    SSL = "SSL",
-    SaslPlaintext = "SASL_PLAINTEXT",
-    SaslSSL = "SASL_SSL",
 }
 
 export enum SpaceType {

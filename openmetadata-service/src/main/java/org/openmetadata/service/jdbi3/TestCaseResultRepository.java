@@ -325,6 +325,10 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
             EntityUtil.Fields.EMPTY_FIELDS,
             new SearchListFilter().addQueryParam("entityFQN", fqn),
             "testCaseFQN.keyword",
+            null,
+            null,
+            null,
+            null,
             null);
     return testCaseResultResults.getData().stream()
         .anyMatch(

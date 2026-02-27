@@ -20,12 +20,17 @@
       "$ref": "#/definitions/restType",
       "default": "Rest"
     },
-    "openAPISchemaURL": {
-      "expose": true,
-      "title": "OpenAPISchemaURL",
-      "description": "Open API Schema URL.",
-      "type": "string",
-      "format": "uri"
+    "openAPISchemaConnection": {
+      "title": "OpenAPI Schema Connection",
+      "description": "OpenAPI Schema source config. Either a URL or a file path must be provided.",
+      "oneOf": [
+        {
+          "$ref": "openAPISchemaURL.json"
+        },
+        {
+          "$ref": "openAPISchemaFilePath.json"
+        }
+      ]
     },
     "token": {
       "title": "Token",
@@ -58,5 +63,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["openAPISchemaURL"]
+  "required": ["openAPISchemaConnection"]
 }

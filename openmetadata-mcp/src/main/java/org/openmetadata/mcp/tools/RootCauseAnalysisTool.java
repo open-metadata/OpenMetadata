@@ -195,6 +195,10 @@ public class RootCauseAnalysisTool implements McpTool {
               testResultTimeSeriesRepository.getFields("testCaseStatus,result,testResultValue"),
               searchListFilter,
               "testCaseFQN.keyword",
+              null,
+              null,
+              null,
+              null,
               null);
       if (testCaseResults.getData() != null && !testCaseResults.getData().isEmpty()) {
         testCaseResult.put("testCaseResults", testCaseResults.getData());

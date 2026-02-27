@@ -81,7 +81,7 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> searchResponse;
       try {
-        searchResponse = OsUtils.searchWithLenientDeserialization(client, searchRequest);
+        searchResponse = client.search(searchRequest, JsonData.class);
       } finally {
         if (searchTimerSample != null) {
           RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -158,7 +158,7 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
     try {
-      searchResponse = OsUtils.searchWithLenientDeserialization(client, searchRequest);
+      searchResponse = client.search(searchRequest, JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -180,7 +180,7 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
     try {
-      searchResponse = OsUtils.searchWithLenientDeserialization(client, searchRequest);
+      searchResponse = client.search(searchRequest, JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
