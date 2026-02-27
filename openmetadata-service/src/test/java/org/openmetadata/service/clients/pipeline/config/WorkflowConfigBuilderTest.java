@@ -298,7 +298,6 @@ public class WorkflowConfigBuilderTest extends WorkflowConfigTest {
             + "      type: \"Profiler\"\n"
             + "      includeViews: false\n"
             + "      useFqnForFiltering: false\n"
-            + "      computeMetrics: true\n"
             + "      computeTableMetrics: true\n"
             + "      computeColumnMetrics: true\n"
             + "      useStatistics: false\n"

@@ -37,10 +37,6 @@ def get_default_metrics(
         metrics_registry.rowCount.value,
         add_props(table=table)(metrics_registry.columnCount.value),
         add_props(table=table)(metrics_registry.columnNames.value),
-        # We'll use the ometa_client & db_service in case we need to fetch info to ES
-        add_props(table=table, ometa_client=ometa_client, db_service=db_service)(
-            metrics_registry.system.value
-        ),
         # Column Metrics
         metrics_registry.median.value,
         metrics_registry.firstQuartile.value,

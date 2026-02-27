@@ -354,7 +354,7 @@ public class IngestionPipelineResourceTest
     List<MetricType> expectedMetrics =
         List.of(MetricType.MEAN, MetricType.ROW_COUNT, MetricType.NULL_COUNT);
     DatabaseServiceProfilerPipeline profilerPipeline =
-        new DatabaseServiceProfilerPipeline().withMetrics(expectedMetrics).withComputeMetrics(true);
+        new DatabaseServiceProfilerPipeline().withMetrics(expectedMetrics);
     SourceConfig profilerSourceConfig = new SourceConfig().withConfig(profilerPipeline);
 
     CreateIngestionPipeline request =
@@ -372,7 +372,6 @@ public class IngestionPipelineResourceTest
         JsonUtils.convertValue(
             fetched.getSourceConfig().getConfig(), DatabaseServiceProfilerPipeline.class);
     assertEquals(expectedMetrics, fetchedConfig.getMetrics());
-    assertEquals(true, fetchedConfig.getComputeMetrics());
   }
 
   @Test

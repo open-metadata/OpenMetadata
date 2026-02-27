@@ -550,10 +550,6 @@ export interface Pipeline {
      */
     computeColumnMetrics?: boolean;
     /**
-     * Option to turn on/off computing profiler metrics.
-     */
-    computeMetrics?: boolean;
-    /**
      * Option to turn on/off table metric computation. If enabled, profiler will compute table
      * level metrics.
      */
