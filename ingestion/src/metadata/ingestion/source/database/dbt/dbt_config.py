@@ -414,7 +414,7 @@ def _filter_latest_per_project(
     for directory in blob_grouped_by_directory:
         if _has_date_pattern(directory):
             parent = os.path.dirname(directory)
-            project_to_dated_dirs[parent or directory].append(directory)
+            project_to_dated_dirs[parent].append(directory)
         else:
             filtered[directory] = blob_grouped_by_directory[directory]
 

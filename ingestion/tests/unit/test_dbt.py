@@ -3104,6 +3104,26 @@ class TestFilterLatestPerProject:
         assert len(result) == 1
         assert "org/team/projectA/run_2025-06-15" in result
 
+    def test_root_level_dated_dirs_filtered_to_latest(self):
+        """Root-level dated dirs (no parent) should be grouped together and filtered."""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            _filter_latest_per_project,
+        )
+
+        grouped = {
+            "target_2025-04-18": ["target_2025-04-18/manifest.json"],
+            "target_2025-04-19": ["target_2025-04-19/manifest.json"],
+            "target_2025-04-20": [
+                "target_2025-04-20/manifest.json",
+                "target_2025-04-20/catalog.json",
+            ],
+        }
+        result = _filter_latest_per_project(grouped)
+        assert len(result) == 1
+        assert "target_2025-04-20" in result
+        assert "target_2025-04-18" not in result
+        assert "target_2025-04-19" not in result
+
     def test_has_date_pattern(self):
         from metadata.ingestion.source.database.dbt.dbt_config import _has_date_pattern
 
