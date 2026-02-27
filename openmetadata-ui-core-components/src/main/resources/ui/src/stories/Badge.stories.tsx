@@ -61,13 +61,13 @@ export const PillColors: StoryObj = {
 export const BadgeColors: StoryObj = {
   render: () => (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <Badge type="badge-color" color="gray">Gray</Badge>
-      <Badge type="badge-color" color="brand">Brand</Badge>
-      <Badge type="badge-color" color="error">Error</Badge>
-      <Badge type="badge-color" color="warning">Warning</Badge>
-      <Badge type="badge-color" color="success">Success</Badge>
-      <Badge type="badge-color" color="blue">Blue</Badge>
-      <Badge type="badge-color" color="indigo">Indigo</Badge>
+      <Badge type="color" color="gray">Gray</Badge>
+      <Badge type="color" color="brand">Brand</Badge>
+      <Badge type="color" color="error">Error</Badge>
+      <Badge type="color" color="warning">Warning</Badge>
+      <Badge type="color" color="success">Success</Badge>
+      <Badge type="color" color="blue">Blue</Badge>
+      <Badge type="color" color="indigo">Indigo</Badge>
     </div>
   ),
 };
@@ -99,7 +99,7 @@ export const WithIcon: StoryObj = {
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       <BadgeWithIcon type="pill-color" color="gray" iconLeading={HelpCircle}>Gray Leading</BadgeWithIcon>
       <BadgeWithIcon type="pill-color" color="brand" iconTrailing={HelpCircle}>Brand Trailing</BadgeWithIcon>
-      <BadgeWithIcon type="badge-color" color="success" iconLeading={HelpCircle}>Success</BadgeWithIcon>
+      <BadgeWithIcon type="color" color="success" iconLeading={HelpCircle}>Success</BadgeWithIcon>
     </div>
   ),
 };
@@ -121,7 +121,7 @@ export const IconOnly: StoryObj = {
       <BadgeIcon type="pill-color" color="gray" icon={HelpCircle} />
       <BadgeIcon type="pill-color" color="brand" icon={HelpCircle} />
       <BadgeIcon type="pill-color" color="error" icon={HelpCircle} />
-      <BadgeIcon type="badge-color" color="success" icon={HelpCircle} />
+      <BadgeIcon type="color" color="success" icon={HelpCircle} />
     </div>
   ),
 };
@@ -129,8 +129,8 @@ export const IconOnly: StoryObj = {
 export const ModernStyle: StoryObj = {
   render: () => (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <Badge type="badge-modern" color="gray">Modern Badge</Badge>
-      <BadgeWithDot type="badge-modern" color="gray">With Dot</BadgeWithDot>
+      <Badge type="modern" color="gray">Modern Badge</Badge>
+      <BadgeWithDot type="modern" color="gray">With Dot</BadgeWithDot>
     </div>
   ),
 };
