@@ -176,7 +176,19 @@ class UnitycatalogSource(
         Catalog ID -> Database
         """
         if self.service_connection.catalog:
-            yield self.service_connection.catalog
+            configured_catalog = self.service_connection.catalog
+            try:
+                logger.debug(
+                    f"Fetching configured catalog [{configured_catalog}] details to cache for later use"
+                )
+                catalog = self.client.catalogs.get(configured_catalog)
+                self._catalog_cache[catalog.name] = catalog
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to fetch configured catalog [{configured_catalog}]: {exc}"
+                )
+            yield configured_catalog
         else:
             for catalog_name in self.get_database_names_raw():
                 try:
@@ -395,9 +407,9 @@ class UnitycatalogSource(
         schema_name = self.context.get().database_schema
         db_name = self.context.get().database
         if table.storage_location and not table.storage_location.startswith("dbfs"):
-            self.external_location_map[
-                (db_name, schema_name, table_name)
-            ] = table.storage_location
+            self.external_location_map[(db_name, schema_name, table_name)] = (
+                table.storage_location
+            )
         try:
             columns = list(self.get_columns(table_name, table.columns))
             (
