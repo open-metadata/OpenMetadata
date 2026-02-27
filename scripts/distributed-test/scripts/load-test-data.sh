@@ -574,7 +574,7 @@ pipeline_service_fqn = create_service("pipelineServices", {
     "name": "test-pipeline-service",
     "serviceType": "Airflow",
     "connection": {"config": {"type": "Airflow", "hostPort": "http://airflow.example.com:8080",
-                              "connection": {"type": "BackendConnection"}}},
+                              "connection": {"type": "Backend"}}},
 })
 
 messaging_service_fqn = create_service("messagingServices", {
@@ -609,8 +609,8 @@ api_service_fqn = None
 if NUM_API_COLLECTIONS > 0 or NUM_API_ENDPOINTS > 0:
     api_service_fqn = create_service("apiServices", {
         "name": "test-api-service",
-        "serviceType": "REST",
-        "connection": {"config": {"type": "REST",
+        "serviceType": "Rest",
+        "connection": {"config": {"type": "Rest",
                                   "openAPISchemaURL": "http://api.example.com/openapi.json"}},
     })
 
