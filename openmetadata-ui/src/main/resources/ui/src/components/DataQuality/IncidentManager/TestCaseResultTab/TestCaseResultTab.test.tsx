@@ -153,6 +153,18 @@ jest.mock('../../../Tag/TagsContainerV2/TagsContainerV2', () => {
 });
 
 describe('TestCaseResultTab', () => {
+  const originalParameterValues = JSON.parse(
+    JSON.stringify(mockTestCaseData.parameterValues)
+  );
+
+  afterEach(() => {
+    mockUseTestCaseStore.testCase.parameterValues = JSON.parse(
+      JSON.stringify(originalParameterValues)
+    );
+    mockUseTestCaseStore.testCase.useDynamicAssertion = undefined;
+    mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
+  });
+
   it('Should render component', async () => {
     render(<TestCaseResultTab />);
 
@@ -292,11 +304,6 @@ describe('TestCaseResultTab', () => {
     expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
     expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
     expect(screen.queryByText('columnCount:')).not.toBeInTheDocument();
-
-    mockUseTestCaseStore.testCase.useDynamicAssertion = false;
-    mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
-    mockUseTestCaseStore.testCase.parameterValues =
-      mockTestCaseData.parameterValues;
   });
 
   it('Should show edit button, for useDynamicAssertion', async () => {
