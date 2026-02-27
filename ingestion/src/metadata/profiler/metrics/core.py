@@ -65,7 +65,7 @@ def add_props(**kwargs):
     or `expression` for LIKE & ILIKE.
 
     This function is a class decorator that we can run as:
-    new_hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
+    new_hist = add_props(bins=5)(Metrics.histogram.value)
 
     new_hist will still be a class, so we can safely pass it
     to the profiler to be initialized for all the columns.

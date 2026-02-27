@@ -71,6 +71,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.StepSummary;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.DatabaseServiceProfilerPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
@@ -78,6 +79,7 @@ import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
+import org.openmetadata.schema.profiler.MetricType;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.ConnectionArguments;
@@ -345,6 +347,32 @@ public class IngestionPipelineResourceTest
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
     ingestion = getEntity(ingestion.getId(), FIELD_OWNERS, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
+  }
+
+  @Test
+  void post_AirflowWithDatabaseServiceProfilerWithMetrics_200_ok(TestInfo test) throws IOException {
+    List<MetricType> expectedMetrics =
+        List.of(MetricType.MEAN, MetricType.ROW_COUNT, MetricType.NULL_COUNT);
+    DatabaseServiceProfilerPipeline profilerPipeline =
+        new DatabaseServiceProfilerPipeline().withMetrics(expectedMetrics).withComputeMetrics(true);
+    SourceConfig profilerSourceConfig = new SourceConfig().withConfig(profilerPipeline);
+
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.PROFILER)
+            .withService(BIGQUERY_REFERENCE)
+            .withSourceConfig(profilerSourceConfig)
+            .withAirflowConfig(
+                new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    IngestionPipeline fetched = getEntity(pipeline.getId(), ADMIN_AUTH_HEADERS);
+    DatabaseServiceProfilerPipeline fetchedConfig =
+        JsonUtils.convertValue(
+            fetched.getSourceConfig().getConfig(), DatabaseServiceProfilerPipeline.class);
+    assertEquals(expectedMetrics, fetchedConfig.getMetrics());
+    assertEquals(true, fetchedConfig.getComputeMetrics());
   }
 
   @Test
@@ -1214,6 +1242,13 @@ public class IngestionPipelineResourceTest
           (DatabaseServiceQueryUsagePipeline) orig.getConfig();
       DatabaseServiceQueryUsagePipeline updatedConfig =
           JsonUtils.convertValue(updated.getConfig(), DatabaseServiceQueryUsagePipeline.class);
+      assertEquals(origConfig, updatedConfig);
+    } else if (serviceType.equals(Entity.DATABASE_SERVICE)
+        && ingestionPipeline.getPipelineType().equals(PipelineType.PROFILER)) {
+      DatabaseServiceProfilerPipeline origConfig =
+          (DatabaseServiceProfilerPipeline) orig.getConfig();
+      DatabaseServiceProfilerPipeline updatedConfig =
+          JsonUtils.convertValue(updated.getConfig(), DatabaseServiceProfilerPipeline.class);
       assertEquals(origConfig, updatedConfig);
     } else if (serviceType.equals(Entity.DASHBOARD_SERVICE)) {
       DashboardServiceMetadataPipeline origConfig =

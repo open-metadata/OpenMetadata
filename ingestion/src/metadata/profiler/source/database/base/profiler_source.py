@@ -194,6 +194,7 @@ class ProfilerSource(ProfilerSourceInterface):
         """
         Returns the runner for the profiler
         """
+        source_metrics = None
         if metrics_registry is None:
             raise DependencyNotFoundError(
                 "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
@@ -207,7 +208,10 @@ class ProfilerSource(ProfilerSourceInterface):
             entity, table_config, schema_entity, database_entity
         )
 
-        if not profiler_config.profiler:
+        if self.source_config and self.source_config.metrics:
+            source_metrics = [m.value for m in self.source_config.metrics]
+
+        if not profiler_config.profiler and not source_metrics:
             return DefaultProfiler(
                 profiler_interface=profiler_interface,
                 metrics_registry=metrics_registry,
@@ -217,9 +221,13 @@ class ProfilerSource(ProfilerSourceInterface):
                 db_service=db_service,
             )
 
+        reference_metrics = (
+            source_metrics if source_metrics else profiler_config.profiler.metrics
+        )
+
         metrics = (
-            [metrics_registry.get(name) for name in profiler_config.profiler.metrics]
-            if profiler_config.profiler.metrics
+            [metrics_registry.get(name) for name in reference_metrics]
+            if reference_metrics
             else get_default_metrics(
                 metrics_registry=metrics_registry,
                 table=profiler_interface.table,

@@ -13,8 +13,8 @@
 Test all metrics are properly registered in the json schema and registry
 """
 
-from metadata.profiler.metrics.registry import Metrics
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
+from metadata.profiler.metrics.registry import Metrics
 
 
 def test_metric_registry():

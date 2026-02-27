@@ -29,7 +29,7 @@ class NotLikeCount(StaticMetric):
     rows that match the forbidden regex pattern
 
     This Metric needs to be initialised passing the expression to check
-    add_props(expression="j%")(Metrics.NOT_LIKE_COUNT.value)
+    add_props(expression="j%")(Metrics.notLikeCount.value)
     """
 
     schema_metric_type = MetricType.notLikeCount
@@ -48,7 +48,7 @@ class NotLikeCount(StaticMetric):
     def fn(self):
         if not hasattr(self, "expression"):
             raise AttributeError(
-                "Not Like Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_LIKE_COUNT)"
+                "Not Like Count requires an expression to be set: add_props(expression=...)(Metrics.notLikeCount)"
             )
         return SumFn(
             case(

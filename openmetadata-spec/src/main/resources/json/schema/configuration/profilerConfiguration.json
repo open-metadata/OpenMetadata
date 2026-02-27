@@ -45,7 +45,8 @@
         "system",
         "histogram",
         "cardinalityDistribution",
-        "valueRank"
+        "valueRank",
+        "nullMissingCount"
       ]
     },
     "metricConfigurationDefinition": {

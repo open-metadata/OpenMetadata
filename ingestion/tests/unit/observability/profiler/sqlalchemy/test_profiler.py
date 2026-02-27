@@ -192,9 +192,9 @@ class ProfilerTest(TestCase):
         when not building the profiler with all the
         required ingredients
         """
-        like = add_props(expression="J%")(Metrics.LIKE_COUNT.value)
-        count = Metrics.COUNT.value
-        like_ratio = Metrics.LIKE_RATIO.value
+        like = add_props(expression="J%")(Metrics.likeCount.value)
+        count = Metrics.valuesCount.value
+        like_ratio = Metrics.likeRatio.value
 
         # This should run properly
         Profiler(
@@ -228,7 +228,7 @@ class ProfilerTest(TestCase):
             struct_col = Column(sqa_types.SQAStruct)
 
         profiler = Profiler(
-            Metrics.COUNT.value,
+            Metrics.valuesCount.value,
             profiler_interface=self.sqa_profiler_interface,
         )
 
@@ -237,7 +237,7 @@ class ProfilerTest(TestCase):
     def test__check_profile_and_handle(self):
         """test _check_profile_and_handle returns as expected"""
         profiler = Profiler(
-            Metrics.COUNT.value,
+            Metrics.valuesCount.value,
             profiler_interface=self.sqa_profiler_interface,
         )
 
@@ -262,7 +262,7 @@ class ProfilerTest(TestCase):
     def test__prepare_column_metrics(self):
         """test _prepare_column_metrics returns as expected"""
         profiler = Profiler(
-            Metrics.FIRST_QUARTILE.value,
+            Metrics.firstQuartile.value,
             profiler_interface=self.sqa_profiler_interface,
         )
 
@@ -277,7 +277,7 @@ class ProfilerTest(TestCase):
     def test__prepare_table_metrics(self):
         """test _prepare_table_metrics returns as expected"""
         profiler = Profiler(
-            Metrics.COLUMN_COUNT.value,
+            Metrics.columnCount.value,
             profiler_interface=self.sqa_profiler_interface,
         )
         metrics = profiler._prepare_table_metrics()

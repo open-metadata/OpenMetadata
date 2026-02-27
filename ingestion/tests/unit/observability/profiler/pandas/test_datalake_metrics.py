@@ -200,7 +200,7 @@ class DatalakeMetricsTest(TestCase):
         """
         Check the Count metric
         """
-        count = Metrics.COUNT.value
+        count = Metrics.valuesCount.value
         profiler = Profiler(
             count,
             profiler_interface=self.datalake_profiler_interface,
@@ -208,13 +208,13 @@ class DatalakeMetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # Note how we can get the result value by passing the metrics name
-        assert res.get(User.name.name).get(Metrics.COUNT.name) == 4
+        assert res.get(User.name.name).get(Metrics.valuesCount.name) == 4
 
     def test_min(self):
         """
         Check the Min metric
         """
-        min_age = Metrics.MIN.value
+        min_age = Metrics.min.value
         profiler = Profiler(
             min_age,
             profiler_interface=self.datalake_profiler_interface,
@@ -222,58 +222,58 @@ class DatalakeMetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # Note how we can get the result value by passing the metrics name
-        assert res.get(User.age.name).get(Metrics.MIN.name) == 30
+        assert res.get(User.age.name).get(Metrics.min.name) == 30
 
     def test_std(self):
         """
         Check STD metric
         """
-        std_age = Metrics.STDDEV.value
+        std_age = Metrics.stddev.value
         profiler = Profiler(
             std_age,
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
 
-        assert round(res.get(User.age.name).get(Metrics.STDDEV.name), 2) == 0.71
+        assert round(res.get(User.age.name).get(Metrics.stddev.name), 2) == 0.71
 
     def test_time(self):
         """
         Check Earliest Time Metric
         """
-        earliest_time = Metrics.MIN.value
+        earliest_time = Metrics.min.value
         profiler = Profiler(
             earliest_time,
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
         # string as min returns 0
-        assert res.get(User.dob.name).get(Metrics.MIN.name) == 642902400000
-        assert res.get(User.tob.name).get(Metrics.MIN.name) == 36091
-        assert res.get(User.doe.name).get(Metrics.MIN.name) == 1257897600000
+        assert res.get(User.dob.name).get(Metrics.min.name) == 642902400000
+        assert res.get(User.tob.name).get(Metrics.min.name) == 36091
+        assert res.get(User.doe.name).get(Metrics.min.name) == 1257897600000
 
     def test_null_count(self):
         """
         Check null count
         """
-        null_count = Metrics.NULL_COUNT.value
+        null_count = Metrics.nullCount.value
         profiler = Profiler(
             null_count,
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
 
-        assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 2
+        assert res.get(User.nickname.name).get(Metrics.nullCount.name) == 2
 
     def test_null_ratio(self):
         """
         Check composed metric run
         """
-        count = Metrics.COUNT.value
-        null_count = Metrics.NULL_COUNT.value
+        count = Metrics.valuesCount.value
+        null_count = Metrics.nullCount.value
 
         # Build the ratio based on the other two metrics
-        null_ratio = Metrics.NULL_RATIO.value
+        null_ratio = Metrics.nullProportion.value
 
         profiler = Profiler(
             count,
@@ -283,7 +283,7 @@ class DatalakeMetricsTest(TestCase):
         )
         res = profiler.compute_metrics()._column_results
         assert (
-            str(round(res.get(User.nickname.name).get(Metrics.NULL_RATIO.name), 2))
+            str(round(res.get(User.nickname.name).get(Metrics.nullProportion.name), 2))
             == "0.33"
         )
 
@@ -291,26 +291,26 @@ class DatalakeMetricsTest(TestCase):
         """
         Check Table Metric run
         """
-        table_count = Metrics.ROW_COUNT.value
+        table_count = Metrics.rowCount.value
         profiler = Profiler(
             table_count,
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
-        assert res.get(Metrics.ROW_COUNT.name) == 6
+        assert res.get(Metrics.rowCount.name) == 6
 
     def test_table_column_count(self):
         """
         Check Column Count metric
         """
-        col_count = add_props(table=User)(Metrics.COLUMN_COUNT.value)
+        col_count = add_props(table=User)(Metrics.columnCount.value)
         profiler = Profiler(
             col_count,
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
         # Not counting id here
-        assert res.get(Metrics.COLUMN_COUNT.name) == 10
+        assert res.get(Metrics.columnCount.name) == 10
 
     def test_avg(self):
         """
@@ -318,7 +318,7 @@ class DatalakeMetricsTest(TestCase):
         """
 
         # Integer
-        avg = Metrics.MEAN.value
+        avg = Metrics.mean.value
         res = (
             Profiler(
                 avg,
@@ -328,10 +328,10 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert round(res.get(User.age.name)[Metrics.MEAN.name], 2) == 31.0
+        assert round(res.get(User.age.name)[Metrics.mean.name], 2) == 31.0
 
         # String
-        avg = Metrics.MEAN.value
+        avg = Metrics.mean.value
         res = (
             Profiler(
                 avg,
@@ -341,10 +341,10 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.MEAN.name] == 4.0
+        assert res.get(User.name.name)[Metrics.mean.name] == 4.0
 
         # Text
-        avg = Metrics.MEAN.value
+        avg = Metrics.mean.value
         res = (
             Profiler(
                 avg,
@@ -354,15 +354,15 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert round(res.get(User.comments.name)[Metrics.MEAN.name], 2) == 15.0
+        assert round(res.get(User.comments.name)[Metrics.mean.name], 2) == 15.0
 
     def test_duplicate_count(self):
         """
         Check composed duplicate count
         """
-        count = Metrics.COUNT.value
-        unique = Metrics.DISTINCT_COUNT.value
-        dup_count = Metrics.DUPLICATE_COUNT.value
+        count = Metrics.valuesCount.value
+        unique = Metrics.distinctCount.value
+        dup_count = Metrics.duplicateCount.value
         res = (
             Profiler(
                 count,
@@ -374,20 +374,20 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.DUPLICATE_COUNT.name] == 1
+        assert res.get(User.age.name)[Metrics.duplicateCount.name] == 1
 
     def test_histogram(self):
         """
         Check histogram computation
         """
 
-        hist = Metrics.HISTOGRAM.value
-        count = Metrics.COUNT.value
-        min = Metrics.MIN.value
-        max = Metrics.MAX.value
-        first_quartile = Metrics.FIRST_QUARTILE.value
-        third_quartile = Metrics.THIRD_QUARTILE.value
-        iqr = Metrics.IQR.value
+        hist = Metrics.histogram.value
+        count = Metrics.valuesCount.value
+        min = Metrics.min.value
+        max = Metrics.max.value
+        first_quartile = Metrics.firstQuartile.value
+        third_quartile = Metrics.thirdQuartile.value
+        iqr = Metrics.interQuartileRange.value
 
         res = (
             Profiler(
@@ -404,7 +404,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        age_histogram = res.get(User.age.name)[Metrics.HISTOGRAM.name]
+        age_histogram = res.get(User.age.name)[Metrics.histogram.name]
 
         assert age_histogram
         assert len(age_histogram["frequencies"]) == 2
@@ -413,7 +413,7 @@ class DatalakeMetricsTest(TestCase):
         """
         Check MAX metric
         """
-        _max = Metrics.MAX.value
+        _max = Metrics.max.value
 
         res = (
             Profiler(
@@ -424,14 +424,14 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.MAX.name] == 32
+        assert res.get(User.age.name)[Metrics.max.name] == 32
 
     def test_min_length(self):
         """
         Check MIN_LENGTH metric
         """
 
-        min_length = Metrics.MIN_LENGTH.value
+        min_length = Metrics.minLength.value
 
         # Integer
         res = (
@@ -443,7 +443,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name).get(Metrics.MIN_LENGTH.name) is None
+        assert res.get(User.age.name).get(Metrics.minLength.name) is None
 
         # String
         res = (
@@ -455,7 +455,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.MIN_LENGTH.name] == 4
+        assert res.get(User.name.name)[Metrics.minLength.name] == 4
 
         # Text
         res = (
@@ -467,13 +467,13 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.comments.name)[Metrics.MIN_LENGTH.name] == 11
+        assert res.get(User.comments.name)[Metrics.minLength.name] == 11
 
     def test_max_length(self):
         """
         Check MAX_LENGTH metric
         """
-        max_length = Metrics.MAX_LENGTH.value
+        max_length = Metrics.maxLength.value
 
         # Integer
         res = (
@@ -485,7 +485,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name).get(Metrics.MAX_LENGTH.name) is None
+        assert res.get(User.age.name).get(Metrics.maxLength.name) is None
 
         # String
         res = (
@@ -497,7 +497,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.MAX_LENGTH.name] == 4
+        assert res.get(User.name.name)[Metrics.maxLength.name] == 4
 
         # Text
         res = (
@@ -509,13 +509,13 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.comments.name)[Metrics.MAX_LENGTH.name] == 19
+        assert res.get(User.comments.name)[Metrics.maxLength.name] == 19
 
     def test_sum(self):
         """
         Check SUM Metric
         """
-        _sum = Metrics.SUM.value
+        _sum = Metrics.sum.value
 
         res = (
             Profiler(
@@ -526,7 +526,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.SUM.name] == 124
+        assert res.get(User.age.name)[Metrics.sum.name] == 124
 
         res = (
             Profiler(
@@ -537,13 +537,13 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name).get(Metrics.SUM.name) is None
+        assert res.get(User.name.name).get(Metrics.sum.name) is None
 
     def test_unique_count(self):
         """
         Check Unique Count metric
         """
-        unique_count = Metrics.UNIQUE_COUNT.value
+        unique_count = Metrics.uniqueCount.value
         res = (
             Profiler(
                 unique_count,
@@ -553,15 +553,15 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 2
+        assert res.get(User.name.name)[Metrics.uniqueCount.name] == 2
 
     def test_unique_ratio(self):
         """
         Check Unique Count metric
         """
-        count = Metrics.COUNT.value
-        unique_count = Metrics.UNIQUE_COUNT.value
-        unique_ratio = Metrics.UNIQUE_RATIO.value
+        count = Metrics.valuesCount.value
+        unique_count = Metrics.uniqueCount.value
+        unique_ratio = Metrics.uniqueProportion.value
         res = (
             Profiler(
                 count,
@@ -574,14 +574,15 @@ class DatalakeMetricsTest(TestCase):
         )
 
         assert (
-            str(round(res.get(User.name.name)[Metrics.UNIQUE_RATIO.name], 2)) == "0.5"
+            str(round(res.get(User.name.name)[Metrics.uniqueProportion.name], 2))
+            == "0.5"
         )
 
     def test_distinct_count(self):
         """
         Check Distinct Count Metric
         """
-        count = Metrics.DISTINCT_COUNT.value
+        count = Metrics.distinctCount.value
         res = (
             Profiler(
                 count,
@@ -591,15 +592,15 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.DISTINCT_COUNT.name] == 3
+        assert res.get(User.name.name)[Metrics.distinctCount.name] == 3
 
     def test_distinct_ratio(self):
         """
         Check Distinct Ratio Metric
         """
-        count = Metrics.COUNT.value
-        distinct_count = Metrics.DISTINCT_COUNT.value
-        distinct_ratio = Metrics.DISTINCT_RATIO.value
+        count = Metrics.valuesCount.value
+        distinct_count = Metrics.distinctCount.value
+        distinct_ratio = Metrics.distinctProportion.value
         res = (
             Profiler(
                 count,
@@ -612,7 +613,7 @@ class DatalakeMetricsTest(TestCase):
         )
 
         assert (
-            str(round(res.get(User.name.name)[Metrics.DISTINCT_RATIO.name], 2))
+            str(round(res.get(User.name.name)[Metrics.distinctProportion.name], 2))
             == "0.75"
         )
 
@@ -621,7 +622,7 @@ class DatalakeMetricsTest(TestCase):
         Check Count In Set metric
         """
 
-        set_count = add_props(values=["John"])(Metrics.COUNT_IN_SET.value)
+        set_count = add_props(values=["John"])(Metrics.countInSet.value)
         res = (
             Profiler(
                 set_count,
@@ -631,9 +632,9 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 2.0
+        assert res.get(User.name.name)[Metrics.countInSet.name] == 2.0
 
-        set_count = add_props(values=["John", "Jane"])(Metrics.COUNT_IN_SET.value)
+        set_count = add_props(values=["John", "Jane"])(Metrics.countInSet.value)
         res = (
             Profiler(
                 set_count,
@@ -643,14 +644,14 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 3
+        assert res.get(User.name.name)[Metrics.countInSet.name] == 3
 
     def test_median(self):
         """
         Check MEDIAN
         """
 
-        median = Metrics.MEDIAN.value
+        median = Metrics.median.value
         res = (
             Profiler(
                 median,
@@ -660,14 +661,14 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 31.0
+        assert res.get(User.age.name)[Metrics.median.name] == 31.0
 
     def test_first_quartile(self):
         """
         Check first quartile
         """
 
-        first_quartile = Metrics.FIRST_QUARTILE.value
+        first_quartile = Metrics.firstQuartile.value
         res = (
             Profiler(
                 first_quartile,
@@ -676,14 +677,14 @@ class DatalakeMetricsTest(TestCase):
             .compute_metrics()
             ._column_results
         )
-        assert res.get(User.age.name)[Metrics.FIRST_QUARTILE.name] == 30.5
+        assert res.get(User.age.name)[Metrics.firstQuartile.name] == 30.5
 
     def test_third_quartile(self):
         """
         Check third quartile
         """
 
-        third_quartile = Metrics.THIRD_QUARTILE.value
+        third_quartile = Metrics.thirdQuartile.value
         res = (
             Profiler(
                 third_quartile,
@@ -693,13 +694,13 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.THIRD_QUARTILE.name] == 31.5
+        assert res.get(User.age.name)[Metrics.thirdQuartile.name] == 31.5
 
     def test_iqr(self):
         """Check IQR metric"""
-        iqr = Metrics.IQR.value
-        first_quartile = Metrics.FIRST_QUARTILE.value
-        third_quartile = Metrics.THIRD_QUARTILE.value
+        iqr = Metrics.interQuartileRange.value
+        first_quartile = Metrics.firstQuartile.value
+        third_quartile = Metrics.thirdQuartile.value
         res = (
             Profiler(
                 first_quartile,
@@ -711,11 +712,11 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.IQR.name] == 1.0
+        assert res.get(User.age.name)[Metrics.interQuartileRange.name] == 1.0
 
     def test_sum_function(self):
         """Check overwritten sum function"""
-        sum_metric = Metrics.SUM.value
+        sum_metric = Metrics.sum.value
         res = (
             Profiler(
                 sum_metric,
@@ -725,4 +726,4 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.SUM.name] == 124
+        assert res.get(User.age.name)[Metrics.sum.name] == 124

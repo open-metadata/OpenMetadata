@@ -29,7 +29,7 @@ class ILikeCount(StaticMetric):
     rows that match it
 
     This Metric needs to be initialised passing the expression to check
-    add_props(expression="j%")(Metrics.ILIKE_COUNT.value)
+    add_props(expression="j%")(Metrics.iLikeCount.value)
     """
 
     schema_metric_type = MetricType.iLikeCount
@@ -48,7 +48,7 @@ class ILikeCount(StaticMetric):
     def fn(self):
         if not hasattr(self, "expression"):
             raise AttributeError(
-                "ILike Count requires an expression to be set: add_props(expression=...)(Metrics.ILIKE_COUNT)"
+                "ILike Count requires an expression to be set: add_props(expression=...)(Metrics.iLikeCount)"
             )
         return SumFn(
             case(

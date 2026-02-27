@@ -122,6 +122,32 @@
       "type": "integer",
       "default": 43200,
       "title": "Timeout (in sec.)"
+    },
+    "metrics": {
+      "description": "List of metrics to compute. If empty, then all metrics will be computed",
+      "type": "array",
+      "items": {
+        "$ref": "../configuration/profilerConfiguration.json#/definitions/metricType"
+      },
+      "default": [
+          "mean",
+          "valuesCount",
+          "columnCount",
+          "distinctCount",
+          "distinctProportion",
+          "max",
+          "maxLength",
+          "min",
+          "minLength",
+          "nullCount",
+          "rowCount",
+          "stddev",
+          "sum",
+          "uniqueCount",
+          "uniqueProportion",
+          "columnNames",
+          "nullProportion"        
+      ]
     }
   },
   "additionalProperties": false

@@ -170,11 +170,11 @@ class SQAValidatorMixin:
         try:
             value = dict(
                 runner.dispatch_query_select_first(
-                    Metrics.ROW_COUNT(column).fn(),
+                    Metrics.rowCount(column).fn(),
                     query_filter_=query_filter,
                 )
             )
-            res = value.get(Metrics.ROW_COUNT.name)
+            res = value.get(Metrics.rowCount.name)
         except Exception as exc:
             raise SQLAlchemyError(exc)
 
@@ -187,7 +187,7 @@ class SQAValidatorMixin:
             runner (QueryRunner): runner to run the test case against)
             column (SQALikeColumn): column to compute row count for
         """
-        return self.run_query_results(runner, Metrics.ROW_COUNT, column, **kwargs)
+        return self.run_query_results(runner, Metrics.rowCount, column, **kwargs)
 
     def _get_normalized_dimension_expression(
         self, dimension_col: Column
