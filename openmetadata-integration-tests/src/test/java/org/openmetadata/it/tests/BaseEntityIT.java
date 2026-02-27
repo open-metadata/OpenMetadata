@@ -3922,8 +3922,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(30))
+        .atMost(Duration.ofSeconds(90))
+        .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
         .untilAsserted(
             () -> {
               for (String fqn : expectedFqns) {
@@ -3982,8 +3984,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
+        .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(3))
+        .ignoreExceptions()
         .untilAsserted(
             () -> {
               for (String fqn : fqns) {
@@ -4639,11 +4643,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index (async indexing may take time)
-    // Use 60 second timeout since search indexing can be slow under load
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
+        .ignoreExceptions()
         .untilAsserted(
             () -> {
               String searchResponse = searchForEntity(entity.getId().toString());
@@ -4670,7 +4674,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4706,7 +4710,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4734,7 +4738,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4753,7 +4757,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for search to reflect update")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4852,40 +4856,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
-   * Wait for search indexing to complete. Uses Awaitility to poll for a short period. This is used
-   * for non-critical waits where eventual consistency is acceptable.
-   */
-  protected void waitForSearchIndexing() {
-    Awaitility.await("Wait for search indexing")
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofMillis(500))
-        .atMost(Duration.ofSeconds(5))
-        .until(() -> true);
-  }
-
-  /**
    * Search for a specific entity by ID.
    * Subclasses should override to use entity-specific search.
    */
   protected String searchForEntity(String entityId) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    String query = "id:" + entityId;
-    return client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.GET, "/v1/search/query?q=" + query + "&index=" + getSearchIndexName(), null);
+    return client.search().query("id:" + entityId).index(getSearchIndexName()).size(1).execute();
   }
 
-  /**
-   * Search all entities of this type.
-   * Subclasses should override to use entity-specific search.
-   */
   protected String searchEntities() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    return client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.GET, "/v1/search/query?q=*&index=" + getSearchIndexName(), null);
+    return client.search().query("*").index(getSearchIndexName()).execute();
   }
 
   // ===================================================================

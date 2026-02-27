@@ -202,7 +202,8 @@ export const LDAP_UI_SCHEMA = {
     },
     authReassignRoles: {
       'ui:title': 'Auth Reassign Roles',
-      'ui:placeholder': 'Enter value (e.g. Admin, DataSteward) and press ENTER',
+      'ui:field': 'RolesSelectField',
+      'ui:placeholder': 'Select roles to reassign to users on every login',
     },
     // Show truststoreConfigType when SSL is enabled
     truststoreConfigType: {
