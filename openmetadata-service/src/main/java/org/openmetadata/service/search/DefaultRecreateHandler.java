@@ -48,13 +48,27 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     String canonicalAlias = context.getCanonicalAliases();
     Set<String> parentAliases = context.getParentAliases();
 
+    LOG.info(
+        "[PROMOTE-DEBUG] finalizeReindex called for entity '{}': canonicalIndex={}, activeIndex={}, "
+            + "stagedIndex={}, reindexSuccess={}, existingAliases={}, canonicalAlias={}, parentAliases={}",
+        entityType,
+        canonicalIndex,
+        activeIndex,
+        stagedIndex,
+        reindexSuccess,
+        existingAliases,
+        canonicalAlias,
+        parentAliases);
+
     SearchRepository searchRepository = Entity.getSearchRepository();
     SearchClient searchClient = searchRepository.getSearchClient();
 
     if (canonicalIndex == null || stagedIndex == null) {
       LOG.error(
-          "Cannot finalize reindex for entity '{}'. Missing canonical or staged index name.",
-          entityType);
+          "[PROMOTE-DEBUG] Cannot finalize reindex for entity '{}'. canonicalIndex={}, stagedIndex={}",
+          entityType,
+          canonicalIndex,
+          stagedIndex);
       return;
     }
 
@@ -87,6 +101,12 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
     }
 
+    LOG.info(
+        "[PROMOTE-DEBUG] finalizeReindex decision for entity '{}': shouldPromote={}, reindexSuccess={}",
+        entityType,
+        shouldPromote,
+        reindexSuccess);
+
     if (shouldPromote) {
       try {
         Set<String> aliasesToAttach = new HashSet<>();
@@ -112,6 +132,15 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
             oldIndicesToDelete.add(oldIndex);
           }
         }
+
+        LOG.info(
+            "[PROMOTE-DEBUG] finalizeReindex entity '{}': aliasesToAttach={}, allEntityIndices={}, "
+                + "oldIndicesToDelete={}, stagedIndex={}",
+            entityType,
+            aliasesToAttach,
+            allEntityIndices,
+            oldIndicesToDelete,
+            stagedIndex);
 
         if (oldIndicesToDelete.contains(canonicalIndex)) {
           if (searchClient.indexExists(canonicalIndex)) {
@@ -191,14 +220,24 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     String stagedIndex = context.getStagedIndex();
     String canonicalIndex = context.getCanonicalIndex();
 
+    LOG.info(
+        "[PROMOTE-DEBUG] promoteEntityIndex called for entity '{}': canonicalIndex={}, "
+            + "stagedIndex={}, reindexSuccess={}",
+        entityType,
+        canonicalIndex,
+        stagedIndex,
+        reindexSuccess);
+
     SearchRepository searchRepository = Entity.getSearchRepository();
     SearchClient searchClient = searchRepository.getSearchClient();
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
 
     if (canonicalIndex == null || stagedIndex == null) {
       LOG.error(
-          "Cannot promote index for entity '{}'. Missing canonical or staged index name.",
-          entityType);
+          "[PROMOTE-DEBUG] Cannot promote index for entity '{}'. canonicalIndex={}, stagedIndex={}",
+          entityType,
+          canonicalIndex,
+          stagedIndex);
       return;
     }
 
@@ -258,6 +297,15 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         }
       }
 
+      LOG.info(
+          "[PROMOTE-DEBUG] entity '{}': aliasesToAttach={}, allEntityIndices={}, "
+              + "oldIndicesToDelete={}, stagedIndex={}",
+          entityType,
+          aliasesToAttach,
+          allEntityIndices,
+          oldIndicesToDelete,
+          stagedIndex);
+
       if (oldIndicesToDelete.contains(canonicalIndex)) {
         if (searchClient.indexExists(canonicalIndex)) {
           searchClient.deleteIndexWithBackoff(canonicalIndex);
@@ -267,14 +315,26 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
 
       if (!aliasesToAttach.isEmpty()) {
+        LOG.info(
+            "[PROMOTE-DEBUG] entity '{}': swapping aliases from {} to {}",
+            entityType,
+            oldIndicesToDelete,
+            stagedIndex);
         boolean swapSuccess =
             searchClient.swapAliases(oldIndicesToDelete, stagedIndex, aliasesToAttach);
         if (!swapSuccess) {
           LOG.error(
-              "Failed to atomically swap aliases for entity '{}'. Old indices will not be deleted.",
-              entityType);
+              "[PROMOTE-DEBUG] Failed to atomically swap aliases for entity '{}'. "
+                  + "oldIndices={}, stagedIndex={}, aliases={}",
+              entityType,
+              oldIndicesToDelete,
+              stagedIndex,
+              aliasesToAttach);
           return;
         }
+      } else {
+        LOG.warn(
+            "[PROMOTE-DEBUG] entity '{}': aliasesToAttach is EMPTY, skipping swap", entityType);
       }
 
       LOG.info(

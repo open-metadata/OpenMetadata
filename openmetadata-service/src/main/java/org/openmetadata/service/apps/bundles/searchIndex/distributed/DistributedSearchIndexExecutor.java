@@ -465,6 +465,18 @@ public class DistributedSearchIndexExecutor {
       // entity types have 0 records), so no partition completion ever triggers the check.
       coordinator.checkAndUpdateJobCompletion(jobId);
 
+      // Final reconciliation pass: catch ALL participant-server completions before
+      // the stale-reclaimer is killed. Participant workers may have finished partitions
+      // that were never reconciled by the stale-reclaimer's periodic loop.
+      if (entityTracker != null && recreateContext != null) {
+        LOG.info("Running final DB reconciliation for job {}", jobId);
+        List<SearchIndexPartition> allPartitions = coordinator.getPartitions(jobId, null);
+        entityTracker.reconcileFromDatabase(allPartitions);
+        LOG.info(
+            "Final reconciliation complete - promoted entities: {}",
+            entityTracker.getPromotedEntities());
+      }
+
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOG.warn("Execution interrupted for job {}", jobId);
@@ -1005,12 +1017,25 @@ public class DistributedSearchIndexExecutor {
     }
 
     try {
+      String canonicalIndex = recreateContext.getCanonicalIndex(entityType).orElse(null);
+      String originalIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
+
+      LOG.info(
+          "[PROMOTE-DEBUG] Executor promoting entity '{}': success={}, canonicalIndex={}, "
+              + "originalIndex={}, stagedIndex={}, existingAliases={}",
+          entityType,
+          success,
+          canonicalIndex,
+          originalIndex,
+          stagedIndexOpt.get(),
+          recreateContext.getExistingAliases(entityType));
+
       EntityReindexContext entityContext =
           EntityReindexContext.builder()
               .entityType(entityType)
-              .originalIndex(recreateContext.getOriginalIndex(entityType).orElse(null))
-              .canonicalIndex(recreateContext.getCanonicalIndex(entityType).orElse(null))
-              .activeIndex(recreateContext.getOriginalIndex(entityType).orElse(null))
+              .originalIndex(originalIndex)
+              .canonicalIndex(canonicalIndex)
+              .activeIndex(originalIndex)
               .stagedIndex(stagedIndexOpt.get())
               .canonicalAliases(recreateContext.getCanonicalAlias(entityType).orElse(null))
               .existingAliases(recreateContext.getExistingAliases(entityType))
@@ -1024,8 +1049,12 @@ public class DistributedSearchIndexExecutor {
       } else {
         recreateIndexHandler.finalizeReindex(entityContext, success);
       }
+      LOG.info("[PROMOTE-DEBUG] Executor promotion completed for entity '{}'", entityType);
     } catch (Exception e) {
-      LOG.error("Failed to promote index for entity '{}'", entityType, e);
+      LOG.error(
+          "[PROMOTE-DEBUG] Failed to promote index for entity '{}' - exception thrown",
+          entityType,
+          e);
     }
   }
 

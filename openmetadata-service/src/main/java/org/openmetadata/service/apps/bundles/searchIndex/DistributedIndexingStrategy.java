@@ -419,10 +419,30 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       promotedEntities = distributedExecutor.getEntityTracker().getPromotedEntities();
     }
 
+    // Get per-entity stats for determining per-entity success
+    Map<String, SearchIndexJob.EntityTypeStats> entityStatsMap = Collections.emptyMap();
+    if (distributedExecutor != null) {
+      SearchIndexJob finalJob = distributedExecutor.getJobWithFreshStats();
+      if (finalJob != null && finalJob.getEntityStats() != null) {
+        entityStatsMap = finalJob.getEntityStats();
+      }
+    }
+
+    LOG.info(
+        "[FINALIZE-DEBUG] finalSuccess={}, promotedEntities={}, allEntities={}",
+        finalSuccess,
+        promotedEntities,
+        recreateContext.getEntities());
+
     Set<String> entitiesToFinalize = new HashSet<>(recreateContext.getEntities());
     entitiesToFinalize.removeAll(promotedEntities);
 
     boolean hasVectorIndex = entitiesToFinalize.remove(VectorIndexService.VECTOR_INDEX_KEY);
+
+    LOG.info(
+        "[FINALIZE-DEBUG] entitiesToFinalize={}, skippedAsPromoted={}",
+        entitiesToFinalize,
+        promotedEntities);
 
     try {
       if (!entitiesToFinalize.isEmpty()) {
@@ -433,7 +453,13 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
 
         for (String entityType : entitiesToFinalize) {
           try {
-            finalizeEntityReindex(recreateIndexHandler, recreateContext, entityType, finalSuccess);
+            boolean entitySuccess = computeEntitySuccess(entityType, entityStatsMap);
+            LOG.info(
+                "[FINALIZE-DEBUG] Finalizing entity '{}' with perEntitySuccess={} (globalSuccess={})",
+                entityType,
+                entitySuccess,
+                finalSuccess);
+            finalizeEntityReindex(recreateIndexHandler, recreateContext, entityType, entitySuccess);
           } catch (Exception ex) {
             LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
           }
@@ -459,6 +485,20 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     }
 
     return finalSuccess;
+  }
+
+  private boolean computeEntitySuccess(
+      String entityType, Map<String, SearchIndexJob.EntityTypeStats> entityStatsMap) {
+    if (entityStatsMap == null || entityStatsMap.isEmpty()) {
+      return false;
+    }
+    SearchIndexJob.EntityTypeStats stats = entityStatsMap.get(entityType);
+    if (stats == null) {
+      // Entity not in stats means 0 records — nothing to index = success
+      return true;
+    }
+    return stats.getFailedRecords() == 0
+        && stats.getSuccessRecords() + stats.getFailedRecords() >= stats.getTotalRecords();
   }
 
   private void finalizeEntityReindex(
