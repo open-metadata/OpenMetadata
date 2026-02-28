@@ -3571,19 +3571,11 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Create a table that will NOT have a data contract associated
     Table tableWithoutContract = createUniqueTable(test.getDisplayName());
 
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> getDataContractByEntityId(tableWithoutContract.getId(), "table", "owners"));
+    DataContract contract =
+        getDataContractByEntityId(tableWithoutContract.getId(), "table", "owners");
 
-    // Should return 404 since no data contract exists for this table
-    assertEquals(Status.NOT_FOUND.getStatusCode(), exception.getStatusCode());
-
-    // Verify the error message makes sense
-    String errorMessage = exception.getMessage();
-    assertTrue(
-        errorMessage.contains("DataContract") || errorMessage.contains("not found"),
-        "Error message should indicate that no data contract was found: " + errorMessage);
+    // No contract is a normal case - endpoint should return 200 with null data.
+    assertNull(contract);
   }
 
   @Test

@@ -293,16 +293,14 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The effective data contract (may include inherited properties)",
+            description =
+                "The effective data contract (may include inherited properties). Returns null when no contract exists.",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DataContract.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Data contract for instance {id} is not found")
+                    schema = @Schema(implementation = DataContract.class)))
       })
-  public DataContract getByEntityId(
+  public Response getByEntityId(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "ID of the related Entity", schema = @Schema(type = "string"))
@@ -327,10 +325,11 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     DataContract dataContract = repository.getEffectiveDataContract(entity);
 
     if (dataContract == null) {
-      throw EntityNotFoundException.byMessage(
-          String.format("Data contract for entity %s is not found", entityId));
+      return Response.ok("null", MediaType.APPLICATION_JSON).build();
     }
-    return addHref(uriInfo, repository.setFieldsInternal(dataContract, getFields(fieldsParam)));
+    DataContract resolvedContract =
+        addHref(uriInfo, repository.setFieldsInternal(dataContract, getFields(fieldsParam)));
+    return Response.ok(resolvedContract).build();
   }
 
   @GET
