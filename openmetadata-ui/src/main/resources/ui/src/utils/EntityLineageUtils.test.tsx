@@ -675,18 +675,18 @@ describe('Test EntityLineageUtils utility', () => {
       });
     });
 
-    it('should return flattenColumns for TABLE entity when available', () => {
+    it('should return flattenChildren for TABLE entity when available', () => {
       const columns = [{ name: 'col1' }];
-      const flattenColumns = [{ name: 'col1' }, { name: 'col1.nested' }];
+      const flattenChildren = [{ name: 'col1' }, { name: 'col1.nested' }];
       const node = {
         entityType: EntityType.TABLE,
         columns,
-        flattenColumns,
+        flattenChildren,
       };
       const result = getEntityChildrenAndLabel(node as any);
 
       expect(result).toEqual({
-        children: flattenColumns,
+        children: flattenChildren,
         childrenHeading: 'label.column-plural',
         childrenCount: 1,
       });
