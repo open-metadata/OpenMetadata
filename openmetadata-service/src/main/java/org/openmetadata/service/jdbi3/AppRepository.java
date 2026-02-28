@@ -175,30 +175,18 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("bot");
+  }
+
+  @Override
   public void storeEntity(App entity, boolean update) {
-    List<EntityReference> ownerRefs = entity.getOwners();
-    EntityReference bot = entity.getBot();
-    entity.withOwners(null);
-    entity.withBot(null);
     store(entity, update);
-    entity.withOwners(ownerRefs);
-    entity.setBot(bot);
   }
 
   @Override
   public void storeEntities(List<App> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-    for (App entity : entities) {
-      List<EntityReference> ownerRefs = entity.getOwners();
-      EntityReference bot = entity.getBot();
-      entity.withOwners(null).withBot(null);
-      fqns.add(entity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(entity));
-      entity.withOwners(ownerRefs);
-      entity.setBot(bot);
-    }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   public EntityReference getBotUser(App application) {

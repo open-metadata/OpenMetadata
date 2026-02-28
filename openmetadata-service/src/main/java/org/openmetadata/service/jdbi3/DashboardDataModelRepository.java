@@ -148,29 +148,18 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
+
+  @Override
   public void storeEntity(DashboardDataModel dashboardDataModel, boolean update) {
-    EntityReference service = dashboardDataModel.getService();
-    dashboardDataModel.withService(null);
     store(dashboardDataModel, update);
-    dashboardDataModel.withService(service);
   }
 
   @Override
   public void storeEntities(List<DashboardDataModel> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (DashboardDataModel dashboardDataModel : entities) {
-      EntityReference service = dashboardDataModel.getService();
-      dashboardDataModel.withService(null);
-
-      fqns.add(dashboardDataModel.getFullyQualifiedName());
-      jsons.add(serializeForStorage(dashboardDataModel));
-
-      dashboardDataModel.withService(service);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

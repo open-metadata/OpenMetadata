@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -132,25 +131,18 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
+
+  @Override
   public void storeEntity(LLMModel llmModel, boolean update) {
-    EntityReference service = llmModel.getService();
-    llmModel.withService(null);
     store(llmModel, update);
-    llmModel.withService(service);
   }
 
   @Override
   public void storeEntities(List<LLMModel> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-    for (LLMModel entity : entities) {
-      EntityReference service = entity.getService();
-      entity.withService(null);
-      fqns.add(entity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(entity));
-      entity.withService(service);
-    }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

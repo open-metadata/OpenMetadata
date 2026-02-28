@@ -105,31 +105,18 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
+
+  @Override
   public void storeEntity(Database database, boolean update) {
-    // Relationships and fields such as service are not stored as part of json
-    EntityReference service = database.getService();
-    database.withService(null);
     store(database, update);
-    database.withService(service);
   }
 
   @Override
   public void storeEntities(List<Database> databases) {
-    List<String> fqns = new ArrayList<>(databases.size());
-    List<String> jsons = new ArrayList<>(databases.size());
-
-    for (Database database : databases) {
-      EntityReference service = database.getService();
-
-      database.withService(null);
-
-      fqns.add(database.getFullyQualifiedName());
-      jsons.add(serializeForStorage(database));
-
-      database.withService(service);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(databases);
   }
 
   @Override

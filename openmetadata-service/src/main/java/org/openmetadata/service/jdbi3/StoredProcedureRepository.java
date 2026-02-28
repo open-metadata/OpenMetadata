@@ -60,31 +60,18 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
+
+  @Override
   public void storeEntity(StoredProcedure storedProcedure, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    EntityReference service = storedProcedure.getService();
-    storedProcedure.withService(null);
     store(storedProcedure, update);
-    storedProcedure.withService(service);
   }
 
   @Override
   public void storeEntities(List<StoredProcedure> storedProcedures) {
-    List<String> fqns = new ArrayList<>(storedProcedures.size());
-    List<String> jsons = new ArrayList<>(storedProcedures.size());
-
-    for (StoredProcedure storedProcedure : storedProcedures) {
-      EntityReference service = storedProcedure.getService();
-
-      storedProcedure.withService(null);
-
-      fqns.add(storedProcedure.getFullyQualifiedName());
-      jsons.add(serializeForStorage(storedProcedure));
-
-      storedProcedure.withService(service);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(storedProcedures);
   }
 
   @Override

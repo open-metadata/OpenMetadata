@@ -25,6 +25,9 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -99,54 +102,42 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
+
+  @Override
+  protected ObjectNode storageJsonNode(Topic topic) {
+    ObjectNode node = super.storageJsonNode(topic);
+    JsonNode messageSchema = node.get("messageSchema");
+    if (!(messageSchema instanceof ObjectNode messageSchemaNode)) {
+      return node;
+    }
+    stripSchemaFieldTags(messageSchemaNode.get("schemaFields"));
+    return node;
+  }
+
+  private void stripSchemaFieldTags(JsonNode schemaFields) {
+    if (!(schemaFields instanceof ArrayNode schemaFieldArray)) {
+      return;
+    }
+    for (JsonNode schemaField : schemaFieldArray) {
+      if (!(schemaField instanceof ObjectNode schemaFieldNode)) {
+        continue;
+      }
+      schemaFieldNode.remove("tags");
+      stripSchemaFieldTags(schemaFieldNode.get("children"));
+    }
+  }
+
+  @Override
   public void storeEntity(Topic topic, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    EntityReference service = topic.getService();
-    topic.withService(null);
-
-    // Don't store fields tags as JSON but build it on the fly based on relationships
-    List<Field> fieldsWithTags = null;
-    if (topic.getMessageSchema() != null) {
-      fieldsWithTags = topic.getMessageSchema().getSchemaFields();
-      topic.getMessageSchema().setSchemaFields(cloneWithoutTags(fieldsWithTags));
-      topic.getMessageSchema().getSchemaFields().forEach(field -> field.setTags(null));
-    }
-
     store(topic, update);
-
-    // Restore the relationships
-    if (fieldsWithTags != null) {
-      topic.getMessageSchema().withSchemaFields(fieldsWithTags);
-    }
-    topic.withService(service);
   }
 
   @Override
   public void storeEntities(List<Topic> topics) {
-    List<String> fqns = new ArrayList<>(topics.size());
-    List<String> jsons = new ArrayList<>(topics.size());
-
-    for (Topic topic : topics) {
-      EntityReference service = topic.getService();
-      List<Field> fieldsWithTags = null;
-      if (topic.getMessageSchema() != null) {
-        fieldsWithTags = topic.getMessageSchema().getSchemaFields();
-        topic.getMessageSchema().setSchemaFields(cloneWithoutTags(fieldsWithTags));
-        topic.getMessageSchema().getSchemaFields().forEach(field -> field.setTags(null));
-      }
-
-      topic.withService(null);
-
-      fqns.add(topic.getFullyQualifiedName());
-      jsons.add(serializeForStorage(topic));
-
-      if (fieldsWithTags != null) {
-        topic.getMessageSchema().withSchemaFields(fieldsWithTags);
-      }
-      topic.withService(service);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(topics);
   }
 
   @Override

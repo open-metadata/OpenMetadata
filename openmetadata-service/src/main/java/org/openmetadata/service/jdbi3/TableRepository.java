@@ -38,6 +38,9 @@ import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Streams;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
@@ -1556,44 +1559,40 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
+
+  @Override
+  protected ObjectNode storageJsonNode(Table table) {
+    ObjectNode node = super.storageJsonNode(table);
+    stripColumnTags(node.get("columns"));
+    return node;
+  }
+
+  private void stripColumnTags(JsonNode columnsNode) {
+    if (!(columnsNode instanceof ArrayNode columnArray)) {
+      return;
+    }
+    for (JsonNode column : columnArray) {
+      if (!(column instanceof ObjectNode columnNode)) {
+        continue;
+      }
+      columnNode.remove("tags");
+      stripColumnTags(columnNode.get("children"));
+    }
+  }
+
+  @Override
   public void storeEntity(Table table, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    EntityReference service = table.getService();
-    table.withService(null);
-
-    // Don't store column tags as JSON but build it on the fly based on relationships
-    List<Column> columnWithTags = table.getColumns();
-    table.setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
-    table.getColumns().forEach(column -> column.setTags(null));
-
     store(table, update);
-
-    // Restore the relationships
-    table.withColumns(columnWithTags).withService(service);
     // Store ER relationships based on table constraints
     addConstraintRelationship(table, table.getTableConstraints());
   }
 
   @Override
   public void storeEntities(List<Table> tables) {
-    List<String> fqns = new ArrayList<>(tables.size());
-    List<String> jsons = new ArrayList<>(tables.size());
-
-    for (Table table : tables) {
-      EntityReference service = table.getService();
-      List<Column> columnWithTags = table.getColumns();
-
-      table.withService(null);
-      table.setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
-      table.getColumns().forEach(column -> column.setTags(null));
-
-      fqns.add(table.getFullyQualifiedName());
-      jsons.add(serializeForStorage(table));
-
-      table.withColumns(columnWithTags).withService(service);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(tables);
   }
 
   @Override

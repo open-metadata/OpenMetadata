@@ -284,34 +284,17 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntity(Tag tag, boolean update) {
-    EntityReference classification = tag.getClassification();
-    EntityReference parent = tag.getParent();
-
-    // Parent and Classification are not stored as part of JSON. Build it on the fly based on
-    // relationships
-    tag.withClassification(null).withParent(null);
     store(tag, update);
-    tag.withClassification(classification).withParent(parent);
+  }
+
+  @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("classification", "parent");
   }
 
   @Override
   public void storeEntities(List<Tag> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (Tag tag : entities) {
-      EntityReference classification = tag.getClassification();
-      EntityReference parent = tag.getParent();
-
-      tag.withClassification(null).withParent(null);
-
-      fqns.add(tag.getFullyQualifiedName());
-      jsons.add(serializeForStorage(tag));
-
-      tag.withClassification(classification).withParent(parent);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

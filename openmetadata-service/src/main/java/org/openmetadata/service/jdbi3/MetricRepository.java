@@ -132,30 +132,18 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("relatedMetrics");
+  }
+
+  @Override
   public void storeEntity(Metric metric, boolean update) {
-    List<EntityReference> relatedMetrics = metric.getRelatedMetrics();
-    metric.setRelatedMetrics(null);
     store(metric, update);
-    metric.setRelatedMetrics(relatedMetrics);
   }
 
   @Override
   public void storeEntities(List<Metric> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (Metric metric : entities) {
-      List<EntityReference> relatedMetrics = metric.getRelatedMetrics();
-
-      metric.setRelatedMetrics(null);
-
-      fqns.add(metric.getFullyQualifiedName());
-      jsons.add(serializeForStorage(metric));
-
-      metric.setRelatedMetrics(relatedMetrics);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

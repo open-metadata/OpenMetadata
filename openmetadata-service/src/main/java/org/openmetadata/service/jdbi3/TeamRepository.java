@@ -479,52 +479,17 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void storeEntity(Team team, boolean update) {
-    List<EntityReference> users = team.getUsers();
-    List<EntityReference> defaultRoles = team.getDefaultRoles();
-    List<EntityReference> parents = team.getParents();
-    List<EntityReference> policies = team.getPolicies();
-
-    team.withUsers(null)
-        .withDefaultRoles(null)
-        .withParents(null)
-        .withPolicies(null)
-        .withInheritedRoles(null);
-
     store(team, update);
+  }
 
-    team.withUsers(users)
-        .withDefaultRoles(defaultRoles)
-        .withParents(parents)
-        .withPolicies(policies);
+  @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("users", "defaultRoles", "parents", "policies", "inheritedRoles");
   }
 
   @Override
   public void storeEntities(List<Team> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (Team team : entities) {
-      List<EntityReference> users = team.getUsers();
-      List<EntityReference> defaultRoles = team.getDefaultRoles();
-      List<EntityReference> parents = team.getParents();
-      List<EntityReference> policies = team.getPolicies();
-
-      team.withUsers(null)
-          .withDefaultRoles(null)
-          .withParents(null)
-          .withPolicies(null)
-          .withInheritedRoles(null);
-
-      fqns.add(team.getFullyQualifiedName());
-      jsons.add(serializeForStorage(team));
-
-      team.withUsers(users)
-          .withDefaultRoles(defaultRoles)
-          .withParents(parents)
-          .withPolicies(policies);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   /**

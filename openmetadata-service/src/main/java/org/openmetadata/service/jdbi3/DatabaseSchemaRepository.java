@@ -102,33 +102,18 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public void storeEntity(DatabaseSchema schema, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    EntityReference service = schema.getService();
-    schema.withService(null);
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
 
+  @Override
+  public void storeEntity(DatabaseSchema schema, boolean update) {
     store(schema, update);
-    // Restore the relationships
-    schema.withService(service);
   }
 
   @Override
   public void storeEntities(List<DatabaseSchema> schemas) {
-    List<String> fqns = new ArrayList<>(schemas.size());
-    List<String> jsons = new ArrayList<>(schemas.size());
-
-    for (DatabaseSchema schema : schemas) {
-      EntityReference service = schema.getService();
-
-      schema.withService(null);
-
-      fqns.add(schema.getFullyQualifiedName());
-      jsons.add(serializeForStorage(schema));
-
-      schema.withService(service);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(schemas);
   }
 
   @Override

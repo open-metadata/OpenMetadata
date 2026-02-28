@@ -199,29 +199,18 @@ public class RoleRepository extends EntityRepository<Role> {
    * <p>This method ensures that the role and its policy are stored correctly.
    */
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("policies");
+  }
+
+  @Override
   public void storeEntity(Role role, boolean update) {
-    List<EntityReference> policies = role.getPolicies();
-    role.withPolicies(null);
     store(role, update);
-    role.withPolicies(policies);
   }
 
   @Override
   public void storeEntities(List<Role> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (Role role : entities) {
-      List<EntityReference> policies = role.getPolicies();
-      role.withPolicies(null);
-
-      fqns.add(role.getFullyQualifiedName());
-      jsons.add(serializeForStorage(role));
-
-      role.withPolicies(policies);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

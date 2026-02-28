@@ -13,7 +13,9 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 
-import com.google.common.collect.Lists;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -305,55 +307,38 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public void storeEntity(Container container, boolean update) {
-    EntityReference storageService = container.getService();
-    EntityReference parent = container.getParent();
-    container.withService(null).withParent(null);
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service", "parent");
+  }
 
-    // Don't store datamodel column tags as JSON but build it on the fly based on relationships
-    List<Column> columnWithTags = Lists.newArrayList();
-    if (container.getDataModel() != null) {
-      columnWithTags.addAll(container.getDataModel().getColumns());
-      container.getDataModel().setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
-      container.getDataModel().getColumns().forEach(column -> column.setTags(null));
+  @Override
+  protected ObjectNode storageJsonNode(Container container) {
+    ObjectNode node = super.storageJsonNode(container);
+    stripColumnTags(node.at("/dataModel/columns"));
+    return node;
+  }
+
+  private void stripColumnTags(JsonNode columnsNode) {
+    if (!(columnsNode instanceof ArrayNode columnArray)) {
+      return;
     }
-
-    store(container, update);
-
-    // Restore the relationships
-    container.withService(storageService).withParent(parent);
-    if (container.getDataModel() != null) {
-      container.getDataModel().setColumns(columnWithTags);
+    for (JsonNode column : columnArray) {
+      if (!(column instanceof ObjectNode columnNode)) {
+        continue;
+      }
+      columnNode.remove("tags");
+      stripColumnTags(columnNode.get("children"));
     }
   }
 
   @Override
+  public void storeEntity(Container container, boolean update) {
+    store(container, update);
+  }
+
+  @Override
   public void storeEntities(List<Container> containers) {
-    List<String> fqns = new ArrayList<>(containers.size());
-    List<String> jsons = new ArrayList<>(containers.size());
-
-    for (Container container : containers) {
-      EntityReference storageService = container.getService();
-      EntityReference parent = container.getParent();
-      List<Column> columnWithTags = Lists.newArrayList();
-      if (container.getDataModel() != null) {
-        columnWithTags.addAll(container.getDataModel().getColumns());
-        container.getDataModel().setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
-        container.getDataModel().getColumns().forEach(column -> column.setTags(null));
-      }
-
-      container.withService(null).withParent(null);
-
-      fqns.add(container.getFullyQualifiedName());
-      jsons.add(serializeForStorage(container));
-
-      container.withService(storageService).withParent(parent);
-      if (container.getDataModel() != null) {
-        container.getDataModel().setColumns(columnWithTags);
-      }
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(containers);
   }
 
   @Override

@@ -718,18 +718,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T getForInheritance(UUID id, Fields fields, Include include) {
     T entity = find(id, include);
+    List<CollectionDAO.EntityRelationshipObject> inheritanceRelations =
+        daoCollection
+            .relationshipDAO()
+            .findToRelationshipsForEntity(
+                entity.getId(), entityType, inheritanceRelationOrdinals(fields), ALL);
     if (fields.contains(FIELD_OWNERS)) {
-      entity.setOwners(getOwners(entity, NON_DELETED));
+      entity.setOwners(
+          resolveReferencesFromToRecords(
+              inheritanceRelations, Relationship.OWNS, null, NON_DELETED));
     }
     if (fields.contains(FIELD_DOMAINS)) {
-      entity.setDomains(getDomains(entity, NON_DELETED));
+      entity.setDomains(
+          resolveReferencesFromToRecords(
+              inheritanceRelations, Relationship.HAS, DOMAIN, NON_DELETED));
     }
     if (!requiresParentForInheritance(entity, fields)) {
       return entity;
     }
 
     EntityReference containerRef =
-        getFromEntityRef(entity.getId(), Relationship.CONTAINS, null, false);
+        resolveParentReferenceFromToRecords(inheritanceRelations, Relationship.CONTAINS, null);
+    if (containerRef == null) {
+      containerRef = getFromEntityRef(entity.getId(), Relationship.CONTAINS, null, false);
+    }
     if (containerRef != null) {
       // Preserve the requested inheritance shape (e.g. retentionPeriod-only), but only for this
       // repository's declared inheritable fields to avoid leaking invalid fields up the chain.
@@ -740,6 +752,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
       applyInheritance(entity, fields, parent);
     }
     return entity;
+  }
+
+  private List<Integer> inheritanceRelationOrdinals(Fields fields) {
+    Fields inheritanceFields = fields == null ? Fields.EMPTY_FIELDS : fields;
+    Set<Integer> relations = new HashSet<>();
+    if (supportsOwners && inheritanceFields.contains(FIELD_OWNERS)) {
+      relations.add(Relationship.OWNS.ordinal());
+    }
+    if (supportsDomains && inheritanceFields.contains(FIELD_DOMAINS)) {
+      relations.add(Relationship.HAS.ordinal());
+    }
+    // Parent traversal for inheritance always needs CONTAINS regardless of requested relation
+    // fields.
+    relations.add(Relationship.CONTAINS.ordinal());
+    return new ArrayList<>(relations);
   }
 
   private String projectInheritanceFields(Fields fields) {
@@ -968,7 +995,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     for (var entry : missingRefsByType.entrySet()) {
       List<? extends EntityInterface> parents =
-          Entity.getEntities(entry.getValue(), inheritableFields, ALL);
+          Entity.getEntitiesForInheritance(entry.getValue(), inheritableFields, ALL);
       for (var parent : parents) {
         loadedParents.put(parent.getId(), parent);
         var parentRef = parentRefMap.get(parent.getId());
@@ -1549,25 +1576,82 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Relationship relationship,
       String fromEntityType,
       Include include) {
-    if (records == null || records.isEmpty()) {
-      return Collections.emptyList();
-    }
-
     List<EntityRelationshipRecord> relationRecords =
+        toRelationshipRecordsFromToRecords(records, relationship, fromEntityType);
+
+    return Entity.getEntityRelationshipRepository().getEntityReferences(relationRecords, include);
+  }
+
+  private EntityReference resolveSingleFromReferenceFromToRecords(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Relationship relationship,
+      String fromEntityType,
+      Include include) {
+    List<EntityReference> references =
+        resolveReferencesFromToRecords(records, relationship, fromEntityType, include);
+    if (references.isEmpty()) {
+      return null;
+    }
+    if (references.size() > 1) {
+      LOG.warn(
+          "Possible database issues - multiple relations {} for entity {} fromEntityType {}",
+          relationship.value(),
+          entityType,
+          fromEntityType);
+    }
+    return references.get(0);
+  }
+
+  private EntityReference resolveParentReferenceFromToRecords(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Relationship relationship,
+      String fromEntityType) {
+    if (records == null || records.isEmpty()) {
+      return null;
+    }
+    List<CollectionDAO.EntityRelationshipObject> matchingRecords =
         records.stream()
             .filter(record -> record.getRelation() == relationship.ordinal())
             .filter(
                 record -> fromEntityType == null || fromEntityType.equals(record.getFromEntity()))
-            .map(
-                record ->
-                    EntityRelationshipRecord.builder()
-                        .id(UUID.fromString(record.getFromId()))
-                        .type(record.getFromEntity())
-                        .json(record.getJson())
-                        .build())
             .toList();
+    if (matchingRecords.isEmpty()) {
+      return null;
+    }
+    if (matchingRecords.size() > 1) {
+      LOG.warn(
+          "Possible database issues - multiple relations {} for entity {} fromEntityType {}",
+          relationship.value(),
+          entityType,
+          fromEntityType);
+    }
+    CollectionDAO.EntityRelationshipObject record = matchingRecords.get(0);
+    if (nullOrEmpty(record.getFromEntity()) || nullOrEmpty(record.getFromId())) {
+      return null;
+    }
+    return new EntityReference()
+        .withType(record.getFromEntity())
+        .withId(UUID.fromString(record.getFromId()));
+  }
 
-    return Entity.getEntityRelationshipRepository().getEntityReferences(relationRecords, include);
+  private List<EntityRelationshipRecord> toRelationshipRecordsFromToRecords(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Relationship relationship,
+      String fromEntityType) {
+    if (records == null || records.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return records.stream()
+        .filter(record -> record.getRelation() == relationship.ordinal())
+        .filter(record -> fromEntityType == null || fromEntityType.equals(record.getFromEntity()))
+        .map(
+            record ->
+                EntityRelationshipRecord.builder()
+                    .id(UUID.fromString(record.getFromId()))
+                    .type(record.getFromEntity())
+                    .json(record.getJson())
+                    .build())
+        .toList();
   }
 
   private List<EntityReference> resolveReferencesFromFromRecords(
@@ -3666,12 +3750,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private static final List<String> FIELDS_STORED_AS_RELATIONSHIPS =
       List.of(
-          "href", "owners", "children", "tags", "domains", "dataProducts", "followers", "experts");
+          "href",
+          "owners",
+          "children",
+          "tags",
+          "domains",
+          "dataProducts",
+          "followers",
+          "experts",
+          "reviewers");
 
-  protected String serializeForStorage(T entity) {
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return Collections.emptyList();
+  }
+
+  protected ObjectNode storageJsonNode(T entity) {
     ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
     node.remove(FIELDS_STORED_AS_RELATIONSHIPS);
-    return node.toString();
+    List<String> extraStrippedFields = getFieldsStrippedFromStorageJson();
+    if (!nullOrEmpty(extraStrippedFields)) {
+      node.remove(extraStrippedFields);
+    }
+    return node;
+  }
+
+  protected String serializeForStorage(T entity) {
+    return storageJsonNode(entity).toString();
   }
 
   @Transaction

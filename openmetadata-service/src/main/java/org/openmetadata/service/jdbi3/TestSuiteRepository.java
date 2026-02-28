@@ -635,26 +635,18 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("tests");
+  }
+
+  @Override
   public void storeEntity(TestSuite entity, boolean update) {
-    // we don't want to store the tests in the test suite entity
-    List<EntityReference> tests = entity.getTests();
-    entity.setTests(null);
     store(entity, update);
-    entity.setTests(tests);
   }
 
   @Override
   public void storeEntities(List<TestSuite> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-    for (TestSuite entity : entities) {
-      List<EntityReference> tests = entity.getTests();
-      entity.setTests(null);
-      fqns.add(entity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(entity));
-      entity.setTests(tests);
-    }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

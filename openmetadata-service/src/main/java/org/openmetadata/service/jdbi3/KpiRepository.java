@@ -169,27 +169,18 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("dataInsightChart", "kpiResult");
+  }
+
+  @Override
   public void storeEntity(Kpi kpi, boolean update) {
-    EntityReference dataInsightChart = kpi.getDataInsightChart();
-    KpiResult kpiResults = kpi.getKpiResult();
-    kpi.withDataInsightChart(null).withKpiResult(null);
     store(kpi, update);
-    kpi.withDataInsightChart(dataInsightChart).withKpiResult(kpiResults);
   }
 
   @Override
   public void storeEntities(List<Kpi> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-    for (Kpi kpi : entities) {
-      EntityReference dataInsightChart = kpi.getDataInsightChart();
-      KpiResult kpiResults = kpi.getKpiResult();
-      kpi.withDataInsightChart(null).withKpiResult(null);
-      fqns.add(kpi.getFullyQualifiedName());
-      jsons.add(serializeForStorage(kpi));
-      kpi.withDataInsightChart(dataInsightChart).withKpiResult(kpiResults);
-    }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

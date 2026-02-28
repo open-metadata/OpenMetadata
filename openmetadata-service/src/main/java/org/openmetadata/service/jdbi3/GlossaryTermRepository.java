@@ -519,40 +519,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("glossary", "parent", "reviewers");
+  }
+
+  @Override
   public void storeEntity(GlossaryTerm entity, boolean update) {
-    // Relationships and fields such as parentTerm are derived and not stored as part of json
-    EntityReference glossary = entity.getGlossary();
-    EntityReference parentTerm = entity.getParent();
-    List<EntityReference> relatedTerms = entity.getRelatedTerms();
-    List<EntityReference> reviewers = entity.getReviewers();
-
-    entity.withGlossary(null).withParent(null).withRelatedTerms(relatedTerms).withReviewers(null);
     store(entity, update);
-
-    // Restore the relationships
-    entity
-        .withGlossary(glossary)
-        .withParent(parentTerm)
-        .withRelatedTerms(relatedTerms)
-        .withReviewers(reviewers);
   }
 
   @Override
   public void storeEntities(List<GlossaryTerm> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-    for (GlossaryTerm entity : entities) {
-      EntityReference glossary = entity.getGlossary();
-      EntityReference parentTerm = entity.getParent();
-      List<EntityReference> reviewers = entity.getReviewers();
-
-      entity.withGlossary(null).withParent(null).withReviewers(null);
-      fqns.add(entity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(entity));
-
-      entity.withGlossary(glossary).withParent(parentTerm).withReviewers(reviewers);
-    }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

@@ -26,6 +26,9 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -126,74 +129,39 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("apiCollection");
+  }
+
+  @Override
+  protected ObjectNode storageJsonNode(APIEndpoint apiEndpoint) {
+    ObjectNode node = super.storageJsonNode(apiEndpoint);
+    stripSchemaFieldTags(node.at("/requestSchema/schemaFields"));
+    stripSchemaFieldTags(node.at("/responseSchema/schemaFields"));
+    return node;
+  }
+
+  private void stripSchemaFieldTags(JsonNode schemaFields) {
+    if (!(schemaFields instanceof ArrayNode schemaFieldArray)) {
+      return;
+    }
+    for (JsonNode schemaField : schemaFieldArray) {
+      if (!(schemaField instanceof ObjectNode schemaFieldNode)) {
+        continue;
+      }
+      schemaFieldNode.remove("tags");
+      stripSchemaFieldTags(schemaFieldNode.get("children"));
+    }
+  }
+
+  @Override
   public void storeEntity(APIEndpoint apiEndpoint, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    EntityReference apiCollection = apiEndpoint.getApiCollection();
-    apiEndpoint.withApiCollection(null);
-
-    // Don't store fields tags as JSON but build it on the fly based on relationships
-    List<Field> requestFieldsWithTags = null;
-    if (apiEndpoint.getRequestSchema() != null) {
-      requestFieldsWithTags = apiEndpoint.getRequestSchema().getSchemaFields();
-      apiEndpoint.getRequestSchema().setSchemaFields(cloneWithoutTags(requestFieldsWithTags));
-      apiEndpoint.getRequestSchema().getSchemaFields().forEach(field -> field.setTags(null));
-    }
-
-    List<Field> responseFieldsWithTags = null;
-    if (apiEndpoint.getResponseSchema() != null) {
-      responseFieldsWithTags = apiEndpoint.getResponseSchema().getSchemaFields();
-      apiEndpoint.getResponseSchema().setSchemaFields(cloneWithoutTags(responseFieldsWithTags));
-      apiEndpoint.getResponseSchema().getSchemaFields().forEach(field -> field.setTags(null));
-    }
-
     store(apiEndpoint, update);
-
-    // Restore the relationships
-    if (requestFieldsWithTags != null) {
-      apiEndpoint.getRequestSchema().withSchemaFields(requestFieldsWithTags);
-    }
-    if (responseFieldsWithTags != null) {
-      apiEndpoint.getResponseSchema().withSchemaFields(responseFieldsWithTags);
-    }
-    apiEndpoint.withApiCollection(apiCollection);
   }
 
   @Override
   public void storeEntities(List<APIEndpoint> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (APIEndpoint apiEndpoint : entities) {
-      EntityReference apiCollection = apiEndpoint.getApiCollection();
-      apiEndpoint.withApiCollection(null);
-
-      List<Field> requestFieldsWithTags = null;
-      if (apiEndpoint.getRequestSchema() != null) {
-        requestFieldsWithTags = apiEndpoint.getRequestSchema().getSchemaFields();
-        apiEndpoint.getRequestSchema().setSchemaFields(cloneWithoutTags(requestFieldsWithTags));
-        apiEndpoint.getRequestSchema().getSchemaFields().forEach(field -> field.setTags(null));
-      }
-
-      List<Field> responseFieldsWithTags = null;
-      if (apiEndpoint.getResponseSchema() != null) {
-        responseFieldsWithTags = apiEndpoint.getResponseSchema().getSchemaFields();
-        apiEndpoint.getResponseSchema().setSchemaFields(cloneWithoutTags(responseFieldsWithTags));
-        apiEndpoint.getResponseSchema().getSchemaFields().forEach(field -> field.setTags(null));
-      }
-
-      fqns.add(apiEndpoint.getFullyQualifiedName());
-      jsons.add(serializeForStorage(apiEndpoint));
-
-      if (requestFieldsWithTags != null) {
-        apiEndpoint.getRequestSchema().withSchemaFields(requestFieldsWithTags);
-      }
-      if (responseFieldsWithTags != null) {
-        apiEndpoint.getResponseSchema().withSchemaFields(responseFieldsWithTags);
-      }
-      apiEndpoint.withApiCollection(apiCollection);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override
@@ -360,27 +328,6 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
             setFieldFQN(fieldFqn, c.getChildren());
           }
         });
-  }
-
-  List<Field> cloneWithoutTags(List<Field> fields) {
-    if (nullOrEmpty(fields)) {
-      return fields;
-    }
-    List<Field> copy = new ArrayList<>();
-    fields.forEach(f -> copy.add(cloneWithoutTags(f)));
-    return copy;
-  }
-
-  private Field cloneWithoutTags(Field field) {
-    List<Field> children = cloneWithoutTags(field.getChildren());
-    return new Field()
-        .withDescription(field.getDescription())
-        .withName(field.getName())
-        .withDisplayName(field.getDisplayName())
-        .withFullyQualifiedName(field.getFullyQualifiedName())
-        .withDataType(field.getDataType())
-        .withDataTypeDisplay(field.getDataTypeDisplay())
-        .withChildren(children);
   }
 
   private void validateSchemaFieldTags(List<Field> fields) {

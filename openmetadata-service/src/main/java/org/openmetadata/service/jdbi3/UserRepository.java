@@ -238,13 +238,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("roles", "teams", "inheritedRoles", "defaultPersona");
+  }
+
+  @Override
   public void storeEntity(User user, boolean update) {
-    List<EntityReference> roles = user.getRoles();
-    List<EntityReference> teams = user.getTeams();
-    EntityReference defaultPersona = user.getDefaultPersona();
-
-    user.withRoles(null).withTeams(null).withInheritedRoles(null).withDefaultPersona(null);
-
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
       secretsManager.encryptAuthenticationMechanism(
@@ -252,8 +251,6 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     store(user, update);
-
-    user.withRoles(roles).withTeams(teams).withDefaultPersona(defaultPersona);
   }
 
   @Override
@@ -262,12 +259,6 @@ public class UserRepository extends EntityRepository<User> {
     List<String> jsons = new ArrayList<>(entities.size());
 
     for (User user : entities) {
-      List<EntityReference> roles = user.getRoles();
-      List<EntityReference> teams = user.getTeams();
-      EntityReference defaultPersona = user.getDefaultPersona();
-
-      user.withRoles(null).withTeams(null).withInheritedRoles(null).withDefaultPersona(null);
-
       SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
         secretsManager.encryptAuthenticationMechanism(
@@ -276,8 +267,6 @@ public class UserRepository extends EntityRepository<User> {
 
       fqns.add(user.getFullyQualifiedName());
       jsons.add(serializeForStorage(user));
-
-      user.withRoles(roles).withTeams(teams).withDefaultPersona(defaultPersona);
     }
 
     dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);

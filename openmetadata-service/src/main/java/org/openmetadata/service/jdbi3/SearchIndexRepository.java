@@ -26,6 +26,9 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -96,54 +99,38 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
+
+  @Override
+  protected ObjectNode storageJsonNode(SearchIndex searchIndex) {
+    ObjectNode node = super.storageJsonNode(searchIndex);
+    stripFieldTags(node.get("fields"));
+    return node;
+  }
+
+  private void stripFieldTags(JsonNode fieldsNode) {
+    if (!(fieldsNode instanceof ArrayNode fieldArray)) {
+      return;
+    }
+    for (JsonNode field : fieldArray) {
+      if (!(field instanceof ObjectNode fieldNode)) {
+        continue;
+      }
+      fieldNode.remove("tags");
+      stripFieldTags(fieldNode.get("children"));
+    }
+  }
+
+  @Override
   public void storeEntity(SearchIndex searchIndex, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    EntityReference service = searchIndex.getService();
-    searchIndex.withService(null);
-
-    // Don't store fields tags as JSON but build it on the fly based on relationships
-    List<SearchIndexField> fieldsWithTags = null;
-    if (searchIndex.getFields() != null) {
-      fieldsWithTags = searchIndex.getFields();
-      searchIndex.setFields(cloneWithoutTags(fieldsWithTags));
-      searchIndex.getFields().forEach(field -> field.setTags(null));
-    }
-
     store(searchIndex, update);
-
-    // Restore the relationships
-    if (fieldsWithTags != null) {
-      searchIndex.setFields(fieldsWithTags);
-    }
-    searchIndex.withService(service);
   }
 
   @Override
   public void storeEntities(List<SearchIndex> searchIndexes) {
-    List<String> fqns = new ArrayList<>(searchIndexes.size());
-    List<String> jsons = new ArrayList<>(searchIndexes.size());
-
-    for (SearchIndex searchIndex : searchIndexes) {
-      EntityReference service = searchIndex.getService();
-      List<SearchIndexField> fieldsWithTags = null;
-      if (searchIndex.getFields() != null) {
-        fieldsWithTags = searchIndex.getFields();
-        searchIndex.setFields(cloneWithoutTags(fieldsWithTags));
-        searchIndex.getFields().forEach(field -> field.setTags(null));
-      }
-
-      searchIndex.withService(null);
-
-      fqns.add(searchIndex.getFullyQualifiedName());
-      jsons.add(serializeForStorage(searchIndex));
-
-      if (fieldsWithTags != null) {
-        searchIndex.setFields(fieldsWithTags);
-      }
-      searchIndex.withService(service);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(searchIndexes);
   }
 
   @Override
@@ -338,27 +325,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       f.setTags(setTags ? getTags(f.getFullyQualifiedName()) : null);
       getFieldTags(setTags, f.getChildren());
     }
-  }
-
-  List<SearchIndexField> cloneWithoutTags(List<SearchIndexField> fields) {
-    if (nullOrEmpty(fields)) {
-      return fields;
-    }
-    List<SearchIndexField> copy = new ArrayList<>();
-    fields.forEach(f -> copy.add(cloneWithoutTags(f)));
-    return copy;
-  }
-
-  private SearchIndexField cloneWithoutTags(SearchIndexField field) {
-    List<SearchIndexField> children = cloneWithoutTags(field.getChildren());
-    return new SearchIndexField()
-        .withDescription(field.getDescription())
-        .withName(field.getName())
-        .withDisplayName(field.getDisplayName())
-        .withFullyQualifiedName(field.getFullyQualifiedName())
-        .withDataType(field.getDataType())
-        .withDataTypeDisplay(field.getDataTypeDisplay())
-        .withChildren(children);
   }
 
   @Override

@@ -732,49 +732,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("testSuite", "testSuites", "testDefinition", "testCaseResult");
+  }
+
+  @Override
   public void storeEntity(TestCase test, boolean update) {
-    EntityReference testSuite = test.getTestSuite();
-    EntityReference testDefinition = test.getTestDefinition();
-    TestCaseResult testCaseResult = test.getTestCaseResult();
-    List<TestSuite> testSuites = test.getTestSuites();
-
-    // Don't store testCaseResult, owner, database, href and tags as JSON.
-    // Build it on the fly based on relationships
-    test.withTestSuite(null).withTestSuites(null).withTestDefinition(null).withTestCaseResult(null);
     store(test, update);
-
-    // Restore the relationships
-    test.withTestSuite(testSuite)
-        .withTestSuites(testSuites)
-        .withTestDefinition(testDefinition)
-        .withTestCaseResult(testCaseResult);
   }
 
   @Override
   public void storeEntities(List<TestCase> testCases) {
-    List<String> fqns = new ArrayList<>(testCases.size());
-    List<String> jsons = new ArrayList<>(testCases.size());
-    for (TestCase testCase : testCases) {
-      EntityReference testSuite = testCase.getTestSuite();
-      EntityReference testDefinition = testCase.getTestDefinition();
-      TestCaseResult testCaseResult = testCase.getTestCaseResult();
-      List<TestSuite> testSuites = testCase.getTestSuites();
-
-      testCase
-          .withTestSuite(null)
-          .withTestSuites(null)
-          .withTestDefinition(null)
-          .withTestCaseResult(null);
-      fqns.add(testCase.getFullyQualifiedName());
-      jsons.add(serializeForStorage(testCase));
-
-      testCase
-          .withTestSuite(testSuite)
-          .withTestSuites(testSuites)
-          .withTestDefinition(testDefinition)
-          .withTestCaseResult(testCaseResult);
-    }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(testCases);
   }
 
   @Override

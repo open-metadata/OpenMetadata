@@ -98,30 +98,18 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("customProperties");
+  }
+
+  @Override
   public void storeEntity(Type type, boolean update) {
-    List<CustomProperty> customProperties = type.getCustomProperties();
-    type.withCustomProperties(null);
     store(type, update);
-    type.withCustomProperties(customProperties);
     updateTypeMap(type);
   }
 
   public void storeEntities(List<Type> types) {
-    List<String> fqns = new ArrayList<>(types.size());
-    List<String> jsons = new ArrayList<>(types.size());
-
-    for (Type type : types) {
-      List<CustomProperty> customProperties = type.getCustomProperties();
-
-      type.withCustomProperties(null);
-
-      fqns.add(type.getFullyQualifiedName());
-      jsons.add(serializeForStorage(type));
-
-      type.withCustomProperties(customProperties);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(types);
 
     for (Type type : types) {
       updateTypeMap(type);

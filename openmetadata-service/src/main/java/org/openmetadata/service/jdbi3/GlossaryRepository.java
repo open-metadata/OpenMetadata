@@ -163,31 +163,18 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   public void prepare(Glossary glossary, boolean update) {}
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("reviewers");
+  }
+
+  @Override
   public void storeEntity(Glossary glossary, boolean update) {
-    // Relationships and fields such as reviewers are derived and not stored as part of json
-    List<EntityReference> reviewers = glossary.getReviewers();
-    glossary.withReviewers(null);
     store(glossary, update);
-    glossary.withReviewers(reviewers);
   }
 
   @Override
   public void storeEntities(List<Glossary> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (Glossary glossary : entities) {
-      List<EntityReference> reviewers = glossary.getReviewers();
-
-      glossary.withReviewers(null);
-
-      fqns.add(glossary.getFullyQualifiedName());
-      jsons.add(serializeForStorage(glossary));
-
-      glossary.withReviewers(reviewers);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

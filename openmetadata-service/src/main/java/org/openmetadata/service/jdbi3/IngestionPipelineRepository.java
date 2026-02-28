@@ -368,32 +368,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    EntityReference service = ingestionPipeline.getService();
-    OpenMetadataConnection openmetadataConnection =
-        ingestionPipeline.getOpenMetadataServerConnection();
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service", "openMetadataServerConnection", "processingEngine");
+  }
 
+  @Override
+  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
       secretsManager.encryptIngestionPipeline(ingestionPipeline);
-      // We store the OM sensitive values in SM separately
-      openmetadataConnection =
-          secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
     }
-
-    EntityReference processingEngine = ingestionPipeline.getProcessingEngine();
-
-    ingestionPipeline
-        .withService(null)
-        .withOpenMetadataServerConnection(null)
-        .withProcessingEngine(null);
     store(ingestionPipeline, update);
-    ingestionPipeline
-        .withService(service)
-        .withOpenMetadataServerConnection(openmetadataConnection)
-        .withProcessingEngine(processingEngine);
   }
 
   @Override
@@ -403,30 +389,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     for (IngestionPipeline ingestionPipeline : entities) {
-      EntityReference service = ingestionPipeline.getService();
-      OpenMetadataConnection openmetadataConnection =
-          ingestionPipeline.getOpenMetadataServerConnection();
-
       if (secretsManager != null) {
         secretsManager.encryptIngestionPipeline(ingestionPipeline);
-        openmetadataConnection =
-            secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
       }
-
-      EntityReference processingEngine = ingestionPipeline.getProcessingEngine();
-
-      ingestionPipeline
-          .withService(null)
-          .withOpenMetadataServerConnection(null)
-          .withProcessingEngine(null);
 
       fqns.add(ingestionPipeline.getFullyQualifiedName());
       jsons.add(serializeForStorage(ingestionPipeline));
-
-      ingestionPipeline
-          .withService(service)
-          .withOpenMetadataServerConnection(openmetadataConnection)
-          .withProcessingEngine(processingEngine);
     }
 
     dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);

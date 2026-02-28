@@ -28,6 +28,9 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -686,37 +689,38 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public void storeEntity(Pipeline pipeline, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    EntityReference service = pipeline.getService();
-    pipeline.withService(null);
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
 
-    // Don't store column tags as JSON but build it on the fly based on relationships
-    List<Task> taskWithTagsAndOwners = pipeline.getTasks();
-    pipeline.setTasks(cloneWithoutTagsAndOwners(taskWithTagsAndOwners));
+  @Override
+  protected ObjectNode storageJsonNode(Pipeline pipeline) {
+    ObjectNode node = super.storageJsonNode(pipeline);
+    stripTaskTagsAndOwners(node.get("tasks"));
+    return node;
+  }
+
+  private void stripTaskTagsAndOwners(JsonNode tasksNode) {
+    if (!(tasksNode instanceof ArrayNode taskArray)) {
+      return;
+    }
+    for (JsonNode taskNode : taskArray) {
+      if (!(taskNode instanceof ObjectNode taskObject)) {
+        continue;
+      }
+      taskObject.remove("tags");
+      taskObject.remove("owners");
+    }
+  }
+
+  @Override
+  public void storeEntity(Pipeline pipeline, boolean update) {
     store(pipeline, update);
-    pipeline.withService(service).withTasks(taskWithTagsAndOwners);
   }
 
   @Override
   public void storeEntities(List<Pipeline> pipelines) {
-    List<String> fqns = new ArrayList<>(pipelines.size());
-    List<String> jsons = new ArrayList<>(pipelines.size());
-
-    for (Pipeline pipeline : pipelines) {
-      EntityReference service = pipeline.getService();
-      List<Task> taskWithTagsAndOwners = pipeline.getTasks();
-
-      pipeline.withService(null);
-      pipeline.setTasks(cloneWithoutTagsAndOwners(taskWithTagsAndOwners));
-
-      fqns.add(pipeline.getFullyQualifiedName());
-      jsons.add(serializeForStorage(pipeline));
-
-      pipeline.withService(service).withTasks(taskWithTagsAndOwners);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(pipelines);
   }
 
   @Override
@@ -906,29 +910,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         (PipelineService) getCachedParentOrLoad(pipeline.getService(), "", Include.NON_DELETED);
     pipeline.setService(service.getEntityReference());
     pipeline.setServiceType(service.getServiceType());
-  }
-
-  private List<Task> cloneWithoutTagsAndOwners(List<Task> tasks) {
-    if (nullOrEmpty(tasks)) {
-      return tasks;
-    }
-    List<Task> copy = new ArrayList<>();
-    tasks.forEach(t -> copy.add(cloneWithoutTagsAndOwners(t)));
-    return copy;
-  }
-
-  private Task cloneWithoutTagsAndOwners(Task task) {
-    return new Task()
-        .withDescription(task.getDescription())
-        .withName(task.getName())
-        .withDisplayName(task.getDisplayName())
-        .withFullyQualifiedName(task.getFullyQualifiedName())
-        .withSourceUrl(task.getSourceUrl())
-        .withTaskType(task.getTaskType())
-        .withDownstreamTasks(task.getDownstreamTasks())
-        .withTaskSQL(task.getTaskSQL())
-        .withStartDate(task.getStartDate())
-        .withEndDate(task.getEndDate());
   }
 
   protected void deleteTaskOwnerRelationship(Task task) {

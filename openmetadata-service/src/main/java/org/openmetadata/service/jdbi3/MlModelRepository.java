@@ -271,33 +271,18 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service", "dashboard");
+  }
+
+  @Override
   public void storeEntity(MlModel mlModel, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    EntityReference dashboard = mlModel.getDashboard();
-    EntityReference service = mlModel.getService();
-    mlModel.withService(null).withDashboard(null);
     store(mlModel, update);
-    mlModel.withService(service).withDashboard(dashboard);
   }
 
   @Override
   public void storeEntities(List<MlModel> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (MlModel mlModel : entities) {
-      EntityReference dashboard = mlModel.getDashboard();
-      EntityReference service = mlModel.getService();
-
-      mlModel.withService(null).withDashboard(null);
-
-      fqns.add(mlModel.getFullyQualifiedName());
-      jsons.add(serializeForStorage(mlModel));
-
-      mlModel.withService(service).withDashboard(dashboard);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

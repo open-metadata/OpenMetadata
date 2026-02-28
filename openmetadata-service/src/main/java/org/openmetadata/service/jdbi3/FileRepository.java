@@ -25,6 +25,9 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FILE;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +43,6 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.services.DriveService;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FileType;
 import org.openmetadata.schema.type.Include;
@@ -122,37 +124,33 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   @Override
-  public void storeEntity(File file, boolean update) {
-    // Don't store column tags as JSON but build it on the fly based on relationships
-    List<Column> columnsWithTags = file.getColumns();
-    file.setColumns(ColumnUtil.cloneWithoutTags(columnsWithTags));
-    if (file.getColumns() != null) {
-      file.getColumns().forEach(column -> column.setTags(null));
+  protected ObjectNode storageJsonNode(File file) {
+    ObjectNode node = super.storageJsonNode(file);
+    stripColumnTags(node.get("columns"));
+    return node;
+  }
+
+  private void stripColumnTags(JsonNode columnsNode) {
+    if (!(columnsNode instanceof ArrayNode columnArray)) {
+      return;
     }
+    for (JsonNode column : columnArray) {
+      if (!(column instanceof ObjectNode columnNode)) {
+        continue;
+      }
+      columnNode.remove("tags");
+      stripColumnTags(columnNode.get("children"));
+    }
+  }
+
+  @Override
+  public void storeEntity(File file, boolean update) {
     store(file, update);
-    // Restore columns with tags
-    file.withColumns(columnsWithTags);
   }
 
   @Override
   public void storeEntities(List<File> files) {
-    List<String> fqns = new ArrayList<>(files.size());
-    List<String> jsons = new ArrayList<>(files.size());
-
-    for (File file : files) {
-      List<Column> columnsWithTags = file.getColumns();
-      file.setColumns(ColumnUtil.cloneWithoutTags(columnsWithTags));
-      if (file.getColumns() != null) {
-        file.getColumns().forEach(column -> column.setTags(null));
-      }
-
-      fqns.add(file.getFullyQualifiedName());
-      jsons.add(serializeForStorage(file));
-
-      file.withColumns(columnsWithTags);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(files);
   }
 
   @Override

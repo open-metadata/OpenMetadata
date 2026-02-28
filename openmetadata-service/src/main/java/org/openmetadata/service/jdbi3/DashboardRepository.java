@@ -369,36 +369,18 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void storeEntity(Dashboard dashboard, boolean update) {
-    // Relationships and fields such as service are not stored as part of json
-    EntityReference service = dashboard.getService();
-    List<EntityReference> charts = dashboard.getCharts();
-    List<EntityReference> dataModels = dashboard.getDataModels();
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service", "charts", "dataModels");
+  }
 
-    dashboard.withService(null).withCharts(null).withDataModels(null);
+  @Override
+  public void storeEntity(Dashboard dashboard, boolean update) {
     store(dashboard, update);
-    dashboard.withService(service).withCharts(charts).withDataModels(dataModels);
   }
 
   @Override
   public void storeEntities(List<Dashboard> dashboards) {
-    List<String> fqns = new ArrayList<>(dashboards.size());
-    List<String> jsons = new ArrayList<>(dashboards.size());
-
-    for (Dashboard dashboard : dashboards) {
-      EntityReference service = dashboard.getService();
-      List<EntityReference> charts = dashboard.getCharts();
-      List<EntityReference> dataModels = dashboard.getDataModels();
-
-      dashboard.withService(null).withCharts(null).withDataModels(null);
-
-      fqns.add(dashboard.getFullyQualifiedName());
-      jsons.add(serializeForStorage(dashboard));
-
-      dashboard.withService(service).withCharts(charts).withDataModels(dataModels);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(dashboards);
   }
 
   @Override

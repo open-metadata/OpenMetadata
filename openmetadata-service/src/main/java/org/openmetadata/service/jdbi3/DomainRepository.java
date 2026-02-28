@@ -145,30 +145,18 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("parent");
+  }
+
+  @Override
   public void storeEntity(Domain entity, boolean update) {
-    EntityReference parent = entity.getParent();
-    entity.withParent(null);
     store(entity, update);
-    entity.withParent(parent);
   }
 
   @Override
   public void storeEntities(List<Domain> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (Domain entity : entities) {
-      EntityReference parent = entity.getParent();
-
-      entity.withParent(null);
-
-      fqns.add(entity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(entity));
-
-      entity.withParent(parent);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

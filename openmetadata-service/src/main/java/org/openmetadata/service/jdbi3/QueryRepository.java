@@ -206,34 +206,18 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public void storeEntity(Query queryEntity, boolean update) {
-    List<EntityReference> queryUsage = queryEntity.getQueryUsedIn();
-    List<EntityReference> queryUsers = queryEntity.getUsers();
-    queryEntity.withQueryUsedIn(null).withUsers(null);
-    store(queryEntity, update);
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("queryUsedIn", "users");
+  }
 
-    // Restore relationships
-    queryEntity.withQueryUsedIn(queryUsage).withUsers(queryUsers);
+  @Override
+  public void storeEntity(Query queryEntity, boolean update) {
+    store(queryEntity, update);
   }
 
   @Override
   public void storeEntities(List<Query> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (Query queryEntity : entities) {
-      List<EntityReference> queryUsage = queryEntity.getQueryUsedIn();
-      List<EntityReference> queryUsers = queryEntity.getUsers();
-
-      queryEntity.withQueryUsedIn(null).withUsers(null);
-
-      fqns.add(queryEntity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(queryEntity));
-
-      queryEntity.withQueryUsedIn(queryUsage).withUsers(queryUsers);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

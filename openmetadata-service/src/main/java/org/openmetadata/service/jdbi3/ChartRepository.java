@@ -78,33 +78,18 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service", "dashboards");
+  }
+
+  @Override
   public void storeEntity(Chart chart, boolean update) {
-    // Relationships and fields such as tags are not stored as part of json
-    EntityReference service = chart.getService();
-    List<EntityReference> dashboards = chart.getDashboards();
-    chart.withService(null).withDashboards(null);
     store(chart, update);
-    chart.withService(service).withDashboards(dashboards);
   }
 
   @Override
   public void storeEntities(List<Chart> charts) {
-    List<String> fqns = new ArrayList<>(charts.size());
-    List<String> jsons = new ArrayList<>(charts.size());
-
-    for (Chart chart : charts) {
-      EntityReference service = chart.getService();
-      List<EntityReference> dashboards = chart.getDashboards();
-
-      chart.withService(null).withDashboards(null);
-
-      fqns.add(chart.getFullyQualifiedName());
-      jsons.add(serializeForStorage(chart));
-
-      chart.withService(service).withDashboards(dashboards);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(charts);
   }
 
   @Override

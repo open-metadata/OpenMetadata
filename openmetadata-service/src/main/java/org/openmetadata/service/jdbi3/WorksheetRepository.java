@@ -26,6 +26,9 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 import static org.openmetadata.service.Entity.WORKSHEET;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -130,45 +133,38 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
   }
 
   @Override
-  public void storeEntity(Worksheet worksheet, boolean update) {
-    // Relationships and fields such as service and spreadsheet are derived and not stored as part
-    // of json
-    EntityReference service = worksheet.getService();
-    EntityReference spreadsheet = worksheet.getSpreadsheet();
-    worksheet.withService(null).withSpreadsheet(null);
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service", "spreadsheet");
+  }
 
-    // Don't store column tags as JSON but build it on the fly based on relationships
-    List<Column> columnWithTags = worksheet.getColumns();
-    worksheet.setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
-    worksheet.getColumns().forEach(column -> column.setTags(null));
+  @Override
+  protected ObjectNode storageJsonNode(Worksheet worksheet) {
+    ObjectNode node = super.storageJsonNode(worksheet);
+    stripColumnTags(node.get("columns"));
+    return node;
+  }
+
+  private void stripColumnTags(JsonNode columnsNode) {
+    if (!(columnsNode instanceof ArrayNode columnArray)) {
+      return;
+    }
+    for (JsonNode column : columnArray) {
+      if (!(column instanceof ObjectNode columnNode)) {
+        continue;
+      }
+      columnNode.remove("tags");
+      stripColumnTags(columnNode.get("children"));
+    }
+  }
+
+  @Override
+  public void storeEntity(Worksheet worksheet, boolean update) {
     store(worksheet, update);
-    // Restore the relationships
-    worksheet.withColumns(columnWithTags).withService(service).withSpreadsheet(spreadsheet);
   }
 
   @Override
   public void storeEntities(List<Worksheet> worksheets) {
-    List<String> fqns = new ArrayList<>(worksheets.size());
-    List<String> jsons = new ArrayList<>(worksheets.size());
-
-    for (Worksheet worksheet : worksheets) {
-      EntityReference service = worksheet.getService();
-      EntityReference spreadsheet = worksheet.getSpreadsheet();
-      List<Column> columnWithTags = worksheet.getColumns();
-
-      worksheet.withService(null).withSpreadsheet(null);
-      worksheet.setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
-      if (worksheet.getColumns() != null) {
-        worksheet.getColumns().forEach(column -> column.setTags(null));
-      }
-
-      fqns.add(worksheet.getFullyQualifiedName());
-      jsons.add(serializeForStorage(worksheet));
-
-      worksheet.withColumns(columnWithTags).withService(service).withSpreadsheet(spreadsheet);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(worksheets);
   }
 
   @Override

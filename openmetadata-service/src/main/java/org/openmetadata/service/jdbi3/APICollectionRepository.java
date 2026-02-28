@@ -62,31 +62,18 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service");
+  }
+
+  @Override
   public void storeEntity(APICollection apiCollection, boolean update) {
-    // Relationships and fields such as service are not stored as part of json
-    EntityReference service = apiCollection.getService();
-    apiCollection.withService(null);
     store(apiCollection, update);
-    apiCollection.withService(service);
   }
 
   @Override
   public void storeEntities(List<APICollection> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (APICollection apiCollection : entities) {
-      EntityReference service = apiCollection.getService();
-
-      apiCollection.withService(null);
-
-      fqns.add(apiCollection.getFullyQualifiedName());
-      jsons.add(serializeForStorage(apiCollection));
-
-      apiCollection.withService(service);
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override

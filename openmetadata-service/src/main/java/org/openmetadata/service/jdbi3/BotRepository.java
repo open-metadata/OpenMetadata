@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -71,25 +70,18 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("botUser");
+  }
+
+  @Override
   public void storeEntity(Bot entity, boolean update) {
-    EntityReference botUser = entity.getBotUser();
-    entity.withBotUser(null);
     store(entity, update);
-    entity.withBotUser(botUser);
   }
 
   @Override
   public void storeEntities(List<Bot> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-    for (Bot entity : entities) {
-      EntityReference botUser = entity.getBotUser();
-      entity.withBotUser(null);
-      fqns.add(entity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(entity));
-      entity.withBotUser(botUser);
-    }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override
