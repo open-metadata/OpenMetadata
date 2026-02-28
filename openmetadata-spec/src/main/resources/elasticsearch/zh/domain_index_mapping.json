@@ -291,9 +291,13 @@
           }
         },
         "descriptionStatus": {
-        "type": "keyword"
-      },
-        "extension": {
+          "type": "keyword"
+        },
+        "entityStatus": {
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer"
+        },
+          "extension": {
           "type": "flattened"
         },
         "certification": {

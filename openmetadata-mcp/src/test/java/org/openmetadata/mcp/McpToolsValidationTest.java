@@ -632,7 +632,210 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(8)
+  void testCreateLineage() throws Exception {
+    System.out.println("Testing create_lineage tool...");
+
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("mcp_lineage_target_table")
+            .withDescription("Target table for lineage test")
+            .withDatabaseSchema(testSchema.getFullyQualifiedName())
+            .withColumns(testTable.getColumns());
+    Table targetTable =
+        TestUtils.post(getResource("tables"), createTable2, Table.class, 201, ADMIN_AUTH_HEADERS);
+
+    Map<String, Object> toolCall =
+        McpTestUtils.createLineageToolCall(
+            "table", testTable.getId().toString(), "table", targetTable.getId().toString());
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("result")).isTrue();
+    assertThat(response.get("result").asText()).contains("successfully");
+
+    Map<String, Object> getLineageCall =
+        McpTestUtils.createGetLineageToolCall("table", testTable.getFullyQualifiedName(), 1, 1);
+    JsonNode lineageResult = executeToolCall(getLineageCall);
+    validateLineageResponse(lineageResult, testTable.getFullyQualifiedName());
+
+    System.out.println("✓ create_lineage tool working correctly");
+  }
+
+  @Test
+  @Order(9)
+  void testCreateLineageMissingParams() throws Exception {
+    System.out.println("Testing create_lineage tool with missing params...");
+
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
+    Map<String, Object> toolCall = McpTestUtils.createToolCallRequest("create_lineage", arguments);
+
+    JsonNode result = executeToolCall(toolCall);
+    assertThat(result.has("content")).isTrue();
+    assertThat(result.has("isError")).isTrue();
+    assertThat(result.get("isError").asBoolean()).isTrue();
+
+    System.out.println("✓ create_lineage correctly rejects missing params");
+  }
+
+  @Test
   @Order(10)
+  void testGetTestDefinitions() throws Exception {
+    System.out.println("Testing get_test_definitions tool...");
+
+    Map<String, Object> toolCall = McpTestUtils.createGetTestDefinitionsToolCall("TABLE");
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("data")).isTrue();
+    assertThat(response.get("data").isArray()).isTrue();
+    assertThat(response.get("data").size()).isGreaterThan(0);
+
+    System.out.println("✓ get_test_definitions tool working correctly for TABLE");
+  }
+
+  @Test
+  @Order(11)
+  void testGetTestDefinitionsForColumn() throws Exception {
+    System.out.println("Testing get_test_definitions tool for COLUMN...");
+
+    Map<String, Object> toolCall = McpTestUtils.createGetTestDefinitionsToolCall("COLUMN");
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("data")).isTrue();
+    assertThat(response.get("data").isArray()).isTrue();
+
+    System.out.println("✓ get_test_definitions tool working correctly for COLUMN");
+  }
+
+  @Test
+  @Order(12)
+  void testCreateTestCase() throws Exception {
+    System.out.println("Testing create_test_case tool...");
+
+    String testCaseName = "mcp_test_case_" + System.currentTimeMillis();
+    List<Map<String, String>> parameterValues =
+        List.of(
+            Map.of("name", "minValue", "value", "0"), Map.of("name", "maxValue", "value", "100"));
+
+    Map<String, Object> toolCall =
+        McpTestUtils.createTestCaseToolCall(
+            testCaseName,
+            testTable.getFullyQualifiedName(),
+            "tableRowCountToBeBetween",
+            parameterValues);
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("name")).isTrue();
+    assertThat(response.get("name").asText()).isEqualTo(testCaseName);
+
+    System.out.println("✓ create_test_case tool working correctly");
+  }
+
+  @Test
+  @Order(13)
+  void testCreateTestCaseMissingDefinition() throws Exception {
+    System.out.println("Testing create_test_case tool with missing definition...");
+
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("name", "some_test");
+    arguments.put("fqn", testTable.getFullyQualifiedName());
+    arguments.put("parameterValues", List.of());
+    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
+    Map<String, Object> toolCall =
+        McpTestUtils.createToolCallRequest("create_test_case", arguments);
+
+    JsonNode result = executeToolCall(toolCall);
+    assertThat(result.has("isError")).isTrue();
+    assertThat(result.get("isError").asBoolean()).isTrue();
+
+    System.out.println("✓ create_test_case correctly rejects missing definition");
+  }
+
+  @Test
+  @Order(14)
+  void testRootCauseAnalysis() throws Exception {
+    System.out.println("Testing root_cause_analysis tool...");
+
+    Map<String, Object> toolCall =
+        McpTestUtils.createRootCauseAnalysisToolCall(
+            testTable.getFullyQualifiedName(), "table", 3, 3);
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("status")).isTrue();
+    assertThat(response.has("upstreamAnalysis")).isTrue();
+    assertThat(response.has("downstreamAnalysis")).isTrue();
+
+    System.out.println("✓ root_cause_analysis tool working correctly");
+  }
+
+  @Test
+  @Order(15)
+  void testRootCauseAnalysisDepthClamping() throws Exception {
+    System.out.println("Testing root_cause_analysis depth clamping...");
+
+    Map<String, Object> toolCall =
+        McpTestUtils.createRootCauseAnalysisToolCall(
+            testTable.getFullyQualifiedName(), "table", 50, 50);
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("upstreamDepth")).isTrue();
+    assertThat(response.get("upstreamDepth").asInt()).isEqualTo(10);
+    assertThat(response.has("downstreamDepth")).isTrue();
+    assertThat(response.get("downstreamDepth").asInt()).isEqualTo(10);
+
+    System.out.println("✓ root_cause_analysis depth clamping working correctly");
+  }
+
+  @Test
+  @Order(16)
   void testSearchMetadataIncludesDeletedField() throws Exception {
     System.out.println("Testing deleted field presence in search responses...");
 
