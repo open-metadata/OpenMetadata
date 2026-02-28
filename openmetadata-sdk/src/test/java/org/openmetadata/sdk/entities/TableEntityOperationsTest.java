@@ -357,7 +357,8 @@ public class TableEntityOperationsTest {
     fluentTable.withDescription("new description").addSampleData(sampleData);
 
     InOrder inOrder = inOrder(mockTableService);
-    inOrder.verify(mockTableService)
+    inOrder
+        .verify(mockTableService)
         .update(eq(tableId), argThat((Table t) -> "new description".equals(t.getDescription())));
     inOrder.verify(mockTableService).updateSampleData(tableId, sampleData);
     assertFalse(fluentTable.isModified());
@@ -381,8 +382,7 @@ public class TableEntityOperationsTest {
     withMetric.setDescription("updated before metric");
 
     when(mockTableService.update(
-            eq(tableId),
-            argThat((Table t) -> "updated before metric".equals(t.getDescription()))))
+            eq(tableId), argThat((Table t) -> "updated before metric".equals(t.getDescription()))))
         .thenReturn(saved);
     when(mockTableService.updateCustomMetric(tableId, customMetric)).thenReturn(withMetric);
 
@@ -392,10 +392,10 @@ public class TableEntityOperationsTest {
     fluentTable.withDescription("updated before metric").addCustomMetric(customMetric);
 
     InOrder inOrder = inOrder(mockTableService);
-    inOrder.verify(mockTableService)
+    inOrder
+        .verify(mockTableService)
         .update(
-            eq(tableId),
-            argThat((Table t) -> "updated before metric".equals(t.getDescription())));
+            eq(tableId), argThat((Table t) -> "updated before metric".equals(t.getDescription())));
     inOrder.verify(mockTableService).updateCustomMetric(tableId, customMetric);
     assertFalse(fluentTable.isModified());
   }
@@ -427,7 +427,8 @@ public class TableEntityOperationsTest {
     fluentTable.withDescription("pending change").refreshSampleData();
 
     InOrder inOrder = inOrder(mockTableService);
-    inOrder.verify(mockTableService)
+    inOrder
+        .verify(mockTableService)
         .update(eq(tableId), argThat((Table t) -> "pending change".equals(t.getDescription())));
     inOrder.verify(mockTableService).getSampleData(tableId);
     assertFalse(fluentTable.isModified());
