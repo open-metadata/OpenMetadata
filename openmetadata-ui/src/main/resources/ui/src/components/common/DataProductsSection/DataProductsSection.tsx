@@ -87,7 +87,6 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       displayName: dp.displayName || dp.name,
       fullyQualifiedName: dp.fullyQualifiedName || '',
       description: dp.description || '',
-      type: 'dataProduct',
     })) as DataProduct[];
     setEditingDataProducts(dpList);
     startEditing();
@@ -162,8 +161,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       name: dp.name || '',
       displayName: dp.displayName || dp.name,
       fullyQualifiedName: dp.fullyQualifiedName || '',
-      description: dp.description,
-      type: 'dataProduct',
+      description: dp.description || '',
     })) as DataProduct[];
 
     setEditingDataProducts(dpList);

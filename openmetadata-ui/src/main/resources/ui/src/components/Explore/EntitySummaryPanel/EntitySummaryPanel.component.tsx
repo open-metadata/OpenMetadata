@@ -120,7 +120,6 @@ import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRig
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import CustomPropertiesSection from './CustomPropertiesSection';
-import type { EntityData as CustomPropertyEntityData } from './CustomPropertiesSection/CustomPropertiesSection.interface';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
@@ -185,15 +184,16 @@ export default function EntitySummaryPanel({
     }
   };
   // Memoize the entity fetch map to avoid recreating it on every render
-  const entityFetchMap = useMemo<Record<string, (fqn: string) => Promise<object>>>(() => {
+  const entityFetchMap = useMemo<
+    Record<string, (fqn: string) => Promise<object>>
+  >(() => {
     const commonFields = 'owners,domains,tags,extension';
     const domainFields = 'owners,tags,extension';
 
     return {
       [EntityType.TABLE]: (fqn) =>
         getTableDetailsByFQN(fqn, { fields: commonFields }),
-      [EntityType.TOPIC]: (fqn) =>
-        getTopicByFqn(fqn, { fields: commonFields }),
+      [EntityType.TOPIC]: (fqn) => getTopicByFqn(fqn, { fields: commonFields }),
       [EntityType.DASHBOARD]: (fqn) =>
         getDashboardByFqn(fqn, { fields: commonFields }),
       [EntityType.PIPELINE]: (fqn) =>
@@ -214,8 +214,7 @@ export default function EntitySummaryPanel({
         getContainerByFQN(fqn, { fields: commonFields }),
       [EntityType.GLOSSARY_TERM]: (fqn) =>
         getGlossaryTermByFQN(fqn, { fields: commonFields }),
-      [EntityType.CHART]: (fqn) =>
-        getChartByFqn(fqn, { fields: commonFields }),
+      [EntityType.CHART]: (fqn) => getChartByFqn(fqn, { fields: commonFields }),
       [EntityType.METRIC]: (fqn) =>
         getMetricByFqn(fqn, { fields: commonFields }),
       [EntityType.API_ENDPOINT]: (fqn) =>
@@ -238,7 +237,10 @@ export default function EntitySummaryPanel({
   }, []);
 
   const entityUpdateMap = useMemo<
-    Record<string, (id: string, data: FastJsonPatchOperation[]) => Promise<object>>
+    Record<
+      string,
+      (id: string, data: FastJsonPatchOperation[]) => Promise<object>
+    >
   >(() => {
     return {
       [EntityType.TABLE]: (id, data) => patchTableDetails(id, data),
@@ -947,7 +949,7 @@ export default function EntitySummaryPanel({
               emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
                 entityType
               )}
-              entityData={entityData !== null ? (entityData as object as CustomPropertyEntityData) : undefined}
+              entityData={entityData ?? undefined}
               entityDetails={entityDetails}
               entityType={entityType}
               entityTypeDetail={entityTypeDetail}
