@@ -266,6 +266,12 @@ class AirbyteUnitTest(TestCase):
         self.client.list_connections.return_value = mock_data.get("connection")
         self.airbyte.airbyte_cloud = False
 
+    def setUp(self):
+        self.airbyte.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+        self.airbyte.context.get().__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.root
+
     def test_pipeline_list(self):
         assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_AIRBYTE_DETAILS
 
@@ -497,6 +503,12 @@ class AirbyteCloudUnitTest(TestCase):
         self.client.list_connections.return_value = mock_cloud_data.get("connection")
         self.airbyte.airbyte_cloud = True
         self.airbyte.source_url_prefix = "https://cloud.airbyte.com"
+
+    def setUp(self):
+        self.airbyte.context.get().__dict__["pipeline"] = MOCK_CLOUD_PIPELINE.name.root
+        self.airbyte.context.get().__dict__[
+            "pipeline_service"
+        ] = MOCK_CLOUD_PIPELINE_SERVICE.name.root
 
     def test_pipeline_list(self):
         assert (
