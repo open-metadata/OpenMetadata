@@ -6,9 +6,16 @@ from unittest.mock import MagicMock
 from uuid import UUID
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.tests.createCustomMetric import (
+    CreateCustomMetricRequest,
+)
 from metadata.generated.schema.entity.data.table import Column, ConstraintType, DataType
 from metadata.generated.schema.entity.data.table import Table as TableEntity
-from metadata.generated.schema.entity.data.table import TableConstraint, TableType
+from metadata.generated.schema.entity.data.table import (
+    TableConstraint,
+    TableData,
+    TableType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.sdk import Tables
@@ -269,6 +276,79 @@ class TestTableEntity(unittest.TestCase):
         # Assert
         self.assertIsNotNone(result.joins)
         self.assertEqual(result.joins.dayCount, 30)
+
+    def test_add_custom_metric(self):
+        """Test adding or updating a custom metric on a table"""
+        custom_metric = CreateCustomMetricRequest(
+            name="row_count_metric",
+            expression="COUNT(*)",
+        )
+
+        expected_table = MagicMock(spec=TableEntity)
+        expected_table.id = UUID(self.table_id)
+        expected_table.name = "test_table"
+        self.mock_ometa.create_or_update_custom_metric.return_value = expected_table
+
+        result = Tables.add_custom_metric(self.table_id, custom_metric)
+
+        self.assertEqual(result.name, "test_table")
+        self.mock_ometa.create_or_update_custom_metric.assert_called_once_with(
+            custom_metric=custom_metric,
+            table_id=self.table_id,
+        )
+
+    def test_add_sample_data(self):
+        """Test adding sample data to a table"""
+        table = MagicMock(spec=TableEntity)
+        table.id = UUID(self.table_id)
+        table.fullyQualifiedName = self.table_fqn
+        self.mock_ometa.get_by_id.return_value = table
+
+        sample_data = TableData(
+            columns=["id", "email"],
+            rows=[["1", "user@example.com"]],
+        )
+        self.mock_ometa.ingest_table_sample_data.return_value = sample_data
+
+        result = Tables.add_sample_data(self.table_id, sample_data)
+
+        self.assertIsNotNone(result)
+        if result is not None:
+            self.assertEqual(result.columns, ["id", "email"])
+            self.assertEqual(result.rows[0][1], "user@example.com")
+        self.mock_ometa.get_by_id.assert_called_once_with(
+            entity=TableEntity,
+            entity_id=self.table_id,
+            fields=None,
+        )
+        self.mock_ometa.ingest_table_sample_data.assert_called_once_with(
+            table,
+            sample_data,
+        )
+
+    def test_get_sample_data(self):
+        """Test fetching sample data for a table"""
+        table = MagicMock(spec=TableEntity)
+        table.id = UUID(self.table_id)
+        table.fullyQualifiedName = self.table_fqn
+        self.mock_ometa.get_by_id.return_value = table
+
+        sample_table = MagicMock(spec=TableEntity)
+        sample_table.id = UUID(self.table_id)
+        sample_table.name = "test_table"
+        self.mock_ometa.get_sample_data.return_value = sample_table
+
+        result = Tables.get_sample_data(self.table_id)
+
+        self.assertIsNotNone(result)
+        if result is not None:
+            self.assertEqual(result.name, "test_table")
+        self.mock_ometa.get_by_id.assert_called_once_with(
+            entity=TableEntity,
+            entity_id=self.table_id,
+            fields=None,
+        )
+        self.mock_ometa.get_sample_data.assert_called_once_with(table)
 
     def test_export_table_csv(self):
         """Test exporting table metadata to CSV"""

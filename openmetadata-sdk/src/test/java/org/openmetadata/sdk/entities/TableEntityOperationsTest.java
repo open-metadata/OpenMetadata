@@ -11,8 +11,10 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.services.dataassets.TableService;
@@ -274,6 +276,56 @@ public class TableEntityOperationsTest {
                 params ->
                     "true".equals(params.get("recursive"))
                         && "true".equals(params.get("hardDelete"))));
+  }
+
+  @Test
+  void testAddSampleDataFluentOperations() {
+    String tableId = UUID.randomUUID().toString();
+    TableData sampleData = mock(TableData.class);
+    Table expected = new Table();
+    expected.setId(UUID.fromString(tableId));
+    expected.setName("test_table");
+
+    when(mockTableService.updateSampleData(tableId, sampleData)).thenReturn(expected);
+
+    Table result = Tables.forTable(tableId).addSampleData(sampleData);
+
+    assertNotNull(result);
+    assertEquals("test_table", result.getName());
+    verify(mockTableService).updateSampleData(tableId, sampleData);
+  }
+
+  @Test
+  void testGetSampleDataFluentOperations() {
+    String tableId = UUID.randomUUID().toString();
+    Table expected = new Table();
+    expected.setId(UUID.fromString(tableId));
+    expected.setName("table_with_sample_data");
+
+    when(mockTableService.getSampleData(tableId)).thenReturn(expected);
+
+    Table result = Tables.forTable(tableId).getSampleData();
+
+    assertNotNull(result);
+    assertEquals("table_with_sample_data", result.getName());
+    verify(mockTableService).getSampleData(tableId);
+  }
+
+  @Test
+  void testAddCustomMetricFluentOperations() {
+    String tableId = UUID.randomUUID().toString();
+    CustomMetric customMetric = mock(CustomMetric.class);
+    Table expected = new Table();
+    expected.setId(UUID.fromString(tableId));
+    expected.setName("table_with_metric");
+
+    when(mockTableService.updateCustomMetric(tableId, customMetric)).thenReturn(expected);
+
+    Table result = Tables.forTable(tableId).addCustomMetric(customMetric);
+
+    assertNotNull(result);
+    assertEquals("table_with_metric", result.getName());
+    verify(mockTableService).updateCustomMetric(tableId, customMetric);
   }
 
   @Test
