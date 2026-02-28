@@ -298,7 +298,8 @@ const TestCaseResultTab = () => {
   ]);
 
   const parameterItems = useMemo(() => {
-    const items: Array<{ label: string; value: string | React.ReactNode }> = [];
+    const items: Array<{ label?: string; value: string | React.ReactNode }> =
+      [];
 
     if (isVersionPage) {
       // For version page, we'll handle it differently
@@ -307,12 +308,15 @@ const TestCaseResultTab = () => {
 
     if (testCaseData?.useDynamicAssertion) {
       items.push({
-        label: t('label.dynamic-assertion'),
         value: (
           <label
-            className="d-inline-flex items-center gap-2 parameter-value-text"
+            className="d-inline-flex parameter-value-text"
             data-testid="dynamic-assertion">
-            <SvgIcon component={StarIcon} fontSize="small" />{' '}
+            <SvgIcon
+              className="dynamic-assertion-icon"
+              component={StarIcon}
+              fontSize="small"
+            />{' '}
             {t('label.dynamic-assertion')}
           </label>
         ),
@@ -344,7 +348,7 @@ const TestCaseResultTab = () => {
   ]);
 
   const renderParameterRows = useCallback(
-    (items: Array<{ label: string; value: string | React.ReactNode }>) => {
+    (items: Array<{ label?: string; value: string | React.ReactNode }>) => {
       if (items.length === 0) {
         return (
           <Typography color="text.secondary" variant="body2">
@@ -360,22 +364,26 @@ const TestCaseResultTab = () => {
         <div className="parameter-rows-container">
           {rows.map((row, rowIndex) => {
             // Create a stable key from the row items' labels
-            const rowKey = row.map((item) => item.label).join('-');
+            const rowKey = row.map((item) => item.label ?? '').join('-');
 
             return (
               <div key={rowKey}>
                 <Grid container className="parameter-row" spacing={2}>
                   {row.map((item) => (
-                    <Grid key={item.label} size={row.length === 1 ? 8 : 6}>
+                    <Grid
+                      key={item.label ?? ''}
+                      size={row.length === 1 ? 8 : 6}>
                       <Stack
                         alignItems="flex-start"
                         direction="row"
                         spacing={0.5}
                         sx={{ width: '100%' }}>
-                        <ParameterTooltipText
-                          className="parameter-label"
-                          title={`${item.label}:`}
-                        />
+                        {item.label && (
+                          <ParameterTooltipText
+                            className="parameter-label"
+                            title={`${item.label}:`}
+                          />
+                        )}
                         {typeof item.value === 'string' ? (
                           <ParameterTooltipText
                             className="parameter-value-text"
