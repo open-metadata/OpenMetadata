@@ -1299,11 +1299,16 @@ describe('parseLineageData', () => {
         fullyQualifiedName: 'test.database.table1',
         entityType: EntityType.TABLE,
         type: EntityType.TABLE,
+        columns: [
+          { name: 'col1', dataType: 'string' },
+          { name: 'col2', dataType: 'int' },
+        ],
       },
       paging: {
         entityUpstreamCount: 2,
         entityDownstreamCount: 3,
       },
+      nodeDepth: 0,
     },
     node2: {
       entity: {
@@ -1312,11 +1317,16 @@ describe('parseLineageData', () => {
         fullyQualifiedName: 'test.database.table2',
         entityType: EntityType.TABLE,
         type: EntityType.TABLE,
+        columns: [
+          { name: 'col3', dataType: 'string' },
+          { name: 'col4', dataType: 'int' },
+        ],
       },
       paging: {
         entityUpstreamCount: 1,
         entityDownstreamCount: 1,
       },
+      nodeDepth: 1,
     },
   };
 
@@ -1478,8 +1488,15 @@ describe('parseLineageData', () => {
         ...mockLineageData,
         nodes: {
           node1: {
-            entity: mockNodeData.node1.entity,
-            paging: {}, // Empty paging instead of missing
+            entity: {
+              ...mockNodeData.node1.entity,
+              columns: [
+                { name: 'col1', dataType: 'string' },
+                { name: 'col2', dataType: 'int' },
+              ],
+            },
+            paging: {},
+            nodeDepth: 0,
           },
         },
       };
@@ -1524,6 +1541,30 @@ describe('parseLineageData', () => {
         ...mockLineageData,
         nodes: {
           ...mockNodeData,
+          source: {
+            entity: {
+              id: 'source',
+              name: 'SourceTable',
+              fullyQualifiedName: 'source.table',
+              entityType: EntityType.TABLE,
+              type: EntityType.TABLE,
+              columns: [],
+            },
+            paging: {},
+            nodeDepth: -1,
+          },
+          target: {
+            entity: {
+              id: 'target',
+              name: 'TargetTable',
+              fullyQualifiedName: 'target.table',
+              entityType: EntityType.TABLE,
+              type: EntityType.TABLE,
+              columns: [],
+            },
+            paging: {},
+            nodeDepth: 1,
+          },
           pipeline1: {
             entity: {
               id: 'pipeline1',
@@ -1533,6 +1574,7 @@ describe('parseLineageData', () => {
               type: EntityType.PIPELINE,
             },
             paging: {},
+            nodeDepth: 0,
           },
         },
         downstreamEdges: {
@@ -1658,9 +1700,10 @@ describe('parseLineageData', () => {
               name: 'Incomplete Node',
               entityType: EntityType.TABLE,
               type: EntityType.TABLE,
-              // Missing fullyQualifiedName
+              columns: [],
             },
             paging: {},
+            nodeDepth: 0,
           },
         },
       };

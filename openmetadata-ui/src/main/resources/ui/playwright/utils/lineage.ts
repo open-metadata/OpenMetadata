@@ -138,9 +138,20 @@ export const clickEdgeBetweenNodes = async (
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const edgeDiv = page.getByTestId(`column-${fromNodeFqn}-${toNodeFqn}`);
+  const edgeDiv = page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`);
 
-  await edgeDiv.click();
+  await expect(edgeDiv).toBeVisible();
+
+  //   await edgeDiv.click();
+
+  await page
+    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
+    .dispatchEvent('click');
+
+  const box = await edgeDiv.boundingBox();
+  if (!box) return;
+
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 };
 
 export const clickEdgeBetweenColumns = async (
@@ -150,7 +161,14 @@ export const clickEdgeBetweenColumns = async (
 ) => {
   const edgeDiv = page.getByTestId(`column-edge-${fromNodeFqn}-${toNodeFqn}`);
 
-  await edgeDiv.click();
+  await expect(edgeDiv).toBeVisible();
+
+  //   await edgeDiv.click();
+
+  const box = await edgeDiv.boundingBox();
+  if (!box) return;
+
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 };
 
 export const deleteEdge = async (

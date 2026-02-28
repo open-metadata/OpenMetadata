@@ -33,15 +33,29 @@ const mockEdges: Edge[] = [
 
 const mockUseLineageStore = {
   isEditMode: false,
+  columnsInCurrentPages: new Map<string, string[]>(),
 };
 
 const mockUseLineageProvider = {
   edges: mockEdges,
 };
 
+const mockGetNode = jest.fn();
+const mockUseReactFlow = {
+  getNode: mockGetNode,
+};
+
+const mockViewport = { x: 0, y: 0, zoom: 1 };
+
 jest.mock('@mui/material', () => ({
   ...jest.requireActual('@mui/material'),
   useTheme: jest.fn(),
+}));
+
+jest.mock('reactflow', () => ({
+  ...jest.requireActual('reactflow'),
+  useReactFlow: () => mockUseReactFlow,
+  useViewport: () => mockViewport,
 }));
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
@@ -58,6 +72,14 @@ jest.mock('../../../hooks/useLineageStore', () => ({
 
 jest.mock('../../../utils/EdgeStyleUtils', () => ({
   clearEdgeStyleCache: jest.fn(),
+}));
+
+jest.mock('../../../utils/PlaywrightUtils', () => ({
+  isPlaywrightEnv: jest.fn(() => false),
+}));
+
+jest.mock('../../../utils/EdgeMidpointUtils', () => ({
+  calculateEdgeMidpoints: jest.fn(() => []),
 }));
 
 const mockTheme = {
@@ -447,5 +469,156 @@ describe('CanvasEdgeRenderer', () => {
     renderInReactFlow(<CanvasEdgeRenderer {...defaultProps} />);
 
     expect(mockUseCanvasEdgeRenderer).toBeDefined();
+  });
+
+  describe('Playwright Environment', () => {
+    const mockIsPlaywrightEnv = require('../../../utils/PlaywrightUtils')
+      .isPlaywrightEnv as jest.Mock;
+    const mockCalculateEdgeMidpoints =
+      require('../../../utils/EdgeMidpointUtils')
+        .calculateEdgeMidpoints as jest.Mock;
+
+    beforeEach(() => {
+      mockUseLineageProvider.edges = mockEdges;
+      mockUseLineageStore.columnsInCurrentPages = new Map<string, string[]>();
+      mockIsPlaywrightEnv.mockReturnValue(true);
+      mockCalculateEdgeMidpoints.mockReturnValue([
+        {
+          id: 'edge-1',
+          dataTestId: 'edge-midpoint-1',
+          canvasX: 100,
+          canvasY: 200,
+        },
+      ]);
+    });
+
+    afterEach(() => {
+      mockIsPlaywrightEnv.mockReturnValue(false);
+      mockCalculateEdgeMidpoints.mockReturnValue([]);
+    });
+
+    it('calculates edge midpoints in Playwright environment', () => {
+      renderInReactFlow(<CanvasEdgeRenderer {...defaultProps} />);
+
+      expect(mockCalculateEdgeMidpoints).toHaveBeenCalledWith(
+        mockEdges,
+        mockGetNode,
+        mockUseLineageStore.columnsInCurrentPages
+      );
+    });
+
+    it('renders edge midpoint divs when dataTestId is present', () => {
+      renderInReactFlow(<CanvasEdgeRenderer {...defaultProps} />);
+
+      const midpointDiv = document.querySelector(
+        '[data-testid="edge-midpoint-1"]'
+      );
+
+      expect(midpointDiv).toBeInTheDocument();
+      expect(midpointDiv).toHaveStyle({
+        width: '10px',
+        height: '10px',
+      });
+    });
+
+    it('does not render edge midpoint divs without dataTestId', () => {
+      mockCalculateEdgeMidpoints.mockReturnValue([
+        {
+          id: 'edge-1',
+          canvasX: 100,
+          canvasY: 200,
+        },
+      ]);
+
+      renderInReactFlow(<CanvasEdgeRenderer {...defaultProps} />);
+
+      const midpointDivs = document.querySelectorAll(
+        '[data-testid^="edge-midpoint"]'
+      );
+
+      expect(midpointDivs).toHaveLength(0);
+    });
+
+    it('does not calculate midpoints in non-Playwright environment', () => {
+      mockIsPlaywrightEnv.mockReturnValue(false);
+
+      renderInReactFlow(<CanvasEdgeRenderer {...defaultProps} />);
+
+      const midpointDivs = document.querySelectorAll(
+        '[data-testid^="edge-midpoint"]'
+      );
+
+      expect(midpointDivs).toHaveLength(0);
+    });
+
+    it('updates midpoints when edges change', async () => {
+      const { rerender } = renderInReactFlow(
+        <CanvasEdgeRenderer {...defaultProps} />
+      );
+
+      expect(mockCalculateEdgeMidpoints).toHaveBeenCalledTimes(1);
+
+      mockUseLineageProvider.edges = [
+        ...mockEdges,
+        {
+          id: 'edge-2',
+          source: 'node-2',
+          target: 'node-3',
+          data: { isColumnLineage: false },
+        },
+      ];
+
+      mockCalculateEdgeMidpoints.mockReturnValue([
+        {
+          id: 'edge-1',
+          dataTestId: 'edge-midpoint-1',
+          canvasX: 100,
+          canvasY: 200,
+        },
+        {
+          id: 'edge-2',
+          dataTestId: 'edge-midpoint-2',
+          canvasX: 150,
+          canvasY: 250,
+        },
+      ]);
+
+      rerender(<CanvasEdgeRenderer {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockCalculateEdgeMidpoints).toHaveBeenCalledTimes(2);
+      });
+
+      const midpoint1 = document.querySelector(
+        '[data-testid="edge-midpoint-1"]'
+      );
+      const midpoint2 = document.querySelector(
+        '[data-testid="edge-midpoint-2"]'
+      );
+
+      expect(midpoint1).toBeInTheDocument();
+      expect(midpoint2).toBeInTheDocument();
+    });
+
+    it('updates midpoints when columnsInCurrentPages changes', async () => {
+      const { rerender } = renderInReactFlow(
+        <CanvasEdgeRenderer {...defaultProps} />
+      );
+
+      expect(mockCalculateEdgeMidpoints).toHaveBeenCalledTimes(1);
+
+      const newColumnsMap = new Map([['node-1', ['col1', 'col2']]]);
+      mockUseLineageStore.columnsInCurrentPages = newColumnsMap;
+
+      rerender(<CanvasEdgeRenderer {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockCalculateEdgeMidpoints).toHaveBeenCalledWith(
+          mockEdges,
+          mockGetNode,
+          newColumnsMap
+        );
+      });
+    });
   });
 });

@@ -168,9 +168,9 @@ for (const EntityClass of entities) {
       await test.step('Should create pipeline between entities', async () => {
         await editLineage(page);
 
-        await performZoomOut(page, 7);
         await page.getByTestId('fit-screen').click();
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+        await performZoomOut(page, 2);
         await page.waitForTimeout(500); // wait for the nodes to settle
 
         const fromNodeFqn = get(
