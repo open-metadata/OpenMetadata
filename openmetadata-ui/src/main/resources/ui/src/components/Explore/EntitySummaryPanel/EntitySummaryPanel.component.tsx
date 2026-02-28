@@ -914,7 +914,7 @@ export default function EntitySummaryPanel({
               emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
                 entityType
               )}
-              entityData={entityData}
+              entityData={entityData ?? undefined}
               entityDetails={entityDetails}
               entityType={entityType}
               entityTypeDetail={entityTypeDetail}
