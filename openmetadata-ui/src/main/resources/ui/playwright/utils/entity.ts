@@ -679,15 +679,12 @@ export const updateDescriptionForChildren = async (
   // Playwright's clear() and fill('') can be unreliable with ProseMirror's internal state.
   // Instead, select all text and delete it using keyboard events to ensure ProseMirror
   // accurately detects and processes the changes.
-  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.press('Backspace');
 
   if (description) {
     await modalEditor.fill(description);
   }
-
-  // REMOVED: toHaveText check - rich text editor may have formatting that makes exact match unreliable
-  // The final verification after save is sufficient
 
   // Wait for API response — use a function predicate so we only match the
   // write request (PUT/PATCH) and never accidentally resolve on a concurrent

@@ -1269,9 +1269,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
     panelContainer.getByTestId('custom-property-right-panel-card')
   ).toHaveCount(1);
 
-  const container = page
-    .locator('.entity-summary-panel-container')
-    .getByTestId(propertyName);
+  const container = panelContainer.getByTestId(propertyName);
 
   await expect(container.getByTestId('property-name')).toContainText(
     propertyName
