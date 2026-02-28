@@ -154,7 +154,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       const updatedExtension = omitBy(
         omitBy(
           {
-            ...(extension ?? {}),
+            ...extension,
             [propertyName]: ['integer', 'number'].includes(
               propertyType.name ?? ''
             )
@@ -1067,22 +1067,23 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       propertyType.name || ''
     );
 
-    const renderedValue =
-      !isUndefined(value) || isTableType ? (
-        isScrollableType ? (
+    if (!isUndefined(value) || isTableType) {
+      if (isScrollableType) {
+        return (
           <div className="custom-property-scrollable-container w-full">
             {propertyValue}
           </div>
-        ) : (
-          propertyValue
-        )
-      ) : (
-        <span className="text-grey-muted" data-testid="no-data">
-          {t('label.not-set')}
-        </span>
-      );
+        );
+      }
 
-    return renderedValue;
+      return propertyValue;
+    }
+
+    return (
+      <span className="text-grey-muted" data-testid="no-data">
+        {t('label.not-set')}
+      </span>
+    );
   };
 
   const toggleExpand = () => {
@@ -1107,6 +1108,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     return isExpanded || showInput || isRenderedInRightPanel;
   }, [isExpanded, showInput, isRenderedInRightPanel]);
 
+  let propertyCountSuffix: string | null = null;
+  if (propertyType.name === 'entityReferenceList' && isArray(value)) {
+    propertyCountSuffix = ` (${value.length})`;
+  } else if (
+    propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY &&
+    isArray(value?.rows)
+  ) {
+    propertyCountSuffix = ` (${value.rows.length})`;
+  }
+
   const customPropertyElement = (
     <Stack data-testid={propertyName} spacing={2}>
       <div className="d-flex items-center gap-1">
@@ -1114,12 +1125,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           className="text-grey-body property-name"
           data-testid="property-name">
           {getEntityName(property)}
-          {propertyType.name === 'entityReferenceList' && isArray(value)
-            ? ` (${value.length})`
-            : propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY &&
-              isArray(value?.rows)
-            ? ` (${value.rows.length})`
-            : null}
+          {propertyCountSuffix}
         </Typography.Text>
         {property.description && (
           <Tooltip
