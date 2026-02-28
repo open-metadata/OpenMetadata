@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -326,6 +327,110 @@ public class TableEntityOperationsTest {
     assertNotNull(result);
     assertEquals("table_with_metric", result.getName());
     verify(mockTableService).updateCustomMetric(tableId, customMetric);
+  }
+
+  @Test
+  void testFluentTableAddSampleDataFlushesPendingChanges() {
+    String tableId = UUID.randomUUID().toString();
+    TableData sampleData = mock(TableData.class);
+
+    Table initial = new Table();
+    initial.setId(UUID.fromString(tableId));
+    initial.setDescription("old");
+
+    Table saved = new Table();
+    saved.setId(UUID.fromString(tableId));
+    saved.setDescription("new description");
+
+    Table withSample = new Table();
+    withSample.setId(UUID.fromString(tableId));
+    withSample.setDescription("new description");
+
+    when(mockTableService.update(
+            eq(tableId), argThat((Table t) -> "new description".equals(t.getDescription()))))
+        .thenReturn(saved);
+    when(mockTableService.updateSampleData(tableId, sampleData)).thenReturn(withSample);
+
+    org.openmetadata.sdk.fluent.wrappers.FluentTable fluentTable =
+        new org.openmetadata.sdk.fluent.wrappers.FluentTable(initial, mockClient);
+
+    fluentTable.withDescription("new description").addSampleData(sampleData);
+
+    InOrder inOrder = inOrder(mockTableService);
+    inOrder.verify(mockTableService)
+        .update(eq(tableId), argThat((Table t) -> "new description".equals(t.getDescription())));
+    inOrder.verify(mockTableService).updateSampleData(tableId, sampleData);
+    assertFalse(fluentTable.isModified());
+  }
+
+  @Test
+  void testFluentTableAddCustomMetricFlushesPendingChanges() {
+    String tableId = UUID.randomUUID().toString();
+    CustomMetric customMetric = mock(CustomMetric.class);
+
+    Table initial = new Table();
+    initial.setId(UUID.fromString(tableId));
+    initial.setDescription("old");
+
+    Table saved = new Table();
+    saved.setId(UUID.fromString(tableId));
+    saved.setDescription("updated before metric");
+
+    Table withMetric = new Table();
+    withMetric.setId(UUID.fromString(tableId));
+    withMetric.setDescription("updated before metric");
+
+    when(mockTableService.update(
+            eq(tableId),
+            argThat((Table t) -> "updated before metric".equals(t.getDescription()))))
+        .thenReturn(saved);
+    when(mockTableService.updateCustomMetric(tableId, customMetric)).thenReturn(withMetric);
+
+    org.openmetadata.sdk.fluent.wrappers.FluentTable fluentTable =
+        new org.openmetadata.sdk.fluent.wrappers.FluentTable(initial, mockClient);
+
+    fluentTable.withDescription("updated before metric").addCustomMetric(customMetric);
+
+    InOrder inOrder = inOrder(mockTableService);
+    inOrder.verify(mockTableService)
+        .update(
+            eq(tableId),
+            argThat((Table t) -> "updated before metric".equals(t.getDescription())));
+    inOrder.verify(mockTableService).updateCustomMetric(tableId, customMetric);
+    assertFalse(fluentTable.isModified());
+  }
+
+  @Test
+  void testFluentTableRefreshSampleDataFlushesPendingChanges() {
+    String tableId = UUID.randomUUID().toString();
+
+    Table initial = new Table();
+    initial.setId(UUID.fromString(tableId));
+    initial.setDescription("old");
+
+    Table saved = new Table();
+    saved.setId(UUID.fromString(tableId));
+    saved.setDescription("pending change");
+
+    Table refreshed = new Table();
+    refreshed.setId(UUID.fromString(tableId));
+    refreshed.setDescription("pending change");
+
+    when(mockTableService.update(
+            eq(tableId), argThat((Table t) -> "pending change".equals(t.getDescription()))))
+        .thenReturn(saved);
+    when(mockTableService.getSampleData(tableId)).thenReturn(refreshed);
+
+    org.openmetadata.sdk.fluent.wrappers.FluentTable fluentTable =
+        new org.openmetadata.sdk.fluent.wrappers.FluentTable(initial, mockClient);
+
+    fluentTable.withDescription("pending change").refreshSampleData();
+
+    InOrder inOrder = inOrder(mockTableService);
+    inOrder.verify(mockTableService)
+        .update(eq(tableId), argThat((Table t) -> "pending change".equals(t.getDescription())));
+    inOrder.verify(mockTableService).getSampleData(tableId);
+    assertFalse(fluentTable.isModified());
   }
 
   @Test

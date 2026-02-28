@@ -254,6 +254,9 @@ public class FluentTable {
     if (table.getId() == null) {
       throw new IllegalStateException("Table must have an ID to add sample data");
     }
+    if (modified) {
+      save();
+    }
     this.table = client.tables().updateSampleData(table.getId().toString(), sampleData);
     modified = false;
     return this;
@@ -266,6 +269,9 @@ public class FluentTable {
     if (table.getId() == null) {
       throw new IllegalStateException("Table must have an ID to add custom metrics");
     }
+    if (modified) {
+      save();
+    }
     this.table = client.tables().updateCustomMetric(table.getId().toString(), customMetric);
     modified = false;
     return this;
@@ -277,6 +283,9 @@ public class FluentTable {
   public FluentTable refreshSampleData() {
     if (table.getId() == null) {
       throw new IllegalStateException("Table must have an ID to retrieve sample data");
+    }
+    if (modified) {
+      save();
     }
     this.table = client.tables().getSampleData(table.getId().toString());
     modified = false;

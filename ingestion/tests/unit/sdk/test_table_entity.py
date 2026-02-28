@@ -299,11 +299,6 @@ class TestTableEntity(unittest.TestCase):
 
     def test_add_sample_data(self):
         """Test adding sample data to a table"""
-        table = MagicMock(spec=TableEntity)
-        table.id = UUID(self.table_id)
-        table.fullyQualifiedName = self.table_fqn
-        self.mock_ometa.get_by_id.return_value = table
-
         sample_data = TableData(
             columns=["id", "email"],
             rows=[["1", "user@example.com"]],
@@ -316,23 +311,16 @@ class TestTableEntity(unittest.TestCase):
         if result is not None:
             self.assertEqual(result.columns, ["id", "email"])
             self.assertEqual(result.rows[0][1], "user@example.com")
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=TableEntity,
-            entity_id=self.table_id,
-            fields=None,
-        )
-        self.mock_ometa.ingest_table_sample_data.assert_called_once_with(
-            table,
-            sample_data,
-        )
+        self.mock_ometa.get_by_id.assert_not_called()
+        self.mock_ometa.ingest_table_sample_data.assert_called_once()
+        call_args = self.mock_ometa.ingest_table_sample_data.call_args.args
+        table_ref = call_args[0]
+        self.assertEqual(table_ref.id.root, self.table_id)
+        self.assertEqual(table_ref.fullyQualifiedName.root, "sdk.table.reference")
+        self.assertEqual(call_args[1], sample_data)
 
     def test_get_sample_data(self):
         """Test fetching sample data for a table"""
-        table = MagicMock(spec=TableEntity)
-        table.id = UUID(self.table_id)
-        table.fullyQualifiedName = self.table_fqn
-        self.mock_ometa.get_by_id.return_value = table
-
         sample_table = MagicMock(spec=TableEntity)
         sample_table.id = UUID(self.table_id)
         sample_table.name = "test_table"
@@ -343,12 +331,11 @@ class TestTableEntity(unittest.TestCase):
         self.assertIsNotNone(result)
         if result is not None:
             self.assertEqual(result.name, "test_table")
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=TableEntity,
-            entity_id=self.table_id,
-            fields=None,
-        )
-        self.mock_ometa.get_sample_data.assert_called_once_with(table)
+        self.mock_ometa.get_by_id.assert_not_called()
+        self.mock_ometa.get_sample_data.assert_called_once()
+        table_ref = self.mock_ometa.get_sample_data.call_args.args[0]
+        self.assertEqual(table_ref.id.root, self.table_id)
+        self.assertEqual(table_ref.fullyQualifiedName.root, "sdk.table.reference")
 
     def test_export_table_csv(self):
         """Test exporting table metadata to CSV"""
