@@ -150,17 +150,10 @@ export const clickEdgeBetweenNodes = async (
     throw new Error(`Could not find edge from ${fromNodeFqn} to ${toNodeFqn}`);
   }
 
-  const pane = page.locator('.react-flow__pane');
-  const paneBox = await pane.boundingBox();
-
-  if (!paneBox) {
-    throw new Error('Could not find react-flow pane');
-  }
+  await page.mouse.move(toBox.x - 2, toBox.y + toBox.height / 2);
 
   await page.mouse.move(toBox.x - 1, toBox.y + toBox.height / 2);
-
-  await page.mouse.move(toBox.x, toBox.y + toBox.height / 2);
-  await page.mouse.click(toBox.x, toBox.y + toBox.height / 2);
+  await page.mouse.click(toBox.x - 1, toBox.y + toBox.height / 2);
 };
 
 export const clickEdgeBetweenColumns = async (
@@ -768,6 +761,8 @@ export const verifyExportLineageCSV = async (
       pipelineName: get(pipeline, 'entityResponseData.name', ''),
     });
   }
+
+  console.log(parsedData);
 
   arr.forEach((expectedRow: LineageCSVRecord) => {
     const matchingRow = parsedData.find((row) =>

@@ -218,14 +218,17 @@ const ColumnContentInner = ({
   className = '',
 }: ColumnContentProps) => {
   const { onColumnMouseEnter } = useLineageProvider();
-  const { selectedColumn, setSelectedColumn, setTracedColumns, isEditMode } =
-    useLineageStore();
+  const {
+    selectedColumn,
+    setSelectedColumn,
+    setTracedColumns,
+    isEditMode,
+    tracedColumns,
+  } = useLineageStore();
 
   const { fullyQualifiedName } = column;
 
-  const isColumnTraced = useLineageStore((state) =>
-    state.tracedColumns.has(fullyQualifiedName ?? '')
-  );
+  const isColumnTraced = tracedColumns.has(fullyQualifiedName ?? '');
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {

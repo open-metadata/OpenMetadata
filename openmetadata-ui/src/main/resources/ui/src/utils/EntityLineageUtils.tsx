@@ -212,12 +212,17 @@ export const getELKLayoutedElements = async (
   edges: Edge[],
   columnsHavingLineage: Map<string, Set<string>> = new Map()
 ) => {
-  const { isColumnLevelLineage } = useLineageStore.getState();
+  const { nodeFilterState, isColumnLevelLineage, isEditMode } =
+    useLineageStore.getState();
   const elkNodes: ElkNode[] = nodes.map((node) => {
-    const columns = columnsHavingLineage.get(node.id) ?? new Set<string>();
+    const isColumnOnlyFilterActive =
+      (isColumnLevelLineage || nodeFilterState.get(node.id)) ?? false;
+    const columns = isEditMode
+      ? getEntityChildrenAndLabel(node.data.node).children.length
+      : columnsHavingLineage.get(node.id)?.size ?? 0;
 
     // Calculate node height
-    const nodeHeight = getNodeHeight(node, isColumnLevelLineage, columns.size);
+    const nodeHeight = getNodeHeight(node, isColumnOnlyFilterActive, columns);
 
     const nodeDepth = node.data?.nodeDepth;
 

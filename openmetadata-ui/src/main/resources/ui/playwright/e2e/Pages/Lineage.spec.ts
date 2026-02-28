@@ -168,10 +168,10 @@ for (const EntityClass of entities) {
       await test.step('Should create pipeline between entities', async () => {
         await editLineage(page);
 
+        await performZoomOut(page, 7);
         await page.getByTestId('fit-screen').click();
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
         await page.waitForTimeout(500); // wait for the nodes to settle
-        await performZoomOut(page);
 
         const fromNodeFqn = get(
           currentEntity,
@@ -185,9 +185,12 @@ for (const EntityClass of entities) {
         }
       });
 
+      await page.waitForTimeout(500);
+
       await test.step('Verify Lineage Export CSV', async () => {
         await editLineageClick(page);
         await page.waitForTimeout(500);
+        await performZoomOut(page);
         await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
       });
 
