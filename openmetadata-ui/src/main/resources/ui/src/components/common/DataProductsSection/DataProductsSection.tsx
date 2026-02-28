@@ -81,14 +81,9 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   }, [activeDomains]);
 
   const handleEditClick = () => {
-    const dpList: DataProduct[] = displayDataProducts.map((dp) => ({
-      id: dp.id,
-      name: dp.name || '',
-      displayName: dp.displayName || dp.name,
-      fullyQualifiedName: dp.fullyQualifiedName || '',
-      description: dp.description || '',
-    })) as DataProduct[];
-    setEditingDataProducts(dpList);
+    setEditingDataProducts(
+      displayDataProducts.map((dp) => dp as unknown as DataProduct)
+    );
     startEditing();
   };
 
@@ -161,7 +156,8 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       name: dp.name || '',
       displayName: dp.displayName || dp.name,
       fullyQualifiedName: dp.fullyQualifiedName || '',
-      description: dp.description || '',
+      description: dp.description,
+      type: 'dataProduct',
     })) as DataProduct[];
 
     setEditingDataProducts(dpList);
