@@ -10,10 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { APIRequestContext, expect, Page } from '@playwright/test';
+import test, {
+  APIRequestContext,
+  expect,
+  Locator,
+  Page,
+} from '@playwright/test';
 import { get, isEmpty, isUndefined } from 'lodash';
+import { LONG_DESCRIPTION_END_TEXT } from '../constant/domain';
 import { SidebarItem } from '../constant/sidebar';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
+import { TagClass } from '../support/tag/TagClass';
 import { RolesClass } from '../support/access-control/RolesClass';
 import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
@@ -26,12 +33,14 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
+  clickOutside,
   closeFirstPopupAlert,
   descriptionBox,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
+  readElementInListWithScroll,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -54,6 +63,101 @@ const waitForSearchDebounce = async (page: Page) => {
     // Loader never appeared - search was instant, which is fine
     // Just continue without waiting
   }
+};
+
+export const assignCertificationForWidget = async (
+  page: Page,
+  certification: TagClass,
+  endpoint: string
+) => {
+  await page.getByTestId('edit-certification').click();
+
+  await page.waitForSelector('.certification-card-popover', {
+    state: 'visible',
+  });
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await readElementInListWithScroll(
+    page,
+    page.getByTestId(
+      `radio-btn-${certification.responseData.fullyQualifiedName}`
+    ),
+    page.locator('[data-testid="certification-cards"] .ant-radio-group')
+  );
+
+  await page
+    .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
+    .click();
+
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('update-certification').click();
+
+  const patchResponse = await patchRequest;
+  expect(patchResponse.status()).toBe(200);
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await clickOutside(page);
+
+  await expect(page.getByTestId('certification-label')).toContainText(
+    certification.responseData.displayName
+  );
+};
+
+export const removeTierFromWidget = async (
+  page: Page,
+  endpoint: string
+) => {
+  await page.getByTestId('edit-tier').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('clear-tier').click();
+
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await clickOutside(page);
+
+  await expect(
+    page.locator('[data-testid="Tier"].no-data-placeholder')
+  ).toBeVisible();
+};
+
+export const removeCertificationFromWidget = async (
+  page: Page,
+  endpoint: string
+) => {
+  await page.getByTestId('edit-certification').click();
+  await page.waitForSelector('.certification-card-popover', {
+    state: 'visible',
+  });
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('clear-certification').click();
+
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await clickOutside(page);
+
+  await expect(
+    page.locator('[data-testid="certification-label"] .no-data-placeholder')
+  ).toBeVisible();
 };
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
@@ -1580,4 +1684,33 @@ export const assignDomainToEntity = async (
       },
     ],
   });
+};
+
+export const verifyDescriptionRequiresScroll = async (
+  container: Locator,
+  page: Page
+) => {
+  const lateContent = container.getByText(LONG_DESCRIPTION_END_TEXT);
+
+  await expect(lateContent).toBeAttached();
+  await expect(lateContent).not.toBeInViewport();
+
+  await lateContent.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+
+  await expect(lateContent).toBeInViewport();
+};
+
+export const verifyEndOfDescriptionReachable = async (
+  container: Locator,
+  page: Page
+) => {
+  const lateContent = container.getByText(LONG_DESCRIPTION_END_TEXT);
+
+  await expect(lateContent).toBeAttached();
+
+  await lateContent.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+
+  await expect(lateContent).toBeInViewport();
 };

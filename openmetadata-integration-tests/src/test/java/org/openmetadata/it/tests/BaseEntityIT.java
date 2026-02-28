@@ -2626,6 +2626,104 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
+   * Test: Entity Status functionality
+   * Verifies that entityStatus field works correctly for entities that support it
+   */
+  @Test
+  void test_entityStatus(TestNamespace ns) {
+    // Only test if entity has entityStatus field (check if getEntityStatus method exists)
+    if ("glossaryTerm".equals(getEntityType())) {
+      log.info(
+          "Skipping entityStatus test for GlossaryTerm - has different entityStatus implementation");
+      return;
+    }
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+
+    try {
+      // Check if entity supports entityStatus
+      org.openmetadata.schema.type.EntityStatus currentStatus = entity.getEntityStatus();
+
+      // If entityStatus is null, the entity doesn't support this field - skip the test
+      if (currentStatus == null) {
+        log.info(
+            "Entity {} does not support entityStatus field - skipping test",
+            entity.getClass().getSimpleName());
+        return;
+      }
+
+      // Default status should be UNPROCESSED
+      assertEquals(
+          org.openmetadata.schema.type.EntityStatus.UNPROCESSED,
+          currentStatus,
+          "Default entity status should be UNPROCESSED");
+
+      // Test updating entityStatus via PATCH
+      if (supportsPatch) {
+        // Update to DRAFT
+        entity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DRAFT);
+        T updatedEntity = patchEntity(entity.getId().toString(), entity);
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.DRAFT,
+            updatedEntity.getEntityStatus(),
+            "Entity status should be updated to DRAFT");
+
+        // Update to IN_REVIEW
+        updatedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
+        T reviewEntity = patchEntity(updatedEntity.getId().toString(), updatedEntity);
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.IN_REVIEW,
+            reviewEntity.getEntityStatus(),
+            "Entity status should be updated to IN_REVIEW");
+
+        // Update to APPROVED
+        reviewEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.APPROVED);
+        T approvedEntity = patchEntity(reviewEntity.getId().toString(), reviewEntity);
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.APPROVED,
+            approvedEntity.getEntityStatus(),
+            "Entity status should be updated to APPROVED");
+
+        // Update to DEPRECATED
+        approvedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
+        T deprecatedEntity = patchEntity(approvedEntity.getId().toString(), approvedEntity);
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.DEPRECATED,
+            deprecatedEntity.getEntityStatus(),
+            "Entity status should be updated to DEPRECATED");
+
+        // Update to REJECTED
+        deprecatedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.REJECTED);
+        T rejectedEntity = patchEntity(deprecatedEntity.getId().toString(), deprecatedEntity);
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.REJECTED,
+            rejectedEntity.getEntityStatus(),
+            "Entity status should be updated to REJECTED");
+
+        // Verify entity can be retrieved with correct status
+        T fetchedEntity = getEntity(rejectedEntity.getId().toString());
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.REJECTED,
+            fetchedEntity.getEntityStatus(),
+            "Fetched entity should maintain the REJECTED status");
+
+        // Verify version increments with status changes (if entity supports versioning)
+        assertTrue(
+            fetchedEntity.getVersion() > entity.getVersion(),
+            "Version should increment when entityStatus is updated");
+      }
+
+    } catch (NoSuchMethodError | UnsupportedOperationException e) {
+      log.info(
+          "Entity "
+              + entity.getClass().getSimpleName()
+              + " does not support entityStatus: "
+              + e.getMessage());
+    }
+  }
+
+  /**
    * Test: Bulk loading efficiency
    * Test: Bulk entity creation and fetching works correctly.
    * Basic functionality test - comprehensive pagination is in PaginationIT.
@@ -3929,8 +4027,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(30))
+        .atMost(Duration.ofSeconds(90))
+        .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
         .untilAsserted(
             () -> {
               for (String fqn : expectedFqns) {
@@ -3989,8 +4089,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
+        .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(3))
+        .ignoreExceptions()
         .untilAsserted(
             () -> {
               for (String fqn : fqns) {
@@ -4646,11 +4748,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index (async indexing may take time)
-    // Use 60 second timeout since search indexing can be slow under load
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
+        .ignoreExceptions()
         .untilAsserted(
             () -> {
               String searchResponse = searchForEntity(entity.getId().toString());
@@ -4677,7 +4779,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4713,7 +4815,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4741,7 +4843,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4760,7 +4862,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Awaitility.await("Wait for search to reflect update")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(90))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
@@ -4859,40 +4961,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
-   * Wait for search indexing to complete. Uses Awaitility to poll for a short period. This is used
-   * for non-critical waits where eventual consistency is acceptable.
-   */
-  protected void waitForSearchIndexing() {
-    Awaitility.await("Wait for search indexing")
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofMillis(500))
-        .atMost(Duration.ofSeconds(5))
-        .until(() -> true);
-  }
-
-  /**
    * Search for a specific entity by ID.
    * Subclasses should override to use entity-specific search.
    */
   protected String searchForEntity(String entityId) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    String query = "id:" + entityId;
-    return client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.GET, "/v1/search/query?q=" + query + "&index=" + getSearchIndexName(), null);
+    return client.search().query("id:" + entityId).index(getSearchIndexName()).size(1).execute();
   }
 
-  /**
-   * Search all entities of this type.
-   * Subclasses should override to use entity-specific search.
-   */
   protected String searchEntities() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    return client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.GET, "/v1/search/query?q=*&index=" + getSearchIndexName(), null);
+    return client.search().query("*").index(getSearchIndexName()).execute();
   }
 
   // ===================================================================

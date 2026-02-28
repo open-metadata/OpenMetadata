@@ -54,7 +54,8 @@ public class CreateIngestionPipelineDelegate implements JavaDelegate {
                   varHandler.getNamespacedVariable(
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
 
-      ServiceEntityInterface service = Entity.getEntity(entityLink, "owners", Include.NON_DELETED);
+      ServiceEntityInterface service =
+          Entity.getEntity(entityLink, "owners,ingestionRunner", Include.NON_DELETED);
 
       CreateIngestionPipelineImpl.CreateIngestionPipelineResult result =
           new CreateIngestionPipelineImpl(mapper, pipelineServiceClient)

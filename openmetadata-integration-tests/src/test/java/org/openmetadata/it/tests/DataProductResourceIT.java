@@ -1214,9 +1214,10 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         "Domain FQN should match the new domain");
 
     Awaitility.await("Wait for search index to reflect domain migration")
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(30))
+        .ignoreExceptions()
         .untilAsserted(
             () -> {
               List<EntityReference> searchIndexDomains =
@@ -1509,10 +1510,11 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         tableAfter.getDomains().get(0).getFullyQualifiedName(),
         "Domain FQN should match the new domain after consolidation");
 
-    Awaitility.await("Wait for search index to reflect domain after consolidation")
+    Awaitility.await("Wait for search index to reflect domain consolidation")
+        .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(30))
+        .ignoreExceptions()
         .untilAsserted(
             () -> {
               List<EntityReference> searchIndexDomains =

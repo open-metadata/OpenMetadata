@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.hc.core5.http.HttpHost;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
@@ -106,7 +107,13 @@ class VectorEmbeddingIntegrationIT {
   @Test
   void testVectorEmbeddingCreationAndRetrieval() throws Exception {
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
-    Thread.sleep(1000);
+
+    Awaitility.await("Wait for vector documents to be indexed")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(() -> !searchAllDocuments().isEmpty());
 
     List<Map<String, Object>> docs = searchAllDocuments();
     assertFalse(docs.isEmpty(), "Vector documents should be created");
@@ -133,14 +140,26 @@ class VectorEmbeddingIntegrationIT {
   @Test
   void testFingerprintOptimization() throws Exception {
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
-    Thread.sleep(1000);
+
+    Awaitility.await("Wait for initial vector documents")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(() -> !searchAllDocuments().isEmpty());
 
     List<Map<String, Object>> initialDocs = searchAllDocuments();
     String initialFingerprint = (String) initialDocs.get(0).get("fingerprint");
     int initialCount = initialDocs.size();
 
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
-    Thread.sleep(1000);
+
+    Awaitility.await("Wait for unchanged vector documents")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(() -> searchAllDocuments().size() == initialCount);
 
     List<Map<String, Object>> unchangedDocs = searchAllDocuments();
     assertEquals(initialCount, unchangedDocs.size(), "Document count should remain the same");
@@ -151,7 +170,17 @@ class VectorEmbeddingIntegrationIT {
 
     testTable.setDescription(testTable.getDescription() + " - UPDATED");
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
-    Thread.sleep(1000);
+
+    Awaitility.await("Wait for updated vector documents with new fingerprint")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              List<Map<String, Object>> docs = searchAllDocuments();
+              return !docs.isEmpty() && !initialFingerprint.equals(docs.get(0).get("fingerprint"));
+            });
 
     List<Map<String, Object>> updatedDocs = searchAllDocuments();
     String newFingerprint = (String) updatedDocs.get(0).get("fingerprint");
@@ -193,7 +222,13 @@ class VectorEmbeddingIntegrationIT {
     assertNull(fingerprint, "Should return null when no documents exist");
 
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
-    Thread.sleep(1000);
+
+    Awaitility.await("Wait for fingerprint to be available")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(() -> vectorService.getExistingFingerprint(VECTOR_INDEX_NAME, entityId) != null);
 
     fingerprint = vectorService.getExistingFingerprint(VECTOR_INDEX_NAME, entityId);
     assertNotNull(fingerprint, "Should return fingerprint after indexing");
@@ -226,13 +261,25 @@ class VectorEmbeddingIntegrationIT {
 
     vectorService.updateVectorEmbeddings(entity1, VECTOR_INDEX_NAME);
     vectorService.updateVectorEmbeddings(entity2, VECTOR_INDEX_NAME);
-    Thread.sleep(1000);
+
+    Awaitility.await("Wait for batch vector documents to be indexed")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(() -> searchAllDocuments().size() >= 2);
   }
 
   @Test
   void testVectorDocumentMigrationDuringIndexRecreation() throws Exception {
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
-    Thread.sleep(1000);
+
+    Awaitility.await("Wait for vector documents for migration test")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(() -> !searchAllDocuments().isEmpty());
 
     String originalFingerprint = VectorDocBuilder.computeFingerprintForEntity(testTable);
 
@@ -264,13 +311,25 @@ class VectorEmbeddingIntegrationIT {
   @Test
   void testUpdateVectorEmbeddingsWithMigration() throws Exception {
     vectorService.updateVectorEmbeddings(testTable, VECTOR_INDEX_NAME);
-    Thread.sleep(1000);
+
+    Awaitility.await("Wait for initial vector documents for migration")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(() -> !searchAllDocuments().isEmpty());
 
     String stagedIndex = VECTOR_INDEX_NAME + "_migration_test";
     createVectorIndex(stagedIndex);
 
     vectorService.updateVectorEmbeddingsWithMigration(testTable, stagedIndex, VECTOR_INDEX_NAME);
-    Thread.sleep(1000);
+
+    Awaitility.await("Wait for migrated documents in staged index")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(() -> !searchAllDocuments(stagedIndex).isEmpty());
 
     List<Map<String, Object>> originalDocs = searchAllDocuments(VECTOR_INDEX_NAME);
     List<Map<String, Object>> migratedDocs = searchAllDocuments(stagedIndex);
@@ -282,11 +341,21 @@ class VectorEmbeddingIntegrationIT {
     testTable.setDescription(testTable.getDescription() + " - CHANGED FOR MIGRATION TEST");
 
     vectorService.updateVectorEmbeddingsWithMigration(testTable, stagedIndex, VECTOR_INDEX_NAME);
-    Thread.sleep(1000);
+
+    String expectedFingerprint = VectorDocBuilder.computeFingerprintForEntity(testTable);
+    Awaitility.await("Wait for recomputed documents after content change")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              List<Map<String, Object>> docs = searchAllDocuments(stagedIndex);
+              return !docs.isEmpty() && expectedFingerprint.equals(docs.get(0).get("fingerprint"));
+            });
 
     List<Map<String, Object>> recomputedDocs = searchAllDocuments(stagedIndex);
     String newFingerprint = (String) recomputedDocs.get(0).get("fingerprint");
-    String expectedFingerprint = VectorDocBuilder.computeFingerprintForEntity(testTable);
 
     assertEquals(
         expectedFingerprint,

@@ -298,7 +298,6 @@ public class SearchIndexFieldLimitIT {
       updateTableExtension(client, table.getId().toString(), extension);
       waitForExtensionToBeIndexed(client, table, List.of(propName));
     }
-
     int finalFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 
     int fieldIncrease = finalFieldCount - initialFieldCount;

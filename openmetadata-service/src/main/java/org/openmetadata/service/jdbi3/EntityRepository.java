@@ -1793,6 +1793,55 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public ResultList<T> listAfterKeyset(
+      ListFilter filter,
+      int limitParam,
+      String after,
+      int cachedTotal,
+      boolean skipErrors,
+      Fields fields) {
+    List<T> entities = new ArrayList<>();
+    List<EntityError> errors = new ArrayList<>();
+    if (limitParam > 0) {
+      Map<String, String> cursorMap =
+          parseCursorMap(after == null || after.isEmpty() ? "" : RestUtil.decodeCursor(after));
+      String afterName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
+      String afterId = cursorMap.get("id");
+      List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
+      boolean hasMoreData = jsons.size() > limitParam;
+      List<String> jsonsToProcess = hasMoreData ? jsons.subList(0, limitParam) : jsons;
+
+      Iterator<Either<T, EntityError>> iterator = serializeJsons(jsonsToProcess, fields, null);
+      while (iterator.hasNext()) {
+        Either<T, EntityError> either = iterator.next();
+        if (either.right().isPresent()) {
+          if (!skipErrors) {
+            throw new RuntimeException(either.right().get().getMessage());
+          } else {
+            errors.add(either.right().get());
+            if (!isEntityNotFoundError(either.right().get())) {
+              LOG.error("[listAfterKeyset] Failed for Entity : {}", either.right().get());
+            } else {
+              LOG.debug(
+                  "[listAfterKeyset] Stale reference detected: {}",
+                  either.right().get().getMessage());
+            }
+          }
+        } else {
+          entities.add(either.left().get());
+        }
+      }
+
+      String afterCursor = null;
+      if (hasMoreData && !entities.isEmpty()) {
+        afterCursor = getCursorValue(entities.get(entities.size() - 1));
+      }
+      return getResultList(entities, errors, null, afterCursor, cachedTotal);
+    } else {
+      return getResultList(entities, errors, null, null, cachedTotal);
+    }
+  }
+
   @SuppressWarnings("unchecked")
   Map<String, String> parseCursorMap(String param) {
     Map<String, String> cursorMap;
@@ -1841,6 +1890,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     Map<String, String> cursorMap =
         Map.of("name", entity.getName(), "id", String.valueOf(entity.getId()));
     return JsonUtils.pojoToJson(cursorMap);
+  }
+
+  public String getCursorAtOffset(ListFilter filter, int offset) {
+    List<String> jsons = dao.listAfter(filter, 1, offset);
+    if (jsons.isEmpty()) {
+      return null;
+    }
+    T entity = JsonUtils.readValue(jsons.get(0), entityClass);
+    return RestUtil.encodeCursor(getCursorValue(entity));
   }
 
   public final T getVersion(UUID id, String version) {

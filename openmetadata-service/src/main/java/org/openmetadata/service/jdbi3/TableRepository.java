@@ -2270,12 +2270,17 @@ public class TableRepository extends EntityRepository<Table> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       Table origTable = original;
       Table updatedTable = updated;
+      if (updatedTable.getDataModel() == null && origTable.getDataModel() != null) {
+        updatedTable.withDataModel(origTable.getDataModel());
+      }
+
       compareAndUpdate(
           "columns",
           () -> {
             DatabaseUtil.validateColumns(updatedTable.getColumns());
             updateColumns(
                 COLUMN_FIELD, origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+            updateProcessedLineage(origTable, updatedTable);
           });
       compareAndUpdate(
           "tableType",
@@ -2283,14 +2288,14 @@ public class TableRepository extends EntityRepository<Table> {
             recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
           });
       compareAndUpdate(
+          "dataModel",
+          () -> {
+            recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel());
+          });
+      compareAndUpdate(
           "tableConstraints",
           () -> {
             updateTableConstraints(origTable, updatedTable, operation);
-          });
-      compareAndUpdate(
-          "processedLineage",
-          () -> {
-            updateProcessedLineage(origTable, updatedTable);
           });
       compareAndUpdate(
           "sourceUrl",

@@ -82,6 +82,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
@@ -1941,6 +1942,321 @@ public class WorkflowDefinitionResourceIT {
 
   @Test
   @Order(27)
+  void test_PeriodicBatchWorkflowEntityFiltering(TestNamespace ns, TestInfo test) throws Exception {
+    LOG.info("Starting test to verify periodic batch workflow entity filtering behavior");
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String workflowName = "EntityFilterWF";
+
+    // Defensive pre-cleanup: delete any leftover workflow from a prior failed run
+    // Use hardDelete to ensure complete removal
+    try {
+      WorkflowDefinition existing = client.workflowDefinitions().getByName(workflowName, null);
+      Map<String, String> params = new HashMap<>();
+      params.put("hardDelete", "true");
+      client.workflowDefinitions().delete(existing.getId().toString(), params);
+      LOG.info("Hard-deleted leftover workflow '{}' from prior run", workflowName);
+    } catch (Exception e) {
+      // Expected if no leftover exists
+    }
+
+    DatabaseService service1 = null;
+    DatabaseService service2 = null;
+    Glossary glossary = null;
+    String workflowId = null;
+
+    try {
+      // Create test entities - using simpler entities that are already used in the test file
+      CreateDatabaseService createService1 =
+          createDatabaseServiceRequest(ns.prefix("entityfilter_service1"));
+      service1 = client.databaseServices().create(createService1);
+
+      CreateDatabase createDatabase1 =
+          new CreateDatabase()
+              .withName(ns.prefix("entityfilter_db1"))
+              .withDescription("Initial description for first database")
+              .withService(service1.getFullyQualifiedName());
+      final Database database1 = client.databases().create(createDatabase1);
+
+      CreateDatabaseService createService2 =
+          createDatabaseServiceRequest(ns.prefix("entityfilter_service2"));
+      service2 = client.databaseServices().create(createService2);
+
+      CreateDatabase createDatabase2 =
+          new CreateDatabase()
+              .withName(ns.prefix("entityfilter_db2"))
+              .withDescription("Initial description for second database")
+              .withService(service2.getFullyQualifiedName());
+      final Database database2 = client.databases().create(createDatabase2);
+
+      CreateGlossary createGlossary =
+          new CreateGlossary()
+              .withName(ns.prefix("entityfilter_glossary"))
+              .withDescription("Initial description for test glossary");
+      glossary = client.glossaries().create(createGlossary);
+      final Glossary finalGlossary = glossary;
+
+      // Create workflow with multiple entity types
+      Map<String, Object> startNode = new HashMap<>();
+      startNode.put("name", "start");
+      startNode.put("type", "startEvent");
+      startNode.put("subType", "startEvent");
+
+      Map<String, Object> setFieldNode = new HashMap<>();
+      setFieldNode.put("name", "updateDescription");
+      setFieldNode.put("displayName", "Update Description");
+      setFieldNode.put("type", "automatedTask");
+      setFieldNode.put("subType", "setEntityAttributeTask");
+      Map<String, Object> setFieldConfig = new HashMap<>();
+      setFieldConfig.put("fieldName", "description");
+      setFieldConfig.put("fieldValue", "Updated by multi-entity workflow");
+      setFieldNode.put("config", setFieldConfig);
+      setFieldNode.put("input", List.of("relatedEntity", "updatedBy"));
+      Map<String, Object> inputNamespaceMap = new HashMap<>();
+      inputNamespaceMap.put("relatedEntity", "global");
+      inputNamespaceMap.put("updatedBy", "global");
+      setFieldNode.put("inputNamespaceMap", inputNamespaceMap);
+      setFieldNode.put("output", List.of());
+
+      Map<String, Object> endNode = new HashMap<>();
+      endNode.put("name", "end");
+      endNode.put("type", "endEvent");
+      endNode.put("subType", "endEvent");
+
+      Map<String, Object> edge1 = new HashMap<>();
+      edge1.put("from", "start");
+      edge1.put("to", "updateDescription");
+
+      Map<String, Object> edge2 = new HashMap<>();
+      edge2.put("from", "updateDescription");
+      edge2.put("to", "end");
+
+      Map<String, Object> triggerConfig = new HashMap<>();
+      triggerConfig.put("entityTypes", List.of("database", "glossary"));
+      triggerConfig.put("batchSize", 100);
+      Map<String, Object> schedule = new HashMap<>();
+      schedule.put("scheduleTimeline", "None");
+      triggerConfig.put("schedule", schedule);
+
+      Map<String, Object> trigger = new HashMap<>();
+      trigger.put("type", "periodicBatchEntity");
+      trigger.put("config", triggerConfig);
+      trigger.put("output", List.of("relatedEntity", "updatedBy"));
+
+      Map<String, Object> multiEntityRequest = new HashMap<>();
+      multiEntityRequest.put("name", "EntityFilterWF");
+      multiEntityRequest.put("displayName", "Entity Filter Workflow");
+      multiEntityRequest.put("description", "Test workflow for entity filtering");
+      multiEntityRequest.put("trigger", trigger);
+      multiEntityRequest.put("nodes", List.of(startNode, setFieldNode, endNode));
+      multiEntityRequest.put("edges", List.of(edge1, edge2));
+
+      String createResponse =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.POST, BASE_PATH, multiEntityRequest, RequestOptions.builder().build());
+
+      assertNotNull(createResponse);
+      JsonNode created = MAPPER.readTree(createResponse);
+      workflowId = created.get("id").asText();
+      String workflowNameFromResponse = created.get("name").asText();
+      LOG.info("Created multi-entity workflow: {}", workflowNameFromResponse);
+
+      // Wait for workflow deployment
+      waitForWorkflowDeployment(client, workflowName);
+
+      // Wait for entities to be indexed
+      waitForEntityIndexedInSearch(
+          client, "database_search_index", database1.getFullyQualifiedName());
+      waitForEntityIndexedInSearch(
+          client, "database_search_index", database2.getFullyQualifiedName());
+      waitForEntityIndexedInSearch(
+          client, "glossary_search_index", glossary.getFullyQualifiedName());
+
+      // Trigger the multi-entity workflow
+      String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
+      String triggerResponse =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.POST, triggerPath, new HashMap<>(), RequestOptions.builder().build());
+      assertNotNull(triggerResponse);
+      LOG.info("Triggered multi-entity workflow");
+
+      // Wait for workflow to process all entities
+      await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .pollDelay(Duration.ofSeconds(1))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                try {
+                  Database updatedDb1 = client.databases().get(database1.getId().toString(), null);
+                  Database updatedDb2 = client.databases().get(database2.getId().toString(), null);
+                  Glossary updatedGlossary =
+                      client.glossaries().get(finalGlossary.getId().toString(), null);
+
+                  boolean allUpdated =
+                      "Updated by multi-entity workflow".equals(updatedDb1.getDescription())
+                          && "Updated by multi-entity workflow".equals(updatedDb2.getDescription())
+                          && "Updated by multi-entity workflow"
+                              .equals(updatedGlossary.getDescription());
+
+                  if (allUpdated) {
+                    LOG.debug("All entities have been processed by workflow");
+                    return true;
+                  }
+                  LOG.debug("Workflow still processing entities...");
+                  return false;
+                } catch (Exception e) {
+                  LOG.debug("Error checking entities: {}", e.getMessage());
+                  return false;
+                }
+              });
+
+      LOG.info("Multi-entity workflow processed all entities successfully");
+
+      // Now modify workflow to only process database entities
+      Map<String, Object> singleEntityTriggerConfig = new HashMap<>();
+      singleEntityTriggerConfig.put("entityTypes", List.of("database"));
+      singleEntityTriggerConfig.put("batchSize", 100);
+      singleEntityTriggerConfig.put("schedule", schedule);
+
+      Map<String, Object> singleEntityTrigger = new HashMap<>();
+      singleEntityTrigger.put("type", "periodicBatchEntity");
+      singleEntityTrigger.put("config", singleEntityTriggerConfig);
+      singleEntityTrigger.put("output", List.of("relatedEntity", "updatedBy"));
+
+      Map<String, Object> updateSetFieldConfig = new HashMap<>();
+      updateSetFieldConfig.put("fieldName", "description");
+      updateSetFieldConfig.put("fieldValue", "Updated by single-entity workflow - database only");
+
+      Map<String, Object> updateSetFieldNode = new HashMap<>();
+      updateSetFieldNode.put("name", "updateDescription");
+      updateSetFieldNode.put("displayName", "Update Description");
+      updateSetFieldNode.put("type", "automatedTask");
+      updateSetFieldNode.put("subType", "setEntityAttributeTask");
+      updateSetFieldNode.put("config", updateSetFieldConfig);
+      updateSetFieldNode.put("input", List.of("relatedEntity", "updatedBy"));
+      Map<String, Object> updateInputNamespaceMap = new HashMap<>();
+      updateInputNamespaceMap.put("relatedEntity", "global");
+      updateInputNamespaceMap.put("updatedBy", "global");
+      updateSetFieldNode.put("inputNamespaceMap", updateInputNamespaceMap);
+      updateSetFieldNode.put("output", List.of());
+
+      Map<String, Object> singleEntityRequest = new HashMap<>();
+      singleEntityRequest.put("name", workflowName);
+      singleEntityRequest.put("displayName", "Single Entity Filter Workflow");
+      singleEntityRequest.put("description", "Modified workflow to only process database entities");
+      singleEntityRequest.put("trigger", singleEntityTrigger);
+      singleEntityRequest.put("nodes", List.of(startNode, updateSetFieldNode, endNode));
+      singleEntityRequest.put("edges", List.of(edge1, edge2));
+
+      String updateResponse =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.PUT, BASE_PATH, singleEntityRequest, RequestOptions.builder().build());
+      assertNotNull(updateResponse);
+      LOG.info("Updated workflow to only process database entities");
+
+      // Trigger the modified workflow
+      String modifiedTriggerResponse =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.POST, triggerPath, new HashMap<>(), RequestOptions.builder().build());
+      assertNotNull(modifiedTriggerResponse);
+      LOG.info("Triggered modified single-entity workflow");
+
+      // Verify only database entities were updated, glossary remains unchanged
+      await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .pollDelay(Duration.ofSeconds(1))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                try {
+                  Database updatedDb1 = client.databases().get(database1.getId().toString(), null);
+                  Database updatedDb2 = client.databases().get(database2.getId().toString(), null);
+                  Glossary unchangedGlossary =
+                      client.glossaries().get(finalGlossary.getId().toString(), null);
+
+                  boolean databasesUpdated =
+                      "Updated by single-entity workflow - database only"
+                              .equals(updatedDb1.getDescription())
+                          && "Updated by single-entity workflow - database only"
+                              .equals(updatedDb2.getDescription());
+                  boolean glossaryUnchanged =
+                      "Updated by multi-entity workflow".equals(unchangedGlossary.getDescription());
+
+                  if (databasesUpdated && glossaryUnchanged) {
+                    LOG.debug("Single-entity workflow correctly processed only database entities");
+                    return true;
+                  }
+                  LOG.debug("Workflow still processing entities...");
+                  return false;
+                } catch (Exception e) {
+                  LOG.debug("Error checking entities: {}", e.getMessage());
+                  return false;
+                }
+              });
+
+      LOG.info("Verified that only database entities were processed in the modified workflow");
+      LOG.info("test_PeriodicBatchWorkflowEntityFiltering completed successfully");
+
+    } finally {
+      // Cleanup - Use hardDelete to prevent duplicate key violations on retries
+      if (workflowId != null) {
+        try {
+          Map<String, String> params = new HashMap<>();
+          params.put("hardDelete", "true");
+          client.workflowDefinitions().delete(workflowId, params);
+          LOG.info("Successfully hard-deleted test workflow");
+        } catch (Exception e) {
+          LOG.warn("Error deleting test workflow: {}", e.getMessage());
+        }
+      }
+
+      // Cleanup entities
+      if (service1 != null) {
+        try {
+          Map<String, String> params = new HashMap<>();
+          params.put("hardDelete", "true");
+          params.put("recursive", "true");
+          client.databaseServices().delete(service1.getId().toString(), params);
+        } catch (Exception e) {
+          LOG.warn("Error cleaning up service1: {}", e.getMessage());
+        }
+      }
+      if (service2 != null) {
+        try {
+          Map<String, String> params = new HashMap<>();
+          params.put("hardDelete", "true");
+          params.put("recursive", "true");
+          client.databaseServices().delete(service2.getId().toString(), params);
+        } catch (Exception e) {
+          LOG.warn("Error cleaning up service2: {}", e.getMessage());
+        }
+      }
+      if (glossary != null) {
+        try {
+          Map<String, String> params = new HashMap<>();
+          params.put("hardDelete", "true");
+          params.put("recursive", "true");
+          client.glossaries().delete(glossary.getId().toString(), params);
+        } catch (Exception e) {
+          LOG.warn("Error cleaning up glossary: {}", e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
+  @Order(28)
   void test_WorkflowFieldUpdateDoesNotCreateRedundantChangeEvents(TestNamespace ns, TestInfo test)
       throws Exception {
     LOG.info("Starting test to verify workflow field updates don't create redundant change events");
@@ -5669,7 +5985,10 @@ public class WorkflowDefinitionResourceIT {
                 new ApiConnection()
                     .withConfig(
                         new RestConnection()
-                            .withOpenAPISchemaURL(java.net.URI.create("http://localhost:8585"))));
+                            .withOpenAPISchemaConnection(
+                                new OpenAPISchemaURL()
+                                    .withOpenAPISchemaURL(
+                                        java.net.URI.create("http://localhost:8585")))));
 
     ApiService apiService = client.apiServices().create(createApiService);
     LOG.debug("Created API service: {}", apiService.getName());

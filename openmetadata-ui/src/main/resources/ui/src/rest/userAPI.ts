@@ -21,7 +21,7 @@ import {
 } from '../generated/api/teams/createUser';
 import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
 import { Bot } from '../generated/entity/bot';
-import { User } from '../generated/entity/teams/user';
+import { JWTTokenExpiry, User } from '../generated/entity/teams/user';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -118,6 +118,25 @@ export const revokeUserToken = async (id: string) => {
     '/users/revokeToken',
     { id }
   );
+
+  return response.data;
+};
+
+/**
+ * Request interface for generating user JWT tokens via POST /users/generateToken.
+ * Note: While the JSON schema has `id` as optional for backward compatibility with
+ * the PUT endpoint, the POST endpoint requires the `id` field.
+ */
+export interface GenerateTokenRequest {
+  id: string;
+  JWTTokenExpiry: JWTTokenExpiry;
+}
+
+export const generateUserToken = async (request: GenerateTokenRequest) => {
+  const response = await APIClient.post<
+    GenerateTokenRequest,
+    AxiosResponse<AuthenticationMechanism['config']>
+  >('/users/generateToken', request);
 
   return response.data;
 };

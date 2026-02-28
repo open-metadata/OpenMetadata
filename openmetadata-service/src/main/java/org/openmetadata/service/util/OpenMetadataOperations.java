@@ -2607,10 +2607,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       // Make bulk deploy API call for this chunk
       String jsonBody = JsonUtils.pojoToJson(pipelineIds);
+      String normalizedServerUrl =
+          serverUrl != null && serverUrl.endsWith("/")
+              ? serverUrl.substring(0, serverUrl.length() - 1)
+              : serverUrl;
 
       HttpRequest request =
           HttpRequest.newBuilder()
-              .uri(URI.create(serverUrl + COLLECTION_PATH + "bulk/deploy"))
+              .uri(URI.create(normalizedServerUrl + COLLECTION_PATH + "bulk/deploy"))
               .header("Authorization", "Bearer " + jwtToken)
               .header("Content-Type", "application/json")
               .POST(HttpRequest.BodyPublishers.ofString(jsonBody))

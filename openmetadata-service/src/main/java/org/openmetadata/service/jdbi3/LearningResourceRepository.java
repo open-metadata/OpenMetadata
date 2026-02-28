@@ -283,16 +283,18 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
         StringBuilder sb = new StringBuilder("(");
         for (int i = 0; i < values.length; i++) {
+          String key = "pageId_" + i;
+          queryParams.put(key, values[i]);
           if (i > 0) sb.append(" OR ");
           sb.append(
               String.format(
-                  "JSON_SEARCH(%s, 'one', '%s', NULL, '$.contexts[*].pageId') IS NOT NULL",
-                  column, escapeApostrophe(values[i])));
+                  "JSON_SEARCH(%s, 'one', :%s, NULL, '$.contexts[*].pageId') IS NOT NULL",
+                  column, key));
         }
         sb.append(")");
         return sb.toString();
       }
-      String inClause = getInConditionFromString(pageId);
+      String inClause = buildIndexedBindParams("pageId", pageId);
       return String.format(
           "EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(%s->'contexts', '[]'::jsonb)) ctx"
               + " WHERE ctx->>'pageId' IN (%s))",
@@ -337,16 +339,17 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
         StringBuilder sb = new StringBuilder("(");
         for (int i = 0; i < values.length; i++) {
+          String key = "category_" + i;
+          queryParams.put(key, values[i]);
           if (i > 0) sb.append(" OR ");
           sb.append(
               String.format(
-                  "JSON_SEARCH(%s, 'one', '%s', NULL, '$.categories') IS NOT NULL",
-                  column, escapeApostrophe(values[i])));
+                  "JSON_SEARCH(%s, 'one', :%s, NULL, '$.categories') IS NOT NULL", column, key));
         }
         sb.append(")");
         return sb.toString();
       }
-      String inClause = getInConditionFromString(category);
+      String inClause = buildIndexedBindParams("category", category);
       return String.format(
           "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(%s->'categories', '[]'::jsonb)) cat"
               + " WHERE cat IN (%s))",
@@ -364,7 +367,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
 
     private String resourceTypeCondition(String tableName) {
       String column = jsonColumn(tableName);
-      String inClause = getInConditionFromString(getQueryParam("resourceType"));
+      String inClause = buildIndexedBindParams("resourceType", getQueryParam("resourceType"));
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
         return String.format(
             "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.resourceType')) IN (%s)", column, inClause);
@@ -374,7 +377,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
 
     private String statusCondition(String tableName) {
       String column = jsonColumn(tableName);
-      String inClause = getInConditionFromString(getQueryParam("status"));
+      String inClause = buildIndexedBindParams("lrStatus", getQueryParam("status"));
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
         return String.format(
             "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.status')) IN (%s)", column, inClause);
