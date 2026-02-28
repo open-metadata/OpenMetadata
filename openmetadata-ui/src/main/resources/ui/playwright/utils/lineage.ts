@@ -138,22 +138,9 @@ export const clickEdgeBetweenNodes = async (
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const toNodeLocator = page.locator(
-    `[data-testid="lineage-node-${toNodeFqn}"] .lineage-node-handle.react-flow__handle-left`
-  );
+  const edgeDiv = page.getByTestId(`column-${fromNodeFqn}-${toNodeFqn}`);
 
-  await toNodeLocator.click();
-
-  const toBox = await toNodeLocator.boundingBox();
-
-  if (!toBox) {
-    throw new Error(`Could not find edge from ${fromNodeFqn} to ${toNodeFqn}`);
-  }
-
-  await page.mouse.move(toBox.x - 2, toBox.y + toBox.height / 2);
-
-  await page.mouse.move(toBox.x - 1, toBox.y + toBox.height / 2);
-  await page.mouse.click(toBox.x - 1, toBox.y + toBox.height / 2);
+  await edgeDiv.click();
 };
 
 export const clickEdgeBetweenColumns = async (
@@ -161,29 +148,9 @@ export const clickEdgeBetweenColumns = async (
   fromNodeFqn: string,
   toNodeFqn: string
 ) => {
-  const toNodeLocator = page.locator(
-    `[data-handleid="${toNodeFqn}"][data-handlepos="left"]`
-  );
+  const edgeDiv = page.getByTestId(`column-edge-${fromNodeFqn}-${toNodeFqn}`);
 
-  await toNodeLocator.click();
-
-  const toBox = await toNodeLocator.boundingBox();
-
-  if (!toBox) {
-    throw new Error(`Could not find edge from ${fromNodeFqn} to ${toNodeFqn}`);
-  }
-
-  const pane = page.locator('.react-flow__pane');
-  const paneBox = await pane.boundingBox();
-
-  if (!paneBox) {
-    throw new Error('Could not find react-flow pane');
-  }
-
-  await page.mouse.move(toBox.x - 16, toBox.y + toBox.height / 2);
-
-  await page.mouse.move(toBox.x - 15, toBox.y + toBox.height / 2);
-  await page.mouse.click(toBox.x - 15, toBox.y + toBox.height / 2);
+  await edgeDiv.click();
 };
 
 export const deleteEdge = async (

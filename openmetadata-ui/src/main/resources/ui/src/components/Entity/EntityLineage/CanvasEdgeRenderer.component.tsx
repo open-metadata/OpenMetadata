@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 import { useTheme } from '@mui/material';
-import React, { useEffect, useRef, useState } from 'react';
-import { Edge } from 'reactflow';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useCanvasEdgeRenderer } from '../../../hooks/useCanvasEdgeRenderer';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { calculateEdgeMidpoints } from '../../../utils/EdgeMidpointUtils';
 import { clearEdgeStyleCache } from '../../../utils/EdgeStyleUtils';
+import { isPlaywrightEnv } from '../../../utils/PlaywrightUtils';
+import { getAbsolutePosition } from './PipelineEdgeButtons.component';
 
 export interface CanvasEdgeRendererProps {
   dqHighlightedEdges: Set<string>;
@@ -35,8 +38,10 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const { isEditMode } = useLineageStore();
+  const { isEditMode, columnsInCurrentPages } = useLineageStore();
   const { edges } = useLineageProvider();
+  const { getNode } = useReactFlow();
+  const viewport = useViewport();
 
   // Keep stable refs for callbacks and getEdgeAtPoint so the pane event listener effect
   // doesn't re-run on every render.
@@ -97,6 +102,16 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   useEffect(() => {
     redraw();
   }, [redraw]);
+
+  const isPlaywright = useMemo(() => isPlaywrightEnv(), []);
+
+  const edgeMidpoints = useMemo(() => {
+    if (!isPlaywright) {
+      return [];
+    }
+
+    return calculateEdgeMidpoints(edges, getNode, columnsInCurrentPages);
+  }, [isPlaywright, edges, getNode, columnsInCurrentPages]);
 
   // Attach listeners to the ReactFlow pane element — it sits on top of the
   // canvas and captures all pointer events before they reach us.
@@ -166,6 +181,23 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
         ref={canvasRef}
         style={{ position: 'absolute', top: 0, left: 0 }}
       />
+      {edgeMidpoints.map((midpoint) =>
+        midpoint?.dataTestId ? (
+          <div
+            data-testid={midpoint.dataTestId}
+            key={midpoint.id}
+            style={{
+              ...getAbsolutePosition(
+                midpoint.canvasX,
+                midpoint.canvasY,
+                viewport
+              ),
+              width: '10px',
+              height: '10px',
+            }}
+          />
+        ) : null
+      )}
     </div>
   );
 };
