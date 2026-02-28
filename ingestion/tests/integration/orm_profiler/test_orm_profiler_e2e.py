@@ -253,7 +253,7 @@ def test_profiler_workflow(ingest, metadata, service_name):
             "profiler": {
                 "name": "my_profiler",
                 "timeout_seconds": 60,
-                "metrics": ["row_count", "min", "max", "COUNT", "null_count"],
+                "metrics": ["rowCount", "min", "max", "nullCount"],
             },
             "tableConfig": [
                 {
@@ -596,12 +596,12 @@ def test_workflow_values_partition(ingest, metadata, service_name):
 def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service_name):
     """Test custom profiler config return expected sample and metric computation"""
     profiler_metrics = [
-        "MIN",
-        "MAX",
-        "MEAN",
-        "MEDIAN",
+        "min",
+        "max",
+        "mean",
+        "median",
     ]
-    id_metrics = ["MIN", "MAX"]
+    id_metrics = ["min", "max"]
     non_metric_values = ["name", "timestamp"]
 
     workflow_config = deepcopy(ingestion_config)
@@ -655,7 +655,7 @@ def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service
 
     id_metric_ln = 0
     for metric_name, metric in latest_id_profile:
-        if metric_name.upper() in id_metrics:
+        if metric_name in id_metrics:
             assert metric is not None
             id_metric_ln += 1
         else:
@@ -674,7 +674,7 @@ def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service
 
     age_metric_ln = 0
     for metric_name, metric in latest_age_profile:
-        if metric_name.upper() in profiler_metrics:
+        if metric_name in profiler_metrics:
             assert metric is not None
             age_metric_ln += 1
         else:

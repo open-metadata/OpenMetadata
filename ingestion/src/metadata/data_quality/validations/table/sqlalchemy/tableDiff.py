@@ -80,10 +80,14 @@ SUPPORTED_DIALECTS = [
 class SchemaDiffResult(BaseModel):
     class Config:
         arbitrary_types_allowed = True
+        populate_by_name = True
 
     serviceType: str
     fullyQualifiedTableName: str
-    schema_: Dict[str, Dict[str, str]] = Field(validation_alias="schema")
+    schema_: Dict[str, Dict[str, str]] = Field(alias="schema")
+
+    def __str__(self):
+        return " ".join(f"{k}={v!r}" for k, v in self.model_dump(by_alias=True).items())
 
 
 class ColumnDiffResult(BaseModel):
