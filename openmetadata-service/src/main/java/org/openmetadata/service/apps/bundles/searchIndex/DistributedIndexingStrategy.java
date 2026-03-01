@@ -24,6 +24,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
@@ -604,7 +605,9 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       String correctedType = "queryCostResult".equals(entityType) ? QUERY_COST_RECORD : entityType;
 
       if (!TIME_SERIES_ENTITIES.contains(correctedType)) {
-        return Entity.getEntityRepository(correctedType).getDao().listTotalCount();
+        return Entity.getEntityRepository(correctedType)
+            .getDao()
+            .listCount(new ListFilter(Include.ALL));
       } else {
         ListFilter listFilter = new ListFilter(null);
         EntityTimeSeriesRepository<?> repository;

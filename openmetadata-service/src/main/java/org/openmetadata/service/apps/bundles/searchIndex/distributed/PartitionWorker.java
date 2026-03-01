@@ -224,10 +224,15 @@ public class PartitionWorker {
           if (keysetCursor == null && currentOffset < rangeEnd) {
             keysetCursor = initializeKeysetCursor(entityType, currentOffset);
             if (keysetCursor == null) {
-              LOG.debug(
-                  "No more data at offset {} (rangeEnd: {}), finishing partition early",
+              LOG.warn(
+                  "[COUNT-DEBUG] {} partition {} data exhausted at offset {} (rangeEnd: {}), "
+                      + "missing {} records. processedCount={}",
+                  entityType,
+                  partition.getId(),
                   currentOffset,
-                  rangeEnd);
+                  rangeEnd,
+                  rangeEnd - currentOffset,
+                  processedCount.get());
               break;
             }
           }
@@ -311,6 +316,8 @@ public class PartitionWorker {
       // Mark partition as completed (stats are now in the database)
       coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
 
+      long expectedRecords = rangeEnd - rangeStart;
+      long actualProcessed = successCount.get() + failedCount.get();
       LOG.info(
           "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, warnings: {})",
           partition.getId(),
@@ -319,6 +326,18 @@ public class PartitionWorker {
           failedCount.get(),
           readerFailedCount.get(),
           warningsCount.get());
+      if (actualProcessed < expectedRecords) {
+        LOG.warn(
+            "[COUNT-DEBUG] {} partition {} processed fewer records than expected: "
+                + "actual={}, expected={}, gap={}, range=[{},{})",
+            entityType,
+            partition.getId(),
+            actualProcessed,
+            expectedRecords,
+            expectedRecords - actualProcessed,
+            rangeStart,
+            rangeEnd);
+      }
 
       return new PartitionResult(
           successCount.get(),
@@ -521,7 +540,16 @@ public class PartitionWorker {
     if (!TIME_SERIES_ENTITIES.contains(entityType)) {
       int cursorOffset = (int) offset - 1;
       ListFilter filter = new ListFilter(Include.ALL);
-      return Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
+      String cursor =
+          Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
+      if (cursor == null) {
+        LOG.warn(
+            "[COUNT-DEBUG] getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
+            entityType,
+            offset,
+            cursorOffset);
+      }
+      return cursor;
     } else {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
