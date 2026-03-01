@@ -22,8 +22,8 @@ class ELKLayout {
   static layoutOptions: LayoutOptions = {
     'elk.algorithm': 'layered',
     'elk.direction': 'RIGHT',
-    'elk.spacing.nodeNode': '120',
-    'elk.layered.spacing.nodeNodeBetweenLayers': '300',
+    'elk.spacing.nodeNode': '80',
+    'elk.layered.spacing.nodeNodeBetweenLayers': '200',
     'elk.layered.nodePlacement.strategy': 'SIMPLE',
     'elk.partitioning.activate': 'true',
   };
