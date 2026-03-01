@@ -309,14 +309,15 @@ class TestTableEntity(unittest.TestCase):
 
         self.assertIsNotNone(result)
         if result is not None:
-            self.assertEqual(result.columns, ["id", "email"])
+            self.assertEqual([column.root for column in result.columns], ["id", "email"])
             self.assertEqual(result.rows[0][1], "user@example.com")
         self.mock_ometa.get_by_id.assert_not_called()
         self.mock_ometa.ingest_table_sample_data.assert_called_once()
         call_args = self.mock_ometa.ingest_table_sample_data.call_args.args
         table_ref = call_args[0]
-        self.assertEqual(table_ref.id.root, self.table_id)
-        self.assertEqual(table_ref.fullyQualifiedName.root, "sdk.table.reference")
+        self.assertEqual(str(table_ref.id.root), self.table_id)
+        self.assertEqual(table_ref.name.root, f"sdk_ref_{self.table_id[:8]}")
+        self.assertEqual(table_ref.fullyQualifiedName.root, f"sdk.ref.{self.table_id}")
         self.assertEqual(call_args[1], sample_data)
 
     def test_get_sample_data(self):
@@ -334,8 +335,9 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa.get_by_id.assert_not_called()
         self.mock_ometa.get_sample_data.assert_called_once()
         table_ref = self.mock_ometa.get_sample_data.call_args.args[0]
-        self.assertEqual(table_ref.id.root, self.table_id)
-        self.assertEqual(table_ref.fullyQualifiedName.root, "sdk.table.reference")
+        self.assertEqual(str(table_ref.id.root), self.table_id)
+        self.assertEqual(table_ref.name.root, f"sdk_ref_{self.table_id[:8]}")
+        self.assertEqual(table_ref.fullyQualifiedName.root, f"sdk.ref.{self.table_id}")
 
     def test_export_table_csv(self):
         """Test exporting table metadata to CSV"""

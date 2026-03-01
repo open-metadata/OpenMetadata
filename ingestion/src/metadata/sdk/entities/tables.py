@@ -1,6 +1,7 @@
 """Tables entity SDK with fluent helpers."""
 from __future__ import annotations
 
+from uuid import UUID
 from typing import Any, Optional, Type, cast
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -8,7 +9,11 @@ from metadata.generated.schema.api.tests.createCustomMetric import (
     CreateCustomMetricRequest,
 )
 from metadata.generated.schema.entity.data.table import Table, TableData
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Uuid,
+)
 from metadata.sdk.entities.base import BaseEntity
 from metadata.sdk.types import UuidLike
 
@@ -106,9 +111,13 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
     def _build_table_reference(cls, table_id: UuidLike) -> Table:
         """Build a lightweight table reference object for table-specific operations."""
         table_id_value = cls._stringify_identifier(table_id)
-        return Table(
-            id=Uuid(root=table_id_value),
-            name="sdk_table_reference",
-            fullyQualifiedName=FullyQualifiedEntityName(root="sdk.table.reference"),
+        table_uuid = UUID(table_id_value)
+        table_ref_name = f"sdk_ref_{table_id_value[:8]}"
+        table_ref_fqn = f"sdk.ref.{table_id_value}"
+        table_reference = cast(Any, Table).model_construct(
+            id=Uuid(root=table_uuid),
+            name=EntityName(root=table_ref_name),
+            fullyQualifiedName=FullyQualifiedEntityName(root=table_ref_fqn),
             columns=[],
         )
+        return cast(Table, table_reference)
