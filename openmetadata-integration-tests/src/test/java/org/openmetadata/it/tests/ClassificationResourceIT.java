@@ -8,8 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -627,8 +629,6 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     org.openmetadata.schema.entity.classification.Tag tag = client.tags().create(tagRequest);
     String originalTagFqn = tag.getFullyQualifiedName();
 
-    Thread.sleep(1000);
-
     String newName = ns.prefix("classification_renamed");
     classification.setName(newName);
     Classification renamedClassification =
@@ -637,12 +637,18 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     assertNotEquals(originalFqn, renamedClassification.getFullyQualifiedName());
     assertEquals(newName, renamedClassification.getName());
 
-    Thread.sleep(2000);
-
-    org.openmetadata.schema.entity.classification.Tag fetchedTag =
-        client.tags().get(tag.getId().toString());
-    assertNotEquals(originalTagFqn, fetchedTag.getFullyQualifiedName());
-    assertTrue(fetchedTag.getFullyQualifiedName().startsWith(newName));
+    Awaitility.await("Wait for tag FQN to be updated after classification rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.entity.classification.Tag fetched =
+                  client.tags().get(tag.getId().toString());
+              assertNotEquals(originalTagFqn, fetched.getFullyQualifiedName());
+              assertTrue(fetched.getFullyQualifiedName().startsWith(newName));
+            });
   }
 
   @Test
@@ -674,14 +680,22 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     assertNotNull(table.getTags());
     assertEquals(1, table.getTags().size());
 
-    Thread.sleep(1000);
-
     String newName = ns.prefix("cls_renamed");
     classification.setName(newName);
     Classification renamedClassification =
         patchEntity(classification.getId().toString(), classification);
 
-    Thread.sleep(3000);
+    Awaitility.await("Wait for tag FQN to be updated after classification rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              org.openmetadata.schema.entity.classification.Tag fetched =
+                  client.tags().get(tag.getId().toString());
+              return fetched.getFullyQualifiedName().startsWith(newName);
+            });
 
     org.openmetadata.schema.entity.classification.Tag fetchedTag =
         client.tags().get(tag.getId().toString());
@@ -729,21 +743,24 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     org.openmetadata.schema.entity.classification.Tag tag1 = client.tags().create(tag1Request);
     org.openmetadata.schema.entity.classification.Tag tag2 = client.tags().create(tag2Request);
 
-    Thread.sleep(1000);
-
     String newName = ns.prefix("classification_multi_tags");
     classification.setName(newName);
     Classification renamedClassification =
         patchEntity(classification.getId().toString(), classification);
 
-    Thread.sleep(2000);
-
-    org.openmetadata.schema.entity.classification.Tag fetchedTag1 =
-        client.tags().get(tag1.getId().toString());
-    org.openmetadata.schema.entity.classification.Tag fetchedTag2 =
-        client.tags().get(tag2.getId().toString());
-
-    assertTrue(fetchedTag1.getFullyQualifiedName().startsWith(newName));
-    assertTrue(fetchedTag2.getFullyQualifiedName().startsWith(newName));
+    Awaitility.await("Wait for both tag FQNs to be updated after classification rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.entity.classification.Tag fetchedTag1 =
+                  client.tags().get(tag1.getId().toString());
+              org.openmetadata.schema.entity.classification.Tag fetchedTag2 =
+                  client.tags().get(tag2.getId().toString());
+              assertTrue(fetchedTag1.getFullyQualifiedName().startsWith(newName));
+              assertTrue(fetchedTag2.getFullyQualifiedName().startsWith(newName));
+            });
   }
 }
