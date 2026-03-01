@@ -235,13 +235,8 @@ export const DataAssetSummaryPanelV1 = ({
   }, [dataAsset?.fullyQualifiedName, entityPermissions]);
 
   const fetchEntityBasedDetails = () => {
-    switch (entityType) {
-      case EntityType.TABLE:
-        fetchIncidentCount();
-
-        break;
-      default:
-        break;
+    if (entityType === EntityType.TABLE) {
+      fetchIncidentCount();
     }
   };
   const {

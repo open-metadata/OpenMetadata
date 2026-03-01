@@ -65,11 +65,11 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     setDisplayActiveDomains((prev) => {
       const prevIds = prev
         .map((item) => item.id)
-        .sort()
+        .sort((a, b) => (a ?? '').localeCompare(b ?? ''))
         .join(',');
       const newIds = activeDomains
         .map((item) => item.id)
-        .sort()
+        .sort((a, b) => (a ?? '').localeCompare(b ?? ''))
         .join(',');
 
       if (prevIds !== newIds) {
