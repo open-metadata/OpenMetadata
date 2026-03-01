@@ -429,8 +429,8 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       }
     }
 
-    LOG.info(
-        "[FINALIZE-DEBUG] finalSuccess={}, promotedEntities={}, allEntities={}",
+    LOG.debug(
+        "Finalization: finalSuccess={}, promotedEntities={}, allEntities={}",
         finalSuccess,
         promotedEntities,
         recreateContext.getEntities());
@@ -440,10 +440,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
 
     boolean hasVectorIndex = entitiesToFinalize.remove(VectorIndexService.VECTOR_INDEX_KEY);
 
-    LOG.info(
-        "[FINALIZE-DEBUG] entitiesToFinalize={}, skippedAsPromoted={}",
-        entitiesToFinalize,
-        promotedEntities);
+    LOG.debug("Entities to finalize={}, already promoted={}", entitiesToFinalize, promotedEntities);
 
     try {
       if (!entitiesToFinalize.isEmpty()) {
@@ -455,8 +452,8 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         for (String entityType : entitiesToFinalize) {
           try {
             boolean entitySuccess = computeEntitySuccess(entityType, entityStatsMap);
-            LOG.info(
-                "[FINALIZE-DEBUG] Finalizing entity '{}' with perEntitySuccess={} (globalSuccess={})",
+            LOG.debug(
+                "Finalizing entity '{}' with perEntitySuccess={} (globalSuccess={})",
                 entityType,
                 entitySuccess,
                 finalSuccess);

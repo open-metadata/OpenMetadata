@@ -182,8 +182,8 @@ public class PartitionWorker {
       // Initialize keyset cursor for efficient pagination (avoids OFFSET degradation)
       long cursorInitStart = System.currentTimeMillis();
       String keysetCursor = initializeKeysetCursor(entityType, rangeStart);
-      LOG.info(
-          "[PERF] initializeKeysetCursor for {} offset={} took {}ms",
+      LOG.debug(
+          "initializeKeysetCursor for {} offset={} took {}ms",
           entityType,
           rangeStart,
           System.currentTimeMillis() - cursorInitStart);
@@ -224,8 +224,8 @@ public class PartitionWorker {
           if (keysetCursor == null && currentOffset < rangeEnd) {
             keysetCursor = initializeKeysetCursor(entityType, currentOffset);
             if (keysetCursor == null) {
-              LOG.warn(
-                  "[COUNT-DEBUG] {} partition {} data exhausted at offset {} (rangeEnd: {}), "
+              LOG.debug(
+                  "{} partition {} data exhausted at offset {} (rangeEnd: {}), "
                       + "missing {} records. processedCount={}",
                   entityType,
                   partition.getId(),
@@ -311,7 +311,7 @@ public class PartitionWorker {
       // the coordinator may aggregate stats before they're written to the database
       long waitStart = System.currentTimeMillis();
       waitForSinkOperations(statsTracker);
-      LOG.info("[PERF] waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
+      LOG.debug("waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
 
       // Mark partition as completed (stats are now in the database)
       coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
@@ -327,8 +327,8 @@ public class PartitionWorker {
           readerFailedCount.get(),
           warningsCount.get());
       if (actualProcessed < expectedRecords) {
-        LOG.warn(
-            "[COUNT-DEBUG] {} partition {} processed fewer records than expected: "
+        LOG.debug(
+            "{} partition {} processed fewer records than expected: "
                 + "actual={}, expected={}, gap={}, range=[{},{})",
             entityType,
             partition.getId(),
@@ -472,7 +472,7 @@ public class PartitionWorker {
     long t1 = System.currentTimeMillis();
 
     if (resultList == null || resultList.getData() == null || resultList.getData().isEmpty()) {
-      LOG.info("[PERF] {} read={}ms returned empty", entityType, t1 - t0);
+      LOG.debug("{} read={}ms returned empty", entityType, t1 - t0);
       return new BatchResult(0, 0, 0, null);
     }
 
@@ -499,8 +499,8 @@ public class PartitionWorker {
     try {
       writeToSink(entityType, resultList, contextData);
       long t2 = System.currentTimeMillis();
-      LOG.info(
-          "[PERF] {} read={}ms write={}ms total={}ms records={}",
+      LOG.debug(
+          "{} read={}ms write={}ms total={}ms records={}",
           entityType,
           t1 - t0,
           t2 - t1,
@@ -562,8 +562,8 @@ public class PartitionWorker {
       String cursor =
           Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
       if (cursor == null) {
-        LOG.warn(
-            "[COUNT-DEBUG] getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
+        LOG.debug(
+            "getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
             entityType,
             offset,
             cursorOffset);

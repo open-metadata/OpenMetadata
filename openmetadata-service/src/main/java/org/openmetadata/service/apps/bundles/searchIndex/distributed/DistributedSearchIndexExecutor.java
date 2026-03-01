@@ -1020,15 +1020,12 @@ public class DistributedSearchIndexExecutor {
       String canonicalIndex = recreateContext.getCanonicalIndex(entityType).orElse(null);
       String originalIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
 
-      LOG.info(
-          "[PROMOTE-DEBUG] Executor promoting entity '{}': success={}, canonicalIndex={}, "
-              + "originalIndex={}, stagedIndex={}, existingAliases={}",
+      LOG.debug(
+          "Promoting entity '{}': success={}, canonicalIndex={}, stagedIndex={}",
           entityType,
           success,
           canonicalIndex,
-          originalIndex,
-          stagedIndexOpt.get(),
-          recreateContext.getExistingAliases(entityType));
+          stagedIndexOpt.get());
 
       EntityReindexContext entityContext =
           EntityReindexContext.builder()
@@ -1049,12 +1046,8 @@ public class DistributedSearchIndexExecutor {
       } else {
         recreateIndexHandler.finalizeReindex(entityContext, success);
       }
-      LOG.info("[PROMOTE-DEBUG] Executor promotion completed for entity '{}'", entityType);
     } catch (Exception e) {
-      LOG.error(
-          "[PROMOTE-DEBUG] Failed to promote index for entity '{}' - exception thrown",
-          entityType,
-          e);
+      LOG.error("Failed to promote index for entity '{}'", entityType, e);
     }
   }
 

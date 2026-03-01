@@ -48,24 +48,12 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     String canonicalAlias = context.getCanonicalAliases();
     Set<String> parentAliases = context.getParentAliases();
 
-    LOG.info(
-        "[PROMOTE-DEBUG] finalizeReindex called for entity '{}': canonicalIndex={}, activeIndex={}, "
-            + "stagedIndex={}, reindexSuccess={}, existingAliases={}, canonicalAlias={}, parentAliases={}",
-        entityType,
-        canonicalIndex,
-        activeIndex,
-        stagedIndex,
-        reindexSuccess,
-        existingAliases,
-        canonicalAlias,
-        parentAliases);
-
     SearchRepository searchRepository = Entity.getSearchRepository();
     SearchClient searchClient = searchRepository.getSearchClient();
 
     if (canonicalIndex == null || stagedIndex == null) {
       LOG.error(
-          "[PROMOTE-DEBUG] Cannot finalize reindex for entity '{}'. canonicalIndex={}, stagedIndex={}",
+          "Cannot finalize reindex for entity '{}'. canonicalIndex={}, stagedIndex={}",
           entityType,
           canonicalIndex,
           stagedIndex);
@@ -101,12 +89,6 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
     }
 
-    LOG.info(
-        "[PROMOTE-DEBUG] finalizeReindex decision for entity '{}': shouldPromote={}, reindexSuccess={}",
-        entityType,
-        shouldPromote,
-        reindexSuccess);
-
     if (shouldPromote) {
       try {
         Set<String> aliasesToAttach = new HashSet<>();
@@ -133,12 +115,10 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           }
         }
 
-        LOG.info(
-            "[PROMOTE-DEBUG] finalizeReindex entity '{}': aliasesToAttach={}, allEntityIndices={}, "
-                + "oldIndicesToDelete={}, stagedIndex={}",
+        LOG.debug(
+            "finalizeReindex entity '{}': aliases={}, oldIndices={}, stagedIndex={}",
             entityType,
             aliasesToAttach,
-            allEntityIndices,
             oldIndicesToDelete,
             stagedIndex);
 
@@ -220,21 +200,13 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     String stagedIndex = context.getStagedIndex();
     String canonicalIndex = context.getCanonicalIndex();
 
-    LOG.info(
-        "[PROMOTE-DEBUG] promoteEntityIndex called for entity '{}': canonicalIndex={}, "
-            + "stagedIndex={}, reindexSuccess={}",
-        entityType,
-        canonicalIndex,
-        stagedIndex,
-        reindexSuccess);
-
     SearchRepository searchRepository = Entity.getSearchRepository();
     SearchClient searchClient = searchRepository.getSearchClient();
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
 
     if (canonicalIndex == null || stagedIndex == null) {
       LOG.error(
-          "[PROMOTE-DEBUG] Cannot promote index for entity '{}'. canonicalIndex={}, stagedIndex={}",
+          "Cannot promote index for entity '{}'. canonicalIndex={}, stagedIndex={}",
           entityType,
           canonicalIndex,
           stagedIndex);
@@ -297,12 +269,10 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         }
       }
 
-      LOG.info(
-          "[PROMOTE-DEBUG] entity '{}': aliasesToAttach={}, allEntityIndices={}, "
-              + "oldIndicesToDelete={}, stagedIndex={}",
+      LOG.debug(
+          "promoteEntityIndex '{}': aliases={}, oldIndices={}, stagedIndex={}",
           entityType,
           aliasesToAttach,
-          allEntityIndices,
           oldIndicesToDelete,
           stagedIndex);
 
@@ -315,16 +285,11 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
 
       if (!aliasesToAttach.isEmpty()) {
-        LOG.info(
-            "[PROMOTE-DEBUG] entity '{}': swapping aliases from {} to {}",
-            entityType,
-            oldIndicesToDelete,
-            stagedIndex);
         boolean swapSuccess =
             searchClient.swapAliases(oldIndicesToDelete, stagedIndex, aliasesToAttach);
         if (!swapSuccess) {
           LOG.error(
-              "[PROMOTE-DEBUG] Failed to atomically swap aliases for entity '{}'. "
+              "Failed to atomically swap aliases for entity '{}'. "
                   + "oldIndices={}, stagedIndex={}, aliases={}",
               entityType,
               oldIndicesToDelete,
@@ -333,8 +298,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           return;
         }
       } else {
-        LOG.warn(
-            "[PROMOTE-DEBUG] entity '{}': aliasesToAttach is EMPTY, skipping swap", entityType);
+        LOG.warn("Entity '{}': aliasesToAttach is empty, skipping alias swap", entityType);
       }
 
       LOG.info(
