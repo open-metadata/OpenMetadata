@@ -516,8 +516,8 @@ describe('CanvasEdgeRenderer', () => {
 
       expect(midpointDiv).toBeInTheDocument();
       expect(midpointDiv).toHaveStyle({
-        width: '10px',
-        height: '10px',
+        width: '20px',
+        height: '20px',
       });
     });
 
