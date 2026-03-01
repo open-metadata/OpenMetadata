@@ -58,7 +58,6 @@ import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
-import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch._types.query_dsl.RangeQuery;
 import os.org.opensearch.client.opensearch.core.BulkRequest;
@@ -441,13 +440,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       client.updateByQuery(
           u ->
               u.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                  .query(
-                      q ->
-                          q.match(
-                              m ->
-                                  m.field(fieldAndValue.getKey())
-                                      .query(FieldValue.of(fieldAndValue.getValue()))
-                                      .operator(Operator.And)))
+                  .query(exactFieldQuery(fieldAndValue))
+                  .conflicts(Conflicts.Proceed)
                   .script(
                       s ->
                           s.inline(
@@ -485,13 +479,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     client.updateByQuery(
         u ->
             u.index(indexNames)
-                .query(
-                    q ->
-                        q.match(
-                            m ->
-                                m.field(fieldAndValue.getKey())
-                                    .query(FieldValue.of(fieldAndValue.getValue()))
-                                    .operator(Operator.And)))
+                .query(exactFieldQuery(fieldAndValue))
+                .conflicts(Conflicts.Proceed)
                 .script(
                     s ->
                         s.inline(
@@ -558,13 +547,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           client.updateByQuery(
               u ->
                   u.index(indexName)
-                      .query(
-                          q ->
-                              q.match(
-                                  m ->
-                                      m.field(fieldAndValue.getKey())
-                                          .query(FieldValue.of(fieldAndValue.getValue()))
-                                          .operator(Operator.And)))
+                      .query(exactFieldQuery(fieldAndValue))
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -665,6 +649,15 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     } catch (Exception e) {
       LOG.error("Error while propagating FQN updates: {}", e.getMessage(), e);
     }
+  }
+
+  private Query exactFieldQuery(Pair<String, String> fieldAndValue) {
+    return Query.of(
+        q ->
+            q.term(
+                t ->
+                    t.field(fieldAndValue.getKey())
+                        .value(FieldValue.of(fieldAndValue.getValue()))));
   }
 
   @Override

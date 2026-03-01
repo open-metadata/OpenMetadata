@@ -57,27 +57,19 @@ public class TagLabelUtil {
 
   public static Map<String, List<TagLabel>> populateTagLabel(
       List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tagUsages) {
-    Map<String, List<String>> tagFqnMap = new HashMap<>();
-    Map<String, List<String>> termFqnMap = new HashMap<>();
+    Map<String, List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash>> usagesByTarget =
+        new HashMap<>();
     Set<String> allTagFqns = new HashSet<>();
     Set<String> allTermFqns = new HashSet<>();
 
     for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash usage : tagUsages) {
-      String targetHash = usage.getTargetFQNHash();
-      String tagFQN = usage.getTagFQN();
-
+      usagesByTarget.computeIfAbsent(usage.getTargetFQNHash(), k -> new ArrayList<>()).add(usage);
       if (usage.getSource() == TagSource.CLASSIFICATION.ordinal()) {
-        tagFqnMap.computeIfAbsent(targetHash, k -> new ArrayList<>()).add(tagFQN);
-        allTagFqns.add(tagFQN);
+        allTagFqns.add(usage.getTagFQN());
       } else if (usage.getSource() == TagSource.GLOSSARY.ordinal()) {
-        termFqnMap.computeIfAbsent(targetHash, k -> new ArrayList<>()).add(tagFQN);
-        allTermFqns.add(tagFQN);
+        allTermFqns.add(usage.getTagFQN());
       }
     }
-
-    Set<String> allTargetHashes = new HashSet<>();
-    allTargetHashes.addAll(tagFqnMap.keySet());
-    allTargetHashes.addAll(termFqnMap.keySet());
 
     Map<String, List<TagLabel>> result = new HashMap<>();
     Map<String, TagLabel> tagLabelsByFqn = new HashMap<>();
@@ -96,7 +88,7 @@ public class TagLabelUtil {
       } catch (Exception ex) {
         LOG.warn(
             "Failed to batch fetch classification tags for {} targets. Skipping classification tags. Error: {}",
-            allTargetHashes.size(),
+            usagesByTarget.size(),
             ex.getMessage());
       }
     }
@@ -114,28 +106,36 @@ public class TagLabelUtil {
       } catch (Exception ex) {
         LOG.warn(
             "Failed to batch fetch glossary terms for {} targets. Skipping glossary tags. Error: {}",
-            allTargetHashes.size(),
+            usagesByTarget.size(),
             ex.getMessage());
       }
     }
 
-    for (String targetHash : allTargetHashes) {
+    for (Map.Entry<String, List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash>> entry :
+        usagesByTarget.entrySet()) {
+      String targetHash = entry.getKey();
       Set<TagLabel> tagLabels = new TreeSet<>(compareTagLabel);
-
-      for (String tagFqn : tagFqnMap.getOrDefault(targetHash, Collections.emptyList())) {
-        TagLabel label = tagLabelsByFqn.get(tagFqn);
-        if (label != null) {
-          tagLabels.add(label);
+      for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash usage : entry.getValue()) {
+        TagLabel label =
+            new TagLabel()
+                .withSource(TagSource.values()[usage.getSource()])
+                .withTagFQN(usage.getTagFQN())
+                .withLabelType(TagLabel.LabelType.values()[usage.getLabelType()])
+                .withState(TagLabel.State.values()[usage.getState()])
+                .withReason(usage.getReason())
+                .withMetadata(usage.getMetadata());
+        TagLabel commonFields =
+            usage.getSource() == TagSource.CLASSIFICATION.ordinal()
+                ? tagLabelsByFqn.get(usage.getTagFQN())
+                : termLabelsByFqn.get(usage.getTagFQN());
+        if (commonFields != null) {
+          label.setName(commonFields.getName());
+          label.setDisplayName(commonFields.getDisplayName());
+          label.setDescription(commonFields.getDescription());
+          label.setStyle(commonFields.getStyle());
         }
+        tagLabels.add(label);
       }
-
-      for (String termFqn : termFqnMap.getOrDefault(targetHash, Collections.emptyList())) {
-        TagLabel label = termLabelsByFqn.get(termFqn);
-        if (label != null) {
-          tagLabels.add(label);
-        }
-      }
-
       result.put(targetHash, new ArrayList<>(tagLabels));
     }
 

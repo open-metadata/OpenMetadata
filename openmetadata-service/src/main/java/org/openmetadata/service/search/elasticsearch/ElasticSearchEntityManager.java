@@ -25,7 +25,6 @@ import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
-import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
@@ -406,13 +405,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       client.updateByQuery(
           u ->
               u.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                  .query(
-                      q ->
-                          q.match(
-                              m ->
-                                  m.field(fieldAndValue.getKey())
-                                      .query(fieldAndValue.getValue())
-                                      .operator(Operator.And)))
+                  .query(exactFieldQuery(fieldAndValue))
+                  .conflicts(Conflicts.Proceed)
                   .script(
                       s ->
                           s.source(ss -> ss.scriptString(updates.getKey()))
@@ -442,13 +436,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     client.updateByQuery(
         u ->
             u.index(indexNames)
-                .query(
-                    q ->
-                        q.match(
-                            m ->
-                                m.field(fieldAndValue.getKey())
-                                    .query(fieldAndValue.getValue())
-                                    .operator(Operator.And)))
+                .query(exactFieldQuery(fieldAndValue))
+                .conflicts(Conflicts.Proceed)
                 .script(
                     s ->
                         s.source(ss -> ss.scriptString(updates.getKey()))
@@ -508,13 +497,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
           client.updateByQuery(
               u ->
                   u.index(indexName)
-                      .query(
-                          q ->
-                              q.match(
-                                  m ->
-                                      m.field(fieldAndValue.getKey())
-                                          .query(fieldAndValue.getValue())
-                                          .operator(Operator.And)))
+                      .query(exactFieldQuery(fieldAndValue))
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(ss -> ss.scriptString(ADD_UPDATE_ENTITY_RELATIONSHIP))
@@ -604,6 +588,15 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     } catch (Exception e) {
       LOG.error("Error while propagating FQN updates: {}", e.getMessage(), e);
     }
+  }
+
+  private Query exactFieldQuery(Pair<String, String> fieldAndValue) {
+    return Query.of(
+        q ->
+            q.term(
+                t ->
+                    t.field(fieldAndValue.getKey())
+                        .value(FieldValue.of(fieldAndValue.getValue()))));
   }
 
   @Override

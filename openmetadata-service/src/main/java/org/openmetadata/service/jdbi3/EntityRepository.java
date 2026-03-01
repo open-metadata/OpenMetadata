@@ -7239,12 +7239,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   fromId, addedIds, fromEntityType, toEntityType, relationshipType.ordinal());
         }
       }
-      if (!nullOrEmpty(updatedToRefs)) {
-        updatedToRefs.sort(EntityUtil.compareEntityReference);
-      }
-      if (!nullOrEmpty(origToRefs)) {
-        origToRefs.sort(EntityUtil.compareEntityReference);
-      }
+      sortEntityReferencesForDeterminism(updatedToRefs);
+      sortEntityReferencesForDeterminism(origToRefs);
     }
 
     public final void updateToRelationship(
@@ -7329,8 +7325,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
         daoCollection.relationshipDAO().bulkInsertTo(relationships);
       }
-      updatedFromRefs.sort(EntityUtil.compareEntityReference);
-      originFromRefs.sort(EntityUtil.compareEntityReference);
+      sortEntityReferencesForDeterminism(updatedFromRefs);
+      sortEntityReferencesForDeterminism(originFromRefs);
+    }
+
+    private void sortEntityReferencesForDeterminism(List<EntityReference> refs) {
+      if (nullOrEmpty(refs) || refs.size() < 2) {
+        return;
+      }
+      List<EntityReference> sorted = new ArrayList<>(refs);
+      sorted.sort(
+          Comparator.comparing(EntityReference::getName, Comparator.nullsLast(String::compareTo))
+              .thenComparing(EntityReference::getType, Comparator.nullsLast(String::compareTo))
+              .thenComparing(EntityReference::getId, Comparator.nullsLast(UUID::compareTo)));
+      try {
+        refs.clear();
+        refs.addAll(sorted);
+      } catch (UnsupportedOperationException ignored) {
+        // Lists loaded from ReadBundle are immutable snapshots (List.copyOf). Preserve the
+        // sorted copy locally without mutating the immutable source list.
+      }
     }
 
     public final void updateFromRelationship(
