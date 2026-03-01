@@ -158,7 +158,7 @@ public class WorkflowHandler {
 
   public static void initialize(OpenMetadataApplicationConfig config) {
     if (!initialized) {
-      // instance = new WorkflowHandler(config);
+      instance = new WorkflowHandler(config);
       initialized = true;
     } else {
       LOG.info("WorkflowHandler already initialized.");
