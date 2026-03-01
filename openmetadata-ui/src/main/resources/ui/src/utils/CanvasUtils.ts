@@ -74,6 +74,17 @@ const getBaseNodeHeightFromType = (
 
   switch (entityType) {
     case EntityType.METRIC:
+    case EntityType.DRIVE_SERVICE:
+    case EntityType.DATABASE_SERVICE:
+    case EntityType.MESSAGING_SERVICE:
+    case EntityType.METADATA_SERVICE:
+    case EntityType.DASHBOARD_SERVICE:
+    case EntityType.PIPELINE_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.STORAGE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
+    case EntityType.SECURITY_SERVICE:
+    case EntityType.API_SERVICE:
       baseHeight = 48;
 
       break;
