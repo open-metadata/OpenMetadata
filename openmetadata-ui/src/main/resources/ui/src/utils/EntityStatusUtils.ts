@@ -21,6 +21,8 @@ export const EntityStatusClass: Record<EntityStatus, StatusType> = {
   [EntityStatus.Deprecated]: StatusType.Deprecated,
   [EntityStatus.InReview]: StatusType.InReview,
   [EntityStatus.Unprocessed]: StatusType.Pending,
+  [EntityStatus.Active]: StatusType.Active,
+  [EntityStatus.Archived]: StatusType.Archived,
 };
 
 export const getEntityStatusClass = (status: EntityStatus): StatusType => {
