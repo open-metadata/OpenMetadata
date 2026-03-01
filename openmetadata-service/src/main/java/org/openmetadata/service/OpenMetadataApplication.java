@@ -1105,11 +1105,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     public void stop() throws InterruptedException, SchedulerException {
       LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
-      AsyncService.getInstance().shutdown();
       EventPubSub.shutdown();
+      EventSubscriptionScheduler.shutDown();
+      AsyncService.getInstance().shutdown();
       EntityLifecycleEventDispatcher.getInstance().shutdown();
       AppScheduler.shutDown();
-      EventSubscriptionScheduler.shutDown();
       LOG.info("Stopping the application");
     }
   }
