@@ -11,61 +11,23 @@ server:
   adminConnectors:
     - type: http
       port: 0
-qos:
-  enabled: true
-  maxRequestCount: 100
-  maxSuspendedRequestCount: 1000
-  maxSuspendSeconds: 30
 logging:
   level: INFO
-  loggers:
-    org.openmetadata.service.util.jdbi.OMSqlLogger:
-      level: DEBUG
-      additive: false
-      appenders:
-        - type: file
-          threshold: DEBUG
-          currentLogFilename: ./logs/queries.log
-          archivedLogFilenamePattern: ./logs/queries-%d{yyyy-MM-dd}-%i.log.gz
-          archivedFileCount: 3
-          maxFileSize: 50MB
-          timeZone: UTC
-          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-    org.openmetadata.slowrequest:
-      level: WARN
-      additive: false
-      appenders:
-        - type: file
-          threshold: WARN
-          currentLogFilename: ./logs/slow-requests.log
-          archivedLogFilenamePattern: ./logs/slow-requests-%d{yyyy-MM-dd}-%i.log.gz
-          archivedFileCount: 3
-          maxFileSize: 50MB
-          timeZone: UTC
-          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
   appenders:
     - type: console
       logFormat: "%level %logger{5} - %msg%n"
-    - type: file
-      threshold: INFO
-      currentLogFilename: ./logs/openmetadata-it.log
-      archivedLogFilenamePattern: ./logs/openmetadata-it-%d{yyyy-MM-dd}-%i.log.gz
-      archivedFileCount: 3
-      maxFileSize: 50MB
-      timeZone: UTC
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
 database:
   driverClass: org.postgresql.Driver
   user: test
   password:
   url: jdbc:postgresql://localhost:5432/openmetadata
   # Optimized for single JVM with method-level parallelization
-  # Dynamic factor 1.0 = ~16 threads on 16-core, need sufficient connections
+  # Dynamic factor 1.0 = ~8 threads on 8-core, need sufficient connections
   maxSize: 100
   minSize: 20
   initialSize: 20
   checkConnectionWhileIdle: true
-  checkConnectionOnBorrow: false
+  checkConnectionOnBorrow: true
   evictionInterval: 30 seconds
   minIdleTime: 10 seconds
   validationQuery: "SELECT 1"

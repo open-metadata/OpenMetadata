@@ -9,8 +9,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -38,7 +37,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
  *
  * <p>Migrated from: org.openmetadata.service.resources.rdf.RdfResourceTest
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Isolated
 @ExtendWith(TestNamespaceExtension.class)
 public class RdfResourceIT {
 

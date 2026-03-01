@@ -273,9 +273,20 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
 
   private void setDefaultFields(Worksheet worksheet) {
     EntityReference spreadsheet = getSpreadsheet(worksheet);
+    if (spreadsheet == null) {
+      LOG.warn("Missing spreadsheet relationship for worksheet {}", worksheet.getId());
+      worksheet.withSpreadsheet(null).withService(null);
+      return;
+    }
     EntityReference service =
         getFromEntityRef(
-            spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS, Entity.DRIVE_SERVICE, true);
+            spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS, Entity.DRIVE_SERVICE, false);
+    if (service == null) {
+      LOG.warn(
+          "Missing driveService relationship for spreadsheet {} linked to worksheet {}",
+          spreadsheet.getId(),
+          worksheet.getId());
+    }
     worksheet.withService(service);
     worksheet.withSpreadsheet(spreadsheet);
   }
@@ -328,7 +339,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
   }
 
   private EntityReference getSpreadsheet(Worksheet worksheet) {
-    return getFromEntityRef(worksheet.getId(), Relationship.CONTAINS, SPREADSHEET, true);
+    return getFromEntityRef(worksheet.getId(), Relationship.CONTAINS, SPREADSHEET, false);
   }
 
   @Override

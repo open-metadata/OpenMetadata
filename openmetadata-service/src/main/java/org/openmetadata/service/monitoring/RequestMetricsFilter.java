@@ -14,6 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class RequestMetricsFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
+  private static final String ACTIVE_REQUEST_TRACKED =
+      RequestMetricsFilter.class.getName() + ".activeRequestTracked";
+
   private final JettyMetrics jettyMetrics;
 
   public RequestMetricsFilter(JettyMetrics jettyMetrics) {
@@ -22,12 +25,15 @@ public class RequestMetricsFilter implements ContainerRequestFilter, ContainerRe
 
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
-    if (jettyMetrics != null) {
-      try {
-        jettyMetrics.incrementActiveRequests();
-      } catch (Exception e) {
-        LOG.debug("JettyMetrics not fully initialized yet: {}", e.getMessage());
-      }
+    if (jettyMetrics == null) {
+      return;
+    }
+
+    try {
+      jettyMetrics.incrementActiveRequests();
+      requestContext.setProperty(ACTIVE_REQUEST_TRACKED, Boolean.TRUE);
+    } catch (Exception e) {
+      LOG.debug("JettyMetrics not fully initialized yet: {}", e.getMessage());
     }
   }
 
@@ -35,12 +41,17 @@ public class RequestMetricsFilter implements ContainerRequestFilter, ContainerRe
   public void filter(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext)
       throws IOException {
-    if (jettyMetrics != null) {
-      try {
-        jettyMetrics.decrementActiveRequests();
-      } catch (Exception e) {
-        LOG.debug("JettyMetrics not fully initialized yet: {}", e.getMessage());
-      }
+    if (!Boolean.TRUE.equals(requestContext.getProperty(ACTIVE_REQUEST_TRACKED))) {
+      return;
+    }
+    requestContext.removeProperty(ACTIVE_REQUEST_TRACKED);
+    if (jettyMetrics == null) {
+      return;
+    }
+    try {
+      jettyMetrics.decrementActiveRequests();
+    } catch (Exception e) {
+      LOG.debug("JettyMetrics not fully initialized yet: {}", e.getMessage());
     }
   }
 }

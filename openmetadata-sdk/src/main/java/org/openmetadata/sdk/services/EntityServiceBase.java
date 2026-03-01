@@ -192,6 +192,14 @@ public abstract class EntityServiceBase<T> {
 
         // Skip basic fields that are always returned
         if (!isBasicField(fieldName)) {
+          // Empty collections/nulls often represent explicit clears in PATCH flows.
+          // Fetch these fields from server so diff generation can emit the corresponding remove op.
+          if (fieldValue == null
+              || fieldValue.isNull()
+              || (fieldValue.isArray() && fieldValue.isEmpty())) {
+            fieldsToFetch.add(fieldName);
+            continue;
+          }
           // Check if it's a reference field (has id/type) or an array of references
           if (isReferenceField(fieldValue)) {
             fieldsToFetch.add(fieldName);

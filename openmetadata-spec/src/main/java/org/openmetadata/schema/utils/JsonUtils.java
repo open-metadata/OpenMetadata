@@ -23,7 +23,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -96,6 +95,12 @@ public final class JsonUtils {
   private static final SchemaRegistry schemaFactory =
       SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7);
   private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON ";
+  private static final List<String> READ_ONLY_PATCH_ROOT_FIELDS =
+      List.of(
+          "/changeDescription",
+          "/incrementalChangeDescription",
+          "/testCaseResultSummary",
+          "/summary");
 
   static {
     // Quoted "Z" to indicate UTC, no timezone offset
@@ -314,24 +319,20 @@ public final class JsonUtils {
     array.forEach(
         entry -> {
           JsonObject jsonObject = entry.asJsonObject();
-          String path = jsonObject.getString("path");
+          String path = jsonObject.getString("path", null);
+          if (path == null) {
+            return;
+          }
 
           // Skip operations on read-only auto-generated fields
-          if (path.endsWith("href")
-              || path.equals("/changeDescription")
-              || path.startsWith("/changeDescription/")
-              || path.equals("/incrementalChangeDescription")
-              || path.startsWith("/incrementalChangeDescription/")) {
+          if (isReadOnlyPatchPath(path)) {
             return;
           }
 
           // For copy/move operations, also check the 'from' field if present
           if (jsonObject.containsKey("from")) {
-            String from = jsonObject.getString("from");
-            if (from.equals("/changeDescription")
-                || from.startsWith("/changeDescription/")
-                || from.equals("/incrementalChangeDescription")
-                || from.startsWith("/incrementalChangeDescription/")) {
+            String from = jsonObject.getString("from", null);
+            if (isReadOnlyPatchPath(from)) {
               return;
             }
           }
@@ -353,42 +354,26 @@ public final class JsonUtils {
     }
   }
 
+  private static boolean isReadOnlyPatchPath(String path) {
+    if (path == null || path.isBlank()) {
+      return false;
+    }
+    if (path.endsWith("href")) {
+      return true;
+    }
+    return READ_ONLY_PATCH_ROOT_FIELDS.stream()
+        .anyMatch(root -> path.equals(root) || path.startsWith(root + "/"));
+  }
+
   public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
+    JsonValue value = applyPatch(original, patch);
+    // Convert Jakarta JSON JsonValue to Jackson JsonNode
     try {
-      JsonNode targetNode = OBJECT_MAPPER.valueToTree(original);
-      JsonNode patchArray = OBJECT_MAPPER.readTree(patch.toJsonArray().toString());
-
-      ArrayNode filteredPatch = OBJECT_MAPPER.createArrayNode();
-      for (JsonNode op : patchArray) {
-        String path = op.path("path").asText(null);
-        if (path == null) {
-          filteredPatch.add(op);
-          continue;
-        }
-        if (path.endsWith("href")
-            || path.equals("/changeDescription")
-            || path.startsWith("/changeDescription/")
-            || path.equals("/incrementalChangeDescription")
-            || path.startsWith("/incrementalChangeDescription/")) {
-          continue;
-        }
-        if (op.has("from")) {
-          String from = op.get("from").asText();
-          if (from.equals("/changeDescription")
-              || from.startsWith("/changeDescription/")
-              || from.equals("/incrementalChangeDescription")
-              || from.startsWith("/incrementalChangeDescription/")) {
-            continue;
-          }
-        }
-        filteredPatch.add(op);
-      }
-
-      JsonNode patched = com.flipkart.zjsonpatch.JsonPatch.apply(filteredPatch, targetNode);
-      return OBJECT_MAPPER.treeToValue(patched, clz);
+      String jsonString = value.toString();
+      JsonNode jsonNode = OBJECT_MAPPER.readTree(jsonString);
+      return OBJECT_MAPPER.convertValue(jsonNode, clz);
     } catch (Exception e) {
-      LOG.debug("Failed to apply the json patch {}", patch);
-      throw new RuntimeException("Failed to apply JSON patch", e);
+      throw new RuntimeException("Failed to convert JsonValue to target class", e);
     }
   }
 

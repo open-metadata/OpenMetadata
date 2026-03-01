@@ -16,13 +16,13 @@ package org.openmetadata.service.events.lifecycle;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -39,7 +39,7 @@ public class EntityLifecycleEventDispatcher {
 
   private EntityLifecycleEventDispatcher() {
     this.handlers = new ArrayList<>();
-    this.asyncExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    this.asyncExecutor = Executors.newFixedThreadPool(50, Thread.ofVirtual().factory());
   }
 
   public static EntityLifecycleEventDispatcher getInstance() {
@@ -112,11 +112,7 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug("Dispatching entity created event for {} {}", entityType, entity.getId());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      boolean async = handler.isAsync();
-      executeHandler(
-          () -> handler.onEntityCreated(snapshotEntityForHandler(entity, async), subjectContext),
-          handler,
-          async);
+      executeHandler(() -> handler.onEntityCreated(entity, subjectContext), handler);
     }
   }
 
@@ -132,13 +128,7 @@ public class EntityLifecycleEventDispatcher {
         "Dispatching bulk entity created event for {} {} entities", entityType, entities.size());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      boolean async = handler.isAsync();
-      executeHandler(
-          () ->
-              handler.onEntitiesCreated(
-                  snapshotEntitiesForHandler(entities, async), subjectContext),
-          handler,
-          async);
+      executeHandler(() -> handler.onEntitiesCreated(entities, subjectContext), handler);
     }
   }
 
@@ -153,15 +143,8 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug("Dispatching entity updated event for {} {}", entityType, entity.getId());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      boolean async = handler.isAsync();
       executeHandler(
-          () ->
-              handler.onEntityUpdated(
-                  snapshotEntityForHandler(entity, async),
-                  snapshotChangeDescriptionForHandler(changeDescription, async),
-                  subjectContext),
-          handler,
-          async);
+          () -> handler.onEntityUpdated(entity, changeDescription, subjectContext), handler);
     }
   }
 
@@ -175,13 +158,7 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug("Dispatching entity updated event for {} {}", entityType, entityReference.getId());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      boolean async = handler.isAsync();
-      executeHandler(
-          () ->
-              handler.onEntityUpdated(
-                  snapshotEntityReferenceForHandler(entityReference, async), subjectContext),
-          handler,
-          async);
+      executeHandler(() -> handler.onEntityUpdated(entityReference, subjectContext), handler);
     }
   }
 
@@ -195,11 +172,7 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug("Dispatching entity deleted event for {} {}", entityType, entity.getId());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      boolean async = handler.isAsync();
-      executeHandler(
-          () -> handler.onEntityDeleted(snapshotEntityForHandler(entity, async), subjectContext),
-          handler,
-          async);
+      executeHandler(() -> handler.onEntityDeleted(entity, subjectContext), handler);
     }
   }
 
@@ -218,13 +191,8 @@ public class EntityLifecycleEventDispatcher {
         isDeleted);
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      boolean async = handler.isAsync();
       executeHandler(
-          () ->
-              handler.onEntitySoftDeletedOrRestored(
-                  snapshotEntityForHandler(entity, async), isDeleted, subjectContext),
-          handler,
-          async);
+          () -> handler.onEntitySoftDeletedOrRestored(entity, isDeleted, subjectContext), handler);
     }
   }
 
@@ -238,57 +206,17 @@ public class EntityLifecycleEventDispatcher {
         .toList();
   }
 
-  private EntityInterface snapshotEntityForHandler(EntityInterface entity, boolean async) {
-    if (!async || entity == null) {
-      return entity;
-    }
-    return deepCopy(entity);
-  }
-
-  private List<EntityInterface> snapshotEntitiesForHandler(
-      List<EntityInterface> entities, boolean async) {
-    if (!async) {
-      return List.copyOf(entities);
-    }
-    List<EntityInterface> snapshots = new ArrayList<>(entities.size());
-    for (EntityInterface entity : entities) {
-      snapshots.add(entity == null ? null : deepCopy(entity));
-    }
-    return List.copyOf(snapshots);
-  }
-
-  private ChangeDescription snapshotChangeDescriptionForHandler(
-      ChangeDescription changeDescription, boolean async) {
-    if (!async || changeDescription == null) {
-      return changeDescription;
-    }
-    return JsonUtils.deepCopy(changeDescription, ChangeDescription.class);
-  }
-
-  private EntityReference snapshotEntityReferenceForHandler(
-      EntityReference entityReference, boolean async) {
-    if (!async || entityReference == null) {
-      return entityReference;
-    }
-    return JsonUtils.deepCopy(entityReference, EntityReference.class);
-  }
-
-  @SuppressWarnings("unchecked")
-  private static <T> T deepCopy(T value) {
-    return JsonUtils.deepCopy(value, (Class<T>) value.getClass());
-  }
-
-  private void executeHandler(
-      Runnable handlerExecution, EntityLifecycleEventHandler handler, boolean async) {
-    if (async) {
-      asyncExecutor.execute(
+  private void executeHandler(Runnable handlerExecution, EntityLifecycleEventHandler handler) {
+    if (handler.isAsync()) {
+      CompletableFuture.runAsync(
           () -> {
             try {
               handlerExecution.run();
             } catch (Exception e) {
               LOG.error("Async entity lifecycle handler '{}' failed", handler.getHandlerName(), e);
             }
-          });
+          },
+          asyncExecutor);
     } else {
       try {
         handlerExecution.run();

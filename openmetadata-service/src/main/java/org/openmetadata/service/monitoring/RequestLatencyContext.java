@@ -441,6 +441,7 @@ public class RequestLatencyContext {
     if (ctx == null) return task;
     return () -> {
       // Intentionally propagate only request counters, not phaseStack hierarchy.
+      phaseStack.remove();
       setContext(ctx);
       try {
         task.run();
@@ -455,6 +456,7 @@ public class RequestLatencyContext {
     if (ctx == null) return task;
     return () -> {
       // Intentionally propagate only request counters, not phaseStack hierarchy.
+      phaseStack.remove();
       setContext(ctx);
       try {
         return task.get();

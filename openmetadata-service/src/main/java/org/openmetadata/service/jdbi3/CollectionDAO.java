@@ -5362,27 +5362,59 @@ public interface CollectionDAO {
         return;
       }
 
+      record TagUsageBatchRow(
+          int source,
+          String tagFQN,
+          String tagFQNHash,
+          String targetFQNHash,
+          int labelType,
+          int state,
+          String reason,
+          String appliedBy,
+          String metadata) {}
+
       String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
-      List<Integer> sources = new ArrayList<>();
-      List<String> tagFQNs = new ArrayList<>();
-      List<String> tagFQNHashes = new ArrayList<>();
-      List<String> targetFQNHashes = new ArrayList<>();
-      List<Integer> labelTypes = new ArrayList<>();
-      List<Integer> states = new ArrayList<>();
-      List<String> reasons = new ArrayList<>();
-      List<String> appliedBys = new ArrayList<>();
-      List<String> metadataList = new ArrayList<>();
+      List<TagUsageBatchRow> rows = new ArrayList<>(tagLabels.size());
 
       for (TagLabel tagLabel : tagLabels) {
-        sources.add(tagLabel.getSource().ordinal());
-        tagFQNs.add(tagLabel.getTagFQN());
-        tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
-        targetFQNHashes.add(targetFQNHash);
-        labelTypes.add(tagLabel.getLabelType().ordinal());
-        states.add(tagLabel.getState().ordinal());
-        reasons.add(tagLabel.getReason());
-        appliedBys.add(tagLabel.getAppliedBy());
-        metadataList.add(JsonUtils.pojoToJson(tagLabel.getMetadata()));
+        rows.add(
+            new TagUsageBatchRow(
+                tagLabel.getSource().ordinal(),
+                tagLabel.getTagFQN(),
+                FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
+                targetFQNHash,
+                tagLabel.getLabelType().ordinal(),
+                tagLabel.getState().ordinal(),
+                tagLabel.getReason(),
+                tagLabel.getAppliedBy(),
+                JsonUtils.pojoToJson(tagLabel.getMetadata())));
+      }
+
+      // Deterministic lock acquisition order reduces deadlocks under concurrent upserts.
+      rows.sort(
+          java.util.Comparator.comparing(TagUsageBatchRow::targetFQNHash)
+              .thenComparing(TagUsageBatchRow::tagFQNHash)
+              .thenComparingInt(TagUsageBatchRow::source));
+
+      List<Integer> sources = new ArrayList<>(rows.size());
+      List<String> tagFQNs = new ArrayList<>(rows.size());
+      List<String> tagFQNHashes = new ArrayList<>(rows.size());
+      List<String> targetFQNHashes = new ArrayList<>(rows.size());
+      List<Integer> labelTypes = new ArrayList<>(rows.size());
+      List<Integer> states = new ArrayList<>(rows.size());
+      List<String> reasons = new ArrayList<>(rows.size());
+      List<String> appliedBys = new ArrayList<>(rows.size());
+      List<String> metadataList = new ArrayList<>(rows.size());
+      for (TagUsageBatchRow row : rows) {
+        sources.add(row.source());
+        tagFQNs.add(row.tagFQN());
+        tagFQNHashes.add(row.tagFQNHash());
+        targetFQNHashes.add(row.targetFQNHash());
+        labelTypes.add(row.labelType());
+        states.add(row.state());
+        reasons.add(row.reason());
+        appliedBys.add(row.appliedBy());
+        metadataList.add(row.metadata());
       }
 
       applyTagsBatchInternal(
@@ -5406,15 +5438,18 @@ public interface CollectionDAO {
         return;
       }
 
-      List<Integer> sources = new ArrayList<>();
-      List<String> tagFQNs = new ArrayList<>();
-      List<String> tagFQNHashes = new ArrayList<>();
-      List<String> targetFQNHashes = new ArrayList<>();
-      List<Integer> labelTypes = new ArrayList<>();
-      List<Integer> states = new ArrayList<>();
-      List<String> reasons = new ArrayList<>();
-      List<String> appliedBys = new ArrayList<>();
-      List<String> metadataList = new ArrayList<>();
+      record TagUsageBatchRow(
+          int source,
+          String tagFQN,
+          String tagFQNHash,
+          String targetFQNHash,
+          int labelType,
+          int state,
+          String reason,
+          String appliedBy,
+          String metadata) {}
+
+      List<TagUsageBatchRow> rows = new ArrayList<>();
 
       for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
         String targetFQN = entry.getKey();
@@ -5428,19 +5463,48 @@ public interface CollectionDAO {
           if (tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
             continue;
           }
-          sources.add(tagLabel.getSource().ordinal());
-          tagFQNs.add(tagLabel.getTagFQN());
-          tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
-          targetFQNHashes.add(targetFQNHash);
-          labelTypes.add(tagLabel.getLabelType().ordinal());
-          states.add(tagLabel.getState().ordinal());
-          reasons.add(tagLabel.getReason());
-          appliedBys.add(tagLabel.getAppliedBy());
-          metadataList.add(JsonUtils.pojoToJson(tagLabel.getMetadata()));
+          rows.add(
+              new TagUsageBatchRow(
+                  tagLabel.getSource().ordinal(),
+                  tagLabel.getTagFQN(),
+                  FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
+                  targetFQNHash,
+                  tagLabel.getLabelType().ordinal(),
+                  tagLabel.getState().ordinal(),
+                  tagLabel.getReason(),
+                  tagLabel.getAppliedBy(),
+                  JsonUtils.pojoToJson(tagLabel.getMetadata())));
         }
       }
 
-      if (!sources.isEmpty()) {
+      if (!rows.isEmpty()) {
+        // Deterministic lock acquisition order reduces deadlocks under concurrent upserts.
+        rows.sort(
+            java.util.Comparator.comparing(TagUsageBatchRow::targetFQNHash)
+                .thenComparing(TagUsageBatchRow::tagFQNHash)
+                .thenComparingInt(TagUsageBatchRow::source));
+
+        List<Integer> sources = new ArrayList<>(rows.size());
+        List<String> tagFQNs = new ArrayList<>(rows.size());
+        List<String> tagFQNHashes = new ArrayList<>(rows.size());
+        List<String> targetFQNHashes = new ArrayList<>(rows.size());
+        List<Integer> labelTypes = new ArrayList<>(rows.size());
+        List<Integer> states = new ArrayList<>(rows.size());
+        List<String> reasons = new ArrayList<>(rows.size());
+        List<String> appliedBys = new ArrayList<>(rows.size());
+        List<String> metadataList = new ArrayList<>(rows.size());
+        for (TagUsageBatchRow row : rows) {
+          sources.add(row.source());
+          tagFQNs.add(row.tagFQN());
+          tagFQNHashes.add(row.tagFQNHash());
+          targetFQNHashes.add(row.targetFQNHash());
+          labelTypes.add(row.labelType());
+          states.add(row.state());
+          reasons.add(row.reason());
+          appliedBys.add(row.appliedBy());
+          metadataList.add(row.metadata());
+        }
+
         applyTagsBatchInternal(
             sources,
             tagFQNs,

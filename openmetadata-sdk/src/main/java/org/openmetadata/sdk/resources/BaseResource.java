@@ -76,9 +76,9 @@ public abstract class BaseResource<T> {
 
   public T update(String id, T entity, String etag) throws OpenMetadataException {
     try {
-      // Fetch the original entity WITHOUT extra fields to avoid issues with fields that may not
-      // exist
-      T original = get(id);
+      // Fetch the original entity with all fields so relationship removals are represented in the
+      // generated patch document (for example owners: [x] -> []).
+      T original = get(id, "*");
 
       // Convert both to JSON strings
       String originalJson = objectMapper.writeValueAsString(original);

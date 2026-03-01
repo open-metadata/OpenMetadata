@@ -925,6 +925,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (fields == null || fields.isBlank()) {
       return "";
     }
+    // Canonicalize field order so cache keys are stable across equivalent requests
+    // (e.g. "owners,domains" and "domains, owners" should share the same parent entry).
     return fields
         .lines()
         .flatMap(line -> Stream.of(line.split(",")))
@@ -7353,18 +7355,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final void storeUpdate() {
-      boolean versionChanged;
       try (var ignored = phase("storeUpdateVersioning")) {
-        versionChanged = updateVersion(original.getVersion());
+        this.versionChanged = updateVersion(original.getVersion());
       }
       LOG.info(
           "storeUpdate: versionChanged={}, entityChanged={}, entityType={}, id={}",
-          versionChanged,
+          this.versionChanged,
           entityChanged,
           entityType,
           updated.getId());
 
-      if (versionChanged) { // Update changed the entity version
+      if (this.versionChanged) { // Update changed the entity version
         try (var ignored = phase("storeUpdateHistory")) {
           storeEntityHistory(); // Store old version for listing previous versions of the entity
         }
@@ -7405,12 +7406,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
               && changeDescription.getPreviousVersion() != null
               && changeDescription.getPreviousVersion().equals(previous.getVersion());
 
-      boolean versionChanged;
       try (var ignored = phase("storeUpdateVersioning")) {
-        versionChanged = updateVersion(original.getVersion());
+        this.versionChanged = updateVersion(original.getVersion());
       }
 
-      if (versionChanged) { // Update changed the entity version
+      if (this.versionChanged) { // Update changed the entity version
         try (var ignored = phase("storeUpdateHistory")) {
           storeEntityHistory(); // Store old version for listing previous versions of the entity
         }

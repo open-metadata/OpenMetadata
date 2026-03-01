@@ -52,6 +52,7 @@ import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.BulkByScrollFailure;
+import os.org.opensearch.client.opensearch._types.Conflicts;
 import os.org.opensearch.client.opensearch._types.ErrorCause;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
@@ -637,6 +638,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -676,18 +678,14 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     Map<String, JsonData> params =
         Collections.singletonMap("lineageData", JsonData.of(JsonUtils.getMap(lineageData)));
+    Query lineageQuery = buildLineageUpdateQuery(fieldAndValue);
 
     UpdateByQueryResponse response =
         client.updateByQuery(
             u ->
                 u.index(indexName)
-                    .query(
-                        q ->
-                            q.match(
-                                m ->
-                                    m.field(fieldAndValue.getKey())
-                                        .query(FieldValue.of(fieldAndValue.getValue()))
-                                        .operator(Operator.And)))
+                    .query(lineageQuery)
+                    .conflicts(Conflicts.Proceed)
                     .script(
                         s ->
                             s.inline(
@@ -815,14 +813,23 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
+    if (originalUpdatedColumnFqnMap == null || originalUpdatedColumnFqnMap.isEmpty()) {
+      LOG.debug("No column updates provided for upstream lineage update.");
+      return;
+    }
+
     try {
       Map<String, JsonData> params =
           Collections.singletonMap("columnUpdates", JsonData.of(originalUpdatedColumnFqnMap));
+      Query impactedLineageQuery =
+          buildLineageColumnsQuery(new ArrayList<>(originalUpdatedColumnFqnMap.keySet()));
 
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                      .query(impactedLineageQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -862,14 +869,22 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
+    if (deletedColumns == null || deletedColumns.isEmpty()) {
+      LOG.debug("No deleted columns provided for upstream lineage cleanup.");
+      return;
+    }
+
     try {
       Map<String, JsonData> params =
           Collections.singletonMap("deletedFQNs", JsonData.of(deletedColumns));
+      Query impactedLineageQuery = buildLineageColumnsQuery(deletedColumns);
 
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                      .query(impactedLineageQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -924,6 +939,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -979,6 +995,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1038,6 +1055,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(termQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1113,6 +1131,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(termQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1187,6 +1206,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(idsQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1196,12 +1216,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                   l.builtin(
                                                       os.org.opensearch.client.opensearch._types
                                                           .BuiltinScriptLanguage.Painless))
-                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_FQN_SCRIPT)
+                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_SCRIPT)
                                           .params(params)))
                       .refresh(Refresh.True));
 
       LOG.info(
-          "Successfully updated asset domain FQNs by IDs: {} assets, oldFqns={}, newFqns={}, updated {} documents",
+          "Successfully updated asset domains by IDs: {} assets, oldFqns={}, newFqns={}, updated {} documents",
           assetIds.size(),
           oldDomainFqns,
           newDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
@@ -1251,6 +1271,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(domainIndexName)
                       .query(combinedQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1298,8 +1319,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           oldFqn,
           newFqn);
 
-      // Use match_all query - the script will filter and update only matching documents
-      Query matchAllQuery = Query.of(q -> q.matchAll(m -> m));
+      Query matchingDomainQuery = buildDomainFqnPrefixQuery(oldFqn);
 
       Map<String, JsonData> params =
           Map.of(
@@ -1310,7 +1330,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           client.updateByQuery(
               req ->
                   req.index(indexName)
-                      .query(matchAllQuery)
+                      .query(matchingDomainQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.inline(
@@ -1528,5 +1549,38 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
     }
     return String.format("{\"bool\":{\"must\":%s}}", innerBoolFilter);
+  }
+
+  private Query buildLineageUpdateQuery(Pair<String, String> fieldAndValue) {
+    String field = fieldAndValue.getKey();
+    String value = fieldAndValue.getValue();
+    if ("_id".equals(field)) {
+      return Query.of(q -> q.ids(i -> i.values(value)));
+    }
+    return Query.of(q -> q.term(t -> t.field(field).value(FieldValue.of(value))));
+  }
+
+  private Query buildLineageColumnsQuery(List<String> columnFqns) {
+    List<FieldValue> values = columnFqns.stream().map(FieldValue::of).toList();
+    Query toColumnQuery =
+        Query.of(
+            q ->
+                q.terms(
+                    t ->
+                        t.field("upstreamLineage.columns.toColumn.keyword")
+                            .terms(tv -> tv.value(values))));
+    Query fromColumnsQuery =
+        Query.of(
+            q ->
+                q.terms(
+                    t ->
+                        t.field("upstreamLineage.columns.fromColumns.keyword")
+                            .terms(tv -> tv.value(values))));
+    return Query.of(
+        q -> q.bool(b -> b.should(toColumnQuery).should(fromColumnsQuery).minimumShouldMatch("1")));
+  }
+
+  private Query buildDomainFqnPrefixQuery(String oldFqn) {
+    return Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName").value(oldFqn)));
   }
 }

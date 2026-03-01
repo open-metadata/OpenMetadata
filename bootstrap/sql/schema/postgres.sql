@@ -1910,6 +1910,13 @@ CREATE INDEX change_event_event_type_index ON public.change_event USING btree (e
 
 
 --
+-- Name: entity_usage_id_usage_date_idx; Type: INDEX; Schema: public; Owner: openmetadata_user
+--
+
+CREATE INDEX entity_usage_id_usage_date_idx ON public.entity_usage USING btree (id, usagedate);
+
+
+--
 -- Name: entity_relationship_from_index; Type: INDEX; Schema: public; Owner: openmetadata_user
 --
 
@@ -1989,4 +1996,3 @@ GRANT ALL ON SCHEMA public TO openmetadata_user;
 --
 -- PostgreSQL database dump complete
 --
-
