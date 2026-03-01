@@ -192,8 +192,17 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
                 midpoint.canvasY,
                 viewport
               ),
-              width: '10px',
-              height: '10px',
+              width: '20px',
+              height: '20px',
+              transform: 'translate(-50%, -50%)',
+              cursor: 'pointer',
+              pointerEvents: 'all',
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (midpoint.edge && onEdgeClickRef.current) {
+                onEdgeClickRef.current(midpoint.edge, e.nativeEvent);
+              }
             }}
           />
         ) : null

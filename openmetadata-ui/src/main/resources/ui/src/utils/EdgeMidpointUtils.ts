@@ -19,6 +19,7 @@ export interface EdgeMidpoint {
   dataTestId?: string;
   canvasX: number;
   canvasY: number;
+  edge: Edge;
 }
 
 export const calculateEdgeMidpoints = (
@@ -64,6 +65,7 @@ export const calculateEdgeMidpoints = (
         dataTestId: edge.data?.dataTestId,
         canvasX: centerX,
         canvasY: centerY,
+        edge,
       };
     })
     .filter(Boolean) as EdgeMidpoint[];

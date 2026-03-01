@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get } from 'lodash';
+import { SidebarItem } from '../constant/sidebar';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
@@ -32,6 +33,7 @@ import {
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { parseCSV } from './entityImport';
+import { sidebarClick } from './sidebar';
 
 type LineageCSVRecord = {
   fromEntityFQN: string;
@@ -139,19 +141,9 @@ export const clickEdgeBetweenNodes = async (
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
   const edgeDiv = page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`);
-
   await expect(edgeDiv).toBeVisible();
 
-  //   await edgeDiv.click();
-
-  await page
-    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
-    .dispatchEvent('click');
-
-  const box = await edgeDiv.boundingBox();
-  if (!box) return;
-
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await edgeDiv.dispatchEvent('click');
 };
 
 export const clickEdgeBetweenColumns = async (
@@ -163,12 +155,7 @@ export const clickEdgeBetweenColumns = async (
 
   await expect(edgeDiv).toBeVisible();
 
-  //   await edgeDiv.click();
-
-  const box = await edgeDiv.boundingBox();
-  if (!box) return;
-
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await edgeDiv.dispatchEvent('click');
 };
 
 export const deleteEdge = async (
@@ -911,4 +898,37 @@ export const updateLineageConfigFromModal = async (
   const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
   await page.getByText('OK').click();
   await saveRes;
+};
+
+export const verifyPlatformLineageForEntity = async (
+  page: Page,
+  fromFqn: string,
+  toFqn: string
+) => {
+  // Verify relation in platform lineage
+  await sidebarClick(page, SidebarItem.LINEAGE);
+
+  await page
+    .getByTestId('search-entity-select')
+    .locator('div')
+    .filter({ hasText: /^Search entity to view lineage$/ })
+    .click();
+  await page.getByTestId('search-entity-select').locator('input').fill(fromFqn);
+
+  await page.getByTestId(`node-suggestion-${fromFqn}`).click();
+
+  await page.waitForTimeout(500);
+
+  const tableServiceNode = page.locator(
+    `[data-testid="lineage-node-${fromFqn}"]`
+  );
+  const topicServiceNode = page.locator(
+    `[data-testid="lineage-node-${toFqn}"]`
+  );
+
+  // ensure node will be visible in the viewport
+  await performZoomOut(page);
+
+  await expect(tableServiceNode).toBeVisible();
+  await expect(topicServiceNode).toBeVisible();
 };

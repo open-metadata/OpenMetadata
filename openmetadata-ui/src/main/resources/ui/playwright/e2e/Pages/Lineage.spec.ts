@@ -61,6 +61,7 @@ import {
   verifyExportLineagePNG,
   verifyLineageConfig,
   verifyNodePresent,
+  verifyPlatformLineageForEntity,
   visitLineageTab,
 } from '../../utils/lineage';
 import { sidebarClick } from '../../utils/sidebar';
@@ -170,7 +171,7 @@ for (const EntityClass of entities) {
 
         await page.getByTestId('fit-screen').click();
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
-        await performZoomOut(page, 2);
+        await performZoomOut(page, 8);
         await page.waitForTimeout(500); // wait for the nodes to settle
 
         const fromNodeFqn = get(
@@ -303,21 +304,7 @@ test('Verify column lineage between table and topic', async ({ page }) => {
   await page.waitForLoadState('networkidle');
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
-  // Verify relation in platform lineage
-  await sidebarClick(page, SidebarItem.LINEAGE);
-
-  const tableServiceNode = page.locator(
-    `[data-testid="lineage-node-${tableServiceFqn}"]`
-  );
-  const topicServiceNode = page.locator(
-    `[data-testid="lineage-node-${topicServiceFqn}"]`
-  );
-
-  // ensure node will be visible in the viewport
-  await performZoomOut(page);
-
-  await expect(tableServiceNode).toBeVisible();
-  await expect(topicServiceNode).toBeVisible();
+  await verifyPlatformLineageForEntity(page, tableServiceFqn, topicServiceFqn);
 
   await table.visitEntityPage(page);
   await visitLineageTab(page);
