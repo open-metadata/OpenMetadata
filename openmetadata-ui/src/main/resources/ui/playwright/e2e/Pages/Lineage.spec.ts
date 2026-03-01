@@ -423,11 +423,7 @@ test('Verify function data in edge drawer', async ({ page }) => {
     await activateColumnLayer(page);
 
     await page
-      .locator(
-        `[data-testid="column-edge-${btoa(sourceColName)}-${btoa(
-          targetColName
-        )}"]`
-      )
+      .locator(`[data-testid="column-edge-${sourceColName}-${targetColName}"]`)
       .dispatchEvent('click');
 
     await page.waitForSelector('.sql-function-section', {
@@ -453,11 +449,7 @@ test('Verify function data in edge drawer', async ({ page }) => {
 
     await activateColumnLayer(page);
     await page
-      .locator(
-        `[data-testid="column-edge-${btoa(sourceColName)}-${btoa(
-          targetColName
-        )}"]`
-      )
+      .locator(`[data-testid="column-edge-${sourceColName}-${targetColName}"]`)
       .dispatchEvent('click');
 
     await page.locator('.edge-info-drawer').isVisible();
@@ -896,7 +888,7 @@ test('Edges are not getting hidden when column is selected and column layer is r
 
     await test.step('2. Verify edge between 2 tables is visible', async () => {
       const tableEdge = page.getByTestId(
-        `rf__edge-edge-${table1.entityResponseData.id}-${table2.entityResponseData.id}`
+        `edge-${table1.entityResponseData.fullyQualifiedName}-${table2.entityResponseData.fullyQualifiedName}`
       );
       await expect(tableEdge).toBeVisible();
     });
@@ -910,7 +902,7 @@ test('Edges are not getting hidden when column is selected and column layer is r
         await firstColumn.click();
 
         const tableEdge = page.getByTestId(
-          `rf__edge-edge-${table1.entityResponseData.id}-${table2.entityResponseData.id}`
+          `edge-${table1.entityResponseData.fullyQualifiedName}-${table2.entityResponseData.fullyQualifiedName}`
         );
         await expect(tableEdge).not.toBeVisible();
       }
@@ -928,7 +920,7 @@ test('Edges are not getting hidden when column is selected and column layer is r
         await clickOutside(page);
 
         const tableEdge = page.getByTestId(
-          `rf__edge-edge-${table1.entityResponseData.id}-${table2.entityResponseData.id}`
+          `edge-${table1.entityResponseData.fullyQualifiedName}-${table2.entityResponseData.fullyQualifiedName}`
         );
         await expect(tableEdge).toBeVisible();
       }
@@ -1074,7 +1066,7 @@ test.describe('node selection edge behavior', () => {
     await performZoomOut(page);
 
     const columnEdge = page.locator(
-      `[data-testid="column-edge-${btoa(table1Col)}-${btoa(table2Col)}"]`
+      `[data-testid="column-edge-${table1Col}-${table2Col}"]`
     );
     await expect(columnEdge).toBeVisible();
 
@@ -1117,7 +1109,7 @@ test.describe('node selection edge behavior', () => {
     await table1Column.click();
 
     const tracedColumnEdge = page.locator(
-      `[data-testid="column-edge-${btoa(table1Col)}-${btoa(table2Col)}"]`
+      `[data-testid="column-edge-${table1Col}-${table2Col}"]`
     );
 
     await expect(tracedColumnEdge).toBeVisible();
@@ -1140,7 +1132,7 @@ test.describe('node selection edge behavior', () => {
     await table3Column.click();
 
     const nonTracedColumnEdge = page.locator(
-      `[data-testid="column-edge-${btoa(table2Col)}-${btoa(table4Col)}"]`
+      `[data-testid="column-edge-${table2Col}-${table4Col}"]`
     );
 
     const edgeStyle = await nonTracedColumnEdge.getAttribute('style');
@@ -1482,39 +1474,19 @@ test.describe.serial('Test pagination in column level lineage', () => {
       'Verify T1-P1 and T2-P1: Only (T1,C1)-(T2,C1), (T1,C2)-(T2,C2), (T1,C3)-(T2,C3) edges visible',
       async () => {
         const visibleEdges = [
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[0].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[1].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[2].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[2].name}`
-          )}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[0].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[1].name}`}-${`${table2Fqn}.${table2Columns[1].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[2].name}`}-${`${table2Fqn}.${table2Columns[2].name}`}`,
         ];
 
         const hiddenEdges = [
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[5].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[6].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[3].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[4].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[5].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[5].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[6].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[6].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[8].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[1].name}`}-${`${table2Fqn}.${table2Columns[6].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[3].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[4].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[5].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[6].name}`}-${`${table2Fqn}.${table2Columns[6].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[8].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
         ];
 
         for (const edgeId of visibleEdges) {
@@ -1537,39 +1509,19 @@ test.describe.serial('Test pagination in column level lineage', () => {
         }
 
         const visibleEdges = [
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[5].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[6].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[3].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[4].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[1].name}`}-${`${table2Fqn}.${table2Columns[6].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[3].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[4].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
         ];
 
         const hiddenEdges = [
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[0].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[1].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[2].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[2].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[5].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[5].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[6].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[6].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[8].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[0].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[1].name}`}-${`${table2Fqn}.${table2Columns[1].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[2].name}`}-${`${table2Fqn}.${table2Columns[2].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[5].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[6].name}`}-${`${table2Fqn}.${table2Columns[6].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[8].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
         ];
 
         for (const edgeId of visibleEdges) {
@@ -1592,39 +1544,19 @@ test.describe.serial('Test pagination in column level lineage', () => {
         }
 
         const visibleEdges = [
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[5].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[5].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[6].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[6].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[8].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[5].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[6].name}`}-${`${table2Fqn}.${table2Columns[6].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[8].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
         ];
 
         const hiddenEdges = [
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[0].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[1].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[2].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[2].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[5].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[6].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[3].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[4].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[0].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[1].name}`}-${`${table2Fqn}.${table2Columns[1].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[2].name}`}-${`${table2Fqn}.${table2Columns[2].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[1].name}`}-${`${table2Fqn}.${table2Columns[6].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[3].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[4].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
         ];
 
         for (const edgeId of visibleEdges) {
@@ -1684,12 +1616,8 @@ test.describe.serial('Test pagination in column level lineage', () => {
         await expect(t2c6).toHaveClass(/custom-node-header-column-tracing/);
 
         // Verify edges are visible
-        const edge_t1c1_to_t2c1 = `column-edge-${btoa(
-          `${table1Fqn}.${table1Columns[0].name}`
-        )}-${btoa(`${table2Fqn}.${table2Columns[0].name}`)}`;
-        const edge_t1c1_to_t2c6 = `column-edge-${btoa(
-          `${table1Fqn}.${table1Columns[0].name}`
-        )}-${btoa(`${table2Fqn}.${table2Columns[5].name}`)}`;
+        const edge_t1c1_to_t2c1 = `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[0].name}`}`;
+        const edge_t1c1_to_t2c6 = `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`;
 
         await expect(
           page.locator(`[data-testid="${edge_t1c1_to_t2c1}"]`)
@@ -1764,12 +1692,8 @@ test.describe.serial('Test pagination in column level lineage', () => {
         await expect(t2c6).toHaveClass(/custom-node-header-column-tracing/);
 
         // Verify edges are visible
-        const edge_t1c1_to_t2c6 = `column-edge-${btoa(
-          `${table1Fqn}.${table1Columns[0].name}`
-        )}-${btoa(`${table2Fqn}.${table2Columns[5].name}`)}`;
-        const edge_t1c6_to_t2c6 = `column-edge-${btoa(
-          `${table1Fqn}.${table1Columns[5].name}`
-        )}-${btoa(`${table2Fqn}.${table2Columns[5].name}`)}`;
+        const edge_t1c1_to_t2c6 = `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`;
+        const edge_t1c6_to_t2c6 = `column-edge-${`${table1Fqn}.${table1Columns[5].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`;
 
         await expect(
           page.locator(`[data-testid="${edge_t1c1_to_t2c6}"]`)
@@ -1810,27 +1734,15 @@ test.describe.serial('Test pagination in column level lineage', () => {
         '2. Verify edges visible and hidden for page1 of both the tables',
         async () => {
           const visibleEdges = [
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[0].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[0].name}`)}`,
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[1].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[1].name}`)}`,
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[2].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[2].name}`)}`,
+            `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[0].name}`}`,
+            `column-edge-${`${table1Fqn}.${table1Columns[1].name}`}-${`${table2Fqn}.${table2Columns[1].name}`}`,
+            `column-edge-${`${table1Fqn}.${table1Columns[2].name}`}-${`${table2Fqn}.${table2Columns[2].name}`}`,
           ];
 
           const hiddenEdges = [
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[0].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[5].name}`)}`,
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[1].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[6].name}`)}`,
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[3].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[7].name}`)}`,
+            `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`,
+            `column-edge-${`${table1Fqn}.${table1Columns[1].name}`}-${`${table2Fqn}.${table2Columns[6].name}`}`,
+            `column-edge-${`${table1Fqn}.${table1Columns[3].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
           ];
 
           for (const edgeId of visibleEdges) {
@@ -1917,36 +1829,16 @@ test.describe.serial('Test pagination in column level lineage', () => {
 
       await test.step('7. Verify new edges are now visible.', async () => {
         const allVisibleEdges = [
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[0].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[1].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[2].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[2].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[5].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[6].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[3].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[4].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[5].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[5].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[6].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[6].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[8].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[0].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[1].name}`}-${`${table2Fqn}.${table2Columns[1].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[2].name}`}-${`${table2Fqn}.${table2Columns[2].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[0].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[1].name}`}-${`${table2Fqn}.${table2Columns[6].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[3].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[4].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[5].name}`}-${`${table2Fqn}.${table2Columns[5].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[6].name}`}-${`${table2Fqn}.${table2Columns[6].name}`}`,
+          `column-edge-${`${table1Fqn}.${table1Columns[8].name}`}-${`${table2Fqn}.${table2Columns[7].name}`}`,
         ];
 
         for (const edgeId of allVisibleEdges) {
