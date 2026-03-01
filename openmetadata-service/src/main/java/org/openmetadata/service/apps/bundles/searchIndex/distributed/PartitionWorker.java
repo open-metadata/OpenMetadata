@@ -402,6 +402,8 @@ public class PartitionWorker {
     // timeout, retry flush cycles until all pending operations complete.
     long deadline = System.currentTimeMillis() + SINK_WAIT_DEADLINE_MS;
     int retryCount = 0;
+    long previousPending = statsTracker.getPendingSinkOps();
+    int staleRetries = 0;
 
     while (statsTracker.getPendingSinkOps() > 0 && System.currentTimeMillis() < deadline) {
       long remainingMs = deadline - System.currentTimeMillis();
@@ -413,12 +415,29 @@ public class PartitionWorker {
 
       if (statsTracker.getPendingSinkOps() > 0 && System.currentTimeMillis() < deadline) {
         retryCount++;
+        long currentPending = statsTracker.getPendingSinkOps();
         LOG.info(
             "Retry {} - {} sink operations still pending for entity {}, re-flushing bulk processor",
             retryCount,
-            statsTracker.getPendingSinkOps(),
+            currentPending,
             statsTracker.getEntityType());
         searchIndexSink.flushAndAwait(FLUSH_CYCLE_SECONDS);
+
+        if (currentPending == previousPending) {
+          staleRetries++;
+          if (staleRetries >= 3) {
+            LOG.warn(
+                "Pending sink ops stuck at {} for entity {} after {} retries with no progress. "
+                    + "Reconciling early (callbacks likely lost).",
+                currentPending,
+                statsTracker.getEntityType(),
+                staleRetries);
+            break;
+          }
+        } else {
+          staleRetries = 0;
+        }
+        previousPending = currentPending;
       }
     }
 
