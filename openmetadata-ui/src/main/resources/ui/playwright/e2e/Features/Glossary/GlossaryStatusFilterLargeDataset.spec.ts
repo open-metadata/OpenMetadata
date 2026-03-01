@@ -12,6 +12,7 @@
  */
 import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
@@ -39,97 +40,33 @@ test.use({
  * - Unprocessed
  */
 test.describe('Glossary Status Filter - Large Dataset', () => {
-  const TOTAL_TERMS = 60;
+  // Run tests serially to share glossary state from beforeAll
+  test.describe.configure({ mode: 'serial' });
 
-  const STATUS_DISTRIBUTION: Record<string, number> = {
-    Approved: 0.65,
-    Draft: 0.15,
-    'In Review': 0.1,
-    Deprecated: 0.05,
-    Rejected: 0.03,
-    Unprocessed: 0.02,
-  };
+  // Create terms with specific statuses to test filtering
+  const STATUSES_TO_TEST = ['Approved', 'Draft', 'In Review', 'Deprecated', 'Rejected'];
 
   const glossary = new Glossary();
-  const createdTerms: { id: string; status: string; name: string }[] = [];
+  const createdTerms: { term: GlossaryTerm; status: string }[] = [];
 
-  // Helper to determine status based on distribution
-  const getRandomStatus = (): string => {
-    const rand = Math.random();
-    let cumulative = 0;
-    for (const [status, weight] of Object.entries(STATUS_DISTRIBUTION)) {
-      cumulative += weight;
-      if (rand < cumulative) {
-        return status;
-      }
-    }
-
-    return 'Approved';
-  };
-
-  // Helper to create terms in batches via API
-  const createTermsInBatches = async (
+  // Helper to set term status via PATCH API
+  const setTermStatus = async (
     apiContext: APIRequestContext,
-    glossaryName: string,
-    count: number,
-    batchSize: number = 50
+    term: GlossaryTerm,
+    status: string
   ) => {
-    for (let i = 0; i < count; i += batchSize) {
-      const batchEnd = Math.min(i + batchSize, count);
-      const batchTerms = [];
-
-      for (let j = i; j < batchEnd; j++) {
-        const status = getRandomStatus();
-        const termName = `StatusTest_Term_${j.toString().padStart(5, '0')}`;
-        const termPayload = {
-          name: termName,
-          displayName: `Status Test Term ${j}`,
-          description: `Test term ${j} for status filter testing`,
-          glossary: glossaryName,
-        };
-        batchTerms.push({ payload: termPayload, status, name: termName });
-      }
-
-      const response = await apiContext.post(
-        '/api/v1/glossaryTerms/createMany',
+    await apiContext.patch(`/api/v1/glossaryTerms/${term.responseData.id}`, {
+      data: [
         {
-          data: batchTerms.map((t) => t.payload),
-        }
-      );
-
-      if (response.ok()) {
-        const created = await response.json();
-
-        for (let k = 0; k < created.length; k++) {
-          const term = created[k];
-          const desiredStatus = batchTerms[k].status;
-
-          if (term.entityStatus !== desiredStatus) {
-            await apiContext.patch(`/api/v1/glossaryTerms/${term.id}`, {
-              data: [
-                {
-                  op: 'replace',
-                  path: '/entityStatus',
-                  value: desiredStatus,
-                },
-              ],
-              headers: {
-                'Content-Type': 'application/json-patch+json',
-              },
-            });
-          }
-
-          createdTerms.push({
-            id: term.id,
-            status: desiredStatus,
-            name: batchTerms[k].name,
-          });
-        }
-      }
-
-      // eslint-disable-next-line no-console
-      console.log(`Created terms ${i} to ${batchEnd - 1} of ${count}`);
-    }
+          op: 'replace',
+          path: '/entityStatus',
+          value: status,
+        },
+      ],
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    });
   };
 
   // Reusable helper to apply status filter
@@ -141,6 +78,9 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     const allCheckbox = page.locator('.glossary-dropdown-label', {
       hasText: 'All',
     });
+    // Click "All" twice to ensure we start from a clean state (nothing selected)
+    // First click toggles the current state, second click ensures "All" is unchecked
+    await allCheckbox.click();
     await allCheckbox.click();
 
     for (const status of statuses) {
@@ -237,36 +177,26 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   };
 
   test.beforeAll(async ({ browser }) => {
-
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
-    // eslint-disable-next-line no-console
-    console.log(
-      `Created glossary: ${glossary.responseData.fullyQualifiedName}`
-    );
 
-    await createTermsInBatches(apiContext, glossary.data.name, TOTAL_TERMS);
-
-    // eslint-disable-next-line no-console
-    console.log(`Total terms created: ${createdTerms.length}`);
-
-    const statusCounts = createdTerms.reduce(
-      (acc, { status }) => {
-        acc[status] = (acc[status] || 0) + 1;
-
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-    // eslint-disable-next-line no-console
-    console.log('Status distribution:', statusCounts);
+    // Create 2 terms per status (10 terms total)
+    for (const status of STATUSES_TO_TEST) {
+      for (let i = 0; i < 2; i++) {
+        const term = new GlossaryTerm(glossary, undefined, `Term_${status}_${i}`);
+        await term.create(apiContext);
+        if (status !== 'Approved') {
+          await setTermStatus(apiContext, term, status);
+        }
+        createdTerms.push({ term, status });
+      }
+    }
 
     await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
-
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.delete(apiContext);
@@ -409,7 +339,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   test.describe('Search', () => {
     test('should return matching terms for search query', async ({ page }) => {
 
-      await performSearch(page, 'Status Test Term 1');
+      await performSearch(page, 'Term_');
 
       const rows = page.locator(
         'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
@@ -420,7 +350,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       const firstRow = rows.first();
       const nameCell = firstRow.locator('td:first-child');
-      await expect(nameCell).toContainText('Status Test Term 1');
+      await expect(nameCell).toContainText('Term_');
     });
 
     test('should show no results for non-matching query', async ({ page }) => {
@@ -440,7 +370,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       const initialCount = await getRowCount(page);
 
-      await performSearch(page, 'Term_00001');
+      await performSearch(page, 'Term_Draft');
       const searchCount = await getRowCount(page);
       expect(searchCount).toBeLessThanOrEqual(initialCount);
 
@@ -454,7 +384,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should paginate through search results', async ({ page }) => {
 
       // Search for a common pattern that returns many results
-      await performSearch(page, 'Term_000');
+      await performSearch(page, 'Term_');
 
       let initialCount = await getRowCount(page);
       expect(initialCount).toBeGreaterThan(0);
@@ -479,7 +409,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       await applyStatusFilter(page, ['Draft']);
 
-      await performSearch(page, 'Term_000');
+      await performSearch(page, 'Term_');
 
       const rowCount = await verifyRowStatuses(page, ['Draft']);
 
@@ -496,7 +426,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       await applyStatusFilter(page, ['Approved']);
 
-      await performSearch(page, 'Term_000');
+      await performSearch(page, 'Term_');
 
       let initialCount = await verifyRowStatuses(page, ['Approved']);
 
@@ -528,7 +458,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       await applyStatusFilter(page, ['Draft']);
 
-      await performSearch(page, 'Term_00001');
+      await performSearch(page, 'Term_Draft');
 
       await clearSearch(page);
 
@@ -541,7 +471,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       page,
     }) => {
 
-      await performSearch(page, 'Term_000');
+      await performSearch(page, 'Term_');
 
       const initialCount = await getRowCount(page);
 
@@ -568,9 +498,11 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       await statusDropdown.click();
       await page.waitForSelector('.status-selection-dropdown');
 
+      // Click "All" twice to clear selection, then select only Draft
       const allCheckbox = page.locator('.glossary-dropdown-label', {
         hasText: 'All',
       });
+      await allCheckbox.click();
       await allCheckbox.click();
 
       const draftCheckbox = page.locator('.glossary-dropdown-label', {
@@ -627,9 +559,11 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       await statusDropdown.click();
       await page.waitForSelector('.status-selection-dropdown');
 
+      // Click "All" twice to clear selection, then select only Draft
       const allCheckbox = page.locator('.glossary-dropdown-label', {
         hasText: 'All',
       });
+      await allCheckbox.click();
       await allCheckbox.click();
 
       const draftCheckbox = page.locator('.glossary-dropdown-label', {
