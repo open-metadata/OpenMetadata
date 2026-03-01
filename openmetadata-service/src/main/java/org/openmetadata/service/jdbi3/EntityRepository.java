@@ -1218,8 +1218,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public String getCursorAtOffset(ListFilter filter, int offset) {
     List<String> jsons = dao.listAfter(filter, 1, offset);
     if (jsons.isEmpty()) {
-      LOG.warn(
-          "[COUNT-DEBUG] getCursorAtOffset for {} at offset {} returned empty (filter condition={})",
+      LOG.debug(
+          "getCursorAtOffset for {} at offset {} returned empty (filter condition={})",
           entityType,
           offset,
           filter.getCondition(dao.getTableName()));
