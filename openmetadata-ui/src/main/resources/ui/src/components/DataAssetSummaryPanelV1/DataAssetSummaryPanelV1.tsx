@@ -23,7 +23,6 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityChildDetails } from '../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
@@ -35,14 +34,11 @@ import { Operation } from 'fast-json-patch';
 import { ENTITY_PATH } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
-import { Chart } from '../../generated/entity/data/chart';
-import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { listTestCases } from '../../rest/testAPI';
-import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -68,7 +64,6 @@ export const DataAssetSummaryPanelV1 = ({
   entityType,
   isLoading = false,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
-  highlights,
   onOwnerUpdate,
   panelPath,
   onDomainUpdate,
@@ -137,9 +132,6 @@ export const DataAssetSummaryPanelV1 = ({
   const [additionalInfo, setAdditionalInfo] = useState<
     Record<string, number | string>
   >({});
-  const [charts, setCharts] = useState<Chart[]>([]);
-  const [chartsDetailsLoading, setChartsDetailsLoading] =
-    useState<boolean>(false);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission | null>(null);
   const { isTourPage } = useTourProvider();
@@ -155,17 +147,6 @@ export const DataAssetSummaryPanelV1 = ({
     () => getEntityOverview(entityType, dataAsset, additionalInfo),
     [dataAsset, additionalInfo, entityType]
   );
-
-  useMemo(() => {
-    return getEntityChildDetails(
-      entityType,
-      entityType === EntityType.DASHBOARD
-        ? ({ ...dataAsset, charts } as unknown as Dashboard)
-        : dataAsset,
-      highlights,
-      entityType === EntityType.DASHBOARD ? chartsDetailsLoading : false
-    );
-  }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
 
   const shouldShowLineageSection = useMemo(
     () => hasLineageTab(entityType),
@@ -198,18 +179,6 @@ export const DataAssetSummaryPanelV1 = ({
       }
     }
   }, [dataAsset?.fullyQualifiedName, entityPermissions]);
-
-  const fetchChartsDetails = useCallback(async () => {
-    setChartsDetailsLoading(true);
-    try {
-      const chartDetails = await fetchCharts((dataAsset as Dashboard).charts);
-      setCharts(chartDetails);
-    } catch {
-      // Error
-    } finally {
-      setChartsDetailsLoading(false);
-    }
-  }, [dataAsset]);
 
   const fetchTestCases = useCallback(async () => {
     if (!dataAsset?.fullyQualifiedName || entityType !== EntityType.TABLE) {
@@ -269,10 +238,6 @@ export const DataAssetSummaryPanelV1 = ({
     switch (entityType) {
       case EntityType.TABLE:
         fetchIncidentCount();
-
-        break;
-      case EntityType.DASHBOARD:
-        fetchChartsDetails();
 
         break;
       default:
@@ -505,7 +470,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityType={entityType}
                 hasPermission={editGlossaryTermsPermission}
                 key={`glossary-terms-${dataAsset.id}-${
-                  (dataAsset.tags as unknown[])?.length || 0
+                  dataAsset.tags?.length ?? 0
                 }`}
                 maxVisibleGlossaryTerms={3}
                 tags={dataAsset.tags}
@@ -517,9 +482,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityId={dataAsset.id}
                 entityType={entityType}
                 hasPermission={editTagsPermission}
-                key={`tags-${dataAsset.id}-${
-                  (dataAsset.tags as unknown[])?.length || 0
-                }`}
+                key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
                 tags={dataAsset.tags}
                 onTagsUpdate={onTagsUpdate}
               />
@@ -532,7 +495,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityType={entityType}
                 hasPermission={editDataProductPermission}
                 key={`data-products-${dataAsset.id}-${
-                  (dataAsset.dataProducts as unknown[])?.length || 0
+                  dataAsset.dataProducts?.length ?? 0
                 }`}
                 onDataProductsUpdate={onDataProductsUpdate}
               />
@@ -567,9 +530,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityId={dataAsset.id}
                 entityType={entityType}
                 hasPermission={editTagsPermission}
-                key={`tags-${dataAsset.id}-${
-                  (dataAsset.tags as unknown[])?.length || 0
-                }`}
+                key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
                 tags={dataAsset.tags}
                 onTagsUpdate={onTagsUpdate}
               />
@@ -580,7 +541,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityType={entityType}
                 hasPermission={editGlossaryTermsPermission}
                 key={`glossary-terms-${dataAsset.id}-${
-                  (dataAsset.tags as unknown[])?.length || 0
+                  dataAsset.tags?.length ?? 0
                 }`}
                 maxVisibleGlossaryTerms={3}
                 tags={dataAsset.tags}
@@ -640,9 +601,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityId={dataAsset.id}
                 entityType={entityType}
                 hasPermission={editTagsPermission}
-                key={`tags-${dataAsset.id}-${
-                  (dataAsset.tags as unknown[])?.length || 0
-                }`}
+                key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
                 tags={dataAsset.tags?.filter(
                   (tag: TagLabel) => tag.source !== TagSource.Glossary
                 )}
@@ -713,9 +672,7 @@ export const DataAssetSummaryPanelV1 = ({
                   entityId={dataAsset.id}
                   entityType={entityType}
                   hasPermission={editTagsPermission}
-                  key={`tags-${dataAsset.id}-${
-                    (dataAsset.tags as unknown[])?.length || 0
-                  }`}
+                  key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
                   tags={dataAsset.tags?.filter(
                     (tag: TagLabel) => tag.source !== TagSource.Glossary
                   )}
