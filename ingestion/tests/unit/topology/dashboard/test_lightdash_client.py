@@ -42,7 +42,7 @@ class TestLightdashApiClient(TestCase):
         )
         self.client = LightdashApiClient(mock_config)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_dashboards_list_success(self, mock_rest):
         """Test successful dashboard list retrieval"""
         mock_rest_instance = Mock()
@@ -90,7 +90,7 @@ class TestLightdashApiClient(TestCase):
         self.assertEqual(dashboards[1].name, "Dashboard 2")
         client.add_dashboard_lineage.assert_called_once()
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_dashboards_list_empty_space(self, mock_rest):
         """Test dashboard list retrieval when space is empty"""
         mock_rest_instance = Mock()
@@ -111,7 +111,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(len(dashboards), 0)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_dashboards_list_no_results_key(self, mock_rest):
         """Test dashboard list retrieval when API returns no 'results' key"""
         mock_rest_instance = Mock()
@@ -127,7 +127,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(len(dashboards), 0)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_dashboards_list_no_dashboards_key(self, mock_rest):
         """Test dashboard list retrieval when results has no 'dashboards' key"""
         mock_rest_instance = Mock()
@@ -148,7 +148,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(len(dashboards), 0)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_dashboards_list_exception_handling(self, mock_rest):
         """Test dashboard list retrieval handles exceptions gracefully"""
         mock_rest_instance = Mock()
@@ -162,7 +162,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(len(dashboards), 0)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_test_get_dashboards_list_success(self, mock_rest):
         """Test test_get_dashboards_list with successful response"""
         mock_rest_instance = Mock()
@@ -196,7 +196,7 @@ class TestLightdashApiClient(TestCase):
         self.assertEqual(len(dashboards), 1)
         self.assertEqual(dashboards[0].name, "Dashboard 1")
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_test_get_dashboards_list_no_results_returns_empty(self, mock_rest):
         """Test test_get_dashboards_list returns empty list when no 'results' key"""
         mock_rest_instance = Mock()
@@ -212,7 +212,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(len(dashboards), 0)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_test_get_dashboards_list_raises_on_no_name(self, mock_rest):
         """Test test_get_dashboards_list raises KeyError when no 'name' field"""
         mock_rest_instance = Mock()
@@ -227,7 +227,7 @@ class TestLightdashApiClient(TestCase):
         with self.assertRaises(KeyError):
             client.test_get_dashboards_list()
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_test_get_dashboards_list_raises_on_no_dashboards(self, mock_rest):
         """Test test_get_dashboards_list raises KeyError when no 'dashboards' key"""
         mock_rest_instance = Mock()
@@ -242,7 +242,7 @@ class TestLightdashApiClient(TestCase):
         with self.assertRaises(KeyError):
             client.test_get_dashboards_list()
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_test_get_dashboards_list_propagates_exceptions(self, mock_rest):
         """Test test_get_dashboards_list propagates exceptions from client.get()"""
         mock_rest_instance = Mock()
@@ -259,7 +259,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertIn("404 Not Found", str(context.exception))
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_dashboards_list_invalid_dashboard_data_fails(self, mock_rest):
         """Test get_dashboards_list returns empty when dashboard data is invalid"""
         mock_rest_instance = Mock()
@@ -285,7 +285,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(len(dashboards), 0)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_charts_list_success(self, mock_rest):
         """Test successful chart list retrieval"""
         mock_rest_instance = Mock()
@@ -314,7 +314,7 @@ class TestLightdashApiClient(TestCase):
         self.assertIsInstance(charts[0], LightdashChart)
         self.assertEqual(charts[0].name, "Chart 1")
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_spaces_success(self, mock_rest):
         """Test successful spaces list retrieval"""
         mock_rest_instance = Mock()
@@ -341,7 +341,7 @@ class TestLightdashApiClient(TestCase):
         self.assertEqual(len(spaces), 1)
         self.assertEqual(spaces[0].name, "Space 1")
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_project_name_success(self, mock_rest):
         """Test successful project name retrieval"""
         mock_rest_instance = Mock()
@@ -357,7 +357,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(project_name, "Test Project")
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_project_name_exception(self, mock_rest):
         """Test project name retrieval handles exceptions"""
         mock_rest_instance = Mock()
@@ -371,7 +371,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(project_name, "")
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_test_get_dashboards_list_http_404_error(self, mock_rest):
         """Test test_get_dashboards_list propagates HTTPError for 404"""
         mock_rest_instance = Mock()
@@ -391,7 +391,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(context.exception.response.status_code, 404)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_test_get_dashboards_list_http_401_error(self, mock_rest):
         """Test test_get_dashboards_list propagates HTTPError for 401 unauthorized"""
         mock_rest_instance = Mock()
@@ -411,7 +411,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(context.exception.response.status_code, 401)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_test_get_dashboards_list_http_403_error(self, mock_rest):
         """Test test_get_dashboards_list propagates HTTPError for 403 forbidden"""
         mock_rest_instance = Mock()
@@ -431,7 +431,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(context.exception.response.status_code, 403)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_test_get_dashboards_list_http_500_error(self, mock_rest):
         """Test test_get_dashboards_list propagates HTTPError for 500 server error"""
         mock_rest_instance = Mock()
@@ -451,7 +451,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(context.exception.response.status_code, 500)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_test_get_dashboards_list_api_error(self, mock_rest):
         """Test test_get_dashboards_list propagates APIError"""
         mock_rest_instance = Mock()
@@ -473,7 +473,7 @@ class TestLightdashApiClient(TestCase):
         self.assertEqual(context.exception.code, 400)
         self.assertIn("Invalid project or space UUID", str(context.exception))
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_dashboards_list_handles_http_errors_gracefully(self, mock_rest):
         """Test get_dashboards_list handles HTTPError gracefully in ingestion mode"""
         mock_rest_instance = Mock()
@@ -491,7 +491,7 @@ class TestLightdashApiClient(TestCase):
 
         self.assertEqual(len(dashboards), 0)
 
-    @patch("metadata.ingestion.source.dashboard.lightdash.client.REST")
+    @patch("metadata.ingestion.source.dashboard.lightdash.client.TrackedREST")
     def test_get_dashboards_list_handles_api_errors_gracefully(self, mock_rest):
         """Test get_dashboards_list handles APIError gracefully in ingestion mode"""
         mock_rest_instance = Mock()

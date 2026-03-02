@@ -35,7 +35,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.powerBIConn
     LocalConfig,
     PowerBIConnection,
 )
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.source.dashboard.powerbi.models import (
     ConnectionFile,
     DataModelSchema,
@@ -309,7 +309,7 @@ class PowerBiFileClient:
     File client for PowerBi
     """
 
-    client: REST
+    client: TrackedREST
 
     def __init__(self, config: PowerBIConnection):
         self.config = config

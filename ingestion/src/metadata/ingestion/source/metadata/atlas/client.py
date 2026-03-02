@@ -17,7 +17,8 @@ from typing import List
 from metadata.generated.schema.entity.services.connections.metadata.atlasConnection import (
     AtlasConnection,
 )
-from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import APIError, ClientConfig
 from metadata.utils.helpers import clean_uri
 
 
@@ -38,7 +39,7 @@ class AtlasClient:
             auth_token=self.get_auth_token,
             auth_token_mode="Basic",
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="atlas")
         self._use_raw_data = raw_data
 
     def list_entities(self) -> List[str]:

@@ -14,7 +14,8 @@ REST Auth & Client for Lightdash
 import traceback
 from typing import List
 
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.lightdash.models import (
     LightdashChart,
     LightdashDashboard,
@@ -32,7 +33,7 @@ class LightdashApiClient:
     API Documentation: https://docs.lightdash.com/api-reference/v1
     """
 
-    client: REST
+    client: TrackedREST
 
     def __init__(self, config):
         self.config = config
@@ -44,7 +45,7 @@ class LightdashApiClient:
             auth_token_mode="ApiKey",
             allow_redirects=True,
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="lightdash")
 
     def get_org(self):
         """GET api/org"""

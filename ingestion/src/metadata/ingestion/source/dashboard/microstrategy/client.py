@@ -19,8 +19,9 @@ import requests
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
     MicroStrategyConnection,
 )
+from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.microstrategy.models import (
     AuthHeaderCookie,
     MstrDashboard,
@@ -67,7 +68,7 @@ class MicroStrategyClient:
             cookies=self.auth_params.auth_cookies if self.auth_params else None,
         )
 
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="microstrategy")
 
     def get_auth_params(self) -> AuthHeaderCookie:
         """

@@ -19,7 +19,8 @@ from requests import Response
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.utils.helpers import clean_uri
 
 
@@ -47,7 +48,7 @@ class FivetranClient:
             retry_codes=[429],
             limit_codes=[],
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="fivetran")
 
     def run_paginator(self, path: str) -> List[dict]:
         response = self.client.get(f"{path}?limit={self.config.limit}")

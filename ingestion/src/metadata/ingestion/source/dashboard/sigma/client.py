@@ -19,7 +19,8 @@ from typing import List, Optional, Tuple
 from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
     SigmaConnection,
 )
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.sigma.models import (
     AuthToken,
     EdgeSourceResponse,
@@ -51,7 +52,7 @@ class SigmaApiClient:
     REST Auth & Client for Sigma
     """
 
-    client: REST
+    client: TrackedREST
 
     def __init__(self, config: SigmaConnection):
         self.config = config
@@ -72,7 +73,7 @@ class SigmaApiClient:
             auth_token_mode="Basic",
         )
 
-        self.token_client = REST(token_config)
+        self.token_client = TrackedREST(token_config, source_name="sigma")
 
         client_config = ClientConfig(
             base_url=clean_uri(config.hostPort),
@@ -81,7 +82,7 @@ class SigmaApiClient:
             auth_header=AUTHORIZATION_HEADER,
         )
 
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="sigma")
 
     def get_auth_token(self) -> Tuple[str, int]:
         """
