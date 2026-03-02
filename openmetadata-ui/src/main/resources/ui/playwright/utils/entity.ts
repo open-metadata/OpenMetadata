@@ -696,13 +696,13 @@ export const updateDescriptionForChildren = async (
     updateRequest = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/columns/name/') &&
-        response.request().method() === 'PATCH'
+        ['PUT', 'PATCH'].includes(response.request().method())
     );
   } else {
     updateRequest = page.waitForResponse(
       (response) =>
         response.url().includes(`/api/v1/${entityEndpoint}/`) &&
-        response.request().method() === 'PATCH'
+        ['PUT', 'PATCH'].includes(response.request().method())
     );
   }
 
