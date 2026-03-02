@@ -1150,7 +1150,8 @@ export const downVote = async (page: Page, endPoint: string) => {
 
 export const followEntity = async (
   page: Page,
-  endpoint: EntityTypeEndpoint
+  endpoint: EntityTypeEndpoint,
+  verificationText = 'Unfollow'
 ) => {
   const followResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers`
@@ -1159,7 +1160,7 @@ export const followEntity = async (
   await followResponse;
 
   await expect(page.getByTestId('entity-follow-button')).toContainText(
-    'Unfollow'
+    verificationText
   );
 };
 

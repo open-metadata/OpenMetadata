@@ -164,13 +164,13 @@ const ApplicationPage = () => {
         </Col>
         <Col className="d-flex justify-end" span={8}>
           <Space size="middle">
-            <div>
+            <div className="flex-center gap-2">
               <Switch
                 checked={showDisabled}
                 data-testid="show-disabled"
                 onClick={onShowDisabledAppsChange}
               />
-              <span className="m-l-xs">{t('label.disabled')}</span>
+              <span>{t('label.disabled')}</span>
             </div>
             <LimitWrapper resource="app">
               <Button
