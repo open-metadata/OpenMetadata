@@ -69,8 +69,10 @@ public class WorkflowHandler {
   private final Map<Object, Object> expressionMap = new HashMap<>();
   private static WorkflowHandler instance;
   @Getter private static volatile boolean initialized = false;
+  private final boolean isMigrationContext;
 
-  private WorkflowHandler(OpenMetadataApplicationConfig config) {
+  private WorkflowHandler(OpenMetadataApplicationConfig config, boolean isMigrationContext) {
+    this.isMigrationContext = isMigrationContext;
     ProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration()
             .setJdbcUrl(config.getDataSourceFactory().getUrl())
@@ -117,7 +119,7 @@ public class WorkflowHandler {
 
     // Setting Async Executor Configuration
     processEngineConfiguration
-        .setAsyncExecutorActivate(true)
+        .setAsyncExecutorActivate(!isMigrationContext)
         .setAsyncExecutorCorePoolSize(workflowSettings.getExecutorConfiguration().getCorePoolSize())
         .setAsyncExecutorMaxPoolSize(workflowSettings.getExecutorConfiguration().getMaxPoolSize())
         .setAsyncExecutorThreadPoolQueueSize(
@@ -131,10 +133,10 @@ public class WorkflowHandler {
         .setAsyncExecutorDefaultTimerJobAcquireWaitTime(
             workflowSettings.getExecutorConfiguration().getTimerJobAcquisitionInterval());
 
-    // Setting History CleanUp
+    // Setting History CleanUp - disable during migration to prevent race conditions
     processEngineConfiguration
         .setAsyncHistoryEnabled(true)
-        .setEnableHistoryCleaning(true)
+        .setEnableHistoryCleaning(!isMigrationContext)
         .setCleanInstancesEndedAfter(
             Duration.ofDays(
                 workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()))
@@ -159,8 +161,12 @@ public class WorkflowHandler {
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
+    initialize(config, false);
+  }
+
+  public static void initialize(OpenMetadataApplicationConfig config, boolean isMigrationContext) {
     if (!initialized) {
-      instance = new WorkflowHandler(config);
+      instance = new WorkflowHandler(config, isMigrationContext);
       initialized = true;
     } else {
       LOG.info("WorkflowHandler already initialized.");
