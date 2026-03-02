@@ -390,7 +390,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName().equals("mlFeatures")) {
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("mlFeatures")) {
       TaskType taskType = threadContext.getThread().getTask().getType();
       if (EntityUtil.isDescriptionTask(taskType)) {
         return new MlFeatureDescriptionTaskWorkflow(threadContext);

@@ -4682,12 +4682,12 @@ public interface CollectionDAO {
         mySqlCondition.append(
             " AND (JSON_EXTRACT(c.json, '$.disabled') = TRUE OR JSON_EXTRACT(tag.json, '$.disabled') = TRUE)");
         postgresCondition.append(
-            " AND (COALESCE((c.json#>'{disabled}')::boolean, FALSE) = TRUE OR COALESCE((tag.json#>'{disabled}')::boolean, FALSE) = TRUE)");
+            " AND (COALESCE((c.json->>'disabled')::boolean, FALSE) = TRUE OR COALESCE((tag.json->>'disabled')::boolean, FALSE) = TRUE)");
       } else if (filter.getQueryParam("classification.disabled") != null) {
         mySqlCondition.append(
-            " AND (JSON_EXTRACT(c.json, '$.disabled') = FALSE AND JSON_EXTRACT(tag.json, '$.disabled') = FALSE)");
+            " AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE) AND (JSON_EXTRACT(tag.json, '$.disabled') IS NULL OR JSON_EXTRACT(tag.json, '$.disabled') = FALSE)");
         postgresCondition.append(
-            " AND (COALESCE((c.json#>'{disabled}')::boolean, FALSE) = FALSE AND COALESCE((tag.json#>'{disabled}')::boolean, FALSE) = FALSE)");
+            " AND COALESCE((c.json->>'disabled')::boolean, FALSE) = FALSE AND COALESCE((tag.json->>'disabled')::boolean, FALSE) = FALSE");
       }
 
       String tagCondition = filter.getCondition("tag");

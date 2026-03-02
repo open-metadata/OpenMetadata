@@ -84,7 +84,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName().equals("columns")) {
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
       TaskType taskType = threadContext.getThread().getTask().getType();
       if (EntityUtil.isDescriptionTask(taskType)) {
         return new ColumnDescriptionTaskWorkflow(threadContext);
