@@ -11,7 +11,6 @@ public class WebAnalyticEventMapper
     return copy(new WebAnalyticEvent(), create, user)
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
         .withEventType(create.getEventType());
   }
 }

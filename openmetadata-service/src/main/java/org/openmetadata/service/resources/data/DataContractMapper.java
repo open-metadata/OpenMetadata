@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.data;
 
+import static org.openmetadata.service.util.InputSanitizer.sanitize;
+
 import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -32,7 +34,7 @@ public class DataContractMapper {
             .withId(UUID.randomUUID())
             .withName(create.getName())
             .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription())
+            .withDescription(sanitize(create.getDescription()))
             .withEntity(entity)
             .withEntityStatus(create.getEntityStatus())
             .withSchema(create.getSchema())

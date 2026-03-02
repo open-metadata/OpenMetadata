@@ -13,7 +13,6 @@ public class TestCaseMapper implements EntityMapper<TestCase, CreateTestCase> {
   public TestCase createToEntity(CreateTestCase create, String user) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(create.getEntityLink());
     return copy(new TestCase(), create, user)
-        .withDescription(create.getDescription())
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())
         .withParameterValues(create.getParameterValues())

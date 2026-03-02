@@ -4,6 +4,7 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.jdbi3.EntityRepository.validateOwners;
 import static org.openmetadata.service.jdbi3.EntityRepository.validateReviewers;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
+import static org.openmetadata.service.util.InputSanitizer.sanitize;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,7 +25,7 @@ public interface EntityMapper<T extends EntityInterface, C extends CreateEntity>
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
-    entity.setDescription(request.getDescription());
+    entity.setDescription(sanitize(request.getDescription()));
     entity.setOwners(owners);
     entity.setDomains(domains);
     entity.setTags(request.getTags());

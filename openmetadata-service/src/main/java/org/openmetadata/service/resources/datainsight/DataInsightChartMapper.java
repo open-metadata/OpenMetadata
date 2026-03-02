@@ -10,7 +10,6 @@ public class DataInsightChartMapper
   public DataInsightChart createToEntity(CreateDataInsightChart create, String user) {
     return copy(new DataInsightChart(), create, user)
         .withName(create.getName())
-        .withDescription(create.getDescription())
         .withDataIndexType(create.getDataIndexType())
         .withDimensions(create.getDimensions())
         .withMetrics(create.getMetrics())
