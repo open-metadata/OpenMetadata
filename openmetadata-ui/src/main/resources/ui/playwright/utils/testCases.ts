@@ -96,7 +96,7 @@ export const findSystemTestDefinition = async (page: Page) => {
       response.request().method() === 'GET'
   );
 
-  await page.goto('/rules-library');
+  await page.goto('/test-library');
   let response = await responsePromise;
   let data = await response.json();
 
@@ -142,6 +142,7 @@ export const clickManageButton = async (
     await page
       .getByTestId('table-profiler-container')
       .getByTestId('manage-button')
+      .nth(1)
       .click();
   } else {
     await page.waitForSelector('[data-testid="manage-button"]', {

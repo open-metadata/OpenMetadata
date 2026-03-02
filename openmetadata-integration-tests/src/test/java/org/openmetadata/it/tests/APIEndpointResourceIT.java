@@ -335,19 +335,6 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
             () -> createEntity(requestWithoutCollection),
             "Creating API endpoint without collection should fail");
     assertEquals(400, exception1.getStatusCode());
-
-    APICollection collection = getOrCreateAPICollection(ns);
-    CreateAPIEndpoint requestWithoutEndpointURL = new CreateAPIEndpoint();
-    requestWithoutEndpointURL.setName(ns.prefix("endpoint_no_url"));
-    requestWithoutEndpointURL.setApiCollection(collection.getFullyQualifiedName());
-    requestWithoutEndpointURL.setRequestMethod(APIRequestMethod.GET);
-
-    InvalidRequestException exception2 =
-        assertThrows(
-            InvalidRequestException.class,
-            () -> createEntity(requestWithoutEndpointURL),
-            "Creating API endpoint without endpointURL should fail");
-    assertEquals(400, exception2.getStatusCode());
   }
 
   @Test

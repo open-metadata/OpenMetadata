@@ -333,7 +333,7 @@ export const addMultiOwner = async (data: {
     clearAll = true,
   } = data;
   const isMultipleOwners = Array.isArray(ownerNames);
-  const owners = isMultipleOwners ? ownerNames : [ownerNames]
+  const owners = isMultipleOwners ? ownerNames : [ownerNames];
 
   await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
 
@@ -696,7 +696,8 @@ export const updateDescriptionForChildren = async (
   await expect(saveButton).toBeVisible();
   await expect(saveButton).toBeEnabled();
   await saveButton.click();
-  await updateRequest;
+  const response = await updateRequest;
+  expect(response.status()).toBe(200);
 
   // Wait for modal to close
   await expect(modal).not.toBeVisible();
@@ -1154,8 +1155,8 @@ export const removeGlossaryTerm = async (
       .getByTestId('glossary-container')
       .getByTestId('edit-button')
       .click();
-      //small timeout to avoid popup collide with click
-      await page.waitForTimeout(500)
+    //small timeout to avoid popup collide with click
+    await page.waitForTimeout(500);
 
     await page
       .getByTestId('glossary-container')
@@ -1269,7 +1270,8 @@ export const downVote = async (page: Page, endPoint: string) => {
 
 export const followEntity = async (
   page: Page,
-  endpoint: EntityTypeEndpoint
+  endpoint: EntityTypeEndpoint,
+  verificationText = 'Unfollow'
 ) => {
   const followResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers`
@@ -1278,7 +1280,7 @@ export const followEntity = async (
   await followResponse;
 
   await expect(page.getByTestId('entity-follow-button')).toContainText(
-    'Unfollow'
+    verificationText
   );
 };
 

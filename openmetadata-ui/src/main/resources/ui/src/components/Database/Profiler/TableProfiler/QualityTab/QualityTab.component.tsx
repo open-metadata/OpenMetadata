@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid, Stack, Tab, Tabs, useTheme } from '@mui/material';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { Form, Select, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
@@ -75,7 +75,6 @@ export const QualityTab = () => {
     testCaseSummary,
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
-  const theme = useTheme();
   const { permissions: globalPermissions } = usePermissionProvider();
 
   const {
@@ -338,11 +337,14 @@ export const QualityTab = () => {
     handlePageSizeChange,
   ]);
 
-  const handleTabChange = (_: React.SyntheticEvent, tab: string) => {
+  const handleTabChange = (tab: string | number) => {
     navigate(
       {
         pathname: location.pathname,
-        search: QueryString.stringify({ ...searchData, qualityTab: tab }),
+        search: QueryString.stringify({
+          ...searchData,
+          qualityTab: String(tab),
+        }),
       },
       { state: undefined, replace: true }
     );
@@ -360,146 +362,104 @@ export const QualityTab = () => {
   }
 
   return (
-    <Stack className="quality-tab-container" spacing="30px">
-      <Grid container spacing={5}>
+    <div className="quality-tab-container tw:flex tw:flex-col tw:gap-[30px]">
+      <div className="tw:grid tw:grid-cols-4 tw:gap-6">
         {totalTestCaseSummary?.map((summary) => (
-          <Grid key={summary.title} size="grow">
-            <SummaryCardV1
-              icon={summary.icon}
-              isLoading={false}
-              title={summary.title}
-              value={summary.value}
-            />
-          </Grid>
+          <SummaryCardV1
+            icon={summary.icon}
+            isLoading={false}
+            key={summary.title}
+            title={summary.title}
+            value={summary.value}
+          />
         ))}
-      </Grid>
+      </div>
 
-      <Box
-        sx={{
-          border: `1px solid ${theme.palette.grey['200']}`,
-          borderRadius: '10px',
-        }}>
-        <Box
-          alignItems="center"
-          display="flex"
-          justifyContent="space-between"
-          p={4}>
-          <Box display="flex" gap={5} width="100%">
-            <Tabs
-              sx={{
-                width: 'max-content',
-                minHeight: 'unset',
-                display: 'inline-flex',
-                '.MuiTab-root': {
-                  color: theme.palette.grey['700'],
-                  transition:
-                    'background-color 0.2s ease-in, color 0.2s ease-in',
-                  borderRadius: '8px',
-                },
-                '.Mui-selected, .MuiTab-root:hover': {
-                  backgroundColor: `${theme.palette.grey['50']}`,
-                  color: `${theme.palette.grey['800']}`,
-                },
-                '.MuiButtonBase-root': {
-                  minHeight: 'unset',
-                },
-                '.MuiTabs-indicator': {
-                  display: 'none',
-                },
-                '.MuiTabs-scroller': {
-                  padding: '0px',
-                  height: 'unset',
-                  borderRadius: '8px',
-                },
-                '.MuiTab-root:not(:first-of-type)': {
-                  marginLeft: '0px',
-                  borderLeft: `1px solid ${theme.palette.grey['200']}`,
-                  borderTopLeftRadius: 0,
-                  borderBottomLeftRadius: 0,
-                },
-                '& .MuiTabs-flexContainer': {
-                  gap: '0px',
-                },
-              }}
-              value={qualityTab}
-              onChange={handleTabChange}>
-              {tabs.map(({ label, key }) => (
-                <Tab key={key} label={label} value={key} />
-              ))}
-            </Tabs>
+      <div className="tw:border tw:border-secondary tw:rounded-[10px]">
+        <Tabs selectedKey={qualityTab} onSelectionChange={handleTabChange}>
+          <div className="tw:flex tw:items-center tw:justify-between tw:p-4">
+            <div className="tw:flex tw:gap-5 tw:w-full">
+              <Tabs.List size="sm" type="button-border">
+                {tabs.map(({ label, key }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+
+              {isTestCaseTab && (
+                <div className="tw:w-[400px]">
+                  <Searchbar
+                    removeMargin
+                    placeholder={t('label.search-entity', {
+                      entity: t('label.test-case-lowercase'),
+                    })}
+                    searchValue={searchValue}
+                    onSearch={handleSearchTestCase}
+                  />
+                </div>
+              )}
+            </div>
 
             {isTestCaseTab && (
-              <Box width={400}>
-                <Searchbar
-                  removeMargin
-                  placeholder={t('label.search-entity', {
-                    entity: t('label.test-case-lowercase'),
-                  })}
-                  searchValue={searchValue}
-                  onSearch={handleSearchTestCase}
-                />
-              </Box>
+              <Form className="new-form-style" layout="inline">
+                <Space align="center" className="w-full justify-end" size={20}>
+                  <Form.Item className="m-0 w-52" label={t('label.type')}>
+                    <Select
+                      options={TEST_CASE_TYPE_OPTION}
+                      value={selectedTestType}
+                      onChange={handleTestCaseTypeChange}
+                    />
+                  </Form.Item>
+                  <Form.Item className="m-0 w-52" label={t('label.status')}>
+                    <Select
+                      options={TEST_CASE_STATUS_OPTION}
+                      value={selectedTestCaseStatus}
+                      onChange={handleTestCaseStatusChange}
+                    />
+                  </Form.Item>
+                  <ManageButton
+                    canDelete={false}
+                    deleted={table?.deleted ?? false}
+                    displayName={t('label.manage-entity', {
+                      entity: t('label.test-case-plural'),
+                    })}
+                    entityId={table?.id}
+                    entityName={getEntityName(table)}
+                    entityType={EntityType.TEST_CASE}
+                    extraDropdownContent={extraDropdownContent}
+                    isRecursiveDelete={false}
+                  />
+                </Space>
+              </Form>
             )}
-          </Box>
+          </div>
 
-          {isTestCaseTab && (
-            <Form className="new-form-style" layout="inline">
-              <Space align="center" className="w-full justify-end" size={20}>
-                <Form.Item className="m-0 w-52" label={t('label.type')}>
-                  <Select
-                    options={TEST_CASE_TYPE_OPTION}
-                    value={selectedTestType}
-                    onChange={handleTestCaseTypeChange}
-                  />
-                </Form.Item>
-                <Form.Item className="m-0 w-52" label={t('label.status')}>
-                  <Select
-                    options={TEST_CASE_STATUS_OPTION}
-                    value={selectedTestCaseStatus}
-                    onChange={handleTestCaseStatusChange}
-                  />
-                </Form.Item>
-                <ManageButton
-                  canDelete={false}
-                  deleted={table?.deleted ?? false}
-                  displayName={t('label.manage-entity', {
-                    entity: t('label.test-case-plural'),
-                  })}
-                  entityId={table?.id}
-                  entityName={getEntityName(table)}
-                  entityType={EntityType.TEST_CASE}
-                  extraDropdownContent={extraDropdownContent}
-                  isRecursiveDelete={false}
-                />
-              </Space>
-            </Form>
-          )}
-        </Box>
+          <Tabs.Panel id={EntityTabs.TEST_CASES}>
+            <DataQualityTab
+              removeTableBorder
+              afterDeleteAction={async (...params) => {
+                await fetchAllTests(...params);
+                params?.length &&
+                  (await getResourceLimit('dataQuality', true, true));
+              }}
+              breadcrumbData={tableBreadcrumb}
+              fetchTestCases={handleSortTestCase}
+              isEditAllowed={editTest}
+              isLoading={isTestsLoading}
+              pagingData={pagingData}
+              showTableColumn={false}
+              testCases={allTestCases}
+              onTestCaseResultUpdate={onTestCaseUpdate}
+              onTestUpdate={onTestCaseUpdate}
+            />
+          </Tabs.Panel>
 
-        {isTestCaseTab && (
-          <DataQualityTab
-            removeTableBorder
-            afterDeleteAction={async (...params) => {
-              await fetchAllTests(...params); // Update current count when Create / Delete operation performed
-              params?.length &&
-                (await getResourceLimit('dataQuality', true, true));
-            }}
-            breadcrumbData={tableBreadcrumb}
-            fetchTestCases={handleSortTestCase}
-            isEditAllowed={editTest}
-            isLoading={isTestsLoading}
-            pagingData={pagingData}
-            showTableColumn={false}
-            testCases={allTestCases}
-            onTestCaseResultUpdate={onTestCaseUpdate}
-            onTestUpdate={onTestCaseUpdate}
-          />
-        )}
-
-        {qualityTab === EntityTabs.PIPELINE && (
-          <TestSuitePipelineTab testSuite={testSuite} />
-        )}
-      </Box>
-    </Stack>
+          <Tabs.Panel id={EntityTabs.PIPELINE}>
+            <TestSuitePipelineTab testSuite={testSuite} />
+          </Tabs.Panel>
+        </Tabs>
+      </div>
+    </div>
   );
 };

@@ -50,7 +50,7 @@ test(
         })
         .click();
       await page.getByTestId('profiler-add-table-test-btn').click();
-      await page.getByTestId('test-case').click();
+      await page.getByRole('menuitemradio', { name: 'Test case' }).click();
       await page.getByTestId('test-case-name').clear();
       await page.getByTestId('test-case-name').fill(testCaseName);
       await page.getByTestId('test-type').locator('div').click();
@@ -83,7 +83,11 @@ test(
 
       await expect(page.getByTestId('deploy-button')).toBeVisible();
 
+      const deployResponse = page.waitForResponse(
+        '/api/v1/services/ingestionPipelines/deploy/*'
+      );
       await page.getByTestId('deploy-button').click();
+      await deployResponse;
 
       await page.waitForSelector('[data-testid="body-text"]', {
         state: 'detached',
@@ -145,7 +149,12 @@ test(
         .getByTestId('week-segment-day-option-container')
         .getByText('W')
         .click();
+      const updateDeployResponse = page.waitForResponse(
+        '/api/v1/services/ingestionPipelines/deploy/*'
+      );
       await page.getByTestId('deploy-button').click();
+      await updateDeployResponse;
+
       await page.waitForSelector('[data-testid="body-text"]', {
         state: 'detached',
       });
@@ -274,7 +283,12 @@ test(
       page.getByTestId(`checkbox-${testCaseNames[0]}`)
     ).not.toBeChecked();
 
+    const editDeployResponse = page.waitForResponse(
+      '/api/v1/services/ingestionPipelines/deploy/*'
+    );
     await page.getByTestId('deploy-button').click();
+    await editDeployResponse;
+
     await page.waitForSelector('[data-testid="body-text"]', {
       state: 'detached',
     });

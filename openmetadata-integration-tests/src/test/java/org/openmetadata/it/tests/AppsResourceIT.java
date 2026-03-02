@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_IMPERSONATION_ROLE;
+import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_ROLE;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.time.Duration;
@@ -45,12 +47,14 @@ import org.openmetadata.schema.entity.app.NativeAppPermission;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Apps API.
@@ -72,51 +76,34 @@ public class AppsResourceIT {
     Apps.setDefaultClient(SdkClients.adminClient());
   }
 
-  private void waitForAppJobCompletion(String appName) throws Exception {
+  private void waitForAppJobCompletion(String appName) {
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
-    int maxRetries = 60; // Increase retries for longer-running jobs in CI
-    int retryCount = 0;
-
-    while (retryCount < maxRetries) {
-      try {
-        AppRunRecord latestRun =
-            httpClient.execute(
-                HttpMethod.GET,
-                "/v1/apps/name/" + appName + "/runs/latest",
-                null,
-                AppRunRecord.class);
-
-        if (latestRun == null || latestRun.getStatus() == null) {
-          // No run record exists yet - safe to proceed
-          return;
-        }
-
-        String status = latestRun.getStatus().value();
-
-        // Check if the job is in a terminal state
-        if ("SUCCESS".equals(status) || "FAILED".equals(status) || "COMPLETED".equals(status)) {
-          // Job is complete - add a small buffer to allow scheduler to fully clean up
-          Thread.sleep(500);
-          return;
-        }
-
-        // Job is still running (RUNNING, STARTED, ACTIVE, PENDING_STATUS_UPDATE, etc.)
-        // Continue waiting
-      } catch (Exception e) {
-        // On errors (like 500), the job might be starting - continue waiting
-        // Don't log each error to avoid noise in tests
-        if (retryCount % 10 == 0) {
-          // Log every 10th retry to show we're still trying
-          System.out.println(
-              "waitForAppJobCompletion: waiting for " + appName + ", attempt " + retryCount);
-        }
-      }
-      Thread.sleep(500);
-      retryCount++;
+    try {
+      Awaitility.await("Wait for app job completion: " + appName)
+          .atMost(Duration.ofSeconds(30))
+          .pollDelay(Duration.ofMillis(500))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                AppRunRecord latestRun =
+                    httpClient.execute(
+                        HttpMethod.GET,
+                        "/v1/apps/name/" + appName + "/runs/latest",
+                        null,
+                        AppRunRecord.class);
+                if (latestRun == null || latestRun.getStatus() == null) {
+                  return true;
+                }
+                String status = latestRun.getStatus().value();
+                return "SUCCESS".equals(status)
+                    || "FAILED".equals(status)
+                    || "COMPLETED".equals(status);
+              });
+    } catch (org.awaitility.core.ConditionTimeoutException e) {
+      // Best-effort wait — the app may be continuously running under parallel test load.
+      // The subsequent trigger call handles "already running" with its own retry.
     }
-    // After max retries, log a warning and proceed
-    System.out.println(
-        "waitForAppJobCompletion: max retries reached for " + appName + ", proceeding anyway");
   }
 
   @Test
@@ -385,15 +372,23 @@ public class AppsResourceIT {
               return true;
             });
 
-    Thread.sleep(2000);
-
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
-    AppRunRecord latestRun =
-        httpClient.execute(
-            HttpMethod.GET, "/v1/apps/name/" + appName + "/runs/latest", null, AppRunRecord.class);
-
-    assertNotNull(latestRun);
-    assertNotNull(latestRun.getStatus());
+    Awaitility.await("Wait for app run record to be available")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              AppRunRecord run =
+                  httpClient.execute(
+                      HttpMethod.GET,
+                      "/v1/apps/name/" + appName + "/runs/latest",
+                      null,
+                      AppRunRecord.class);
+              assertNotNull(run);
+              assertNotNull(run.getStatus());
+            });
   }
 
   @Test
@@ -406,39 +401,36 @@ public class AppsResourceIT {
     Map<String, Object> config = new HashMap<>();
     config.put("batchSize", 1234);
 
-    // Retry trigger with backoff in case a previous job is still finishing up
-    int maxTriggerRetries = 10;
-    boolean triggered = false;
-    Exception lastException = null;
+    Awaitility.await("Trigger app with custom config")
+        .atMost(Duration.ofMinutes(2))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(3))
+        .ignoreExceptionsMatching(
+            e -> e.getMessage() != null && e.getMessage().contains("already running"))
+        .until(
+            () -> {
+              httpClient.execute(
+                  HttpMethod.POST, "/v1/apps/trigger/" + appName, config, Void.class);
+              return true;
+            });
 
-    for (int i = 0; i < maxTriggerRetries && !triggered; i++) {
-      try {
-        httpClient.execute(HttpMethod.POST, "/v1/apps/trigger/" + appName, config, Void.class);
-        triggered = true;
-      } catch (Exception e) {
-        lastException = e;
-        if (e.getMessage() != null && e.getMessage().contains("already running")) {
-          // Job is still running from previous test, wait and retry
-          Thread.sleep(2000);
-        } else {
-          throw e; // Re-throw if it's a different error
-        }
-      }
-    }
-
-    if (!triggered && lastException != null) {
-      throw lastException;
-    }
-
-    Thread.sleep(2000);
-
-    AppRunRecord latestRun =
-        httpClient.execute(
-            HttpMethod.GET, "/v1/apps/name/" + appName + "/runs/latest", null, AppRunRecord.class);
-
-    assertNotNull(latestRun);
-    assertNotNull(latestRun.getConfig());
-    assertEquals(1234, latestRun.getConfig().get("batchSize"));
+    Awaitility.await("Wait for app run with custom config")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              AppRunRecord run =
+                  httpClient.execute(
+                      HttpMethod.GET,
+                      "/v1/apps/name/" + appName + "/runs/latest",
+                      null,
+                      AppRunRecord.class);
+              assertNotNull(run);
+              assertNotNull(run.getConfig());
+              assertEquals(1234, run.getConfig().get("batchSize"));
+            });
   }
 
   @Test
@@ -812,5 +804,268 @@ public class AppsResourceIT {
     assertNotNull(apps);
     assertNotNull(apps.getData());
     assertTrue(apps.getData().size() <= 50);
+  }
+
+  @Test
+  void test_appBotRole_withoutImpersonation(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = "noImpApp" + System.currentTimeMillis();
+
+    try {
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(appName)
+              .withDisplayName("No Impersonation App")
+              .withDescription("Test app without impersonation")
+              .withFeatures("test features")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+
+      AppMarketPlaceDefinition marketPlaceDef =
+          httpClient.execute(
+              HttpMethod.POST,
+              "/v1/apps/marketplace",
+              marketPlaceReq,
+              AppMarketPlaceDefinition.class);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
+              .withAllowBotImpersonation(false);
+
+      App app = httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+      assertNotNull(app);
+
+      App retrievedApp =
+          httpClient.execute(
+              HttpMethod.GET, "/v1/apps/name/" + appName + "?fields=bot", null, App.class);
+      assertNotNull(retrievedApp.getBot(), "Bot should be created for the app");
+
+      String botUserName = appName + "Bot";
+      User botUser =
+          httpClient.execute(
+              HttpMethod.GET,
+              "/v1/users/name/" + botUserName + "?fields=roles,allowImpersonation",
+              null,
+              User.class);
+
+      assertNotNull(botUser.getRoles(), "Bot user should have roles assigned");
+      assertTrue(
+          botUser.getRoles().stream().anyMatch(r -> r.getName().equals(APP_BOT_ROLE)),
+          "Bot without impersonation should have ApplicationBotRole");
+      assertTrue(
+          botUser.getRoles().stream()
+              .noneMatch(r -> r.getName().equals(APP_BOT_IMPERSONATION_ROLE)),
+          "Bot without impersonation should NOT have ApplicationBotImpersonationRole");
+      assertFalse(
+          Boolean.TRUE.equals(botUser.getAllowImpersonation()),
+          "Bot without impersonation should have allowImpersonation disabled");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_appBotRole_withImpersonation(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = "impApp" + System.currentTimeMillis();
+
+    try {
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(appName)
+              .withDisplayName("With Impersonation App")
+              .withDescription("Test app with impersonation")
+              .withFeatures("test features")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+
+      AppMarketPlaceDefinition marketPlaceDef =
+          httpClient.execute(
+              HttpMethod.POST,
+              "/v1/apps/marketplace",
+              marketPlaceReq,
+              AppMarketPlaceDefinition.class);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
+              .withAllowBotImpersonation(true);
+
+      App app = httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+      assertNotNull(app);
+
+      App retrievedApp =
+          httpClient.execute(
+              HttpMethod.GET, "/v1/apps/name/" + appName + "?fields=bot", null, App.class);
+      assertNotNull(retrievedApp.getBot(), "Bot should be created for the app");
+
+      String botUserName = appName + "Bot";
+      User botUser =
+          httpClient.execute(
+              HttpMethod.GET,
+              "/v1/users/name/" + botUserName + "?fields=roles,allowImpersonation",
+              null,
+              User.class);
+
+      assertNotNull(botUser.getRoles(), "Bot user should have roles assigned");
+      assertTrue(
+          botUser.getRoles().stream().anyMatch(r -> r.getName().equals(APP_BOT_IMPERSONATION_ROLE)),
+          "Bot with impersonation should have ApplicationBotImpersonationRole");
+      assertTrue(
+          Boolean.TRUE.equals(botUser.getAllowImpersonation()),
+          "Bot with impersonation should have allowImpersonation enabled");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_appBotImpersonation_requiresAdmin(TestNamespace ns) throws Exception {
+    HttpClient adminHttpClient = SdkClients.adminClient().getHttpClient();
+    HttpClient nonAdminHttpClient = SdkClients.user1Client().getHttpClient();
+    String appName = "nonAdminImpApp" + System.currentTimeMillis();
+
+    try {
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(appName)
+              .withDisplayName("Non-Admin Impersonation App")
+              .withDescription("Test app that requires admin for impersonation")
+              .withFeatures("test features")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+
+      adminHttpClient.execute(
+          HttpMethod.POST, "/v1/apps/marketplace", marketPlaceReq, AppMarketPlaceDefinition.class);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(appName)
+              .withAppConfiguration(new HashMap<>())
+              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
+              .withAllowBotImpersonation(true);
+
+      Exception exception =
+          assertThrows(
+              Exception.class,
+              () -> nonAdminHttpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class),
+              "Non-admin should not be able to create app with bot impersonation enabled");
+      assertTrue(
+          exception.getMessage().contains("admin")
+              || exception.getMessage().contains("Authorization"),
+          "Error should mention admin or authorization: " + exception.getMessage());
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_autopilotSuspendResume(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String autopilotAppName = "AutoPilotApplication";
+
+    // Get AutoPilot app
+    App autopilotApp = Apps.getByName(autopilotAppName);
+    assertNotNull(autopilotApp, "AutoPilot app should exist");
+    String appId = autopilotApp.getId().toString();
+
+    // Test 1: Set active to false (suspend workflow)
+    String patchRequest1 =
+        "[{\"op\":\"replace\",\"path\":\"/appConfiguration/active\",\"value\":false}]";
+
+    // This should work without throwing FlowableException
+    httpClient.executeForString(
+        HttpMethod.PATCH,
+        "/v1/apps/" + appId,
+        patchRequest1,
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Verify app is updated
+    App updatedApp1 = Apps.getByName(autopilotAppName);
+    Map<String, Object> appConfig1 = JsonUtils.getMap(updatedApp1.getAppConfiguration());
+    assertFalse((Boolean) appConfig1.get("active"), "AutoPilot should be inactive");
+
+    // Test 2: Set active to true (resume workflow)
+    String patchRequest2 =
+        "[{\"op\":\"replace\",\"path\":\"/appConfiguration/active\",\"value\":true}]";
+
+    // This should also work without throwing exception
+    httpClient.executeForString(
+        HttpMethod.PATCH,
+        "/v1/apps/" + appId,
+        patchRequest2,
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Verify app is updated
+    App updatedApp2 = Apps.getByName(autopilotAppName);
+    Map<String, Object> appConfig2 = JsonUtils.getMap(updatedApp2.getAppConfiguration());
+    assertTrue((Boolean) appConfig2.get("active"), "AutoPilot should be active");
+
+    // Test 3: Try to suspend again (should be idempotent, no error)
+    httpClient.executeForString(
+        HttpMethod.PATCH,
+        "/v1/apps/" + appId,
+        patchRequest1,
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Test 4: Try to suspend when already suspended (should not throw error)
+    httpClient.executeForString(
+        HttpMethod.PATCH,
+        "/v1/apps/" + appId,
+        patchRequest1,
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Resume/activate the AutoPilot application at the end of the test
+    httpClient.executeForString(
+        HttpMethod.PATCH,
+        "/v1/apps/" + appId,
+        patchRequest2,
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Verify app is active
+    App finalApp = Apps.getByName(autopilotAppName);
+    Map<String, Object> finalConfig = JsonUtils.getMap(finalApp.getAppConfiguration());
+    assertTrue((Boolean) finalConfig.get("active"), "AutoPilot should be active at test end");
   }
 }

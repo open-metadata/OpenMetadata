@@ -20,7 +20,7 @@
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",
-    "cronExpression": "0 0 * * *"
+    "cronExpression": "30 0 * * *"
   },
   "supportsInterrupt": true
 }

@@ -37,6 +37,12 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
     HiveConnection,
     HiveScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -55,6 +61,9 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.database.hive.connection import (
     get_connection,
     get_connection_url,
+)
+from metadata.ingestion.source.database.hive.connection import (
+    test_connection as hive_test_connection,
 )
 from metadata.ingestion.source.database.hive.metadata import HiveSource
 
@@ -839,3 +848,336 @@ class HiveUnitTest(TestCase):
         self.assertEqual(ldap_ssl_connection.username, "username")
         self.assertEqual(ldap_ssl_connection.password.get_secret_value(), "password")
         self.assertTrue(ldap_ssl_connection.useSSL)
+
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources"
+    )
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.get_metastore_connection"
+    )
+    def test_test_connection_with_postgres_connection_object(
+        self, mock_get_metastore, mock_test_db_schema
+    ):
+        """
+        Test test_connection when metastoreConnection is already a PostgresConnection object
+        """
+        mock_metadata = Mock()
+        mock_engine = Mock()
+        mock_metastore_engine = Mock()
+        mock_get_metastore.return_value = mock_metastore_engine
+        mock_test_db_schema.return_value = Mock()
+
+        postgres_conn = PostgresConnection(
+            username="postgres_user",
+            hostPort="localhost:5432",
+            database="hive_metastore",
+        )
+
+        hive_conn = HiveConnection(
+            type="Hive",
+            hostPort="localhost:10000",
+            metastoreConnection=postgres_conn,
+        )
+
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+
+        mock_get_metastore.assert_called_once_with(postgres_conn)
+        mock_test_db_schema.assert_called_once()
+        call_kwargs = mock_test_db_schema.call_args
+        self.assertEqual(call_kwargs.kwargs["engine"], mock_metastore_engine)
+
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources"
+    )
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.get_metastore_connection"
+    )
+    def test_test_connection_with_mysql_connection_object(
+        self, mock_get_metastore, mock_test_db_schema
+    ):
+        """
+        Test test_connection when metastoreConnection is already a MysqlConnection object
+        """
+        mock_metadata = Mock()
+        mock_engine = Mock()
+        mock_metastore_engine = Mock()
+        mock_get_metastore.return_value = mock_metastore_engine
+        mock_test_db_schema.return_value = Mock()
+
+        mysql_conn = MysqlConnection(
+            username="mysql_user",
+            hostPort="localhost:3306",
+            databaseSchema="hive_metastore",
+        )
+
+        hive_conn = HiveConnection(
+            type="Hive",
+            hostPort="localhost:10000",
+            metastoreConnection=mysql_conn,
+        )
+
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+
+        mock_get_metastore.assert_called_once_with(mysql_conn)
+        mock_test_db_schema.assert_called_once()
+        call_kwargs = mock_test_db_schema.call_args
+        self.assertEqual(call_kwargs.kwargs["engine"], mock_metastore_engine)
+
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources"
+    )
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.get_metastore_connection"
+    )
+    def test_test_connection_with_postgres_dict(
+        self, mock_get_metastore, mock_test_db_schema
+    ):
+        """
+        Test test_connection when metastoreConnection is a dict that validates as PostgresConnection
+        """
+        mock_metadata = Mock()
+        mock_engine = Mock()
+        mock_metastore_engine = Mock()
+        mock_get_metastore.return_value = mock_metastore_engine
+        mock_test_db_schema.return_value = Mock()
+
+        postgres_dict = {
+            "type": "Postgres",
+            "username": "postgres_user",
+            "hostPort": "localhost:5432",
+            "database": "hive_metastore",
+        }
+
+        hive_conn = HiveConnection(
+            type="Hive",
+            hostPort="localhost:10000",
+            metastoreConnection=postgres_dict,
+        )
+
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+
+        mock_get_metastore.assert_called_once()
+        self.assertIsInstance(hive_conn.metastoreConnection, PostgresConnection)
+
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources"
+    )
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.get_metastore_connection"
+    )
+    def test_test_connection_with_mysql_dict(
+        self, mock_get_metastore, mock_test_db_schema
+    ):
+        """
+        Test test_connection when metastoreConnection is a dict that validates as MysqlConnection
+        """
+        mock_metadata = Mock()
+        mock_engine = Mock()
+        mock_metastore_engine = Mock()
+        mock_get_metastore.return_value = mock_metastore_engine
+        mock_test_db_schema.return_value = Mock()
+
+        mysql_dict = {
+            "type": "Mysql",
+            "username": "mysql_user",
+            "hostPort": "localhost:3306",
+            "databaseSchema": "hive_metastore",
+        }
+
+        hive_conn = HiveConnection(
+            type="Hive",
+            hostPort="localhost:10000",
+            metastoreConnection=mysql_dict,
+        )
+
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+
+        mock_get_metastore.assert_called_once()
+        self.assertIsInstance(hive_conn.metastoreConnection, MysqlConnection)
+
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources"
+    )
+    def test_test_connection_with_invalid_dict_raises_error(self, mock_test_db_schema):
+        """
+        Test test_connection raises ValueError when metastoreConnection dict is invalid
+        """
+        mock_metadata = Mock()
+        mock_engine = Mock()
+
+        invalid_dict = {
+            "type": "InvalidType",
+            "invalid_field": "invalid_value",
+        }
+
+        hive_conn = HiveConnection(
+            type="Hive",
+            hostPort="localhost:10000",
+            metastoreConnection=invalid_dict,
+        )
+
+        with self.assertRaises(ValueError) as context:
+            hive_test_connection(mock_metadata, mock_engine, hive_conn)
+
+        self.assertEqual(str(context.exception), "Invalid metastore connection")
+
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources"
+    )
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.get_metastore_connection"
+    )
+    def test_test_connection_with_empty_dict(
+        self, mock_get_metastore, mock_test_db_schema
+    ):
+        """
+        Test test_connection when metastoreConnection is an empty dict (no metastore)
+        """
+        mock_metadata = Mock()
+        mock_engine = Mock()
+        mock_test_db_schema.return_value = Mock()
+
+        hive_conn = HiveConnection(
+            type="Hive",
+            hostPort="localhost:10000",
+            metastoreConnection={},
+        )
+
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+
+        mock_get_metastore.assert_not_called()
+        mock_test_db_schema.assert_called_once()
+        call_kwargs = mock_test_db_schema.call_args
+        self.assertEqual(call_kwargs.kwargs["engine"], mock_engine)
+
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources"
+    )
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.get_metastore_connection"
+    )
+    def test_test_connection_with_none_metastore(
+        self, mock_get_metastore, mock_test_db_schema
+    ):
+        """
+        Test test_connection when metastoreConnection is None
+        """
+        mock_metadata = Mock()
+        mock_engine = Mock()
+        mock_test_db_schema.return_value = Mock()
+
+        hive_conn = HiveConnection(
+            type="Hive",
+            hostPort="localhost:10000",
+            metastoreConnection=None,
+        )
+
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+
+        mock_get_metastore.assert_not_called()
+        mock_test_db_schema.assert_called_once()
+        call_kwargs = mock_test_db_schema.call_args
+        self.assertEqual(call_kwargs.kwargs["engine"], mock_engine)
+
+
+class HiveSourceMetastoreValidationTest(TestCase):
+    """
+    Test the _get_validated_metastore_connection method in HiveSource
+    """
+
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+    )
+    def setUp(self, mock_test_connection):
+        mock_test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_hive_config)
+        self.hive = HiveSource.create(
+            mock_hive_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+    def test_get_validated_metastore_connection_with_none(self):
+        """
+        Test _get_validated_metastore_connection returns None when metastoreConnection is None
+        """
+        self.hive.service_connection.metastoreConnection = None
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsNone(result)
+
+    def test_get_validated_metastore_connection_with_postgres_object(self):
+        """
+        Test _get_validated_metastore_connection returns PostgresConnection when already validated
+        """
+        postgres_conn = PostgresConnection(
+            username="postgres_user",
+            hostPort="localhost:5432",
+            database="hive_metastore",
+        )
+        self.hive.service_connection.metastoreConnection = postgres_conn
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, PostgresConnection)
+        self.assertEqual(result, postgres_conn)
+
+    def test_get_validated_metastore_connection_with_mysql_object(self):
+        """
+        Test _get_validated_metastore_connection returns MysqlConnection when already validated
+        """
+        mysql_conn = MysqlConnection(
+            username="mysql_user",
+            hostPort="localhost:3306",
+            databaseSchema="hive_metastore",
+        )
+        self.hive.service_connection.metastoreConnection = mysql_conn
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, MysqlConnection)
+        self.assertEqual(result, mysql_conn)
+
+    def test_get_validated_metastore_connection_with_postgres_dict(self):
+        """
+        Test _get_validated_metastore_connection parses dict as PostgresConnection
+        """
+        postgres_dict = {
+            "type": "Postgres",
+            "username": "postgres_user",
+            "hostPort": "localhost:5432",
+            "database": "hive_metastore",
+        }
+        self.hive.service_connection.metastoreConnection = postgres_dict
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, PostgresConnection)
+        self.assertEqual(result.username, "postgres_user")
+
+    def test_get_validated_metastore_connection_with_mysql_dict(self):
+        """
+        Test _get_validated_metastore_connection parses dict as MysqlConnection
+        """
+        mysql_dict = {
+            "type": "Mysql",
+            "username": "mysql_user",
+            "hostPort": "localhost:3306",
+            "databaseSchema": "hive_metastore",
+        }
+        self.hive.service_connection.metastoreConnection = mysql_dict
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsInstance(result, MysqlConnection)
+        self.assertEqual(result.username, "mysql_user")
+
+    def test_get_validated_metastore_connection_with_empty_dict(self):
+        """
+        Test _get_validated_metastore_connection returns None for empty dict
+        """
+        self.hive.service_connection.metastoreConnection = {}
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsNone(result)
+
+    def test_get_validated_metastore_connection_with_invalid_dict(self):
+        """
+        Test _get_validated_metastore_connection returns None for invalid dict
+        """
+        invalid_dict = {
+            "type": "InvalidType",
+            "invalid_field": "invalid_value",
+        }
+        self.hive.service_connection.metastoreConnection = invalid_dict
+        result = self.hive._get_validated_metastore_connection()
+        self.assertIsNone(result)

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { expect } from '@playwright/test';
 import { FillSupersetFormProps } from '../support/interfaces/ServiceForm.interface';
 
 export const fillSupersetFormDetails = async ({
@@ -24,8 +25,8 @@ export const fillSupersetFormDetails = async ({
     database,
   },
 }: FillSupersetFormProps) => {
-  await page.locator('#root\\/hostPort').clear();
-  await page.fill('#root\\/hostPort', hostPort);
+  await page.locator(String.raw`#root\/hostPort`).clear();
+  await page.fill(String.raw`#root\/hostPort`, hostPort);
 
   if (connectionType === 'SupersetApiConnection') {
     await page
@@ -51,31 +52,70 @@ export const fillSupersetFormDetails = async ({
     );
 
     if (connectionHostPort) {
-      await page.locator('#root\\/connection\\/hostPort').clear();
-      await page.fill('#root\\/connection\\/hostPort', connectionHostPort, {
-        force: true,
-      });
+      await page.locator(String.raw`#root\/connection\/hostPort`).clear();
+      await page.fill(
+        String.raw`#root\/connection\/hostPort`,
+        connectionHostPort,
+        {
+          force: true,
+        }
+      );
     }
 
     if (database) {
-      await page.locator('#root\\/connection\\/database').clear();
-      await page.fill('#root\\/connection\\/database', database, {
+      await page.locator(String.raw`#root\/connection\/database`).clear();
+      await page.fill(String.raw`#root\/connection\/database`, database, {
         force: true,
       });
     }
   }
 
-  await page.locator('#root\\/connection\\/username').clear();
-  await page.fill('#root\\/connection\\/username', username, { force: true });
+  await page.locator(String.raw`#root\/connection\/username`).clear();
+  await page.fill(String.raw`#root\/connection\/username`, username, {
+    force: true,
+  });
   if (connectionType === 'SupersetApiConnection') {
-    await page.locator('#root\\/connection\\/password').clear();
-    await page.fill('#root\\/connection\\/password', password, {
+    await page.locator(String.raw`#root\/connection\/password`).clear();
+    await page.fill(String.raw`#root\/connection\/password`, password, {
       force: true,
     });
   } else {
-    await page.locator('#root\\/connection\\/authType\\/password').clear();
-    await page.fill('#root\\/connection\\/authType\\/password', password, {
-      force: true,
+    await page
+      .locator(String.raw`#root\/connection\/authType\/password`)
+      .clear();
+    await page.fill(
+      String.raw`#root\/connection\/authType\/password`,
+      password,
+      {
+        force: true,
+      }
+    );
+  }
+
+  // Select the ingestion runner if the selector is visible
+  const runnerSelector = page.getByTestId('select-widget-root/ingestionRunner');
+
+  if (await runnerSelector.isVisible()) {
+    await runnerSelector.click();
+    await page.waitForSelector('.ant-select-dropdown:visible', {
+      state: 'visible',
     });
+
+    // Search for the runner using the search input
+    await runnerSelector.locator('input').fill('CollateSaaS');
+
+    // Using data-key which relies on `name` which is more reliable data in AUTs
+    // instead of data-testid which depends on the `displayName` which can change
+    await page.waitForSelector(
+      '.ant-select-dropdown:visible [data-key="CollateSaaS"]',
+      { state: 'visible' }
+    );
+    await page
+      .locator('.ant-select-dropdown:visible [data-key="CollateSaaS"]')
+      .click();
+
+    await expect(
+      page.getByTestId('select-widget-root/ingestionRunner')
+    ).toContainText('Collate SaaS');
   }
 };

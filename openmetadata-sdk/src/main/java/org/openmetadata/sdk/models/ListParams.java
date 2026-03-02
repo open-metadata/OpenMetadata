@@ -8,6 +8,8 @@ import java.util.Map;
  */
 public class ListParams {
   private Integer limit;
+  private Integer offset;
+  private Boolean latest;
   private String after;
   private String before;
   private String fields;
@@ -142,6 +144,32 @@ public class ListParams {
     return setPipelineType(pipelineType);
   }
 
+  public Integer getOffset() {
+    return offset;
+  }
+
+  public ListParams setOffset(Integer offset) {
+    this.offset = offset;
+    return this;
+  }
+
+  public ListParams withOffset(Integer offset) {
+    return setOffset(offset);
+  }
+
+  public Boolean getLatest() {
+    return latest;
+  }
+
+  public ListParams setLatest(Boolean latest) {
+    this.latest = latest;
+    return this;
+  }
+
+  public ListParams withLatest(boolean latest) {
+    return setLatest(latest);
+  }
+
   public ListParams withLimit(Integer limit) {
     return setLimit(limit);
   }
@@ -182,6 +210,12 @@ public class ListParams {
     if (limit != null) {
       params.put("limit", limit.toString());
     }
+    if (offset != null) {
+      params.put("offset", offset.toString());
+    }
+    if (latest != null) {
+      params.put("latest", latest.toString());
+    }
     if (after != null) {
       params.put("after", after);
     }
@@ -198,6 +232,8 @@ public class ListParams {
   public ListParams copy() {
     ListParams copy = new ListParams();
     copy.limit = this.limit;
+    copy.offset = this.offset;
+    copy.latest = this.latest;
     copy.after = this.after;
     copy.before = this.before;
     copy.fields = this.fields;

@@ -64,6 +64,7 @@ import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.ee10.servlet.ServletMapping;
 import org.eclipse.jetty.ee10.servlet.SessionHandler;
 import org.eclipse.jetty.ee10.websocket.server.config.JettyWebSocketServletContainerInitializer;
+import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.http.UriCompliance;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -167,6 +168,7 @@ import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.swagger.SwaggerBundle;
 import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CustomParameterNameProvider;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.quartz.SchedulerException;
@@ -439,8 +441,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     SessionCookieConfig cookieConfig =
         Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
     cookieConfig.setHttpOnly(true);
-    cookieConfig.setSecure(
-        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie());
+    boolean isSecure =
+        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie();
+    cookieConfig.setSecure(isSecure);
+
+    if (isSecure) {
+      sessionHandler.setSameSite(HttpCookie.SameSite.NONE);
+    }
 
     // Get session expiry - use OIDC config if available, otherwise default
     int sessionExpiry = 604800; // Default 7 days in seconds
@@ -1100,8 +1107,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EventPubSub.shutdown();
-      AppScheduler.shutDown();
       EventSubscriptionScheduler.shutDown();
+      AsyncService.getInstance().shutdown();
+      AppScheduler.shutDown();
       LOG.info("Stopping the application");
     }
   }

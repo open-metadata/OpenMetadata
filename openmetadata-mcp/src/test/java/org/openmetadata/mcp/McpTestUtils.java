@@ -3,6 +3,7 @@ package org.openmetadata.mcp;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -209,5 +210,58 @@ public class McpTestUtils {
     arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_entity_lineage", arguments);
+  }
+
+  public static Map<String, Object> createLineageToolCall(
+      String fromEntityType, String fromEntityId, String toEntityType, String toEntityId) {
+    Map<String, Object> fromEntity = new HashMap<>();
+    fromEntity.put("type", fromEntityType);
+    fromEntity.put("id", fromEntityId);
+
+    Map<String, Object> toEntity = new HashMap<>();
+    toEntity.put("type", toEntityType);
+    toEntity.put("id", toEntityId);
+
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("fromEntity", fromEntity);
+    arguments.put("toEntity", toEntity);
+    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("create_lineage", arguments);
+  }
+
+  public static Map<String, Object> createGetTestDefinitionsToolCall(String entityType) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("entityType", entityType);
+    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("get_test_definitions", arguments);
+  }
+
+  public static Map<String, Object> createTestCaseToolCall(
+      String name,
+      String fqn,
+      String testDefinitionName,
+      List<Map<String, String>> parameterValues) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("name", name);
+    arguments.put("fqn", fqn);
+    arguments.put("testDefinitionName", testDefinitionName);
+    arguments.put("parameterValues", parameterValues);
+    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("create_test_case", arguments);
+  }
+
+  public static Map<String, Object> createRootCauseAnalysisToolCall(
+      String fqn, String entityType, int upstreamDepth, int downstreamDepth) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("fqn", fqn);
+    arguments.put("entityType", entityType);
+    arguments.put("upstreamDepth", upstreamDepth);
+    arguments.put("downstreamDepth", downstreamDepth);
+    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("root_cause_analysis", arguments);
   }
 }

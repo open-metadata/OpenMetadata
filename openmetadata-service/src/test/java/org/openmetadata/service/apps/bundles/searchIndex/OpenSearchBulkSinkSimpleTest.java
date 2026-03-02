@@ -91,6 +91,7 @@ class OpenSearchBulkSinkSimpleTest {
 
   @Test
   void testAddEntitiesToVectorIndexBatch() {
-    openSearchBulkSink.addEntitiesToVectorIndexBatch(null, Collections.emptyList(), true, null);
+    openSearchBulkSink.addEntitiesToVectorIndexBatch(
+        null, Collections.emptyList(), true, null, null);
   }
 }

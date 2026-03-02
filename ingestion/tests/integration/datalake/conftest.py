@@ -29,6 +29,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 
 from ..containers import MinioContainerConfigs, get_minio_container
+from ..integration_base import generate_name
 
 BUCKET_NAME = "my-bucket"
 
@@ -145,12 +146,18 @@ DATA_QUALITY_CONFIG = {
 }
 
 
-@pytest.fixture(scope="session")
-def ingestion_fqn():
-    return f'datalake_for_integration_tests.default.{BUCKET_NAME}."users/users.csv".testSuite.uuid'
+@pytest.fixture(scope="package")
+def datalake_service_name():
+    """Generate unique service name for test isolation in parallel execution."""
+    return generate_name().root
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
+def ingestion_fqn(datalake_service_name):
+    return f'{datalake_service_name}.default.{BUCKET_NAME}."users/users.csv".testSuite.uuid'
+
+
+@pytest.fixture(scope="package")
 def minio_container():
     with get_minio_container(MinioContainerConfigs()) as container:
         yield container
@@ -178,8 +185,10 @@ def setup_s3(minio_container) -> None:
 
 
 @pytest.fixture(scope="class")
-def ingestion_config(minio_container):
+def ingestion_config(minio_container, datalake_service_name):
     ingestion_config = deepcopy(INGESTION_CONFIG)
+    # Use dynamic service name for test isolation in parallel execution
+    ingestion_config["source"]["serviceName"] = datalake_service_name
     ingestion_config["source"]["serviceConnection"]["config"]["configSource"].update(
         {
             "securityConfig": {
@@ -194,27 +203,34 @@ def ingestion_config(minio_container):
 
 
 @pytest.fixture(scope="class")
-def run_ingestion(metadata, ingestion_config):
+def run_ingestion(metadata, ingestion_config, datalake_service_name):
     ingestion_workflow = MetadataWorkflow.create(ingestion_config)
     ingestion_workflow.execute()
     ingestion_workflow.raise_from_status()
     ingestion_workflow.stop()
     yield
-    db_service = metadata.get_by_name(
-        entity=DatabaseService, fqn="datalake_for_integration_tests"
-    )
-    metadata.delete(DatabaseService, db_service.id, recursive=True, hard_delete=True)
+    db_service = metadata.get_by_name(entity=DatabaseService, fqn=datalake_service_name)
+    if db_service:
+        metadata.delete(
+            DatabaseService, db_service.id, recursive=True, hard_delete=True
+        )
 
 
 @pytest.fixture(scope="class")
-def run_test_suite_workflow(run_ingestion, ingestion_config):
+def run_test_suite_workflow(run_ingestion, ingestion_config, ingestion_fqn):
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
+    service_name = ingestion_config["source"]["serviceName"]
+    workflow_config["source"]["serviceName"] = service_name
+    workflow_config["source"]["sourceConfig"]["config"][
+        "entityFullyQualifiedName"
+    ] = f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
     workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
         {
-            "serviceName": ingestion_config["source"]["serviceName"],
+            "serviceName": service_name,
             "serviceConnection": ingestion_config["source"]["serviceConnection"],
         }
     ]
+    workflow_config["ingestionPipelineFQN"] = ingestion_fqn
     ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
     ingestion_workflow.execute()
     ingestion_workflow.raise_from_status()
@@ -222,9 +238,13 @@ def run_test_suite_workflow(run_ingestion, ingestion_config):
 
 
 @pytest.fixture(scope="class")
-def run_sampled_test_suite_workflow(metadata, run_ingestion, ingestion_config):
+def run_sampled_test_suite_workflow(
+    metadata, run_ingestion, ingestion_config, ingestion_fqn
+):
+    service_name = ingestion_config["source"]["serviceName"]
+    table_fqn = f'{service_name}.default.my-bucket."users/users.csv"'
     metadata.create_or_update_table_profiler_config(
-        fqn='datalake_for_integration_tests.default.my-bucket."users/users.csv"',
+        fqn=table_fqn,
         table_profiler_config=TableProfilerConfig(
             profileSampleType=ProfileSampleType.PERCENTAGE,
             profileSample=50.0,
@@ -232,18 +252,23 @@ def run_sampled_test_suite_workflow(metadata, run_ingestion, ingestion_config):
         ),
     )
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
+    workflow_config["source"]["serviceName"] = service_name
+    workflow_config["source"]["sourceConfig"]["config"][
+        "entityFullyQualifiedName"
+    ] = f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
     workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
         {
-            "serviceName": ingestion_config["source"]["serviceName"],
+            "serviceName": service_name,
             "serviceConnection": ingestion_config["source"]["serviceConnection"],
         }
     ]
+    workflow_config["ingestionPipelineFQN"] = ingestion_fqn
     ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
     ingestion_workflow.execute()
     ingestion_workflow.raise_from_status()
     ingestion_workflow.stop()
     metadata.create_or_update_table_profiler_config(
-        fqn='datalake_for_integration_tests.default.my-bucket."users/users.csv"',
+        fqn=table_fqn,
         table_profiler_config=TableProfilerConfig(
             profileSampleType=ProfileSampleType.PERCENTAGE,
             profileSample=100.0,
@@ -252,9 +277,13 @@ def run_sampled_test_suite_workflow(metadata, run_ingestion, ingestion_config):
 
 
 @pytest.fixture(scope="class")
-def run_partitioned_test_suite_workflow(metadata, run_ingestion, ingestion_config):
+def run_partitioned_test_suite_workflow(
+    metadata, run_ingestion, ingestion_config, ingestion_fqn
+):
+    service_name = ingestion_config["source"]["serviceName"]
+    table_fqn = f'{service_name}.default.my-bucket."users/users.csv"'
     metadata.create_or_update_table_profiler_config(
-        fqn='datalake_for_integration_tests.default.my-bucket."users/users.csv"',
+        fqn=table_fqn,
         table_profiler_config=TableProfilerConfig(
             partitioning=PartitionProfilerConfig(
                 enablePartitioning=True,
@@ -265,18 +294,23 @@ def run_partitioned_test_suite_workflow(metadata, run_ingestion, ingestion_confi
         ),
     )
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
+    workflow_config["source"]["serviceName"] = service_name
+    workflow_config["source"]["sourceConfig"]["config"][
+        "entityFullyQualifiedName"
+    ] = f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
     workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
         {
-            "serviceName": ingestion_config["source"]["serviceName"],
+            "serviceName": service_name,
             "serviceConnection": ingestion_config["source"]["serviceConnection"],
         }
     ]
+    workflow_config["ingestionPipelineFQN"] = ingestion_fqn
     ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
     ingestion_workflow.execute()
     ingestion_workflow.raise_from_status()
     ingestion_workflow.stop()
     metadata.create_or_update_table_profiler_config(
-        fqn='datalake_for_integration_tests.default.my-bucket."users/users.csv"',
+        fqn=table_fqn,
         table_profiler_config=TableProfilerConfig(partitioning=None),
     )
 

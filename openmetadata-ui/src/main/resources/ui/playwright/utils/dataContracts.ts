@@ -73,10 +73,19 @@ export const validateDataContractInsideBundleTestSuites = async (
 
   await page.waitForLoadState('networkidle');
 
+  const bundleSuitesResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
+      response.request().method() === 'GET' &&
+      response.status() === 200
+  );
+
   await page
     .locator('.ant-radio-button-wrapper')
     .filter({ hasText: 'Bundle Suites' })
     .click();
+
+  await bundleSuitesResponse;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
 };
@@ -490,4 +499,23 @@ export const importOdcsViaDropdown = async (
 
   await page.getByTestId('import-button').click();
   // await importResponse;
+};
+
+export const importOMViaDropdown = async (
+  page: Page,
+  yamlContent: string,
+  filename: string
+): Promise<void> => {
+  await page.getByTestId('add-contract-button').click();
+
+  await page.getByTestId('import-openmetadata-contract-button').click();
+
+  const fileInput = page.getByTestId('file-upload-input');
+  await fileInput.setInputFiles({
+    name: filename,
+    mimeType: 'application/yaml',
+    buffer: Buffer.from(yamlContent),
+  });
+
+  await page.getByTestId('import-button').click();
 };

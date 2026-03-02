@@ -43,17 +43,6 @@ public class Auth0Validator {
         return domainValidation;
       }
 
-      // Validate against OIDC discovery document for public clients too
-      String discoveryUri = authority + AUTH0_WELL_KNOWN_PATH;
-      OidcClientConfig publicClientConfig =
-          new OidcClientConfig().withId(authConfig.getClientId()).withDiscoveryUri(discoveryUri);
-
-      FieldError discoveryCheck =
-          discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, publicClientConfig);
-      if (discoveryCheck != null) {
-        return discoveryCheck;
-      }
-
       FieldError clientIdValidation = validatePublicClientId(authority, authConfig.getClientId());
       if (clientIdValidation != null) {
         return clientIdValidation;
@@ -210,11 +199,13 @@ public class Auth0Validator {
           String error = errorResponse.path("error").asText();
           String errorDescription = errorResponse.path("error_description").asText();
 
-          if ("invalid_client".equals(error)
-              || "unauthorized_client".equals(error)
-              || "access_denied".equals(error)) {
+          if ("invalid_client".equals(error) || "unauthorized_client".equals(error)) {
             return ValidationErrorBuilder.createFieldError(
                 ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, "Invalid client secret");
+          } else if ("access_denied".equals(error)) {
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+                "Access denied: " + errorDescription);
           } else {
             return ValidationErrorBuilder.createFieldError(
                 ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,

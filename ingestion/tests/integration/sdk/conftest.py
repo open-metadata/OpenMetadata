@@ -2,6 +2,7 @@
 Minimal conftest for SDK integration tests.
 Override the parent conftest to avoid testcontainers dependency.
 """
+import uuid
 
 import pytest
 from sqlalchemy import Column as SQAColumn
@@ -39,9 +40,9 @@ def metadata():
 
 
 @pytest.fixture(scope="module")
-def create_postgres_service(postgres_container, tmp_path_factory):
+def create_postgres_service(postgres_container):
     return CreateDatabaseServiceRequest(
-        name="dq_test_service_" + tmp_path_factory.mktemp("dq").name,
+        name=f"dq_test_service_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.Postgres,
         connection=DatabaseConnection(
             config=PostgresConnection(

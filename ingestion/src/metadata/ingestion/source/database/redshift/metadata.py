@@ -314,8 +314,10 @@ class RedshiftSource(
 
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
-        results = self.engine.execute(
-            REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name)
+        results = self.connection.execute(
+            sql.text(
+                REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name)
+            )
         ).all()
         self.external_location_map = {
             (database_name, row.schemaname, row.tablename): row.location
@@ -545,6 +547,15 @@ class RedshiftSource(
             {"schema": schema_name},
         )
 
+        # Track which FK constraint definitions have already been extracted per
+        # table.  The query joins pg_constraint to pg_attribute via
+        # ANY(t.conkey), so a FK spanning N columns produces N identical rows
+        # (same condef, same conkey).  Without deduplication, _extract_fkeys
+        # would be called N times and append N identical dicts to the fkey list.
+        seen_fkey_codefs: dict[str, set[str]] = {}
+
+        database = self.connection.engine.url.database
+
         for row in rows or []:
             schema_table_name = f"{row.schema}.{row.table_name}"
             schema_table_constraints = self.constraint_details.setdefault(
@@ -554,10 +565,14 @@ class RedshiftSource(
                 pkey = schema_table_constraints.setdefault("pkey", set())
                 pkey.add(row.column_name)
             if row.constraint_type == "f":
+                seen = seen_fkey_codefs.setdefault(schema_table_name, set())
+                if row.condef in seen:
+                    continue
+                seen.add(row.condef)
                 fkey_constraint = {
                     "key": row.conkey,
                     "condef": row.condef,
-                    "database": self.connection.engine.url.database,
+                    "database": database,
                 }
                 extracted_fkey = self._extract_fkeys(fkey_constraint)
                 fkey: list[dict[str, str]] = schema_table_constraints.setdefault(
