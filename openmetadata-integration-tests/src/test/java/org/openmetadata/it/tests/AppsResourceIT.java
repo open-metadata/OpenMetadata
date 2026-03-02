@@ -1068,4 +1068,70 @@ public class AppsResourceIT {
     Map<String, Object> finalConfig = JsonUtils.getMap(finalApp.getAppConfiguration());
     assertTrue((Boolean) finalConfig.get("active"), "AutoPilot should be active at test end");
   }
+
+  /**
+   * Verifies that a non-enabled app (enabled=false via config) can still be retrieved via GET and
+   * uninstalled via DELETE. Regression test: the GET endpoint previously called runAppInit without
+   * skipping the enabled check, causing it to throw an exception for disabled apps. This blocked
+   * the UI from loading app details, which in turn made the uninstall button send an empty app name.
+   */
+  @Test
+  void test_getAndUninstallDisabledApp(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = "DisabledTestApp";
+
+    try {
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(appName)
+              .withDisplayName("Disabled Test App")
+              .withDescription("An app with enabled=false in its config")
+              .withFeatures("test features")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+
+      httpClient.execute(
+          HttpMethod.PUT, "/v1/apps/marketplace", marketPlaceReq, AppMarketPlaceDefinition.class);
+
+      App installedApp = Apps.install().name(appName).execute();
+      assertNotNull(installedApp);
+
+      App appByName = Apps.getByName(appName);
+      assertNotNull(appByName, "Disabled app should be retrievable by name");
+      assertEquals(appName, appByName.getName());
+      assertNotNull(appByName.getFullyQualifiedName());
+      assertFalse(
+          Boolean.TRUE.equals(appByName.getEnabled()),
+          "App should be marked as not enabled from config");
+
+      App appById =
+          httpClient.execute(
+              HttpMethod.GET,
+              "/v1/apps/" + installedApp.getId() + "?include=all",
+              null,
+              App.class);
+      assertNotNull(appById, "Disabled app should be retrievable by ID");
+      assertEquals(appName, appById.getName());
+
+      Apps.uninstall(appName, true);
+
+      assertThrows(
+          Exception.class,
+          () -> Apps.getByName(appName),
+          "Disabled app should be gone after hard delete");
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
 }
