@@ -625,14 +625,22 @@ export const computePathDataForEdge = (
     targetPosition: Position.Left,
   });
 
-  pathDataCache.set(cacheKey, pathData);
+  const enrichedPathData: EdgePathData = {
+    ...pathData,
+    sourceX: coords.sourceX,
+    sourceY: coords.sourceY,
+    targetX: coords.targetX,
+    targetY: coords.targetY,
+  };
+
+  pathDataCache.set(cacheKey, enrichedPathData);
 
   if (pathDataCache.size > 1000) {
     const firstKey = pathDataCache.keys().next().value;
     pathDataCache.delete(firstKey ?? '');
   }
 
-  return pathData;
+  return enrichedPathData;
 };
 
 export const clearPathDataCache = (): void => {

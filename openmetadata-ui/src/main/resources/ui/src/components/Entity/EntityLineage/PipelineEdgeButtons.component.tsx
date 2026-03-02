@@ -13,13 +13,18 @@
 import { Button, Tag } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
-import { Edge, Position, useReactFlow, Viewport } from 'reactflow';
+import {
+  Position,
+  useNodes,
+  useReactFlow,
+  useViewport,
+  Viewport,
+} from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { StatusType } from '../../../generated/entity/data/pipeline';
 import { useLineageStore } from '../../../hooks/useLineageStore';
-import { useThrottledViewport } from '../../../hooks/useThrottledViewport';
 import { getEdgeCoordinates, transformPoint } from '../../../utils/CanvasUtils';
 import { getEdgePathData } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -84,37 +89,18 @@ interface EdgePathData {
 
 export const PipelineEdgeButtons: React.FC = () => {
   const { edges } = useLineageProvider();
-  const { columnsInCurrentPages, isEditMode, isDQEnabled, setSelectedEdge } =
-    useLineageStore();
+  const {
+    columnsInCurrentPages,
+    isEditMode,
+    isDQEnabled,
+    setSelectedEdge,
+    isRepositioning,
+    isCanvasReady,
+  } = useLineageStore();
   const { onAddPipelineClick } = useLineageProvider();
   const { getNode } = useReactFlow();
-  const viewport = useThrottledViewport(10);
-
-  const computePathData = (edge: Edge): EdgePathData | null => {
-    if (edge.data?.computedPath) {
-      return edge.data.computedPath;
-    }
-
-    const coords = getEdgeCoordinates(
-      edge,
-      getNode(edge.source),
-      getNode(edge.target),
-      columnsInCurrentPages
-    );
-
-    if (!coords) {
-      return null;
-    }
-
-    return getEdgePathData(edge.source, edge.target, {
-      sourceX: coords.sourceX,
-      sourceY: coords.sourceY,
-      targetX: coords.targetX,
-      targetY: coords.targetY,
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
-    });
-  };
+  const nodes = useNodes();
+  const viewport = useViewport();
 
   const edgesWithButtons = useMemo(() => {
     return edges.filter((edge) => {
@@ -135,6 +121,46 @@ export const PipelineEdgeButtons: React.FC = () => {
     });
   }, [edges]);
 
+  const edgePathDataMap = useMemo(() => {
+    const map = new Map<string, EdgePathData>();
+
+    edgesWithButtons.forEach((edge) => {
+      if (edge.data?.computedPath) {
+        map.set(edge.id, edge.data.computedPath);
+
+        return;
+      }
+
+      const coords = getEdgeCoordinates(
+        edge,
+        getNode(edge.source),
+        getNode(edge.target),
+        columnsInCurrentPages
+      );
+
+      if (!coords) {
+        return;
+      }
+
+      const pathData = getEdgePathData(edge.source, edge.target, {
+        sourceX: coords.sourceX,
+        sourceY: coords.sourceY,
+        targetX: coords.targetX,
+        targetY: coords.targetY,
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+      });
+
+      map.set(edge.id, pathData);
+    });
+
+    return map;
+  }, [edgesWithButtons, nodes, columnsInCurrentPages, getNode]);
+
+  if (isRepositioning || !isCanvasReady) {
+    return null;
+  }
+
   return (
     <div className="pipeline-edge-buttons-overlay">
       {edgesWithButtons.map((edge) => {
@@ -146,7 +172,7 @@ export const PipelineEdgeButtons: React.FC = () => {
           isPipelineRootNode,
         } = edge.data || {};
 
-        const pathData = computePathData(edge);
+        const pathData = edgePathDataMap.get(edge.id);
         if (!pathData) {
           return null;
         }

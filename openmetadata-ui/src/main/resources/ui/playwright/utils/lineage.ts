@@ -734,8 +734,6 @@ export const verifyExportLineageCSV = async (
     });
   }
 
-  console.log(parsedData);
-
   arr.forEach((expectedRow: LineageCSVRecord) => {
     const matchingRow = parsedData.find((row) =>
       Object.keys(expectedRow).every(

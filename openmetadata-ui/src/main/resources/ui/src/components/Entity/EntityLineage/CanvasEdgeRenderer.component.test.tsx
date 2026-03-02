@@ -34,6 +34,7 @@ const mockEdges: Edge[] = [
 const mockUseLineageStore = {
   isEditMode: false,
   columnsInCurrentPages: new Map<string, string[]>(),
+  isCanvasReady: false,
 };
 
 const mockUseLineageProvider = {
@@ -481,6 +482,7 @@ describe('CanvasEdgeRenderer', () => {
     beforeEach(() => {
       mockUseLineageProvider.edges = mockEdges;
       mockUseLineageStore.columnsInCurrentPages = new Map<string, string[]>();
+      mockUseLineageStore.isCanvasReady = true;
       mockIsPlaywrightEnv.mockReturnValue(true);
       mockCalculateEdgeMidpoints.mockReturnValue([
         {

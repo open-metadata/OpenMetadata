@@ -162,7 +162,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setTracedNodes,
     zoomValue,
     setColumnsHavingLineage,
-    activeLayer,
     setActiveLayer,
     updateActiveLayer,
     platformView,
@@ -178,6 +177,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     isColumnLevelLineage,
     selectedColumn,
     setSelectedColumn,
+    setIsRepositioning,
+    isDQEnabled,
     reset,
   } = useLineageStore();
 
@@ -431,11 +432,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         await new Promise((resolve) => requestAnimationFrame(resolve));
       }
 
+      setIsRepositioning(true);
+
       const positionedNodesEdges = await positionNodesUsingElk(
         initialNodes,
         updatedEdges,
         columnsLineageSet
       );
+
+      setIsRepositioning(false);
 
       const visibleNodes = positionedNodesEdges.nodes.map((node) => ({
         ...node,
@@ -462,7 +467,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     },
     [
       entityFqn,
-      activeLayer,
       isEditMode,
       reactFlowInstance,
       zoomValue,
@@ -960,7 +964,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         allNodes,
         updatedEdgeWithColumns,
         entityFqn,
-        activeLayer.includes(LineageLayer.ColumnLevelLineage)
+        isColumnLevelLineage
       );
 
     setColumnsHavingLineage(updatedColumnsHavingLineage);
@@ -1349,7 +1353,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
                 allNodes,
                 allEdges,
                 entityFqn,
-                activeLayer.includes(LineageLayer.ColumnLevelLineage)
+                isColumnLevelLineage
               );
             setEdges(createdEdges);
             setColumnsHavingLineage(columnsHavingLineage);
@@ -1372,7 +1376,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       updateLineageData,
       setNodes,
       entityFqn,
-      activeLayer,
+      isColumnLevelLineage,
       setEdges,
       tracedColumns,
     ]
@@ -1837,10 +1841,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, [lineageLayer]);
 
   useEffect(() => {
-    if (activeLayer.includes(LineageLayer.DataObservability)) {
+    if (isDQEnabled) {
       fetchDataQualityLineage(entityFqn, lineageConfig);
     }
-  }, [activeLayer, entityFqn, lineageConfig]);
+  }, [isDQEnabled, entityFqn, lineageConfig]);
 
   useEffect(() => {
     if (

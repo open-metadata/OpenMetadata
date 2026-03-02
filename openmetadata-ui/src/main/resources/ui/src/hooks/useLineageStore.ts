@@ -39,6 +39,8 @@ interface LineageState {
   isCreatingEdge: boolean;
   columnsInCurrentPages: Map<string, string[]>;
   nodeFilterState: Map<string, boolean>;
+  isRepositioning: boolean;
+  isCanvasReady: boolean;
 
   // Actions
   setIsEditMode: (isEditMode: boolean) => void;
@@ -67,6 +69,8 @@ interface LineageState {
   ) => void;
   updateColumnsInCurrentPages: (nodeId: string, columnFqns: string[]) => void;
   setNodeFilterState: (nodeId: string, isVisible: boolean) => void;
+  setIsRepositioning: (isRepositioning: boolean) => void;
+  setIsCanvasReady: (isCanvasReady: boolean) => void;
   reset: () => void;
 }
 
@@ -92,6 +96,8 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   isCreatingEdge: false,
   columnsInCurrentPages: new Map(),
   nodeFilterState: new Map(),
+  isRepositioning: false,
+  isCanvasReady: false,
 
   // Actions
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
@@ -230,6 +236,10 @@ export const useLineageStore = create<LineageState>((set, get) => ({
     });
   },
 
+  setIsRepositioning: (isRepositioning: boolean) => set({ isRepositioning }),
+
+  setIsCanvasReady: (isCanvasReady: boolean) => set({ isCanvasReady }),
+
   reset: () =>
     set({
       isEditMode: false,
@@ -250,5 +260,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       isCreatingEdge: false,
       columnsInCurrentPages: new Map(),
       nodeFilterState: new Map(),
+      isRepositioning: false,
+      isCanvasReady: false,
     }),
 }));

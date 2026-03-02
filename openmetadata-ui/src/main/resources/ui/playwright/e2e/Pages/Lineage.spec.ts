@@ -1303,7 +1303,7 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
-    await performZoomOut(page, 5);
+    await performZoomOut(page);
     await toggleLineageFilters(page, table1Fqn);
     await toggleLineageFilters(page, table2Fqn);
 

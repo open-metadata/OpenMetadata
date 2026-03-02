@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { IconButton, Stack } from '@mui/material';
+import { Stack } from '@mui/material';
+import { ChevronDown, ChevronUp } from '@untitledui/icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LINEAGE_CHILD_ITEMS_PER_PAGE } from '../../../../constants/constants';
 import { TestSummary } from '../../../../generated/tests/testCase';
@@ -20,6 +19,7 @@ import { useLineageStore } from '../../../../hooks/useLineageStore';
 import EntityLink from '../../../../utils/EntityLink';
 import { ColumnContent } from '../CustomNode.utils';
 import { EntityChildren, EntityChildrenItem } from './NodeChildren.interface';
+import { StyledIconButton } from './StyledIconButton';
 
 export interface VirtualColumnListProps {
   flatItems: EntityChildren;
@@ -145,13 +145,13 @@ const VirtualColumnList = ({
     <>
       {needsNavigation && (
         <Stack alignItems="center" justifyContent="center">
-          <IconButton
+          <StyledIconButton
             data-testid="column-scroll-up"
             disabled={!canScrollUp}
             size="small"
             onClick={handleUp}>
-            <KeyboardArrowUpIcon fontSize="small" />
-          </IconButton>
+            <ChevronUp fontSize="small" />
+          </StyledIconButton>
         </Stack>
       )}
 
@@ -169,13 +169,13 @@ const VirtualColumnList = ({
 
       {needsNavigation && (
         <Stack alignItems="center" justifyContent="center">
-          <IconButton
+          <StyledIconButton
             data-testid="column-scroll-down"
             disabled={!canScrollDown}
             size="small"
             onClick={handleDown}>
-            <KeyboardArrowDownIcon fontSize="small" />
-          </IconButton>
+            <ChevronDown fontSize="small" />
+          </StyledIconButton>
         </Stack>
       )}
     </>

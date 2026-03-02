@@ -277,7 +277,7 @@ const ColumnContentInner = ({
       })}
       data-testid={`column-${fullyQualifiedName}`}
       style={{
-        paddingLeft: depth * DEPTH_INDENT_PX,
+        paddingLeft: depth * DEPTH_INDENT_PX + 8, // 8px is base padding
       }}
       onClick={handleClick}
       onMouseDown={handleClick}

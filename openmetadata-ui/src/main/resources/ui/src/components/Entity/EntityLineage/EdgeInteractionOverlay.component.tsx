@@ -13,11 +13,10 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
 import React from 'react';
-import { Edge, useReactFlow } from 'reactflow';
+import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-circle.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { useLineageStore } from '../../../hooks/useLineageStore';
-import { useThrottledViewport } from '../../../hooks/useThrottledViewport';
 import { computePathDataForEdge } from '../../../utils/CanvasUtils';
 import { getAbsolutePosition } from './PipelineEdgeButtons.component';
 
@@ -30,9 +29,10 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
   onPipelineClick,
   onEdgeRemove,
 }) => {
-  const { isEditMode, selectedEdge, columnsInCurrentPages } = useLineageStore();
+  const { isEditMode, selectedEdge, columnsInCurrentPages, isRepositioning } =
+    useLineageStore();
   const { getNode } = useReactFlow();
-  const viewport = useThrottledViewport(100);
+  const viewport = useViewport();
 
   const renderEditButton = (edge: Edge) => {
     const { isColumnLineage } = edge.data || {};
@@ -111,6 +111,10 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
       </div>
     );
   };
+
+  if (isRepositioning) {
+    return null;
+  }
 
   return (
     <div className="edge-interaction-overlay">

@@ -68,8 +68,9 @@ export function useCanvasEdgeRenderer({
     tracedColumns,
     selectedEdge,
     selectedColumn,
-
     columnsInCurrentPages,
+    isRepositioning,
+    setIsCanvasReady,
   } = useLineageStore();
 
   const viewport = useViewport();
@@ -198,6 +199,17 @@ export function useCanvasEdgeRenderer({
     ]
   );
 
+  const clearCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+
+    if (!canvas || !containerWidth || !containerHeight) {
+      return;
+    }
+
+    const ctx = setupCanvas(canvas, containerWidth, containerHeight);
+    ctx.clearRect(0, 0, containerWidth, containerHeight);
+  }, [canvasRef, containerWidth, containerHeight]);
+
   const drawAllEdges = useCallback(() => {
     const canvas = canvasRef.current;
 
@@ -209,13 +221,19 @@ export function useCanvasEdgeRenderer({
 
     ctx.clearRect(0, 0, containerWidth, containerHeight);
 
+    if (isRepositioning) {
+      setIsCanvasReady(false);
+
+      return;
+    }
+
     ctx.save();
     ctx.translate(viewport.x, viewport.y);
     ctx.scale(viewport.zoom, viewport.zoom);
 
     const isEdgeTraced = (edge: Edge, tracedColumns: Set<string>) => {
       return (
-        edge.data.isColumnLineage &&
+        edge.data?.isColumnLineage &&
         (tracedColumns.has(edge.sourceHandle ?? '') ||
           tracedColumns.has(edge.targetHandle ?? ''))
       );
@@ -252,6 +270,8 @@ export function useCanvasEdgeRenderer({
     edgeHitPathsRef.current = hitPaths;
 
     ctx.restore();
+
+    setIsCanvasReady(true);
   }, [
     canvasRef,
     edges,
@@ -263,6 +283,8 @@ export function useCanvasEdgeRenderer({
     tracedColumns,
     tracedNodes,
     columnsInCurrentPages,
+    isRepositioning,
+    setIsCanvasReady,
   ]);
 
   const getEdgeAtPoint = useCallback(
@@ -322,6 +344,12 @@ export function useCanvasEdgeRenderer({
       }
     };
   }, [scheduleRedraw]);
+
+  useEffect(() => {
+    if (isRepositioning) {
+      clearCanvas();
+    }
+  }, [isRepositioning, clearCanvas]);
 
   return { redraw: scheduleRedraw, visibleEdgesRef, getEdgeAtPoint };
 }

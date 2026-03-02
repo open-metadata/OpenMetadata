@@ -38,7 +38,8 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const { isEditMode, columnsInCurrentPages } = useLineageStore();
+  const { isEditMode, columnsInCurrentPages, isCanvasReady } =
+    useLineageStore();
   const { edges } = useLineageProvider();
   const { getNode } = useReactFlow();
   const viewport = useViewport();
@@ -106,12 +107,12 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   const isPlaywright = useMemo(() => isPlaywrightEnv(), []);
 
   const edgeMidpoints = useMemo(() => {
-    if (!isPlaywright) {
+    if (!isPlaywright || !isCanvasReady) {
       return [];
     }
 
     return calculateEdgeMidpoints(edges, getNode, columnsInCurrentPages);
-  }, [isPlaywright, edges, getNode, columnsInCurrentPages]);
+  }, [isPlaywright, edges, getNode, columnsInCurrentPages, isCanvasReady]);
 
   // Attach listeners to the ReactFlow pane element — it sits on top of the
   // canvas and captures all pointer events before they reach us.
