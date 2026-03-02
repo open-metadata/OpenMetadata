@@ -121,7 +121,10 @@ import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
-import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
+import {
+  EntitySummaryPanelProps,
+  SearchSourceDetails,
+} from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
 
 export default function EntitySummaryPanel({
@@ -306,15 +309,7 @@ export default function EntitySummaryPanel({
           tags?: TagLabel[];
           dataProducts?: EntityReference[];
         };
-        const searchDetails =
-          entityDetails.details as typeof entityDetails.details & {
-            serviceType?: string;
-            dataProducts?: EntityReference[];
-            columnNames?: string[];
-            database?: EntityReference;
-            databaseSchema?: EntityReference;
-            tableType?: string;
-          };
+        const searchDetails: SearchSourceDetails = entityDetails.details;
         // Merge API data with essential fields from entityDetails.details
         const mergedData = {
           ...data,

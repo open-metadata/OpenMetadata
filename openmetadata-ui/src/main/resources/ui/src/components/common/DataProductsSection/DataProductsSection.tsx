@@ -87,7 +87,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       displayName: dp.displayName || dp.name,
       fullyQualifiedName: dp.fullyQualifiedName || '',
       description: dp.description || '',
-    })) as DataProduct[];
+    }));
     setEditingDataProducts(dpList);
     startEditing();
   };
