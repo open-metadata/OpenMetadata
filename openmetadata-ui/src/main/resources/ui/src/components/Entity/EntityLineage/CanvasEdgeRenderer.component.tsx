@@ -141,7 +141,8 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
         mouseEvent.clientY,
         rect
       );
-      if (edge) {
+      // This will ensure that we aren't catching events on any other element present on the pane
+      if (edge && mouseEvent.currentTarget === mouseEvent.target) {
         onEdgeClickRef.current?.(edge, mouseEvent);
       }
     };

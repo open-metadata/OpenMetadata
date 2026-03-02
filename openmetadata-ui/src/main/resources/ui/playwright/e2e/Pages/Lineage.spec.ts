@@ -563,7 +563,6 @@ test('Verify cycle lineage should be handled properly', async ({ page }) => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await visitLineageTab(page);
-    await page.getByTestId('full-screen').click();
     await editLineage(page);
     await performZoomOut(page);
 
@@ -883,6 +882,7 @@ test('Edges are not getting hidden when column is selected and column layer is r
 
         await table1.visitEntityPage(page);
         await visitLineageTab(page);
+        await page.waitForTimeout(500);
       }
     );
 
@@ -1179,8 +1179,8 @@ test.describe.serial('Test pagination in column level lineage', () => {
     return columns;
   };
 
-  const table1Columns = generateColumnsWithNames(11);
-  const table2Columns = generateColumnsWithNames(12);
+  const table1Columns = generateColumnsWithNames(21);
+  const table2Columns = generateColumnsWithNames(22);
 
   const table1 = new TableClass();
   const table2 = new TableClass();
@@ -1203,28 +1203,18 @@ test.describe.serial('Test pagination in column level lineage', () => {
     table1Fqn = get(table1Response, 'entity.fullyQualifiedName');
     table2Fqn = get(table2Response, 'entity.fullyQualifiedName');
 
-    await addPipelineBetweenNodes(page, table1, table2);
-
-    await rearrangeNodes(page);
-
-    await page.waitForSelector(
-      `[data-testid="column-${table1Fqn}.${table1Columns[0].name}"]`,
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
       {
-        state: 'visible',
+        id: table1Response.entity.id,
+        type: 'table',
+      },
+      {
+        id: table2Response.entity.id,
+        type: 'table',
       }
     );
 
-    const table1Node = page.locator(
-      `[data-testid="lineage-node-${table1Fqn}"]`
-    );
-    const table2Node = page.locator(
-      `[data-testid="lineage-node-${table2Fqn}"]`
-    );
-
-    await expect(table1Node).toBeVisible();
-    await expect(table2Node).toBeVisible();
-
-    await page.getByTestId('full-screen').click();
     const table1ColumnFqn = table1Response.entity.columns?.map(
       (col: { fullyQualifiedName: string }) => col.fullyQualifiedName
     ) as string[];
@@ -1288,16 +1278,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
       );
     });
 
-    await test.step(
-      'Navigate to T1-P2 and add edges between T1-P2 and T2-P2',
-      async () => {
-        const table1Box = await table1Node.boundingBox();
-        if (table1Box) {
-          await page.mouse.click(table1Box.x - 10, table1Box.y - 10);
-        }
-      }
-    );
-
     await afterAction();
   });
 
@@ -1317,10 +1297,9 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
+    await performZoomOut(page, 5);
     await toggleLineageFilters(page, table1Fqn);
     await toggleLineageFilters(page, table2Fqn);
-
-    await page.getByTestId('full-screen').click();
 
     const table1Node = page.locator(
       `[data-testid="lineage-node-${table1Fqn}"]`
@@ -1329,8 +1308,8 @@ test.describe.serial('Test pagination in column level lineage', () => {
       `[data-testid="lineage-node-${table2Fqn}"]`
     );
 
-    const table1NextBtn = table1Node.locator('[data-testid="next-btn"]');
-    const table2NextBtn = table2Node.locator('[data-testid="next-btn"]');
+    const table1NextBtn = table1Node.getByTestId('column-scroll-down');
+    const table2NextBtn = table2Node.getByTestId('column-scroll-down');
 
     const allColumnTestIds = {
       table1: table1Columns.map((col) => `column-${table1Fqn}.${col.name}`),
@@ -1338,41 +1317,47 @@ test.describe.serial('Test pagination in column level lineage', () => {
     };
 
     const columnTestIds: Record<string, string[]> = {
-      'T1-P1': allColumnTestIds.table1.slice(0, 5),
-      'T1-P2': allColumnTestIds.table1.slice(5, 10),
-      'T1-P3': allColumnTestIds.table1.slice(10, 11),
-      'T2-P1': allColumnTestIds.table2.slice(0, 5),
-      'T2-P2': allColumnTestIds.table2.slice(5, 10),
-      'T2-P3': allColumnTestIds.table2.slice(10, 12),
+      'T1-P1': allColumnTestIds.table1.slice(0, 10),
+      'T1-P2': allColumnTestIds.table1.slice(10, 20),
+      'T1-P3': allColumnTestIds.table1.slice(11, 21),
+      'T2-P1': allColumnTestIds.table2.slice(0, 10),
+      'T2-P2': allColumnTestIds.table2.slice(10, 20),
+      'T2-P3': allColumnTestIds.table2.slice(12, 22),
     };
 
-    await test.step('Verify T1-P1: C1-C5 visible, C6-C11 hidden', async () => {
-      for (const testId of columnTestIds['T1-P1']) {
-        await expect(page.locator(`[data-testid="${testId}"]`)).toBeVisible();
-      }
+    await test.step(
+      'Verify T1-P1: C1-C10 visible, C10-C21 hidden',
+      async () => {
+        for (const testId of columnTestIds['T1-P1']) {
+          await expect(page.locator(`[data-testid="${testId}"]`)).toBeVisible();
+        }
 
-      for (const testId of allColumnTestIds.table1) {
-        if (!columnTestIds['T1-P1'].includes(testId)) {
-          await expect(
-            page.locator(`[data-testid="${testId}"]`)
-          ).not.toBeVisible();
+        for (const testId of allColumnTestIds.table1) {
+          if (!columnTestIds['T1-P1'].includes(testId)) {
+            await expect(
+              page.locator(`[data-testid="${testId}"]`)
+            ).not.toBeVisible();
+          }
         }
       }
-    });
+    );
 
-    await test.step('Verify T2-P1: C1-C5 visible, C6-C12 hidden', async () => {
-      for (const testId of columnTestIds['T2-P1']) {
-        await expect(page.locator(`[data-testid="${testId}"]`)).toBeVisible();
-      }
+    await test.step(
+      'Verify T2-P1: C1-C10 visible, C10-C22 hidden',
+      async () => {
+        for (const testId of columnTestIds['T2-P1']) {
+          await expect(page.locator(`[data-testid="${testId}"]`)).toBeVisible();
+        }
 
-      for (const testId of allColumnTestIds.table2) {
-        if (!columnTestIds['T2-P1'].includes(testId)) {
-          await expect(
-            page.locator(`[data-testid="${testId}"]`)
-          ).not.toBeVisible();
+        for (const testId of allColumnTestIds.table2) {
+          if (!columnTestIds['T2-P1'].includes(testId)) {
+            await expect(
+              page.locator(`[data-testid="${testId}"]`)
+            ).not.toBeVisible();
+          }
         }
       }
-    });
+    );
 
     await test.step('Navigate to T1-P2 and verify visibility', async () => {
       if (await table1NextBtn.isVisible()) {
