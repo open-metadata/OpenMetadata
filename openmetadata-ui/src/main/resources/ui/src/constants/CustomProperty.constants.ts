@@ -182,6 +182,20 @@ export const TABLE_TYPE_CUSTOM_PROPERTY = 'table-cp';
 
 export const HYPERLINK_TYPE_CUSTOM_PROPERTY = 'hyperlink-cp';
 
+export const SCROLLABLE_WRAPPER_TYPES = [TABLE_TYPE_CUSTOM_PROPERTY];
+
+export const AUTO_HEIGHT_TYPES = [
+  'entityReferenceList',
+  TABLE_TYPE_CUSTOM_PROPERTY,
+  'sqlQuery',
+];
+
+export const NO_OVERFLOW_TOGGLE_TYPES = [
+  ...PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
+  TABLE_TYPE_CUSTOM_PROPERTY,
+  'sqlQuery',
+];
+
 export const CUSTOM_PROPERTIES_ICON_MAP = {
   'date-cp': DateIcon,
   'dateTime-cp': DateTimeIcon,
