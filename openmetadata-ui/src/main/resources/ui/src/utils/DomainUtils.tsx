@@ -88,12 +88,14 @@ export const withDomainFilter = (
 
   if (isGetRequest && hasActiveDomain) {
     if (config.url?.includes('/search/query')) {
-      if (
-        config.params?.index === SearchIndex.TAG ||
-        config.params?.index === SearchIndex.DOMAIN
-      ) {
+      if (config.params?.index === SearchIndex.TAG) {
         return config;
       }
+
+      const domainFilterField =
+        config.params?.index === SearchIndex.DOMAIN
+          ? 'fullyQualifiedName'
+          : 'domains.fullyQualifiedName';
       let filter: QueryFilterInterface = { query: { bool: {} } };
       if (config.params?.query_filter) {
         try {
@@ -127,12 +129,12 @@ export const withDomainFilter = (
                 should: [
                   {
                     term: {
-                      'domains.fullyQualifiedName': activeDomain,
+                      [domainFilterField]: activeDomain,
                     },
                   },
                   {
                     prefix: {
-                      'domains.fullyQualifiedName': `${activeDomain}.`,
+                      [domainFilterField]: `${activeDomain}.`,
                     },
                   },
                 ],

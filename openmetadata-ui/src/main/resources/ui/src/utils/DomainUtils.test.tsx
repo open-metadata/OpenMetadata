@@ -449,7 +449,7 @@ describe('withDomainFilter', () => {
       expect(result.params?.query_filter).toBeUndefined();
     });
 
-    it('should return config unchanged for DOMAIN index searches', () => {
+    it('should use fullyQualifiedName field for DOMAIN index searches', () => {
       mockGetPathName.mockReturnValue('/api/search');
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
@@ -457,9 +457,16 @@ describe('withDomainFilter', () => {
         index: SearchIndex.DOMAIN,
       });
       const result = withDomainFilter(config);
+      const queryFilter = JSON.parse(result.params?.query_filter as string);
+      const shouldClauses =
+        queryFilter.query.bool.must[
+          queryFilter.query.bool.must.length - 1
+        ].bool.should;
 
-      expect(result).toBe(config);
-      expect(result.params?.query_filter).toBeUndefined();
+      expect(shouldClauses).toEqual([
+        { term: { fullyQualifiedName: 'engineering' } },
+        { prefix: { fullyQualifiedName: 'engineering.' } },
+      ]);
     });
 
     it('should preserve existing query_filter and add should filter', () => {
