@@ -1,8 +1,8 @@
 """Tables entity SDK with fluent helpers."""
 from __future__ import annotations
 
-from uuid import UUID
 from typing import Any, Optional, Type, cast
+from uuid import UUID
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.tests.createCustomMetric import (

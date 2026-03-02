@@ -309,7 +309,9 @@ class TestTableEntity(unittest.TestCase):
 
         self.assertIsNotNone(result)
         if result is not None:
-            self.assertEqual([column.root for column in result.columns], ["id", "email"])
+            self.assertEqual(
+                [column.root for column in result.columns], ["id", "email"]
+            )
             self.assertEqual(result.rows[0][1], "user@example.com")
         self.mock_ometa.get_by_id.assert_not_called()
         self.mock_ometa.ingest_table_sample_data.assert_called_once()
