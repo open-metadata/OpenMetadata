@@ -994,7 +994,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
             limits);
     environment.jersey().register(new AuditLogResource(authorizer, auditLogRepository));
-    environment.jersey().register(new DiagnosticsResource());
+    environment.jersey().register(new DiagnosticsResource(authorizer));
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 

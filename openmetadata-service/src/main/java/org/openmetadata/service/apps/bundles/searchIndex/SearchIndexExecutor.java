@@ -440,7 +440,8 @@ public class SearchIndexExecutor implements AutoCloseable {
     MemoryInfo memInfo = new MemoryInfo();
     long estimatedEntitySize = 5 * 1024L;
     long maxQueueMemory = (long) (memInfo.maxMemory * 0.25);
-    int memoryBasedLimit = (int) (maxQueueMemory / (estimatedEntitySize * batchSize.get()));
+    long memoryBasedLimitLong = maxQueueMemory / (estimatedEntitySize * batchSize.get());
+    int memoryBasedLimit = (int) Math.max(1, Math.min(memoryBasedLimitLong, Integer.MAX_VALUE));
     return Math.min(requestedSize, memoryBasedLimit);
   }
 

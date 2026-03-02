@@ -719,10 +719,13 @@ public class ElasticSearchBulkSink implements BulkSink {
 
       future.whenComplete(
           (response, error) -> {
+            boolean retryScheduled = false;
             try {
               if (error != null) {
                 circuitBreaker.recordFailure();
-                handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, error);
+                retryScheduled =
+                    handleBulkFailure(
+                        operations, executionId, numberOfActions, attemptNumber, error);
               } else if (response.errors()) {
                 circuitBreaker.recordSuccess();
                 handlePartialFailure(response, executionId, numberOfActions);
@@ -756,11 +759,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                 }
               }
             } finally {
-              boolean willRetry =
-                  error != null
-                      && shouldRetry(attemptNumber, error)
-                      && circuitBreaker.getState() != BulkCircuitBreaker.State.OPEN;
-              if (!willRetry) {
+              if (!retryScheduled) {
                 activeBulkRequests.decrementAndGet();
                 concurrentRequestSemaphore.release();
               }
@@ -768,7 +767,7 @@ public class ElasticSearchBulkSink implements BulkSink {
           });
     }
 
-    private void handleBulkFailure(
+    private boolean handleBulkFailure(
         List<BulkOperation> operations,
         long executionId,
         int numberOfActions,
@@ -788,6 +787,7 @@ public class ElasticSearchBulkSink implements BulkSink {
             () -> executeBulkWithRetry(operations, executionId, numberOfActions, attemptNumber + 1),
             backoffTime,
             TimeUnit.MILLISECONDS);
+        return true;
       } else {
         totalFailed.addAndGet(numberOfActions);
         LOG.error(
@@ -820,6 +820,7 @@ public class ElasticSearchBulkSink implements BulkSink {
           }
         }
         statsUpdater.run();
+        return false;
       }
     }
 

@@ -962,11 +962,9 @@ public class OpenSearchBulkSink implements BulkSink {
           metrics.recordBulkRequestCompleted(bulkTimerSample, false);
         }
         circuitBreaker.recordFailure();
-        handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, e);
-        boolean willRetry =
-            shouldRetry(attemptNumber, e)
-                && circuitBreaker.getState() != BulkCircuitBreaker.State.OPEN;
-        if (!willRetry) {
+        boolean retryScheduled =
+            handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, e);
+        if (!retryScheduled) {
           activeBulkRequests.decrementAndGet();
           concurrentRequestSemaphore.release();
           if (metrics != null) {
@@ -978,13 +976,16 @@ public class OpenSearchBulkSink implements BulkSink {
 
       future.whenComplete(
           (response, error) -> {
+            boolean retryScheduled = false;
             try {
               if (error != null) {
                 if (metrics != null && bulkTimerSample != null) {
                   metrics.recordBulkRequestCompleted(bulkTimerSample, false);
                 }
                 circuitBreaker.recordFailure();
-                handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, error);
+                retryScheduled =
+                    handleBulkFailure(
+                        operations, executionId, numberOfActions, attemptNumber, error);
               } else if (response.errors()) {
                 if (metrics != null && bulkTimerSample != null) {
                   metrics.recordBulkRequestCompleted(bulkTimerSample, false);
@@ -1005,11 +1006,7 @@ public class OpenSearchBulkSink implements BulkSink {
                 statsUpdater.run();
               }
             } finally {
-              boolean willRetry =
-                  error != null
-                      && shouldRetry(attemptNumber, error)
-                      && circuitBreaker.getState() != BulkCircuitBreaker.State.OPEN;
-              if (!willRetry) {
+              if (!retryScheduled) {
                 activeBulkRequests.decrementAndGet();
                 concurrentRequestSemaphore.release();
                 if (metrics != null) {
@@ -1020,7 +1017,7 @@ public class OpenSearchBulkSink implements BulkSink {
           });
     }
 
-    private void handleBulkFailure(
+    private boolean handleBulkFailure(
         List<BulkOperation> operations,
         long executionId,
         int numberOfActions,
@@ -1040,6 +1037,7 @@ public class OpenSearchBulkSink implements BulkSink {
             () -> executeBulkWithRetry(operations, executionId, numberOfActions, attemptNumber + 1),
             backoffTime,
             TimeUnit.MILLISECONDS);
+        return true;
       } else {
         totalFailed.addAndGet(numberOfActions);
         LOG.error(
@@ -1080,6 +1078,7 @@ public class OpenSearchBulkSink implements BulkSink {
           }
         }
         statsUpdater.run();
+        return false;
       }
     }
 

@@ -322,31 +322,31 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
 
     StepStats jobStats = stats.getJobStats();
     if (jobStats != null) {
-      jobStats.setSuccessRecords((int) successRecords);
-      jobStats.setFailedRecords((int) failedRecords);
+      jobStats.setSuccessRecords(saturatedToInt(successRecords));
+      jobStats.setFailedRecords(saturatedToInt(failedRecords));
     }
 
     StepStats readerStats = stats.getReaderStats();
     if (readerStats != null) {
-      readerStats.setTotalRecords((int) distributedJob.getTotalRecords());
+      readerStats.setTotalRecords(saturatedToInt(distributedJob.getTotalRecords()));
       long readerFailed = serverStatsAggr != null ? serverStatsAggr.readerFailed() : 0;
       long readerWarnings = serverStatsAggr != null ? serverStatsAggr.readerWarnings() : 0;
       long readerSuccess =
           serverStatsAggr != null
               ? serverStatsAggr.readerSuccess()
               : distributedJob.getTotalRecords() - readerFailed - readerWarnings;
-      readerStats.setSuccessRecords((int) readerSuccess);
-      readerStats.setFailedRecords((int) readerFailed);
-      readerStats.setWarningRecords((int) readerWarnings);
+      readerStats.setSuccessRecords(saturatedToInt(readerSuccess));
+      readerStats.setFailedRecords(saturatedToInt(readerFailed));
+      readerStats.setWarningRecords(saturatedToInt(readerWarnings));
     }
 
     StepStats processStats = stats.getProcessStats();
     if (processStats != null && serverStatsAggr != null) {
       long processSuccess = serverStatsAggr.processSuccess();
       long processFailed = serverStatsAggr.processFailed();
-      processStats.setTotalRecords((int) (processSuccess + processFailed));
-      processStats.setSuccessRecords((int) processSuccess);
-      processStats.setFailedRecords((int) processFailed);
+      processStats.setTotalRecords(saturatedToInt(processSuccess + processFailed));
+      processStats.setSuccessRecords(saturatedToInt(processSuccess));
+      processStats.setFailedRecords(saturatedToInt(processFailed));
     }
 
     StepStats sinkStats = stats.getSinkStats();
@@ -355,14 +355,14 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         long sinkSuccess = serverStatsAggr.sinkSuccess();
         long sinkFailed = serverStatsAggr.sinkFailed();
         long actualSinkTotal = sinkSuccess + sinkFailed;
-        sinkStats.setTotalRecords((int) actualSinkTotal);
-        sinkStats.setSuccessRecords((int) sinkSuccess);
-        sinkStats.setFailedRecords((int) sinkFailed);
+        sinkStats.setTotalRecords(saturatedToInt(actualSinkTotal));
+        sinkStats.setSuccessRecords(saturatedToInt(sinkSuccess));
+        sinkStats.setFailedRecords(saturatedToInt(sinkFailed));
       } else {
         long sinkTotal = distributedJob.getTotalRecords();
-        sinkStats.setTotalRecords((int) sinkTotal);
-        sinkStats.setSuccessRecords((int) successRecords);
-        sinkStats.setFailedRecords((int) failedRecords);
+        sinkStats.setTotalRecords(saturatedToInt(sinkTotal));
+        sinkStats.setSuccessRecords(saturatedToInt(successRecords));
+        sinkStats.setFailedRecords(saturatedToInt(failedRecords));
       }
     }
 
@@ -370,9 +370,9 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     if (vectorStats != null && serverStatsAggr != null) {
       long vectorSuccess = serverStatsAggr.vectorSuccess();
       long vectorFailed = serverStatsAggr.vectorFailed();
-      vectorStats.setTotalRecords((int) (vectorSuccess + vectorFailed));
-      vectorStats.setSuccessRecords((int) vectorSuccess);
-      vectorStats.setFailedRecords((int) vectorFailed);
+      vectorStats.setTotalRecords(saturatedToInt(vectorSuccess + vectorFailed));
+      vectorStats.setSuccessRecords(saturatedToInt(vectorSuccess));
+      vectorStats.setFailedRecords(saturatedToInt(vectorFailed));
     }
 
     if (distributedJob.getEntityStats() != null && stats.getEntityStats() != null) {
@@ -381,13 +381,17 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         StepStats entityStats =
             stats.getEntityStats().getAdditionalProperties().get(entry.getKey());
         if (entityStats != null) {
-          entityStats.setSuccessRecords((int) entry.getValue().getSuccessRecords());
-          entityStats.setFailedRecords((int) entry.getValue().getFailedRecords());
+          entityStats.setSuccessRecords(saturatedToInt(entry.getValue().getSuccessRecords()));
+          entityStats.setFailedRecords(saturatedToInt(entry.getValue().getFailedRecords()));
         }
       }
     }
 
     StatsReconciler.reconcile(stats);
+  }
+
+  private static int saturatedToInt(long value) {
+    return (int) Math.min(value, Integer.MAX_VALUE);
   }
 
   private ExecutionResult.Status determineStatus(Stats stats) {

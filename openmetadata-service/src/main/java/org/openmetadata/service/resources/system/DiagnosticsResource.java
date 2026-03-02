@@ -25,8 +25,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
@@ -40,6 +42,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.BulkExecutor;
+import org.openmetadata.service.security.Authorizer;
 
 @Path("/v1/system/diagnostics")
 @Tag(
@@ -48,6 +51,11 @@ import org.openmetadata.service.jdbi3.BulkExecutor;
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
 public class DiagnosticsResource {
+  private final Authorizer authorizer;
+
+  public DiagnosticsResource(Authorizer authorizer) {
+    this.authorizer = authorizer;
+  }
 
   @GET
   @Operation(
@@ -59,7 +67,8 @@ public class DiagnosticsResource {
       responses = {
         @ApiResponse(responseCode = "200", description = "Diagnostics snapshot"),
       })
-  public Response getDiagnostics() {
+  public Response getDiagnostics(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
     Map<String, Object> diagnostics = new LinkedHashMap<>();
     diagnostics.put("timestamp", Instant.now().toString());
     diagnostics.put("jvm", collectJvmMetrics());
