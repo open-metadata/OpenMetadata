@@ -99,7 +99,7 @@ export const createCustomMetric = async ({
 
   // Click on create custom metric button
   await page.click('[data-testid="profiler-add-table-test-btn"]');
-  await page.click('[data-testid="custom-metric"]');
+  await page.getByRole('menuitemradio', { name: 'Custom metric' }).click();
   await page.click('[data-testid="submit-button"]');
 
   await validateForm(page, isColumnMetric);

@@ -19,6 +19,7 @@ import {
 
 export interface TestSummaryGraphProps {
   testCaseParameterValue?: TestCaseParameterValue[];
+  testCaseFqn?: string;
   testCaseName: string;
   testCaseResults: TestCaseResult[] | TestCaseDimensionResult[];
   selectedTimeRange: string;

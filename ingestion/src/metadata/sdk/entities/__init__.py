@@ -22,6 +22,7 @@ from metadata.sdk.entities.mlmodels import MLModels
 from metadata.sdk.entities.pipelines import Pipelines
 from metadata.sdk.entities.queries import Queries
 from metadata.sdk.entities.searchindexes import SearchIndexes
+from metadata.sdk.entities.storage_services import StorageServices
 from metadata.sdk.entities.storedprocedures import StoredProcedures
 from metadata.sdk.entities.tables import Tables
 from metadata.sdk.entities.tags import Tags
@@ -53,6 +54,7 @@ __all__ = [
     "Pipelines",
     "Queries",
     "SearchIndexes",
+    "StorageServices",
     "StoredProcedures",
     "Tables",
     "Tags",

@@ -72,7 +72,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   );
 
   if (isLoading) {
-    return <Skeleton height={380} variant="rounded" width="100%" />;
+    return <Skeleton height="95%" variant="rounded" width="100%" />;
   }
 
   return (

@@ -49,7 +49,7 @@ const NestedColumnItem: React.FC<{
       </button>
       {hasChildren && (
         <div className="tw:pl-2">
-          {column.children!.map((child) => (
+          {column.children?.map((child) => (
             <NestedColumnItem
               column={child}
               depth={depth + 1}

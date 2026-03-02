@@ -31,6 +31,10 @@ public class TestCaseMockTest {
     MockitoAnnotations.openMocks(this);
     when(mockClient.testCases()).thenReturn(mockTestCaseService);
 
+    // Ensure TestCase entity operations use this test's mock client even if another
+    // test class initialized the static default client earlier in the JVM.
+    org.openmetadata.sdk.entities.TestCase.setDefaultClient(mockClient);
+
     // Use reflection to set the private defaultClient field
     Field field = OpenMetadata.class.getDeclaredField("defaultClient");
     field.setAccessible(true);

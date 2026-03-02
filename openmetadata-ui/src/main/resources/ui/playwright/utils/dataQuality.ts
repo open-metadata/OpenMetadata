@@ -47,6 +47,9 @@ export const clickEditTestCaseButton = async (
   const testDefinitionResponse = page.waitForResponse(
     '/api/v1/dataQuality/testDefinitions/*'
   );
+  const testDefinitionResponse = page.waitForResponse(
+    '/api/v1/dataQuality/testDefinitions/*'
+  );
   await page.getByTestId(`action-dropdown-${testCaseName}`).click();
   await page.getByTestId(`edit-${testCaseName}`).click();
   await testCaseDoc;
@@ -83,7 +86,7 @@ export const visitCreateTestCasePanelFromEntityPage = async (
   await table.visitEntityPage(page);
   const profileResponse = page.waitForResponse(
     `/api/v1/tables/${encodeURIComponent(
-      table.entityResponseData?.['fullyQualifiedName']
+      table.entityResponseData?.['fullyQualifiedName'] ?? ''
     )}/tableProfile/latest?includeColumnProfile=false`
   );
   await page.getByText('Data Observability').click();

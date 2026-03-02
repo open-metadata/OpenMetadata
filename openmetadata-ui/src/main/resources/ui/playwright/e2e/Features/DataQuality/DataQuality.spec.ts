@@ -1000,7 +1000,9 @@ test.describe(
         );
 
         await page
-          .getByTestId(filterTable1.entityResponseData?.['fullyQualifiedName'])
+          .getByTestId(
+            filterTable1.entityResponseData?.['fullyQualifiedName'] || ''
+          )
           .click();
         await getTestCaseByTable;
         await verifyFilterTestCase(page);
@@ -1153,7 +1155,7 @@ test.describe(
         );
         await page
           .getByTestId('table-profiler-container')
-          .getByTestId('searchbar')
+          .getByRole('textbox', { name: 'Search test case' })
           .fill(testCases[0]);
         await searchTestCase;
 
