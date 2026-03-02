@@ -112,7 +112,7 @@ class ReindexingConfigurationTimeSeriesTest {
 
     ReindexingConfiguration config = ReindexingConfiguration.from(job);
 
-    assertEquals(15, config.timeSeriesMaxDays());
+    assertEquals(0, config.timeSeriesMaxDays());
     assertEquals(Collections.emptyMap(), config.timeSeriesEntityDays());
   }
 

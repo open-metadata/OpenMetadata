@@ -47,7 +47,7 @@ public record ReindexingConfiguration(
   private static final int DEFAULT_MAX_RETRIES = 5;
   private static final int DEFAULT_INITIAL_BACKOFF = 1000;
   private static final int DEFAULT_MAX_BACKOFF = 10000;
-  private static final int DEFAULT_TIME_SERIES_MAX_DAYS = 15;
+  private static final int DEFAULT_TIME_SERIES_MAX_DAYS = 0;
 
   public static ReindexingConfiguration applyAutoTuning(
       ReindexingConfiguration config, SearchRepository searchRepository) {
