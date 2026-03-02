@@ -168,8 +168,13 @@ public class WorkflowHandler {
     if (!initialized) {
       instance = new WorkflowHandler(config, isMigrationContext);
       initialized = true;
+    } else if (initialized && instance.isMigrationContext && !isMigrationContext) {
+      // Transitioning from migration mode to runtime mode
+      LOG.info("Transitioning WorkflowHandler from migration mode to runtime mode");
+      ProcessEngines.destroy();
+      instance = new WorkflowHandler(config, false);
     } else {
-      LOG.info("WorkflowHandler already initialized.");
+      LOG.info("WorkflowHandler already initialized in correct mode.");
     }
   }
 
