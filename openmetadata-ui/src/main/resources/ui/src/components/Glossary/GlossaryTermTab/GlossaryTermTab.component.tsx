@@ -668,7 +668,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             newStatus
           );
 
-          setGlossaryChildTerms(updatedTerms);
+          if (!selectedStatus.includes('all') &&
+            !selectedStatus.includes(newStatus)) {
+            setGlossaryChildTerms(
+              updatedTerms.filter(
+                (term) => term.fullyQualifiedName !== glossaryTermFqn
+              )
+            );
+          } else {
+            setGlossaryChildTerms(updatedTerms);
+          }
 
           // remove resolved task from term task threads
           if (termTaskThreads[glossaryTermFqn]) {
@@ -686,7 +695,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         showErrorToast(error as AxiosError);
       }
     },
-    [expandedRowKeys, glossaryChildTerms, termTaskThreads]
+    [expandedRowKeys, glossaryChildTerms, selectedStatus, termTaskThreads]
   );
 
   const handleApproveGlossaryTerm = useCallback(
@@ -1471,9 +1480,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return 'No Glossary Terms';
   }, [isSearchActive, isStatusFilterActive, searchTerm]);
 
-  // Special case: if there are truly no terms in the glossary at all (not just search results)
-  // and no search is active, show the full placeholder
-  if (hasNoTerms && !isSearchActive && !isStatusFilterActive && !isTableLoading) {
+  if (hasNoTerms && !isSearchActive && !isTableLoading) {
     return (
       <div className="h-full" ref={tableContainerRef}>
         <ErrorPlaceHolder
