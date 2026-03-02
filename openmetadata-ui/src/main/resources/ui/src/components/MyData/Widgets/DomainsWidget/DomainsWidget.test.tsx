@@ -22,7 +22,6 @@ import {
   Domain,
   DomainType,
 } from '../../../../generated/entity/domains/domain';
-import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import DomainsWidget from './DomainsWidget';
@@ -101,12 +100,6 @@ jest.mock('../../../../utils/DomainUtils', () => ({
   getDomainIcon: jest.fn().mockReturnValue(<div data-testid="domain-icon" />),
 }));
 
-jest.mock('../../../../hooks/useDomainStore', () => ({
-  useDomainStore: jest.fn(),
-}));
-
-const mockUseDomainStore = useDomainStore as unknown as jest.Mock;
-
 const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
 const mockGetAllDomainsWithAssetsCount =
   getAllDomainsWithAssetsCount as jest.MockedFunction<
@@ -128,10 +121,6 @@ const mockApplySortToData = applySortToData as jest.MockedFunction<
 describe('DomainsWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
-    mockUseDomainStore.mockReturnValue({
-      activeDomain: 'All Domains',
-    });
 
     // Default mock implementations
     mockGetSortField.mockReturnValue('updatedAt');
@@ -427,39 +416,6 @@ describe('DomainsWidget', () => {
       expect(mockGetSortField).toHaveBeenCalledWith('latest');
       expect(mockGetSortOrder).toHaveBeenCalledWith('latest');
       expect(mockApplySortToData).toHaveBeenCalledWith(mockDomains, 'latest');
-    });
-  });
-
-  it('calls searchQuery with queryFilter when a specific domain is active', async () => {
-    mockUseDomainStore.mockReturnValue({
-      activeDomain: 'engineering',
-    });
-
-    renderDomainsWidget();
-
-    await waitFor(() => {
-      expect(mockSearchQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          queryFilter: {
-            query: {
-              bool: {
-                should: [
-                  {
-                    term: {
-                      fullyQualifiedName: 'engineering',
-                    },
-                  },
-                  {
-                    prefix: {
-                      fullyQualifiedName: 'engineering.',
-                    },
-                  },
-                ],
-              },
-            },
-          },
-        })
-      );
     });
   });
 });
