@@ -15,7 +15,8 @@ import test from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
 import { addAndTriggerAutoClassificationPipeline } from '../../utils/autoClassification';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { resetTokenFromBotPage } from '../../utils/bot';
+import { createNewPage, getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const mysqlService = new MysqlIngestionClass({
@@ -35,6 +36,15 @@ test.describe.configure({
 });
 
 test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
+  test.beforeAll(async ({ browser }) => {
+    if (!process.env.PLAYWRIGHT_IS_OSS) {
+      // Todo: Remove this patch once the issue is fixed #19140
+      const { page, afterAction } = await createNewPage(browser);
+      await resetTokenFromBotPage(page, 'testsuite-bot');
+      await afterAction();
+    }
+  });
+
   test('should be able to auto classify data', async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(
