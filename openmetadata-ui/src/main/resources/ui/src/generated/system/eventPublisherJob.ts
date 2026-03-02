@@ -109,7 +109,8 @@ export interface EventPublisherJob {
     timeSeriesEntityDays?: { [key: string]: number };
     /**
      * Maximum age in days for time series data during reindexing. Only records from the last N
-     * days will be indexed. Default 15. Set to 0 or -1 to index all data.
+     * days will be indexed. Default 0 (index all data). Set to a positive value like 15 to
+     * limit to recent data.
      */
     timeSeriesMaxDays?: number;
     timestamp?:         number;
