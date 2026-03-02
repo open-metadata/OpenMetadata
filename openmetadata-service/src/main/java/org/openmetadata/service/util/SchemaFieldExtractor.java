@@ -41,6 +41,7 @@ public class SchemaFieldExtractor {
 
   private static final Map<String, Map<String, FieldDefinition>> entityFieldsCache =
       new ConcurrentHashMap<>();
+
   /**
    * Entity types intentionally excluded from schema field extraction cache initialization. These
    * entities are not currently supported by the custom-property schema extractor flow.
@@ -62,7 +63,8 @@ public class SchemaFieldExtractor {
         if (EXCLUDED_ENTITY_TYPES.contains(entityType)) {
           // Keep an empty cache entry to avoid null-handling branches downstream.
           entityFieldsCache.put(entityType, new LinkedHashMap<>());
-          LOG.debug("Skipping schema extraction cache initialization for entity type '{}'", entityType);
+          LOG.debug(
+              "Skipping schema extraction cache initialization for entity type '{}'", entityType);
           continue;
         }
         try {

@@ -5887,10 +5887,12 @@ public interface CollectionDAO {
         value =
             "UPDATE entity_usage SET count1 = :count1 WHERE usageDate = (:date :: date) AND id = :id",
         connectionType = POSTGRES)
-    void replaceUsageCount(@Bind("date") String date, @BindUUID("id") UUID id, @Bind("count1") int count1);
+    void replaceUsageCount(
+        @Bind("date") String date, @BindUUID("id") UUID id, @Bind("count1") int count1);
 
     @ConnectionAwareSqlUpdate(
-        value = "UPDATE entity_usage SET count1 = count1 + :count1 WHERE usageDate = :date AND id = :id",
+        value =
+            "UPDATE entity_usage SET count1 = count1 + :count1 WHERE usageDate = :date AND id = :id",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
@@ -5945,15 +5947,13 @@ public interface CollectionDAO {
       updateRollingUsage(date, id, count7, count30);
     }
 
-    default void insertOrReplaceCount(
-        String date, UUID id, String entityType, int count1) {
+    default void insertOrReplaceCount(String date, UUID id, String entityType, int count1) {
       ensureUsageRow(date, id, entityType);
       replaceUsageCount(date, id, count1);
       recomputeRollingUsage(date, id);
     }
 
-    default void insertOrUpdateCount(
-        String date, UUID id, String entityType, int count1) {
+    default void insertOrUpdateCount(String date, UUID id, String entityType, int count1) {
       ensureUsageRow(date, id, entityType);
       incrementUsageCount(date, id, count1);
       recomputeRollingUsage(date, id);

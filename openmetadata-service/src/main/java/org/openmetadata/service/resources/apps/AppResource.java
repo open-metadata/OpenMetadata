@@ -486,9 +486,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       if (latestRun == null) {
         return Response.status(Response.Status.NO_CONTENT).build();
       }
-      return Response.status(Response.Status.OK)
-          .entity(latestRun)
-          .build();
+      return Response.status(Response.Status.OK).entity(latestRun).build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
         EntityReference pipelineRef = installation.getPipelines().get(0);
@@ -539,9 +537,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       if (latestRun == null) {
         return Response.status(Response.Status.NO_CONTENT).build();
       }
-      return Response.status(Response.Status.OK)
-          .entity(latestRun)
-          .build();
+      return Response.status(Response.Status.OK).entity(latestRun).build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
         EntityReference pipelineRef = installation.getPipelines().get(0);
