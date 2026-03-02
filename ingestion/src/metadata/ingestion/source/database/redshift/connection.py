@@ -82,45 +82,47 @@ def _get_provisioned_cluster_identifier(host: str) -> str:
 
 
 def _get_serverless_iam_credentials(connection: RedshiftConnection, host: str) -> tuple:
-    aws_client = AWSClient(
-        config=connection.authType.awsConfig
-    ).get_redshift_serverless_client()
     workgroup = _get_serverless_workgroup(host)
-
-    kwargs = {"workgroupName": workgroup, "dbName": connection.database or "dev"}
-
     try:
+        aws_client = AWSClient(
+            config=connection.authType.awsConfig
+        ).get_redshift_serverless_client()
+
+        kwargs = {"workgroupName": workgroup, "dbName": connection.database or "dev"}
+
         response = aws_client.get_credentials(**kwargs)
+        return response["dbUser"], response["dbPassword"]
     except Exception as exc:
         raise SourceConnectionException(
             f"Failed to retrieve IAM credentials for Redshift Serverless "
             f"workgroup '{workgroup}': {exc}"
         ) from exc
-    return response["dbUser"], response["dbPassword"]
 
 
 def _get_provisioned_iam_credentials(
     connection: RedshiftConnection, host: str
 ) -> tuple:
-    aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_client()
     cluster_identifier = _get_provisioned_cluster_identifier(host)
-
-    kwargs = {
-        "DbUser": connection.username,
-        "ClusterIdentifier": cluster_identifier,
-        "AutoCreate": False,
-    }
-    if connection.database:
-        kwargs["DbName"] = connection.database
-
     try:
+        aws_client = AWSClient(
+            config=connection.authType.awsConfig
+        ).get_redshift_client()
+
+        kwargs = {
+            "DbUser": connection.username,
+            "ClusterIdentifier": cluster_identifier,
+            "AutoCreate": False,
+        }
+        if connection.database:
+            kwargs["DbName"] = connection.database
+
         response = aws_client.get_cluster_credentials(**kwargs)
+        return response["DbUser"], response["DbPassword"]
     except Exception as exc:
         raise SourceConnectionException(
             f"Failed to retrieve IAM credentials for Redshift cluster "
             f"'{cluster_identifier}': {exc}"
         ) from exc
-    return response["DbUser"], response["DbPassword"]
 
 
 def _get_redshift_iam_credentials(connection: RedshiftConnection) -> tuple:
