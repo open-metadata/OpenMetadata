@@ -636,7 +636,7 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public BulkResponse bulkElasticSearch(List<BulkOperation> operations) throws IOException {
-    return newClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+    return newClient.bulk(b -> b.operations(operations).refresh(Refresh.True));
   }
 
   @Override

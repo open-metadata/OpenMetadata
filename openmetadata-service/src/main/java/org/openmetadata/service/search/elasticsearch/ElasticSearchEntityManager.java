@@ -25,6 +25,7 @@ import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
@@ -591,12 +592,25 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   }
 
   private Query exactFieldQuery(Pair<String, String> fieldAndValue) {
-    return Query.of(
-        q ->
-            q.term(
-                t ->
-                    t.field(fieldAndValue.getKey())
-                        .value(FieldValue.of(fieldAndValue.getValue()))));
+    String field = fieldAndValue.getKey();
+    String value = fieldAndValue.getValue();
+    if ("_id".equals(field)) {
+      return Query.of(q -> q.ids(i -> i.values(value)));
+    }
+
+    Query termOnField = Query.of(q -> q.term(t -> t.field(field).value(FieldValue.of(value))));
+    Query termOnKeyword =
+        field.endsWith(".keyword")
+            ? null
+            : Query.of(q -> q.term(t -> t.field(field + ".keyword").value(FieldValue.of(value))));
+    Query matchOnField =
+        Query.of(q -> q.match(m -> m.field(field).query(value).operator(Operator.And)));
+
+    BoolQuery.Builder bool = new BoolQuery.Builder().should(termOnField).should(matchOnField);
+    if (termOnKeyword != null) {
+      bool.should(termOnKeyword);
+    }
+    return Query.of(q -> q.bool(bool.minimumShouldMatch("1").build()));
   }
 
   @Override
@@ -1453,12 +1467,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   }
 
   private Query buildLineageUpdateQuery(Pair<String, String> fieldAndValue) {
-    String field = fieldAndValue.getKey();
-    String value = fieldAndValue.getValue();
-    if ("_id".equals(field)) {
-      return Query.of(q -> q.ids(i -> i.values(value)));
-    }
-    return Query.of(q -> q.term(t -> t.field(field).value(FieldValue.of(value))));
+    return exactFieldQuery(fieldAndValue);
   }
 
   private Query buildLineageColumnsQuery(List<String> columnFqns) {
@@ -1482,6 +1491,11 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   }
 
   private Query buildDomainFqnPrefixQuery(String oldFqn) {
-    return Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName").value(oldFqn)));
+    Query prefixOnField =
+        Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName").value(oldFqn)));
+    Query prefixOnKeyword =
+        Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName.keyword").value(oldFqn)));
+    return Query.of(
+        q -> q.bool(b -> b.should(prefixOnField).should(prefixOnKeyword).minimumShouldMatch("1")));
   }
 }

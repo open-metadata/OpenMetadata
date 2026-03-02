@@ -58,6 +58,7 @@ import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
+import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch._types.query_dsl.RangeQuery;
 import os.org.opensearch.client.opensearch.core.BulkRequest;
@@ -652,12 +653,26 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   }
 
   private Query exactFieldQuery(Pair<String, String> fieldAndValue) {
-    return Query.of(
-        q ->
-            q.term(
-                t ->
-                    t.field(fieldAndValue.getKey())
-                        .value(FieldValue.of(fieldAndValue.getValue()))));
+    String field = fieldAndValue.getKey();
+    String value = fieldAndValue.getValue();
+    if ("_id".equals(field)) {
+      return Query.of(q -> q.ids(i -> i.values(value)));
+    }
+
+    Query termOnField = Query.of(q -> q.term(t -> t.field(field).value(FieldValue.of(value))));
+    Query termOnKeyword =
+        field.endsWith(".keyword")
+            ? null
+            : Query.of(q -> q.term(t -> t.field(field + ".keyword").value(FieldValue.of(value))));
+    Query matchOnField =
+        Query.of(
+            q -> q.match(m -> m.field(field).query(FieldValue.of(value)).operator(Operator.And)));
+
+    BoolQuery.Builder bool = new BoolQuery.Builder().should(termOnField).should(matchOnField);
+    if (termOnKeyword != null) {
+      bool.should(termOnKeyword);
+    }
+    return Query.of(q -> q.bool(bool.minimumShouldMatch("1").build()));
   }
 
   @Override
@@ -1545,12 +1560,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   }
 
   private Query buildLineageUpdateQuery(Pair<String, String> fieldAndValue) {
-    String field = fieldAndValue.getKey();
-    String value = fieldAndValue.getValue();
-    if ("_id".equals(field)) {
-      return Query.of(q -> q.ids(i -> i.values(value)));
-    }
-    return Query.of(q -> q.term(t -> t.field(field).value(FieldValue.of(value))));
+    return exactFieldQuery(fieldAndValue);
   }
 
   private Query buildLineageColumnsQuery(List<String> columnFqns) {
@@ -1574,6 +1584,11 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   }
 
   private Query buildDomainFqnPrefixQuery(String oldFqn) {
-    return Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName").value(oldFqn)));
+    Query prefixOnField =
+        Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName").value(oldFqn)));
+    Query prefixOnKeyword =
+        Query.of(q -> q.prefix(p -> p.field("domains.fullyQualifiedName.keyword").value(oldFqn)));
+    return Query.of(
+        q -> q.bool(b -> b.should(prefixOnField).should(prefixOnKeyword).minimumShouldMatch("1")));
   }
 }
