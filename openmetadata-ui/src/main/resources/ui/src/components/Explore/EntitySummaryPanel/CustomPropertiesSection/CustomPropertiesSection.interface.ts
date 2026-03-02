@@ -16,7 +16,6 @@ import { EntityDetailsObjectInterface } from '../../ExplorePage.interface';
 
 export interface EntityData {
   extension?: Record<string, unknown>;
-  [key: string]: unknown;
 }
 
 export interface EntityDetails {
