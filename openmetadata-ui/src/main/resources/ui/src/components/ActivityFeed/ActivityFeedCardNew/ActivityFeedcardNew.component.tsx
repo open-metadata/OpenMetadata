@@ -141,16 +141,16 @@ const ActivityFeedCardNew = ({
       return (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <div
-            className={classNames('text-sm', {
+            className={classNames('text-sm flex-center gap-1', {
               'max-one-line': !showThread,
             })}>
             {searchClassBase.getEntityIcon(entityType ?? '') && (
-              <span className="w-4 h-4 m-r-xss d-inline-flex align-middle">
+              <span className="w-4 h-4 d-inline-flex align-middle">
                 {searchClassBase.getEntityIcon(entityType ?? '')}
               </span>
             )}
             <Link
-              className="break-word text-sm header-link"
+              className="break-all text-sm header-link"
               data-testid="entity-link"
               to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
               <span>
@@ -223,7 +223,7 @@ const ActivityFeedCardNew = ({
     return (
       <Card
         className={classNames(
-          'relative activity-feed-card-new',
+          'activity-feed-card-new',
           {
             'activity-feed-card-new-right-panel m-0 gap-0':
               showThread || isPost || isOpenInDrawer,
@@ -233,98 +233,96 @@ const ActivityFeedCardNew = ({
         )}
         data-testid="feed-card-v2-sidebar">
         <Space align="start" className="w-full">
-          <Space className="d-flex" direction="vertical">
-            <div className="flex gap-2 items-start w-full relative">
-              <div className="relative z-10">
-                <UserPopOverCard
-                  profileWidth={24}
-                  userName={feed.createdBy ?? ''}
-                />
-              </div>
+          <div className="flex gap-2 w-full">
+            <div className="flex-center flex-col">
+              <UserPopOverCard
+                className="m-r-0"
+                profileWidth={24}
+                userName={feed.createdBy ?? ''}
+              />
 
-              {/* Horizontal line connecting popover to end of container */}
-              <div className="horizontal-line " />
+              <div className="divider" />
+            </div>
 
-              <div className="d-flex flex-col w-full min-w-0 overflow-hidden">
-                <div className="d-flex flex-col align-start">
+            <div className="d-flex flex-col w-full min-w-0 overflow-hidden">
+              <div className="d-flex flex-col align-start">
+                <div
+                  className={classNames(
+                    'd-flex align-center w-full justify-between',
+                    {
+                      'header-container-card': !showThread,
+                      'header-container-right-panel': showThread,
+                    }
+                  )}>
                   <div
-                    className={classNames(
-                      'd-flex align-center w-full justify-between',
-                      {
-                        'header-container-card': !showThread,
-                        'header-container-right-panel': showThread,
-                      }
-                    )}>
-                    <div
+                    className={classNames('mr-2', {
+                      'activity-feed-user-name': !isPost,
+                      'reply-card-user-name': isPost,
+                    })}>
+                    <UserPopOverCard
                       className={classNames('mr-2', {
                         'activity-feed-user-name': !isPost,
                         'reply-card-user-name': isPost,
-                      })}>
-                      <UserPopOverCard
-                        className={classNames('mr-2', {
-                          'activity-feed-user-name': !isPost,
-                          'reply-card-user-name': isPost,
-                        })}
-                        userName={feed.createdBy ?? ''}>
-                        <Link to={getUserPath(feed.createdBy ?? '')}>
-                          {getEntityName(user)}
-                        </Link>
-                      </UserPopOverCard>
-                    </div>
-                    {timestamp}
+                      })}
+                      userName={feed.createdBy ?? ''}>
+                      <Link to={getUserPath(feed.createdBy ?? '')}>
+                        {getEntityName(user)}
+                      </Link>
+                    </UserPopOverCard>
                   </div>
-                  {!isPost && (
-                    <Space
-                      className={classNames('d-flex gap-1', {
-                        'header-container-card': !showThread,
-                        'flex-wrap':
-                          showThread &&
-                          feed.entityRef?.type !== EntityType.CONTAINER,
-                        'items-start':
-                          showThread &&
-                          feed.entityRef?.type === EntityType.CONTAINER,
-                        ' items-center':
-                          showThread &&
-                          feed.entityRef?.type !== EntityType.CONTAINER,
-                      })}>
-                      <Typography.Text
-                        className="card-style-feed-header text-sm"
-                        data-testid="headerText">
-                        {feedHeaderText}
-                      </Typography.Text>
-
-                      {renderEntityLink}
-                    </Space>
-                  )}
+                  {timestamp}
                 </div>
-                <FeedCardBodyNew
-                  feed={feed}
-                  isEditPost={isEditPost}
-                  isFeedWidget={isFeedWidget}
-                  isForFeedTab={isForFeedTab}
-                  isPost={isPost}
-                  message={
-                    !isPost
-                      ? feed.feedInfo?.entitySpecificInfo?.entity?.description
-                      : post?.message
-                  }
-                  showThread={showThread}
-                  onEditCancel={() => setIsEditPost(false)}
-                  onUpdate={onUpdate}
-                />
-                {isFullSizeWidget && (
-                  <div className="m-b-md">
-                    <FeedCardFooterNew
-                      isForFeedTab
-                      feed={feed}
-                      isPost={isPost}
-                      post={post}
-                    />
-                  </div>
+                {!isPost && (
+                  <Space
+                    className={classNames('d-flex gap-1', {
+                      'header-container-card': !showThread,
+                      'flex-wrap':
+                        showThread &&
+                        feed.entityRef?.type !== EntityType.CONTAINER,
+                      'items-start':
+                        showThread &&
+                        feed.entityRef?.type === EntityType.CONTAINER,
+                      ' items-center':
+                        showThread &&
+                        feed.entityRef?.type !== EntityType.CONTAINER,
+                    })}>
+                    <Typography.Text
+                      className="card-style-feed-header text-sm"
+                      data-testid="headerText">
+                      {feedHeaderText}
+                    </Typography.Text>
+
+                    {renderEntityLink}
+                  </Space>
                 )}
               </div>
+              <FeedCardBodyNew
+                feed={feed}
+                isEditPost={isEditPost}
+                isFeedWidget={isFeedWidget}
+                isForFeedTab={isForFeedTab}
+                isPost={isPost}
+                message={
+                  !isPost
+                    ? feed.feedInfo?.entitySpecificInfo?.entity?.description
+                    : post?.message
+                }
+                showThread={showThread}
+                onEditCancel={() => setIsEditPost(false)}
+                onUpdate={onUpdate}
+              />
+              {isFullSizeWidget && (
+                <div className="m-b-md">
+                  <FeedCardFooterNew
+                    isForFeedTab
+                    feed={feed}
+                    isPost={isPost}
+                    post={post}
+                  />
+                </div>
+              )}
             </div>
-          </Space>
+          </div>
         </Space>
       </Card>
     );
