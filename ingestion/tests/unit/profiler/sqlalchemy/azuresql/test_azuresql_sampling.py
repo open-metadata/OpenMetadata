@@ -12,7 +12,7 @@ except ImportError:
     pytest.skip("pyodbc not properly installed", allow_module_level=True)
 
 from sqlalchemy import Column, Integer
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
@@ -34,7 +34,9 @@ from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.azuresql.sampler import AzureSQLSampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):

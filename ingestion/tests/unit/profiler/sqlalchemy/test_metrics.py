@@ -20,7 +20,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Date, DateTime, Float, Integer, String, Time
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -38,7 +38,9 @@ from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.processor.core import Profiler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):
