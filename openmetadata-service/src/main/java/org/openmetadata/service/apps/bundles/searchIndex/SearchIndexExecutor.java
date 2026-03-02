@@ -47,6 +47,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.EntityStatsTracker;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.JobStatsManager;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -144,6 +145,7 @@ public class SearchIndexExecutor implements AutoCloseable {
   private final Map<String, AtomicInteger> entityBatchCounters = new ConcurrentHashMap<>();
   private final Map<String, AtomicInteger> entityBatchFailures = new ConcurrentHashMap<>();
   private final Set<String> promotedEntities = ConcurrentHashMap.newKeySet();
+  private final Map<String, StageStatsTracker> sinkTrackers = new ConcurrentHashMap<>();
 
   record IndexingTask<T>(String entityType, ResultList<T> entities, int offset, int retryCount) {
     IndexingTask(String entityType, ResultList<T> entities, int offset) {
@@ -260,6 +262,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     entityBatchCounters.clear();
     entityBatchFailures.clear();
     promotedEntities.clear();
+    sinkTrackers.clear();
     initStatsManager();
   }
 
@@ -556,10 +559,33 @@ public class SearchIndexExecutor implements AutoCloseable {
     contextData.put(ENTITY_TYPE_KEY, entityType);
     contextData.put(RECREATE_INDEX, config.recreateIndex());
     contextData.put(RECREATE_CONTEXT, recreateContext);
-    contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, getTracker(entityType));
+    contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, getSinkTracker(entityType));
     getTargetIndexForEntity(entityType)
         .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
     return contextData;
+  }
+
+  private StageStatsTracker getSinkTracker(String entityType) {
+    if (context == null) {
+      return null;
+    }
+    return sinkTrackers.computeIfAbsent(
+        entityType,
+        et -> {
+          String jobId = context.getJobId().toString();
+          String serverId =
+              org.openmetadata
+                  .service
+                  .apps
+                  .bundles
+                  .searchIndex
+                  .distributed
+                  .ServerIdentityResolver
+                  .getInstance()
+                  .getServerId();
+          return new StageStatsTracker(
+              jobId, serverId, et, collectionDAO.searchIndexServerStatsDAO());
+        });
   }
 
   private void writeEntitiesToSink(
@@ -1818,6 +1844,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     if (statsManager != null) {
       statsManager.flushAll();
     }
+    sinkTrackers.values().forEach(StageStatsTracker::flush);
     stop();
     cleanup();
   }

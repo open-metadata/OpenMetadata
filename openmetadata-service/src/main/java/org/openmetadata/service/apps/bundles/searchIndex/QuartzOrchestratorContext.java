@@ -88,7 +88,7 @@ public class QuartzOrchestratorContext implements OrchestratorContext {
 
   @Override
   public ReindexingProgressListener createProgressListener(EventPublisherJob jobData) {
-    return new QuartzProgressListener(ctx, jobData, app);
+    return new QuartzProgressListener(ctx, jobData, app, jobRecordProvider, statusPusher);
   }
 
   @Override
