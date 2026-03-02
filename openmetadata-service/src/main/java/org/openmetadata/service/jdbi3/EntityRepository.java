@@ -2295,7 +2295,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final void bulkInsertRelationships(
       List<CollectionDAO.EntityRelationshipObject> relationships) {
     if (!nullOrEmpty(relationships)) {
-      daoCollection.relationshipDAO().bulkInsertTo(relationships);
+      // Keep insert order deterministic to reduce deadlock probability under concurrent writes.
+      List<CollectionDAO.EntityRelationshipObject> orderedRelationships =
+          new ArrayList<>(relationships);
+      orderedRelationships.sort(
+          Comparator.comparing(
+                  CollectionDAO.EntityRelationshipObject::getFromId,
+                  Comparator.nullsLast(String::compareTo))
+              .thenComparing(
+                  CollectionDAO.EntityRelationshipObject::getToId,
+                  Comparator.nullsLast(String::compareTo))
+              .thenComparingInt(CollectionDAO.EntityRelationshipObject::getRelation)
+              .thenComparing(
+                  CollectionDAO.EntityRelationshipObject::getFromEntity,
+                  Comparator.nullsLast(String::compareTo))
+              .thenComparing(
+                  CollectionDAO.EntityRelationshipObject::getToEntity,
+                  Comparator.nullsLast(String::compareTo)));
+      daoCollection.relationshipDAO().bulkInsertTo(orderedRelationships);
     }
   }
 
@@ -2332,7 +2349,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     if (!allRelationships.isEmpty()) {
-      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+      bulkInsertRelationships(allRelationships);
     }
   }
 
@@ -2360,7 +2377,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     if (!allRelationships.isEmpty()) {
-      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+      bulkInsertRelationships(allRelationships);
     }
   }
 
@@ -2386,7 +2403,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     if (!allRelationships.isEmpty()) {
-      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+      bulkInsertRelationships(allRelationships);
     }
   }
 
@@ -2412,7 +2429,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     if (!allRelationships.isEmpty()) {
-      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+      bulkInsertRelationships(allRelationships);
     }
   }
 
@@ -5326,7 +5343,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                           .build())
               .collect(Collectors.toList());
 
-      daoCollection.relationshipDAO().bulkInsertTo(ownerRelationships);
+      bulkInsertRelationships(ownerRelationships);
     }
   }
 
@@ -5364,7 +5381,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                           .build())
               .collect(Collectors.toList());
 
-      daoCollection.relationshipDAO().bulkInsertTo(reviewerRelationships);
+      bulkInsertRelationships(reviewerRelationships);
     }
   }
 
@@ -5391,7 +5408,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                           .build())
               .collect(Collectors.toList());
 
-      daoCollection.relationshipDAO().bulkInsertTo(dataProductRelationships);
+      bulkInsertRelationships(dataProductRelationships);
     }
   }
 
@@ -7228,7 +7245,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                     .relation(relationshipType.ordinal())
                     .build());
           }
-          daoCollection.relationshipDAO().bulkInsertTo(optimizedRelationships);
+          bulkInsertRelationships(optimizedRelationships);
         } else {
           // For non-bidirectional relationships, just create forward relationships
           List<UUID> addedIds =
@@ -7323,7 +7340,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                             .build())
                 .collect(Collectors.toList());
 
-        daoCollection.relationshipDAO().bulkInsertTo(relationships);
+        bulkInsertRelationships(relationships);
       }
       sortEntityReferencesForDeterminism(updatedFromRefs);
       sortEntityReferencesForDeterminism(originFromRefs);
