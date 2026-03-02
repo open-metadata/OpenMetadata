@@ -90,6 +90,18 @@ while [[ $# -gt 0 ]]; do
                     NUM_WEB_ANALYTIC_VIEWS=10000; NUM_WEB_ANALYTIC_ACTIVITY=5000
                     NUM_RAW_COST_ANALYSIS=2500; NUM_AGG_COST_ANALYSIS=2500
                     ;;
+                10k)
+                    NUM_TABLES=5000; NUM_TOPICS=800; NUM_DASHBOARDS=400; NUM_CHARTS=800
+                    NUM_PIPELINES=200; NUM_STORED_PROCEDURES=200; NUM_CONTAINERS=150
+                    NUM_SEARCH_INDEXES=100; NUM_MLMODELS=100; NUM_QUERIES=200
+                    NUM_DASHBOARD_DATA_MODELS=100; NUM_TEST_SUITES=3; NUM_TEST_CASES=300
+                    NUM_GLOSSARY_TERMS=100; NUM_GLOSSARIES=1; NUM_TAGS=20; NUM_CLASSIFICATIONS=1
+                    NUM_USERS=10; NUM_TEAMS=1; NUM_DOMAINS=1; NUM_DATA_PRODUCTS=1
+                    NUM_API_COLLECTIONS=1; NUM_API_ENDPOINTS=100; NUM_LINEAGE_EDGES=400
+                    NUM_TEST_CASE_RESULTS=600; NUM_ENTITY_REPORT_DATA=100
+                    NUM_WEB_ANALYTIC_VIEWS=200; NUM_WEB_ANALYTIC_ACTIVITY=100
+                    NUM_RAW_COST_ANALYSIS=50; NUM_AGG_COST_ANALYSIS=50
+                    ;;
                 small|50k)
                     NUM_TABLES=25000; NUM_TOPICS=4000; NUM_DASHBOARDS=2000; NUM_CHARTS=4000
                     NUM_PIPELINES=1000; NUM_STORED_PROCEDURES=1000; NUM_CONTAINERS=750
@@ -211,7 +223,7 @@ while [[ $# -gt 0 ]]; do
                     NUM_RAW_COST_ANALYSIS=2500; NUM_AGG_COST_ANALYSIS=2500
                     ;;
                 *)
-                    echo "Unknown scale: $2 (use 50k|100k|150k|200k|250k|300k|350k|400k|450k|500k|small|medium|large|xlarge)"
+                    echo "Unknown scale: $2 (use 10k|50k|100k|150k|200k|250k|300k|350k|400k|450k|500k|small|medium|large|xlarge)"
                     exit 1
                     ;;
             esac
@@ -276,7 +288,7 @@ while [[ $# -gt 0 ]]; do
 Usage: perf-test.sh [OPTIONS]
 
 Scale presets:
-  --scale {50k|100k|...|500k|small|medium|large|xlarge}
+  --scale {10k|50k|100k|...|500k|small|medium|large|xlarge}
                                         Apply a preset (see table below)
   --quick                               Quick mode (~10k entities)
 
@@ -318,8 +330,9 @@ Other:
   -h, --help                    Show this help message
 
 Scale preset totals (numeric):
-  50k  ~50K     100k  ~100K    150k  ~150K    200k  ~200K    250k  ~250K
-  300k  ~300K   350k  ~350K    400k  ~400K    450k  ~450K    500k  ~500K
+  10k  ~10K     50k  ~50K      100k  ~100K    150k  ~150K    200k  ~200K
+  250k  ~250K   300k  ~300K    350k  ~350K    400k  ~400K    450k  ~450K
+  500k  ~500K
 
 Scale preset totals (named):
   xlarge  ~5M    large  ~2M    medium  ~500K    small  ~50K
@@ -424,7 +437,7 @@ import uuid
 import threading
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 SERVER_URL = "${SERVER_URL}"
 NUM_WORKERS = ${NUM_WORKERS}
@@ -2482,7 +2495,7 @@ for name, bench in benchmarks.items():
 
 report = {
     "metadata": {
-        "timestamp": datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "server_url": SERVER_URL,
         "workers": NUM_WORKERS,
         "scale": SCALE_APPLIED,
