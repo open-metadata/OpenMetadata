@@ -15,6 +15,9 @@ Test Redshift connection URL building with basic and IAM auth
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+from botocore.exceptions import ClientError
+
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -25,6 +28,7 @@ from metadata.generated.schema.entity.services.connections.database.redshiftConn
     RedshiftConnection,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.redshift.connection import (
     _get_provisioned_cluster_identifier,
     _get_redshift_iam_credentials,
@@ -229,3 +233,47 @@ class TestGetRedshiftIAMCredentials:
             workgroupName="my-workgroup",
             dbName="dev",
         )
+
+    @patch("metadata.ingestion.source.database.redshift.connection.AWSClient")
+    def test_provisioned_wraps_aws_error(self, mock_aws_client_cls):
+        mock_client = MagicMock()
+        mock_client.get_cluster_credentials.side_effect = ClientError(
+            {"Error": {"Code": "ClusterNotFound", "Message": "Cluster not found"}},
+            "GetClusterCredentials",
+        )
+        mock_aws_client_cls.return_value.get_redshift_client.return_value = mock_client
+
+        connection = RedshiftConnection(
+            hostPort=f"{PROVISIONED_HOST}:5439",
+            username="admin",
+            authType=IamAuthConfigurationSource(
+                awsConfig=AWSCredentials(awsRegion="us-east-1")
+            ),
+            database="mydb",
+        )
+
+        with pytest.raises(SourceConnectionException, match="my-cluster"):
+            _get_redshift_iam_credentials(connection)
+
+    @patch("metadata.ingestion.source.database.redshift.connection.AWSClient")
+    def test_serverless_wraps_aws_error(self, mock_aws_client_cls):
+        mock_client = MagicMock()
+        mock_client.get_credentials.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException", "Message": "not found"}},
+            "GetCredentials",
+        )
+        mock_aws_client_cls.return_value.get_redshift_serverless_client.return_value = (
+            mock_client
+        )
+
+        connection = RedshiftConnection(
+            hostPort=f"{SERVERLESS_HOST}:5439",
+            username="admin",
+            authType=IamAuthConfigurationSource(
+                awsConfig=AWSCredentials(awsRegion="us-east-1")
+            ),
+            database="mydb",
+        )
+
+        with pytest.raises(SourceConnectionException, match="my-workgroup"):
+            _get_redshift_iam_credentials(connection)

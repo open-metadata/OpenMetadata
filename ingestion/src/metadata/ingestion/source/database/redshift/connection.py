@@ -89,7 +89,13 @@ def _get_serverless_iam_credentials(connection: RedshiftConnection, host: str) -
 
     kwargs = {"workgroupName": workgroup, "dbName": connection.database or "dev"}
 
-    response = aws_client.get_credentials(**kwargs)
+    try:
+        response = aws_client.get_credentials(**kwargs)
+    except Exception as exc:
+        raise SourceConnectionException(
+            f"Failed to retrieve IAM credentials for Redshift Serverless "
+            f"workgroup '{workgroup}': {exc}"
+        ) from exc
     return response["dbUser"], response["dbPassword"]
 
 
@@ -107,7 +113,13 @@ def _get_provisioned_iam_credentials(
     if connection.database:
         kwargs["DbName"] = connection.database
 
-    response = aws_client.get_cluster_credentials(**kwargs)
+    try:
+        response = aws_client.get_cluster_credentials(**kwargs)
+    except Exception as exc:
+        raise SourceConnectionException(
+            f"Failed to retrieve IAM credentials for Redshift cluster "
+            f"'{cluster_identifier}': {exc}"
+        ) from exc
     return response["DbUser"], response["DbPassword"]
 
 
