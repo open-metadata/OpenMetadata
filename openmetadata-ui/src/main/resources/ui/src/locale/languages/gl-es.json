@@ -2592,6 +2592,7 @@
     "no-config-available": "Non hai configuracións de conexión dispoñibles.",
     "no-config-plural": "Non hai configuracións.",
     "no-connectors-available-for-service": "Non hai conectores dispoñibles para o tipo de servizo seleccionado.",
+    "no-contract-description": "Non se definiu ningún contrato para esta entidade.",
     "no-conversations": "¡Sen conversas!",
     "no-conversations-description": "Non tes tarefas abertas neste momento. Non hai detalles nin conversas para mostrar.",
     "no-curated-assets": "Parece que aínda non has curado ningún activo de datos.",

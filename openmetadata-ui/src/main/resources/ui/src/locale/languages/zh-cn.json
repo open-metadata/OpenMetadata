@@ -2592,6 +2592,7 @@
     "no-config-available": "没有可用的连接配置",
     "no-config-plural": "No Configs.",
     "no-connectors-available-for-service": "所选服务类型没有可用的连接器。",
+    "no-contract-description": "未为此实体定义合同。",
     "no-conversations": "没有对话！",
     "no-conversations-description": "您目前没有开放的任务。没有可显示的详细信息或对话。",
     "no-curated-assets": "没有精选资产",

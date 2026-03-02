@@ -2592,6 +2592,7 @@
     "no-config-available": "Geen connectieconfiguraties beschikbaar.",
     "no-config-plural": "Geen configuraties.",
     "no-connectors-available-for-service": "Geen connectoren beschikbaar voor het geselecteerde servicetype.",
+    "no-contract-description": "Er is geen contract gedefinieerd voor deze entiteit.",
     "no-conversations": "Geen gesprekken!",
     "no-conversations-description": "Je hebt momenteel geen open taken. Er zijn geen details of gesprekken om weer te geven.",
     "no-curated-assets": "Geen geselecteerde assets",

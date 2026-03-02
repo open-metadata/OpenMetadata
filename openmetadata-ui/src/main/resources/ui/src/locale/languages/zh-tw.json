@@ -2592,6 +2592,7 @@
     "no-config-available": "沒有可用的連線組態。",
     "no-config-plural": "沒有組態。",
     "no-connectors-available-for-service": "所選服務類型沒有可用的連接器。",
+    "no-contract-description": "尚未為此實體定義合約。",
     "no-conversations": "沒有對話！",
     "no-conversations-description": "您目前沒有開啟的任務。沒有詳細資料或對話可顯示。",
     "no-curated-assets": "看來您還沒有策展任何資料資產。",

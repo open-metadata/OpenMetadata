@@ -2592,6 +2592,7 @@
     "no-config-available": "ไม่มีการตั้งค่าการเชื่อมต่อที่สามารถใช้งานได้",
     "no-config-plural": "ไม่มีการตั้งค่า",
     "no-connectors-available-for-service": "ไม่มีตัวเชื่อมใช้งานได้สำหรับประเภทบริการที่เลือก",
+    "no-contract-description": "ยังไม่มีการกำหนดสัญญาสำหรับเอนทิตีนี้",
     "no-conversations": "ไม่มีบทสนทนา!",
     "no-conversations-description": "คุณไม่มีงานที่เปิดอยู่ในขณะนี้ ไม่มีรายละเอียดหรือบทสนทนาให้แสดง",
     "no-curated-assets": "Looks like you haven't curated any data assets yet.",
