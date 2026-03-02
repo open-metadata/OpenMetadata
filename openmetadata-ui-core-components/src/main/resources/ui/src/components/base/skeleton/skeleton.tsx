@@ -94,12 +94,10 @@ export const Skeleton = ({
         VARIANT_CLASSES[variant],
         animation === "pulse" && "tw:animate-pulse",
         animation === "wave" && "skeleton-wave",
-        className
+        className,
       )}
     >
-      {children && (
-        <span className="tw:invisible">{children}</span>
-      )}
+      {children && <span className="tw:invisible">{children}</span>}
     </span>
   );
 };
