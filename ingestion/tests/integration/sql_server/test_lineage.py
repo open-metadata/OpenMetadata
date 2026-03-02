@@ -1,6 +1,6 @@
 import pytest
 from freezegun import freeze_time
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.sql_lineage import search_cache
@@ -16,9 +16,13 @@ def language_config(mssql_container, request):
         "mssql+pytds://" + mssql_container.get_connection_url().split("://")[1],
         connect_args={"autocommit": True},
     )
-    engine.execute(
-        f"ALTER LOGIN {mssql_container.username} WITH DEFAULT_LANGUAGE={language};"
-    )
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                f"ALTER LOGIN {mssql_container.username} WITH DEFAULT_LANGUAGE={language};"
+            )
+        )
+        conn.commit()
 
 
 @pytest.fixture()

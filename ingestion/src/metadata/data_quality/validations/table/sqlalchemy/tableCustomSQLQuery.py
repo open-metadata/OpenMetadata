@@ -366,5 +366,5 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         )
         row = table_metric_computer.compute()
         if row:
-            return dict(row).get(Metrics.rowCount.value.name())
+            return row._asdict().get(Metrics.ROW_COUNT.value.name())
         return None

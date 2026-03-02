@@ -17,6 +17,7 @@ from typing import Optional, Tuple, Union
 
 from pydantic import ValidationError
 from pyhive.sqlalchemy_hive import HiveDialect
+from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.table import TableType
@@ -117,7 +118,8 @@ class HiveSource(CommonDbSourceService):
         metastore_conn = self._get_validated_metastore_connection()
 
         if not metastore_conn:
-            result = dict(self.engine.execute("SELECT VERSION()").fetchone())
+            with self.engine.connect() as conn:
+                result = conn.execute(text("SELECT VERSION()")).fetchone()._asdict()
 
             version = result.get("_c0", "").split()
             if version and self._parse_version(version[0]) >= self._parse_version(

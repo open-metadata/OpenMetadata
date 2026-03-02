@@ -3,7 +3,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
@@ -31,7 +31,10 @@ from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.bigquery.sampler import BigQuerySampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
+
 
 # This is a bogus private key for testing purposes
 PRIVATE_KEY = """-----BEGIN RSA PRIVATE KEY-----

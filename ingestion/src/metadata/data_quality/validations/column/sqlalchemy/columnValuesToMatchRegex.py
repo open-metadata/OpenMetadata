@@ -55,12 +55,11 @@ class ColumnValuesToMatchRegexValidator(
             regex_count.expression = kwargs.get("expression")
             regex_count_fn = regex_count.fn()
 
-            res = dict(
-                self.runner.dispatch_query_select_first(
-                    Metrics.valuesCount(column).fn(),
-                    regex_count_fn,
-                )
+            row = self.runner.dispatch_query_select_first(
+                Metrics.COUNT(column).fn(),
+                regex_count_fn,
             )
+            res = dict(row._mapping)
         except (CompileError, SQLAlchemyError) as err:
             logger.warning(
                 f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`"
@@ -68,12 +67,11 @@ class ColumnValuesToMatchRegexValidator(
             regex_count = Metrics.likeCount(column)
             regex_count.expression = kwargs.get("expression")
             regex_count_fn = regex_count.fn()
-            res = dict(
-                self.runner.dispatch_query_select_first(
-                    Metrics.valuesCount(column).fn(),
-                    regex_count_fn,
-                )
+            row = self.runner.dispatch_query_select_first(
+                Metrics.COUNT(column).fn(),
+                regex_count_fn,
             )
+            res = dict(row._mapping)
 
         if not res:
             # pylint: disable=line-too-long

@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 import sqlalchemy as sqa
 from pytest import raises
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -96,7 +96,9 @@ config = {
     },
 }
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):

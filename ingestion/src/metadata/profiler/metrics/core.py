@@ -21,7 +21,7 @@ from functools import wraps
 from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
 
 from sqlalchemy import Column
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
@@ -201,9 +201,7 @@ class QueryMetric(Metric, ABC):
     """
 
     @abstractmethod
-    def query(
-        self, sample: Optional[DeclarativeMeta], session: Optional[Session] = None
-    ):
+    def query(self, sample: Optional[type], session: Optional[Session] = None):
         """
         SQLAlchemy query to execute with .all()
 
@@ -223,7 +221,7 @@ class HybridMetric(Metric, ABC):
     @abstractmethod
     def fn(
         self,
-        sample: Optional[DeclarativeMeta],
+        sample: Optional[type],
         res: Dict[str, Any],
         session: Optional[Session] = None,
     ):

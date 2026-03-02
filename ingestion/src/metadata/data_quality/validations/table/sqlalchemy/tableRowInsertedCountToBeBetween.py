@@ -55,12 +55,11 @@ class TableRowInsertedCountToBeBetweenValidator(
             get_partition_col_type(column_name.name, inspect(self.runner.dataset).c),  # type: ignore
         )
 
-        return dict(
-            self.runner.dispatch_query_select_first(
-                Metrics.rowCount.value().fn(),
-                query_filter_={
-                    "filters": [(column_name, "ge", date_or_datetime_fn)],
-                    "or_filter": False,
-                },
-            )  # type: ignore
-        ).get(Metrics.rowCount.name)
+        row = self.runner.dispatch_query_select_first(
+            Metrics.ROW_COUNT.value().fn(),
+            query_filter_={
+                "filters": [(column_name, "ge", date_or_datetime_fn)],
+                "or_filter": False,
+            },
+        )  # type: ignore
+        return dict(row._mapping).get(Metrics.ROW_COUNT.name)

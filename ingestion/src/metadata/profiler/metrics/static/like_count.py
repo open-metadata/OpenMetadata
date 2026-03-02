@@ -52,7 +52,7 @@ class LikeCount(StaticMetric):
             )
         return SumFn(
             case(
-                [(column(self.col.name, self.col.type).like(self.expression), 1)],
+                (column(self.col.name, self.col.type).like(self.expression), 1),
                 else_=0,
             )
         )

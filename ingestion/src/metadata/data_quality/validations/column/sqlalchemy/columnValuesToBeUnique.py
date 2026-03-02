@@ -80,17 +80,14 @@ class ColumnValuesToBeUniqueValidator(
             else:
                 query_group_by_ = None
 
-            self.value = dict(
-                self.runner._select_from_dataset(
-                    grouped_cte,
-                    func.sum(grouped_cte.c[column.name]).label(
-                        Metrics.valuesCount.name
-                    ),
-                    unique_count.label(Metrics.uniqueCount.name),
-                    query_group_by_=query_group_by_,
-                ).first()
-            )  # type: ignore
-            res = self.value.get(Metrics.valuesCount.name)
+            row = self.runner._select_from_dataset(
+                grouped_cte,
+                func.sum(grouped_cte.c[column.name]).label(Metrics.COUNT.name),
+                unique_count.label(Metrics.UNIQUE_COUNT.name),
+                query_group_by_=query_group_by_,
+            ).first()
+            self.value = dict(row._mapping)  # type: ignore
+            res = self.value.get(Metrics.COUNT.name)
         except Exception as exc:
             raise SQLAlchemyError(exc)
 
@@ -148,7 +145,7 @@ class ColumnValuesToBeUniqueValidator(
 
                 table = self.runner.dataset
 
-            dialect = self.runner._session.bind.dialect.name
+            dialect = self.runner._session.get_bind().dialect.name
 
             normalized_dimension = self._get_normalized_dimension_expression(
                 dimension_col

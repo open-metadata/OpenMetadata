@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import inspect, literal
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.sql.functions import FunctionElement
 
 if TYPE_CHECKING:
@@ -62,7 +61,7 @@ class ColumnCount(StaticMetric):
 
     schema_metric_type = MetricType.columnCount
 
-    table: DeclarativeMeta
+    table: type
 
     @classmethod
     def name(cls):

@@ -52,7 +52,7 @@ class NotLikeCount(StaticMetric):
             )
         return SumFn(
             case(
-                [(column(self.col.name, self.col.type).not_like(self.expression), 0)],
+                (column(self.col.name, self.col.type).not_like(self.expression), 0),
                 else_=1,
             )
         )
