@@ -152,7 +152,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState(true);
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
@@ -164,6 +164,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     ...statusDropdownSelection,
   ]);
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
+  const [totalTermsCount, setTotalTermsCount] = useState<number>(0);
 
   const { paging, handlePagingChange } = usePaging(PAGE_SIZE_LARGE);
   const [loadingChildren, setLoadingChildren] = useState<
@@ -325,6 +326,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
       if (!data || !Array.isArray(data)) {
         return;
+      }
+
+      if (data.length === 0 && isStatusFilterActive) {
+        const countResponse = await getFirstLevelGlossaryTermsPaginated(
+          activeGlossary?.fullyQualifiedName || '',
+          0
+        );
+        setTotalTermsCount(countResponse.paging?.total ?? 0);
+      } else {
+        setTotalTermsCount(data.length);
       }
 
       const newTerms = data as ModifiedGlossary[];
@@ -1480,7 +1491,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return 'No Glossary Terms';
   }, [isSearchActive, isStatusFilterActive, searchTerm]);
 
-  if (hasNoTerms && !isSearchActive && !isTableLoading) {
+  if (hasNoTerms && !isSearchActive && totalTermsCount === 0 && !isTableLoading) {
     return (
       <div className="h-full" ref={tableContainerRef}>
         <ErrorPlaceHolder
