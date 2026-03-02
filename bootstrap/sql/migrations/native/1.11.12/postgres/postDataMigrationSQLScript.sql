@@ -26,6 +26,7 @@ UPDATE apps_marketplace
 SET json = (json - 'preview') || jsonb_build_object(
     'enabled',
     CASE
+        WHEN json -> 'preview' = 'null'::jsonb THEN true
         WHEN (json -> 'preview')::boolean = true THEN false
         ELSE true
     END
@@ -36,6 +37,7 @@ UPDATE installed_apps
 SET json = (json - 'preview') || jsonb_build_object(
     'enabled',
     CASE
+        WHEN json -> 'preview' = 'null'::jsonb THEN true
         WHEN (json -> 'preview')::boolean = true THEN false
         ELSE true
     END
