@@ -31,8 +31,8 @@
     <socket.io-client.version>2.1.1</socket.io-client.version>
     <json-smart.version>2.5.2</json-smart.version>
     <jetty.version>12.1.1</jetty.version>
-    <logback-core.version>1.5.19</logback-core.version>
-    <logback-classic.version>1.5.18</logback-classic.version>
+    <logback-core.version>1.5.25</logback-core.version>
+    <logback-classic.version>1.5.25</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
     <kubernetes-client.version>24.0.0</kubernetes-client.version>
   </properties>

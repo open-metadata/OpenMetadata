@@ -204,15 +204,22 @@ public class DataAssetsWorkflow {
           searchInterface.getEntityAttributeFields(
               dataInsightsSearchConfiguration, source.getEntityType()));
 
-      while (!source.isDone().get()) {
+      String keysetCursor = null;
+      while (true) {
         try {
-          processEntity(source.readNext(null), contextData, source);
+          ResultList<? extends EntityInterface> resultList = source.readNextKeyset(keysetCursor);
+          keysetCursor = resultList.getPaging().getAfter();
+          processEntity(resultList, contextData, source);
+          if (keysetCursor == null) {
+            break;
+          }
         } catch (SearchIndexException ex) {
           source.updateStats(
               ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
           String errorMessage =
               String.format("Failed processing Data from %s: %s", source.getName(), ex);
           workflowStats.addFailure(errorMessage);
+          break;
         } finally {
           updateWorkflowStats(source.getName(), source.getStats());
         }

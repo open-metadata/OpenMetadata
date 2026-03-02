@@ -22,6 +22,7 @@ RESTRICTED_KEYWORDS = ["::", ">"]
 RESERVED_COLON_KEYWORD = "__reserved__colon__"
 RESERVED_ARROW_KEYWORD = "__reserved__arrow__"
 RESERVED_QUOTE_KEYWORD = "__reserved__quote__"
+COLUMN_NAME_MAX_LENGTH = 256
 
 
 class TransformDirection(Enum):
@@ -148,6 +149,13 @@ def get_transformer(model: Optional[Any]) -> Optional[Callable]:
     return None
 
 
+def _truncate_if_encoding(value: str, transformer) -> str:
+    """Truncate encoded value to COLUMN_NAME_MAX_LENGTH if encoding."""
+    if transformer == replace_separators and len(value) > COLUMN_NAME_MAX_LENGTH:
+        return value[:COLUMN_NAME_MAX_LENGTH]
+    return value
+
+
 def transform_all_names(obj, transformer):
     """Transform all name fields recursively"""
     if not obj:
@@ -156,9 +164,9 @@ def transform_all_names(obj, transformer):
     # Transform name field if it exists (supports both obj.name.root and obj.root)
     name = getattr(obj, "name", None)
     if name and hasattr(name, "root") and name.root is not None:
-        name.root = transformer(name.root)
+        name.root = _truncate_if_encoding(transformer(name.root), transformer)
     elif hasattr(obj, "root") and obj.root is not None:
-        obj.root = transformer(obj.root)
+        obj.root = _truncate_if_encoding(transformer(obj.root), transformer)
 
     # Transform nested collections in a single loop each
     for attr_name in ["columns", "children"]:
@@ -175,11 +183,12 @@ def transform_all_names(obj, transformer):
             for constraint in table_constraints:
                 if hasattr(constraint, "columns"):
                     constraint.columns = [
-                        transformer(col) for col in constraint.columns
+                        _truncate_if_encoding(transformer(col), transformer)
+                        for col in constraint.columns
                     ]
 
     if transformer == replace_separators and type(name) == str:
-        obj.name = transformer(name)
+        obj.name = _truncate_if_encoding(transformer(name), transformer)
 
 
 def transform_entity_names(entity: Any, model: Optional[Any]) -> Any:
@@ -192,11 +201,15 @@ def transform_entity_names(entity: Any, model: Optional[Any]) -> Any:
 
     # Root attribute handling
     if hasattr(entity, "root") and entity.root is not None:
-        entity.root = (
-            replace_separators(entity.root)
-            if model_name.startswith("Create")
-            else revert_separators(entity.root)
-        )
+        if model_name.startswith("Create"):
+            encoded = replace_separators(entity.root)
+            entity.root = (
+                encoded[:COLUMN_NAME_MAX_LENGTH]
+                if len(encoded) > COLUMN_NAME_MAX_LENGTH
+                else encoded
+            )
+        else:
+            entity.root = revert_separators(entity.root)
         return entity
 
     # Get model-specific transformer

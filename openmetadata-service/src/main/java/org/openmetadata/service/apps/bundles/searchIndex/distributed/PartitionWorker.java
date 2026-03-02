@@ -28,11 +28,14 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
@@ -148,13 +151,22 @@ public class PartitionWorker {
               .build();
       coordinator.updatePartitionProgress(processing);
 
+      // Initialize keyset cursor for efficient pagination (avoids OFFSET degradation)
+      long cursorInitStart = System.currentTimeMillis();
+      String keysetCursor = initializeKeysetCursor(entityType, rangeStart);
+      LOG.info(
+          "[PERF] initializeKeysetCursor for {} offset={} took {}ms",
+          entityType,
+          rangeStart,
+          System.currentTimeMillis() - cursorInitStart);
+
       // Process in batches
       while (currentOffset < rangeEnd && !stopped.get()) {
         int currentBatchSize = (int) Math.min(batchSize, rangeEnd - currentOffset);
 
         try {
           BatchResult batchResult =
-              processBatch(entityType, currentOffset, currentBatchSize, statsTracker);
+              processBatch(entityType, keysetCursor, currentBatchSize, statsTracker);
           successCount.addAndGet(batchResult.successCount());
           failedCount.addAndGet(batchResult.failedCount());
           warningsCount.addAndGet(batchResult.warningsCount());
@@ -162,6 +174,7 @@ public class PartitionWorker {
               batchResult.successCount() + batchResult.failedCount() + batchResult.warningsCount());
 
           currentOffset += currentBatchSize;
+          keysetCursor = batchResult.nextCursor();
 
           // Update progress periodically
           if (processedCount.get() % PROGRESS_UPDATE_INTERVAL < batchSize) {
@@ -171,6 +184,18 @@ public class PartitionWorker {
                 processedCount.get(),
                 successCount.get(),
                 failedCount.get());
+          }
+
+          // If keyset cursor exhausted, recompute or stop
+          if (keysetCursor == null && currentOffset < rangeEnd) {
+            keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+            if (keysetCursor == null) {
+              LOG.debug(
+                  "No more data at offset {} (rangeEnd: {}), finishing partition early",
+                  currentOffset,
+                  rangeEnd);
+              break;
+            }
           }
 
         } catch (SearchIndexException e) {
@@ -213,6 +238,14 @@ public class PartitionWorker {
           processedCount.addAndGet(batchFailedCount);
           currentOffset += currentBatchSize;
 
+          // Recompute keyset cursor after failure
+          if (currentOffset < rangeEnd) {
+            keysetCursor = initializeKeysetCursor(entityType, currentOffset);
+            if (keysetCursor == null) {
+              break;
+            }
+          }
+
           updateProgress(
               partition,
               currentOffset,
@@ -237,7 +270,9 @@ public class PartitionWorker {
       // Wait for async sink operations to complete and flush stats to DB
       // IMPORTANT: This must happen BEFORE marking partition complete, otherwise
       // the coordinator may aggregate stats before they're written to the database
+      long waitStart = System.currentTimeMillis();
       waitForSinkOperations(statsTracker);
+      LOG.info("[PERF] waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
 
       // Mark partition as completed (stats are now in the database)
       coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
@@ -333,16 +368,19 @@ public class PartitionWorker {
    * @return Batch processing result
    */
   private BatchResult processBatch(
-      String entityType, long offset, int batchSize, StageStatsTracker statsTracker)
+      String entityType, String keysetCursor, int batchSize, StageStatsTracker statsTracker)
       throws SearchIndexException {
 
-    String cursor = RestUtil.encodeCursor(String.valueOf(offset));
-    ResultList<?> resultList = readEntities(entityType, cursor, batchSize);
+    long t0 = System.currentTimeMillis();
+    ResultList<?> resultList = readEntitiesKeyset(entityType, keysetCursor, batchSize);
+    long t1 = System.currentTimeMillis();
 
     if (resultList == null || resultList.getData() == null || resultList.getData().isEmpty()) {
-      return new BatchResult(0, 0, 0);
+      LOG.info("[PERF] {} read={}ms returned empty", entityType, t1 - t0);
+      return new BatchResult(0, 0, 0, null);
     }
 
+    String nextCursor = resultList.getPaging() != null ? resultList.getPaging().getAfter() : null;
     int readSuccessCount = listOrEmpty(resultList.getData()).size();
     int readErrorCount = listOrEmpty(resultList.getErrors()).size();
     int warningsCount = resultList.getWarningsCount() != null ? resultList.getWarningsCount() : 0;
@@ -355,7 +393,15 @@ public class PartitionWorker {
 
     try {
       writeToSink(entityType, resultList, contextData);
-      return new BatchResult(readSuccessCount, readErrorCount, warningsCount);
+      long t2 = System.currentTimeMillis();
+      LOG.info(
+          "[PERF] {} read={}ms write={}ms total={}ms records={}",
+          entityType,
+          t1 - t0,
+          t2 - t1,
+          t2 - t0,
+          readSuccessCount);
+      return new BatchResult(readSuccessCount, readErrorCount, warningsCount, nextCursor);
     } catch (Exception e) {
       throw new SearchIndexException(
           new org.openmetadata.schema.system.IndexingError()
@@ -374,18 +420,31 @@ public class PartitionWorker {
    * @param limit Number of entities to read
    * @return Result list containing entities
    */
-  private ResultList<?> readEntities(String entityType, String cursor, int limit)
+  private ResultList<?> readEntitiesKeyset(String entityType, String keysetCursor, int limit)
       throws SearchIndexException {
 
     List<String> fields = TIME_SERIES_ENTITIES.contains(entityType) ? List.of() : List.of("*");
 
     if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, limit, fields);
-      return source.readWithCursor(cursor);
+      PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, limit, fields, 0);
+      return source.readNextKeyset(keysetCursor);
     } else {
       PaginatedEntityTimeSeriesSource source =
-          new PaginatedEntityTimeSeriesSource(entityType, limit, fields);
-      return source.readWithCursor(cursor);
+          new PaginatedEntityTimeSeriesSource(entityType, limit, fields, 0);
+      return source.readWithCursor(keysetCursor);
+    }
+  }
+
+  private String initializeKeysetCursor(String entityType, long offset) {
+    if (offset <= 0) {
+      return null;
+    }
+    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
+      int cursorOffset = (int) offset - 1;
+      ListFilter filter = new ListFilter(Include.ALL);
+      return Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
+    } else {
+      return RestUtil.encodeCursor(String.valueOf(offset));
     }
   }
 
@@ -472,7 +531,8 @@ public class PartitionWorker {
     return stopped.get();
   }
 
-  public record BatchResult(int successCount, int failedCount, int warningsCount) {}
+  public record BatchResult(
+      int successCount, int failedCount, int warningsCount, String nextCursor) {}
 
   public record PartitionResult(
       long successCount,

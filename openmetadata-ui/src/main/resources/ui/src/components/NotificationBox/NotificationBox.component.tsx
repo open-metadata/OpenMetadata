@@ -212,7 +212,7 @@ const NotificationBox = ({
           size="small"
         />
       ),
-    [notifications, notificationDropDownList, viewAllPath]
+    [notifications, notificationDropDownList, viewAllPath, t]
   );
 
   return (

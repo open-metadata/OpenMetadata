@@ -12,6 +12,7 @@
  */
 
 import { expect, Page, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -66,7 +67,7 @@ async function performRename(
   await page.waitForLoadState('networkidle');
 }
 
-test.describe('Multiple Rename Tests', () => {
+test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll('Setup admin user', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.create(apiContext);

@@ -62,6 +62,15 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.powerbi.constants import (
+    DATABRICKS_QUERY_EXPRESSION_KW,
+    DEFAULT_REPORTS_PREFIX,
+    MAX_PROJECT_FILTER_SIZE,
+    OWNER_ACCESS_RIGHTS_KEYWORDS,
+    RDL_REPORT_FORMAT,
+    RDL_REPORTS_PREFIX,
+    SNOWFLAKE_QUERY_EXPRESSION_KW,
+)
 from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
     parse_databricks_native_query_source,
 )
@@ -76,6 +85,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBiTable,
     ReportPage,
 )
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.filters import (
@@ -88,15 +98,6 @@ from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-OWNER_ACCESS_RIGHTS_KEYWORDS = ["owner", "write", "admin"]
-SNOWFLAKE_QUERY_EXPRESSION_KW = "Value.NativeQuery(Snowflake.Databases("
-DATABRICKS_QUERY_EXPRESSION_KW = "Value.NativeQuery(Databricks.Catalogs("
-MAX_PROJECT_FILTER_SIZE = 20
-
-DEFAULT_REPORTS_PREFIX = "reports"
-RDL_REPORT_FORMAT = "RDL"
-RDL_REPORTS_PREFIX = "rdlreports"
 
 
 class PowerbiSource(DashboardServiceSource):
@@ -130,6 +131,11 @@ class PowerbiSource(DashboardServiceSource):
         paginated_filter_patterns = self._paginate_project_filter_pattern(
             filter_pattern
         )
+        if len(paginated_filter_patterns) > 1:
+            logger.info(
+                f"Paginating workspace fetch with {len(paginated_filter_patterns)}"
+                f" batches to accommodate OData filter node limit"
+            )
         for filter_pattern in paginated_filter_patterns:
             workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
             if workspaces:
@@ -179,7 +185,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _paginate_project_filter_pattern(self, filter_pattern):
         """
-        paginate include filters if more then `20` filters
+        paginate include filters if more then `10` filters
         in single call
         """
         if not filter_pattern:
@@ -191,7 +197,7 @@ class PowerbiSource(DashboardServiceSource):
         paginated_include_filters = [filter_pattern]
         if filter_pattern.includes:
             # if include filters are present then paginate them
-            # in the batch of `MAX_PROJECT_FILTER_SIZE=20` while
+            # in the batch of `MAX_PROJECT_FILTER_SIZE` while
             # keeping exclude filters same across all batches
             include_filters = [
                 filter_pattern.includes[i : i + MAX_PROJECT_FILTER_SIZE]
@@ -212,6 +218,11 @@ class PowerbiSource(DashboardServiceSource):
         paginated_filter_patterns = self._paginate_project_filter_pattern(
             filter_pattern
         )
+        if len(paginated_filter_patterns) > 1:
+            logger.info(
+                f"Paginating workspace fetch with {len(paginated_filter_patterns)}"
+                f" batches to accommodate OData filter node limit"
+            )
         for filter_pattern in paginated_filter_patterns:
             workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
             if workspaces:
@@ -561,7 +572,8 @@ class PowerbiSource(DashboardServiceSource):
                 parsed_measure = PowerBiMeasureModel(
                     dataType=measure_type,
                     dataTypeDisplay=measure_type,
-                    name=measure.name,
+                    name=truncate_column_name(measure.name),
+                    displayName=measure.name,
                     description=description_field_text,
                 )
                 measures.append(Column(**parsed_measure.model_dump()))
@@ -584,7 +596,7 @@ class PowerbiSource(DashboardServiceSource):
                     "dataType": ColumnTypeParser.get_column_type(
                         column.dataType if column.dataType else None
                     ),
-                    "name": column.name,
+                    "name": truncate_column_name(column.name),
                     "displayName": column.name,
                     "description": column.description,
                 }
@@ -613,7 +625,7 @@ class PowerbiSource(DashboardServiceSource):
                 parsed_table = {
                     "dataTypeDisplay": "PowerBI Table",
                     "dataType": DataType.TABLE,
-                    "name": table.name,
+                    "name": truncate_column_name(table.name),
                     "displayName": table_display_name,
                     "description": table.description,
                     "children": [],
@@ -640,7 +652,7 @@ class PowerbiSource(DashboardServiceSource):
                 parsed_table = {
                     "dataTypeDisplay": "PowerBI Table",
                     "dataType": DataType.TABLE,
-                    "name": entity.name,
+                    "name": truncate_column_name(entity.name),
                     "displayName": entity.name,
                     "description": entity.description,
                     "children": [],
@@ -657,7 +669,7 @@ class PowerbiSource(DashboardServiceSource):
                             "dataType": ColumnTypeParser.get_column_type(
                                 attribute.dataType if attribute.dataType else None
                             ),
-                            "name": attribute.name,
+                            "name": truncate_column_name(attribute.name),
                             "displayName": attribute.name,
                             "description": attribute.description,
                         }

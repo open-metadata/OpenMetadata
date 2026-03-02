@@ -171,7 +171,7 @@ export const UserImportResult = ({
     ];
 
     return data;
-  }, [parsedRecords]);
+  }, [parsedRecords, t]);
 
   const parseCsvFile = () => {
     if (csvImportResult.importResultsCsv) {

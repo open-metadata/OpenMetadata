@@ -58,7 +58,9 @@ public class ChartRepository extends EntityRepository<Chart> {
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("dashboards", this::fetchAndSetDashboards);
-    fieldFetchers.put("service", this::fetchAndSetServices);
+    // NOTE: "service" field is NOT registered here because:
+    // - For bulk operations: fetchAndSetDefaultService() in setFieldsInBulk handles it correctly
+    // - For single entity: setFields() already sets service via getContainer()
   }
 
   @Override
@@ -152,17 +154,6 @@ public class ChartRepository extends EntityRepository<Chart> {
       return;
     }
     setFieldFromMap(true, charts, batchFetchDashboards(charts), Chart::setDashboards);
-  }
-
-  private void fetchAndSetServices(List<Chart> charts, Fields fields) {
-    if (!fields.contains("service") || charts == null || charts.isEmpty()) {
-      return;
-    }
-    // For charts, all should have the same service (dashboard service)
-    EntityReference service = getContainer(charts.get(0).getId());
-    for (Chart chart : charts) {
-      chart.setService(service);
-    }
   }
 
   @Override

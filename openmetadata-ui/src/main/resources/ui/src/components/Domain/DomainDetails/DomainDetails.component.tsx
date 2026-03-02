@@ -30,6 +30,8 @@ import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
+import Voting from '../../../components/Entity/Voting/Voting.component';
+import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import { AssetsTabRef } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
@@ -75,7 +77,11 @@ import {
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
 } from '../../../utils/DomainUtils';
-import { getEntityFeedLink, getEntityName } from '../../../utils/EntityUtils';
+import {
+  getEntityFeedLink,
+  getEntityName,
+  getEntityVoteStatus,
+} from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { showNotistackError } from '../../../utils/NotistackUtils';
@@ -124,6 +130,7 @@ const DomainDetails = ({
   domain,
   onUpdate,
   onDelete,
+  onUpdateVote,
   isVersionsView = false,
   isFollowing,
   isFollowingLoading,
@@ -541,6 +548,18 @@ const DomainDetails = ({
     );
   }, [domainPermission]);
 
+  const voteStatus = useMemo(
+    () => getEntityVoteStatus(currentUser?.id ?? '', domain.votes),
+    [domain.votes, currentUser?.id]
+  );
+
+  const handleVoteChange = useCallback(
+    async (data: VotingDataProps) => {
+      await onUpdateVote?.(data, domain.id);
+    },
+    [onUpdateVote, domain.id]
+  );
+
   const addButtonContent = [
     ...(domainPermission.Create
       ? [
@@ -947,6 +966,14 @@ const DomainDetails = ({
               )}
 
               <ButtonGroup className="spaced" size="small">
+                {onUpdateVote && (
+                  <Voting
+                    voteStatus={voteStatus}
+                    votes={domain.votes}
+                    onUpdateVote={handleVoteChange}
+                  />
+                )}
+
                 {domain?.version && (
                   <Tooltip
                     title={t(

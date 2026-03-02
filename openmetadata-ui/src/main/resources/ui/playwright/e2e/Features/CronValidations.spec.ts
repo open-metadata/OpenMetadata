@@ -12,6 +12,7 @@
  */
 
 import { expect, Page, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
@@ -33,7 +34,7 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-test.describe('Cron Validations', () => {
+test.describe('Cron Validations', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   const cronInvlidMessage =
     'Cron expression must have exactly 5 fields (minute hour day-of-month month day-of-week)';
 
