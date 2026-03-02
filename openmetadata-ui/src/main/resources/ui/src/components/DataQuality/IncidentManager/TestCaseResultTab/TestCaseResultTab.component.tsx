@@ -281,7 +281,8 @@ const TestCaseResultTab = () => {
   ]);
 
   const parameterItems = useMemo(() => {
-    const items: Array<{ label: string; value: string | React.ReactNode }> = [];
+    const items: Array<{ label?: string; value: string | React.ReactNode }> =
+      [];
 
     if (isVersionPage) {
       // For version page, we'll handle it differently
@@ -290,12 +291,11 @@ const TestCaseResultTab = () => {
 
     if (testCaseData?.useDynamicAssertion) {
       items.push({
-        label: t('label.dynamic-assertion'),
         value: (
           <label
-            className="parameter-value-text tw:inline-flex tw:items-center tw:gap-2"
+            className="parameter-value-text tw:inline-flex"
             data-testid="dynamic-assertion">
-            <StarIcon aria-hidden className="tw:h-4 tw:w-4" />{' '}
+            <StarIcon aria-hidden className="dynamic-assertion-icon tw:h-4 tw:w-4" />{' '}
             {t('label.dynamic-assertion')}
           </label>
         ),
@@ -327,7 +327,7 @@ const TestCaseResultTab = () => {
   ]);
 
   const renderParameterRows = useCallback(
-    (items: Array<{ label: string; value: string | React.ReactNode }>) => {
+    (items: Array<{ label?: string; value: string | React.ReactNode }>) => {
       if (items.length === 0) {
         return (
           <Typography as="span" className="tw:text-body tw:text-tertiary">
@@ -341,7 +341,8 @@ const TestCaseResultTab = () => {
       return (
         <div className="parameter-rows-container">
           {rows.map((row, rowIndex) => {
-            const rowKey = row.map((item) => item.label).join('-');
+            // Create a stable key from the row items' labels
+            const rowKey = row.map((item) => item.label ?? '').join('-');
 
             return (
               <div key={rowKey}>
@@ -353,12 +354,12 @@ const TestCaseResultTab = () => {
                           ? 'parameter-row-cell parameter-row-cell--full'
                           : 'parameter-row-cell parameter-row-cell--half'
                       }
-                      key={item.label}>
-                      <div className="parameter-row-cell-content">
+                      key={item.label ?? ''}>
+                      {item.label && <div className="parameter-row-cell-content">
                         <ParameterTooltipText
                           className="parameter-label"
                           title={`${item.label}:`}
-                        />
+                        />}
                         {typeof item.value === 'string' ? (
                           <ParameterTooltipText
                             className="parameter-value-text parameter-value-text-flex"

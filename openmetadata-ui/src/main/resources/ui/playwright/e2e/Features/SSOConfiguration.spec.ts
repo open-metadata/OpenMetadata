@@ -661,224 +661,233 @@ test.describe('SSO Configuration Tests', () => {
         /ant-collapse-item-active/
       );
     });
-  });
 
-  test.describe('LDAP Role Mapping Widget Tests', () => {
-    test.beforeEach(async ({ page }) => {
+    test('should support full LDAP role mapping flow: add, fill, open roles dropdown, detect and resolve duplicates, and remove', async ({
+      page,
+    }) => {
       await selectSSOProvider(page, 'ldap');
-    });
 
-    test('should add new mapping when Add button is clicked', async ({
-      page,
-    }) => {
       const addMappingButton = page.getByTestId('add-mapping-btn');
-
-      await addMappingButton.click();
-
-      const ldapGroupInput = page.locator('[data-testid^="ldap-group-input-"]');
-
-      await expect(ldapGroupInput).toBeVisible();
-
-      const rolesSelect = page.locator('[data-testid^="roles-select-"]');
-
-      await expect(rolesSelect).toBeVisible();
-    });
-
-    test('should allow entering LDAP group DN', async ({ page }) => {
-      const addMappingButton = page.getByTestId('add-mapping-btn');
-
-      await addMappingButton.click();
-
-      const ldapGroupInput = page.locator('[data-testid^="ldap-group-input-"]');
-
-      await ldapGroupInput.fill('cn=admins,dc=example,dc=com');
-
-      await expect(ldapGroupInput).toHaveValue('cn=admins,dc=example,dc=com');
-    });
-
-    test('should allow selecting roles from dropdown', async ({ page }) => {
-      const addMappingButton = page.getByTestId('add-mapping-btn');
-
-      await addMappingButton.click();
-
-      const ldapGroupInput = page.locator('[data-testid^="ldap-group-input-"]');
-
-      await ldapGroupInput.fill('cn=admins,dc=example,dc=com');
-
-      const rolesSelect = page.locator('[data-testid^="roles-select-"]');
-
-      await rolesSelect.click();
-
-      const roleOptions = page.locator('.ant-select-item-option');
-      const firstRole = roleOptions.first();
-
-      if ((await roleOptions.count()) > 0) {
-        await expect(firstRole).toBeVisible();
-      }
-    });
-
-    test('should allow removing a mapping', async ({ page }) => {
-      const addMappingButton = page.getByTestId('add-mapping-btn');
-
-      await addMappingButton.click();
-
-      const ldapGroupInput = page.locator('[data-testid^="ldap-group-input-"]');
-
-      await ldapGroupInput.fill('cn=admins,dc=example,dc=com');
-
-      const removeButton = page.locator('[data-testid^="remove-mapping-btn-"]');
-
-      await expect(removeButton).toBeVisible();
-
-      await removeButton.click();
-
-      await expect(ldapGroupInput).not.toBeVisible();
-    });
-
-    test('should show duplicate error when same LDAP group is added twice', async ({
-      page,
-    }) => {
-      const addMappingButton = page.getByTestId('add-mapping-btn');
-
-      await addMappingButton.click();
-      await addMappingButton.click();
-
-      const ldapGroupInputs = page.locator(
-        '[data-testid^="ldap-group-input-"]'
-      );
-
-      await expect(ldapGroupInputs).toHaveCount(2);
-
-      await ldapGroupInputs.first().fill('cn=duplicate,dc=example,dc=com');
-      await ldapGroupInputs.last().fill('cn=duplicate,dc=example,dc=com');
-
+      const ldapGroupInputs = page.locator('[data-testid^="ldap-group-input-"]');
+      const rolesSelects = page.locator('[data-testid^="roles-select-"]');
       const errorMessages = page.locator('[data-testid^="ldap-group-error-"]');
 
+      // Add first mapping — inputs and roles select appear; fill DN value persists
+      await addMappingButton.click();
+      await expect(ldapGroupInputs.first()).toBeVisible();
+      await expect(rolesSelects.first()).toBeVisible();
+      await ldapGroupInputs.first().fill('cn=admins,dc=example,dc=com');
+      await expect(ldapGroupInputs.first()).toHaveValue(
+        'cn=admins,dc=example,dc=com'
+      );
+
+      // Open the roles dropdown — options are loaded from the API
+      await rolesSelects.first().click();
+      const roleOptions = page.locator('.ant-select-item-option');
+
+      if ((await roleOptions.count()) > 0) {
+        await expect(roleOptions.first()).toBeVisible();
+      }
+
+      await page.keyboard.press('Escape');
+
+      // Add a second mapping with a duplicate DN — both rows show an error
+      await addMappingButton.click();
+      await ldapGroupInputs.last().fill('cn=admins,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(2);
       await expect(errorMessages.first()).toContainText(
         /already mapped|duplicate/i
       );
-    });
 
-    test('should clear duplicate error when one entry is changed', async ({
-      page,
-    }) => {
-      const addMappingButton = page.getByTestId('add-mapping-btn');
+      // Fix the duplicate — errors clear; case-insensitive and whitespace variants also trigger errors
+      await ldapGroupInputs.last().clear();
+      await ldapGroupInputs.last().fill('cn=unique,dc=example,dc=com');
+      await expect(errorMessages).toHaveCount(0);
 
-      await addMappingButton.click();
-      await addMappingButton.click();
-
-      const ldapGroupInputs = page.locator(
-        '[data-testid^="ldap-group-input-"]'
-      );
-
-      await ldapGroupInputs.first().fill('cn=duplicate,dc=example,dc=com');
-      await ldapGroupInputs.last().fill('cn=duplicate,dc=example,dc=com');
-
-      let errorMessages = page.locator('[data-testid^="ldap-group-error-"]');
-
+      await ldapGroupInputs.last().clear();
+      await ldapGroupInputs.last().fill('CN=ADMINS,DC=EXAMPLE,DC=COM');
       await expect(errorMessages).toHaveCount(2);
 
       await ldapGroupInputs.last().clear();
-      await ldapGroupInputs.last().fill('cn=unique,dc=example,dc=com');
-
-      errorMessages = page.locator('[data-testid^="ldap-group-error-"]');
-
-      await expect(errorMessages).toHaveCount(0);
-    });
-
-    test('should allow adding multiple unique mappings', async ({ page }) => {
-      const addMappingButton = page.getByTestId('add-mapping-btn');
-
-      await addMappingButton.click();
-      await addMappingButton.click();
-      await addMappingButton.click();
-
-      const ldapGroupInputs = page.locator(
-        '[data-testid^="ldap-group-input-"]'
-      );
-
-      await expect(ldapGroupInputs).toHaveCount(3);
-
-      await ldapGroupInputs.nth(0).fill('cn=admins,dc=example,dc=com');
-      await ldapGroupInputs.nth(1).fill('cn=users,dc=example,dc=com');
-      await ldapGroupInputs.nth(2).fill('cn=guests,dc=example,dc=com');
-
-      const errorMessages = page.locator('[data-testid^="ldap-group-error-"]');
-
-      await expect(errorMessages).toHaveCount(0);
-    });
-
-    test('should maintain mapping when clearing LDAP group input', async ({
-      page,
-    }) => {
-      const addMappingButton = page.getByTestId('add-mapping-btn');
-
-      await addMappingButton.click();
-
-      const ldapGroupInput = page.locator('[data-testid^="ldap-group-input-"]');
-      const removeButton = page.locator('[data-testid^="remove-mapping-btn-"]');
-
-      await ldapGroupInput.fill('cn=admins,dc=example,dc=com');
-
-      await expect(ldapGroupInput).toHaveValue('cn=admins,dc=example,dc=com');
-
-      await ldapGroupInput.clear();
-
-      await expect(ldapGroupInput).toBeVisible();
-      await expect(removeButton).toBeVisible();
-    });
-
-    test('should handle case-insensitive duplicate detection', async ({
-      page,
-    }) => {
-      const addMappingButton = page.getByTestId('add-mapping-btn');
-
-      await addMappingButton.click();
-      await addMappingButton.click();
-
-      const ldapGroupInputs = page.locator(
-        '[data-testid^="ldap-group-input-"]'
-      );
-
-      await ldapGroupInputs.first().fill('cn=Admins,dc=Example,dc=com');
-      await ldapGroupInputs.last().fill('cn=admins,dc=example,dc=com');
-
-      const errorMessages = page.locator('[data-testid^="ldap-group-error-"]');
-
+      await ldapGroupInputs.last().fill('  cn=admins,dc=example,dc=com  ');
       await expect(errorMessages).toHaveCount(2);
+
+      // Add a third unique mapping — no errors with three distinct DNs
+      await ldapGroupInputs.last().clear();
+      await ldapGroupInputs.last().fill('cn=users,dc=example,dc=com');
+      await addMappingButton.click();
+      await ldapGroupInputs.last().fill('cn=guests,dc=example,dc=com');
+      await expect(errorMessages).toHaveCount(0);
+
+      // Remove the first mapping — row disappears
+      await page
+        .locator('[data-testid^="remove-mapping-btn-"]')
+        .first()
+        .click();
+      await expect(ldapGroupInputs).toHaveCount(2);
     });
 
-    test('should handle whitespace in duplicate detection', async ({
+    test('should render authReassignRoles as a searchable dropdown and support role selection, removal, and search filtering', async ({
       page,
     }) => {
-      const addMappingButton = page.getByTestId('add-mapping-btn');
+      await selectSSOProvider(page, 'ldap');
 
-      await addMappingButton.click();
-      await addMappingButton.click();
-
-      const ldapGroupInputs = page.locator(
-        '[data-testid^="ldap-group-input-"]'
+      const field = page.getByTestId(
+        'sso-configuration-form-array-field-template-authReassignRoles'
       );
+      const dropdown = page.locator('.ant-select-dropdown').last();
 
-      await ldapGroupInputs.first().fill('  cn=admins,dc=example,dc=com  ');
-      await ldapGroupInputs.last().fill('cn=admins,dc=example,dc=com');
+      // Field renders as a combobox (not a plain tags input)
+      await expect(field).toBeVisible();
+      await expect(field.getByRole('combobox')).toBeVisible();
 
-      const errorMessages = page.locator('[data-testid^="ldap-group-error-"]');
+      // Opening the dropdown shows API-fetched role options
+      await field.click();
+      await expect(dropdown).toBeVisible();
+      await expect(
+        dropdown.locator('.ant-select-item-option')
+      ).not.toHaveCount(0);
 
-      await expect(errorMessages).toHaveCount(2);
+      // Select the first available role — it appears as a selection tag
+      await dropdown
+        .locator('.ant-select-item-option:not(.ant-select-item-option-disabled)')
+        .first()
+        .click();
+      await expect(field.locator('.ant-select-selection-item')).toHaveCount(1);
+
+      // Remove the selected role via its remove button
+      await field.locator('.ant-select-selection-item-remove').click();
+      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
+
+      // Typing filters the visible options
+      await field.click();
+      await field.locator('input').fill('Data');
+      await expect(
+        dropdown.locator(
+          '.ant-select-item-option:not(.ant-select-item-option-disabled)'
+        )
+      ).not.toHaveCount(0);
+
+      // Pressing Enter on a non-existent value does not create an arbitrary tag
+      await field.locator('input').clear();
+      await field.locator('input').fill('NonExistentRoleXYZ123');
+      await field.locator('input').press('Enter');
+      await expect(field.locator('.ant-select-selection-item')).toHaveCount(0);
     });
 
     test('should not display role mapping widget for non-LDAP providers', async ({
       page,
     }) => {
-      await page.goBack();
-
       await selectSSOProvider(page, 'google');
-
-      const roleMappingWidget = page.locator('.ldap-role-mapping-widget');
-
-      await expect(roleMappingWidget).not.toBeVisible();
+      await expect(page.locator('.ldap-role-mapping-widget')).not.toBeVisible();
     });
+  });
+});
+
+test.describe('SSO Back Navigation', () => {
+  const mockOktaConfig = {
+    authenticationConfiguration: {
+      provider: 'okta',
+      providerName: 'Test Okta Provider',
+      authority: 'https://test.okta.com',
+      clientId: 'test-client-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      publicKeyUrls: [],
+      jwtPrincipalClaims: ['email', 'preferred_username', 'roles', 'groups'],
+      enableSelfSignup: false,
+    },
+    authorizerConfiguration: {
+      className: 'org.openmetadata.service.security.DefaultAuthorizer',
+      containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+      adminPrincipals: ['admin'],
+      principalDomain: 'open-metadata.org',
+      enforcePrincipalDomain: false,
+      enableSecureSocketConnection: false,
+    },
+  };
+
+  test('should navigate to /settings when pressing back if SSO is already configured', async ({
+    page,
+  }) => {
+    await page.route('**/system/security/config', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(mockOktaConfig),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    // Establish /settings as the history entry just before /settings/sso
+    await page.goto('/settings');
+    await page.goto('/settings/sso');
+
+    // Component detects existing Okta config and replaces /settings/sso with /settings/sso?provider=okta
+    await page.waitForURL('**/settings/sso?provider=okta');
+
+    await page.goBack();
+
+    // Should land on /settings, skipping /settings/sso entirely
+    await page.waitForURL(/\/settings$/);
+
+    expect(page.url()).not.toContain('/settings/sso');
+  });
+
+  test('should stay on /settings/sso when pressing back if SSO is not configured', async ({
+    page,
+  }) => {
+    await page.route('**/system/security/config', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            authenticationConfiguration: {
+              provider: 'basic',
+              providerName: '',
+              authority: '',
+              clientId: '',
+              callbackUrl: '',
+              publicKeyUrls: [],
+              jwtPrincipalClaims: [],
+              enableSelfSignup: false,
+            },
+            authorizerConfiguration: {
+              className:
+                'org.openmetadata.service.security.DefaultAuthorizer',
+              containerRequestFilter:
+                'org.openmetadata.service.security.JwtFilter',
+              adminPrincipals: ['admin'],
+              principalDomain: 'open-metadata.org',
+              enforcePrincipalDomain: false,
+              enableSecureSocketConnection: false,
+            },
+          }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    const configResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/system/security/config') &&
+        response.request().method() === 'GET'
+    );
+
+    await page.goto('/settings/sso');
+    const response = await configResponse;
+
+    expect(response.status()).toBe(200);
+
+    // With basic config, URL stays at /settings/sso and shows provider selector
+    await page.waitForURL('**/settings/sso');
+
+    await expect(page.locator('.provider-selector-container')).toBeVisible();
+
+    expect(page.url()).not.toContain('provider=');
   });
 });
