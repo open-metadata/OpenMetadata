@@ -1071,9 +1071,13 @@ public class AppsResourceIT {
 
   /**
    * Verifies that a non-enabled app (enabled=false via config) can still be retrieved via GET and
-   * uninstalled via DELETE. Regression test: the GET endpoint previously called runAppInit without
-   * skipping the enabled check, causing it to throw an exception for disabled apps. This blocked
-   * the UI from loading app details, which in turn made the uninstall button send an empty app name.
+   * uninstalled via DELETE, but trigger and deploy are blocked. Regression test: the GET endpoint
+   * previously called runAppInit without skipping the enabled check, causing it to throw an
+   * exception for disabled apps. This blocked the UI from loading app details, which in turn made
+   * the uninstall button send an empty app name.
+   *
+   * <p>Uses NoSchedule so the install path does not call runAppInit (which would reject the app).
+   * This simulates an app that was installed while enabled and later became disabled via config.
    */
   @Test
   void test_getAndUninstallDisabledApp(TestNamespace ns) throws Exception {
@@ -1093,8 +1097,7 @@ public class AppsResourceIT {
               .withSupportEmail("support@example.com")
               .withClassName("org.openmetadata.service.resources.apps.TestApp")
               .withAppType(AppType.Internal)
-              .withScheduleType(ScheduleType.Scheduled)
-              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withScheduleType(ScheduleType.NoSchedule)
               .withAppConfiguration(new HashMap<>())
               .withPermission(NativeAppPermission.All);
 
@@ -1120,6 +1123,30 @@ public class AppsResourceIT {
               App.class);
       assertNotNull(appById, "Disabled app should be retrievable by ID");
       assertEquals(appName, appById.getName());
+
+      Exception triggerException =
+          assertThrows(
+              Exception.class,
+              () ->
+                  httpClient.execute(
+                      HttpMethod.POST, "/v1/apps/trigger/" + appName, null, Void.class),
+              "Trigger should be blocked for disabled app");
+      assertTrue(
+          triggerException.getMessage().contains("not enabled")
+              || triggerException.getMessage().contains("NotEnabled"),
+          "Trigger error should mention not enabled: " + triggerException.getMessage());
+
+      Exception deployException =
+          assertThrows(
+              Exception.class,
+              () ->
+                  httpClient.execute(
+                      HttpMethod.POST, "/v1/apps/deploy/" + appName, null, Void.class),
+              "Deploy should be blocked for disabled app");
+      assertTrue(
+          deployException.getMessage().contains("not enabled")
+              || deployException.getMessage().contains("NotEnabled"),
+          "Deploy error should mention not enabled: " + deployException.getMessage());
 
       Apps.uninstall(appName, true);
 
