@@ -1152,7 +1152,9 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   // 1. Navigate and Open Column Detail Panel
   await page.goto(`/table/${columnFqn}`);
   await page.waitForLoadState('networkidle');
-  await waitForAllLoadersToDisappear(page);
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   const sidePanel = page.locator('.column-detail-panel-container');
   await expect(sidePanel).toBeVisible();
 
