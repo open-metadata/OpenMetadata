@@ -71,7 +71,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
-import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -83,7 +82,6 @@ import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -104,7 +102,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.rdf.RdfUpdater;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -236,32 +233,12 @@ public class LineageRepository {
     // Add Service Level Lineage
     EntityReference fromService = fromEntity.getService();
     EntityReference toService = toEntity.getService();
-
-    // Check if service-level lineage is disabled for either service type
-    if (isServiceLineageDisabledForType(fromService.getType())
-        || isServiceLineageDisabledForType(toService.getType())) {
-      return;
-    }
-
     if (!fromService.getId().equals(toService.getId())) {
       LineageDetails serviceLineageDetails =
           getOrCreateLineageDetails(
               fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists);
       insertLineage(fromService, toService, serviceLineageDetails);
     }
-  }
-
-  private boolean isServiceLineageDisabledForType(String serviceType) {
-    try {
-      LineageSettings settings =
-          SettingsCache.getSetting(SettingsType.LINEAGE_SETTINGS, LineageSettings.class);
-      if (settings != null && settings.getDisableServiceLevelLineageForServiceTypes() != null) {
-        return settings.getDisableServiceLevelLineageForServiceTypes().contains(serviceType);
-      }
-    } catch (Exception e) {
-      LOG.debug("Error reading lineage settings for service type filtering", e);
-    }
-    return false;
   }
 
   private void addDomainLineage(
