@@ -295,7 +295,10 @@ const TestCaseResultTab = () => {
           <label
             className="parameter-value-text tw:inline-flex"
             data-testid="dynamic-assertion">
-            <StarIcon aria-hidden className="dynamic-assertion-icon tw:h-4 tw:w-4" />{' '}
+            <StarIcon
+              aria-hidden
+              className="dynamic-assertion-icon tw:h-4 tw:w-4"
+            />{' '}
             {t('label.dynamic-assertion')}
           </label>
         ),
@@ -355,11 +358,13 @@ const TestCaseResultTab = () => {
                           : 'parameter-row-cell parameter-row-cell--half'
                       }
                       key={item.label ?? ''}>
-                      {item.label && <div className="parameter-row-cell-content">
-                        <ParameterTooltipText
-                          className="parameter-label"
-                          title={`${item.label}:`}
-                        />}
+                      <div className="parameter-row-cell-content">
+                        {item.label && (
+                          <ParameterTooltipText
+                            className="parameter-label"
+                            title={`${item.label}:`}
+                          />
+                        )}
                         {typeof item.value === 'string' ? (
                           <ParameterTooltipText
                             className="parameter-value-text parameter-value-text-flex"

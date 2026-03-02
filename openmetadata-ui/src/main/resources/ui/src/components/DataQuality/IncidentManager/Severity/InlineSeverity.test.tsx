@@ -94,7 +94,7 @@ describe('InlineSeverity Component', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'No Severity' })
+      screen.getByRole('button', { name: /no severity|label\.no-entity/i })
     ).toBeInTheDocument();
   });
 
@@ -213,7 +213,7 @@ describe('InlineSeverity Component', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'No Severity' })
+      screen.getByRole('button', { name: /no severity|label\.no-entity/i })
     ).toBeInTheDocument();
 
     rerender(

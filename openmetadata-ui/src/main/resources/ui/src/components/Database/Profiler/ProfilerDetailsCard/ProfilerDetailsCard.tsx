@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Skeleton } from '@openmetadata/ui-core-components';
 import React, { Fragment, useMemo, useState } from 'react';
 import {
   Area,
@@ -71,9 +72,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   );
 
   if (isLoading) {
-    return (
-      <div className="tw:h-95 tw:w-full tw:animate-pulse tw:rounded-lg tw:bg-quaternary" />
-    );
+    return <Skeleton height="95%" variant="rounded" width="100%" />;
   }
 
   return (

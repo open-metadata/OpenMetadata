@@ -25,10 +25,7 @@ import {
   Popover,
   TextField,
 } from '@mui/material';
-import {
-  ProgressBarCircle,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   ArrowLeft as ArrowBackIcon,
   Check as CheckIcon,
@@ -59,6 +56,7 @@ import {
   getEntityReferenceFromEntity,
 } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
 import { RequiredLabel } from '../../../common/MuiComponents/RequiredLabel/RequiredLabel.styled';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
 import { InlineTestCaseIncidentStatusProps } from './TestCaseIncidentManagerStatus.interface';
@@ -373,17 +371,8 @@ const InlineTestCaseIncidentStatus = ({
   const userListContent = useMemo(() => {
     if (isLoadingUsers) {
       return (
-        <Box
-          aria-busy
-          aria-label={t('label.loading')}
-          sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
-          <div className="tw:animate-spin">
-            <ProgressBarCircle
-              size="xxs"
-              value={35}
-              valueFormatter={() => ''}
-            />
-          </div>
+        <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
+          <Loader size="small" />
         </Box>
       );
     }

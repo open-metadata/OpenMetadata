@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  ProgressBarCircle,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Tooltip } from 'antd';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
+import Loader from '../../../../common/Loader/Loader';
 import { DimensionalityHeatmapProps } from './DimensionalityHeatmap.interface';
 import './DimensionalityHeatmap.less';
 import {
@@ -63,16 +61,7 @@ const DimensionalityHeatmap = ({
   }, [startDate, endDate]);
 
   if (isLoading) {
-    return (
-      <div
-        aria-busy
-        aria-label={t('label.loading')}
-        className="dimensionality-heatmap__loading tw:flex tw:items-center tw:justify-center tw:p-8">
-        <div className="tw:animate-spin">
-          <ProgressBarCircle size="xxs" value={35} valueFormatter={() => ''} />
-        </div>
-      </div>
-    );
+    return <Loader size="small" />;
   }
 
   if (!data || data.length === 0) {

@@ -18,7 +18,7 @@ import {
 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SEVERITY_COLORS } from '../../../../constants/Color.constants';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
@@ -33,9 +33,12 @@ const InlineSeverity = ({
   const [showMenu, setShowMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const severityColor = severity
-    ? SEVERITY_COLORS[severity] || SEVERITY_COLORS.NoSeverity
-    : SEVERITY_COLORS.NoSeverity;
+  const severityKey = severity ?? 'NoSeverity';
+  const severityColor =
+    SEVERITY_COLORS[severityKey] ?? SEVERITY_COLORS['NoSeverity'];
+  const label = severity
+    ? startCase(severity)
+    : t('label.no-entity', { entity: t('label.severity') });
 
   const handleSeverityChange = useCallback(
     async (newSeverity: Severities | undefined) => {
@@ -50,18 +53,6 @@ const InlineSeverity = ({
     },
     [onSubmit]
   );
-
-  const dropdownIcon = useMemo(() => {
-    if (!hasEditPermission) {
-      return null;
-    }
-
-    return showMenu ? (
-      <ArrowUpIcon className="tw:size-4 tw:shrink-0" />
-    ) : (
-      <ArrowDownIcon className="tw:size-4 tw:shrink-0" />
-    );
-  }, [hasEditPermission, showMenu]);
 
   const chipButton = (
     <button
@@ -79,9 +70,14 @@ const InlineSeverity = ({
       }}
       type="button">
       <Typography as="span" className="tw:px-0.5 tw:text-xs tw:font-medium">
-        {severity ? startCase(severity) : 'No Severity'}
+        {label}
       </Typography>
-      {hasEditPermission && dropdownIcon}
+      {hasEditPermission &&
+        (showMenu ? (
+          <ArrowUpIcon className="tw:size-4 tw:shrink-0" />
+        ) : (
+          <ArrowDownIcon className="tw:size-4 tw:shrink-0" />
+        ))}
     </button>
   );
 
