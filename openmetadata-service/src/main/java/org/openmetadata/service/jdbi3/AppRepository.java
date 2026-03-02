@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -284,6 +285,16 @@ public class AppRepository extends EntityRepository<App> {
         app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, service);
   }
 
+  public Optional<AppRunRecord> getLatestAppRunsOptional(App app) {
+    return getLatestExtensionByIdOptional(
+        app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
+  }
+
+  public Optional<AppRunRecord> getLatestAppRunsOptional(App app, UUID service) {
+    return getLatestExtensionByIdOptional(
+        app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, service);
+  }
+
   public AppRunRecord getLatestAppRunsAfterStartTime(App app, long startTime) {
     return getLatestExtensionAfterStartTimeById(
         app, startTime, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
@@ -431,14 +442,20 @@ public class AppRepository extends EntityRepository<App> {
 
   public <T> T getLatestExtensionById(
       App app, Class<T> clazz, AppExtension.ExtensionType extensionType, UUID service) {
+    return getLatestExtensionByIdOptional(app, clazz, extensionType, service)
+        .orElseThrow(() -> AppException.byExtension(extensionType));
+  }
+
+  public <T> Optional<T> getLatestExtensionByIdOptional(
+      App app, Class<T> clazz, AppExtension.ExtensionType extensionType, UUID service) {
     List<String> result =
         daoCollection
             .appExtensionTimeSeriesDao()
             .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString(), service);
     if (nullOrEmpty(result)) {
-      throw AppException.byExtension(extensionType);
+      return Optional.empty();
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return Optional.of(JsonUtils.readValue(result.get(0), clazz));
   }
 
   public <T> T getLatestExtensionAfterStartTimeByName(

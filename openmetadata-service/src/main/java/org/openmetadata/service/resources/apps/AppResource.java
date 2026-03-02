@@ -482,8 +482,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String after) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
+      AppRunRecord latestRun = repository.getLatestAppRunsOptional(installation).orElse(null);
+      if (latestRun == null) {
+        return Response.status(Response.Status.NO_CONTENT).build();
+      }
       return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation))
+          .entity(latestRun)
           .build();
     } else {
       if (!installation.getPipelines().isEmpty()) {
@@ -531,8 +535,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String after) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
+      AppRunRecord latestRun = repository.getLatestAppRunsOptional(installation).orElse(null);
+      if (latestRun == null) {
+        return Response.status(Response.Status.NO_CONTENT).build();
+      }
       return Response.status(Response.Status.OK)
-          .entity(repository.getLatestAppRuns(installation))
+          .entity(latestRun)
           .build();
     } else {
       if (!installation.getPipelines().isEmpty()) {

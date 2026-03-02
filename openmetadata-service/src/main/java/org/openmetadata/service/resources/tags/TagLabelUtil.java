@@ -123,6 +123,8 @@ public class TagLabelUtil {
                 .withLabelType(TagLabel.LabelType.values()[usage.getLabelType()])
                 .withState(TagLabel.State.values()[usage.getState()])
                 .withReason(usage.getReason())
+                .withAppliedAt(usage.getAppliedAt())
+                .withAppliedBy(usage.getAppliedBy())
                 .withMetadata(usage.getMetadata());
         TagLabel commonFields =
             usage.getSource() == TagSource.CLASSIFICATION.ordinal()

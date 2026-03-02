@@ -657,7 +657,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
                 && updated.getRequestSchema().getSchemaFields() != null) {
               updateSchemaFields(
                   "requestSchema.schemaFields",
-                  original.getResponseSchema() == null
+                  original.getRequestSchema() == null
                       ? new ArrayList<>()
                       : listOrEmpty(
                           original.getRequestSchema() != null
