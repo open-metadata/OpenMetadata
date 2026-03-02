@@ -188,8 +188,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   };
 
   useEffect(() => {
-    fetchEntityTypeDetail();
-  }, []);
+    if (hasViewPermission.customProperties) {
+      fetchEntityTypeDetail();
+    }
+  }, [hasViewPermission.customProperties]);
 
   useEffect(() => {
     if (localToast.open) {
@@ -253,10 +255,19 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   }, [fetchColumnDetails]);
 
   useEffect(() => {
-    if (isOpen && entityType === EntityType.TABLE) {
+    if (
+      isOpen &&
+      entityType === EntityType.TABLE &&
+      (permissions.ViewTests || permissions.ViewAll)
+    ) {
       fetchTestCases();
     }
-  }, [isOpen, activeColumn, fetchTestCases]);
+  }, [
+    isOpen,
+    fetchTestCases,
+    permissions.ViewTests,
+    permissions.ViewAll,
+  ]);
 
   // Flatten all columns including nested children for accurate counting and navigation
   const flattenedColumns = useMemo(
@@ -357,15 +368,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
       const response = onColumnFieldUpdate
         ? await onColumnFieldUpdate(
-            activeColumn.fullyQualifiedName,
-            update,
-            true
-          )
+          activeColumn.fullyQualifiedName,
+          update,
+          true
+        )
         : // Fallback to direct API call for Table entities when used outside GenericProvider
-          ((await updateTableColumn(
-            activeColumn.fullyQualifiedName,
-            update
-          )) as T);
+        ((await updateTableColumn(
+          activeColumn.fullyQualifiedName,
+          update
+        )) as T);
 
       // Only show success toast if we got a valid response
       if (response) {
@@ -535,10 +546,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         if (response) {
           setActiveColumn(
             (prev) =>
-              ({
-                ...prev,
-                displayName: (response as { displayName?: string }).displayName,
-              } as T)
+            ({
+              ...prev,
+              displayName: (response as { displayName?: string }).displayName,
+            } as T)
           );
         }
       } catch (error) {
@@ -833,8 +844,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                     ellipsis={{ tooltip: true }}>
                     {stringToHTML(
                       (activeColumn as { displayName?: string }).displayName ||
-                        activeColumn.name ||
-                        ''
+                      activeColumn.name ||
+                      ''
                     )}
                   </Typography.Text>
                 </Tooltip>
@@ -926,7 +937,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           <DataQualityTab
             isColumnDetailPanel
             entityFQN={activeColumn.fullyQualifiedName || ''}
-            entityType={entityType}
+            hasViewTests={permissions.ViewTests || permissions.ViewAll}
           />
         );
       case EntityRightPanelTab.LINEAGE:

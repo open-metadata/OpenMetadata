@@ -180,13 +180,11 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateNodeIds(workflowDefinition);
     // 2. Comprehensive graph structure validations (cycles, connectivity, edges, start/end nodes)
     validateWorkflowGraphStructure(workflowDefinition);
-    // 3. Business rule validations
-    validateUserTasksForReviewerSupport(workflowDefinition);
-    // 4. Namespace configuration validations
+    // 3. Namespace configuration validations
     validateUpdatedByNamespace(workflowDefinition);
-    // 5. Node input/output validations
+    // 4. Node input/output validations
     validateNodeInputOutputMapping(workflowDefinition);
-    // 6. Conditional task validations
+    // 5. Conditional task validations
     validateConditionalTasks(workflowDefinition);
   }
 
@@ -459,32 +457,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   /**
-   * Validates user tasks are only used with entities that support reviewers.
-   */
-  private void validateUserTasksForReviewerSupport(WorkflowDefinition workflowDefinition) {
-    // Check if workflow has any user approval or change review tasks
-    boolean hasUserApprovalTasks = false;
-    List<String> userTaskTypes = List.of(USER_APPROVAL_TASK);
-
-    if (workflowDefinition.getNodes() != null) {
-      for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
-        if (userTaskTypes.contains(node.getSubType())) {
-          hasUserApprovalTasks = true;
-          break;
-        }
-      }
-    }
-
-    // If workflow has user approval tasks, validate entity types support reviewers
-    if (hasUserApprovalTasks) {
-      List<String> entityTypes = getEntityTypesFromWorkflow(workflowDefinition);
-      if (!entityTypes.isEmpty()) {
-        validateEntityTypesSupportsReviewers(entityTypes, workflowDefinition.getName());
-      }
-    }
-  }
-
-  /**
    * Validates updatedBy namespace configuration.
    */
   private void validateUpdatedByNamespace(WorkflowDefinition workflowDefinition) {
@@ -685,70 +657,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       }
     }
     return false;
-  }
-
-  /**
-   * Extracts entity types from workflow trigger configuration.
-   * Migration has already converted single entityType to entityTypes array.
-   */
-  private List<String> getEntityTypesFromWorkflow(WorkflowDefinition workflowDefinition) {
-    List<String> entityTypes = new ArrayList<>();
-
-    if (workflowDefinition.getTrigger() != null
-        && workflowDefinition.getTrigger().getConfig() != null) {
-
-      // Convert config to Map for field access
-      Map<String, Object> configMap = JsonUtils.getMap(workflowDefinition.getTrigger().getConfig());
-
-      // Check for multiple entityTypes (both eventBasedEntity and periodicBatchEntity triggers)
-      @SuppressWarnings("unchecked")
-      List<String> multipleEntityTypes = (List<String>) configMap.get("entityTypes");
-      if (multipleEntityTypes != null) {
-        entityTypes.addAll(multipleEntityTypes);
-      }
-    }
-
-    return entityTypes;
-  }
-
-  /**
-   * Validates that the entity types support reviewers.
-   */
-  private void validateEntityTypesSupportsReviewers(List<String> entityTypes, String workflowName) {
-    for (String entityType : entityTypes) {
-      try {
-        // Get the repository for the entity type to check if it supports reviewers
-        EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-        boolean supportsReviewers = entityRepository.isSupportsReviewers();
-
-        LOG.debug("Entity type '{}' supports reviewers: {}", entityType, supportsReviewers);
-
-        if (!supportsReviewers) {
-          String errorMsg =
-              String.format(
-                  "Workflow '%s' contains user approval tasks but entity type '%s' does not support reviewers. "
-                      + "User approval tasks can only be used with entities that have reviewer support.",
-                  workflowName, entityType);
-          LOG.error(errorMsg);
-          throw BadRequestException.of(errorMsg);
-        }
-
-        LOG.debug(
-            "Workflow '{}' validated: Entity type '{}' supports reviewers for user approval tasks",
-            workflowName,
-            entityType);
-      } catch (BadRequestException e) {
-        LOG.error("Validation failed: {}", e.getMessage());
-        throw e; // Re-throw validation exceptions
-      } catch (Exception e) {
-        // If we can't determine the entity type repository, log a warning but allow the workflow
-        LOG.warn(
-            "Could not verify reviewer support for entity type '{}' in workflow '{}': {}",
-            entityType,
-            workflowName,
-            e.getMessage());
-      }
-    }
   }
 
   private void validateConditionalTasks(WorkflowDefinition workflowDefinition) {

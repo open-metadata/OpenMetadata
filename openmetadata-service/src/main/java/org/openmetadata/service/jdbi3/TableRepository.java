@@ -1373,7 +1373,7 @@ public class TableRepository extends EntityRepository<Table> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName().equals(COLUMN_FIELD)) {
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals(COLUMN_FIELD)) {
       TaskType taskType = threadContext.getThread().getTask().getType();
       if (EntityUtil.isDescriptionTask(taskType)) {
         return new ColumnDescriptionWorkflow(threadContext);
