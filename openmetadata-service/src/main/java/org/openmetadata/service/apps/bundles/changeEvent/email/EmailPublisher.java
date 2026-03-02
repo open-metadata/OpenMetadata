@@ -66,6 +66,12 @@ public class EmailPublisher implements Destination<ChangeEvent> {
 
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
+    if (!Boolean.TRUE.equals(EmailUtil.getSmtpSettings().getEnableSmtpServer())) {
+      LOG.debug(
+          "Skipping email notification for subscription [{}]: SMTP is not enabled",
+          eventSubscription.getName());
+      return;
+    }
     try {
       // Generate message using new Handlebars pipeline
       NotificationMessage message =
