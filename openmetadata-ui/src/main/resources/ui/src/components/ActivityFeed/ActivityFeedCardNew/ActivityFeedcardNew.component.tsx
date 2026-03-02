@@ -150,7 +150,7 @@ const ActivityFeedCardNew = ({
               </span>
             )}
             <Link
-              className="break-all text-sm header-link"
+              className="break-word text-sm header-link"
               data-testid="entity-link"
               to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
               <span>
