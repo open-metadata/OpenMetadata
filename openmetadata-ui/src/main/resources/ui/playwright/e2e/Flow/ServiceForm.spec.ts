@@ -370,6 +370,17 @@ test.describe('Service form functionality', PLAYWRIGHT_INGESTION_TAG_OBJ, async 
       await page.getByRole('link', { name: 'Database Services' }).click();
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
+      const searchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('database_service_search_index') &&
+          response.url().includes(SERVICE_NAMES.service1) &&
+          response.request().method() === 'GET' &&
+          response.status() === 200
+      );
+      await page.getByPlaceholder('Search Services').fill(SERVICE_NAMES.service1);
+      await searchResponse;
+      await waitForAllLoadersToDisappear(page);
       await page.getByTestId(`service-name-${SERVICE_NAMES.service1}`).click();
       await page.waitForLoadState('networkidle');
       await page.getByTestId('manage-button').click();
