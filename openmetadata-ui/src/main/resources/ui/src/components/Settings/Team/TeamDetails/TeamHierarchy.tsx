@@ -144,7 +144,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
               paragraph={{ rows: 0 }}
             />
           ) : (
-            teamAssetCounts?.[fullyQualifiedName] ?? 0
+            <Typography.Text data-testid="team-asset-count">
+              {teamAssetCounts?.[fullyQualifiedName] ?? 0}
+            </Typography.Text>
           ),
       },
       ...descriptionTableObject<Team>({ width: 300 }),
