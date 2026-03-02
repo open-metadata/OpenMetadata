@@ -356,7 +356,10 @@ class OracleUnitTest(TestCase):
         mock_result_pkg = MagicMock()
         mock_result_pkg.all.return_value = rows_packages
 
-        mock_engine.execute.side_effect = [mock_result_proc, mock_result_pkg]
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = [mock_result_proc, mock_result_pkg]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         results = list(self.oracle.get_stored_procedures())
 
@@ -375,7 +378,10 @@ class OracleUnitTest(TestCase):
         self.oracle.engine = mock_engine
         mock_result = MagicMock()
         mock_result.all.return_value = []
-        mock_engine.execute.return_value = mock_result
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         list(
             self.oracle._get_stored_procedures_internal(
@@ -383,7 +389,7 @@ class OracleUnitTest(TestCase):
             )
         )
 
-        executed_query = mock_engine.execute.call_args[0][0]
+        executed_query = str(mock_conn.execute.call_args[0][0])
         assert "SAMPLE_SCHEMA" in executed_query
         assert "sample_schema" not in executed_query
 
@@ -433,7 +439,10 @@ class TestOraclePreserveIdentifierCase:
         self.oracle.engine = mock_engine
         mock_result = MagicMock()
         mock_result.all.return_value = []
-        mock_engine.execute.return_value = mock_result
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         list(
             self.oracle._get_stored_procedures_internal(
@@ -441,7 +450,7 @@ class TestOraclePreserveIdentifierCase:
             )
         )
 
-        executed_query = mock_engine.execute.call_args[0][0]
+        executed_query = str(mock_conn.execute.call_args[0][0])
         assert "sample_Schema" in executed_query
         assert "SAMPLE_SCHEMA" not in executed_query
 

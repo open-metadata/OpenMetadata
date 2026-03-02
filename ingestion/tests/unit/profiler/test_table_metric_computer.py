@@ -18,7 +18,7 @@ and verifies all new dialect-to-class factory registrations.
 from unittest.mock import MagicMock, Mock, patch
 
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.profiler.orm.functions.table_metric_computer import (
@@ -34,7 +34,9 @@ from metadata.profiler.orm.functions.table_metric_computer import (
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class MockModel(Base):
