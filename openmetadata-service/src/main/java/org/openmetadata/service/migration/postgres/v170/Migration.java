@@ -29,13 +29,15 @@ public class Migration extends MigrationProcessImpl {
     try {
       initializeWorkflowHandler();
       updateGovernanceWorkflowDefinitions();
-      updateDataInsightsApplication();
     } catch (Exception e) {
       LOG.error(
           "Failed to initialize WorkflowHandler or update workflows in v170 migration. "
               + "Workflow features may not work correctly until server restart.",
           e);
     }
+
+    // Data Insights
+    updateDataInsightsApplication();
 
     // Lineage
     runLineageMigrationForNullColumn(handle);
