@@ -98,6 +98,7 @@
   "devDependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@fontsource/inter": "^5.2.8",
     "@internationalized/date": "^3.11.0",
     "@mui/icons-material": "^7.3.4",
     "@mui/material": "^7.3.1",

@@ -20,6 +20,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.jdbi.BindFQN;
 
 public interface EntityTimeSeriesDAO {
@@ -185,6 +186,43 @@ public interface EntityTimeSeriesDAO {
 
   record TimeSeriesRow(String json, long timestamp, String entityFQNHash) {}
 
+  record TimeSeriesCursor(long afterTs, String afterFQNHash) {
+    /** Encodes a keyset cursor position as {@code "timestamp|entityFQNHash"}. */
+    public static String format(long timestamp, String entityFQNHash) {
+      return timestamp + "|" + entityFQNHash;
+    }
+
+    /** Decodes a Base64 keyset cursor back into its timestamp and FQN hash components. */
+    public static TimeSeriesCursor parse(String keysetCursor) {
+      if (keysetCursor == null || keysetCursor.isEmpty()) {
+        return new TimeSeriesCursor(0, "");
+      }
+      String decoded = RestUtil.decodeCursor(keysetCursor);
+      int sep = decoded.indexOf('|');
+      if (sep < 0) {
+        throw new IllegalArgumentException(
+            "Malformed keyset cursor (missing '|'): " + keysetCursor);
+      }
+      return new TimeSeriesCursor(
+          Long.parseLong(decoded.substring(0, sep)), decoded.substring(sep + 1));
+    }
+  }
+
+  /** Holds the extracted JSON payloads and next-page cursor from a keyset query result. */
+  record KeysetPage(List<String> jsons, String afterCursor) {
+    public static KeysetPage from(List<TimeSeriesRow> rows, int limitParam) {
+      boolean hasMoreData = rows.size() > limitParam;
+      List<TimeSeriesRow> rowsToProcess = hasMoreData ? rows.subList(0, limitParam) : rows;
+      List<String> jsons = rowsToProcess.stream().map(TimeSeriesRow::json).toList();
+      String afterCursor = null;
+      if (hasMoreData) {
+        TimeSeriesRow lastRow = rowsToProcess.get(rowsToProcess.size() - 1);
+        afterCursor = TimeSeriesCursor.format(lastRow.timestamp(), lastRow.entityFQNHash());
+      }
+      return new KeysetPage(jsons, afterCursor);
+    }
+  }
+
   class TimeSeriesRowMapper implements RowMapper<TimeSeriesRow> {
     @Override
     public TimeSeriesRow map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -213,6 +251,35 @@ public interface EntityTimeSeriesDAO {
         filter.getQueryParams(),
         filter.getCondition(),
         limit,
+        afterTs,
+        afterFQNHash);
+  }
+
+  @SqlQuery(
+      "SELECT json, timestamp, entityFQNHash FROM <table> <cond> "
+          + "AND timestamp >= :startTs AND timestamp <= :endTs "
+          + "AND (timestamp > :afterTs OR (timestamp = :afterTs AND entityFQNHash > :afterFQNHash)) "
+          + "ORDER BY timestamp ASC, entityFQNHash ASC LIMIT :limit")
+  @RegisterRowMapper(TimeSeriesRowMapper.class)
+  List<TimeSeriesRow> listAfterKeysetWithRange(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Bind("limit") int limit,
+      @Bind("startTs") long startTs,
+      @Bind("endTs") long endTs,
+      @Bind("afterTs") long afterTs,
+      @Bind("afterFQNHash") String afterFQNHash);
+
+  default List<TimeSeriesRow> listAfterKeysetWithRange(
+      ListFilter filter, int limit, long startTs, long endTs, long afterTs, String afterFQNHash) {
+    return listAfterKeysetWithRange(
+        getTimeSeriesTableName(),
+        filter.getQueryParams(),
+        filter.getCondition(),
+        limit,
+        startTs,
+        endTs,
         afterTs,
         afterFQNHash);
   }

@@ -40,6 +40,10 @@ export interface SearchService {
      */
     domains?: EntityReference[];
     /**
+     * Status of the entity.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Followers of this entity.
      */
     followers?: EntityReference[];
@@ -450,6 +454,21 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the entity.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**

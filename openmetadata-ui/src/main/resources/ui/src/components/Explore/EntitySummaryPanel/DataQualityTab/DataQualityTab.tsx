@@ -16,12 +16,17 @@ import { Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Transi18next, getTableFQNFromColumnFQN } from '../../../../utils/CommonUtils';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import {
+  ERROR_PLACEHOLDER_TYPE,
+  SORT_ORDER,
+} from '../../../../enums/common.enum';
+import { TestCaseType } from '../../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import {
   TestCaseResolutionStatus,
@@ -29,8 +34,7 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { Include } from '../../../../generated/type/include';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
-import { listTestCases } from '../../../../rest/testAPI';
-import { getTableFQNFromColumnFQN } from '../../../../utils/CommonUtils';
+import { getListTestCaseBySearch } from '../../../../rest/testAPI';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -125,8 +129,8 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
 
   const testCaseName = isIncidentMode
     ? incident?.testCaseReference?.displayName ||
-      incident?.testCaseReference?.name ||
-      'Unknown Test Case'
+    incident?.testCaseReference?.name ||
+    'Unknown Test Case'
     : testCase.name;
 
   const severity = incident?.severity;
@@ -143,12 +147,12 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
       return [
         ...(severity
           ? [
-              {
-                label: t('label.severity'),
-                value: <Severity hasPermission={false} severity={severity} />,
-                showDottedBorder: true, // Always show border before assignee
-              },
-            ]
+            {
+              label: t('label.severity'),
+              value: <Severity hasPermission={false} severity={severity} />,
+              showDottedBorder: true, // Always show border before assignee
+            },
+          ]
           : []),
         {
           label: t('label.assignee'),
@@ -171,38 +175,38 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
     return [
       ...(columnName
         ? [
-            {
-              label: t('label.test-type'),
-              value: t('label.column'),
-              showDottedBorder: true, // Always show border before column name
-            },
-            {
-              label: t('label.column-name'),
-              value: columnName,
-              showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
-            },
-          ]
+          {
+            label: t('label.test-type'),
+            value: t('label.column'),
+            showDottedBorder: true, // Always show border before column name
+          },
+          {
+            label: t('label.column-name'),
+            value: columnName,
+            showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
+          },
+        ]
         : [
-            {
-              label: t('label.test-type'),
-              value: t('label.table'),
-              showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
-            },
-          ]),
+          {
+            label: t('label.test-type'),
+            value: t('label.table'),
+            showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
+          },
+        ]),
       ...(testCase.incidentId
         ? [
-            {
-              label: t('label.incident'),
-              value: (
-                <StatusBadgeV2
-                  label="Assigned"
-                  showIcon={false}
-                  status={StatusType.Warning}
-                />
-              ),
-              showDottedBorder: false, // Last item, no border
-            },
-          ]
+          {
+            label: t('label.incident'),
+            value: (
+              <StatusBadgeV2
+                label="Assigned"
+                showIcon={false}
+                status={StatusType.Warning}
+              />
+            ),
+            showDottedBorder: false, // Last item, no border
+          },
+        ]
         : []),
     ];
   }, [isIncidentMode, columnName, testCase.incidentId, severity, incident, t]);
@@ -250,6 +254,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
   entityFQN,
   isColumnDetailPanel = false,
+  hasViewTests = true,
 }) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -278,7 +283,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     useState<IncidentFilterStatus>('new');
   const [isIncidentsLoading, setIsIncidentsLoading] = useState<boolean>(false);
 
-  const fetchTestCases = async () => {
+  const fetchTestCases = async (searchQuery: string = '') => {
     if (!entityFQN) {
       setIsLoading(false);
 
@@ -289,186 +294,206 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       setIsLoading(true);
       const entityLink = generateEntityLink(entityFQN);
 
-      const response = await listTestCases({
+      const response = await getListTestCaseBySearch({
         entityLink,
+        q: searchQuery ? searchQuery : undefined,
         includeAllTests: true,
-        limit: 100, // Get more test cases to ensure accurate counts
-        fields: ['testCaseResult', 'incidentId'],
+        limit: 50,
+        fields: 'testCaseResult,incidentId',
+        include: Include.NonDeleted,
+        sortType: SORT_ORDER.DESC,
+        sortField: 'testCaseResult.timestamp',
+        testCaseType: TestCaseType.all,
       });
 
       setTestCases(response.data || []);
 
-      // Calculate status counts
-      const counts = (response.data || []).reduce(
-        (acc, testCase) => {
-          const status = testCase.testCaseResult?.testCaseStatus;
-          if (status) {
-            switch (status) {
-              case TestCaseStatus.Success:
-                acc.success++;
+      if (!searchQuery) {
+        // Calculate status counts only when there is no search query
+        const counts = (response.data || []).reduce(
+          (acc, testCase) => {
+            const status = testCase.testCaseResult?.testCaseStatus;
+            if (status) {
+              switch (status) {
+                case TestCaseStatus.Success:
+                  acc.success++;
 
-                break;
-              case TestCaseStatus.Failed:
-                acc.failed++;
+                  break;
+                case TestCaseStatus.Failed:
+                  acc.failed++;
 
-                break;
-              case TestCaseStatus.Aborted:
-                acc.aborted++;
+                  break;
+                case TestCaseStatus.Aborted:
+                  acc.aborted++;
 
-                break;
+                  break;
+              }
+              acc.total++;
             }
-            acc.total++;
-          }
 
-          return acc;
-        },
-        { success: 0, failed: 0, aborted: 0, ack: 0, total: 0 }
-      );
+            return acc;
+          },
+          { success: 0, failed: 0, aborted: 0, ack: 0, total: 0 }
+        );
 
-      setStatusCounts(counts);
+        setStatusCounts(counts);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
       setTestCases([]);
-      setStatusCounts({ success: 0, failed: 0, aborted: 0, ack: 0, total: 0 });
+      if (!searchQuery) {
+        setStatusCounts({
+          success: 0,
+          failed: 0,
+          aborted: 0,
+          ack: 0,
+          total: 0,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchIncidents = useCallback(async () => {
-    if (!entityFQN) {
-      setIsIncidentsLoading(false);
+  const fetchIncidents = useCallback(
+    async (currentTestCases?: TestCase[]) => {
+      if (!entityFQN) {
+        setIsIncidentsLoading(false);
 
-      return;
-    }
-
-    try {
-      setIsIncidentsLoading(true);
-
-      const startTs = getEpochMillisForPastDays(
-        PROFILER_FILTER_RANGE.last30days.days
-      );
-      const endTs = getCurrentMillis();
-
-      const originFQN = isColumnDetailPanel
-        ? getTableFQNFromColumnFQN(entityFQN)
-        : entityFQN;
-
-      const response = await getListTestCaseIncidentStatus({
-        latest: true,
-        include: Include.NonDeleted,
-        originEntityFQN: originFQN,
-        startTs,
-        endTs,
-        limit: 100,
-      });
-
-      let allIncidents = response.data || [];
-
-      if (isColumnDetailPanel && testCases.length > 0) {
-        const testCaseFQNSet = new Set(
-          testCases.map((testCase) => testCase.fullyQualifiedName)
-        );
-        allIncidents = allIncidents.filter(
-          (incident) =>
-            incident.testCaseReference?.fullyQualifiedName &&
-            testCaseFQNSet.has(incident.testCaseReference.fullyQualifiedName)
-        );
+        return;
       }
 
-      setIncidents(allIncidents);
+      try {
+        setIsIncidentsLoading(true);
 
-      // Calculate incident status counts
-      const counts = allIncidents.reduce(
-        (acc, incident) => {
-          const status = incident.testCaseResolutionStatusType;
+        const startTs = getEpochMillisForPastDays(
+          PROFILER_FILTER_RANGE.last30days.days
+        );
+        const endTs = getCurrentMillis();
 
-          if (status) {
-            switch (status) {
-              case TestCaseResolutionStatusTypes.New:
-                acc.new++;
+        const originFQN = isColumnDetailPanel
+          ? getTableFQNFromColumnFQN(entityFQN)
+          : entityFQN;
 
-                break;
-              case TestCaseResolutionStatusTypes.Assigned:
-                acc.assigned++;
+        const response = await getListTestCaseIncidentStatus({
+          latest: true,
+          include: Include.NonDeleted,
+          originEntityFQN: originFQN,
+          startTs,
+          endTs,
+          limit: 100,
+        });
 
-                break;
-              case TestCaseResolutionStatusTypes.Resolved:
-                acc.resolved++;
+        let allIncidents = response.data || [];
 
-                break;
-              case TestCaseResolutionStatusTypes.ACK:
-                acc.ack++;
+        if (isColumnDetailPanel && currentTestCases && currentTestCases.length > 0) {
+          const testCaseFQNSet = new Set(
+            currentTestCases.map((testCase) => testCase.fullyQualifiedName)
+          );
+          allIncidents = allIncidents.filter(
+            (incident) =>
+              incident.testCaseReference?.fullyQualifiedName &&
+              testCaseFQNSet.has(incident.testCaseReference.fullyQualifiedName)
+          );
+        }
 
-                break;
+        setIncidents(allIncidents);
+
+        // Calculate incident status counts
+        const counts = allIncidents.reduce(
+          (acc, incident) => {
+            const status = incident.testCaseResolutionStatusType;
+
+            if (status) {
+              switch (status) {
+                case TestCaseResolutionStatusTypes.New:
+                  acc.new++;
+
+                  break;
+                case TestCaseResolutionStatusTypes.Assigned:
+                  acc.assigned++;
+
+                  break;
+                case TestCaseResolutionStatusTypes.Resolved:
+                  acc.resolved++;
+
+                  break;
+                case TestCaseResolutionStatusTypes.ACK:
+                  acc.ack++;
+
+                  break;
+              }
+              acc.total++;
             }
-            acc.total++;
-          }
 
-          return acc;
-        },
-        {
+            return acc;
+          },
+          {
+            new: 0,
+            assigned: 0,
+            resolved: 0,
+            ack: 0,
+            total: 0,
+          }
+        );
+
+        setIncidentCounts(counts);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+        setIncidents([]);
+        setIncidentCounts({
           new: 0,
           assigned: 0,
           resolved: 0,
           ack: 0,
           total: 0,
-        }
-      );
-
-      setIncidentCounts(counts);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setIncidents([]);
-      setIncidentCounts({
-        new: 0,
-        assigned: 0,
-        resolved: 0,
-        ack: 0,
-        total: 0,
-      });
-    } finally {
-      setIsIncidentsLoading(false);
-    }
-  }, [entityFQN, isColumnDetailPanel, testCases]);
+        });
+      } finally {
+        setIsIncidentsLoading(false);
+      }
+    },
+    [entityFQN, isColumnDetailPanel]
+  );
 
   useEffect(() => {
-    fetchTestCases();
+    if (!hasViewTests) {
+      setIsLoading(false);
+
+      return;
+    }
+    fetchTestCases(searchText);
+  }, [entityFQN, hasViewTests, searchText]);
+
+  useEffect(() => {
+    if (!hasViewTests) {
+      return;
+    }
     if (!isColumnDetailPanel) {
       fetchIncidents();
     }
+  }, [entityFQN, hasViewTests, fetchIncidents, isColumnDetailPanel]);
+
+  const hasFetchedColumnIncidents = useRef(false);
+
+  useEffect(() => {
+    hasFetchedColumnIncidents.current = false;
   }, [entityFQN]);
 
   useEffect(() => {
-    if (isColumnDetailPanel && testCases.length > 0) {
-      fetchIncidents();
+    if (isColumnDetailPanel && testCases.length > 0 && hasViewTests && !hasFetchedColumnIncidents.current) {
+      hasFetchedColumnIncidents.current = true;
+      fetchIncidents(testCases);
     }
-  }, [fetchIncidents, isColumnDetailPanel, testCases.length]);
+  }, [fetchIncidents, isColumnDetailPanel, testCases, hasViewTests]);
 
-  // Filter test cases based on active filter and search text
+  // Filter test cases based on active filter (search text is handled server-side)
   const filteredTestCases = useMemo(() => {
     return testCases.filter((testCase) => {
       const status = testCase.testCaseResult?.testCaseStatus;
-      const matchesStatus = status?.toLowerCase() === activeFilter;
 
-      if (!searchText) {
-        return matchesStatus;
-      }
-
-      const searchLower = searchText.toLowerCase();
-      const testCaseName = testCase.name?.toLowerCase() || '';
-      const testCaseDisplayName =
-        testCase.displayName?.toLowerCase() ||
-        testCase.fullyQualifiedName?.toLowerCase() ||
-        '';
-
-      return (
-        matchesStatus &&
-        (testCaseName.includes(searchLower) ||
-          testCaseDisplayName.includes(searchLower))
-      );
+      return status?.toLowerCase() === activeFilter;
     });
-  }, [testCases, activeFilter, searchText]);
+  }, [testCases, activeFilter]);
 
   // Filter incidents based on active incident filter and search text
   const filteredIncidents = useMemo(() => {
@@ -534,6 +559,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const convertIncidentToTestCase = (
     incident: TestCaseResolutionStatus
   ): TestCase => {
+    const matchingTestCase = testCases.find(
+      (tc) =>
+        tc.fullyQualifiedName === incident.testCaseReference?.fullyQualifiedName
+    );
+
     return {
       id: incident.id || '',
       name:
@@ -541,7 +571,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         incident.testCaseReference?.name ||
         'Unknown Test Case',
       fullyQualifiedName: incident.testCaseReference?.fullyQualifiedName || '',
-      entityLink: incident.testCaseReference?.fullyQualifiedName || '',
+      entityLink: matchingTestCase?.entityLink || '',
       testCaseResult: {
         testCaseStatus: incident.testCaseResolutionStatusType as string,
         timestamp: incident.timestamp || Date.now(),
@@ -594,20 +624,18 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       key: 'data-quality',
       label: (
         <span
-          className={`tab-header-container ${
-            activeTab === 'data-quality' ? 'active' : ''
-          }`}>
+          className={`tab-header-container ${activeTab === 'data-quality' ? 'active' : ''
+            }`}>
           {t('label.data-quality')}
           <span
-            className={`data-quality-tab-count ${
-              activeTab === 'data-quality' ? 'active' : ''
-            }`}>
+            className={`data-quality-tab-count ${activeTab === 'data-quality' ? 'active' : ''
+              }`}>
             {statusCounts.total}
           </span>
         </span>
       ),
       children:
-        statusCounts.total === 0 ? (
+        statusCounts.total === 0 && !isLoading ? (
           <ErrorPlaceHolderNew
             className="text-grey-14 m-t-lg"
             icon={<AddPlaceHolderIcon height={100} width={100} />}
@@ -647,7 +675,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   onSearch={setSearchText}
                 />
               </div>
-              {filteredTestCases.length > 0 ? (
+              {isLoading ? (
+                <Loader />
+              ) : filteredTestCases.length > 0 ? (
                 <Row gutter={[0, 12]} style={{ marginLeft: '-16px' }}>
                   {filteredTestCases.map((testCase) => (
                     <Col key={testCase.id} span={24}>
@@ -672,21 +702,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       key: 'incidents',
       label: (
         <span
-          className={`tab-header-container ${
-            activeTab === 'incidents' ? 'active' : ''
-          }`}>
+          className={`tab-header-container ${activeTab === 'incidents' ? 'active' : ''
+            }`}>
           {t('label.incident-plural')}
 
           <span
-            className={`data-quality-tab-count ${
-              activeTab === 'incidents' ? 'active' : ''
-            }`}>
+            className={`data-quality-tab-count ${activeTab === 'incidents' ? 'active' : ''
+              }`}>
             {incidentCounts.total}
           </span>
         </span>
       ),
       children:
-        incidentCounts.total === 0 ? (
+        incidentCounts.total === 0 && !isIncidentsLoading ? (
           <div className="m-t-lg">
             <ErrorPlaceHolderNew
               className="text-grey-14"
@@ -703,9 +731,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             <div className="incidents-stats-container">
               <div className="incidents-stats-cards-container">
                 <button
-                  className={`incident-stat-card new-card ${
-                    activeIncidentFilter === 'new' ? 'active' : ''
-                  }`}
+                  className={`incident-stat-card new-card ${activeIncidentFilter === 'new' ? 'active' : ''
+                    }`}
                   type="button"
                   onClick={() => handleIncidentFilterChange('new')}>
                   <Typography.Text className="stat-count new">
@@ -722,9 +749,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   variant="middle"
                 />
                 <button
-                  className={`incident-stat-card ack-card ${
-                    activeIncidentFilter === 'ack' ? 'active' : ''
-                  }`}
+                  className={`incident-stat-card ack-card ${activeIncidentFilter === 'ack' ? 'active' : ''
+                    }`}
                   type="button"
                   onClick={() => handleIncidentFilterChange('ack')}>
                   <Typography.Text className="stat-count ack">
@@ -741,9 +767,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   variant="middle"
                 />
                 <button
-                  className={`incident-stat-card assigned-card ${
-                    activeIncidentFilter === 'assigned' ? 'active' : ''
-                  }`}
+                  className={`incident-stat-card assigned-card ${activeIncidentFilter === 'assigned' ? 'active' : ''
+                    }`}
                   type="button"
                   onClick={() => handleIncidentFilterChange('assigned')}>
                   <Typography.Text className="stat-count assigned">
@@ -794,12 +819,22 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     },
   ];
 
-  if (isLoading) {
+  if (!hasViewTests) {
     return (
-      <div className="data-quality-tab-container p-md">
-        <div>
-          <Loader />
-        </div>
+      <div className="lineage-items-list">
+        <ErrorPlaceHolderNew
+          className="text-grey-14 permission-error-placeholder"
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}>
+          <Transi18next
+            i18nKey="message.no-access-placeholder"
+            renderElement={<span />}
+            values={{
+              entity: t('label.view-entity', {
+                entity: t('label.data-quality'),
+              }),
+            }}
+          />
+        </ErrorPlaceHolderNew>
       </div>
     );
   }
