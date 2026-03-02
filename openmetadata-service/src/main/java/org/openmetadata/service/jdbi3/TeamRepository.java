@@ -95,6 +95,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
@@ -464,12 +465,13 @@ public class TeamRepository extends EntityRepository<Team> {
       teamIdToFqn.put(team.getId().toString(), team.getFullyQualifiedName());
     }
 
-    // Single ES aggregation query for all owner IDs
+    // Single ES aggregation query filtered by owners.type=team (excludes users)
     String queryFilter = QueryFilterBuilder.buildTeamAssetsCountFilter();
     Map<String, Integer> ownerIdCounts =
-        inheritedFieldEntitySearch.getAggregatedCountsByField("owners.id", queryFilter, 10000);
+        inheritedFieldEntitySearch.getAggregatedCountsByField(
+            "owners.id", queryFilter, EntityBuilderConstant.MAX_AGGREGATE_SIZE);
 
-    // Map to team FQNs, filtering out user IDs (only teams in our map are included)
+    // Map team IDs to FQNs
     Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
     for (Team team : allTeams) {
       teamAssetCounts.put(team.getFullyQualifiedName(), 0);

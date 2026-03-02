@@ -86,10 +86,10 @@ public class QueryFilterBuilder {
     ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
     ArrayNode mustArray = boolNode.putArray(MUST_KEY);
 
-    // Must have owners field
-    ObjectNode existsNode = MAPPER.createObjectNode();
-    existsNode.putObject("exists").put("field", "owners.id");
-    mustArray.add(existsNode);
+    // Filter to only include assets owned by teams (not users)
+    ObjectNode ownerTypeNode = MAPPER.createObjectNode();
+    ownerTypeNode.putObject(TERM_KEY).put("owners.type", "team");
+    mustArray.add(ownerTypeNode);
 
     // Exclude deleted assets
     ObjectNode deletedNode = MAPPER.createObjectNode();
