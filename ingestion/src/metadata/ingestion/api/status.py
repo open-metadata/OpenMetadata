@@ -110,14 +110,10 @@ class Status(BaseModel):
                     f"[{len(value)} total items"
                     f" — showing first {MAX_STATUS_DISPLAY_ITEMS}]"
                 )
-                formatted = pprint.pformat(
-                    value[:MAX_STATUS_DISPLAY_ITEMS], width=150
-                )
+                formatted = pprint.pformat(value[:MAX_STATUS_DISPLAY_ITEMS], width=150)
                 parts.append(f"'{key}': {header}\n{formatted}")
             else:
-                parts.append(
-                    f"'{key}': {pprint.pformat(value, width=150)}"
-                )
+                parts.append(f"'{key}': {pprint.pformat(value, width=150)}")
         return "{\n " + ",\n ".join(parts) + "}"
 
     def failed(self, error: StackTraceError) -> None:
