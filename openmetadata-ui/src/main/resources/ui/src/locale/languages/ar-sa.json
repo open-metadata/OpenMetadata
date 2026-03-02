@@ -2757,6 +2757,7 @@
     "permanently-delete-metadata": "سيؤدي الحذف الدائم لـ <0>{{entityName}}</0> إلى إزالة بياناته الوصفية من OpenMetadata، ولا يمكن استعادته.",
     "permanently-delete-metadata-and-dependents": "سيؤدي الحذف الدائم لـ {{entityName}} إلى إزالة بياناته الوصفية، وكذلك البيانات الوصفية لـ {{dependents}} من OpenMetadata بشكل دائم.",
     "persona-preference-updated": "تم تحديث تفضيل الشخصية بنجاح!",
+    "persona-updated-successfully": "تم تحديث الشخصية بنجاح.",
     "personal-access-token": "رمز الوصول الشخصي المميز",
     "pii-coverage-widget-description": "تغطية معلومات التعريف الشخصية (PII) لجميع أصول البيانات في الخدمة. <0>تعرف على المزيد.</0>",
     "pii-distribution-description": "معلومات التعريف الشخصية (Personally Identifiable Information) هي معلومات يمكنها، عند استخدامها بمفردها أو مع بيانات أخرى ذات صلة، تحديد هوية فرد.",
