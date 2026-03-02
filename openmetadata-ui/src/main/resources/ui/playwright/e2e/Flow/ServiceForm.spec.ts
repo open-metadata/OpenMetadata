@@ -378,7 +378,7 @@ test.describe('Service form functionality', PLAYWRIGHT_INGESTION_TAG_OBJ, async 
           response.request().method() === 'GET' &&
           response.status() === 200
       );
-      await page.getByPlaceholder('Search Services').fill(SERVICE_NAMES.service1);
+      await page.getByTestId('searchbar').fill(SERVICE_NAMES.service1);
       await searchResponse;
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId(`service-name-${SERVICE_NAMES.service1}`).click();
