@@ -1626,7 +1626,7 @@ for name, bench in benchmarks.items():
 
 report = {
     "metadata": {
-        "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "timestamp": datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "server_url": SERVER_URL,
         "workers": NUM_WORKERS,
         "scale": SCALE_APPLIED,
