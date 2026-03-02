@@ -66,10 +66,14 @@ class DatalakeS3Client(DatalakeBaseClient):
         for key in list_s3_objects(self._client, **kwargs):
             if skip_cold_storage:
                 storage_class = key.get("StorageClass", "STANDARD")
-                if storage_class in S3_COLD_STORAGE_CLASSES:
+                archive_status = key.get("ArchiveStatus", "")
+                if storage_class in S3_COLD_STORAGE_CLASSES or archive_status in {
+                    "ARCHIVE_ACCESS",
+                    "DEEP_ARCHIVE_ACCESS",
+                }:
                     logger.debug(
                         f"Skipping cold storage object: {key['Key']} "
-                        f"(StorageClass: {storage_class})"
+                        f"(StorageClass: {storage_class}, ArchiveStatus: {archive_status})"
                     )
                     continue
             yield key["Key"]
