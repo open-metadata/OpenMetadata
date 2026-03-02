@@ -1621,6 +1621,40 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertEquals(1, assetsCount.get(team2.getFullyQualifiedName()), "Team 2 should have 1 asset");
   }
 
+  @Test
+  void test_getAllTeamsWithAssetsCount_includesInheritedOwnership(TestInfo test)
+      throws IOException {
+    Team team = createEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest
+                .createRequest(getEntityName(test, 2))
+                .withOwners(List.of(team.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    tableTest.createEntity(
+        tableTest
+            .createRequest(getEntityName(test, 3))
+            .withDatabaseSchema(schema.getFullyQualifiedName()),
+        ADMIN_AUTH_HEADERS);
+    tableTest.createEntity(
+        tableTest
+            .createRequest(getEntityName(test, 4))
+            .withDatabaseSchema(schema.getFullyQualifiedName()),
+        ADMIN_AUTH_HEADERS);
+
+    Map<String, Integer> assetsCount = getAllTeamsWithAssetsCount();
+
+    assertNotNull(assetsCount);
+    assertEquals(
+        3,
+        assetsCount.get(team.getFullyQualifiedName()),
+        "Team should have 3 assets: 1 schema + 2 inherited tables");
+  }
+
   private Map<String, Integer> getAllTeamsWithAssetsCount() throws HttpResponseException {
     WebTarget target = getResource("teams/assets/counts");
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();

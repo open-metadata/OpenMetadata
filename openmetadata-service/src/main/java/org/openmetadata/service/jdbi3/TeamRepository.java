@@ -98,6 +98,7 @@ import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -456,22 +457,28 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     List<Team> allTeams = listAll(getFields("id,fullyQualifiedName"), new ListFilter(null));
-    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
 
+    // Build team ID -> FQN mapping
+    Map<String, String> teamIdToFqn = new HashMap<>();
     for (Team team : allTeams) {
-      InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), 0, 0);
+      teamIdToFqn.put(team.getId().toString(), team.getFullyQualifiedName());
+    }
 
-      Integer count =
-          inheritedFieldEntitySearch.getCountForField(
-              query,
-              () -> {
-                LOG.warn(
-                    "Search fallback for team {} asset count. Returning 0.",
-                    team.getFullyQualifiedName());
-                return 0;
-              });
+    // Single ES aggregation query for all owner IDs
+    String queryFilter = QueryFilterBuilder.buildTeamAssetsCountFilter();
+    Map<String, Integer> ownerIdCounts =
+        inheritedFieldEntitySearch.getAggregatedCountsByField("owners.id", queryFilter, 10000);
 
-      teamAssetCounts.put(team.getFullyQualifiedName(), count);
+    // Map to team FQNs, filtering out user IDs (only teams in our map are included)
+    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
+    for (Team team : allTeams) {
+      teamAssetCounts.put(team.getFullyQualifiedName(), 0);
+    }
+    for (Map.Entry<String, Integer> entry : ownerIdCounts.entrySet()) {
+      String teamFqn = teamIdToFqn.get(entry.getKey());
+      if (teamFqn != null) {
+        teamAssetCounts.put(teamFqn, entry.getValue());
+      }
     }
 
     return teamAssetCounts;

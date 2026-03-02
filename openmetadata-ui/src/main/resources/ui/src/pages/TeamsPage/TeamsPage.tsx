@@ -42,6 +42,7 @@ import {
   deleteUserFromTeam,
   getTeamByName,
   getTeams,
+  getTeamsAssetCounts,
   patchTeamDetail,
   updateUsersFromTeam,
 } from '../../rest/teamsAPI';
@@ -81,6 +82,9 @@ const TeamsPage = () => {
     useState<boolean>(true);
   const [isFetchAllTeamAdvancedDetails, setFetchAllTeamAdvancedDetails] =
     useState<boolean>(false);
+  const [teamAssetCounts, setTeamAssetCounts] = useState<
+    Record<string, number>
+  >({});
 
   const hasViewPermission = useMemo(
     () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
@@ -127,6 +131,15 @@ const TeamsPage = () => {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
       setIsTeamBasicDataLoading(false);
+    }
+  };
+
+  const fetchTeamAssetCounts = async () => {
+    try {
+      const counts = await getTeamsAssetCounts();
+      setTeamAssetCounts(counts);
+    } catch {
+      // Silently fail - asset counts will show 0
     }
   };
 
@@ -263,6 +276,7 @@ const TeamsPage = () => {
   const loadAdvancedDetails = useCallback(() => {
     fetchTeamAdvancedDetails(fqn);
     fetchAllTeamsBasicDetails(fqn);
+    fetchTeamAssetCounts();
   }, [fqn]);
 
   /**
@@ -543,6 +557,7 @@ const TeamsPage = () => {
         parentTeams={parentTeams}
         removeUserFromTeam={removeUserFromTeam}
         showDeletedTeam={showDeletedTeam}
+        teamAssetCounts={teamAssetCounts}
         updateTeamHandler={updateTeamHandler}
         onDescriptionUpdate={onDescriptionUpdate}
         onShowDeletedTeamChange={toggleShowDeletedTeam}
