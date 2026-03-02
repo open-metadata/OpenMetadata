@@ -63,7 +63,7 @@ const NestedColumnItem: React.FC<{
       </Box>
       {hasChildren && (
         <Box sx={{ paddingLeft: 2 }}>
-          {column.children!.map((child) => (
+          {column.children?.map((child) => (
             <NestedColumnItem
               column={child}
               depth={depth + 1}

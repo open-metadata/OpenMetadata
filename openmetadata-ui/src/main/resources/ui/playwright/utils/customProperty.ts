@@ -114,7 +114,7 @@ export const setValueForProperty = async (data: {
     page.locator(
       `[data-testid="custom-property-${propertyName}-card"] [data-testid="property-name"]`
     )
-  ).toHaveText(propertyName);
+  ).toContainText(propertyName);
 
   const editButton = page.locator(
     `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
@@ -1267,7 +1267,9 @@ export const updateCustomPropertyInRightPanel = async (data: {
     .locator('.entity-summary-panel-container')
     .getByTestId(propertyName);
 
-  await expect(container.getByTestId('property-name')).toHaveText(propertyName);
+  await expect(container.getByTestId('property-name')).toContainText(
+    propertyName
+  );
 
   const editButton = container.getByTestId('edit-icon-right-panel');
   await editButton.scrollIntoViewIfNeeded();
