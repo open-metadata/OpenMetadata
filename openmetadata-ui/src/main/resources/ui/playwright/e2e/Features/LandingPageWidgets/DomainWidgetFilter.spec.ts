@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
-import { UserClass } from '../../../support/user/UserClass';
-import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import {
+  createNewPage,
+  redirectToExplorePage,
+  redirectToHomePage,
+} from '../../../utils/common';
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
@@ -24,36 +26,32 @@ import {
 import { selectDomainFromNavbar } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
-const adminUser = new UserClass();
-const persona = new PersonaClass();
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
 const domainA = new Domain();
 const domainB = new Domain();
+const persona = new PersonaClass();
 
-const test = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-    await use(page);
-    await page.close();
-  },
-});
+test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
 
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await persona.create(apiContext, [adminUser.responseData.id]);
   await domainA.create(apiContext);
   await domainB.create(apiContext);
+
+  const adminResponse = await apiContext.get(
+    '/api/v1/users/name/admin?fields=id'
+  );
+  const adminData = await adminResponse.json();
+
+  await persona.create(apiContext, [adminData.id]);
   await afterAction();
 });
 
-base.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+test.afterAll('Cleanup', async ({ browser }) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
   await domainA.delete(apiContext);
   await domainB.delete(apiContext);
   await persona.delete(apiContext);
-  await adminUser.delete(apiContext);
   await afterAction();
 });
 
@@ -75,6 +73,7 @@ test.describe.serial('Domain Widget Filter', () => {
   }) => {
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
     const domainWidget = page.getByTestId('KnowledgePanel.Domains');
     await expect(domainWidget).toBeVisible();
@@ -86,8 +85,13 @@ test.describe.serial('Domain Widget Filter', () => {
       domainWidget.getByTestId(`domain-card-${domainB.responseData.id}`)
     ).toBeVisible();
 
+    // Navigate to explore page where domain-dropdown is available in navbar
+    await redirectToExplorePage(page);
+    await waitForAllLoadersToDisappear(page);
+
     await selectDomainFromNavbar(page, domainA.responseData);
 
+    // Navigate back to home page to verify widget filtering
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
