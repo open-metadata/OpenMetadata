@@ -422,6 +422,52 @@ class TestQueryMasker(TestCase):
                 "SqlParse",
             )
 
+    def test_group_by_positional_not_masked(self):
+        """
+        Numeric positional references in GROUP BY (e.g. GROUP BY 1, 2, 3) must
+        not be masked.  They identify column positions, not sensitive data values.
+        String literals and numeric literals outside GROUP BY must still be masked.
+        """
+        query_test_cases = [
+            {
+                "query": "SELECT name, age FROM users GROUP BY 1, 2;",
+                "expected": "SELECT name, age FROM users GROUP BY 1, 2;",
+                "dialect": Dialect.ANSI.value,
+            },
+            {
+                "query": "SELECT name, age FROM users WHERE id = 5 GROUP BY 1, 2 HAVING COUNT(*) > 1;",
+                "expected": "SELECT name, age FROM users WHERE id = ? GROUP BY 1, 2 HAVING COUNT(*) > ?;",
+                "dialect": Dialect.ANSI.value,
+            },
+            {
+                "query": (
+                    "WITH cte AS ("
+                    "SELECT name, city FROM users WHERE age > 18 GROUP BY 1, 2"
+                    ") SELECT * FROM cte;"
+                ),
+                "expected": (
+                    "WITH cte AS ("
+                    "SELECT name, city FROM users WHERE age > ? GROUP BY 1, 2"
+                    ") SELECT * FROM cte;"
+                ),
+                "dialect": Dialect.ANSI.value,
+            },
+        ]
+
+        for test_case in query_test_cases:
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlGlot",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlParse",
+            )
+
     @pytest.mark.skip(
         reason="SqlGlot and SqlFluff do not support DECLARE statement type yet."
         " Additionally multi-statement handling needs to be evaluated later."

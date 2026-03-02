@@ -25,6 +25,7 @@ from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyz
 from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
 from collate_sqllineage.runner import LineageRunner
 from sqlparse.sql import Comparison
+from sqlparse.tokens import Keyword as KeywordToken
 from sqlparse.tokens import Literal, Number, String
 
 from metadata.ingestion.lineage.models import Dialect
@@ -42,41 +43,55 @@ MASK_TOKEN = "?"
 masked_query_cache = LRUCache(maxsize=128)
 
 
+_NUMERIC_TYPES = (Number, Literal.Number.Integer, Literal.Number.Float)
+_LITERAL_TYPES = (String, Literal.String.Single)
+_GROUP_BY_RESET_KEYWORDS = frozenset(
+    {"HAVING", "ORDER BY", "UNION", "UNION ALL", "EXCEPT", "INTERSECT"}
+)
+
+
 @calculate_execution_time(context="MaskLiteralsSqlParse")
 def mask_literals_with_sqlparse(
     query: str, parser: LineageRunner, query_hash: Optional[str] = None
 ):
     """
     Mask literals in a query using SqlParse.
+
+    Numeric literals that appear as direct positional references in a GROUP BY
+    clause (e.g. ``GROUP BY 1, 2, 3``) are intentionally left unmasked because
+    they identify column positions, not sensitive data values.
     """
     try:
         parsed = parser._parsed_result
 
-        def mask_token(token):
-            # Mask all literals: strings, numbers, or other literal values
-            if token.ttype in (
-                String,
-                Number,
-                Literal.String.Single,
-                Literal.Number.Integer,
-                Literal.Number.Float,
-            ):
+        def mask_token(token, in_group_by: bool = False) -> None:
+            if token.ttype in _LITERAL_TYPES:
                 token.value = MASK_TOKEN
+            elif token.ttype in _NUMERIC_TYPES:
+                if not in_group_by:
+                    token.value = MASK_TOKEN
+            elif isinstance(token, Comparison):
+                process_tokens(token.tokens, in_group_by=False)
             elif token.is_group:
-                # Recursively process grouped tokens
-                for t in token.tokens:
-                    mask_token(t)
+                process_tokens(token.tokens, in_group_by=False)
 
-        # Process all tokens
-        for token in parsed.tokens:
-            if isinstance(token, Comparison):
-                # In comparisons, mask both sides if literals
-                for t in token.tokens:
-                    mask_token(t)
-            else:
-                mask_token(token)
+        def process_tokens(tokens, in_group_by: bool = False) -> None:
+            current_in_group_by = in_group_by
+            for token in tokens:
+                if token.ttype is KeywordToken:
+                    normalized = token.normalized.upper()
+                    if normalized == "GROUP BY":
+                        current_in_group_by = True
+                        continue
+                    if normalized in _GROUP_BY_RESET_KEYWORDS:
+                        current_in_group_by = False
+                elif isinstance(token, Comparison):
+                    process_tokens(token.tokens, in_group_by=False)
+                    continue
+                mask_token(token, in_group_by=current_in_group_by)
 
-        # Return the formatted masked query
+        process_tokens(parsed.tokens)
+
         return str(parsed)
     except Exception as exc:
         hash_prefix = f"[{query_hash}] " if query_hash else ""
@@ -106,18 +121,27 @@ def mask_literals_with_sqlfluff(
             )
             return query
 
-        def replace_literals(segment):
-            """Recursively replace literals with placeholders."""
-            if segment.is_type("literal", "quoted_literal", "numeric_literal"):
+        def replace_literals(segment, in_group_by: bool = False) -> str:
+            """Recursively replace literals with placeholders.
+
+            Numeric literals inside a ``groupby_clause`` are positional column
+            references (e.g. ``GROUP BY 1, 2``), not data values, so they are
+            left unmasked.
+            """
+            current_in_group_by = in_group_by or segment.is_type("groupby_clause")
+            if segment.is_type("numeric_literal"):
+                if current_in_group_by:
+                    return segment.raw
+                return MASK_TOKEN
+            if segment.is_type("literal", "quoted_literal"):
                 return MASK_TOKEN
             if segment.segments:
-                # Recursively process sub-segments
                 return "".join(
-                    replace_literals(sub_seg) for sub_seg in segment.segments
+                    replace_literals(sub_seg, in_group_by=current_in_group_by)
+                    for sub_seg in segment.segments
                 )
             return segment.raw
 
-        # Reconstruct the query with masked literals
         masked_query = "".join(
             replace_literals(segment) for segment in parsed.tree.segments
         )
