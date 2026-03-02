@@ -2759,6 +2759,7 @@
     "permanently-delete-metadata": "מחיקה של {{entityName}} תסיר את המטה-דאטה שלו מ-{{brandName}} לצמיתות.",
     "permanently-delete-metadata-and-dependents": "מחיקה של {{entityName}} תסיר את המטה-דאטה שלו, כמו גם את המטה-דאטה של {{dependents}} מ-{{brandName}} לצמיתות.",
     "persona-preference-updated": "העדפת אישיות עודכנה בהצלחה!",
+    "persona-updated-successfully": "Persona עודכנה בהצלחה.",
     "personal-access-token": "אסימון גישה אישי",
     "pii-coverage-widget-description": "כיסוי PII עבור כל נכסי הנתונים בשירות. <0>למד עוד</0>.",
     "pii-distribution-description": "מידע שיכול להזהיר את מי שמשתמש בו או עם נתונים אחרים שיכולים לזהות אדם.",

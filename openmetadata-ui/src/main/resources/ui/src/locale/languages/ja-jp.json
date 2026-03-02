@@ -2759,6 +2759,7 @@
     "permanently-delete-metadata": "この <0>{{entityName}}</0> を完全に削除すると、{{brandName}} からメタデータが完全に削除されます。",
     "permanently-delete-metadata-and-dependents": "{{entityName}} を完全に削除すると、そのメタデータおよび {{dependents}} のメタデータも {{brandName}} から完全に削除されます。",
     "persona-preference-updated": "ペルソナ設定が正常に更新されました！",
+    "persona-updated-successfully": "Persona が正常に更新されました。",
     "personal-access-token": "パーソナルアクセストークン",
     "pii-coverage-widget-description": "サービス内のすべてのデータアセットにおける PII カバレッジ。<0>詳細を見る。</0>",
     "pii-distribution-description": "個人を特定できる情報とは、それ単独または他の関連データと組み合わせることで個人を識別可能にする情報です。",

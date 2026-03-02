@@ -2759,6 +2759,7 @@
     "permanently-delete-metadata": "Внимание! Удаление объекта <0>{{entityName}}</0> невозможно отменить — все метаданные будут утеряны.",
     "permanently-delete-metadata-and-dependents": "Внимание! Удаление объекта {{entityName}} невозможно отменить — все метаданные, включая {{dependers}} будут утеряны.",
     "persona-preference-updated": "Предпочтения персонажа успешно обновлены!",
+    "persona-updated-successfully": "Persona успешно обновлена.",
     "personal-access-token": "Персональный токен доступа",
     "pii-coverage-widget-description": "Покрытие PII для всех объектов данных в сервисе. <0>Узнать больше.</0>",
     "pii-distribution-description": "Любая информация, позволяющая идентифицировать человека как отдельно, так и в сочетании с другими данными.",
