@@ -13,6 +13,7 @@ Hosts the singledispatch to get DBT files
 """
 import json
 import os
+import re
 import traceback
 from collections import defaultdict
 from functools import singledispatch
@@ -379,6 +380,59 @@ def get_blobs_grouped_by_dir(blobs: Iterable[str]) -> Dict[str, List[str]]:
     return blob_grouped_by_directory
 
 
+_DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _has_date_pattern(directory: str) -> bool:
+    """Check if the leaf directory name contains a date pattern (YYYY-MM-DD)."""
+    leaf = os.path.basename(directory)
+    return bool(_DATE_PATTERN.search(leaf))
+
+
+def _filter_latest_per_project(
+    blob_grouped_by_directory: Dict[str, List[str]],
+) -> Dict[str, List[str]]:
+    """
+    When multiple timestamped run directories exist under the same project
+    (e.g. project/target_2025-04-19/manifest.json, project/target_2025-04-20/manifest.json),
+    keep only the latest directory per project.
+
+    Only applies to directories whose leaf name contains a date pattern (YYYY-MM-DD).
+    Directories without date patterns (e.g. dbt_project_one/, dbt_project_two/) are
+    always kept, even if they share a parent.
+
+    "Latest" is determined by lexicographic max of the directory name,
+    which works for ISO-style timestamps.
+    """
+    if len(blob_grouped_by_directory) <= 1:
+        return blob_grouped_by_directory
+
+    # Separate dated dirs (candidates for filtering) from non-dated dirs (always kept)
+    project_to_dated_dirs: Dict[str, List[str]] = defaultdict(list)
+    filtered: Dict[str, List[str]] = {}
+
+    for directory in blob_grouped_by_directory:
+        if _has_date_pattern(directory):
+            parent = os.path.dirname(directory)
+            project_to_dated_dirs[parent].append(directory)
+        else:
+            filtered[directory] = blob_grouped_by_directory[directory]
+
+    total_skipped = 0
+    for project, dirs in project_to_dated_dirs.items():
+        latest_dir = max(dirs)
+        filtered[latest_dir] = blob_grouped_by_directory[latest_dir]
+        total_skipped += len(dirs) - 1
+
+    if total_skipped > 0:
+        logger.info(
+            f"Filtered dbt artifacts to latest per project: "
+            f"kept {len(filtered)} directories, skipped {total_skipped} older directories"
+        )
+
+    return filtered
+
+
 # pylint: disable=too-many-locals, too-many-branches
 def download_dbt_files(
     blob_grouped_by_directory: Dict, config, client, bucket_name: Optional[str]
@@ -513,6 +567,7 @@ def _(config: DbtS3Config):
                     "Please verify the path contains dbt manifest.json files."
                 )
 
+            blob_grouped = _filter_latest_per_project(blob_grouped)
             yield from download_dbt_files(
                 blob_grouped_by_directory=blob_grouped,
                 config=config,
@@ -600,6 +655,7 @@ def _(config: DbtGcsConfig):
                         "Please verify the path contains dbt manifest.json files."
                     )
 
+                blob_grouped = _filter_latest_per_project(blob_grouped)
                 yield from download_dbt_files(
                     blob_grouped_by_directory=blob_grouped,
                     config=config,
@@ -703,6 +759,7 @@ def _(config: DbtAzureConfig):
                         "Please verify the path contains dbt manifest.json files."
                     )
 
+                blob_grouped = _filter_latest_per_project(blob_grouped)
                 yield from download_dbt_files(
                     blob_grouped_by_directory=blob_grouped,
                     config=config,

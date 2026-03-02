@@ -65,6 +65,7 @@ export * from "./base/form/hook-form";
 export * from "./base/progress-indicators/progress-circles";
 export * from "./base/progress-indicators/progress-indicators";
 export * from "./base/progress-indicators/simple-circle";
+export * from "./base/skeleton/skeleton";
 export * from "./base/radio-buttons/radio-buttons";
 export * from "./base/slider/slider";
 export * from "./base/tags/tags";
