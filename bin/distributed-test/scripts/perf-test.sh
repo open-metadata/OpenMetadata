@@ -8,7 +8,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Default values (backward-compatible ~46k) ────────────────────────────────
-SERVER_URL="https://mohitcorp.getcollate.io"
+SERVER_URL="http://localhost:8585"
 NUM_TABLES=20000
 NUM_TOPICS=3000
 NUM_DASHBOARDS=5000
@@ -570,7 +570,7 @@ if AUTH_TOKEN_RAW.strip():
     token = AUTH_TOKEN_RAW.strip()
     print("Using token from --token argument.")
 else:
-    token = ("eyJraWQiOiJmNzhjZmQ2NzkxOGQ0ZTVhYWM3NWEwOTAyOWNhMDlhMCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJpc3MiOiJnZXRjb2xsYXRlLmlvIiwic3ViIjoibW9oaXQiLCJyb2xlcyI6WyJBZG1pbiJdLCJlbWFpbCI6Im1vaGl0QGdldGNvbGxhdGUuaW8iLCJpc0JvdCI6ZmFsc2UsInRva2VuVHlwZSI6IlBFUlNPTkFMX0FDQ0VTUyIsInVzZXJuYW1lIjoibW9oaXQiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJtb2hpdCIsImlhdCI6MTc3MjQ0Mzc2MCwiZXhwIjoxNzgwMjE5NzYwfQ.JOe92j3295uVfipWMKl_Nv9gXbXTGHJRVyTJlYZ72iEq_NYdI-rXvmqG14ZYB6xRY3ktgPYzbHoOBQQDo4R6eNs7a71unRD0Di6PPUlTvubBP-65y6HiHgB-yoVJFFMxTjW_Mvh5DZvHGQDdNiBZMZ_bUiWh-b5tcQi1EgO47RN8riuYhYZcmTMHDFRAhhToGd57fUAsFkAQBaiB4xWW0O3LssXnA6T14pvt3CVrtBlrXUy_Tu_9Ju4D3s32iKFffYCKbqKgTCjU6vjF_dMVTezYDFYYpPZO0EFGl33lEn80hPuMQk9gYoWeK_4I_wxB19vAUvaEJPLBem0HEQSaQw")
+    token = ("eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg")
     print("Using default admin JWT token for authentication.")
 
 headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
