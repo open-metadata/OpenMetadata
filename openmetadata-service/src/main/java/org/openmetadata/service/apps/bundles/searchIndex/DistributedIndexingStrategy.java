@@ -228,30 +228,34 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     try {
       monitor.scheduleAtFixedRate(
           () -> {
-            if (stopped.get()) {
-              LOG.info("Stop signal received, stopping distributed job");
-              distributedExecutor.stop();
-              completionLatch.countDown();
-              return;
-            }
+            try {
+              if (stopped.get()) {
+                LOG.info("Stop signal received, stopping distributed job");
+                distributedExecutor.stop();
+                completionLatch.countDown();
+                return;
+              }
 
-            SearchIndexJob job = distributedExecutor.getJobWithFreshStats();
-            if (job == null) {
-              completionLatch.countDown();
-              return;
-            }
+              SearchIndexJob job = distributedExecutor.getJobWithFreshStats();
+              if (job == null) {
+                completionLatch.countDown();
+                return;
+              }
 
-            IndexJobStatus status = job.getStatus();
-            if (status == IndexJobStatus.COMPLETED
-                || status == IndexJobStatus.COMPLETED_WITH_ERRORS
-                || status == IndexJobStatus.FAILED
-                || status == IndexJobStatus.STOPPED) {
-              LOG.info("Distributed job {} completed with status: {}", jobId, status);
-              completionLatch.countDown();
-              return;
-            }
+              IndexJobStatus status = job.getStatus();
+              if (status == IndexJobStatus.COMPLETED
+                  || status == IndexJobStatus.COMPLETED_WITH_ERRORS
+                  || status == IndexJobStatus.FAILED
+                  || status == IndexJobStatus.STOPPED) {
+                LOG.info("Distributed job {} completed with status: {}", jobId, status);
+                completionLatch.countDown();
+                return;
+              }
 
-            updateStatsFromDistributedJob(currentStats.get(), job, null);
+              updateStatsFromDistributedJob(currentStats.get(), job, null);
+            } catch (Exception e) {
+              LOG.error("Error in distributed job monitor task for job {}", jobId, e);
+            }
           },
           0,
           MONITOR_POLL_INTERVAL_MS,
