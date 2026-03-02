@@ -25,6 +25,10 @@ export interface AppsPrivateConfiguration {
  */
 export interface AppPrivateConfig {
     /**
+     * Flag to enable/disable the application. If the app is not enabled, it can't be installed.
+     */
+    enabled?: boolean;
+    /**
      * Application Name
      */
     name: string;
@@ -32,11 +36,7 @@ export interface AppPrivateConfig {
      * Parameters to initialize the Applications.
      */
     parameters: { [key: string]: any };
-    /**
-     * Flag to enable/disable the application. If the app is not enabled, it can't be installed.
-     */
-    enabled?:  boolean;
-    schedule?: any[] | boolean | AppScheduleClass | number | number | null | string;
+    schedule?:  any[] | boolean | AppScheduleClass | number | number | null | string;
 }
 
 export interface AppScheduleClass {
