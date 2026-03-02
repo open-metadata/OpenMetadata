@@ -659,10 +659,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
                   "requestSchema.schemaFields",
                   original.getRequestSchema() == null
                       ? new ArrayList<>()
-                      : listOrEmpty(
-                          original.getRequestSchema() != null
-                              ? original.getRequestSchema().getSchemaFields()
-                              : null),
+                      : listOrEmpty(original.getRequestSchema().getSchemaFields()),
                   listOrEmpty(updated.getRequestSchema().getSchemaFields()),
                   EntityUtil.schemaFieldMatch);
             }
@@ -677,10 +674,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
                   "responseSchema.schemaFields",
                   original.getResponseSchema() == null
                       ? new ArrayList<>()
-                      : listOrEmpty(
-                          original.getResponseSchema().getSchemaFields() != null
-                              ? original.getResponseSchema().getSchemaFields()
-                              : null),
+                      : listOrEmpty(original.getResponseSchema().getSchemaFields()),
                   listOrEmpty(updated.getResponseSchema().getSchemaFields()),
                   EntityUtil.schemaFieldMatch);
             }

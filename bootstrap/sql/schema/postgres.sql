@@ -1329,15 +1329,6 @@ ALTER TABLE ONLY public.entity_relationship
     ADD CONSTRAINT entity_relationship_pkey PRIMARY KEY (fromid, toid, relation);
 
 
---
--- Name: entity_usage entity_usage_usagedate_id_key; Type: CONSTRAINT; Schema: public; Owner: openmetadata_user
---
-
-ALTER TABLE ONLY public.entity_usage
-    ADD CONSTRAINT entity_usage_usagedate_id_key UNIQUE (usagedate, id);
-
-
---
 -- Name: event_subscription_entity event_subscription_entity_namehash_key; Type: CONSTRAINT; Schema: public; Owner: openmetadata_user
 --
 
@@ -1913,7 +1904,7 @@ CREATE INDEX change_event_event_type_index ON public.change_event USING btree (e
 -- Name: entity_usage_id_usage_date_idx; Type: INDEX; Schema: public; Owner: openmetadata_user
 --
 
-CREATE INDEX entity_usage_id_usage_date_idx ON public.entity_usage USING btree (id, usagedate);
+CREATE UNIQUE INDEX entity_usage_id_usage_date_idx ON public.entity_usage USING btree (id, usagedate);
 
 
 --
