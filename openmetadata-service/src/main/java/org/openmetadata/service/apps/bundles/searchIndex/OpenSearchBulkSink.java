@@ -975,9 +975,11 @@ public class OpenSearchBulkSink implements BulkSink {
                 statsUpdater.run();
               }
             } finally {
-              if (error != null && shouldRetry(attemptNumber, error)) {
-                // Don't release resources yet, we're retrying
-              } else {
+              boolean willRetry =
+                  error != null
+                      && shouldRetry(attemptNumber, error)
+                      && circuitBreaker.getState() != BulkCircuitBreaker.State.OPEN;
+              if (!willRetry) {
                 activeBulkRequests.decrementAndGet();
                 concurrentRequestSemaphore.release();
                 if (metrics != null) {
@@ -994,7 +996,6 @@ public class OpenSearchBulkSink implements BulkSink {
         int numberOfActions,
         int attemptNumber,
         Throwable error) {
-      circuitBreaker.recordFailure();
       if (shouldRetry(attemptNumber, error)
           && circuitBreaker.getState() != BulkCircuitBreaker.State.OPEN) {
         long backoffTime = calculateBackoff(attemptNumber);

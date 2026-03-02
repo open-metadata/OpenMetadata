@@ -414,8 +414,12 @@ public class SearchIndexExecutor implements AutoCloseable {
     taskQueue = new LinkedBlockingQueue<>(effectiveQueueSize);
     producersDone.set(false);
 
+    int maxJobThreads =
+        Math.max(1, MAX_TOTAL_THREADS - threadConfig.numProducers() - threadConfig.numConsumers());
+    int cappedEntityCount = Math.min(entityCount, maxJobThreads);
     jobExecutor =
-        Executors.newFixedThreadPool(entityCount, Thread.ofPlatform().name("job-", 0).factory());
+        Executors.newFixedThreadPool(
+            cappedEntityCount, Thread.ofPlatform().name("job-", 0).factory());
 
     int finalNumConsumers = Math.min(threadConfig.numConsumers(), MAX_CONSUMER_THREADS);
     consumerExecutor =
@@ -774,13 +778,10 @@ public class SearchIndexExecutor implements AutoCloseable {
     }
   }
 
-  private void signalConsumersToStop(int numConsumers) {
+  private void signalConsumersToStop(int numConsumers) throws InterruptedException {
     producersDone.set(true);
     for (int i = 0; i < numConsumers; i++) {
-      boolean offered = taskQueue.offer(new IndexingTask<>(POISON_PILL, null, -1));
-      if (!offered) {
-        LOG.debug("Could not add poison pill to queue");
-      }
+      taskQueue.put(new IndexingTask<>(POISON_PILL, null, -1));
     }
   }
 

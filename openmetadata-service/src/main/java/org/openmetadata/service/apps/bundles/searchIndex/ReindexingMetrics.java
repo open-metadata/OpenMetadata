@@ -14,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ReindexingMetrics {
 
-  private static ReindexingMetrics instance;
+  private static volatile ReindexingMetrics instance;
   private final MeterRegistry meterRegistry;
 
   // Job lifecycle
@@ -160,7 +160,7 @@ public class ReindexingMetrics {
     LOG.info("Reindexing metrics initialized");
   }
 
-  public static void initialize(MeterRegistry meterRegistry) {
+  public static synchronized void initialize(MeterRegistry meterRegistry) {
     if (instance == null) {
       instance = new ReindexingMetrics(meterRegistry);
     }

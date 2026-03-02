@@ -43,6 +43,7 @@ public class IndexingPipeline implements AutoCloseable {
   private static final String POISON_PILL = "__POISON_PILL__";
   private static final int DEFAULT_QUEUE_SIZE = 20000;
   private static final int MAX_CONSUMER_THREADS = 20;
+  private static final int MAX_JOB_THREADS = 30;
   private static final String ENTITY_TYPE_KEY = "entityType";
   private static final String RECREATE_INDEX = "recreateIndex";
 
@@ -117,7 +118,8 @@ public class IndexingPipeline implements AutoCloseable {
             Thread.ofPlatform().name("pipeline-producer-", 0).factory());
     jobExecutor =
         Executors.newFixedThreadPool(
-            entities.size(), Thread.ofPlatform().name("pipeline-job-", 0).factory());
+            Math.min(entities.size(), MAX_JOB_THREADS),
+            Thread.ofPlatform().name("pipeline-job-", 0).factory());
 
     entityReader = new EntityReader(producerExecutor, stopped);
 
@@ -267,9 +269,9 @@ public class IndexingPipeline implements AutoCloseable {
     return contextData;
   }
 
-  private void signalConsumersToStop(int numConsumers) {
+  private void signalConsumersToStop(int numConsumers) throws InterruptedException {
     for (int i = 0; i < numConsumers; i++) {
-      taskQueue.offer(new IndexingTask<>(POISON_PILL, null, -1));
+      taskQueue.put(new IndexingTask<>(POISON_PILL, null, -1));
     }
   }
 

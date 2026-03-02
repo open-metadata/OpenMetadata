@@ -78,7 +78,7 @@ public class BulkCircuitBreaker {
       if (state.compareAndSet(State.HALF_OPEN, State.OPEN)) {
         openedAt = now;
         LOG.warn("Circuit breaker transitioning HALF_OPEN → OPEN (probe failed)");
-        recordTransition("closed_to_open");
+        recordTransition("half_open_to_open");
       }
       return;
     }
