@@ -5596,8 +5596,8 @@ export interface CollateAIAppConfig {
      */
     timeSeriesEntityDays?: { [key: string]: number };
     /**
-     * Maximum age in days for time series data during reindexing. Only records from the last N
-     * days will be indexed. Set to 0 or -1 to index all data.
+     * Maximum age in days for time series data during reindexing. Default 0 (index all data).
+     * Set to a positive value like 15 to limit to recent data only.
      */
     timeSeriesMaxDays?: number;
     /**
