@@ -1,13 +1,14 @@
 #!/bin/bash
 # Load test data for distributed indexing testing
 # Supports 30+ entity types including time-series data, lineage, and data quality
+# Includes benchmarking, latency tracking, and cluster sizing recommendations
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Default values (backward-compatible ~46k) ────────────────────────────────
-SERVER_URL="http://localhost:8585"
+SERVER_URL="https://mohitcorp.getcollate.io"
 NUM_TABLES=20000
 NUM_TOPICS=3000
 NUM_DASHBOARDS=5000
@@ -40,6 +41,9 @@ NUM_RAW_COST_ANALYSIS=0
 NUM_AGG_COST_ANALYSIS=0
 NUM_WORKERS=20
 SCALE_APPLIED=""
+ONLY_ENTITIES=""
+OUTPUT_PATH=""
+AUTH_TOKEN=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -133,6 +137,9 @@ while [[ $# -gt 0 ]]; do
         --raw-cost-analysis) NUM_RAW_COST_ANALYSIS="$2"; shift 2 ;;
         --aggregated-cost-analysis) NUM_AGG_COST_ANALYSIS="$2"; shift 2 ;;
         --workers) NUM_WORKERS="$2"; shift 2 ;;
+        --only) ONLY_ENTITIES="$2"; shift 2 ;;
+        --output) OUTPUT_PATH="$2"; shift 2 ;;
+        --token) AUTH_TOKEN="$2"; shift 2 ;;
         --databases) shift 2 ;;  # ignored, auto-calculated now
         --terms-per-glossary) shift 2 ;;  # ignored, use --glossary-terms
         --tags-per-classification) shift 2 ;;  # ignored, use --tags
@@ -173,13 +180,37 @@ Time-series entity counts:
   --web-analytic-views NUM      --web-analytic-activity NUM
   --raw-cost-analysis NUM       --aggregated-cost-analysis NUM
 
+Benchmarking & filtering:
+  --only ENTITIES               Comma-separated entity types to create (e.g. tables,charts,topics)
+                                When specified, only listed entities run. Prerequisites auto-enabled.
+                                Valid names: tables, topics, dashboards, charts, pipelines,
+                                  storedProcedures, containers, searchIndexes, mlmodels, queries,
+                                  dashboardDataModels, testSuites, testCases, glossaries,
+                                  glossaryTerms, users, teams, domains, dataProducts,
+                                  apiCollections, apiEndpoints, lineageEdges, testCaseResults,
+                                  entityReportData, webAnalyticViews, webAnalyticActivity,
+                                  rawCostAnalysis, aggCostAnalysis
+  --output PATH                 Write JSON benchmark report to PATH
+                                (default: benchmark-report-{timestamp}.json in current dir)
+  --token TOKEN                 Auth token (overrides hardcoded default)
+
 Other:
-  --server URL                  Target server URL (default: http://localhost:8585)
+  --server URL                  Target server URL (default: https://mohitcorp.getcollate.io)
   --workers NUM                 Concurrent workers (default: 20)
   -h, --help                    Show this help message
 
 Scale preset totals:
   xlarge  ~5M    large  ~2M    medium  ~500K    small  ~50K
+
+Examples:
+  # Quick benchmark with just tables
+  ./load-test-data.sh --only tables --tables 100 --workers 5
+
+  # Full benchmark with JSON output
+  ./load-test-data.sh --quick --workers 10 --output /tmp/bench.json
+
+  # Only tables and charts, custom counts
+  ./load-test-data.sh --only tables,charts --tables 5000 --charts 2000
 HELPEOF
             exit 0
             ;;
@@ -209,6 +240,9 @@ if [ -n "$SCALE_APPLIED" ]; then
     echo "Scale:  $SCALE_APPLIED"
 fi
 echo "Workers: $NUM_WORKERS"
+if [ -n "$ONLY_ENTITIES" ]; then
+    echo "Only:   $ONLY_ENTITIES"
+fi
 echo ""
 echo "Entity counts:"
 printf "  %-26s %s\n" "Tables:" "$NUM_TABLES"
@@ -254,6 +288,7 @@ import time
 import random
 import uuid
 import threading
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 
@@ -292,9 +327,71 @@ NUM_WEB_ANALYTIC_ACTIVITY = ${NUM_WEB_ANALYTIC_ACTIVITY}
 NUM_RAW_COST_ANALYSIS = ${NUM_RAW_COST_ANALYSIS}
 NUM_AGG_COST_ANALYSIS = ${NUM_AGG_COST_ANALYSIS}
 
+ONLY_ENTITIES_RAW = "${ONLY_ENTITIES}"
+OUTPUT_PATH_RAW = "${OUTPUT_PATH}"
+AUTH_TOKEN_RAW = "${AUTH_TOKEN}"
+SCALE_APPLIED = "${SCALE_APPLIED}" or "default"
+
 # Auto-calculate database/schema counts
 NUM_DATABASES = max(1, NUM_TABLES // 50000)
 SCHEMAS_PER_DB = min(20, max(1, NUM_TABLES // (NUM_DATABASES * 5000))) if NUM_TABLES > 0 else 1
+
+# ── Entity filter (--only) ───────────────────────────────────────────────────
+ONLY_ENTITIES = set()
+if ONLY_ENTITIES_RAW.strip():
+    ONLY_ENTITIES = {e.strip() for e in ONLY_ENTITIES_RAW.split(",") if e.strip()}
+
+ENTITY_PREREQUISITES = {
+    "tables": {"_services_db", "_infra_db"},
+    "storedProcedures": {"_services_db", "_infra_db"},
+    "queries": {"_services_db"},
+    "dashboards": {"_services_dashboard"},
+    "charts": {"_services_dashboard"},
+    "dashboardDataModels": {"_services_dashboard"},
+    "topics": {"_services_messaging"},
+    "pipelines": {"_services_pipeline"},
+    "mlmodels": {"_services_mlmodel"},
+    "containers": {"_services_storage"},
+    "searchIndexes": {"_services_search"},
+    "apiCollections": {"_services_api"},
+    "apiEndpoints": {"_services_api", "apiCollections"},
+    "dataProducts": {"domains"},
+    "glossaryTerms": {"glossaries"},
+    "tags": {"classifications"},
+    "testCases": {"tables", "_services_db", "_infra_db"},
+    "testCaseResults": {"testCases", "tables", "_services_db", "_infra_db"},
+    "lineageEdges": {"tables", "_services_db", "_infra_db"},
+}
+
+def _resolve_prerequisites(entities):
+    resolved = set(entities)
+    changed = True
+    while changed:
+        changed = False
+        for e in list(resolved):
+            for prereq in ENTITY_PREREQUISITES.get(e, set()):
+                if prereq not in resolved:
+                    resolved.add(prereq)
+                    changed = True
+    return resolved
+
+if ONLY_ENTITIES:
+    _resolved = _resolve_prerequisites(ONLY_ENTITIES)
+    _infra_needed = {p for p in _resolved if p.startswith("_")}
+    _resolved -= _infra_needed
+else:
+    _resolved = set()
+    _infra_needed = set()
+
+def should_run(entity_name):
+    if not ONLY_ENTITIES:
+        return True
+    return entity_name in ONLY_ENTITIES or entity_name in _resolved
+
+def _need_infra(tag):
+    if not ONLY_ENTITIES:
+        return True
+    return tag in _infra_needed
 
 print(f"Connecting to {SERVER_URL}...")
 sys.stdout.flush()
@@ -331,51 +428,225 @@ def make_request(url, data=None, method="GET", headers=None, retries=3):
             return 0, str(e)
     return 0, "max retries exceeded"
 
-# Admin JWT token
-token = ("eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1Qi"
-         "LCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi"
-         "1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFk"
-         "YXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d"
-         "24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyN"
-         "v_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkL"
-         "XcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1"
-         "mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg")
-print("Using admin JWT token for authentication.")
+# ── Auth token ───────────────────────────────────────────────────────────────
+if AUTH_TOKEN_RAW.strip():
+    token = AUTH_TOKEN_RAW.strip()
+    print("Using token from --token argument.")
+else:
+    token = ("eyJraWQiOiJmNzhjZmQ2NzkxOGQ0ZTVhYWM3NWEwOTAyOWNhMDlhMCIsImFsZyI6IlJTMjU2IiwidHlwIjoiSldUIn0.eyJpc3MiOiJnZXRjb2xsYXRlLmlvIiwic3ViIjoibW9oaXQiLCJyb2xlcyI6WyJBZG1pbiJdLCJlbWFpbCI6Im1vaGl0QGdldGNvbGxhdGUuaW8iLCJpc0JvdCI6ZmFsc2UsInRva2VuVHlwZSI6IlBFUlNPTkFMX0FDQ0VTUyIsInVzZXJuYW1lIjoibW9oaXQiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJtb2hpdCIsImlhdCI6MTc3MjQ0Mzc2MCwiZXhwIjoxNzgwMjE5NzYwfQ.JOe92j3295uVfipWMKl_Nv9gXbXTGHJRVyTJlYZ72iEq_NYdI-rXvmqG14ZYB6xRY3ktgPYzbHoOBQQDo4R6eNs7a71unRD0Di6PPUlTvubBP-65y6HiHgB-yoVJFFMxTjW_Mvh5DZvHGQDdNiBZMZ_bUiWh-b5tcQi1EgO47RN8riuYhYZcmTMHDFRAhhToGd57fUAsFkAQBaiB4xWW0O3LssXnA6T14pvt3CVrtBlrXUy_Tu_9Ju4D3s32iKFffYCKbqKgTCjU6vjF_dMVTezYDFYYpPZO0EFGl33lEn80hPuMQk9gYoWeK_4I_wxB19vAUvaEJPLBem0HEQSaQw")
+    print("Using default admin JWT token for authentication.")
 
 headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
 
+# ── Output path ──────────────────────────────────────────────────────────────
+if OUTPUT_PATH_RAW.strip():
+    output_path = OUTPUT_PATH_RAW.strip()
+else:
+    ts_str = datetime.now().strftime("%Y%m%d-%H%M%S")
+    output_path = f"benchmark-report-{ts_str}.json"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BENCHMARK INFRASTRUCTURE
+# ══════════════════════════════════════════════════════════════════════════════
+
+class BenchmarkCollector:
+    def __init__(self, entity_name, requested_count):
+        self.entity_name = entity_name
+        self.requested = requested_count
+        self.latencies = []
+        self.errors = []
+        self.created = 0
+        self.failed = 0
+        self.start_time = None
+        self.end_time = None
+        self.lock = threading.Lock()
+        self.window_counts = []
+
+    def record_success(self, latency_s):
+        with self.lock:
+            self.latencies.append(latency_s)
+            self.created += 1
+
+    def record_failure(self, latency_s, status, error):
+        with self.lock:
+            self.latencies.append(latency_s)
+            self.failed += 1
+            if len(self.errors) < 50:
+                self.errors.append({"status": status, "error": str(error)[:200]})
+
+    def percentile(self, p):
+        if not self.latencies:
+            return 0
+        s = sorted(self.latencies)
+        k = int(len(s) * p / 100)
+        return s[min(k, len(s) - 1)]
+
+    def _throughput_windows(self):
+        if not self.window_counts or len(self.window_counts) < 2:
+            return []
+        buckets = []
+        bucket_size = 5
+        start_ts = self.window_counts[0][0]
+        i = 0
+        while i < len(self.window_counts):
+            bucket_start = start_ts + len(buckets) * bucket_size
+            bucket_end = bucket_start + bucket_size
+            count_at_start = self.window_counts[i][1] if i == 0 else None
+            count_at_end = None
+            for j in range(i, len(self.window_counts)):
+                if self.window_counts[j][0] >= bucket_end:
+                    break
+                count_at_end = self.window_counts[j][1]
+                if count_at_start is None:
+                    count_at_start = self.window_counts[j][1]
+                i = j + 1
+            if count_at_start is not None and count_at_end is not None:
+                delta = count_at_end - count_at_start
+                rps = delta / bucket_size if bucket_size > 0 else 0
+                buckets.append({
+                    "elapsed_s": round(bucket_end - start_ts, 1),
+                    "rps": round(rps, 1),
+                })
+            else:
+                i += 1
+        return buckets
+
+    def summary(self):
+        n = len(self.latencies)
+        if n == 0:
+            return None
+        elapsed = (self.end_time or time.time()) - self.start_time if self.start_time else 0
+        s = sorted(self.latencies)
+        return {
+            "requested": self.requested,
+            "total_requests": n,
+            "created": self.created,
+            "failed": self.failed,
+            "error_rate_pct": round(self.failed / n * 100, 2) if n > 0 else 0,
+            "wall_clock_s": round(elapsed, 2),
+            "throughput_rps": round(n / elapsed, 2) if elapsed > 0 else 0,
+            "latency_ms": {
+                "min": round(s[0] * 1000, 1),
+                "p50": round(self.percentile(50) * 1000, 1),
+                "p75": round(self.percentile(75) * 1000, 1),
+                "p90": round(self.percentile(90) * 1000, 1),
+                "p95": round(self.percentile(95) * 1000, 1),
+                "p99": round(self.percentile(99) * 1000, 1),
+                "max": round(s[-1] * 1000, 1),
+                "avg": round(sum(s) / len(s) * 1000, 1),
+            },
+            "throughput_over_time": self._throughput_windows(),
+            "errors_sample": self.errors[:10],
+        }
+
+
+class HealthMonitor:
+    def __init__(self, server_url, req_headers, interval=5):
+        self.server_url = server_url
+        self.req_headers = req_headers
+        self.interval = interval
+        self.samples = []
+        self.running = True
+        self.start_time = time.time()
+        self._thread = threading.Thread(target=self._poll, daemon=True)
+        self._thread.start()
+
+    def _poll(self):
+        while self.running:
+            t0 = time.time()
+            try:
+                status, _ = make_request(
+                    f"{self.server_url}/api/v1/system/version",
+                    method="GET", headers=self.req_headers, retries=1,
+                )
+            except Exception:
+                status = 0
+            latency = (time.time() - t0) * 1000
+            self.samples.append({
+                "timestamp": time.time(),
+                "elapsed_s": round(time.time() - self.start_time, 1),
+                "latency_ms": round(latency, 1),
+                "status": status,
+                "healthy": status == 200,
+            })
+            time.sleep(self.interval)
+
+    def stop(self):
+        self.running = False
+        self._thread.join(timeout=self.interval + 2)
+
+    def summary(self):
+        if not self.samples:
+            return {
+                "total_checks": 0, "healthy": 0, "unhealthy": 0,
+                "health_latency_ms": {}, "timeline": [],
+            }
+        healthy = [s for s in self.samples if s["healthy"]]
+        unhealthy = [s for s in self.samples if not s["healthy"]]
+        latencies = sorted([s["latency_ms"] for s in self.samples])
+        n = len(latencies)
+        return {
+            "total_checks": n,
+            "healthy": len(healthy),
+            "unhealthy": len(unhealthy),
+            "health_latency_ms": {
+                "min": round(latencies[0], 1),
+                "avg": round(sum(latencies) / n, 1),
+                "p95": round(latencies[min(int(n * 0.95), n - 1)], 1),
+                "max": round(latencies[-1], 1),
+            },
+            "timeline": self.samples,
+        }
+
+
+# ── Start health monitor ────────────────────────────────────────────────────
+health_monitor = HealthMonitor(SERVER_URL, dict(headers), interval=5)
+
 overall_start = time.time()
 stats = {}
+benchmarks = {}
+phase_timings = {}
 
 # ── Collected IDs for linking phases ─────────────────────────────────────────
-collected_table_ids = []      # (id, fqn) tuples
-collected_dashboard_ids = []  # (id, fqn) tuples
-collected_pipeline_ids = []   # (id, fqn) tuples
-collected_test_case_fqns = [] # fqn strings
+collected_table_ids = []
+collected_dashboard_ids = []
+collected_pipeline_ids = []
+collected_test_case_fqns = []
 collect_lock = threading.Lock()
 
-# Cap collection sizes to bound memory
 MAX_COLLECT = max(NUM_LINEAGE_EDGES * 2, NUM_TEST_CASE_RESULTS, 10000)
 
-# ── Generic batch creator ────────────────────────────────────────────────────
+# ── Generic batch creator (with benchmarking) ───────────────────────────────
 def create_entity_batch(entity_name, count, payload_fn, workers=None, collect_fn=None,
                         log_interval=None):
     if count <= 0:
-        return 0
+        return 0, None
     if workers is None:
         workers = NUM_WORKERS
     if log_interval is None:
         log_interval = max(1, count // 20)
 
+    bench = BenchmarkCollector(entity_name, count)
+    bench.start_time = time.time()
+
     print(f"\nCreating {count} {entity_name}...")
     sys.stdout.flush()
-    created = 0
-    failed = 0
-    start_time = time.time()
+
     counter_lock = threading.Lock()
+    sample_running = True
+
+    def _sampler():
+        while sample_running:
+            with counter_lock:
+                total = bench.created + bench.failed
+            bench.window_counts.append((time.time(), total))
+            time.sleep(1)
+
+    sampler_thread = threading.Thread(target=_sampler, daemon=True)
+    sampler_thread.start()
 
     def _work(idx):
-        nonlocal created, failed
+        t0 = time.time()
         payload = payload_fn(idx)
         if payload is None:
             return
@@ -384,17 +655,18 @@ def create_entity_batch(entity_name, count, payload_fn, workers=None, collect_fn
         if url is None:
             return
         status, resp = make_request(url, data=payload, method=method, headers=headers)
+        latency = time.time() - t0
         ok = status in [200, 201]
+        if ok:
+            bench.record_success(latency)
+        else:
+            bench.record_failure(latency, status, resp)
         with counter_lock:
-            if ok:
-                created += 1
-            else:
-                failed += 1
-            total = created + failed
+            total = bench.created + bench.failed
             if total % log_interval == 0 or total == count:
-                elapsed = time.time() - start_time
+                elapsed = time.time() - bench.start_time
                 rate = total / elapsed if elapsed > 0 else 0
-                print(f"  {entity_name}: {total}/{count} ({rate:.1f}/sec) - OK: {created}, Fail: {failed}")
+                print(f"  {entity_name}: {total}/{count} ({rate:.1f}/sec) - OK: {bench.created}, Fail: {bench.failed}")
                 sys.stdout.flush()
         if ok and collect_fn and isinstance(resp, dict):
             collect_fn(idx, resp)
@@ -407,11 +679,17 @@ def create_entity_batch(entity_name, count, payload_fn, workers=None, collect_fn
             except Exception:
                 pass
 
-    stats[entity_name] = created
-    elapsed = time.time() - start_time
-    print(f"{entity_name} done: {created} created, {failed} failed ({elapsed:.1f}s)")
+    sample_running = False
+    bench.end_time = time.time()
+    stats[entity_name] = bench.created
+    benchmarks[entity_name] = bench
+    elapsed = time.time() - bench.start_time
+    p50 = bench.percentile(50) * 1000
+    p95 = bench.percentile(95) * 1000
+    print(f"{entity_name} done: {bench.created} created, {bench.failed} failed "
+          f"({elapsed:.1f}s, p50={p50:.0f}ms, p95={p95:.0f}ms)")
     sys.stdout.flush()
-    return created
+    return bench.created, bench
 
 
 # ── Helper to create a service ───────────────────────────────────────────────
@@ -429,6 +707,7 @@ def create_service(endpoint, data):
 # ══════════════════════════════════════════════════════════════════════════════
 # PHASE 1: Metadata (no dependencies)
 # ══════════════════════════════════════════════════════════════════════════════
+phase_start = time.time()
 print("\n" + "=" * 60)
 print("PHASE 1: Metadata (domains, classifications, glossaries, users, teams)")
 print("=" * 60)
@@ -436,23 +715,24 @@ print("=" * 60)
 # ── Domains ──────────────────────────────────────────────────────────────────
 domain_fqns = []
 
-def domain_payload(idx):
-    return {
-        "__url__": f"{SERVER_URL}/api/v1/domains",
-        "name": f"TestDomain_{idx:04d}",
-        "domainType": "Aggregate",
-        "description": f"Test domain {idx} for load testing",
-    }
+if should_run("domains") and NUM_DOMAINS > 0:
+    def domain_payload(idx):
+        return {
+            "__url__": f"{SERVER_URL}/api/v1/domains",
+            "name": f"TestDomain_{idx:04d}",
+            "domainType": "Aggregate",
+            "description": f"Test domain {idx} for load testing",
+        }
 
-def collect_domain(idx, resp):
-    with collect_lock:
-        domain_fqns.append(resp.get("fullyQualifiedName", f"TestDomain_{idx:04d}"))
+    def collect_domain(idx, resp):
+        with collect_lock:
+            domain_fqns.append(resp.get("fullyQualifiedName", f"TestDomain_{idx:04d}"))
 
-create_entity_batch("domains", NUM_DOMAINS, domain_payload, collect_fn=collect_domain)
+    create_entity_batch("domains", NUM_DOMAINS, domain_payload, collect_fn=collect_domain)
 
 # ── Classifications & Tags ───────────────────────────────────────────────────
 classification_fqns = []
-if NUM_CLASSIFICATIONS > 0:
+if should_run("classifications") and NUM_CLASSIFICATIONS > 0:
     print(f"\nCreating {NUM_CLASSIFICATIONS} classifications...")
     sys.stdout.flush()
     for i in range(NUM_CLASSIFICATIONS):
@@ -467,7 +747,7 @@ if NUM_CLASSIFICATIONS > 0:
     stats["classifications"] = len(classification_fqns)
     print(f"classifications done: {len(classification_fqns)} created")
 
-if NUM_TAGS > 0 and classification_fqns:
+if should_run("tags") and NUM_TAGS > 0 and classification_fqns:
     tags_per_class = max(1, NUM_TAGS // len(classification_fqns))
     tag_assignments = []
     for cfqn in classification_fqns:
@@ -491,7 +771,7 @@ if NUM_TAGS > 0 and classification_fqns:
 
 # ── Glossaries & Terms ───────────────────────────────────────────────────────
 glossary_fqns = []
-if NUM_GLOSSARIES > 0:
+if should_run("glossaries") and NUM_GLOSSARIES > 0:
     print(f"\nCreating {NUM_GLOSSARIES} glossaries...")
     sys.stdout.flush()
     for i in range(NUM_GLOSSARIES):
@@ -507,7 +787,7 @@ if NUM_GLOSSARIES > 0:
     stats["glossaries"] = len(glossary_fqns)
     print(f"glossaries done: {len(glossary_fqns)} created")
 
-if NUM_GLOSSARY_TERMS > 0 and glossary_fqns:
+if should_run("glossaryTerms") and NUM_GLOSSARY_TERMS > 0 and glossary_fqns:
     terms_per_glossary = max(1, NUM_GLOSSARY_TERMS // len(glossary_fqns))
     term_assignments = []
     for gfqn in glossary_fqns:
@@ -531,88 +811,121 @@ if NUM_GLOSSARY_TERMS > 0 and glossary_fqns:
     create_entity_batch("glossaryTerms", len(term_assignments), term_payload)
 
 # ── Users ────────────────────────────────────────────────────────────────────
-def user_payload(idx):
-    return {
-        "__url__": f"{SERVER_URL}/api/v1/users",
-        "name": f"testuser_{idx:05d}",
-        "email": f"testuser_{idx:05d}@example.com",
-        "displayName": f"Test User {idx}",
-        "description": f"Test user {idx} for load testing",
-    }
+if should_run("users") and NUM_USERS > 0:
+    def user_payload(idx):
+        return {
+            "__url__": f"{SERVER_URL}/api/v1/users",
+            "name": f"testuser_{idx:05d}",
+            "email": f"testuser_{idx:05d}@example.com",
+            "displayName": f"Test User {idx}",
+            "description": f"Test user {idx} for load testing",
+        }
 
-create_entity_batch("users", NUM_USERS, user_payload)
+    create_entity_batch("users", NUM_USERS, user_payload)
 
 # ── Teams ────────────────────────────────────────────────────────────────────
-def team_payload(idx):
-    return {
-        "__url__": f"{SERVER_URL}/api/v1/teams",
-        "name": f"testteam_{idx:04d}",
-        "displayName": f"Test Team {idx}",
-        "description": f"Test team {idx} for load testing",
-        "teamType": "Group",
-    }
+if should_run("teams") and NUM_TEAMS > 0:
+    def team_payload(idx):
+        return {
+            "__url__": f"{SERVER_URL}/api/v1/teams",
+            "name": f"testteam_{idx:04d}",
+            "displayName": f"Test Team {idx}",
+            "description": f"Test team {idx} for load testing",
+            "teamType": "Group",
+        }
 
-create_entity_batch("teams", NUM_TEAMS, team_payload)
+    create_entity_batch("teams", NUM_TEAMS, team_payload)
+
+phase_timings["phase_1_metadata"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PHASE 2: Services
 # ══════════════════════════════════════════════════════════════════════════════
+phase_start = time.time()
 print("\n" + "=" * 60)
 print("PHASE 2: Services")
 print("=" * 60)
 
-db_service_fqn = create_service("databaseServices", {
-    "name": "test-service-distributed",
-    "serviceType": "Mysql",
-    "connection": {"config": {"type": "Mysql", "username": "test",
-                              "authType": {"password": "test"}, "hostPort": "localhost:3306"}},
-})
-
-dashboard_service_fqn = create_service("dashboardServices", {
-    "name": "test-dashboard-service",
-    "serviceType": "Looker",
-    "connection": {"config": {"type": "Looker", "clientId": "test-client-id",
-                              "clientSecret": "test-client-secret",
-                              "hostPort": "https://looker.example.com"}},
-})
-
-pipeline_service_fqn = create_service("pipelineServices", {
-    "name": "test-pipeline-service",
-    "serviceType": "Airflow",
-    "connection": {"config": {"type": "Airflow", "hostPort": "http://airflow.example.com:8080",
-                              "connection": {"type": "Backend"}}},
-})
-
-messaging_service_fqn = create_service("messagingServices", {
-    "name": "test-messaging-service",
-    "serviceType": "Kafka",
-    "connection": {"config": {"type": "Kafka", "bootstrapServers": "localhost:9092"}},
-})
-
-mlmodel_service_fqn = create_service("mlmodelServices", {
-    "name": "test-mlmodel-service",
-    "serviceType": "Mlflow",
-    "connection": {"config": {"type": "Mlflow", "trackingUri": "http://mlflow.example.com:5000",
-                              "registryUri": "http://mlflow.example.com:5000"}},
-})
-
-storage_service_fqn = create_service("storageServices", {
-    "name": "test-storage-service",
-    "serviceType": "S3",
-    "connection": {"config": {"type": "S3", "awsConfig": {
-        "awsAccessKeyId": "test-key", "awsSecretAccessKey": "test-secret",
-        "awsRegion": "us-east-1"}}},
-})
-
-search_service_fqn = create_service("searchServices", {
-    "name": "test-search-service",
-    "serviceType": "ElasticSearch",
-    "connection": {"config": {"type": "ElasticSearch",
-                              "hostPort": "http://elasticsearch.example.com:9200"}},
-})
-
+db_service_fqn = None
+dashboard_service_fqn = None
+pipeline_service_fqn = None
+messaging_service_fqn = None
+mlmodel_service_fqn = None
+storage_service_fqn = None
+search_service_fqn = None
 api_service_fqn = None
-if NUM_API_COLLECTIONS > 0 or NUM_API_ENDPOINTS > 0:
+
+need_db_svc = (should_run("tables") or should_run("storedProcedures") or should_run("queries")
+               or should_run("testCases") or should_run("testCaseResults")
+               or should_run("lineageEdges") or _need_infra("_services_db"))
+need_dashboard_svc = (should_run("dashboards") or should_run("charts")
+                      or should_run("dashboardDataModels") or _need_infra("_services_dashboard"))
+need_pipeline_svc = should_run("pipelines") or _need_infra("_services_pipeline")
+need_messaging_svc = should_run("topics") or _need_infra("_services_messaging")
+need_mlmodel_svc = should_run("mlmodels") or _need_infra("_services_mlmodel")
+need_storage_svc = should_run("containers") or _need_infra("_services_storage")
+need_search_svc = should_run("searchIndexes") or _need_infra("_services_search")
+need_api_svc = (should_run("apiCollections") or should_run("apiEndpoints")
+                or _need_infra("_services_api"))
+
+if need_db_svc:
+    db_service_fqn = create_service("databaseServices", {
+        "name": "test-service-distributed",
+        "serviceType": "Mysql",
+        "connection": {"config": {"type": "Mysql", "username": "test",
+                                  "authType": {"password": "test"}, "hostPort": "localhost:3306"}},
+    })
+
+if need_dashboard_svc:
+    dashboard_service_fqn = create_service("dashboardServices", {
+        "name": "test-dashboard-service",
+        "serviceType": "Looker",
+        "connection": {"config": {"type": "Looker", "clientId": "test-client-id",
+                                  "clientSecret": "test-client-secret",
+                                  "hostPort": "https://looker.example.com"}},
+    })
+
+if need_pipeline_svc:
+    pipeline_service_fqn = create_service("pipelineServices", {
+        "name": "test-pipeline-service",
+        "serviceType": "Airflow",
+        "connection": {"config": {"type": "Airflow", "hostPort": "http://airflow.example.com:8080",
+                                  "connection": {"type": "Backend"}}},
+    })
+
+if need_messaging_svc:
+    messaging_service_fqn = create_service("messagingServices", {
+        "name": "test-messaging-service",
+        "serviceType": "Kafka",
+        "connection": {"config": {"type": "Kafka", "bootstrapServers": "localhost:9092"}},
+    })
+
+if need_mlmodel_svc:
+    mlmodel_service_fqn = create_service("mlmodelServices", {
+        "name": "test-mlmodel-service",
+        "serviceType": "Mlflow",
+        "connection": {"config": {"type": "Mlflow", "trackingUri": "http://mlflow.example.com:5000",
+                                  "registryUri": "http://mlflow.example.com:5000"}},
+    })
+
+if need_storage_svc:
+    storage_service_fqn = create_service("storageServices", {
+        "name": "test-storage-service",
+        "serviceType": "S3",
+        "connection": {"config": {"type": "S3", "awsConfig": {
+            "awsAccessKeyId": "test-key", "awsSecretAccessKey": "test-secret",
+            "awsRegion": "us-east-1"}}},
+    })
+
+if need_search_svc:
+    search_service_fqn = create_service("searchServices", {
+        "name": "test-search-service",
+        "serviceType": "ElasticSearch",
+        "connection": {"config": {"type": "ElasticSearch",
+                                  "hostPort": "http://elasticsearch.example.com:9200"}},
+    })
+
+if need_api_svc:
     api_service_fqn = create_service("apiServices", {
         "name": "test-api-service",
         "serviceType": "Rest",
@@ -621,16 +934,23 @@ if NUM_API_COLLECTIONS > 0 or NUM_API_ENDPOINTS > 0:
                                       "openAPISchemaURL": "http://api.example.com/openapi.json"}}},
     })
 
+phase_timings["phase_2_services"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PHASE 3: Infrastructure (databases, schemas, apiCollections)
 # ══════════════════════════════════════════════════════════════════════════════
+phase_start = time.time()
 print("\n" + "=" * 60)
 print("PHASE 3: Infrastructure (databases, schemas, API collections)")
 print("=" * 60)
 
 # ── Databases & Schemas ──────────────────────────────────────────────────────
 schema_fqns = []
-if db_service_fqn and NUM_TABLES > 0:
+need_db_infra = (should_run("tables") or should_run("storedProcedures") or should_run("queries")
+                 or should_run("testCases") or should_run("testCaseResults")
+                 or should_run("lineageEdges") or _need_infra("_infra_db"))
+
+if db_service_fqn and need_db_infra and NUM_TABLES > 0:
     print(f"Creating {NUM_DATABASES} databases with {SCHEMAS_PER_DB} schemas each...")
     sys.stdout.flush()
     for i in range(NUM_DATABASES):
@@ -650,7 +970,7 @@ if db_service_fqn and NUM_TABLES > 0:
 
 # ── API Collections ──────────────────────────────────────────────────────────
 api_collection_fqns = []
-if api_service_fqn and NUM_API_COLLECTIONS > 0:
+if should_run("apiCollections") and api_service_fqn and NUM_API_COLLECTIONS > 0:
     def api_coll_payload(idx):
         return {
             "__url__": f"{SERVER_URL}/api/v1/apiCollections",
@@ -668,15 +988,18 @@ if api_service_fqn and NUM_API_COLLECTIONS > 0:
     create_entity_batch("apiCollections", NUM_API_COLLECTIONS, api_coll_payload,
                         collect_fn=collect_api_coll)
 
+phase_timings["phase_3_infrastructure"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PHASE 4: Core entities
 # ══════════════════════════════════════════════════════════════════════════════
+phase_start = time.time()
 print("\n" + "=" * 60)
 print("PHASE 4: Core entities")
 print("=" * 60)
 
 # ── Tables ───────────────────────────────────────────────────────────────────
-if schema_fqns and NUM_TABLES > 0:
+if should_run("tables") and schema_fqns and NUM_TABLES > 0:
     def table_payload(idx):
         sfqn = schema_fqns[idx % len(schema_fqns)]
         return {
@@ -699,7 +1022,7 @@ if schema_fqns and NUM_TABLES > 0:
     create_entity_batch("tables", NUM_TABLES, table_payload, collect_fn=collect_table)
 
 # ── Dashboards ───────────────────────────────────────────────────────────────
-if dashboard_service_fqn and NUM_DASHBOARDS > 0:
+if should_run("dashboards") and dashboard_service_fqn and NUM_DASHBOARDS > 0:
     def dashboard_payload(idx):
         return {
             "__url__": f"{SERVER_URL}/api/v1/dashboards",
@@ -718,7 +1041,7 @@ if dashboard_service_fqn and NUM_DASHBOARDS > 0:
                         collect_fn=collect_dashboard)
 
 # ── Charts ───────────────────────────────────────────────────────────────────
-if dashboard_service_fqn and NUM_CHARTS > 0:
+if should_run("charts") and dashboard_service_fqn and NUM_CHARTS > 0:
     chart_types = ["Line", "Bar", "Pie", "Area", "Scatter", "Table"]
 
     def chart_payload(idx):
@@ -734,7 +1057,7 @@ if dashboard_service_fqn and NUM_CHARTS > 0:
     create_entity_batch("charts", NUM_CHARTS, chart_payload)
 
 # ── Topics ───────────────────────────────────────────────────────────────────
-if messaging_service_fqn and NUM_TOPICS > 0:
+if should_run("topics") and messaging_service_fqn and NUM_TOPICS > 0:
     def topic_payload(idx):
         return {
             "__url__": f"{SERVER_URL}/api/v1/topics",
@@ -748,7 +1071,7 @@ if messaging_service_fqn and NUM_TOPICS > 0:
     create_entity_batch("topics", NUM_TOPICS, topic_payload)
 
 # ── Pipelines ────────────────────────────────────────────────────────────────
-if pipeline_service_fqn and NUM_PIPELINES > 0:
+if should_run("pipelines") and pipeline_service_fqn and NUM_PIPELINES > 0:
     def pipeline_payload(idx):
         return {
             "__url__": f"{SERVER_URL}/api/v1/pipelines",
@@ -767,7 +1090,7 @@ if pipeline_service_fqn and NUM_PIPELINES > 0:
                         collect_fn=collect_pipeline)
 
 # ── Stored Procedures ────────────────────────────────────────────────────────
-if db_service_fqn and schema_fqns and NUM_STORED_PROCEDURES > 0:
+if should_run("storedProcedures") and db_service_fqn and schema_fqns and NUM_STORED_PROCEDURES > 0:
     def stored_proc_payload(idx):
         sfqn = schema_fqns[idx % len(schema_fqns)]
         return {
@@ -784,7 +1107,7 @@ if db_service_fqn and schema_fqns and NUM_STORED_PROCEDURES > 0:
     create_entity_batch("storedProcedures", NUM_STORED_PROCEDURES, stored_proc_payload)
 
 # ── ML Models ────────────────────────────────────────────────────────────────
-if mlmodel_service_fqn and NUM_MLMODELS > 0:
+if should_run("mlmodels") and mlmodel_service_fqn and NUM_MLMODELS > 0:
     algorithms = ["LinearRegression", "RandomForest", "XGBoost", "NeuralNetwork",
                   "SVM", "KMeans", "DecisionTree"]
 
@@ -801,7 +1124,7 @@ if mlmodel_service_fqn and NUM_MLMODELS > 0:
     create_entity_batch("mlmodels", NUM_MLMODELS, mlmodel_payload)
 
 # ── Containers ───────────────────────────────────────────────────────────────
-if storage_service_fqn and NUM_CONTAINERS > 0:
+if should_run("containers") and storage_service_fqn and NUM_CONTAINERS > 0:
     def container_payload(idx):
         return {
             "__url__": f"{SERVER_URL}/api/v1/containers",
@@ -814,7 +1137,7 @@ if storage_service_fqn and NUM_CONTAINERS > 0:
     create_entity_batch("containers", NUM_CONTAINERS, container_payload)
 
 # ── Search Indexes ───────────────────────────────────────────────────────────
-if search_service_fqn and NUM_SEARCH_INDEXES > 0:
+if should_run("searchIndexes") and search_service_fqn and NUM_SEARCH_INDEXES > 0:
     def search_idx_payload(idx):
         return {
             "__url__": f"{SERVER_URL}/api/v1/searchIndexes",
@@ -832,7 +1155,7 @@ if search_service_fqn and NUM_SEARCH_INDEXES > 0:
     create_entity_batch("searchIndexes", NUM_SEARCH_INDEXES, search_idx_payload)
 
 # ── Queries ──────────────────────────────────────────────────────────────────
-if NUM_QUERIES > 0 and db_service_fqn:
+if should_run("queries") and NUM_QUERIES > 0 and db_service_fqn:
     def query_payload(idx):
         return {
             "__url__": f"{SERVER_URL}/api/v1/queries",
@@ -845,7 +1168,7 @@ if NUM_QUERIES > 0 and db_service_fqn:
     create_entity_batch("queries", NUM_QUERIES, query_payload)
 
 # ── Dashboard Data Models ────────────────────────────────────────────────────
-if dashboard_service_fqn and NUM_DASHBOARD_DATA_MODELS > 0:
+if should_run("dashboardDataModels") and dashboard_service_fqn and NUM_DASHBOARD_DATA_MODELS > 0:
     dm_types = ["MetabaseDataModel", "SupersetDataModel", "TableauDataModel"]
 
     def data_model_payload(idx):
@@ -865,7 +1188,7 @@ if dashboard_service_fqn and NUM_DASHBOARD_DATA_MODELS > 0:
     create_entity_batch("dashboardDataModels", NUM_DASHBOARD_DATA_MODELS, data_model_payload)
 
 # ── API Endpoints ────────────────────────────────────────────────────────────
-if api_service_fqn and api_collection_fqns and NUM_API_ENDPOINTS > 0:
+if should_run("apiEndpoints") and api_service_fqn and api_collection_fqns and NUM_API_ENDPOINTS > 0:
     http_methods = ["GET", "POST", "PUT", "DELETE", "PATCH"]
 
     def api_endpoint_payload(idx):
@@ -883,7 +1206,7 @@ if api_service_fqn and api_collection_fqns and NUM_API_ENDPOINTS > 0:
     create_entity_batch("apiEndpoints", NUM_API_ENDPOINTS, api_endpoint_payload)
 
 # ── Data Products ────────────────────────────────────────────────────────────
-if NUM_DATA_PRODUCTS > 0 and domain_fqns:
+if should_run("dataProducts") and NUM_DATA_PRODUCTS > 0 and domain_fqns:
     def data_product_payload(idx):
         return {
             "__url__": f"{SERVER_URL}/api/v1/dataProducts",
@@ -895,16 +1218,19 @@ if NUM_DATA_PRODUCTS > 0 and domain_fqns:
 
     create_entity_batch("dataProducts", NUM_DATA_PRODUCTS, data_product_payload)
 
+phase_timings["phase_4_core_entities"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PHASE 5: Data Quality (test suites, test cases)
 # ══════════════════════════════════════════════════════════════════════════════
+phase_start = time.time()
 print("\n" + "=" * 60)
 print("PHASE 5: Data Quality (test suites, test cases)")
 print("=" * 60)
 
 test_suite_fqns = []
 
-if NUM_TEST_SUITES > 0:
+if should_run("testSuites") and NUM_TEST_SUITES > 0:
     def test_suite_payload(idx):
         return {
             "__url__": f"{SERVER_URL}/api/v1/dataQuality/testSuites",
@@ -921,7 +1247,7 @@ if NUM_TEST_SUITES > 0:
     create_entity_batch("testSuites", NUM_TEST_SUITES, test_suite_payload,
                         collect_fn=collect_test_suite)
 
-if NUM_TEST_CASES > 0 and collected_table_ids:
+if should_run("testCases") and NUM_TEST_CASES > 0 and collected_table_ids:
     table_level_defs = [
         ("tableRowCountToEqual", [{"name": "value", "value": "100"}]),
         ("tableColumnCountToEqual", [{"name": "columnCount", "value": "4"}]),
@@ -959,27 +1285,27 @@ if NUM_TEST_CASES > 0 and collected_table_ids:
     create_entity_batch("testCases", NUM_TEST_CASES, test_case_payload,
                         collect_fn=collect_test_case)
 
+phase_timings["phase_5_data_quality"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PHASE 6: Lineage
 # ══════════════════════════════════════════════════════════════════════════════
+phase_start = time.time()
 print("\n" + "=" * 60)
 print("PHASE 6: Lineage")
 print("=" * 60)
 
-if NUM_LINEAGE_EDGES > 0 and collected_table_ids:
-    # 60% table->table, 25% table->dashboard, 15% pipeline->table
+if should_run("lineageEdges") and NUM_LINEAGE_EDGES > 0 and collected_table_ids:
     n_t2t = int(NUM_LINEAGE_EDGES * 0.60)
     n_t2d = int(NUM_LINEAGE_EDGES * 0.25)
     n_p2t = NUM_LINEAGE_EDGES - n_t2t - n_t2d
 
     lineage_tasks = []
-    # table -> table
     for i in range(n_t2t):
         from_idx = i % len(collected_table_ids)
         to_idx = (i + 1) % len(collected_table_ids)
         lineage_tasks.append(("table", collected_table_ids[from_idx][0],
                               "table", collected_table_ids[to_idx][0]))
-    # table -> dashboard
     if collected_dashboard_ids:
         for i in range(n_t2d):
             from_idx = i % len(collected_table_ids)
@@ -990,7 +1316,6 @@ if NUM_LINEAGE_EDGES > 0 and collected_table_ids:
         n_t2t += n_t2d
         n_t2d = 0
 
-    # pipeline -> table
     if collected_pipeline_ids:
         for i in range(n_p2t):
             from_idx = i % len(collected_pipeline_ids)
@@ -1018,13 +1343,16 @@ if NUM_LINEAGE_EDGES > 0 and collected_table_ids:
 
     create_entity_batch("lineageEdges", actual_edges, lineage_payload,
                         workers=min(10, NUM_WORKERS))
-elif NUM_LINEAGE_EDGES > 0:
+elif should_run("lineageEdges") and NUM_LINEAGE_EDGES > 0:
     print("Skipping lineage: no table IDs collected")
     stats["lineageEdges"] = 0
+
+phase_timings["phase_6_lineage"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PHASE 7: Time-Series Data
 # ══════════════════════════════════════════════════════════════════════════════
+phase_start = time.time()
 print("\n" + "=" * 60)
 print("PHASE 7: Time-Series Data")
 print("=" * 60)
@@ -1033,13 +1361,13 @@ ts_workers = min(10, NUM_WORKERS)
 base_ts = int(time.time() * 1000)
 
 # ── Test Case Results ────────────────────────────────────────────────────────
-if NUM_TEST_CASE_RESULTS > 0 and collected_test_case_fqns:
+if should_run("testCaseResults") and NUM_TEST_CASE_RESULTS > 0 and collected_test_case_fqns:
     statuses = ["Success", "Failed", "Aborted"]
 
     def tc_result_payload(idx):
         fqn = collected_test_case_fqns[idx % len(collected_test_case_fqns)]
         encoded_fqn = urllib.request.quote(fqn, safe="")
-        ts = base_ts - (idx * 3600000)  # 1 hour apart
+        ts = base_ts - (idx * 3600000)
         return {
             "__url__": f"{SERVER_URL}/api/v1/dataQuality/testCases/testCaseResults/{encoded_fqn}",
             "__method__": "POST",
@@ -1051,16 +1379,16 @@ if NUM_TEST_CASE_RESULTS > 0 and collected_test_case_fqns:
 
     create_entity_batch("testCaseResults", NUM_TEST_CASE_RESULTS, tc_result_payload,
                         workers=ts_workers)
-elif NUM_TEST_CASE_RESULTS > 0:
+elif should_run("testCaseResults") and NUM_TEST_CASE_RESULTS > 0:
     print("Skipping testCaseResults: no test case FQNs collected")
     stats["testCaseResults"] = 0
 
 # ── Entity Report Data ───────────────────────────────────────────────────────
-if NUM_ENTITY_REPORT_DATA > 0:
+if should_run("entityReportData") and NUM_ENTITY_REPORT_DATA > 0:
     entity_types_for_report = ["table", "topic", "dashboard", "pipeline", "mlmodel"]
 
     def entity_report_payload(idx):
-        ts = base_ts - (idx * 86400000)  # 1 day apart
+        ts = base_ts - (idx * 86400000)
         e_type = entity_types_for_report[idx % len(entity_types_for_report)]
         entity_count = random.randint(1, 1000)
         has_owner = random.randint(0, entity_count)
@@ -1085,9 +1413,9 @@ if NUM_ENTITY_REPORT_DATA > 0:
                         workers=ts_workers)
 
 # ── Web Analytic Entity Views ────────────────────────────────────────────────
-if NUM_WEB_ANALYTIC_VIEWS > 0:
+if should_run("webAnalyticViews") and NUM_WEB_ANALYTIC_VIEWS > 0:
     def web_view_payload(idx):
-        ts = base_ts - (idx * 60000)  # 1 minute apart
+        ts = base_ts - (idx * 60000)
         return {
             "__url__": f"{SERVER_URL}/api/v1/analytics/dataInsights/data",
             "__method__": "POST",
@@ -1106,7 +1434,7 @@ if NUM_WEB_ANALYTIC_VIEWS > 0:
                         workers=ts_workers)
 
 # ── Web Analytic User Activity ───────────────────────────────────────────────
-if NUM_WEB_ANALYTIC_ACTIVITY > 0:
+if should_run("webAnalyticActivity") and NUM_WEB_ANALYTIC_ACTIVITY > 0:
     def web_activity_payload(idx):
         ts = base_ts - (idx * 60000)
         return {
@@ -1129,7 +1457,7 @@ if NUM_WEB_ANALYTIC_ACTIVITY > 0:
                         web_activity_payload, workers=ts_workers)
 
 # ── Raw Cost Analysis ────────────────────────────────────────────────────────
-if NUM_RAW_COST_ANALYSIS > 0:
+if should_run("rawCostAnalysis") and NUM_RAW_COST_ANALYSIS > 0:
     def raw_cost_payload(idx):
         ts = base_ts - (idx * 86400000)
         if collected_table_ids:
@@ -1156,7 +1484,7 @@ if NUM_RAW_COST_ANALYSIS > 0:
                         workers=ts_workers)
 
 # ── Aggregated Cost Analysis ─────────────────────────────────────────────────
-if NUM_AGG_COST_ANALYSIS > 0:
+if should_run("aggCostAnalysis") and NUM_AGG_COST_ANALYSIS > 0:
     def agg_cost_payload(idx):
         ts = base_ts - (idx * 86400000)
         return {
@@ -1196,27 +1524,209 @@ if NUM_AGG_COST_ANALYSIS > 0:
     create_entity_batch("aggCostAnalysis", NUM_AGG_COST_ANALYSIS, agg_cost_payload,
                         workers=ts_workers)
 
+phase_timings["phase_7_time_series"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
+
 # ══════════════════════════════════════════════════════════════════════════════
-# SUMMARY
+# STOP HEALTH MONITOR & BUILD REPORT
 # ══════════════════════════════════════════════════════════════════════════════
+health_monitor.stop()
 overall_elapsed = time.time() - overall_start
 total_created = sum(stats.values())
 
-print("")
-print("=" * 60)
-print("Test Data Loading Complete!")
-print("=" * 60)
-print("")
-print("Summary:")
-for name, count in sorted(stats.items()):
-    if count > 0:
-        print(f"  {name + ':':<30} {count:>8}")
-print(f"  {'─' * 38}")
-print(f"  {'Total:':<30} {total_created:>8}")
-print("")
-print(f"Time: {overall_elapsed:.1f} seconds")
-if overall_elapsed > 0:
-    print(f"Rate: {total_created/overall_elapsed:.1f} entities/second")
+
+# ── Cluster sizing analysis ──────────────────────────────────────────────────
+def generate_cluster_sizing(report):
+    findings = []
+    recommendations = {}
+
+    entity_data = report.get("entities", {})
+    health = report.get("server_health", {})
+    measured_workers = report["metadata"]["workers"]
+
+    max_p95 = 0
+    for entity, data in entity_data.items():
+        if not data:
+            continue
+        p95 = data.get("latency_ms", {}).get("p95", 0)
+        if p95 > max_p95:
+            max_p95 = p95
+        if p95 > 5000:
+            findings.append(f"{entity} PUT p95={p95:.0f}ms -- severe bottleneck")
+        elif p95 > 1000:
+            findings.append(f"{entity} PUT p95={p95:.0f}ms -- moderate latency")
+
+    total_checks = health.get("total_checks", 0)
+    unhealthy_count = health.get("unhealthy", 0)
+    if unhealthy_count > 0 and total_checks > 0:
+        pct = unhealthy_count / total_checks * 100
+        findings.append(f"Health check failed {unhealthy_count} times ({pct:.0f}%) -- server overwhelmed")
+
+    for entity, data in entity_data.items():
+        if not data:
+            continue
+        windows = data.get("throughput_over_time", [])
+        if len(windows) >= 4:
+            q_len = max(1, len(windows) // 4)
+            first_q = [w["rps"] for w in windows[:q_len]]
+            last_q = [w["rps"] for w in windows[-q_len:]]
+            if first_q and last_q:
+                avg_first = sum(first_q) / len(first_q)
+                avg_last = sum(last_q) / len(last_q)
+                if avg_first > 0 and avg_last / avg_first < 0.5:
+                    degradation = (1 - avg_last / avg_first) * 100
+                    findings.append(
+                        f"{entity}: throughput degraded {degradation:.0f}% "
+                        f"({avg_first:.0f} rps -> {avg_last:.0f} rps) -- resource exhaustion"
+                    )
+
+    if max_p95 > 5000:
+        rec_workers = max(2, measured_workers // 4)
+    elif max_p95 > 2000:
+        rec_workers = max(2, measured_workers // 2)
+    else:
+        rec_workers = measured_workers
+    recommendations["api_concurrency"] = {
+        "current": measured_workers,
+        "recommended": rec_workers,
+        "reason": f"Max p95 latency {max_p95:.0f}ms across entity types",
+    }
+
+    overall_rps = report.get("overall", {}).get("overall_throughput_rps", 0)
+    if overall_rps > 0:
+        estimates = {}
+        for target in [50000, 250000, 1000000, 5000000]:
+            secs = target / overall_rps
+            label = f"{target // 1000}k_entities"
+            if secs < 3600:
+                estimates[label] = f"~{secs / 60:.0f} min"
+            else:
+                estimates[label] = f"~{secs / 3600:.1f} hours"
+        recommendations["estimated_times"] = estimates
+
+    if max_p95 > 5000 or (unhealthy_count / max(1, total_checks)) > 0.1:
+        assessment = "undersized"
+    elif max_p95 > 2000:
+        assessment = "marginal"
+    else:
+        assessment = "adequate"
+
+    return {
+        "assessment": assessment,
+        "findings": findings,
+        "recommendations": recommendations,
+    }
+
+
+# ── Build report ─────────────────────────────────────────────────────────────
+entity_summaries = {}
+for name, bench in benchmarks.items():
+    s = bench.summary()
+    if s:
+        entity_summaries[name] = s
+
+report = {
+    "metadata": {
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "server_url": SERVER_URL,
+        "workers": NUM_WORKERS,
+        "scale": SCALE_APPLIED,
+        "only_entities": list(ONLY_ENTITIES) if ONLY_ENTITIES else None,
+        "script_version": "2.0",
+    },
+    "server_health": health_monitor.summary(),
+    "entities": entity_summaries,
+    "phases": phase_timings,
+    "overall": {
+        "total_entities_created": total_created,
+        "total_wall_clock_s": round(overall_elapsed, 2),
+        "overall_throughput_rps": round(total_created / overall_elapsed, 2) if overall_elapsed > 0 else 0,
+        "total_errors": sum(b.failed for b in benchmarks.values()),
+        "overall_error_rate_pct": round(
+            sum(b.failed for b in benchmarks.values()) /
+            max(1, sum(len(b.latencies) for b in benchmarks.values())) * 100, 2
+        ),
+    },
+}
+
+report["cluster_sizing"] = generate_cluster_sizing(report)
+
+# ── Write JSON report ────────────────────────────────────────────────────────
+report_for_file = json.loads(json.dumps(report))
+if "server_health" in report_for_file and "timeline" in report_for_file["server_health"]:
+    del report_for_file["server_health"]["timeline"]
+
+try:
+    with open(output_path, "w") as f:
+        json.dump(report_for_file, f, indent=2)
+    print(f"\nJSON report written to: {output_path}")
+except Exception as e:
+    print(f"\nFailed to write JSON report: {e}")
+
+
+# ── Pretty-print summary table ──────────────────────────────────────────────
+def print_summary_table(report):
+    print("")
+    print("\u2550" * 70)
+    print("BENCHMARK RESULTS")
+    print("\u2550" * 70)
+    print("")
+    header = f"{'Entity':<22} {'Count':>7} {'Rate/s':>8} {'p50ms':>7} {'p95ms':>7} {'p99ms':>7} {'Errors':>7}"
+    print(header)
+    print("\u2500" * 70)
+
+    for name, data in report["entities"].items():
+        count = data["created"]
+        rps = data["throughput_rps"]
+        p50 = data["latency_ms"]["p50"]
+        p95 = data["latency_ms"]["p95"]
+        p99 = data["latency_ms"]["p99"]
+        err_pct = data["error_rate_pct"]
+        err_str = f"{err_pct:.1f}%" if err_pct > 0 else "0.0%"
+        print(f"{name:<22} {count:>7} {rps:>8.1f} {p50:>7.0f} {p95:>7.0f} {p99:>7.0f} {err_str:>7}")
+
+    print("\u2500" * 70)
+    overall = report["overall"]
+    total = overall["total_entities_created"]
+    overall_rps = overall["overall_throughput_rps"]
+    overall_err = overall["overall_error_rate_pct"]
+    err_str = f"{overall_err:.1f}%" if overall_err > 0 else "0.0%"
+    print(f"{'Overall':<22} {total:>7} {overall_rps:>8.1f} {'':>7} {'':>7} {'':>7} {err_str:>7}")
+    print("")
+
+    health = report["server_health"]
+    total_checks = health["total_checks"]
+    healthy = health["healthy"]
+    if total_checks > 0:
+        health_pct = healthy / total_checks * 100
+        health_p95 = health.get("health_latency_ms", {}).get("p95", 0)
+        print(f"Server Health: {healthy}/{total_checks} checks healthy ({health_pct:.1f}%)")
+        print(f"Health p95 latency: {health_p95:.0f}ms")
+    else:
+        print("Server Health: no checks recorded")
+    print("")
+
+    sizing = report.get("cluster_sizing", {})
+    assessment = sizing.get("assessment", "unknown")
+    indicator = {"undersized": "!! UNDERSIZED", "marginal": "?  MARGINAL", "adequate": "OK ADEQUATE"}.get(
+        assessment, f"   {assessment.upper()}"
+    )
+    print(f"CLUSTER SIZING: {indicator}")
+    for finding in sizing.get("findings", []):
+        print(f"  - {finding}")
+    recs = sizing.get("recommendations", {})
+    concurrency = recs.get("api_concurrency", {})
+    if concurrency:
+        print(f"  - Recommend: {concurrency.get('recommended', '?')} workers "
+              f"(currently {concurrency.get('current', '?')})")
+    estimates = recs.get("estimated_times", {})
+    if "1000k_entities" in estimates:
+        print(f"  - At current rate: 1M entities = {estimates['1000k_entities']}")
+    print("")
+    print(f"Full report: {output_path}")
+    print(f"Total time: {overall['total_wall_clock_s']:.1f}s")
+
+print_summary_table(report)
+
 print("")
 print("Collected IDs for linking:")
 print(f"  Table IDs:      {len(collected_table_ids)}")
