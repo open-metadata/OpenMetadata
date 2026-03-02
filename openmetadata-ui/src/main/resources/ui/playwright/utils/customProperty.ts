@@ -1201,11 +1201,11 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
     (response) =>
       response.url().includes('/api/v1/tables/name/') &&
       !response.url().includes('/columns') &&
-      response.url().includes('extension') &&
-      response.status() === 200
+      response.url().includes('extension')
   );
   await page.reload();
-  await getTableData;
+  const tableResponse = await getTableData;
+  expect(tableResponse.status()).toBe(200);
 
   await page.waitForSelector(
     '.column-detail-panel-container [data-testid="custom-properties-tab"]',
@@ -1253,10 +1253,6 @@ export const updateCustomPropertyInRightPanel = async (data: {
   // Scope everything to the panel container to avoid matching stray elements
   // elsewhere on the Explore page when tests run in parallel.
   const panelContainer = page.locator('.entity-summary-panel-container');
-
-  // Wait for the search bar — don't use a conditional isVisible() check, which
-  // is a race condition when custom properties are still loading and returns
-  // false, silently skipping the fill and leaving all properties unfiltered.
   const searchContainer = panelContainer.getByTestId('search-bar-container');
   await expect(searchContainer).toBeVisible();
   await searchContainer.getByRole('textbox').fill(propertyName);
@@ -1264,7 +1260,6 @@ export const updateCustomPropertyInRightPanel = async (data: {
   // Since the search is client side, can't wait on APIs and names are unique,
   // waiting for only single custom property card to be visible
   // to ensure stability of the next click operations.
-  // Scope to the panel container so parallel tests don't bleed in.
   await expect(
     panelContainer.getByTestId('custom-property-right-panel-card')
   ).toHaveCount(1);

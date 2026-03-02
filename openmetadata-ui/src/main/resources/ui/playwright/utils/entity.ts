@@ -688,7 +688,6 @@ export const updateDescriptionForChildren = async (
 
   // Wait for API response — use a function predicate so we only match the
   // write request (PUT/PATCH) and never accidentally resolve on a concurrent
-  // background GET to the same endpoint (common source of flakiness).
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||
@@ -697,13 +696,13 @@ export const updateDescriptionForChildren = async (
     updateRequest = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/columns/name/') &&
-        ['PUT', 'PATCH'].includes(response.request().method())
+        response.request().method() === 'PATCH'
     );
   } else {
     updateRequest = page.waitForResponse(
       (response) =>
         response.url().includes(`/api/v1/${entityEndpoint}/`) &&
-        ['PUT', 'PATCH'].includes(response.request().method())
+        response.request().method() === 'PATCH'
     );
   }
 
@@ -729,7 +728,7 @@ export const updateDescriptionForChildren = async (
   if (isEmpty(description)) {
     await expect(
       page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
-    ).toContainText('No Description', { timeout: 15000 });
+    ).toContainText('No Description', { timeout: 10000 });
   } else {
     await expect(
       page
