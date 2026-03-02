@@ -129,6 +129,7 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.resources.system.DiagnosticsResource;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -992,6 +993,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
             limits);
     environment.jersey().register(new AuditLogResource(authorizer, auditLogRepository));
+    environment.jersey().register(new DiagnosticsResource());
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 

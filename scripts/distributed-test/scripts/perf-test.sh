@@ -165,7 +165,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         -h|--help)
             cat << 'HELPEOF'
-Usage: load-test-data.sh [OPTIONS]
+Usage: perf-test.sh [OPTIONS]
 
 Scale presets:
   --scale {small|medium|large|xlarge}   Apply a preset (see table below)
@@ -213,19 +213,19 @@ Scale preset totals:
 
 Examples:
   # Quick benchmark with just tables
-  ./load-test-data.sh --only tables --tables 100 --workers 5
+  ./perf-test.sh --only tables --tables 100 --workers 5
 
   # Full benchmark with JSON output
-  ./load-test-data.sh --quick --workers 10 --output /tmp/bench.json
+  ./perf-test.sh --quick --workers 10 --output /tmp/bench.json
 
   # Only tables and charts, custom counts
-  ./load-test-data.sh --only tables,charts --tables 5000 --charts 2000
+  ./perf-test.sh --only tables,charts --tables 5000 --charts 2000
 
   # Ramp test to find optimal concurrency
-  ./load-test-data.sh --ramp --only tables --tables 500 --workers 32
+  ./perf-test.sh --ramp --only tables --tables 500 --workers 32
 
   # Full benchmark with Prometheus metrics from admin port
-  ./load-test-data.sh --quick --workers 10 --admin-port 8586 --output /tmp/bench.json
+  ./perf-test.sh --quick --workers 10 --admin-port 8586 --output /tmp/bench.json
 HELPEOF
             exit 0
             ;;
@@ -539,6 +539,8 @@ class ServerIntrospector:
         if self.admin_port:
             self._scrape_prometheus("before")
 
+        self.collect_diagnostics("before")
+
         sys.stdout.flush()
         return self.info
 
@@ -568,6 +570,38 @@ class ServerIntrospector:
             self.info[f"prometheus_{label}"] = {"error": str(e)}
             print(f"    Failed to scrape Prometheus: {e}")
         sys.stdout.flush()
+
+    def collect_diagnostics(self, label):
+        diag_url = f"{self.server_url}/api/v1/system/diagnostics"
+        print(f"  Collecting diagnostics ({label}) from {diag_url}...")
+        sys.stdout.flush()
+        try:
+            status, resp = make_request(diag_url, method="GET", headers=self.req_headers, retries=2)
+            if status == 200 and isinstance(resp, dict):
+                self.info[f"diagnostics_{label}"] = resp
+                jvm = resp.get("jvm", {})
+                jetty = resp.get("jetty", {})
+                db = resp.get("database", {})
+                bulk = resp.get("bulk_executor", {})
+                heap_pct = jvm.get("heap_usage_pct", "N/A")
+                print(f"    JVM heap: {heap_pct}% used, GC pauses: {jvm.get('gc_pause_total_ms', 0)}ms")
+                print(f"    Jetty: {jetty.get('threads_busy', '?')}/{jetty.get('threads_max', '?')} "
+                      f"threads busy ({jetty.get('utilization_pct', 0)}%), "
+                      f"queue: {jetty.get('queue_size', 0)}")
+                print(f"    DB pool: {db.get('pool_active', '?')}/{db.get('pool_max', '?')} "
+                      f"active ({db.get('pool_usage_pct', 0)}%), "
+                      f"pending: {db.get('pool_pending', 0)}")
+                print(f"    Bulk executor: queue {bulk.get('queue_depth', 0)}/{bulk.get('queue_capacity', '?')} "
+                      f"({bulk.get('queue_usage_pct', 0)}%)")
+                return resp
+            else:
+                print(f"    Diagnostics endpoint returned status={status} (may not be available)")
+                self.info[f"diagnostics_{label}"] = None
+                return None
+        except Exception as e:
+            print(f"    Failed to collect diagnostics: {e}")
+            self.info[f"diagnostics_{label}"] = None
+            return None
 
     def scrape_after(self):
         if self.admin_port:
@@ -780,13 +814,16 @@ class BenchmarkCollector:
 
 
 class HealthMonitor:
-    def __init__(self, server_url, req_headers, interval=5):
+    def __init__(self, server_url, req_headers, interval=5, diagnostics_interval=10):
         self.server_url = server_url
         self.req_headers = req_headers
         self.interval = interval
+        self.diagnostics_interval = diagnostics_interval
         self.samples = []
+        self.diagnostics_samples = []
         self.running = True
         self.start_time = time.time()
+        self._last_diag_time = 0
         self._thread = threading.Thread(target=self._poll, daemon=True)
         self._thread.start()
 
@@ -808,7 +845,21 @@ class HealthMonitor:
                 "status": status,
                 "healthy": status == 200,
             })
+            now = time.time()
+            if now - self._last_diag_time >= self.diagnostics_interval:
+                self._last_diag_time = now
+                self._sample_diagnostics()
             time.sleep(self.interval)
+
+    def _sample_diagnostics(self):
+        diag_url = f"{self.server_url}/api/v1/system/diagnostics"
+        try:
+            status, resp = make_request(diag_url, method="GET", headers=self.req_headers, retries=1)
+            if status == 200 and isinstance(resp, dict):
+                resp["_sample_elapsed_s"] = round(time.time() - self.start_time, 1)
+                self.diagnostics_samples.append(resp)
+        except Exception:
+            pass
 
     def stop(self):
         self.running = False
@@ -824,7 +875,7 @@ class HealthMonitor:
         unhealthy = [s for s in self.samples if not s["healthy"]]
         latencies = sorted([s["latency_ms"] for s in self.samples])
         n = len(latencies)
-        return {
+        result = {
             "total_checks": n,
             "healthy": len(healthy),
             "unhealthy": len(unhealthy),
@@ -836,6 +887,9 @@ class HealthMonitor:
             },
             "timeline": self.samples,
         }
+        if self.diagnostics_samples:
+            result["diagnostics_during"] = self.diagnostics_samples
+        return result
 
 
 # ── Start health monitor ────────────────────────────────────────────────────
@@ -1979,6 +2033,7 @@ phase_timings["phase_7_time_series"] = {"wall_clock_s": round(time.time() - phas
 # ══════════════════════════════════════════════════════════════════════════════
 health_monitor.stop()
 introspector.scrape_after()
+introspector.collect_diagnostics("after")
 overall_elapsed = time.time() - overall_start
 total_created = sum(stats.values())
 
@@ -2202,12 +2257,107 @@ def generate_cluster_sizing(report, ramp_data=None):
     else:
         assessment = "adequate"
 
+    server_side = _build_server_side_analysis(report, findings, recommendations, config_summary)
+
     return {
         "assessment": assessment,
         "findings": findings,
         "recommendations": recommendations,
         "config_summary": config_summary,
+        "server_side_analysis": server_side,
     }
+
+
+def _build_server_side_analysis(report, findings, recommendations, config_summary):
+    si = report.get("server_info", {})
+    diag_before = si.get("diagnostics_before")
+    diag_after = si.get("diagnostics_after")
+    if not diag_after:
+        return {"available": False}
+
+    analysis = {"available": True, "bottlenecks": [], "latency_breakdown": {}}
+
+    jvm = diag_after.get("jvm", {})
+    jetty = diag_after.get("jetty", {})
+    db = diag_after.get("database", {})
+    bulk = diag_after.get("bulk_executor", {})
+    req_latency = diag_after.get("request_latency", {})
+
+    analysis["snapshot_after"] = {
+        "jvm_heap_pct": jvm.get("heap_usage_pct", 0),
+        "gc_pause_total_ms": jvm.get("gc_pause_total_ms", 0),
+        "jetty_utilization_pct": jetty.get("utilization_pct", 0),
+        "jetty_queue_size": jetty.get("queue_size", 0),
+        "db_pool_usage_pct": db.get("pool_usage_pct", 0),
+        "db_pool_pending": db.get("pool_pending", 0),
+        "bulk_queue_usage_pct": bulk.get("queue_usage_pct", 0),
+    }
+
+    if diag_before:
+        jvm_before = diag_before.get("jvm", {})
+        gc_before = jvm_before.get("gc_pause_total_ms", 0)
+        gc_after = jvm.get("gc_pause_total_ms", 0)
+        analysis["gc_pause_delta_ms"] = gc_after - gc_before
+
+    for ep_key, ep_data in req_latency.items():
+        db_pct = ep_data.get("db_pct", 0)
+        search_pct = ep_data.get("search_pct", 0)
+        internal_pct = ep_data.get("internal_pct", 0)
+        db_pool_pct = db.get("pool_usage_pct", 0)
+
+        if db_pct > 60 and db_pool_pct > 80:
+            bottleneck = (f"DB bottleneck on {ep_key}: {db_pct}% of request time in DB, "
+                          f"pool at {db_pool_pct}% utilization")
+            analysis["bottlenecks"].append(bottleneck)
+            findings.append(bottleneck)
+            if "db_pool_increase" not in recommendations:
+                recommendations["db_pool_increase"] = {
+                    "analysis": f"DB pool at {db_pool_pct}% with {db_pct}% of latency in DB",
+                    "recommended_env": "DB_CONNECTION_POOL_MAX_SIZE=150",
+                }
+                config_summary.append("DB_CONNECTION_POOL_MAX_SIZE=150")
+
+        if search_pct > 30:
+            bottleneck = f"Search pressure on {ep_key}: {search_pct}% of request time in search"
+            analysis["bottlenecks"].append(bottleneck)
+            findings.append(bottleneck)
+
+        analysis["latency_breakdown"][ep_key] = {
+            "avg_total_ms": ep_data.get("avg_total_ms", 0),
+            "db_pct": db_pct,
+            "search_pct": search_pct,
+            "internal_pct": internal_pct,
+        }
+
+    jetty_util = jetty.get("utilization_pct", 0)
+    jetty_queue = jetty.get("queue_size", 0)
+    if jetty_util > 90 and jetty_queue > 0:
+        queue_time = jetty.get("queue_time_avg_ms", 0)
+        bottleneck = (f"Thread pool saturated: {jetty_util}% utilization, "
+                      f"{jetty_queue} requests queued, avg queue wait {queue_time}ms")
+        analysis["bottlenecks"].append(bottleneck)
+        findings.append(bottleneck)
+
+    bulk_queue_pct = bulk.get("queue_usage_pct", 0)
+    if bulk_queue_pct > 70:
+        bottleneck = f"Bulk executor queue at {bulk_queue_pct}%, near rejection threshold"
+        analysis["bottlenecks"].append(bottleneck)
+        findings.append(bottleneck)
+        if "bulk_operation" not in recommendations:
+            recommendations["bulk_operation"] = {
+                "analysis": f"Bulk executor queue at {bulk_queue_pct}%",
+                "recommended_env": "BULK_OPERATION_QUEUE_SIZE=2000, BULK_OPERATION_MAX_THREADS=20",
+            }
+            config_summary.append("BULK_OPERATION_QUEUE_SIZE=2000")
+            config_summary.append("BULK_OPERATION_MAX_THREADS=20")
+
+    heap_pct = jvm.get("heap_usage_pct", 0)
+    if heap_pct > 85:
+        bottleneck = f"JVM heap at {heap_pct}%, GC pressure likely causing tail latency"
+        analysis["bottlenecks"].append(bottleneck)
+        findings.append(bottleneck)
+
+    return analysis
 
 
 # ── Build report ─────────────────────────────────────────────────────────────
@@ -2244,6 +2394,12 @@ report = {
 
 if ramp_result:
     report["ramp_test"] = ramp_result
+
+si = introspector.report_section()
+if si.get("diagnostics_before"):
+    report["diagnostics_before"] = si["diagnostics_before"]
+if si.get("diagnostics_after"):
+    report["diagnostics_after"] = si["diagnostics_after"]
 
 report["cluster_sizing"] = generate_cluster_sizing(report, ramp_data=ramp_result)
 
@@ -2347,6 +2503,52 @@ def print_summary_table(report):
     if "1000k_entities" in estimates:
         print(f"  - At current rate: 1M entities = {estimates['1000k_entities']}")
     print("")
+
+    ssa = sizing.get("server_side_analysis", {})
+    if ssa.get("available"):
+        print("SERVER-SIDE BREAKDOWN (from /api/v1/system/diagnostics):")
+        snap = ssa.get("snapshot_after", {})
+        gc_delta = ssa.get("gc_pause_delta_ms", 0)
+        si_info = report.get("server_info", {})
+        diag_after = si_info.get("diagnostics_after", {})
+        jvm_d = diag_after.get("jvm", {})
+        jetty_d = diag_after.get("jetty", {})
+        db_d = diag_after.get("database", {})
+        bulk_d = diag_after.get("bulk_executor", {})
+
+        heap_used_gb = jvm_d.get("heap_used_bytes", 0) / (1024**3)
+        heap_max_gb = jvm_d.get("heap_max_bytes", 0) / (1024**3)
+        print(f"  JVM:  heap {heap_used_gb:.1f}GB/{heap_max_gb:.1f}GB "
+              f"({snap.get('jvm_heap_pct', 0)}%), "
+              f"GC pauses +{gc_delta}ms during load")
+        print(f"  Jetty: {jetty_d.get('threads_busy', '?')}/{jetty_d.get('threads_max', '?')} "
+              f"threads busy ({snap.get('jetty_utilization_pct', 0)}%), "
+              f"queue depth: {snap.get('jetty_queue_size', 0)}")
+        print(f"  DB Pool: {db_d.get('pool_active', '?')}/{db_d.get('pool_max', '?')} "
+              f"active ({snap.get('db_pool_usage_pct', 0)}%), "
+              f"{snap.get('db_pool_pending', 0)} pending connections")
+        print(f"  Bulk Executor: queue {bulk_d.get('queue_depth', 0)}/"
+              f"{bulk_d.get('queue_capacity', '?')} "
+              f"({snap.get('bulk_queue_usage_pct', 0)}%)")
+
+        breakdown = ssa.get("latency_breakdown", {})
+        put_entries = {k: v for k, v in breakdown.items() if k.startswith("PUT")}
+        if put_entries:
+            print("")
+            print("  Latency Breakdown (PUT endpoints):")
+            print(f"    {'Endpoint':<30} {'Total':>8} {'DB%':>6} {'Search%':>9} {'Internal%':>11}")
+            for ep, bd in sorted(put_entries.items()):
+                ep_short = ep.replace("PUT ", "")[:28]
+                print(f"    {ep_short:<30} {bd['avg_total_ms']:>7.0f}ms "
+                      f"{bd['db_pct']:>5.1f}% {bd['search_pct']:>8.1f}% "
+                      f"{bd['internal_pct']:>10.1f}%")
+
+        bottlenecks = ssa.get("bottlenecks", [])
+        if bottlenecks:
+            print("")
+            primary = bottlenecks[0]
+            print(f"  BOTTLENECK: {primary}")
+        print("")
 
     config_summary = sizing.get("config_summary", [])
     if config_summary:

@@ -9,7 +9,7 @@ Scripts for generating test data and triggering reindexing to load-test the Open
 ./scripts/start.sh
 
 # 2. Load test data (~50K entities)
-./scripts/load-test-data.sh --scale small --server http://localhost:8585
+./scripts/perf-test.sh --scale small --server http://localhost:8585
 
 # 3. Trigger reindex
 ./scripts/trigger-reindex.sh
@@ -21,7 +21,7 @@ Scripts for generating test data and triggering reindexing to load-test the Open
 ./scripts/stop.sh
 ```
 
-## load-test-data.sh
+## perf-test.sh
 
 Generates entities across 30+ entity types, including time-series data, lineage edges, and data quality entities. Uses concurrent workers for high throughput.
 
@@ -38,13 +38,13 @@ Use `--scale` to pick a preset:
 
 ```bash
 # Small smoke test
-./load-test-data.sh --scale small --server http://localhost:8585
+./perf-test.sh --scale small --server http://localhost:8585
 
 # Full 5M load test
-./load-test-data.sh --scale xlarge --server http://localhost:8585
+./perf-test.sh --scale xlarge --server http://localhost:8585
 
 # Quick mode (~10K, fastest)
-./load-test-data.sh --quick --server http://localhost:8585
+./perf-test.sh --quick --server http://localhost:8585
 ```
 
 Default (no `--scale` or `--quick`) produces ~46K entities for backward compatibility.
@@ -55,10 +55,10 @@ Any `--entity-type NUM` flag overrides the preset for that entity type:
 
 ```bash
 # Small preset but with 100K tables
-./load-test-data.sh --scale small --tables 100000
+./perf-test.sh --scale small --tables 100000
 
 # Only create tables and dashboards (everything else stays at preset counts)
-./load-test-data.sh --scale small --tables 50000 --dashboards 10000
+./perf-test.sh --scale small --tables 50000 --dashboards 10000
 ```
 
 ### All Flags
