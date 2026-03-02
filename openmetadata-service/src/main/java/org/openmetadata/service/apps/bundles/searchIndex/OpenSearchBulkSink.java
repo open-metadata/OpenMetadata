@@ -86,6 +86,10 @@ public class OpenSearchBulkSink implements BulkSink {
   private final AtomicLong totalSuccess = new AtomicLong(0);
   private final AtomicLong totalFailed = new AtomicLong(0);
 
+  // Process stage metrics (document building/transformation)
+  private final AtomicLong processSuccess = new AtomicLong(0);
+  private final AtomicLong processFailed = new AtomicLong(0);
+
   // Configuration
   private volatile int batchSize;
   private volatile int maxConcurrentRequests;
@@ -307,12 +311,14 @@ public class OpenSearchBulkSink implements BulkSink {
         tracker.incrementPendingSink();
       }
       bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
+      processSuccess.incrementAndGet();
       if (tracker != null) {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
       totalFailed.incrementAndGet();
+      processFailed.incrementAndGet();
       updateStats();
       if (tracker != null) {
         tracker.recordProcess(StatsResult.FAILED);
@@ -330,6 +336,7 @@ public class OpenSearchBulkSink implements BulkSink {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
       totalFailed.incrementAndGet();
+      processFailed.incrementAndGet();
       updateStats();
       if (tracker != null) {
         tracker.recordProcess(StatsResult.FAILED);
@@ -368,12 +375,14 @@ public class OpenSearchBulkSink implements BulkSink {
         tracker.incrementPendingSink();
       }
       bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
+      processSuccess.incrementAndGet();
       if (tracker != null) {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
       totalFailed.incrementAndGet();
+      processFailed.incrementAndGet();
       updateStats();
       if (tracker != null) {
         tracker.recordProcess(StatsResult.FAILED);
@@ -390,6 +399,7 @@ public class OpenSearchBulkSink implements BulkSink {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
       totalFailed.incrementAndGet();
+      processFailed.incrementAndGet();
       updateStats();
       if (tracker != null) {
         tracker.recordProcess(StatsResult.FAILED);
@@ -703,6 +713,16 @@ public class OpenSearchBulkSink implements BulkSink {
         .withTotalRecords((int) (vectorSuccess.get() + vectorFailed.get()))
         .withSuccessRecords((int) vectorSuccess.get())
         .withFailedRecords((int) vectorFailed.get());
+  }
+
+  @Override
+  public StepStats getProcessStats() {
+    long success = processSuccess.get();
+    long failed = processFailed.get();
+    return new StepStats()
+        .withTotalRecords((int) (success + failed))
+        .withSuccessRecords((int) success)
+        .withFailedRecords((int) failed);
   }
 
   public static class CustomBulkProcessor {

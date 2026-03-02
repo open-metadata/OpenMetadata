@@ -67,6 +67,16 @@ public interface BulkSink {
   }
 
   /**
+   * Returns the process stage statistics. This tracks document building/transformation
+   * separately from the actual sink (bulk indexing) stats.
+   *
+   * @return StepStats with process success/failed counts, or null if not supported
+   */
+  default StepStats getProcessStats() {
+    return null;
+  }
+
+  /**
    * Wait for all pending vector embedding tasks to complete. This is important for ensuring
    * no vector tasks are lost when the job completes. The sink's close() method should also
    * call this, but this method allows explicit waiting before close if needed.

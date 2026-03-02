@@ -1002,11 +1002,11 @@ public class SearchIndexExecutor implements AutoCloseable {
 
     for (int i = 0; i < actualReaders; i++) {
       String startCursor = (i == 0) ? null : boundaries.get(i - 1);
-      // Last reader is unbounded - reads until cursor exhaustion rather than
-      // stopping at a pre-calculated limit, preventing boundary entity loss
+      String endCursorForReader = (i < boundaries.size()) ? boundaries.get(i) : null;
       int limit = (i == actualReaders - 1) ? Integer.MAX_VALUE : recordsPerReader;
       KeysetBatchReader readerSource = readerFactory.get();
       final int readerLimit = limit;
+      final String readerEndCursor = endCursorForReader;
       producerExecutor.submit(
           () -> {
             if (mdc != null) MDC.setContextMap(mdc);
@@ -1017,11 +1017,47 @@ public class SearchIndexExecutor implements AutoCloseable {
                   fixedBatchSize,
                   startCursor,
                   readerSource,
-                  producerPhaser);
+                  producerPhaser,
+                  readerEndCursor);
             } finally {
               MDC.clear();
             }
           });
+    }
+  }
+
+  private boolean hasReachedEndCursor(String afterCursor, String endCursor) {
+    if (endCursor == null || afterCursor == null) return false;
+    String decodedAfter = RestUtil.decodeCursor(afterCursor);
+    String decodedEnd = RestUtil.decodeCursor(endCursor);
+    if (decodedAfter == null || decodedEnd == null) return false;
+
+    // Time-series cursors are numeric offsets
+    try {
+      int afterOffset = Integer.parseInt(decodedAfter);
+      int endOffset = Integer.parseInt(decodedEnd);
+      return afterOffset >= endOffset;
+    } catch (NumberFormatException ignored) {
+      // Not a numeric cursor, fall through to JSON comparison
+    }
+
+    // Regular entity cursors are JSON maps with "name" and "id" fields
+    try {
+      @SuppressWarnings("unchecked")
+      Map<String, String> afterMap =
+          org.openmetadata.schema.utils.JsonUtils.readValue(decodedAfter, Map.class);
+      @SuppressWarnings("unchecked")
+      Map<String, String> endMap =
+          org.openmetadata.schema.utils.JsonUtils.readValue(decodedEnd, Map.class);
+      String afterName = afterMap.getOrDefault("name", "");
+      String endName = endMap.getOrDefault("name", "");
+      int nameCompare = afterName.compareTo(endName);
+      if (nameCompare != 0) return nameCompare >= 0;
+      String afterId = afterMap.getOrDefault("id", "");
+      String endId = endMap.getOrDefault("id", "");
+      return afterId.compareTo(endId) >= 0;
+    } catch (Exception e) {
+      return decodedAfter.compareTo(decodedEnd) >= 0;
     }
   }
 
@@ -1032,6 +1068,18 @@ public class SearchIndexExecutor implements AutoCloseable {
       String startCursor,
       KeysetBatchReader batchReader,
       Phaser producerPhaser) {
+    processKeysetBatches(
+        entityType, recordLimit, fixedBatchSize, startCursor, batchReader, producerPhaser, null);
+  }
+
+  private void processKeysetBatches(
+      String entityType,
+      int recordLimit,
+      int fixedBatchSize,
+      String startCursor,
+      KeysetBatchReader batchReader,
+      Phaser producerPhaser,
+      String endCursor) {
     boolean hadFailure = false;
     try {
       String keysetCursor = startCursor;
@@ -1080,6 +1128,10 @@ public class SearchIndexExecutor implements AutoCloseable {
                 entityType,
                 processed,
                 recordLimit);
+            break;
+          }
+          if (endCursor != null && hasReachedEndCursor(keysetCursor, endCursor)) {
+            LOG.debug("Reader for {} reached end cursor at processed={}", entityType, processed);
             break;
           }
         } catch (SearchIndexException e) {
@@ -1407,6 +1459,12 @@ public class SearchIndexExecutor implements AutoCloseable {
     sinkStats.setFailedRecords(0);
     jobDataStats.setSinkStats(sinkStats);
 
+    StepStats processStats = new StepStats();
+    processStats.setTotalRecords(0);
+    processStats.setSuccessRecords(0);
+    processStats.setFailedRecords(0);
+    jobDataStats.setProcessStats(processStats);
+
     return jobDataStats;
   }
 
@@ -1543,6 +1601,8 @@ public class SearchIndexExecutor implements AutoCloseable {
       jobDataStats.setSinkStats(sinkStats);
     }
 
+    sinkStats.setTotalRecords(
+        bulkSinkStats.getTotalRecords() != null ? bulkSinkStats.getTotalRecords() : 0);
     sinkStats.setSuccessRecords(
         bulkSinkStats.getSuccessRecords() != null ? bulkSinkStats.getSuccessRecords() : 0);
     sinkStats.setFailedRecords(
@@ -1553,6 +1613,12 @@ public class SearchIndexExecutor implements AutoCloseable {
     if (vectorStats != null
         && (vectorStats.getTotalRecords() != null && vectorStats.getTotalRecords() > 0)) {
       jobDataStats.setVectorStats(vectorStats);
+    }
+
+    // Sync process stats if available
+    StepStats processStats = searchIndexSink.getProcessStats();
+    if (processStats != null) {
+      jobDataStats.setProcessStats(processStats);
     }
   }
 

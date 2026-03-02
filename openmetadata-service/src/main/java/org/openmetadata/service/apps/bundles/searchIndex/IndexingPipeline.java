@@ -389,6 +389,11 @@ public class IndexingPipeline implements AutoCloseable {
     s.getSinkStats().setTotalRecords(0);
     s.getSinkStats().setSuccessRecords(0);
     s.getSinkStats().setFailedRecords(0);
+
+    s.setProcessStats(new StepStats());
+    s.getProcessStats().setTotalRecords(0);
+    s.getProcessStats().setSuccessRecords(0);
+    s.getProcessStats().setFailedRecords(0);
     return s;
   }
 
@@ -456,6 +461,8 @@ public class IndexingPipeline implements AutoCloseable {
       sinkStats = new StepStats();
       s.setSinkStats(sinkStats);
     }
+    sinkStats.setTotalRecords(
+        bulkStats.getTotalRecords() != null ? bulkStats.getTotalRecords() : 0);
     sinkStats.setSuccessRecords(
         bulkStats.getSuccessRecords() != null ? bulkStats.getSuccessRecords() : 0);
     sinkStats.setFailedRecords(
@@ -466,6 +473,11 @@ public class IndexingPipeline implements AutoCloseable {
         && vectorStats.getTotalRecords() != null
         && vectorStats.getTotalRecords() > 0) {
       s.setVectorStats(vectorStats);
+    }
+
+    StepStats processStats = searchIndexSink.getProcessStats();
+    if (processStats != null) {
+      s.setProcessStats(processStats);
     }
   }
 
