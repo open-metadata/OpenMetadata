@@ -1,10 +1,20 @@
 package org.openmetadata.sdk.services.dataassets;
 
+import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.CustomMetric;
+import org.openmetadata.schema.type.DataModel;
+import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.type.TableJoins;
+import org.openmetadata.schema.type.TableProfilerConfig;
+import org.openmetadata.schema.type.TableQuery;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.EntityServiceBase;
 
 public class TableService extends EntityServiceBase<Table> {
