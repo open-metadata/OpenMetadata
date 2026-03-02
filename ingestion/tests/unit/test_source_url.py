@@ -24,9 +24,6 @@ from metadata.generated.schema.entity.services.connections.database.mssqlConnect
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
-    BasicAuth,
-)
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
