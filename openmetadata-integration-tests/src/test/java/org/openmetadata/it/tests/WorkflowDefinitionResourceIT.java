@@ -24,12 +24,15 @@ import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.factories.MlModelServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -124,6 +127,8 @@ import org.slf4j.LoggerFactory;
  * <p>Migrated from: org.openmetadata.service.resources.governance.WorkflowDefinitionResourceTest
  */
 @Execution(ExecutionMode.SAME_THREAD)
+@Isolated
+@TestMethodOrder(OrderAnnotation.class)
 @ExtendWith(TestNamespaceExtension.class)
 public class WorkflowDefinitionResourceIT {
 
@@ -1102,7 +1107,6 @@ public class WorkflowDefinitionResourceIT {
     request.put("nodes", List.of(startNode, setFieldNode, endNode));
     request.put("edges", List.of(edge1, edge2));
 
-    java.lang.Thread.sleep(2000);
     String response =
         client
             .getHttpClient()
@@ -1781,113 +1785,113 @@ public class WorkflowDefinitionResourceIT {
     // Create workflow using the same simple structure as the working DataCompletenessWorkflow_SDK
     String workflowJson =
         """
-            {
-              "name": "setTierTask",
-              "displayName": "setTierTask",
-              "description": "Custom workflow created with Workflow Builder",
-              "trigger": {
-                "type": "periodicBatchEntity",
-                "config": {
-                  "entityTypes": [
-                    "mlmodel"
-                  ],
-                  "schedule": {
-                    "scheduleTimeline": "None"
+                {
+                  "name": "setTierTask",
+                  "displayName": "setTierTask",
+                  "description": "Custom workflow created with Workflow Builder",
+                  "trigger": {
+                    "type": "periodicBatchEntity",
+                    "config": {
+                      "entityTypes": [
+                        "mlmodel"
+                      ],
+                      "schedule": {
+                        "scheduleTimeline": "None"
+                      },
+                      "batchSize": 100,
+                      "filters": {}
+                    },
+                    "output": [
+                      "relatedEntity",
+                      "updatedBy"
+                    ]
                   },
-                  "batchSize": 100,
-                  "filters": {}
-                },
-                "output": [
-                  "relatedEntity",
-                  "updatedBy"
-                ]
-              },
-              "nodes": [
-                {
-                  "type": "startEvent",
-                  "subType": "startEvent",
-                  "name": "start",
-                  "displayName": "start"
-                },
-                {
-                  "type": "automatedTask",
-                  "subType": "checkEntityAttributesTask",
-                  "name": "checkDescriptionNotNull",
-                  "displayName": "Check Description is not null",
+                  "nodes": [
+                    {
+                      "type": "startEvent",
+                      "subType": "startEvent",
+                      "name": "start",
+                      "displayName": "start"
+                    },
+                    {
+                      "type": "automatedTask",
+                      "subType": "checkEntityAttributesTask",
+                      "name": "checkDescriptionNotNull",
+                      "displayName": "Check Description is not null",
+                      "config": {
+                        "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+                      },
+                      "input": [
+                        "relatedEntity"
+                      ],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global"
+                      },
+                      "output": [
+                        "result"
+                      ],
+                      "branches": [
+                        "true",
+                        "false"
+                      ]
+                    },
+                    {
+                      "type": "endEvent",
+                      "subType": "endEvent",
+                      "name": "endNoTier",
+                      "displayName": "endNoTier"
+                    },
+                    {
+                      "type": "endEvent",
+                      "subType": "endEvent",
+                      "name": "endTierSet",
+                      "displayName": "endTierSet"
+                    },
+                    {
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "name": "setTier",
+                      "displayName": "Set Tier 1",
+                      "config": {
+                        "fieldName": "tags",
+                        "fieldValue": "Tier.Tier1"
+                      },
+                      "input": [
+                        "relatedEntity",
+                        "updatedBy"
+                      ],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global",
+                        "updatedBy": "global"
+                      },
+                      "output": []
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "checkDescriptionNotNull"
+                    },
+                    {
+                      "from": "checkDescriptionNotNull",
+                      "to": "endNoTier",
+                      "condition": "false"
+                    },
+                    {
+                      "from": "checkDescriptionNotNull",
+                      "to": "setTier",
+                      "condition": "true"
+                    },
+                    {
+                      "from": "setTier",
+                      "to": "endTierSet"
+                    }
+                  ],
                   "config": {
-                    "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
-                  },
-                  "input": [
-                    "relatedEntity"
-                  ],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global"
-                  },
-                  "output": [
-                    "result"
-                  ],
-                  "branches": [
-                    "true",
-                    "false"
-                  ]
-                },
-                {
-                  "type": "endEvent",
-                  "subType": "endEvent",
-                  "name": "endNoTier",
-                  "displayName": "endNoTier"
-                },
-                {
-                  "type": "endEvent",
-                  "subType": "endEvent",
-                  "name": "endTierSet",
-                  "displayName": "endTierSet"
-                },
-                {
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "name": "setTier",
-                  "displayName": "Set Tier 1",
-                  "config": {
-                    "fieldName": "tags",
-                    "fieldValue": "Tier.Tier1"
-                  },
-                  "input": [
-                    "relatedEntity",
-                    "updatedBy"
-                  ],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global",
-                    "updatedBy": "global"
-                  },
-                  "output": []
+                    "storeStageStatus": false
+                  }
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "checkDescriptionNotNull"
-                },
-                {
-                  "from": "checkDescriptionNotNull",
-                  "to": "endNoTier",
-                  "condition": "false"
-                },
-                {
-                  "from": "checkDescriptionNotNull",
-                  "to": "setTier",
-                  "condition": "true"
-                },
-                {
-                  "from": "setTier",
-                  "to": "endTierSet"
-                }
-              ],
-              "config": {
-                "storeStageStatus": true
-              }
-            }
-            """;
+                """;
 
     // Create workflow using SDK client
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1905,6 +1909,9 @@ public class WorkflowDefinitionResourceIT {
     LOG.debug("setTierTask workflow created successfully, response: {}", response);
 
     String workflowName = created.get("fullyQualifiedName").asText();
+    waitForWorkflowDeployment(client, workflowName);
+    waitForEntityIndexedInSearch(client, "mlmodel_search_index", mlModel.getFullyQualifiedName());
+
     // Trigger the workflow
     String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
     String triggerResponse =
@@ -1915,17 +1922,23 @@ public class WorkflowDefinitionResourceIT {
     assertNotNull(triggerResponse);
     LOG.debug("Workflow triggered successfully, response: {}", triggerResponse);
 
-    // Wait for workflow to process (use Thread.sleep for consistency with original test)
-    java.lang.Thread.sleep(30000);
-
-    // Verify ML Model tier is set to Tier1
+    await()
+        .atMost(Duration.ofSeconds(180))
+        .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              MlModel updatedModel =
+                  SdkClients.adminClient().mlModels().get(mlModel.getId().toString(), "tags");
+              assertNotNull(updatedModel);
+              assertNotNull(updatedModel.getTags());
+              boolean hasTier1 =
+                  updatedModel.getTags().stream()
+                      .anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
+              assertTrue(hasTier1, "ML Model should have Tier.Tier1 tag");
+            });
     MlModel updatedModel =
         SdkClients.adminClient().mlModels().get(mlModel.getId().toString(), "tags");
-    assertNotNull(updatedModel);
-    assertNotNull(updatedModel.getTags());
-    boolean hasTier1 =
-        updatedModel.getTags().stream().anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
-    assertTrue(hasTier1, "ML Model should have Tier.Tier1 tag");
     LOG.debug("ML Model {} tier successfully updated to Tier1", updatedModel.getName());
 
     LOG.info("test_SetTierForMLModels completed successfully");
@@ -2290,44 +2303,44 @@ public class WorkflowDefinitionResourceIT {
     String workflowName = ns.prefix("testRedundantChangeEvents");
     String workflowJson =
         """
-           {
-             "name": "testRedundantChangeEvents",
-             "displayName": "Test Redundant Change Events",
-             "description": "Test workflow to verify no redundant change events",
-             "trigger": {
-               "type": "periodicBatchEntity",
-               "config": {
-                 "entityTypes": ["table"],
-                 "schedule": {"scheduleTimeline": "None"},
-                 "batchSize": 100,
-                 "filters": {}
-               },
-               "output": ["relatedEntity", "updatedBy"]
-             },
-             "nodes": [
-               {"type": "startEvent", "subType": "startEvent", "name": "start", "displayName": "start"},
                {
-                 "type": "automatedTask",
-                 "subType": "setEntityAttributeTask",
-                 "name": "setTag",
-                 "displayName": "Set Tag",
-                 "config": {
-                   "fieldName": "tags",
-                   "fieldValue": "Tier.Tier1"
+                 "name": "testRedundantChangeEvents",
+                 "displayName": "Test Redundant Change Events",
+                 "description": "Test workflow to verify no redundant change events",
+                 "trigger": {
+                   "type": "periodicBatchEntity",
+                   "config": {
+                     "entityTypes": ["table"],
+                     "schedule": {"scheduleTimeline": "None"},
+                     "batchSize": 100,
+                     "filters": {}
+                   },
+                   "output": ["relatedEntity", "updatedBy"]
                  },
-                 "input": ["relatedEntity", "updatedBy"],
-                 "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"},
-                 "output": []
-               },
-               {"type": "endEvent", "subType": "endEvent", "name": "end", "displayName": "end"}
-             ],
-             "edges": [
-               {"from": "start", "to": "setTag"},
-               {"from": "setTag", "to": "end"}
-             ],
-             "config": {"storeStageStatus": true}
-           }
-           """;
+                 "nodes": [
+                   {"type": "startEvent", "subType": "startEvent", "name": "start", "displayName": "start"},
+                   {
+                     "type": "automatedTask",
+                     "subType": "setEntityAttributeTask",
+                     "name": "setTag",
+                     "displayName": "Set Tag",
+                     "config": {
+                       "fieldName": "tags",
+                       "fieldValue": "Tier.Tier1"
+                     },
+                     "input": ["relatedEntity", "updatedBy"],
+                     "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"},
+                     "output": []
+                   },
+                   {"type": "endEvent", "subType": "endEvent", "name": "end", "displayName": "end"}
+                 ],
+                 "edges": [
+                   {"from": "start", "to": "setTag"},
+                   {"from": "setTag", "to": "end"}
+                 ],
+                 "config": {"storeStageStatus": true}
+               }
+               """;
 
     // Create workflow using SDK client
     OpenMetadataClient client = SdkClients.adminClient();
@@ -2344,8 +2357,7 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(created.has("id"));
     LOG.debug("testRedundantChangeEvents workflow created successfully, response: {}", response);
 
-    // Wait a moment for workflow setup
-    java.lang.Thread.sleep(2000);
+    waitForWorkflowDeployment(client, "testRedundantChangeEvents");
 
     // Trigger the workflow FIRST time
     workflowName = "testRedundantChangeEvents";
@@ -2357,16 +2369,20 @@ public class WorkflowDefinitionResourceIT {
                 HttpMethod.POST, triggerPath, new HashMap<>(), RequestOptions.builder().build());
     assertNotNull(triggerResponse);
 
-    // Wait for workflow to complete (increased from original 15s to 30s for IT environment)
-    java.lang.Thread.sleep(30000);
-
-    // Verify the tag was actually added (meaningful change)
-    Table updatedTable = SdkClients.adminClient().tables().get(table.getId().toString(), "tags");
-    boolean hasTag =
-        updatedTable.getTags() != null
-            && updatedTable.getTags().stream()
-                .anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
-    assertTrue(hasTag, "Table should have Tier.Tier1 tag after first workflow run");
+    await()
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              Table updatedTable =
+                  SdkClients.adminClient().tables().get(table.getId().toString(), "tags");
+              boolean hasTag =
+                  updatedTable.getTags() != null
+                      && updatedTable.getTags().stream()
+                          .anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
+              assertTrue(hasTag, "Table should have Tier.Tier1 tag after first workflow run");
+            });
     LOG.info("First workflow run completed successfully - tag applied");
 
     // Trigger the workflow SECOND time (should be idempotent)
@@ -2377,15 +2393,20 @@ public class WorkflowDefinitionResourceIT {
                 HttpMethod.POST, triggerPath, new HashMap<>(), RequestOptions.builder().build());
     assertNotNull(secondTriggerResponse);
 
-    // Wait for second workflow to complete (increased from original 15s to 30s for IT environment)
-    java.lang.Thread.sleep(30000);
-
-    // Verify the tag is still there and workflow is idempotent
-    Table finalTable = SdkClients.adminClient().tables().get(table.getId().toString(), "tags");
-    boolean stillHasTag =
-        finalTable.getTags() != null
-            && finalTable.getTags().stream().anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
-    assertTrue(stillHasTag, "Table should still have the tag after second workflow run");
+    await()
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              Table finalTable =
+                  SdkClients.adminClient().tables().get(table.getId().toString(), "tags");
+              boolean stillHasTag =
+                  finalTable.getTags() != null
+                      && finalTable.getTags().stream()
+                          .anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
+              assertTrue(stillHasTag, "Table should still have the tag after second workflow run");
+            });
 
     LOG.info("✓ PASSED: Workflow demonstrates idempotent behavior");
 
@@ -2501,9 +2522,6 @@ public class WorkflowDefinitionResourceIT {
     Dashboard dashboard2 = SdkClients.adminClient().dashboards().create(createDashboard2);
     LOG.debug("Created dashboard2 without chart_1: {}", dashboard2.getName());
 
-    // Wait a bit for entities to be indexed
-    java.lang.Thread.sleep(10000);
-
     // Create periodic batch workflow with specific filters
     // IMPORTANT: Filters ensure only specific entities are updated
     // Create workflow using SDK client - Constructing object directly to avoid JSON parsing issues
@@ -2512,80 +2530,80 @@ public class WorkflowDefinitionResourceIT {
     // Create periodic batch workflow with specific filters - using raw JSON like reference test
     String workflowJson =
         """
-        {
-          "name": "%s",
-          "displayName": "MultiEntityPeriodicQuery",
-          "description": "Custom workflow created with Workflow Builder",
-          "type": "periodicBatchEntity",
-          "trigger": {
-            "type": "periodicBatchEntity",
-            "config": {
-              "entityTypes": [
-                "table",
-                "dashboard"
-              ],
-              "schedule": {
-                "scheduleTimeline": "None"
+            {
+              "name": "%s",
+              "displayName": "MultiEntityPeriodicQuery",
+              "description": "Custom workflow created with Workflow Builder",
+              "type": "periodicBatchEntity",
+              "trigger": {
+                "type": "periodicBatchEntity",
+                "config": {
+                  "entityTypes": [
+                    "table",
+                    "dashboard"
+                  ],
+                  "schedule": {
+                    "scheduleTimeline": "None"
+                  },
+                  "batchSize": 100,
+                  "filters": {
+                    "table": "{\\"query\\":{\\"bool\\":{\\"must\\":[{\\"bool\\":{\\"must\\":[{\\"term\\":{\\"databaseSchema.displayName.keyword\\":\\"posts_db\\"}}]}},{\\"bool\\":{\\"must\\":[{\\"term\\":{\\"entityType\\":\\"table\\"}}]}}]}}}",
+                    "dashboard": "{\\"query\\":{\\"bool\\":{\\"filter\\":[{\\"term\\":{\\"entityType\\":\\"dashboard\\"}},{\\"term\\":{\\"charts.name.keyword\\":\\"chart_1\\"}}]}}}"
+                  }
+                },
+                "output": [
+                  "relatedEntity",
+                  "updatedBy"
+                ]
               },
-              "batchSize": 100,
-              "filters": {
-                "table": "{\\"query\\":{\\"bool\\":{\\"must\\":[{\\"bool\\":{\\"must\\":[{\\"term\\":{\\"databaseSchema.displayName.keyword\\":\\"posts_db\\"}}]}},{\\"bool\\":{\\"must\\":[{\\"term\\":{\\"entityType\\":\\"table\\"}}]}}]}}}",
-                "dashboard": "{\\"query\\":{\\"bool\\":{\\"filter\\":[{\\"term\\":{\\"entityType\\":\\"dashboard\\"}},{\\"term\\":{\\"charts.name.keyword\\":\\"chart_1\\"}}]}}}"
-              }
-            },
-            "output": [
-              "relatedEntity",
-              "updatedBy"
-            ]
-          },
-          "nodes": [
-            {
-              "type": "startEvent",
-              "subType": "startEvent",
-              "name": "StartNode",
-              "displayName": "Start"
-            },
-            {
-              "type": "automatedTask",
-              "subType": "setEntityAttributeTask",
-              "name": "SetEntityAttribute_2",
-              "displayName": "Set Entity Attribute",
+              "nodes": [
+                {
+                  "type": "startEvent",
+                  "subType": "startEvent",
+                  "name": "StartNode",
+                  "displayName": "Start"
+                },
+                {
+                  "type": "automatedTask",
+                  "subType": "setEntityAttributeTask",
+                  "name": "SetEntityAttribute_2",
+                  "displayName": "Set Entity Attribute",
+                  "config": {
+                    "fieldName": "description",
+                    "fieldValue": "Multi Periodic Entity"
+                  },
+                  "input": [
+                    "relatedEntity",
+                    "updatedBy"
+                  ],
+                  "inputNamespaceMap": {
+                    "relatedEntity": "global",
+                    "updatedBy": "global"
+                  },
+                  "output": []
+                },
+                {
+                  "type": "endEvent",
+                  "subType": "endEvent",
+                  "name": "EndNode_3",
+                  "displayName": "End"
+                }
+              ],
+              "edges": [
+                {
+                  "from": "StartNode",
+                  "to": "SetEntityAttribute_2"
+                },
+                {
+                  "from": "SetEntityAttribute_2",
+                  "to": "EndNode_3"
+                }
+              ],
               "config": {
-                "fieldName": "description",
-                "fieldValue": "Multi Periodic Entity"
-              },
-              "input": [
-                "relatedEntity",
-                "updatedBy"
-              ],
-              "inputNamespaceMap": {
-                "relatedEntity": "global",
-                "updatedBy": "global"
-              },
-              "output": []
-            },
-            {
-              "type": "endEvent",
-              "subType": "endEvent",
-              "name": "EndNode_3",
-              "displayName": "End"
+                "storeStageStatus": false
+              }
             }
-          ],
-          "edges": [
-            {
-              "from": "StartNode",
-              "to": "SetEntityAttribute_2"
-            },
-            {
-              "from": "SetEntityAttribute_2",
-              "to": "EndNode_3"
-            }
-          ],
-          "config": {
-            "storeStageStatus": true
-          }
-        }
-        """
+            """
             .formatted("MultiEntityPeriodicQuery");
 
     CreateWorkflowDefinition workflowRequest =
@@ -2606,12 +2624,9 @@ public class WorkflowDefinitionResourceIT {
 
     // Trigger the workflow manually using SDK
     String workflowName = "MultiEntityPeriodicQuery";
+    waitForWorkflowDeployment(client, workflowName);
     client.workflowDefinitions().trigger(workflowName);
     LOG.debug("Workflow triggered successfully");
-
-    // Wait for workflow execution (use Thread.sleep for consistency with original test)
-    LOG.debug("Waiting for workflow to process entities...");
-    java.lang.Thread.sleep(30000);
 
     // Store IDs for verification
     final UUID table1Id = table1.getId();
@@ -2619,24 +2634,27 @@ public class WorkflowDefinitionResourceIT {
     final UUID dashboard1Id = dashboard1.getId();
     final UUID dashboard2Id = dashboard2.getId();
 
-    // Verify only filtered entities were updated
-    Table updatedTable1 = SdkClients.adminClient().tables().get(table1Id.toString());
-    assertEquals("Multi Periodic Entity", updatedTable1.getDescription());
-    LOG.debug("Table1 updated successfully: {}", updatedTable1.getDescription());
+    await()
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              Table updatedTable1 = SdkClients.adminClient().tables().get(table1Id.toString());
+              assertEquals("Multi Periodic Entity", updatedTable1.getDescription());
 
-    Table updatedTable2 = SdkClients.adminClient().tables().get(table2Id.toString());
-    assertEquals("Initial description for table2", updatedTable2.getDescription());
-    LOG.debug("Table2 NOT updated (as expected): {}", updatedTable2.getDescription());
+              Table updatedTable2 = SdkClients.adminClient().tables().get(table2Id.toString());
+              assertEquals("Initial description for table2", updatedTable2.getDescription());
 
-    Dashboard updatedDashboard1 =
-        SdkClients.adminClient().dashboards().get(dashboard1Id.toString());
-    assertEquals("Multi Periodic Entity", updatedDashboard1.getDescription());
-    LOG.debug("Dashboard1 updated successfully: {}", updatedDashboard1.getDescription());
+              Dashboard updatedDashboard1 =
+                  SdkClients.adminClient().dashboards().get(dashboard1Id.toString());
+              assertEquals("Multi Periodic Entity", updatedDashboard1.getDescription());
 
-    Dashboard updatedDashboard2 =
-        SdkClients.adminClient().dashboards().get(dashboard2Id.toString());
-    assertEquals("Initial description for dashboard2", updatedDashboard2.getDescription());
-    LOG.debug("Dashboard2 NOT updated (as expected): {}", updatedDashboard2.getDescription());
+              Dashboard updatedDashboard2 =
+                  SdkClients.adminClient().dashboards().get(dashboard2Id.toString());
+              assertEquals(
+                  "Initial description for dashboard2", updatedDashboard2.getDescription());
+            });
 
     try {
       WorkflowDefinition wd =
@@ -2746,73 +2764,71 @@ public class WorkflowDefinitionResourceIT {
     Table devTable = client.tables().create(createDevTable);
     LOG.debug("Created dev table that should NOT match filter: {}", devTable.getName());
 
-    java.lang.Thread.sleep(5000);
-
     // Create workflow with entity-specific filters - using raw JSON like reference test
     String workflowJson =
         """
-            {
-              "name": "EntitySpecificFilterWorkflow",
-              "displayName": "Entity Specific Filter Workflow",
-              "description": "Workflow to test entity-specific filtering for different entity types",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["glossaryTerm", "table"],
-                  "events": ["Updated"],
-                  "exclude": ["reviewers"],
-                  "filter": {
-                    "glossaryTerm": "{\\\"!\\\": [{\\\"in\\\": [\\\"workflow\\\", {\\\"var\\\": \\\"description\\\"}]}]}",
-                    "table": "{\\\"!\\\": [{\\\"in\\\": [\\\"production\\\", {\\\"var\\\": \\\"name\\\"}]}]}"
-                  }
-                },
-                "output": ["relatedEntity", "updatedBy"]
-              },
-              "nodes": [
                 {
-                  "type": "startEvent",
-                  "subType": "startEvent",
-                  "name": "start",
-                  "displayName": "Start"
-                },
-                {
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "name": "AddProcessedTag",
-                  "displayName": "Add Processed Tag",
+                  "name": "EntitySpecificFilterWorkflow",
+                  "displayName": "Entity Specific Filter Workflow",
+                  "description": "Workflow to test entity-specific filtering for different entity types",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["glossaryTerm", "table"],
+                      "events": ["Updated"],
+                      "exclude": ["reviewers"],
+                      "filter": {
+                        "glossaryTerm": "{\\\"!\\\": [{\\\"in\\\": [\\\"workflow\\\", {\\\"var\\\": \\\"description\\\"}]}]}",
+                        "table": "{\\\"!\\\": [{\\\"in\\\": [\\\"production\\\", {\\\"var\\\": \\\"name\\\"}]}]}"
+                      }
+                    },
+                    "output": ["relatedEntity", "updatedBy"]
+                  },
+                  "nodes": [
+                    {
+                      "type": "startEvent",
+                      "subType": "startEvent",
+                      "name": "start",
+                      "displayName": "Start"
+                    },
+                    {
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "name": "AddProcessedTag",
+                      "displayName": "Add Processed Tag",
+                      "config": {
+                        "fieldName": "displayName",
+                        "fieldValue": "[FILTERED] - Entity passed specific filter"
+                      },
+                      "input": ["relatedEntity", "updatedBy"],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global",
+                        "updatedBy": "global"
+                      },
+                      "output": []
+                    },
+                    {
+                      "type": "endEvent",
+                      "subType": "endEvent",
+                      "name": "end",
+                      "displayName": "End"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "AddProcessedTag"
+                    },
+                    {
+                      "from": "AddProcessedTag",
+                      "to": "end"
+                    }
+                  ],
                   "config": {
-                    "fieldName": "displayName",
-                    "fieldValue": "[FILTERED] - Entity passed specific filter"
-                  },
-                  "input": ["relatedEntity", "updatedBy"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global",
-                    "updatedBy": "global"
-                  },
-                  "output": []
-                },
-                {
-                  "type": "endEvent",
-                  "subType": "endEvent",
-                  "name": "end",
-                  "displayName": "End"
+                    "storeStageStatus": false
+                  }
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "AddProcessedTag"
-                },
-                {
-                  "from": "AddProcessedTag",
-                  "to": "end"
-                }
-              ],
-              "config": {
-                "storeStageStatus": true
-              }
-            }
-            """;
+                """;
 
     CreateWorkflowDefinition workflow =
         MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class);
@@ -2828,8 +2844,8 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(created.has("id"));
     LOG.info("{} created successfully", workflowName);
 
-    // Wait a bit for workflow to be deployed
-    java.lang.Thread.sleep(5000);
+    waitForWorkflowDeployment(client, workflowName);
+    ensureWorkflowEventConsumerIsActive(client);
 
     // Store IDs for lambda expressions
     final UUID termToMatchId = termToMatch.getId();
@@ -2862,12 +2878,10 @@ public class WorkflowDefinitionResourceIT {
     JsonNode devTablePatch = MAPPER.readTree(devTablePatchStr);
     client.tables().patch(devTableId, devTablePatch);
 
-    java.lang.Thread.sleep(5000);
-
     // Wait for workflow processing using Awaitility
     LOG.info("Waiting for workflow to process entities...");
     await()
-        .atMost(Duration.ofSeconds(60))
+        .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .until(
@@ -2972,33 +2986,33 @@ public class WorkflowDefinitionResourceIT {
     // First create a workflow as admin
     String workflowJson =
         """
-            {
-              "name": "TestUnauthorizedWorkflow",
-              "displayName": "Test Unauthorized Workflow",
-              "description": "Workflow for testing unauthorized suspend/resume",
-              "trigger": {
-                "type": "noOp"
-              },
-              "nodes": [
                 {
-                  "type": "startEvent",
-                  "subType": "startEvent",
-                  "name": "start"
-                },
-                {
-                  "type": "endEvent",
-                  "subType": "endEvent",
-                  "name": "end"
+                  "name": "TestUnauthorizedWorkflow",
+                  "displayName": "Test Unauthorized Workflow",
+                  "description": "Workflow for testing unauthorized suspend/resume",
+                  "trigger": {
+                    "type": "noOp"
+                  },
+                  "nodes": [
+                    {
+                      "type": "startEvent",
+                      "subType": "startEvent",
+                      "name": "start"
+                    },
+                    {
+                      "type": "endEvent",
+                      "subType": "endEvent",
+                      "name": "end"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "end"
+                    }
+                  ]
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "end"
-                }
-              ]
-            }
-            """;
+                """;
 
     try {
       CreateWorkflowDefinition createWorkflowHead =
@@ -3038,73 +3052,73 @@ public class WorkflowDefinitionResourceIT {
     // for entities without reviewer support.
     String workflowJson =
         """
-            {
-              "name": "multiEntityEventBasedApprovalWorkflow",
-              "displayName": "Multi-Entity Event Based Approval Workflow",
-              "description": "Workflow with user approval task for multiple entities",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table", "database", "dashboard"],
-                  "events": ["Created", "Updated"]
-                }
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "ApproveEntity",
-                  "displayName": "Approve Entity",
-                  "type": "userTask",
-                  "subType": "userApprovalTask",
-                  "config": {
-                    "assignees": {
-                      "addReviewers": true,
-                      "addOwners": false,
-                      "candidates": []
+                  "name": "multiEntityEventBasedApprovalWorkflow",
+                  "displayName": "Multi-Entity Event Based Approval Workflow",
+                  "description": "Workflow with user approval task for multiple entities",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table", "database", "dashboard"],
+                      "events": ["Created", "Updated"]
+                    }
+                  },
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
                     },
-                    "approvalThreshold": 1,
-                    "rejectionThreshold": 1
+                    {
+                      "name": "ApproveEntity",
+                      "displayName": "Approve Entity",
+                      "type": "userTask",
+                      "subType": "userApprovalTask",
+                      "config": {
+                        "assignees": {
+                          "addReviewers": true,
+                          "addOwners": false,
+                          "candidates": []
+                        },
+                        "approvalThreshold": 1,
+                        "rejectionThreshold": 1
+                      }
+                    },
+                    {
+                      "name": "endApproved",
+                      "displayName": "End Approved",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    },
+                    {
+                      "name": "endRejected",
+                      "displayName": "End Rejected",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "ApproveEntity"
+                    },
+                    {
+                      "from": "ApproveEntity",
+                      "to": "endApproved",
+                      "condition": "true"
+                    },
+                    {
+                      "from": "ApproveEntity",
+                      "to": "endRejected",
+                      "condition": "false"
+                    }
+                  ],
+                  "config": {
+                    "storeStageStatus": true
                   }
-                },
-                {
-                  "name": "endApproved",
-                  "displayName": "End Approved",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                },
-                {
-                  "name": "endRejected",
-                  "displayName": "End Rejected",
-                  "type": "endEvent",
-                  "subType": "endEvent"
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "ApproveEntity"
-                },
-                {
-                  "from": "ApproveEntity",
-                  "to": "endApproved",
-                  "condition": "true"
-                },
-                {
-                  "from": "ApproveEntity",
-                  "to": "endRejected",
-                  "condition": "false"
-                }
-              ],
-              "config": {
-                "storeStageStatus": true
-              }
-            }
-            """;
+                """;
 
     try {
       CreateWorkflowDefinition workflow =
@@ -3142,73 +3156,73 @@ public class WorkflowDefinitionResourceIT {
     // for entities without reviewer support.
     String workflowJson =
         """
-            {
-              "name": "mixedEntityApprovalWorkflow",
-              "displayName": "Mixed Entity Approval Workflow",
-              "description": "Workflow with user approval task for mixed entities",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table", "glossaryTerm"],
-                  "events": ["Created", "Updated"]
-                }
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "ApproveEntity",
-                  "displayName": "Approve Entity",
-                  "type": "userTask",
-                  "subType": "userApprovalTask",
-                  "config": {
-                    "assignees": {
-                      "addReviewers": true,
-                      "addOwners": false,
-                      "candidates": []
+                  "name": "mixedEntityApprovalWorkflow",
+                  "displayName": "Mixed Entity Approval Workflow",
+                  "description": "Workflow with user approval task for mixed entities",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table", "glossaryTerm"],
+                      "events": ["Created", "Updated"]
+                    }
+                  },
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
                     },
-                    "approvalThreshold": 1,
-                    "rejectionThreshold": 1
+                    {
+                      "name": "ApproveEntity",
+                      "displayName": "Approve Entity",
+                      "type": "userTask",
+                      "subType": "userApprovalTask",
+                      "config": {
+                        "assignees": {
+                          "addReviewers": true,
+                          "addOwners": false,
+                          "candidates": []
+                        },
+                        "approvalThreshold": 1,
+                        "rejectionThreshold": 1
+                      }
+                    },
+                    {
+                      "name": "endApproved",
+                      "displayName": "End Approved",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    },
+                    {
+                      "name": "endRejected",
+                      "displayName": "End Rejected",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "ApproveEntity"
+                    },
+                    {
+                      "from": "ApproveEntity",
+                      "to": "endApproved",
+                      "condition": "true"
+                    },
+                    {
+                      "from": "ApproveEntity",
+                      "to": "endRejected",
+                      "condition": "false"
+                    }
+                  ],
+                  "config": {
+                    "storeStageStatus": true
                   }
-                },
-                {
-                  "name": "endApproved",
-                  "displayName": "End Approved",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                },
-                {
-                  "name": "endRejected",
-                  "displayName": "End Rejected",
-                  "type": "endEvent",
-                  "subType": "endEvent"
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "ApproveEntity"
-                },
-                {
-                  "from": "ApproveEntity",
-                  "to": "endApproved",
-                  "condition": "true"
-                },
-                {
-                  "from": "ApproveEntity",
-                  "to": "endRejected",
-                  "condition": "false"
-                }
-              ],
-              "config": {
-                "storeStageStatus": true
-              }
-            }
-            """;
+                """;
 
     try {
       CreateWorkflowDefinition workflow =
@@ -3243,64 +3257,64 @@ public class WorkflowDefinitionResourceIT {
     // Test 1: Valid workflow should pass validation
     String validWorkflowJson =
         """
-            {
-              "name": "validValidationWorkflow",
-              "displayName": "Valid Validation Workflow",
-              "description": "Valid workflow for validation test",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
-                }
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "checkTask",
-                  "displayName": "Check Task",
-                  "type": "automatedTask",
-                  "subType": "checkEntityAttributesTask",
-                  "config": {
-                    "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+                  "name": "validValidationWorkflow",
+                  "displayName": "Valid Validation Workflow",
+                  "description": "Valid workflow for validation test",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
+                    }
                   },
-                  "input": ["relatedEntity"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global"
-                  },
-                  "output": ["result"],
-                  "branches": ["true", "false"]
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "checkTask",
+                      "displayName": "Check Task",
+                      "type": "automatedTask",
+                      "subType": "checkEntityAttributesTask",
+                      "config": {
+                        "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+                      },
+                      "input": ["relatedEntity"],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global"
+                      },
+                      "output": ["result"],
+                      "branches": ["true", "false"]
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "checkTask"
+                    },
+                    {
+                      "from": "checkTask",
+                      "to": "end",
+                      "condition": "true"
+                    },
+                    {
+                      "from": "checkTask",
+                      "to": "end",
+                      "condition": "false"
+                    }
+                  ]
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "checkTask"
-                },
-                {
-                  "from": "checkTask",
-                  "to": "end",
-                  "condition": "true"
-                },
-                {
-                  "from": "checkTask",
-                  "to": "end",
-                  "condition": "false"
-                }
-              ]
-            }
-            """;
+                """;
 
     try {
       CreateWorkflowDefinition validWorkflow =
@@ -3315,76 +3329,76 @@ public class WorkflowDefinitionResourceIT {
       // Test 2: Workflow with cycle should fail
       String cyclicWorkflowJson =
           """
-            {
-              "name": "cyclicWorkflow",
-              "displayName": "Cyclic Workflow",
-              "description": "Workflow with a cycle",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
-                }
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "check1",
-                  "displayName": "Check 1",
-                  "type": "automatedTask",
-                  "subType": "checkEntityAttributesTask",
-                  "config": {
-                    "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+                  "name": "cyclicWorkflow",
+                  "displayName": "Cyclic Workflow",
+                  "description": "Workflow with a cycle",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
+                    }
                   },
-                  "output": ["result"],
-                  "branches": ["true", "false"]
-                },
-                {
-                  "name": "check2",
-                  "displayName": "Check 2",
-                  "type": "automatedTask",
-                  "subType": "checkEntityAttributesTask",
-                  "config": {
-                    "rules": "{\\"!!\\":{\\"var\\":\\"owners\\"}}"
-                  },
-                  "output": ["result"],
-                  "branches": ["true", "false"]
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "check1",
+                      "displayName": "Check 1",
+                      "type": "automatedTask",
+                      "subType": "checkEntityAttributesTask",
+                      "config": {
+                        "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+                      },
+                      "output": ["result"],
+                      "branches": ["true", "false"]
+                    },
+                    {
+                      "name": "check2",
+                      "displayName": "Check 2",
+                      "type": "automatedTask",
+                      "subType": "checkEntityAttributesTask",
+                      "config": {
+                        "rules": "{\\"!!\\":{\\"var\\":\\"owners\\"}}"
+                      },
+                      "output": ["result"],
+                      "branches": ["true", "false"]
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "check1"
+                    },
+                    {
+                      "from": "check1",
+                      "to": "check2",
+                      "condition": "true"
+                    },
+                    {
+                      "from": "check2",
+                      "to": "check1",
+                      "condition": "false"
+                    },
+                    {
+                      "from": "check2",
+                      "to": "end",
+                      "condition": "true"
+                    }
+                  ]
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "check1"
-                },
-                {
-                  "from": "check1",
-                  "to": "check2",
-                  "condition": "true"
-                },
-                {
-                  "from": "check2",
-                  "to": "check1",
-                  "condition": "false"
-                },
-                {
-                  "from": "check2",
-                  "to": "end",
-                  "condition": "true"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition cyclicWorkflow =
           MAPPER.readValue(cyclicWorkflowJson, CreateWorkflowDefinition.class);
       cyclicWorkflow.withName(cyclicWorkflow.getName() + "_" + UUID.randomUUID());
@@ -3399,63 +3413,63 @@ public class WorkflowDefinitionResourceIT {
       // Test 3: Workflow with duplicate node IDs should fail
       String duplicateNodeWorkflowJson =
           """
-            {
-              "name": "duplicateNodeWorkflow",
-              "displayName": "Duplicate Node Workflow",
-              "description": "Workflow with duplicate node IDs",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
+                {
+                  "name": "duplicateNodeWorkflow",
+                  "displayName": "Duplicate Node Workflow",
+                  "description": "Workflow with duplicate node IDs",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
+                    }
+                  },
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "task1",
+                      "displayName": "Task 1",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "description",
+                        "fieldValue": "Test"
+                      }
+                    },
+                    {
+                      "name": "task1",
+                      "displayName": "Task 1 Duplicate",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "tags",
+                        "fieldValue": "Test.Tag"
+                      }
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "task1"
+                    },
+                    {
+                      "from": "task1",
+                      "to": "end"
+                    }
+                  ]
                 }
-              },
-              "nodes": [
-                {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "task1",
-                  "displayName": "Task 1",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "description",
-                    "fieldValue": "Test"
-                  }
-                },
-                {
-                  "name": "task1",
-                  "displayName": "Task 1 Duplicate",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "tags",
-                    "fieldValue": "Test.Tag"
-                  }
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "task1"
-                },
-                {
-                  "from": "task1",
-                  "to": "end"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition duplicateNodeWorkflow =
           MAPPER.readValue(duplicateNodeWorkflowJson, CreateWorkflowDefinition.class);
       duplicateNodeWorkflow.withName(duplicateNodeWorkflow.getName() + "_" + UUID.randomUUID());
@@ -3470,53 +3484,53 @@ public class WorkflowDefinitionResourceIT {
       // Test 4: Node ID clashing with workflow name should fail
       String clashingNodeWorkflowJson =
           """
-            {
-              "name": "clashingWorkflow",
-              "displayName": "Clashing Workflow",
-              "description": "Workflow where node ID clashes with workflow name",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
-                }
-              },
-              "nodes": [
-                {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
                 {
                   "name": "clashingWorkflow",
-                  "displayName": "Clashing Node",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "description",
-                    "fieldValue": "Test"
-                  }
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  "displayName": "Clashing Workflow",
+                  "description": "Workflow where node ID clashes with workflow name",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
+                    }
+                  },
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "clashingWorkflow",
+                      "displayName": "Clashing Node",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "description",
+                        "fieldValue": "Test"
+                      }
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "clashingWorkflow"
+                    },
+                    {
+                      "from": "clashingWorkflow",
+                      "to": "end"
+                    }
+                  ]
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "clashingWorkflow"
-                },
-                {
-                  "from": "clashingWorkflow",
-                  "to": "end"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition clashingNodeWorkflow =
           MAPPER.readValue(clashingNodeWorkflowJson, CreateWorkflowDefinition.class);
       clashingNodeWorkflow.withName(clashingNodeWorkflow.getName() + "_" + UUID.randomUUID());
@@ -3533,68 +3547,68 @@ public class WorkflowDefinitionResourceIT {
       // Test 5: User approval task on any entity type should now be allowed
       String validUserTaskWorkflowJson =
           """
-            {
-              "name": "validUserTaskWorkflow",
-              "displayName": "Valid User Task Workflow",
-              "description": "Workflow with user approval on any entity type",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
-                }
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "approval",
-                  "displayName": "Approval",
-                  "type": "userTask",
-                  "subType": "userApprovalTask",
-                  "config": {
-                    "assignees": {
-                      "addReviewers": true,
-                      "addOwners": false,
-                      "candidates": []
+                  "name": "validUserTaskWorkflow",
+                  "displayName": "Valid User Task Workflow",
+                  "description": "Workflow with user approval on any entity type",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
                     }
-                  }
-                },
-                {
-                  "name": "endApproved",
-                  "displayName": "End Approved",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                },
-                {
-                  "name": "endRejected",
-                  "displayName": "End Rejected",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  },
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "approval",
+                      "displayName": "Approval",
+                      "type": "userTask",
+                      "subType": "userApprovalTask",
+                      "config": {
+                        "assignees": {
+                          "addReviewers": true,
+                          "addOwners": false,
+                          "candidates": []
+                        }
+                      }
+                    },
+                    {
+                      "name": "endApproved",
+                      "displayName": "End Approved",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    },
+                    {
+                      "name": "endRejected",
+                      "displayName": "End Rejected",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "approval"
+                    },
+                    {
+                      "from": "approval",
+                      "to": "endApproved",
+                      "condition": "true"
+                    },
+                    {
+                      "from": "approval",
+                      "to": "endRejected",
+                      "condition": "false"
+                    }
+                  ]
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "approval"
-                },
-                {
-                  "from": "approval",
-                  "to": "endApproved",
-                  "condition": "true"
-                },
-                {
-                  "from": "approval",
-                  "to": "endRejected",
-                  "condition": "false"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition validUserTaskWorkflow =
           MAPPER.readValue(validUserTaskWorkflowJson, CreateWorkflowDefinition.class);
       validUserTaskWorkflow.withName(validUserTaskWorkflow.getName() + "_" + UUID.randomUUID());
@@ -3605,83 +3619,83 @@ public class WorkflowDefinitionResourceIT {
       // Test 6: Correct updatedBy namespace with user task should pass
       String correctNamespaceWorkflowJson =
           """
-            {
-              "name": "correctNamespaceWorkflow",
-              "displayName": "Correct Namespace Workflow",
-              "description": "Workflow with correct updatedBy namespace",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["glossaryTerm"],
-                  "events": ["Created"]
-                },
-                "output": ["relatedEntity", "updatedBy"]
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "userApproval",
-                  "displayName": "User Approval",
-                  "type": "userTask",
-                  "subType": "userApprovalTask",
-                  "config": {
-                    "assignees": {
-                      "addReviewers": true,
-                      "addOwners": false,
-                      "candidates": []
+                  "name": "correctNamespaceWorkflow",
+                  "displayName": "Correct Namespace Workflow",
+                  "description": "Workflow with correct updatedBy namespace",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["glossaryTerm"],
+                      "events": ["Created"]
+                    },
+                    "output": ["relatedEntity", "updatedBy"]
+                  },
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "userApproval",
+                      "displayName": "User Approval",
+                      "type": "userTask",
+                      "subType": "userApprovalTask",
+                      "config": {
+                        "assignees": {
+                          "addReviewers": true,
+                          "addOwners": false,
+                          "candidates": []
+                        }
+                      },
+                      "output": ["updatedBy"]
+                    },
+                    {
+                      "name": "setTask",
+                      "displayName": "Set Task",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "description",
+                        "fieldValue": "Approved"
+                      },
+                      "input": ["relatedEntity", "updatedBy"],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global",
+                        "updatedBy": "userApproval"
+                      }
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
                     }
-                  },
-                  "output": ["updatedBy"]
-                },
-                {
-                  "name": "setTask",
-                  "displayName": "Set Task",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "description",
-                    "fieldValue": "Approved"
-                  },
-                  "input": ["relatedEntity", "updatedBy"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global",
-                    "updatedBy": "userApproval"
-                  }
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "userApproval"
+                    },
+                    {
+                      "from": "userApproval",
+                      "to": "setTask",
+                      "condition": "true"
+                    },
+                    {
+                      "from": "userApproval",
+                      "to": "setTask",
+                      "condition": "false"
+                    },
+                    {
+                      "from": "setTask",
+                      "to": "end"
+                    }
+                  ]
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "userApproval"
-                },
-                {
-                  "from": "userApproval",
-                  "to": "setTask",
-                  "condition": "true"
-                },
-                {
-                  "from": "userApproval",
-                  "to": "setTask",
-                  "condition": "false"
-                },
-                {
-                  "from": "setTask",
-                  "to": "end"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition correctNamespaceWorkflow =
           MAPPER.readValue(correctNamespaceWorkflowJson, CreateWorkflowDefinition.class);
       correctNamespaceWorkflow.withName(
@@ -3695,43 +3709,43 @@ public class WorkflowDefinitionResourceIT {
       // Test 7: Workflow with edge referencing non-existent node should fail
       String invalidEdgeWorkflowJson =
           """
-            {
-              "name": "invalidEdgeWorkflow",
-              "displayName": "Invalid Edge Workflow",
-              "description": "Workflow with edge to non-existent node",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
+                {
+                  "name": "invalidEdgeWorkflow",
+                  "displayName": "Invalid Edge Workflow",
+                  "description": "Workflow with edge to non-existent node",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
+                    }
+                  },
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "nonExistentNode"
+                    },
+                    {
+                      "from": "nonExistentNode",
+                      "to": "end"
+                    }
+                  ]
                 }
-              },
-              "nodes": [
-                {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "nonExistentNode"
-                },
-                {
-                  "from": "nonExistentNode",
-                  "to": "end"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition invalidEdgeWorkflow =
           MAPPER.readValue(invalidEdgeWorkflowJson, CreateWorkflowDefinition.class);
       invalidEdgeWorkflow.withName(invalidEdgeWorkflow.getName() + "_" + UUID.randomUUID());
@@ -3746,43 +3760,43 @@ public class WorkflowDefinitionResourceIT {
       // Test 8: Workflow without start event should fail
       String noStartWorkflowJson =
           """
-            {
-              "name": "noStartWorkflow",
-              "displayName": "No Start Workflow",
-              "description": "Workflow without start event",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
-                }
-              },
-              "nodes": [
                 {
-                  "name": "task",
-                  "displayName": "Task",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "description",
-                    "fieldValue": "Test"
-                  }
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  "name": "noStartWorkflow",
+                  "displayName": "No Start Workflow",
+                  "description": "Workflow without start event",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
+                    }
+                  },
+                  "nodes": [
+                    {
+                      "name": "task",
+                      "displayName": "Task",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "description",
+                        "fieldValue": "Test"
+                      }
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "task",
+                      "to": "end"
+                    }
+                  ]
                 }
-              ],
-              "edges": [
-                {
-                  "from": "task",
-                  "to": "end"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition noStartWorkflow =
           MAPPER.readValue(noStartWorkflowJson, CreateWorkflowDefinition.class);
       noStartWorkflow.withName(noStartWorkflow.getName() + "_" + UUID.randomUUID());
@@ -3797,95 +3811,95 @@ public class WorkflowDefinitionResourceIT {
       // Test 9: Complex cycle with multiple paths should be detected
       String complexCycleWorkflowJson =
           """
-            {
-              "name": "complexCycleWorkflow",
-              "displayName": "Complex Cycle Workflow",
-              "description": "Workflow with complex cycle",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
+                {
+                  "name": "complexCycleWorkflow",
+                  "displayName": "Complex Cycle Workflow",
+                  "description": "Workflow with complex cycle",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
+                    }
+                  },
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "fork",
+                      "displayName": "Fork",
+                      "type": "gateway",
+                      "subType": "parallelGateway"
+                    },
+                    {
+                      "name": "task1",
+                      "displayName": "Task 1",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "description",
+                        "fieldValue": "Test1"
+                      }
+                    },
+                    {
+                      "name": "task2",
+                      "displayName": "Task 2",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "tags",
+                        "fieldValue": "Test.Tag"
+                      }
+                    },
+                    {
+                      "name": "join",
+                      "displayName": "Join",
+                      "type": "gateway",
+                      "subType": "parallelGateway"
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "fork"
+                    },
+                    {
+                      "from": "fork",
+                      "to": "task1"
+                    },
+                    {
+                      "from": "fork",
+                      "to": "task2"
+                    },
+                    {
+                      "from": "task1",
+                      "to": "join"
+                    },
+                    {
+                      "from": "task2",
+                      "to": "join"
+                    },
+                    {
+                      "from": "join",
+                      "to": "fork"
+                    },
+                    {
+                      "from": "join",
+                      "to": "end"
+                    }
+                  ]
                 }
-              },
-              "nodes": [
-                {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "fork",
-                  "displayName": "Fork",
-                  "type": "gateway",
-                  "subType": "parallelGateway"
-                },
-                {
-                  "name": "task1",
-                  "displayName": "Task 1",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "description",
-                    "fieldValue": "Test1"
-                  }
-                },
-                {
-                  "name": "task2",
-                  "displayName": "Task 2",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "tags",
-                    "fieldValue": "Test.Tag"
-                  }
-                },
-                {
-                  "name": "join",
-                  "displayName": "Join",
-                  "type": "gateway",
-                  "subType": "parallelGateway"
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "fork"
-                },
-                {
-                  "from": "fork",
-                  "to": "task1"
-                },
-                {
-                  "from": "fork",
-                  "to": "task2"
-                },
-                {
-                  "from": "task1",
-                  "to": "join"
-                },
-                {
-                  "from": "task2",
-                  "to": "join"
-                },
-                {
-                  "from": "join",
-                  "to": "fork"
-                },
-                {
-                  "from": "join",
-                  "to": "end"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition complexCycleWorkflow =
           MAPPER.readValue(complexCycleWorkflowJson, CreateWorkflowDefinition.class);
       complexCycleWorkflow.withName(complexCycleWorkflow.getName() + "_" + UUID.randomUUID());
@@ -3899,63 +3913,63 @@ public class WorkflowDefinitionResourceIT {
       // Test 10: Multiple start nodes should fail
       String multipleStartWorkflowJson =
           """
-            {
-              "name": "multipleStartWorkflow",
-              "displayName": "Multiple Start Workflow",
-              "description": "Workflow with multiple start nodes",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
+                {
+                  "name": "multipleStartWorkflow",
+                  "displayName": "Multiple Start Workflow",
+                  "description": "Workflow with multiple start nodes",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
+                    }
+                  },
+                  "nodes": [
+                    {
+                      "name": "start1",
+                      "displayName": "Start 1",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "start2",
+                      "displayName": "Start 2",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "task",
+                      "displayName": "Task",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "description",
+                        "fieldValue": "Test"
+                      }
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start1",
+                      "to": "task"
+                    },
+                    {
+                      "from": "start2",
+                      "to": "task"
+                    },
+                    {
+                      "from": "task",
+                      "to": "end"
+                    }
+                  ]
                 }
-              },
-              "nodes": [
-                {
-                  "name": "start1",
-                  "displayName": "Start 1",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "start2",
-                  "displayName": "Start 2",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "task",
-                  "displayName": "Task",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "description",
-                    "fieldValue": "Test"
-                  }
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                }
-              ],
-              "edges": [
-                {
-                  "from": "start1",
-                  "to": "task"
-                },
-                {
-                  "from": "start2",
-                  "to": "task"
-                },
-                {
-                  "from": "task",
-                  "to": "end"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition multipleStartWorkflow =
           MAPPER.readValue(multipleStartWorkflowJson, CreateWorkflowDefinition.class);
       multipleStartWorkflow.withName(multipleStartWorkflow.getName() + "_" + UUID.randomUUID());
@@ -3970,73 +3984,73 @@ public class WorkflowDefinitionResourceIT {
       // Test 11: Orphaned nodes (not reachable from start) should fail
       String orphanedNodesWorkflowJson =
           """
-            {
-              "name": "orphanedNodesWorkflow",
-              "displayName": "Orphaned Nodes Workflow",
-              "description": "Workflow with orphaned nodes",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
+                {
+                  "name": "orphanedNodesWorkflow",
+                  "displayName": "Orphaned Nodes Workflow",
+                  "description": "Workflow with orphaned nodes",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
+                    }
+                  },
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "task1",
+                      "displayName": "Task 1",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "description",
+                        "fieldValue": "Test1"
+                      }
+                    },
+                    {
+                      "name": "orphanedTask",
+                      "displayName": "Orphaned Task",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "tags",
+                        "fieldValue": "Test.Tag"
+                      }
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    },
+                    {
+                      "name": "orphanedEnd",
+                      "displayName": "Orphaned End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "task1"
+                    },
+                    {
+                      "from": "task1",
+                      "to": "end"
+                    },
+                    {
+                      "from": "orphanedTask",
+                      "to": "orphanedEnd"
+                    }
+                  ]
                 }
-              },
-              "nodes": [
-                {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "task1",
-                  "displayName": "Task 1",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "description",
-                    "fieldValue": "Test1"
-                  }
-                },
-                {
-                  "name": "orphanedTask",
-                  "displayName": "Orphaned Task",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "tags",
-                    "fieldValue": "Test.Tag"
-                  }
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                },
-                {
-                  "name": "orphanedEnd",
-                  "displayName": "Orphaned End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "task1"
-                },
-                {
-                  "from": "task1",
-                  "to": "end"
-                },
-                {
-                  "from": "orphanedTask",
-                  "to": "orphanedEnd"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition orphanedNodesWorkflow =
           MAPPER.readValue(orphanedNodesWorkflowJson, CreateWorkflowDefinition.class);
       orphanedNodesWorkflow.withName(orphanedNodesWorkflow.getName() + "_" + UUID.randomUUID());
@@ -4051,63 +4065,63 @@ public class WorkflowDefinitionResourceIT {
       // Test 12: Non-end node without outgoing edges should fail
       String noOutgoingEdgeWorkflowJson =
           """
-            {
-              "name": "noOutgoingEdgeWorkflow",
-              "displayName": "No Outgoing Edge Workflow",
-              "description": "Workflow with non-end node without outgoing edges",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
+                {
+                  "name": "noOutgoingEdgeWorkflow",
+                  "displayName": "No Outgoing Edge Workflow",
+                  "description": "Workflow with non-end node without outgoing edges",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
+                    }
+                  },
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "task1",
+                      "displayName": "Task 1",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "description",
+                        "fieldValue": "Test1"
+                      }
+                    },
+                    {
+                      "name": "task2",
+                      "displayName": "Task 2",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "tags",
+                        "fieldValue": "Test.Tag"
+                      }
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "task1"
+                    },
+                    {
+                      "from": "task1",
+                      "to": "task2"
+                    }
+                  ]
                 }
-              },
-              "nodes": [
-                {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "task1",
-                  "displayName": "Task 1",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "description",
-                    "fieldValue": "Test1"
-                  }
-                },
-                {
-                  "name": "task2",
-                  "displayName": "Task 2",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "tags",
-                    "fieldValue": "Test.Tag"
-                  }
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "task1"
-                },
-                {
-                  "from": "task1",
-                  "to": "task2"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition noOutgoingEdgeWorkflow =
           MAPPER.readValue(noOutgoingEdgeWorkflowJson, CreateWorkflowDefinition.class);
       noOutgoingEdgeWorkflow.withName(noOutgoingEdgeWorkflow.getName() + "_" + UUID.randomUUID());
@@ -4122,63 +4136,63 @@ public class WorkflowDefinitionResourceIT {
       // Test 13: End node with outgoing edges should fail
       String endWithOutgoingWorkflowJson =
           """
-            {
-              "name": "endWithOutgoingWorkflow",
-              "displayName": "End With Outgoing Workflow",
-              "description": "Workflow with end node having outgoing edges",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"]
+                {
+                  "name": "endWithOutgoingWorkflow",
+                  "displayName": "End With Outgoing Workflow",
+                  "description": "Workflow with end node having outgoing edges",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created"]
+                    }
+                  },
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    },
+                    {
+                      "name": "task",
+                      "displayName": "Task After End",
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "config": {
+                        "fieldName": "description",
+                        "fieldValue": "Should not reach here"
+                      }
+                    },
+                    {
+                      "name": "finalEnd",
+                      "displayName": "Final End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "end"
+                    },
+                    {
+                      "from": "end",
+                      "to": "task"
+                    },
+                    {
+                      "from": "task",
+                      "to": "finalEnd"
+                    }
+                  ]
                 }
-              },
-              "nodes": [
-                {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                },
-                {
-                  "name": "task",
-                  "displayName": "Task After End",
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "config": {
-                    "fieldName": "description",
-                    "fieldValue": "Should not reach here"
-                  }
-                },
-                {
-                  "name": "finalEnd",
-                  "displayName": "Final End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "end"
-                },
-                {
-                  "from": "end",
-                  "to": "task"
-                },
-                {
-                  "from": "task",
-                  "to": "finalEnd"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition endWithOutgoingWorkflow =
           MAPPER.readValue(endWithOutgoingWorkflowJson, CreateWorkflowDefinition.class);
       endWithOutgoingWorkflow.withName(endWithOutgoingWorkflow.getName() + "_" + UUID.randomUUID());
@@ -4193,58 +4207,58 @@ public class WorkflowDefinitionResourceIT {
       // Test 14 (Test 8 in original): Conditional task with missing FALSE condition should fail
       String missingFalseConditionJson =
           """
-            {
-              "name": "missingFalseConditionWorkflow",
-              "displayName": "Missing False Condition Workflow",
-              "description": "Workflow with conditional task missing FALSE condition",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["glossaryTerm"],
-                  "events": ["Created"]
-                }
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "checkTask",
-                  "displayName": "Check Task",
-                  "type": "automatedTask",
-                  "subType": "checkEntityAttributesTask",
-                  "config": {
-                    "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+                  "name": "missingFalseConditionWorkflow",
+                  "displayName": "Missing False Condition Workflow",
+                  "description": "Workflow with conditional task missing FALSE condition",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["glossaryTerm"],
+                      "events": ["Created"]
+                    }
                   },
-                  "input": ["relatedEntity"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global"
-                  },
-                  "output": ["result"]
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "checkTask",
+                      "displayName": "Check Task",
+                      "type": "automatedTask",
+                      "subType": "checkEntityAttributesTask",
+                      "config": {
+                        "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+                      },
+                      "input": ["relatedEntity"],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global"
+                      },
+                      "output": ["result"]
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "checkTask"
+                    },
+                    {
+                      "from": "checkTask",
+                      "to": "end",
+                      "condition": "true"
+                    }
+                  ]
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "checkTask"
-                },
-                {
-                  "from": "checkTask",
-                  "to": "end",
-                  "condition": "true"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition missingFalseConditionWorkflow =
           MAPPER.readValue(missingFalseConditionJson, CreateWorkflowDefinition.class);
       missingFalseConditionWorkflow.withName(
@@ -4260,62 +4274,62 @@ public class WorkflowDefinitionResourceIT {
       // Test 15 (Test 9 in original): UserApprovalTask with missing TRUE should fail
       String missingTrueConditionJson =
           """
-            {
-              "name": "missingTrueConditionWorkflow",
-              "displayName": "Missing True Condition Workflow",
-              "description": "Workflow with UserApprovalTask missing TRUE condition",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["glossaryTerm"],
-                  "events": ["Created"]
-                }
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "approvalTask",
-                  "displayName": "Approval Task",
-                  "type": "userTask",
-                  "subType": "userApprovalTask",
-                  "config": {
-                    "assignees": {
-                      "addReviewers": true,
-                      "addOwners": false,
-                      "candidates": []
+                  "name": "missingTrueConditionWorkflow",
+                  "displayName": "Missing True Condition Workflow",
+                  "description": "Workflow with UserApprovalTask missing TRUE condition",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["glossaryTerm"],
+                      "events": ["Created"]
                     }
                   },
-                  "input": ["relatedEntity"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global"
-                  },
-                  "output": ["result"]
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "approvalTask",
+                      "displayName": "Approval Task",
+                      "type": "userTask",
+                      "subType": "userApprovalTask",
+                      "config": {
+                        "assignees": {
+                          "addReviewers": true,
+                          "addOwners": false,
+                          "candidates": []
+                        }
+                      },
+                      "input": ["relatedEntity"],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global"
+                      },
+                      "output": ["result"]
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "approvalTask"
+                    },
+                    {
+                      "from": "approvalTask",
+                      "to": "end",
+                      "condition": "false"
+                    }
+                  ]
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "approvalTask"
-                },
-                {
-                  "from": "approvalTask",
-                  "to": "end",
-                  "condition": "false"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition missingTrueConditionWorkflow =
           MAPPER.readValue(missingTrueConditionJson, CreateWorkflowDefinition.class);
       missingTrueConditionWorkflow.withName(
@@ -4331,69 +4345,69 @@ public class WorkflowDefinitionResourceIT {
       // Test 16 (Test 10 in original): Valid conditional task with both TRUE and FALSE
       String validConditionalJson =
           """
-            {
-              "name": "validConditionalWorkflow",
-              "displayName": "Valid Conditional Workflow",
-              "description": "Workflow with proper conditional task setup",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["glossaryTerm"],
-                  "events": ["Created"]
-                }
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "checkTask",
-                  "displayName": "Check Task",
-                  "type": "automatedTask",
-                  "subType": "checkEntityAttributesTask",
-                  "config": {
-                    "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+                  "name": "validConditionalWorkflow",
+                  "displayName": "Valid Conditional Workflow",
+                  "description": "Workflow with proper conditional task setup",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["glossaryTerm"],
+                      "events": ["Created"]
+                    }
                   },
-                  "input": ["relatedEntity"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global"
-                  },
-                  "output": ["result"]
-                },
-                {
-                  "name": "endTrue",
-                  "displayName": "End True",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                },
-                {
-                  "name": "endFalse",
-                  "displayName": "End False",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "checkTask",
+                      "displayName": "Check Task",
+                      "type": "automatedTask",
+                      "subType": "checkEntityAttributesTask",
+                      "config": {
+                        "rules": "{\\"!!\\":{\\"var\\":\\"description\\"}}"
+                      },
+                      "input": ["relatedEntity"],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global"
+                      },
+                      "output": ["result"]
+                    },
+                    {
+                      "name": "endTrue",
+                      "displayName": "End True",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    },
+                    {
+                      "name": "endFalse",
+                      "displayName": "End False",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "checkTask"
+                    },
+                    {
+                      "from": "checkTask",
+                      "to": "endTrue",
+                      "condition": "true"
+                    },
+                    {
+                      "from": "checkTask",
+                      "to": "endFalse",
+                      "condition": "false"
+                    }
+                  ]
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "checkTask"
-                },
-                {
-                  "from": "checkTask",
-                  "to": "endTrue",
-                  "condition": "true"
-                },
-                {
-                  "from": "checkTask",
-                  "to": "endFalse",
-                  "condition": "false"
-                }
-              ]
-            }
-            """;
+                """;
       CreateWorkflowDefinition validConditionalWorkflow =
           MAPPER.readValue(validConditionalJson, CreateWorkflowDefinition.class);
       validConditionalWorkflow.withName(
@@ -4872,80 +4886,80 @@ public class WorkflowDefinitionResourceIT {
     String unifiedApprovalWorkflowJson =
         String.format(
             """
-                    {
-                      "name": "%s",
-                      "displayName": "Unified Approval Workflow",
-                      "description": "Custom approval workflow for dataContracts, tags, dataProducts, metrics, and testCases",
-                      "trigger": {
-                        "type": "eventBasedEntity",
-                        "config": {
-                          "entityTypes": ["dataContract", "tag", "dataProduct", "metric", "testCase"],
-                          "events": ["Created", "Updated"],
-                          "exclude": ["reviewers"],
-                          "filter": {}
-                        },
-                        "output": ["relatedEntity", "updatedBy"]
-                      },
-                      "nodes": [
-                        {
-                          "type": "startEvent",
-                          "subType": "startEvent",
-                          "name": "StartNode",
-                          "displayName": "Start"
-                        },
-                        {
-                          "type": "endEvent",
-                          "subType": "endEvent",
-                          "name": "EndNode",
-                          "displayName": "End"
-                        },
-                        {
-                          "type": "userTask",
-                          "subType": "userApprovalTask",
-                          "name": "UserApproval",
-                          "displayName": "User Approval",
-                          "config": {
-                            "assignees": {
-                              "addReviewers": true,
-                              "addOwners": false,
-                              "candidates": []
-                            },
-                            "approvalThreshold": 1,
-                            "rejectionThreshold": 1
-                          },
-                          "input": ["relatedEntity"],
-                          "inputNamespaceMap": {
-                            "relatedEntity": "global"
-                          },
-                          "output": ["updatedBy"],
-                          "branches": ["true", "false"]
-                        },
-                        {
-                          "type": "automatedTask",
-                          "subType": "setEntityAttributeTask",
-                          "name": "SetDescription",
-                          "displayName": "Set Description",
-                          "config": {
-                            "fieldName": "description",
-                            "fieldValue": "Updated by Workflow"
-                          },
-                          "input": ["relatedEntity", "updatedBy"],
-                          "inputNamespaceMap": {
-                            "relatedEntity": "global",
-                            "updatedBy": "UserApproval"
-                          },
-                          "output": []
-                        }
-                      ],
-                      "edges": [
-                        {"from": "StartNode", "to": "UserApproval"},
-                        {"from": "UserApproval", "to": "SetDescription", "condition": "true"},
-                        {"from": "SetDescription", "to": "EndNode"},
-                        {"from": "UserApproval", "to": "EndNode", "condition": "false"}
-                      ],
-                      "config": {"storeStageStatus": true}
-                    }
-                    """,
+                            {
+                              "name": "%s",
+                              "displayName": "Unified Approval Workflow",
+                              "description": "Custom approval workflow for dataContracts, tags, dataProducts, metrics, and testCases",
+                              "trigger": {
+                                "type": "eventBasedEntity",
+                                "config": {
+                                  "entityTypes": ["dataContract", "tag", "dataProduct", "metric", "testCase"],
+                                  "events": ["Created", "Updated"],
+                                  "exclude": ["reviewers"],
+                                  "filter": {}
+                                },
+                                "output": ["relatedEntity", "updatedBy"]
+                              },
+                              "nodes": [
+                                {
+                                  "type": "startEvent",
+                                  "subType": "startEvent",
+                                  "name": "StartNode",
+                                  "displayName": "Start"
+                                },
+                                {
+                                  "type": "endEvent",
+                                  "subType": "endEvent",
+                                  "name": "EndNode",
+                                  "displayName": "End"
+                                },
+                                {
+                                  "type": "userTask",
+                                  "subType": "userApprovalTask",
+                                  "name": "UserApproval",
+                                  "displayName": "User Approval",
+                                  "config": {
+                                    "assignees": {
+                                      "addReviewers": true,
+                                      "addOwners": false,
+                                      "candidates": []
+                                    },
+                                    "approvalThreshold": 1,
+                                    "rejectionThreshold": 1
+                                  },
+                                  "input": ["relatedEntity"],
+                                  "inputNamespaceMap": {
+                                    "relatedEntity": "global"
+                                  },
+                                  "output": ["updatedBy"],
+                                  "branches": ["true", "false"]
+                                },
+                                {
+                                  "type": "automatedTask",
+                                  "subType": "setEntityAttributeTask",
+                                  "name": "SetDescription",
+                                  "displayName": "Set Description",
+                                  "config": {
+                                    "fieldName": "description",
+                                    "fieldValue": "Updated by Workflow"
+                                  },
+                                  "input": ["relatedEntity", "updatedBy"],
+                                  "inputNamespaceMap": {
+                                    "relatedEntity": "global",
+                                    "updatedBy": "UserApproval"
+                                  },
+                                  "output": []
+                                }
+                              ],
+                              "edges": [
+                                {"from": "StartNode", "to": "UserApproval"},
+                                {"from": "UserApproval", "to": "SetDescription", "condition": "true"},
+                                {"from": "SetDescription", "to": "EndNode"},
+                                {"from": "UserApproval", "to": "EndNode", "condition": "false"}
+                              ],
+                              "config": {"storeStageStatus": true}
+                            }
+                            """,
             "UnifiedApprovalWorkflow");
 
     CreateWorkflowDefinition unifiedWorkflow =
@@ -5033,7 +5047,6 @@ public class WorkflowDefinitionResourceIT {
     org.openmetadata.schema.entity.data.DataContract dataContract =
         client.dataContracts().create(createDataContract);
     LOG.debug("Created data contract: {} with initial description", dataContract.getName());
-    java.lang.Thread.sleep(2000);
 
     // Step 4: Create classification and tag with reviewers (USER1 as reviewer)
     CreateClassification createClassification =
@@ -5050,7 +5063,6 @@ public class WorkflowDefinitionResourceIT {
             .withReviewers(List.of(reviewerRef));
     Tag tag = client.tags().create(createTag);
     LOG.debug("Created tag: {} with initial description", tag.getName());
-    java.lang.Thread.sleep(2000);
 
     // Step 5: Create dataProduct with reviewers (dedicated reviewer)
     org.openmetadata.schema.api.domains.CreateDataProduct createDataProduct =
@@ -5063,7 +5075,6 @@ public class WorkflowDefinitionResourceIT {
     org.openmetadata.schema.entity.domains.DataProduct dataProduct =
         client.dataProducts().create(createDataProduct);
     LOG.debug("Created data product: {} with initial description", dataProduct.getName());
-    java.lang.Thread.sleep(2000);
 
     // Add asset using bulk API
     org.openmetadata.schema.type.api.BulkAssets bulkAssets =
@@ -5081,7 +5092,6 @@ public class WorkflowDefinitionResourceIT {
             .withReviewers(List.of(reviewerRef));
     Metric metric = client.metrics().create(createMetric);
     LOG.debug("Created metric: {} with initial description", metric.getName());
-    java.lang.Thread.sleep(2000);
 
     // Step 5.6: Create testCase with reviewers
     CreateTestDefinition createTestDef =
@@ -5106,7 +5116,6 @@ public class WorkflowDefinitionResourceIT {
 
     TestCase testCase = client.testCases().create(createTestCase);
     LOG.debug("Created test case: {} with initial description", testCase.getName());
-    java.lang.Thread.sleep(2000);
 
     // Step 6: Find and resolve approval tasks for each entity
     LOG.debug("Finding and resolving approval tasks");
@@ -5193,7 +5202,6 @@ public class WorkflowDefinitionResourceIT {
                 dataContract.getId(),
                 JsonUtils.readTree(
                     JsonUtils.getJsonPatch(dataContract, updatedContract).toString()));
-    java.lang.Thread.sleep(2000);
 
     // Update tag description
     Tag updatedTagObj = JsonUtils.deepCopy(tag, Tag.class);
@@ -5204,7 +5212,6 @@ public class WorkflowDefinitionResourceIT {
             .patch(
                 tag.getId(),
                 JsonUtils.readTree(JsonUtils.getJsonPatch(tag, updatedTagObj).toString()));
-    java.lang.Thread.sleep(2000);
 
     // Update dataProduct description
     org.openmetadata.schema.entity.domains.DataProduct updatedDataProduct =
@@ -5217,7 +5224,6 @@ public class WorkflowDefinitionResourceIT {
                 dataProduct.getId(),
                 JsonUtils.readTree(
                     JsonUtils.getJsonPatch(dataProduct, updatedDataProduct).toString()));
-    java.lang.Thread.sleep(2000);
 
     // Update metric description
     Metric updatedMetric = JsonUtils.deepCopy(metric, Metric.class);
@@ -5228,7 +5234,6 @@ public class WorkflowDefinitionResourceIT {
             .patch(
                 metric.getId(),
                 JsonUtils.readTree(JsonUtils.getJsonPatch(metric, updatedMetric).toString()));
-    java.lang.Thread.sleep(2000);
 
     // Update testCase description
     TestCase updatedTestCase = JsonUtils.deepCopy(testCase, TestCase.class);
@@ -5239,9 +5244,6 @@ public class WorkflowDefinitionResourceIT {
             .patch(
                 testCase.getId(),
                 JsonUtils.readTree(JsonUtils.getJsonPatch(testCase, updatedTestCase).toString()));
-
-    // Wait for new tasks to be created
-    java.lang.Thread.sleep(10000);
 
     // Step 9: Find and resolve new approval tasks
     LOG.debug("Finding and resolving new approval tasks after updates");
@@ -5260,9 +5262,6 @@ public class WorkflowDefinitionResourceIT {
 
     // Resolve new TestCase approval task
     waitAndResolveTask.accept(testCaseEntityLink, "TestCase");
-
-    // Wait for workflows to complete after approval
-    java.lang.Thread.sleep(5000);
 
     // Step 10: Verify descriptions were updated back by workflows
     verifyEntityDescriptionsUpdated(
@@ -5397,85 +5396,84 @@ public class WorkflowDefinitionResourceIT {
     // Create a workflow with user approval task for dataProduct
     String autoApprovalWorkflowJson =
         """
-            {
-              "name": "%s",
-              "displayName": "Auto Approval Test Workflow",
-              "description": "Test workflow to verify auto-approval when no reviewers are configured",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["dataProduct"],
-                  "events": ["Created", "Updated"],
-                  "exclude": ["reviewers"],
-                  "filter": {}
-                },
-                "output": ["relatedEntity", "updatedBy"]
-              },
-              "nodes": [
                 {
-                  "type": "startEvent",
-                  "subType": "startEvent",
-                  "name": "StartNode",
-                  "displayName": "Start"
-                },
-                {
-                  "type": "endEvent",
-                  "subType": "endEvent",
-                  "name": "EndNode",
-                  "displayName": "End"
-                },
-                {
-                  "type": "userTask",
-                  "subType": "userApprovalTask",
-                  "name": "UserApproval",
-                  "displayName": "User Approval",
-                  "config": {
-                    "assignees": {
-                      "addReviewers": true,
-                      "addOwners": false,
-                      "candidates": []
+                  "name": "%s",
+                  "displayName": "Auto Approval Test Workflow",
+                  "description": "Test workflow to verify auto-approval when no reviewers are configured",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["dataProduct"],
+                      "events": ["Created", "Updated"],
+                      "exclude": ["reviewers"],
+                      "filter": {}
                     },
-                    "approvalThreshold": 1,
-                    "rejectionThreshold": 1
+                    "output": ["relatedEntity", "updatedBy"]
                   },
-                  "input": ["relatedEntity"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global"
-                  },
-                  "output": ["updatedBy"],
-                  "branches": ["true", "false"]
-                },
-                {
-                  "type": "automatedTask",
-                  "subType": "setEntityAttributeTask",
-                  "name": "SetStatusApproved",
-                  "displayName": "Set Status to Approved",
-                  "config": {
-                    "fieldName": "entityStatus",
-                    "fieldValue": "Approved"
-                  },
-                  "input": ["relatedEntity", "updatedBy"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global",
-                    "updatedBy": "UserApproval"
-                  },
-                  "output": []
+                  "nodes": [
+                    {
+                      "type": "startEvent",
+                      "subType": "startEvent",
+                      "name": "StartNode",
+                      "displayName": "Start"
+                    },
+                    {
+                      "type": "endEvent",
+                      "subType": "endEvent",
+                      "name": "EndNode",
+                      "displayName": "End"
+                    },
+                    {
+                      "type": "userTask",
+                      "subType": "userApprovalTask",
+                      "name": "UserApproval",
+                      "displayName": "User Approval",
+                      "config": {
+                        "assignees": {
+                          "addReviewers": true,
+                          "addOwners": false,
+                          "candidates": []
+                        },
+                        "approvalThreshold": 1,
+                        "rejectionThreshold": 1
+                      },
+                      "input": ["relatedEntity"],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global"
+                      },
+                      "output": ["updatedBy"],
+                      "branches": ["true", "false"]
+                    },
+                    {
+                      "type": "automatedTask",
+                      "subType": "setEntityAttributeTask",
+                      "name": "SetStatusApproved",
+                      "displayName": "Set Status to Approved",
+                      "config": {
+                        "fieldName": "entityStatus",
+                        "fieldValue": "Approved"
+                      },
+                      "input": ["relatedEntity", "updatedBy"],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global",
+                        "updatedBy": "UserApproval"
+                      },
+                      "output": []
+                    }
+                  ],
+                  "edges": [
+                    {"from": "StartNode", "to": "UserApproval"},
+                    {"from": "UserApproval", "to": "SetStatusApproved", "condition": "true"},
+                    {"from": "SetStatusApproved", "to": "EndNode"},
+                    {"from": "UserApproval", "to": "EndNode", "condition": "false"}
+                  ],
+                  "config": {"storeStageStatus": false}
                 }
-              ],
-              "edges": [
-                {"from": "StartNode", "to": "UserApproval"},
-                {"from": "UserApproval", "to": "SetStatusApproved", "condition": "true"},
-                {"from": "SetStatusApproved", "to": "EndNode"},
-                {"from": "UserApproval", "to": "EndNode", "condition": "false"}
-              ],
-              "config": {"storeStageStatus": true}
-            }
-            """
+                """
             .formatted(workflowName);
 
     CreateWorkflowDefinition autoApprovalWorkflow =
         JsonUtils.readValue(autoApprovalWorkflowJson, CreateWorkflowDefinition.class);
-    java.lang.Thread.sleep(2000);
     String response =
         client
             .getHttpClient()
@@ -5493,6 +5491,8 @@ public class WorkflowDefinitionResourceIT {
     } catch (Exception e) {
       LOG.warn("Failed to parse created workflow id for {}: {}", workflowName, e.getMessage());
     }
+
+    waitForWorkflowDeployment(client, workflowName);
 
     // Create database infrastructure for dataProduct
     CreateDatabaseService createDbService =
@@ -5561,29 +5561,10 @@ public class WorkflowDefinitionResourceIT {
             .withAssets(List.of(table.getEntityReference()));
     client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets);
 
-    // Wait for workflow to process and auto-approve
-    // Adding extra time to handle potential duplicate workflow executions
-    java.lang.Thread.sleep(15000);
-
-    // Verify no user tasks were created (since there are no reviewers, it should auto-approve)
-    // Using client.feed().listTasks()
-    String dataProductEntityLink =
-        String.format(
-            "<#E::%s::%s>",
-            org.openmetadata.service.Entity.DATA_PRODUCT, dataProduct.getFullyQualifiedName());
-    ResultList<org.openmetadata.schema.entity.feed.Thread> tasks =
-        client.feed().listTasks(dataProductEntityLink, TaskStatus.Open, null);
-
-    // Should have no tasks since auto-approval happened
-    assertTrue(
-        tasks.getData().isEmpty(),
-        "Expected no user tasks since dataProduct has no reviewers (should auto-approve)");
-    LOG.debug("✓ Confirmed no user tasks were created for dataProduct without reviewers");
-
     // Verify that the dataProduct status was set to "Approved" by the workflow
     LOG.info("Verifying dataProduct status was auto-approved...");
     await()
-        .atMost(Duration.ofSeconds(120))
+        .atMost(Duration.ofSeconds(180))
         .pollInterval(Duration.ofSeconds(2))
         .pollDelay(Duration.ofSeconds(2))
         .ignoreExceptions() // Ignore transient errors during polling
@@ -5591,7 +5572,9 @@ public class WorkflowDefinitionResourceIT {
             () -> {
               try {
                 org.openmetadata.schema.entity.domains.DataProduct updatedProduct =
-                    client.dataProducts().getByName(dataProduct.getFullyQualifiedName());
+                    client
+                        .dataProducts()
+                        .getByName(dataProduct.getFullyQualifiedName(), "entityStatus");
                 LOG.debug("DataProduct status: {}", updatedProduct.getEntityStatus());
                 return updatedProduct.getEntityStatus() != null
                     && "Approved".equals(updatedProduct.getEntityStatus().toString());
@@ -5600,6 +5583,25 @@ public class WorkflowDefinitionResourceIT {
                 return false;
               }
             });
+
+    // Verify no user tasks were created (since there are no reviewers, it should auto-approve)
+    String dataProductEntityLink =
+        String.format(
+            "<#E::%s::%s>",
+            org.openmetadata.service.Entity.DATA_PRODUCT, dataProduct.getFullyQualifiedName());
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              ResultList<org.openmetadata.schema.entity.feed.Thread> tasks =
+                  client.feed().listTasks(dataProductEntityLink, TaskStatus.Open, null);
+              assertTrue(
+                  tasks.getData().isEmpty(),
+                  "Expected no user tasks since dataProduct has no reviewers (should auto-approve)");
+            });
+    LOG.debug("✓ Confirmed no user tasks were created for dataProduct without reviewers");
 
     LOG.info("✓ DataProduct status successfully auto-approved to 'Approved'");
     LOG.info("test_AutoApprovalForEntitiesWithoutReviewers completed successfully");
@@ -5621,19 +5623,19 @@ public class WorkflowDefinitionResourceIT {
 
     String workflowJson =
         """
-            {
-              "name": "Test",
-              "displayName": "Test-1",
-              "description": "string",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "output": [],
-                "config": {}
-              },
-              "nodes": [],
-              "edges": []
-            }
-            """;
+                {
+                  "name": "Test",
+                  "displayName": "Test-1",
+                  "description": "string",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "output": [],
+                    "config": {}
+                  },
+                  "nodes": [],
+                  "edges": []
+                }
+                """;
 
     CreateWorkflowDefinition workflow =
         JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
@@ -5650,19 +5652,19 @@ public class WorkflowDefinitionResourceIT {
     // Update the same workflow - should succeed again
     String updatedWorkflowJson =
         """
-            {
-              "name": "Test",
-              "displayName": "Test-1-Updated",
-              "description": "updated string",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "output": [],
-                "config": {}
-              },
-              "nodes": [],
-              "edges": []
-            }
-            """;
+                {
+                  "name": "Test",
+                  "displayName": "Test-1-Updated",
+                  "description": "updated string",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "output": [],
+                    "config": {}
+                  },
+                  "nodes": [],
+                  "edges": []
+                }
+                """;
 
     // Update the workflow - should succeed
     // SDK expects WorkflowDefinition for update (upsert), not CreateWorkflowDefinition
@@ -5717,76 +5719,76 @@ public class WorkflowDefinitionResourceIT {
     // Create an approval workflow for tags (which support reviewers)
     String approvalWorkflowJson =
         """
-            {
-              "name": "%s",
-              "displayName": "Tag Approval Workflow",
-              "description": "Workflow for testing reviewer change functionality",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["tag"],
-                  "events": ["Created", "Updated"],
-                  "exclude": ["reviewers"],
-                  "filter": {}
-                },
-                "output": ["relatedEntity", "updatedBy"]
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "ApproveTag",
-                  "displayName": "Approve Tag",
-                  "type": "userTask",
-                  "subType": "userApprovalTask",
-                  "config": {
-                    "assignees": {
-                      "addReviewers": true,
-                      "addOwners": false,
-                      "candidates": []
+                  "name": "%s",
+                  "displayName": "Tag Approval Workflow",
+                  "description": "Workflow for testing reviewer change functionality",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["tag"],
+                      "events": ["Created", "Updated"],
+                      "exclude": ["reviewers"],
+                      "filter": {}
                     },
-                    "approvalThreshold": 1,
-                    "rejectionThreshold": 1
+                    "output": ["relatedEntity", "updatedBy"]
                   },
-                  "input": ["relatedEntity"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global"
-                  },
-                  "output": ["updatedBy"],
-                  "branches": ["true", "false"]
-                },
-                {
-                  "name": "end",
-                  "displayName": "End",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "ApproveTag",
+                      "displayName": "Approve Tag",
+                      "type": "userTask",
+                      "subType": "userApprovalTask",
+                      "config": {
+                        "assignees": {
+                          "addReviewers": true,
+                          "addOwners": false,
+                          "candidates": []
+                        },
+                        "approvalThreshold": 1,
+                        "rejectionThreshold": 1
+                      },
+                      "input": ["relatedEntity"],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global"
+                      },
+                      "output": ["updatedBy"],
+                      "branches": ["true", "false"]
+                    },
+                    {
+                      "name": "end",
+                      "displayName": "End",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "from": "start",
+                      "to": "ApproveTag"
+                    },
+                    {
+                      "from": "ApproveTag",
+                      "to": "end",
+                      "condition": "true"
+                    },
+                    {
+                      "from": "ApproveTag",
+                      "to": "end",
+                      "condition": "false"
+                    }
+                  ],
+                  "config": {
+                    "storeStageStatus": true
+                  }
                 }
-              ],
-              "edges": [
-                {
-                  "from": "start",
-                  "to": "ApproveTag"
-                },
-                {
-                  "from": "ApproveTag",
-                  "to": "end",
-                  "condition": "true"
-                },
-                {
-                  "from": "ApproveTag",
-                  "to": "end",
-                  "condition": "false"
-                }
-              ],
-              "config": {
-                "storeStageStatus": true
-              }
-            }
-            """;
+                """;
 
     CreateWorkflowDefinition approvalWorkflow =
         JsonUtils.readValue(
@@ -5797,9 +5799,7 @@ public class WorkflowDefinitionResourceIT {
     WorkflowDefinition createdWorkflow = client.workflowDefinitions().create(approvalWorkflow);
     assertNotNull(createdWorkflow);
     LOG.debug("Created tag approval workflow: {}", createdWorkflow.getName());
-
-    // Wait for workflow to be ready
-    java.lang.Thread.sleep(2000);
+    waitForWorkflowDeployment(client, createdWorkflow.getName());
 
     // Create a classification for our test tags
     // Classification CreateClassification doesn't follow usual pattern? Checking Service...
@@ -5829,9 +5829,6 @@ public class WorkflowDefinitionResourceIT {
         tag.getReviewers().getFirst().getId(),
         "reviewer1 should be the reviewer");
     LOG.debug("Created tag with reviewer1: {}, Status: {}", tag.getName(), tag.getEntityStatus());
-
-    // Wait for workflow to process the create event
-    java.lang.Thread.sleep(5000);
 
     // Verify that an approval task was created and assigned to the reviewers
     String entityLink =
@@ -6064,70 +6061,70 @@ public class WorkflowDefinitionResourceIT {
 
     String workflowJson =
         """
-        {
-          "name": "%s",
-          "displayName": "API Endpoint Processing Workflow",
-          "description": "Workflow to process API endpoints with periodic batch trigger",
-          "type": "periodicBatchEntity",
-          "trigger": {
-            "type": "periodicBatchEntity",
-            "config": {
-              "entityTypes": ["apiEndpoint"],
-              "schedule": {
-                "scheduleTimeline": "None"
+            {
+              "name": "%s",
+              "displayName": "API Endpoint Processing Workflow",
+              "description": "Workflow to process API endpoints with periodic batch trigger",
+              "type": "periodicBatchEntity",
+              "trigger": {
+                "type": "periodicBatchEntity",
+                "config": {
+                  "entityTypes": ["apiEndpoint"],
+                  "schedule": {
+                    "scheduleTimeline": "None"
+                  },
+                  "batchSize": 100,
+                  "filters": {
+                    "apiEndpoint": "{\\"query\\":{\\"match\\":{\\"description\\":\\"workflow\\"}}}"
+                  }
+                },
+                "output": ["relatedEntity", "updatedBy"]
               },
-              "batchSize": 100,
-              "filters": {
-                "apiEndpoint": "{\\"query\\":{\\"match\\":{\\"description\\":\\"workflow\\"}}}"
-              }
-            },
-            "output": ["relatedEntity", "updatedBy"]
-          },
-          "nodes": [
-            {
-              "type": "startEvent",
-              "subType": "startEvent",
-              "name": "start",
-              "displayName": "Start"
-            },
-            {
-              "type": "automatedTask",
-              "subType": "setEntityAttributeTask",
-              "name": "UpdateDescription",
-              "displayName": "Update API Endpoint Description",
+              "nodes": [
+                {
+                  "type": "startEvent",
+                  "subType": "startEvent",
+                  "name": "start",
+                  "displayName": "Start"
+                },
+                {
+                  "type": "automatedTask",
+                  "subType": "setEntityAttributeTask",
+                  "name": "UpdateDescription",
+                  "displayName": "Update API Endpoint Description",
+                  "config": {
+                    "fieldName": "description",
+                    "fieldValue": "Processed by workflow - API endpoint updated"
+                  },
+                  "input": ["relatedEntity", "updatedBy"],
+                  "inputNamespaceMap": {
+                    "relatedEntity": "global",
+                    "updatedBy": "global"
+                  },
+                  "output": []
+                },
+                {
+                  "type": "endEvent",
+                  "subType": "endEvent",
+                  "name": "end",
+                  "displayName": "End"
+                }
+              ],
+              "edges": [
+                {
+                  "from": "start",
+                  "to": "UpdateDescription"
+                },
+                {
+                  "from": "UpdateDescription",
+                  "to": "end"
+                }
+              ],
               "config": {
-                "fieldName": "description",
-                "fieldValue": "Processed by workflow - API endpoint updated"
-              },
-              "input": ["relatedEntity", "updatedBy"],
-              "inputNamespaceMap": {
-                "relatedEntity": "global",
-                "updatedBy": "global"
-              },
-              "output": []
-            },
-            {
-              "type": "endEvent",
-              "subType": "endEvent",
-              "name": "end",
-              "displayName": "End"
+                "storeStageStatus": true
+              }
             }
-          ],
-          "edges": [
-            {
-              "from": "start",
-              "to": "UpdateDescription"
-            },
-            {
-              "from": "UpdateDescription",
-              "to": "end"
-            }
-          ],
-          "config": {
-            "storeStageStatus": true
-          }
-        }
-        """
+            """
             .formatted("ApiEndpointProcessingWorkflow");
 
     CreateWorkflowDefinition workflow =
@@ -6453,6 +6450,8 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(created.has("id"));
     assertEquals(workflowName, created.get("name").asText());
     LOG.debug("DataCompleteness workflow created: {}", workflowName);
+
+    waitForWorkflowDeployment(client, workflowName);
   }
 
   private String buildDataCompletenessWorkflowJson(String workflowName) {
@@ -6506,7 +6505,7 @@ public class WorkflowDefinitionResourceIT {
             {"from": "start", "to": "SetCertification"},
             {"from": "SetCertification", "to": "end"}
           ],
-          "config": {"storeStageStatus": true}
+          "config": {"storeStageStatus": false}
         }
         """
         .formatted(workflowName, workflowName);
@@ -6515,6 +6514,11 @@ public class WorkflowDefinitionResourceIT {
   private void triggerWorkflow_SDK(TestNamespace ns) throws Exception {
     String workflowName = "DataCompletenessWorkflow";
     OpenMetadataClient client = SdkClients.adminClient();
+
+    waitForWorkflowDeployment(client, workflowName);
+    for (Table table : testTables) {
+      waitForEntityIndexedInSearch(client, "table_search_index", table.getFullyQualifiedName());
+    }
 
     // Trigger the workflow using SDK
     String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
@@ -6571,29 +6575,34 @@ public class WorkflowDefinitionResourceIT {
   }
 
   private void verifyTableCertifications_SDK() throws Exception {
-    // Wait for workflow to process (use Thread.sleep for consistency with original test)
-    java.lang.Thread.sleep(30000);
+    await()
+        .atMost(Duration.ofSeconds(180))
+        .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              for (Table table : testTables) {
+                Table updatedTable =
+                    SdkClients.adminClient()
+                        .tables()
+                        .get(table.getId().toString(), "certification");
 
-    // Final verification - check all tables have the expected Gold certification
-    for (Table table : testTables) {
-      Table updatedTable =
-          SdkClients.adminClient().tables().get(table.getId().toString(), "certification");
+                if (updatedTable.getCertification() != null) {
+                  LOG.debug(
+                      "Table {} has certification: {}",
+                      updatedTable.getName(),
+                      updatedTable.getCertification().getTagLabel().getTagFQN());
 
-      if (updatedTable.getCertification() != null) {
-        LOG.debug(
-            "Table {} has certification: {}",
-            updatedTable.getName(),
-            updatedTable.getCertification().getTagLabel().getTagFQN());
-
-        // For this simplified test, all tables should get Gold certification
-        assertEquals(
-            "Certification.Gold",
-            updatedTable.getCertification().getTagLabel().getTagFQN(),
-            "Table " + updatedTable.getName() + " should have Gold certification");
-      } else {
-        LOG.warn("Table {} has no certification", updatedTable.getName());
-      }
-    }
+                  assertEquals(
+                      "Certification.Gold",
+                      updatedTable.getCertification().getTagLabel().getTagFQN(),
+                      "Table " + updatedTable.getName() + " should have Gold certification");
+                } else {
+                  LOG.warn("Table {} has no certification", updatedTable.getName());
+                  fail("Table " + updatedTable.getName() + " has no certification");
+                }
+              }
+            });
 
     LOG.info("Certification verification completed successfully");
   }
@@ -6610,6 +6619,81 @@ public class WorkflowDefinitionResourceIT {
               .withDomainType(CreateDomain.DomainType.AGGREGATE);
       return SdkClients.adminClient().domains().create(createDomain);
     }
+  }
+
+  private void waitForWorkflowDeployment(OpenMetadataClient client, String workflowName) {
+    await()
+        .atMost(Duration.ofSeconds(120))
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              WorkflowDefinition workflow =
+                  client.workflowDefinitions().getByName(workflowName, "deployed");
+              return Boolean.TRUE.equals(workflow.getDeployed());
+            });
+  }
+
+  private void waitForEntityIndexedInSearch(
+      OpenMetadataClient client, String indexName, String entityFqn) {
+    await()
+        .atMost(Duration.ofSeconds(120))
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(() -> hasEntityInSearchIndex(client, indexName, entityFqn));
+  }
+
+  private boolean hasEntityInSearchIndex(
+      OpenMetadataClient client, String indexName, String entityFqn) throws IOException {
+    String escapedFqn = entityFqn.replace("\\", "\\\\").replace("\"", "\\\"");
+    String queryFilter =
+        """
+            {
+              "query": {
+                "bool": {
+                  "should": [
+                    { "term": { "fullyQualifiedName.keyword": "%s" } },
+                    { "term": { "fullyQualifiedName": "%s" } },
+                    { "match_phrase": { "fullyQualifiedName": "%s" } }
+                  ],
+                  "minimum_should_match": 1
+                }
+              }
+            }
+            """
+            .formatted(escapedFqn, escapedFqn, escapedFqn);
+    String response =
+        client.search().query("*").index(indexName).queryFilter(queryFilter).size(5).execute();
+    JsonNode searchJson = MAPPER.readTree(response);
+    if (getTotalHits(searchJson) == 0) {
+      return false;
+    }
+
+    JsonNode hits = searchJson.path("hits").path("hits");
+    if (!hits.isArray()) {
+      return false;
+    }
+
+    for (JsonNode hit : hits) {
+      String hitFqn = hit.path("_source").path("fullyQualifiedName").asText(null);
+      if (entityFqn.equals(hitFqn)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private long getTotalHits(JsonNode searchJson) {
+    if (!searchJson.has("hits") || !searchJson.get("hits").has("total")) {
+      return 0;
+    }
+    JsonNode total = searchJson.get("hits").get("total");
+    if (total.isObject() && total.has("value")) {
+      return total.get("value").asLong();
+    }
+    return total.asLong();
   }
 
   /**
@@ -6658,14 +6742,30 @@ public class WorkflowDefinitionResourceIT {
 
       client.eventSubscriptions().create(createSubscription);
       LOG.info("Created WorkflowEventConsumer subscription");
-      java.lang.Thread.sleep(2000); // Give it time to initialize
+      await()
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(1))
+          .pollDelay(Duration.ofMillis(500))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  Boolean.TRUE.equals(
+                      client.eventSubscriptions().getByName("WorkflowEventConsumer").getEnabled()));
     } else if (!existing.getEnabled()) {
       // Enable if disabled using patch
       String patchStr = "[{\"op\":\"replace\",\"path\":\"/enabled\",\"value\":true}]";
       JsonNode patch = MAPPER.readTree(patchStr);
       client.eventSubscriptions().patch(existing.getId(), patch);
       LOG.info("Enabled WorkflowEventConsumer subscription");
-      java.lang.Thread.sleep(1000);
+      await()
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(1))
+          .pollDelay(Duration.ofMillis(500))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  Boolean.TRUE.equals(
+                      client.eventSubscriptions().getByName("WorkflowEventConsumer").getEnabled()));
     }
   }
 
@@ -6763,82 +6863,82 @@ public class WorkflowDefinitionResourceIT {
 
     String workflowJson =
         """
-            {
-              "name": "%s",
-              "displayName": "Comprehensive Assignment Test Workflow",
-              "description": "Workflow testing reviewers, owners, and candidates assignment",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created", "Updated"],
-                  "exclude": ["reviewers"],
-                  "filter": {}
-                },
-                "output": ["relatedEntity", "updatedBy"]
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "ApproveTable",
-                  "displayName": "Approve Table",
-                  "type": "userTask",
-                  "subType": "userApprovalTask",
-                  "config": {
-                    "assignees": {
-                      "addReviewers": true,
-                      "addOwners": true,
-                      "candidates": [
-                        {
-                          "id": "%s",
-                          "type": "user",
-                          "fullyQualifiedName": "%s",
-                          "name": "%s"
-                        },
-                        {
-                          "id": "%s",
-                          "type": "user",
-                          "fullyQualifiedName": "%s",
-                          "name": "%s"
-                        }
-                      ]
+                  "name": "%s",
+                  "displayName": "Comprehensive Assignment Test Workflow",
+                  "description": "Workflow testing reviewers, owners, and candidates assignment",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created", "Updated"],
+                      "exclude": ["reviewers"],
+                      "filter": {}
                     },
-                    "approvalThreshold": 1,
-                    "rejectionThreshold": 1
+                    "output": ["relatedEntity", "updatedBy"]
                   },
-                  "input": ["relatedEntity"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global"
-                  },
-                  "output": ["result"],
-                  "branches": ["true", "false"]
-                },
-                {
-                  "name": "endApproved",
-                  "displayName": "End Approved",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                },
-                {
-                  "name": "endRejected",
-                  "displayName": "End Rejected",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "ApproveTable",
+                      "displayName": "Approve Table",
+                      "type": "userTask",
+                      "subType": "userApprovalTask",
+                      "config": {
+                        "assignees": {
+                          "addReviewers": true,
+                          "addOwners": true,
+                          "candidates": [
+                            {
+                              "id": "%s",
+                              "type": "user",
+                              "fullyQualifiedName": "%s",
+                              "name": "%s"
+                            },
+                            {
+                              "id": "%s",
+                              "type": "user",
+                              "fullyQualifiedName": "%s",
+                              "name": "%s"
+                            }
+                          ]
+                        },
+                        "approvalThreshold": 1,
+                        "rejectionThreshold": 1
+                      },
+                      "input": ["relatedEntity"],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global"
+                      },
+                      "output": ["result"],
+                      "branches": ["true", "false"]
+                    },
+                    {
+                      "name": "endApproved",
+                      "displayName": "End Approved",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    },
+                    {
+                      "name": "endRejected",
+                      "displayName": "End Rejected",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {"from": "start", "to": "ApproveTable"},
+                    {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
+                    {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                  ],
+                  "config": {"storeStageStatus": false}
                 }
-              ],
-              "edges": [
-                {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
-              ],
-              "config": {"storeStageStatus": false}
-            }
-            """
+                """
             .formatted(
                 "TableApprovalWorkflow",
                 candidate1.getId(),
@@ -7152,75 +7252,75 @@ public class WorkflowDefinitionResourceIT {
 
     String workflowJson =
         """
-            {
-              "name": "%s",
-              "displayName": "Team Assignment Test Workflow",
-              "description": "Workflow testing team candidates assignment",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created", "Updated"],
-                  "exclude": ["reviewers"],
-                  "filter": {}
-                },
-                "output": ["relatedEntity", "updatedBy"]
-              },
-              "nodes": [
                 {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "ApproveTable",
-                  "displayName": "Approve Table",
-                  "type": "userTask",
-                  "subType": "userApprovalTask",
-                  "config": {
-                    "assignees": {
-                      "addReviewers": true,
-                      "addOwners": true,
-                      "candidates": [
-                        {
-                          "id": "%s",
-                          "type": "team",
-                          "fullyQualifiedName": "%s",
-                          "name": "%s"
-                        }
-                      ]
+                  "name": "%s",
+                  "displayName": "Team Assignment Test Workflow",
+                  "description": "Workflow testing team candidates assignment",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["table"],
+                      "events": ["Created", "Updated"],
+                      "exclude": ["reviewers"],
+                      "filter": {}
                     },
-                    "approvalThreshold": 1,
-                    "rejectionThreshold": 1
+                    "output": ["relatedEntity", "updatedBy"]
                   },
-                  "input": ["relatedEntity"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global"
-                  },
-                  "output": ["result"],
-                  "branches": ["true", "false"]
-                },
-                {
-                  "name": "endApproved",
-                  "displayName": "End Approved",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                },
-                {
-                  "name": "endRejected",
-                  "displayName": "End Rejected",
-                  "type": "endEvent",
-                  "subType": "endEvent"
+                  "nodes": [
+                    {
+                      "name": "start",
+                      "displayName": "Start",
+                      "type": "startEvent",
+                      "subType": "startEvent"
+                    },
+                    {
+                      "name": "ApproveTable",
+                      "displayName": "Approve Table",
+                      "type": "userTask",
+                      "subType": "userApprovalTask",
+                      "config": {
+                        "assignees": {
+                          "addReviewers": true,
+                          "addOwners": true,
+                          "candidates": [
+                            {
+                              "id": "%s",
+                              "type": "team",
+                              "fullyQualifiedName": "%s",
+                              "name": "%s"
+                            }
+                          ]
+                        },
+                        "approvalThreshold": 1,
+                        "rejectionThreshold": 1
+                      },
+                      "input": ["relatedEntity"],
+                      "inputNamespaceMap": {
+                        "relatedEntity": "global"
+                      },
+                      "output": ["result"],
+                      "branches": ["true", "false"]
+                    },
+                    {
+                      "name": "endApproved",
+                      "displayName": "End Approved",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    },
+                    {
+                      "name": "endRejected",
+                      "displayName": "End Rejected",
+                      "type": "endEvent",
+                      "subType": "endEvent"
+                    }
+                  ],
+                  "edges": [
+                    {"from": "start", "to": "ApproveTable"},
+                    {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
+                    {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                  ]
                 }
-              ],
-              "edges": [
-                {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
-              ]
-            }
-            """
+                """
             .formatted(
                 "TeamApprovalWorkflow",
                 approvalTeam.getId(),
