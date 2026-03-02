@@ -9,6 +9,7 @@ import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -177,7 +178,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     boolean needTables =
-        fields.contains(FIELD_TAGS) || fields.contains(FIELD_OWNERS) || fields.contains("domains");
+        fields.contains(FIELD_TAGS)
+            || fields.contains(FIELD_OWNERS)
+            || fields.contains("domains")
+            || fields.contains(FIELD_FOLLOWERS);
     if (needTables) {
       Map<String, Table> tableCache = batchLoadLinkedTables(testCases);
       linkedTablesCache.set(tableCache);
@@ -213,7 +217,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         tableRepo.getDao().findEntityByNames(new ArrayList<>(fqnToEntityLink.keySet()), ALL);
     tableRepo.setFieldsInBulk(
         new Fields(
-            Set.of("tags", "columns", FIELD_OWNERS, "domains"), "tags,columns,owners,domains"),
+            Set.of("tags", "columns", FIELD_OWNERS, "domains", FIELD_FOLLOWERS),
+            "tags,columns,owners,domains,followers"),
         tables);
 
     return tables.stream()
@@ -406,12 +411,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     Table table = tableCache != null ? tableCache.get(entityLink.getEntityFQN()) : null;
 
     if (table == null) {
-      table = Entity.getEntity(entityLink, "owners,domains,tags,columns", ALL);
+      table = Entity.getEntity(entityLink, "owners,domains,tags,columns,followers", ALL);
     }
 
     if (table != null) {
       inheritOwners(testCase, fields, table);
       inheritDomains(testCase, fields, table);
+      inheritTags(testCase, fields, table);
+      inheritFollowers(testCase, fields, table);
     }
 
     if (fields.contains(FIELD_REVIEWERS)) {
@@ -479,6 +486,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       if (table != null) {
         inheritOwners(testCase, fields, table);
         inheritDomains(testCase, fields, table);
+        inheritTags(testCase, fields, table);
+        inheritFollowers(testCase, fields, table);
       }
 
       if (fields.contains(FIELD_REVIEWERS) && testCaseToSuites != null) {
@@ -548,8 +557,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
 
-    // Load the linked table once with all fields needed across prepare + setInheritedFields
-    Table table = Entity.getEntity(entityLink, "owners,domains,columns", ALL);
+    // Load the linked table once with all fields needed across prepare + setInheritedFields.
+    // Tags/followers are needed for inherited test-case fields used by search documents.
+    Table table = Entity.getEntity(entityLink, "owners,domains,tags,columns,followers", ALL);
     linkedTablesCache.set(Map.of(entityLink.getEntityFQN(), table));
 
     // Get existing basic test suite or create a new one if it doesn't exist

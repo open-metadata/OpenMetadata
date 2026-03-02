@@ -878,7 +878,7 @@ public class OpenSearchBulkSink implements BulkSink {
         List<BulkOperation> operations, long executionId, int numberOfActions, int attemptNumber) {
       CompletableFuture<BulkResponse> future;
       try {
-        future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+        future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.True));
       } catch (IOException e) {
         handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, e);
         return;

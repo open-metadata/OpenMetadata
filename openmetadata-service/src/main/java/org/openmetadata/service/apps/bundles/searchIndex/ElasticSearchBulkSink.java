@@ -669,7 +669,7 @@ public class ElasticSearchBulkSink implements BulkSink {
     private void executeBulkWithRetry(
         List<BulkOperation> operations, long executionId, int numberOfActions, int attemptNumber) {
       CompletableFuture<BulkResponse> future =
-          asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+          asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.True));
 
       future.whenComplete(
           (response, error) -> {

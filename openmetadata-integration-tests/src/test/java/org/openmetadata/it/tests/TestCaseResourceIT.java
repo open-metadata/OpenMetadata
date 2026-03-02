@@ -128,6 +128,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   private Table createTable(TestNamespace ns) {
+    return createTable(ns, null);
+  }
+
+  private Table createTable(TestNamespace ns, List<org.openmetadata.schema.type.TagLabel> tags) {
     // Use short names to avoid FQN length limit (256 chars)
     String shortId = ns.uniqueShortId();
 
@@ -170,6 +174,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 .withName("name")
                 .withDataType(ColumnDataType.VARCHAR)
                 .withDataLength(255)));
+    tableRequest.setTags(tags);
 
     return SdkClients.adminClient().tables().create(tableRequest);
   }
@@ -1259,6 +1264,29 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     assertNotNull(fetchedWithFields.getTestSuite());
     assertNotNull(fetchedWithFields.getTestDefinition());
+  }
+
+  @Test
+  void test_testCaseInheritsTableTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    Table table = createTable(ns, List.of(shared.PII_SENSITIVE_TAG_LABEL));
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("inherits_table_tags"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase fetchedWithTags = client.testCases().get(testCase.getId().toString(), "tags");
+    assertNotNull(fetchedWithTags.getTags());
+    assertTrue(
+        fetchedWithTags.getTags().stream()
+            .anyMatch(
+                tag ->
+                    shared.PII_SENSITIVE_TAG_LABEL.getTagFQN().equalsIgnoreCase(tag.getTagFQN())));
   }
 
   @Test

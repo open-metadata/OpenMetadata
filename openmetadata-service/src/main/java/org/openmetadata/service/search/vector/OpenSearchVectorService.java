@@ -477,8 +477,7 @@ public class OpenSearchVectorService implements VectorIndexService {
                 op -> op.index(idx -> idx.index(targetIndex).id(docId).document(doc))));
       }
 
-      BulkRequest bulkRequest =
-          BulkRequest.of(b -> b.operations(operations).refresh(Refresh.False));
+      BulkRequest bulkRequest = BulkRequest.of(b -> b.operations(operations).refresh(Refresh.True));
       BulkResponse response = client.bulk(bulkRequest);
 
       if (response.errors()) {
