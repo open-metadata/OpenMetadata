@@ -75,7 +75,7 @@ const CustomPropertiesSection = ({
     }
 
     return (
-      <div className="lineage-items-list empty-state">
+      <div className="lineage-items-list">
         <ErrorPlaceHolderNew
           className="text-grey-14"
           icon={<AddPlaceHolderIcon height={100} width={100} />}
@@ -108,7 +108,7 @@ const CustomPropertiesSection = ({
 
   if (!viewCustomPropertiesPermission) {
     return (
-      <div className="lineage-items-list empty-state">
+      <div className="lineage-items-list">
         <ErrorPlaceHolderNew
           className="text-grey-14 permission-error-placeholder"
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}>
@@ -144,15 +144,15 @@ const CustomPropertiesSection = ({
       <div className="custom-properties-list p-x-md">
         {filteredProperties.length > 0
           ? filteredProperties.map((property: CustomProperty) => (
-              <PropertyValue
-                isRenderedInRightPanel
-                extension={extensionData}
-                hasEditPermissions={hasEditPermissions}
-                key={property.name}
-                property={property}
-                onExtensionUpdate={onExtensionUpdate}
-              />
-            ))
+            <PropertyValue
+              isRenderedInRightPanel
+              extension={extensionData}
+              hasEditPermissions={hasEditPermissions}
+              key={property.name}
+              property={property}
+              onExtensionUpdate={onExtensionUpdate}
+            />
+          ))
           : emptyState}
       </div>
     </div>

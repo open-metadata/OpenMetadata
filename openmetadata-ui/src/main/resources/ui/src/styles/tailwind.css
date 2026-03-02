@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import 'tailwindcss' prefix(tw);
+@import 'tailwindcss/theme.css' prefix(tw);
+@import 'tailwindcss/preflight.css' prefix(tw);
+@import 'tailwindcss/utilities.css' prefix(tw);
 
 /* Importing the theme.css from ui-core-components to ensure that the theme 
 variables are available in this file. This is an explicit decision to maintain theme 
