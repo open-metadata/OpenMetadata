@@ -201,8 +201,8 @@ export const DataAssetsHeader = ({
       () => ({
         isFollowing: hasFollowers
           ? (dataAsset as DataAssetsWithFollowersField).followers?.some(
-            ({ id }) => id === USER_ID
-          )
+              ({ id }) => id === USER_ID
+            )
           : false,
         followers: hasFollowers
           ? (dataAsset as DataAssetsWithFollowersField).followers?.length
@@ -765,8 +765,8 @@ export const DataAssetsHeader = ({
             {tierSuggestionRender ?? (
               <TierCard
                 currentTier={tier?.tagFQN}
-                footerActionButtonsClassName='p-x-md'
-                updateTier={onTierUpdate} >
+                footerActionButtonsClassName="p-x-md"
+                updateTier={onTierUpdate}>
                 <Space
                   className="d-flex align-start"
                   data-testid="header-tier-container">

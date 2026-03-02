@@ -613,16 +613,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     try {
-      if (WorkflowHandler.isInitialized()) {
-        LOG.info("Shutting down Flowable ProcessEngine...");
-        org.flowable.engine.ProcessEngines.destroy();
-        LOG.info("Flowable ProcessEngine shut down successfully");
-      }
-    } catch (Exception e) {
-      LOG.warn("Error shutting down Flowable ProcessEngine", e);
-    }
-
-    try {
       if (APP != null) {
         APP.after();
         if (APP.getEnvironment() != null
@@ -633,6 +623,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       }
     } catch (Exception e) {
       LOG.warn("Error stopping Dropwizard app", e);
+    }
+
+    try {
+      if (WorkflowHandler.isInitialized()) {
+        LOG.info("Shutting down Flowable ProcessEngine...");
+        org.flowable.engine.ProcessEngines.destroy();
+        LOG.info("Flowable ProcessEngine shut down successfully");
+      }
+    } catch (Exception e) {
+      LOG.warn("Error shutting down Flowable ProcessEngine", e);
     }
 
     try {

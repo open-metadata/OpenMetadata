@@ -283,9 +283,10 @@ const SettingsSso = () => {
             // Set current provider for breadcrumb display only if no URL parameter
             if (!providerParam) {
               setCurrentProvider(config.authenticationConfiguration.provider);
-              setSearchParams({
-                provider: config.authenticationConfiguration.provider,
-              });
+              setSearchParams(
+                { provider: config.authenticationConfiguration.provider },
+                { replace: true }
+              );
             }
             setShowProviderSelector(false);
           } else {
