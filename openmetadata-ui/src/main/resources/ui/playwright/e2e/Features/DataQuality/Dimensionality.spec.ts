@@ -60,7 +60,7 @@ test('Dimensionality Tests', { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`
     const testCaseDoc = page.waitForResponse(
       '/locales/en-US/OpenMetadata/TestCaseForm.md'
     );
-    await page.getByRole('menuitem', { name: 'Test case' }).click();
+    await page.getByRole('menuitemradio', { name: 'Test case' }).click();
     await page
       .getByTestId('select-table-card')
       .getByText('Dimension Level')
