@@ -88,7 +88,7 @@ RUN pip install --upgrade pip "setuptools<81"
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="1.11.11.2"
+ARG RI_VERSION="1.11.11.3"
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
