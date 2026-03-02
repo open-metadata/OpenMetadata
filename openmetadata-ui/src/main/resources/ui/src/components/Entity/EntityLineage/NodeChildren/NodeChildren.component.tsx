@@ -139,17 +139,20 @@ const NodeChildren = ({
     isOnlyShowColumnsWithLineageFilterActive,
   ]);
 
-  const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
-    setIsLoading(true);
-    try {
-      const response = await getTestCaseExecutionSummary(testSuite.id);
-      setSummary(response);
-    } catch {
-      setSummary(undefined);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchTestSuiteSummary = useCallback(
+    async (testSuite: EntityReference) => {
+      setIsLoading(true);
+      try {
+        const response = await getTestCaseExecutionSummary(testSuite.id);
+        setSummary(response);
+      } catch {
+        setSummary(undefined);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     const testSuite = node?.testSuite;

@@ -107,7 +107,7 @@ for (const EntityClass of entities) {
     page,
   }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs
-    test.setTimeout(120_000);
+    test.setTimeout(300_000);
 
     const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(
       page,
@@ -245,7 +245,6 @@ test('Verify column lineage between tables', async ({ page }) => {
   )}`;
 
   await addPipelineBetweenNodes(page, table1, table2);
-  //   await activateColumnLayer(page);
 
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
@@ -2048,7 +2047,7 @@ test.describe(
           `node-suggestion-${serviceFqn}`
         );
         //small timeout to wait for the node suggestion to be visible in dropdown
-        await expect(nodeSuggestion).toBeVisible({ timeout: 10000 });
+        await expect(nodeSuggestion).toBeVisible();
 
         const lineageResponse = page.waitForResponse((response) =>
           response.url().includes('/api/v1/lineage/getLineage')

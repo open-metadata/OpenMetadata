@@ -210,6 +210,8 @@ export function useCanvasEdgeRenderer({
     ctx.clearRect(0, 0, containerWidth, containerHeight);
   }, [canvasRef, containerWidth, containerHeight]);
 
+  const isCanvasReadyRef = useRef(false);
+
   const drawAllEdges = useCallback(() => {
     const canvas = canvasRef.current;
 
@@ -222,7 +224,10 @@ export function useCanvasEdgeRenderer({
     ctx.clearRect(0, 0, containerWidth, containerHeight);
 
     if (isRepositioning) {
-      setIsCanvasReady(false);
+      if (isCanvasReadyRef.current) {
+        isCanvasReadyRef.current = false;
+        setIsCanvasReady(false);
+      }
 
       return;
     }
@@ -271,7 +276,10 @@ export function useCanvasEdgeRenderer({
 
     ctx.restore();
 
-    setIsCanvasReady(true);
+    if (!isCanvasReadyRef.current) {
+      isCanvasReadyRef.current = true;
+      setIsCanvasReady(true);
+    }
   }, [
     canvasRef,
     edges,
@@ -322,6 +330,9 @@ export function useCanvasEdgeRenderer({
     [viewport]
   );
 
+  const drawAllEdgesRef = useRef(drawAllEdges);
+  drawAllEdgesRef.current = drawAllEdges;
+
   const scheduleRedraw = useCallback(() => {
     if (isDirtyRef.current) {
       return;
@@ -329,10 +340,10 @@ export function useCanvasEdgeRenderer({
 
     isDirtyRef.current = true;
     rafIdRef.current = requestAnimationFrame(() => {
-      drawAllEdges();
+      drawAllEdgesRef.current();
       isDirtyRef.current = false;
     });
-  }, [drawAllEdges]);
+  }, []);
 
   useEffect(() => {
     scheduleRedraw();
@@ -343,7 +354,22 @@ export function useCanvasEdgeRenderer({
         cancelAnimationFrame(rafIdRef.current);
       }
     };
-  }, [scheduleRedraw]);
+  }, [
+    edges,
+    nodes,
+    viewport,
+    containerWidth,
+    containerHeight,
+    tracedColumns,
+    tracedNodes,
+    columnsInCurrentPages,
+    isRepositioning,
+    hoverEdge,
+    selectedEdge,
+    selectedColumn,
+    dqHighlightedEdges,
+    theme,
+  ]);
 
   useEffect(() => {
     if (isRepositioning) {

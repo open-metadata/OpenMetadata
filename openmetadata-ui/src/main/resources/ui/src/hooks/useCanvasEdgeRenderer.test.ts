@@ -38,6 +38,7 @@ const mockUseLineageStore = {
   selectedEdge: undefined,
   selectedColumn: undefined,
   columnsInCurrentPages: new Map<string, string[]>(),
+  setIsCanvasReady: jest.fn(),
 };
 
 jest.mock('./useLineageStore', () => ({

@@ -199,13 +199,6 @@ describe('LineageControlButtons', () => {
   });
 
   describe('Lineage View Options Menu', () => {
-    // beforeEach(() => {
-    //   (useLineageProvider as jest.Mock).mockReturnValue({
-    //     ...mockLineageProviderValues,
-    //     reactFlowInstance: mockReactFlowInstance,
-    //   });
-    // });
-
     it('should open menu when fit screen button is clicked', () => {
       render(
         <MemoryRouter>

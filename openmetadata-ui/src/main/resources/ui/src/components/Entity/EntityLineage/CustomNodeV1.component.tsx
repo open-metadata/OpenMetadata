@@ -191,6 +191,9 @@ const CustomNodeV1 = (props: NodeProps) => {
   } = node;
 
   const showColumnsWithLineageOnly = nodeFilterState.get(node.id) ?? false;
+  const isChildrenListExpanded = useMemo(() => {
+    return columnsExpanded || isColumnLevelLineage;
+  }, [columnsExpanded, isColumnLevelLineage]);
 
   useEffect(() => {
     if (isColumnLevelLineage) {
@@ -212,7 +215,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     // reset on unmount
     return () => {
       setColumnsExpanded(false);
-      setNodeFilterState(node.id, true);
+      setNodeFilterState(node.id, isColumnLevelLineage);
     };
   }, [isEditMode]);
 
@@ -332,7 +335,7 @@ const CustomNodeV1 = (props: NodeProps) => {
 
     return (
       <NodeChildren
-        isChildrenListExpanded={columnsExpanded || isColumnLevelLineage}
+        isChildrenListExpanded={isChildrenListExpanded}
         isConnectable={isConnectable}
         isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
         node={node}

@@ -43,6 +43,7 @@ const VirtualColumnList = ({
   const { updateColumnsInCurrentPages, selectedColumn, tracedColumns } =
     useLineageStore();
   const [offset, setOffset] = useState(0);
+  const prevColumnFqnsRef = React.useRef<string>('');
 
   // Reset window to top when flatItems changes (filter/search)
   useEffect(() => {
@@ -69,13 +70,21 @@ const VirtualColumnList = ({
 
   // Keep edge renderer in sync with the visible window
   useEffect(() => {
-    updateColumnsInCurrentPages(
-      nodeId ?? '',
-      [...visibleFlatItems, ...outsideFlatItems].map(
-        (fi) => fi.fullyQualifiedName ?? ''
-      )
+    if (!nodeId) {
+      return;
+    }
+
+    const columnFqns = [...visibleFlatItems, ...outsideFlatItems].map(
+      (fi) => fi.fullyQualifiedName ?? ''
     );
-  }, [visibleFlatItems, nodeId, outsideFlatItems]);
+
+    const columnFqnsKey = columnFqns.join(',');
+
+    if (prevColumnFqnsRef.current !== columnFqnsKey) {
+      prevColumnFqnsRef.current = columnFqnsKey;
+      updateColumnsInCurrentPages(nodeId, columnFqns);
+    }
+  }, [visibleFlatItems, nodeId, outsideFlatItems, updateColumnsInCurrentPages]);
   const canScrollUp = offset > 0;
   const canScrollDown = endIndex < flatItems.length - 1;
 

@@ -542,9 +542,9 @@ export const addColumnLineage = async (
     await editLineageClick(page);
   }
 
-  //   await activateColumnLayer(page);
-
-  //   await page.getByTestId(`column-${toColumnNode}`).click();
+  await expect(
+    page.getByTestId(`column-edge-${fromColumnNode}-${toColumnNode}`)
+  ).toBeVisible();
 };
 
 export const removeColumnLineage = async (
@@ -564,13 +564,9 @@ export const removeColumnLineage = async (
 
   await editLineageClick(page);
 
-  //   await expect(
-  //     page.locator(
-  //       `[data-testid="column-edge-${btoa(fromColumnNode)}-${btoa(
-  //         toColumnNode
-  //       )}"]`
-  //     )
-  //   ).not.toBeVisible();
+  await expect(
+    page.getByTestId(`column-edge-${fromColumnNode}-${toColumnNode}`)
+  ).not.toBeVisible();
 };
 
 export const visitLineageTab = async (page: Page) => {
