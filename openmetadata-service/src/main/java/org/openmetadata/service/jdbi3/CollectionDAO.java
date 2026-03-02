@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
@@ -181,6 +182,8 @@ import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindJsonContains;
 import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public interface CollectionDAO {
   @CreateSqlObject
@@ -5354,6 +5357,70 @@ public interface CollectionDAO {
       }
     }
 
+    record TagUsageBatchRow(
+        int source,
+        String tagFQN,
+        String tagFQNHash,
+        String targetFQNHash,
+        int labelType,
+        int state,
+        String reason,
+        String appliedBy,
+        String metadata) {}
+
+    record TagUsageDeleteRow(int source, String tagFQNHash, String targetFQNHash) {}
+
+    private static String buildTagUsageKey(int source, String tagFQNHash, String targetFQNHash) {
+      return source + "|" + tagFQNHash + "|" + targetFQNHash;
+    }
+
+    private static String buildTagUsageKey(TagUsageBatchRow row) {
+      return buildTagUsageKey(row.source(), row.tagFQNHash(), row.targetFQNHash());
+    }
+
+    private static String buildTagUsageKey(TagUsageDeleteRow row) {
+      return buildTagUsageKey(row.source(), row.tagFQNHash(), row.targetFQNHash());
+    }
+
+    Logger TAG_USAGE_LOG = LoggerFactory.getLogger(TagUsageDAO.class);
+    int TAG_USAGE_MAX_ATTEMPTS = 2;
+    AtomicLong TAG_USAGE_DEADLOCK_RETRY_COUNT = new AtomicLong(0);
+
+    private static boolean isTransientDeadlock(Throwable throwable) {
+      for (Throwable current = throwable; current != null; current = current.getCause()) {
+        if (current instanceof SQLException sqlException) {
+          int errorCode = sqlException.getErrorCode();
+          String sqlState = sqlException.getSQLState();
+          if (errorCode == 1213
+              || errorCode == 1205
+              || "40001".equals(sqlState)
+              || "40P01".equals(sqlState)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    default void executeWithDeadlockRetry(Runnable operation) {
+      for (int attempt = 1; attempt <= TAG_USAGE_MAX_ATTEMPTS; attempt++) {
+        try {
+          operation.run();
+          return;
+        } catch (RuntimeException ex) {
+          if (!isTransientDeadlock(ex) || attempt == TAG_USAGE_MAX_ATTEMPTS) {
+            throw ex;
+          }
+          long retryCount = TAG_USAGE_DEADLOCK_RETRY_COUNT.incrementAndGet();
+          TAG_USAGE_LOG.debug(
+              "Retrying tag_usage batch after transient deadlock (attempt {}/{}), total retries={}",
+              attempt + 1,
+              TAG_USAGE_MAX_ATTEMPTS,
+              retryCount);
+        }
+      }
+    }
+
     /**
      * Apply multiple tags in batch to improve performance
      */
@@ -5361,17 +5428,6 @@ public interface CollectionDAO {
       if (tagLabels == null || tagLabels.isEmpty()) {
         return;
       }
-
-      record TagUsageBatchRow(
-          int source,
-          String tagFQN,
-          String tagFQNHash,
-          String targetFQNHash,
-          int labelType,
-          int state,
-          String reason,
-          String appliedBy,
-          String metadata) {}
 
       String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
       List<TagUsageBatchRow> rows = new ArrayList<>(tagLabels.size());
@@ -5389,6 +5445,13 @@ public interface CollectionDAO {
                 tagLabel.getAppliedBy(),
                 JsonUtils.pojoToJson(tagLabel.getMetadata())));
       }
+
+      // De-duplicate duplicate tag applications within the same batch.
+      LinkedHashMap<String, TagUsageBatchRow> uniqueRows = new LinkedHashMap<>(rows.size());
+      for (TagUsageBatchRow row : rows) {
+        uniqueRows.put(buildTagUsageKey(row), row);
+      }
+      rows = new ArrayList<>(uniqueRows.values());
 
       // Deterministic lock acquisition order reduces deadlocks under concurrent upserts.
       rows.sort(
@@ -5417,16 +5480,18 @@ public interface CollectionDAO {
         metadataList.add(row.metadata());
       }
 
-      applyTagsBatchInternal(
-          sources,
-          tagFQNs,
-          tagFQNHashes,
-          targetFQNHashes,
-          labelTypes,
-          states,
-          reasons,
-          appliedBys,
-          metadataList);
+      executeWithDeadlockRetry(
+          () ->
+              applyTagsBatchInternal(
+                  sources,
+                  tagFQNs,
+                  tagFQNHashes,
+                  targetFQNHashes,
+                  labelTypes,
+                  states,
+                  reasons,
+                  appliedBys,
+                  metadataList));
     }
 
     /**
@@ -5437,17 +5502,6 @@ public interface CollectionDAO {
       if (tagsByTarget == null || tagsByTarget.isEmpty()) {
         return;
       }
-
-      record TagUsageBatchRow(
-          int source,
-          String tagFQN,
-          String tagFQNHash,
-          String targetFQNHash,
-          int labelType,
-          int state,
-          String reason,
-          String appliedBy,
-          String metadata) {}
 
       List<TagUsageBatchRow> rows = new ArrayList<>();
 
@@ -5478,6 +5532,13 @@ public interface CollectionDAO {
       }
 
       if (!rows.isEmpty()) {
+        // De-duplicate duplicate tag applications within the same batch.
+        LinkedHashMap<String, TagUsageBatchRow> uniqueRows = new LinkedHashMap<>(rows.size());
+        for (TagUsageBatchRow row : rows) {
+          uniqueRows.put(buildTagUsageKey(row), row);
+        }
+        rows = new ArrayList<>(uniqueRows.values());
+
         // Deterministic lock acquisition order reduces deadlocks under concurrent upserts.
         rows.sort(
             java.util.Comparator.comparing(TagUsageBatchRow::targetFQNHash)
@@ -5505,25 +5566,26 @@ public interface CollectionDAO {
           metadataList.add(row.metadata());
         }
 
-        applyTagsBatchInternal(
-            sources,
-            tagFQNs,
-            tagFQNHashes,
-            targetFQNHashes,
-            labelTypes,
-            states,
-            reasons,
-            appliedBys,
-            metadataList);
+        executeWithDeadlockRetry(
+            () ->
+                applyTagsBatchInternal(
+                    sources,
+                    tagFQNs,
+                    tagFQNHashes,
+                    targetFQNHashes,
+                    labelTypes,
+                    states,
+                    reasons,
+                    appliedBys,
+                    metadataList));
       }
     }
 
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) "
-                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata) "
-                + "ON DUPLICATE KEY UPDATE labelType = VALUES(labelType), state = VALUES(state), reason = VALUES(reason), metadata = VALUES(metadata)",
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata)",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
@@ -5552,17 +5614,38 @@ public interface CollectionDAO {
       }
 
       String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
-      List<Integer> sources = new ArrayList<>();
-      List<String> tagFQNHashes = new ArrayList<>();
-      List<String> targetFQNHashes = new ArrayList<>();
+      List<TagUsageDeleteRow> rows = new ArrayList<>(tagLabels.size());
 
       for (TagLabel tagLabel : tagLabels) {
-        sources.add(tagLabel.getSource().ordinal());
-        tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
-        targetFQNHashes.add(targetFQNHash);
+        rows.add(
+            new TagUsageDeleteRow(
+                tagLabel.getSource().ordinal(),
+                FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
+                targetFQNHash));
       }
 
-      deleteTagsBatchInternal(sources, tagFQNHashes, targetFQNHashes);
+      LinkedHashMap<String, TagUsageDeleteRow> uniqueRows = new LinkedHashMap<>(rows.size());
+      for (TagUsageDeleteRow row : rows) {
+        uniqueRows.put(buildTagUsageKey(row), row);
+      }
+      rows = new ArrayList<>(uniqueRows.values());
+
+      rows.sort(
+          java.util.Comparator.comparing(TagUsageDeleteRow::targetFQNHash)
+              .thenComparing(TagUsageDeleteRow::tagFQNHash)
+              .thenComparingInt(TagUsageDeleteRow::source));
+
+      List<Integer> sources = new ArrayList<>(rows.size());
+      List<String> tagFQNHashes = new ArrayList<>(rows.size());
+      List<String> targetFQNHashes = new ArrayList<>(rows.size());
+      for (TagUsageDeleteRow row : rows) {
+        sources.add(row.source());
+        tagFQNHashes.add(row.tagFQNHash());
+        targetFQNHashes.add(row.targetFQNHash());
+      }
+
+      executeWithDeadlockRetry(
+          () -> deleteTagsBatchInternal(sources, tagFQNHashes, targetFQNHashes));
     }
 
     @Transaction

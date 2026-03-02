@@ -8,7 +8,6 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
-import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
@@ -553,14 +552,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
 
-    // Load the linked table once with all fields needed across prepare + setInheritedFields.
-    // Tags/followers are needed for inherited test-case fields used by search documents.
+    // Load the linked table for prepare-time validation only.
+    // setInheritedFields() will resolve the table again (or use bulk cache in setFieldsInBulk).
+    // Avoid storing single-entity prepare state in ThreadLocal across the full request lifecycle.
     Table table = Entity.getEntity(entityLink, "owners,domains,tags,columns,followers", ALL);
-    linkedTablesCache.set(Map.of(entityLink.getEntityFQN(), table));
-
-    // Get existing basic test suite or create a new one if it doesn't exist
-    var testSuite = getOrCreateTestSuite(test, table);
-    test.setTestSuite(testSuite);
 
     // validate test definition
     TestDefinition testDefinition =
@@ -582,6 +577,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         testDefinition);
     validateColumnTestCase(table, entityLink, testDefinition.getEntityType());
     validateDimensionColumns(test, table);
+
+    // Create/resolve the basic test suite only after all validations pass.
+    // This avoids creating side entities when request validation fails early.
+    var testSuite = getOrCreateTestSuite(test, table);
+    test.setTestSuite(testSuite);
   }
 
   /*
@@ -786,6 +786,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   protected void postCreate(TestCase testCase) {
     super.postCreate(testCase);
     updateTestSuite(testCase);
+  }
+
+  @Override
+  public void clearParentCache() {
+    super.clearParentCache();
     linkedTablesCache.remove();
   }
 
