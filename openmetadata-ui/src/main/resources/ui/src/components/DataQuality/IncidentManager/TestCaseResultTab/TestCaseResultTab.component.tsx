@@ -295,10 +295,7 @@ const TestCaseResultTab = () => {
           <label
             className="parameter-value-text tw:inline-flex"
             data-testid="dynamic-assertion">
-            <StarIcon
-              aria-hidden
-              className="dynamic-assertion-icon tw:h-4 tw:w-4"
-            />{' '}
+            <StarIcon aria-hidden className="tw:h-3 tw:w-3 tw:mr-1 tw:mt-1" />{' '}
             {t('label.dynamic-assertion')}
           </label>
         ),

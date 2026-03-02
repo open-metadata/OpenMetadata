@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isUndefined, omitBy, round } from 'lodash';
+import isUndefined from 'lodash/isUndefined';
+import omitBy from 'lodash/omitBy';
+import round from 'lodash/round';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
@@ -24,7 +26,7 @@ import { axisTickFormatter } from '../ChartUtils';
 import { getRandomHexColor } from '../DataInsightUtils';
 import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
 
-const EXCLUDED_CHART_FIELDS = ['schemaTable1', 'schemaTable2'];
+const EXCLUDED_CHART_FIELDS = new Set(['schemaTable1', 'schemaTable2']);
 
 export type PrepareChartDataType = {
   testCaseParameterValue: TestCaseParameterValue[];
@@ -44,19 +46,17 @@ export const prepareChartData = ({
     testCaseParameterValue.length === 2 ? testCaseParameterValue : [];
   const dataPoints: TestCaseChartDataType['data'] = [];
   const yValues = params.reduce((acc, curr, i) => {
-    // value is a string, so we need to parse it to an integer
-    const value = parseInt(curr.value ?? '');
+    const value = Number.parseInt(curr.value ?? '', 10);
 
-    // checking for NaN values to set undefined
-    return { ...acc, [`y${i + 1}`]: isNaN(value) ? undefined : value };
+    return { ...acc, [`y${i + 1}`]: Number.isNaN(value) ? undefined : value };
   }, {});
   let showAILearningBanner = false;
   testCaseResults.forEach((result) => {
     const values = result.testResultValue?.reduce((acc, curr) => {
-      if (EXCLUDED_CHART_FIELDS.includes(curr.name ?? '')) {
+      if (EXCLUDED_CHART_FIELDS.has(curr.name ?? '')) {
         return acc;
       }
-      const value = round(parseFloat(curr.value ?? ''), 2) || 0;
+      const value = round(Number.parseFloat(curr.value ?? ''), 2) || 0;
 
       return {
         ...acc,
@@ -105,7 +105,7 @@ export const prepareChartData = ({
 
   const filteredResultValues =
     testCaseResultParams?.testResultValue?.filter(
-      (info) => !EXCLUDED_CHART_FIELDS.includes(info.name ?? '')
+      (info) => !EXCLUDED_CHART_FIELDS.has(info.name ?? '')
     ) ?? [];
 
   return {
