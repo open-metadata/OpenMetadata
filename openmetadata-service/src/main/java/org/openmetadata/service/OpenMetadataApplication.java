@@ -64,6 +64,7 @@ import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.ee10.servlet.ServletMapping;
 import org.eclipse.jetty.ee10.servlet.SessionHandler;
 import org.eclipse.jetty.ee10.websocket.server.config.JettyWebSocketServletContainerInitializer;
+import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.http.UriCompliance;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -442,8 +443,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     SessionCookieConfig cookieConfig =
         Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
     cookieConfig.setHttpOnly(true);
-    cookieConfig.setSecure(
-        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie());
+    boolean isSecure =
+        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie();
+    cookieConfig.setSecure(isSecure);
+
+    if (isSecure) {
+      sessionHandler.setSameSite(HttpCookie.SameSite.NONE);
+    }
 
     // Get session expiry - use OIDC config if available, otherwise default
     int sessionExpiry = 604800; // Default 7 days in seconds

@@ -153,6 +153,10 @@
       "description": "Roles that a user is inheriting through membership in teams that have set team default roles.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "inheritedPersonas": {
+      "description": "Personas inherited through membership in teams that have set a team default persona.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "isEmailVerified": {
       "description": "If the User has verified the mail",
       "type": "boolean"

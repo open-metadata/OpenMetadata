@@ -50,7 +50,7 @@ test(
         })
         .click();
       await page.getByTestId('profiler-add-table-test-btn').click();
-      await page.getByTestId('test-case').click();
+      await page.getByRole('menuitemradio', { name: 'Test case' }).click();
       await page.getByTestId('test-case-name').clear();
       await page.getByTestId('test-case-name').fill(testCaseName);
       await page.getByTestId('test-type').locator('div').click();

@@ -55,6 +55,9 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotS
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.notTaskAssignee;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
@@ -132,6 +135,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -167,6 +172,7 @@ import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
@@ -214,6 +220,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
@@ -233,6 +240,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityETag;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -300,6 +308,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .recordStats()
           .build(new EntityLoaderWithId());
 
+  private static final ExecutorService FIELD_FETCH_EXECUTOR =
+      Executors.newThreadPerTaskExecutor(
+          java.lang.Thread.ofVirtual().name("field-fetch-", 0).factory());
   private static final LoadingCache<String, Integer> COUNT_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(500)
@@ -5775,6 +5786,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return new DescriptionTaskWorkflow(threadContext);
     } else if (EntityUtil.isTagTask(taskType)) {
       return new TagTaskWorkflow(threadContext);
+    } else if (EntityUtil.isApprovalTask(taskType)) {
+      return new ApprovalTaskWorkflow(threadContext);
     } else {
       throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
     }
@@ -7998,6 +8011,78 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Generic approval task workflow usable for any entity. Checks that the acting user is an
+   * assignee of the task (not necessarily an entity reviewer), then delegates resolution to the
+   * governance WorkflowHandler. Falls back to a direct entityStatus patch when the Flowable
+   * workflow record no longer exists (e.g. after a corrupted restart).
+   */
+  public static class ApprovalTaskWorkflow extends TaskWorkflow {
+    ApprovalTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      EntityInterface entity = threadContext.getAboutEntity();
+      checkUpdatedByTaskAssignee(threadContext.getThread(), user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
+      variables.put(UPDATED_BY_VARIABLE, user);
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      if (!workflowSuccess) {
+        LOG.warn("Workflow failed for taskId='{}', applying status directly", taskId);
+        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
+        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
+        EntityFieldUtils.setEntityField(
+            entity,
+            threadContext.getAbout().getEntityType(),
+            user,
+            FIELD_ENTITY_STATUS,
+            entityStatus,
+            true);
+      }
+
+      return entity;
+    }
+  }
+
+  /**
+   * Checks that {@code user} is an assignee of the given task thread. Throws
+   * {@link AuthorizationException} if not.
+   */
+  public static void checkUpdatedByTaskAssignee(Thread thread, String user) {
+    List<EntityReference> assignees = listOrEmpty(thread.getTask().getAssignees());
+    if (nullOrEmpty(assignees)) {
+      return; // no assignees configured – allow any user (backward compat)
+    }
+    boolean isAssignee =
+        assignees.stream()
+            .anyMatch(
+                ref -> {
+                  if (TEAM.equals(ref.getType())) {
+                    org.openmetadata.schema.entity.teams.Team team =
+                        Entity.getEntityByName(TEAM, ref.getName(), "users", Include.NON_DELETED);
+                    return team.getUsers().stream()
+                        .anyMatch(
+                            u ->
+                                u.getName().equals(user) || u.getFullyQualifiedName().equals(user));
+                  }
+                  return ref.getName().equals(user)
+                      || (ref.getFullyQualifiedName() != null
+                          && ref.getFullyQualifiedName().equals(user));
+                });
+    if (!isAssignee) {
+      throw new AuthorizationException(notTaskAssignee(user));
+    }
+  }
+
   // Validate if a given column exists in the table
   public static void validateColumn(Table table, String columnName) {
     validateColumn(table, columnName, Boolean.TRUE);
@@ -9778,7 +9863,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return Optional.of(job.get());
       } catch (ExecutionException | InterruptedException e) {
         LOG.error("Error retrieving job status for jobId: {}", jobId, e);
-        Thread.currentThread().interrupt();
+        java.lang.Thread.currentThread().interrupt();
         return Optional.empty();
       }
     }
