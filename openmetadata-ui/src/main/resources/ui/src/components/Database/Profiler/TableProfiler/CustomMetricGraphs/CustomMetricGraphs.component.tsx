@@ -27,6 +27,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import {
+  BLUE_600,
+  BLUE_CHART_AREA_FILL,
+  CHART_CURSOR_STROKE,
+} from '../../../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
@@ -197,7 +202,7 @@ const CustomMetricGraphs = ({
                     latestValue: last(metric)?.[key] ?? '--',
                     title: t('label.count'),
                     dataKey: key,
-                    color: '#1677ff',
+                    color: BLUE_600,
                   },
                 ],
                 extra:
@@ -277,7 +282,7 @@ const CustomMetricGraphs = ({
                           />
                         }
                         cursor={{
-                          stroke: '#e8e8e8',
+                          stroke: CHART_CURSOR_STROKE,
                           strokeDasharray: '3 3',
                         }}
                       />
@@ -285,14 +290,14 @@ const CustomMetricGraphs = ({
                       <Line
                         dataKey={key}
                         name={key}
-                        stroke="#1677ff"
+                        stroke={BLUE_600}
                         type="monotone"
                       />
                       <Area
                         dataKey={key}
-                        fill="#e6f4ff"
+                        fill={BLUE_CHART_AREA_FILL}
                         name={key}
-                        stroke="#1677ff"
+                        stroke={BLUE_600}
                         type="monotone"
                       />
                     </ComposedChart>

@@ -222,14 +222,14 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       className="tw:mb-lg tw:flex tw:flex-col tw:gap-8"
       data-testid="profiler-tab-container">
       {selectedColumn && (
-        <div className="tw:grid tw:grid-cols-12 tw:gap-5">
-          <div className="tw:col-span-9">
+        <div className="tw:grid tw:grid-cols-24 tw:gap-5">
+          <div className="tw:col-span-14">
             <ColumnSummary column={selectedColumn} />
           </div>
-          <div className="tw:col-span-3">
+          <div className="tw:col-span-10">
             <div className="tw:h-full tw:rounded-[10px] tw:border tw:border-border-secondary tw:shadow-none">
               <div className="tw:p-4">
-                <p className="tw:m-0 tw:text-base tw:font-medium tw:text-primary">
+                <p className="tw:m-0 tw:text-md tw:font-medium tw:text-primary">
                   {t('label.data-quality-test-plural')}
                 </p>
               </div>
@@ -305,7 +305,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                 </div>
 
                 <div className="tw:col-span-7">
-                  <div className="tw:w-full tw:rounded-md tw:bg-quaternary tw:p-4">
+                  <div className="tw:w-full tw:rounded-md tw:bg-secondary tw:p-4">
                     {columnTestData.map((item) => (
                       <div
                         className="tw:mb-1 tw:flex tw:items-center tw:justify-between"

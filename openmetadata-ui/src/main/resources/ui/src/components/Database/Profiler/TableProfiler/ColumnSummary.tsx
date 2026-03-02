@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Badge } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Column } from '../../../../generated/entity/data/container';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getFilterTags } from '../../../../utils/TableTags/TableTags.utils';
-import { DataPill } from '../../../common/DataPill/DataPill.styled';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../../Tag/TagsViewer/TagsViewer';
 
@@ -33,21 +33,21 @@ const ColumnSummary: FC<ColumnSummaryProps> = ({ column }) => {
   return (
     <div className="tw:h-full tw:rounded-[10px] tw:border tw:border-border-secondary tw:shadow-none">
       <div className="tw:flex tw:items-center tw:gap-3 tw:p-4">
-        <p className="tw:m-0 tw:text-base tw:font-medium tw:text-primary">
+        <p className="tw:m-0 tw:text-md tw:font-medium tw:text-primary">
           {getEntityName(column)}
         </p>
-        <DataPill className="tw:border tw:border-border-secondary tw:bg-quaternary tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-secondary">
+        <Badge className="tw:text-xs" color="gray" size="lg" type="color">
           {column.dataType}
-        </DataPill>
+        </Badge>
       </div>
-      <hr className="tw:my-0 tw:h-px tw:border-0 tw:bg-border-secondary" />
+      <hr className="tw:my-0 tw:h-0 tw:border-0 tw:border-t tw:border-border-secondary" />
       <div className="tw:flex tw:flex-col tw:gap-3 tw:p-4">
         <RichTextEditorPreviewerV1
           className="text-grey-muted m-t-xs"
           markdown={column.description ?? ''}
           maxLength={184}
         />
-        <hr className="tw:my-0 tw:h-px tw:border-0 tw:border-dashed tw:bg-border-secondary" />
+        <hr className="tw:my-0 tw:h-px tw:border-t tw:border-dashed tw:border-secondary" />
         <div className="tw:grid tw:grid-cols-12 tw:gap-4">
           <div className="tw:col-span-2 tw:text-sm tw:text-secondary">
             {t('label.glossary-term-plural')}

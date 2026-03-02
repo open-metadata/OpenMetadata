@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   ChevronDown,
   ChevronRight,
@@ -244,7 +245,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         if (onColumnsUpdate) {
           onColumnsUpdate(response.data);
         }
-      } catch (error) {
+      } catch {
         // Fallback to existing data if fetch fails
       }
     }
@@ -262,12 +263,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     ) {
       fetchTestCases();
     }
-  }, [
-    isOpen,
-    fetchTestCases,
-    permissions.ViewTests,
-    permissions.ViewAll,
-  ]);
+  }, [isOpen, fetchTestCases, permissions.ViewTests, permissions.ViewAll]);
 
   // Flatten all columns including nested children for accurate counting and navigation
   const flattenedColumns = useMemo(
@@ -368,15 +364,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
       const response = onColumnFieldUpdate
         ? await onColumnFieldUpdate(
-          activeColumn.fullyQualifiedName,
-          update,
-          true
-        )
+            activeColumn.fullyQualifiedName,
+            update,
+            true
+          )
         : // Fallback to direct API call for Table entities when used outside GenericProvider
-        ((await updateTableColumn(
-          activeColumn.fullyQualifiedName,
-          update
-        )) as T);
+          ((await updateTableColumn(
+            activeColumn.fullyQualifiedName,
+            update
+          )) as T);
 
       // Only show success toast if we got a valid response
       if (response) {
@@ -546,10 +542,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         if (response) {
           setActiveColumn(
             (prev) =>
-            ({
-              ...prev,
-              displayName: (response as { displayName?: string }).displayName,
-            } as T)
+              ({
+                ...prev,
+                displayName: (response as { displayName?: string }).displayName,
+              } as T)
           );
         }
       } catch (error) {
@@ -844,8 +840,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                     ellipsis={{ tooltip: true }}>
                     {stringToHTML(
                       (activeColumn as { displayName?: string }).displayName ||
-                      activeColumn.name ||
-                      ''
+                        activeColumn.name ||
+                        ''
                     )}
                   </Typography.Text>
                 </Tooltip>
@@ -901,25 +897,16 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               placement="bottom"
               title={getDataTypeDisplay(activeColumn)}
               trigger="hover">
-              <span
-                className={
-                  'data-type-chip tw:max-w-60 tw:overflow-hidden tw:text-ellipsis' +
-                  ' tw:whitespace-nowrap tw:rounded-md tw:border tw:border-border-secondary' +
-                  ' tw:px-2 tw:py-0.5 tw:text-xs tw:text-secondary'
-                }>
+              <div className="tw:max-w-60 flex-center tw:overflow-hidden tw:text-ellipsis data-type-chip">
                 {getDataTypeDisplay(activeColumn) || ''}
-              </span>
+              </div>
             </Tooltip>
           )}
           {isColumn(activeColumn) && isPrimaryKey && (
-            <span
-              className={
-                'data-type-chip tw:flex tw:items-center tw:gap-1 tw:rounded-md' +
-                ' tw:border tw:border-border-secondary tw:px-2 tw:py-0.5 tw:text-xs tw:text-secondary'
-              }>
+            <div className="data-type-chip tw:flex tw:items-center tw:gap-1">
               <KeyIcon height={12} width={12} />
               {t('label.primary-key')}
-            </span>
+            </div>
           )}
         </div>
       </div>
@@ -1001,9 +988,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       width="40%"
       onClose={onClose}>
       {localToast.open && (
-        <div className="tw:sticky tw:top-[-20px] tw:z-10 tw:mx-2 tw:ml-2 tw:mb-4 tw:mr-4">
+        <div className="tw:sticky tw:-top-5 tw:z-1 tw:mr-4 tw:mb-4 tw:ml-2 column-panel-alert-wrapper">
           <AlertBar
             defaultExpand
+            className="show-alert"
             message={localToast.message}
             type={localToast.type}
           />

@@ -107,13 +107,9 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
       }
       onEdit={onEdit}>
       {totalTests === 0 ? (
-        <>
-          <div className="data-quality-section">
-            <span className="no-data-placeholder">
-              {t('label.no-tests-run')}
-            </span>
-          </div>
-        </>
+        <div className="data-quality-section">
+          <span className="no-data-placeholder">{t('label.no-tests-run')}</span>
+        </div>
       ) : (
         <div className="data-quality-content">
           <div className="data-quality-header" />

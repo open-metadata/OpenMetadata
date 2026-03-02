@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { HelpCircle } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -72,7 +72,7 @@ export const KeyProfileMetrics = ({
   );
 
   const sectionClassName =
-    'tw:border-b tw:border-border-primary tw:-mt-2 tw:pb-4 tw:px-4';
+    'tw:border-b-[0.6px] tw:border-tertiary tw:-mt-2 tw:pb-4 tw:px-4';
   const titleClassName = 'tw:text-[13px] tw:font-semibold tw:mb-1.5';
 
   if (isLoading) {
@@ -92,23 +92,23 @@ export const KeyProfileMetrics = ({
       <div className="tw:flex tw:flex-nowrap tw:gap-2">
         {metrics.map((metric) => (
           <div
-            className="tw:flex-1 tw:rounded-lg tw:bg-quaternary tw:p-2"
+            className="tw:flex-1 tw:rounded-lg tw:bg-secondary tw:p-2"
             data-testid={`key-profile-metric-${metric.label}`}
             key={metric.label}>
-            <div className="tw:flex tw:flex-col tw:gap-0.5">
-              <div className="tw:flex tw:items-center tw:gap-0.5">
+            <div className="tw:flex tw:flex-col tw:gap-1">
+              <div className="tw:flex tw:items-center tw:gap-1">
                 <span className="tw:text-xs tw:font-medium tw:text-tertiary">
                   {metric.label}
                 </span>
                 {metric.tooltip && (
                   <Tooltip placement="top" title={metric.tooltip}>
-                    <span>
+                    <TooltipTrigger>
                       <HelpCircle className="tw:size-2.5 tw:text-tertiary" />
-                    </span>
+                    </TooltipTrigger>
                   </Tooltip>
                 )}
               </div>
-              <span className="tw:text-base tw:font-semibold tw:text-primary">
+              <span className="tw:text-md tw:font-semibold tw:text-primary">
                 {metric.value}
               </span>
             </div>

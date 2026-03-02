@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Badge } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +34,7 @@ const NestedColumnItem: React.FC<{
         style={{ paddingLeft: `${depth * 8}px` }}
         onClick={() => onColumnClick(column)}>
         <ColumnIcon
+          className="tw:text-brand-700"
           style={{
             width: 11,
             height: 11,
@@ -73,16 +75,19 @@ export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
   }
 
   return (
-    <div className="tw:border-b tw:border-border-primary tw:px-4 tw:pb-4">
-      <div className="tw:mb-3 tw:flex tw:items-center tw:gap-1">
+    <div className="tw:border-b-[0.6px] tw:border-tertiary tw:px-4 tw:pb-4">
+      <div className="tw:mb-3 tw:flex tw:items-center tw:gap-2">
         <span className="tw:text-[13px] tw:font-semibold tw:text-primary">
           {t(getNestedSectionTitle(entityType))}
         </span>
-        <div className="tw:flex tw:h-5 tw:w-5 tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-border-secondary tw:bg-quaternary">
-          <span className="tw:text-[10px] tw:font-medium tw:text-tertiary">
-            {columns.length}
-          </span>
-        </div>
+
+        <Badge
+          className="tw:text-[10px] tw:font-medium tw:text-tertiary"
+          color="gray"
+          size="sm"
+          type="color">
+          {columns.length}
+        </Badge>
       </div>
       <div className="tw:flex tw:flex-col tw:gap-0.5">
         {columns.map((column) => (
