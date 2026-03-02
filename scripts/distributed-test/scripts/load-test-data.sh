@@ -44,6 +44,9 @@ SCALE_APPLIED=""
 ONLY_ENTITIES=""
 OUTPUT_PATH=""
 AUTH_TOKEN=""
+RAMP_MODE=""
+RAMP_BATCH=100
+ADMIN_PORT=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -140,6 +143,9 @@ while [[ $# -gt 0 ]]; do
         --only) ONLY_ENTITIES="$2"; shift 2 ;;
         --output) OUTPUT_PATH="$2"; shift 2 ;;
         --token) AUTH_TOKEN="$2"; shift 2 ;;
+        --ramp) RAMP_MODE="true"; shift ;;
+        --ramp-batch) RAMP_BATCH="$2"; shift 2 ;;
+        --admin-port) ADMIN_PORT="$2"; shift 2 ;;
         --databases) shift 2 ;;  # ignored, auto-calculated now
         --terms-per-glossary) shift 2 ;;  # ignored, use --glossary-terms
         --tags-per-classification) shift 2 ;;  # ignored, use --tags
@@ -193,6 +199,9 @@ Benchmarking & filtering:
   --output PATH                 Write JSON benchmark report to PATH
                                 (default: benchmark-report-{timestamp}.json in current dir)
   --token TOKEN                 Auth token (overrides hardcoded default)
+  --ramp                        Run concurrency ramp test before main load
+  --ramp-batch NUM              Entities per ramp level (default: 100)
+  --admin-port PORT             Admin port for Prometheus metrics scraping
 
 Other:
   --server URL                  Target server URL (default: https://mohitcorp.getcollate.io)
@@ -211,6 +220,12 @@ Examples:
 
   # Only tables and charts, custom counts
   ./load-test-data.sh --only tables,charts --tables 5000 --charts 2000
+
+  # Ramp test to find optimal concurrency
+  ./load-test-data.sh --ramp --only tables --tables 500 --workers 32
+
+  # Full benchmark with Prometheus metrics from admin port
+  ./load-test-data.sh --quick --workers 10 --admin-port 8586 --output /tmp/bench.json
 HELPEOF
             exit 0
             ;;
@@ -242,6 +257,12 @@ fi
 echo "Workers: $NUM_WORKERS"
 if [ -n "$ONLY_ENTITIES" ]; then
     echo "Only:   $ONLY_ENTITIES"
+fi
+if [ -n "$RAMP_MODE" ]; then
+    echo "Ramp:   enabled (batch=$RAMP_BATCH)"
+fi
+if [ -n "$ADMIN_PORT" ]; then
+    echo "Admin:  port $ADMIN_PORT (Prometheus metrics)"
 fi
 echo ""
 echo "Entity counts:"
@@ -331,6 +352,9 @@ ONLY_ENTITIES_RAW = "${ONLY_ENTITIES}"
 OUTPUT_PATH_RAW = "${OUTPUT_PATH}"
 AUTH_TOKEN_RAW = "${AUTH_TOKEN}"
 SCALE_APPLIED = "${SCALE_APPLIED}" or "default"
+RAMP_MODE = "${RAMP_MODE}" == "true"
+RAMP_BATCH = ${RAMP_BATCH}
+ADMIN_PORT_RAW = "${ADMIN_PORT}"
 
 # Auto-calculate database/schema counts
 NUM_DATABASES = max(1, NUM_TABLES // 50000)
@@ -446,6 +470,156 @@ else:
     output_path = f"benchmark-report-{ts_str}.json"
 
 # ══════════════════════════════════════════════════════════════════════════════
+# SERVER INTROSPECTION
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ServerIntrospector:
+    def __init__(self, server_url, req_headers, admin_port=None):
+        self.server_url = server_url
+        self.req_headers = req_headers
+        self.admin_port = admin_port
+        self.info = {}
+
+    def _parse_url_host(self):
+        from urllib.parse import urlparse
+        parsed = urlparse(self.server_url)
+        return parsed.hostname or "localhost"
+
+    def collect(self):
+        print("Collecting server introspection data...")
+        sys.stdout.flush()
+
+        status, resp = make_request(
+            f"{self.server_url}/api/v1/system/version",
+            method="GET", headers=self.req_headers, retries=2,
+        )
+        if status == 200 and isinstance(resp, dict):
+            self.info["version"] = resp.get("version", "unknown")
+            self.info["revision"] = resp.get("revision", "unknown")
+            print(f"  Server version: {self.info['version']} (rev: {self.info['revision']})")
+        else:
+            self.info["version"] = "unreachable"
+            self.info["revision"] = "unknown"
+            print(f"  Could not fetch version (status={status})")
+
+        status, resp = make_request(
+            f"{self.server_url}/api/v1/system/status",
+            method="GET", headers=self.req_headers, retries=2,
+        )
+        if status == 200 and isinstance(resp, dict):
+            self.info["status"] = resp
+            healthy_components = sum(1 for v in resp.values() if isinstance(v, dict) and v.get("passed"))
+            total_components = sum(1 for v in resp.values() if isinstance(v, dict))
+            print(f"  Component health: {healthy_components}/{total_components} healthy")
+        else:
+            self.info["status"] = {"error": f"status={status}"}
+            print(f"  Could not fetch status (status={status})")
+
+        status, resp = make_request(
+            f"{self.server_url}/api/v1/system/entities/count",
+            method="GET", headers=self.req_headers, retries=2,
+        )
+        if status == 200 and isinstance(resp, dict):
+            self.info["entity_counts"] = resp
+            total_entities = sum(v for v in resp.values() if isinstance(v, (int, float)))
+            print(f"  Pre-existing entities: {total_entities:,}")
+        else:
+            self.info["entity_counts"] = {}
+            print(f"  Could not fetch entity counts (status={status})")
+
+        status, resp = make_request(
+            f"{self.server_url}/api/v1/system/services/count",
+            method="GET", headers=self.req_headers, retries=2,
+        )
+        if status == 200 and isinstance(resp, dict):
+            self.info["service_counts"] = resp
+        else:
+            self.info["service_counts"] = {}
+
+        if self.admin_port:
+            self._scrape_prometheus("before")
+
+        sys.stdout.flush()
+        return self.info
+
+    def _scrape_prometheus(self, label):
+        host = self._parse_url_host()
+        prom_url = f"http://{host}:{self.admin_port}/prometheus"
+        print(f"  Scraping Prometheus metrics ({label}) from {prom_url}...")
+        sys.stdout.flush()
+        try:
+            req = urllib.request.Request(prom_url, method="GET")
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                body = resp.read().decode("utf-8")
+            metrics = self._parse_prometheus(body)
+            key = f"prometheus_{label}"
+            self.info[key] = metrics
+            heap_used = metrics.get("jvm_memory_bytes_used_heap", "N/A")
+            heap_max = metrics.get("jvm_memory_bytes_max_heap", "N/A")
+            if isinstance(heap_used, (int, float)) and isinstance(heap_max, (int, float)):
+                print(f"    JVM heap: {heap_used / 1048576:.0f}MB / {heap_max / 1048576:.0f}MB")
+            thread_count = metrics.get("jvm_threads_current", "N/A")
+            print(f"    JVM threads: {thread_count}")
+            db_active = metrics.get("hikaricp_connections_active", "N/A")
+            db_idle = metrics.get("hikaricp_connections_idle", "N/A")
+            db_total = metrics.get("hikaricp_connections_total", "N/A")
+            print(f"    DB pool: active={db_active}, idle={db_idle}, total={db_total}")
+        except Exception as e:
+            self.info[f"prometheus_{label}"] = {"error": str(e)}
+            print(f"    Failed to scrape Prometheus: {e}")
+        sys.stdout.flush()
+
+    def scrape_after(self):
+        if self.admin_port:
+            self._scrape_prometheus("after")
+
+    @staticmethod
+    def _parse_prometheus(text):
+        metrics = {}
+        target_prefixes = [
+            "jvm_memory_bytes_used", "jvm_memory_bytes_max",
+            "jvm_threads_current", "jvm_threads_daemon",
+            "hikaricp_connections_active", "hikaricp_connections_idle",
+            "hikaricp_connections_total", "hikaricp_connections_pending",
+            "io_dropwizard_jetty_MutableServletContextHandler_percent",
+            "io_dropwizard_jetty_MutableServletContextHandler_requests",
+        ]
+        for line in text.split("\n"):
+            if line.startswith("#") or not line.strip():
+                continue
+            parts = line.split()
+            if len(parts) < 2:
+                continue
+            metric_name = parts[0]
+            try:
+                value = float(parts[1])
+            except ValueError:
+                continue
+            for prefix in target_prefixes:
+                if metric_name.startswith(prefix):
+                    if 'area="heap"' in metric_name:
+                        if "bytes_used" in metric_name:
+                            metrics["jvm_memory_bytes_used_heap"] = value
+                        elif "bytes_max" in metric_name:
+                            metrics["jvm_memory_bytes_max_heap"] = value
+                    elif 'area="nonheap"' not in metric_name:
+                        simple_name = metric_name.split("{")[0]
+                        if simple_name not in metrics:
+                            metrics[simple_name] = value
+                    break
+        return metrics
+
+    def report_section(self):
+        return dict(self.info)
+
+
+introspector = ServerIntrospector(
+    SERVER_URL, dict(headers),
+    admin_port=ADMIN_PORT_RAW.strip() if ADMIN_PORT_RAW.strip() else None,
+)
+server_info = introspector.collect()
+
+# ══════════════════════════════════════════════════════════════════════════════
 # BENCHMARK INFRASTRUCTURE
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -473,6 +647,68 @@ class BenchmarkCollector:
             self.failed += 1
             if len(self.errors) < 50:
                 self.errors.append({"status": status, "error": str(error)[:200]})
+
+    def _error_breakdown(self):
+        breakdown = {}
+        for e in self.errors:
+            code = e.get("status", 0)
+            if code == 0:
+                key = "connection_error"
+            else:
+                key = str(code)
+            breakdown[key] = breakdown.get(key, 0) + 1
+        return breakdown
+
+    def _latency_analysis(self):
+        if len(self.latencies) < 10:
+            return {}
+        s = sorted(self.latencies)
+        n = len(s)
+        p50 = s[int(n * 0.50)] * 1000
+        p90 = s[min(int(n * 0.90), n - 1)] * 1000
+        p95 = s[min(int(n * 0.95), n - 1)] * 1000
+        p99 = s[min(int(n * 0.99), n - 1)] * 1000
+
+        p90_p50_ratio = round(p90 / p50, 1) if p50 > 0 else 0
+        p99_p95_ratio = round(p99 / p95, 1) if p95 > 0 else 0
+
+        bimodal = p90_p50_ratio > 5.0
+
+        degradation_pct = 0.0
+        if n >= 20:
+            chunk = max(1, n // 5)
+            first_20 = s[:chunk]
+            last_20 = s[-chunk:]
+            avg_first = sum(first_20) / len(first_20) if first_20 else 0
+            avg_last = sum(last_20) / len(last_20) if last_20 else 0
+            if avg_first > 0:
+                degradation_pct = round((avg_last / avg_first - 1) * 100, 1)
+
+        result = {
+            "bimodal": bimodal,
+            "p90_p50_ratio": p90_p50_ratio,
+            "p99_p95_ratio": p99_p95_ratio,
+            "degradation_pct": degradation_pct,
+        }
+
+        findings = []
+        if bimodal:
+            findings.append(
+                f"Bimodal latency distribution (p50={p50:.0f}ms, p90={p90:.0f}ms, "
+                f"ratio={p90_p50_ratio}x) -- likely DB connection pool or thread pool wait"
+            )
+        if p99_p95_ratio > 3.0:
+            findings.append(
+                f"Extreme tail latency (p95={p95:.0f}ms, p99={p99:.0f}ms, "
+                f"ratio={p99_p95_ratio}x) -- possible GC pauses or lock contention"
+            )
+        if degradation_pct > 100.0:
+            findings.append(
+                f"Sustained load degradation: last 20% of requests {degradation_pct:.0f}% "
+                f"slower than first 20% -- resource exhaustion"
+            )
+        result["findings"] = findings
+        return result
 
     def percentile(self, p):
         if not self.latencies:
@@ -517,7 +753,7 @@ class BenchmarkCollector:
             return None
         elapsed = (self.end_time or time.time()) - self.start_time if self.start_time else 0
         s = sorted(self.latencies)
-        return {
+        result = {
             "requested": self.requested,
             "total_requests": n,
             "created": self.created,
@@ -537,7 +773,10 @@ class BenchmarkCollector:
             },
             "throughput_over_time": self._throughput_windows(),
             "errors_sample": self.errors[:10],
+            "latency_analysis": self._latency_analysis(),
+            "error_breakdown": self._error_breakdown(),
         }
+        return result
 
 
 class HealthMonitor:
@@ -690,6 +929,186 @@ def create_entity_batch(entity_name, count, payload_fn, workers=None, collect_fn
           f"({elapsed:.1f}s, p50={p50:.0f}ms, p95={p95:.0f}ms)")
     sys.stdout.flush()
     return bench.created, bench
+
+
+# ── Ramp tester ──────────────────────────────────────────────────────────────
+class RampTester:
+    def __init__(self, server_url, req_headers, max_workers, batch_size=100):
+        self.server_url = server_url
+        self.req_headers = req_headers
+        self.max_workers = max_workers
+        self.batch_size = batch_size
+        self.levels = []
+        self.optimal_workers = 1
+        self.saturation_point = None
+
+    def _ramp_levels(self):
+        levels = []
+        w = 1
+        while w <= self.max_workers:
+            levels.append(w)
+            w *= 2
+        if levels and levels[-1] != self.max_workers and self.max_workers > levels[-1]:
+            levels.append(self.max_workers)
+        return levels
+
+    def run(self, entity_type="tables", schema_fqns_list=None, service_fqn=None):
+        levels = self._ramp_levels()
+        print(f"\nRAMP TEST ({entity_type}, {self.batch_size} entities per level)")
+        print(f"{'Workers':>7}  {'RPS':>7}  {'p50ms':>7}  {'p95ms':>7}  {'p99ms':>7}  {'Errors':>6}")
+        sys.stdout.flush()
+
+        best_rps = 0
+        best_workers = 1
+        prev_p95 = 0
+
+        for worker_count in levels:
+            level_result = self._run_level(worker_count, entity_type, schema_fqns_list, service_fqn)
+            self.levels.append(level_result)
+
+            marker = ""
+            if level_result["rps"] > best_rps:
+                best_rps = level_result["rps"]
+                best_workers = worker_count
+            if level_result["rps"] >= best_rps:
+                self.optimal_workers = worker_count
+
+            if (prev_p95 > 0 and level_result["p95_ms"] > prev_p95 * 3
+                    and self.saturation_point is None):
+                self.saturation_point = worker_count
+                marker = " <- saturation"
+            elif level_result["rps"] >= best_rps and level_result["errors"] == 0:
+                marker = " <- optimal"
+
+            prev_p95 = level_result["p95_ms"] if level_result["p95_ms"] > 0 else prev_p95
+
+            print(f"{worker_count:>7}  {level_result['rps']:>7.1f}  {level_result['p50_ms']:>7.0f}  "
+                  f"{level_result['p95_ms']:>7.0f}  {level_result['p99_ms']:>7.0f}  "
+                  f"{level_result['errors']:>6}{marker}")
+            sys.stdout.flush()
+
+        self.optimal_workers = best_workers
+        print(f"Optimal concurrency: {self.optimal_workers} workers "
+              f"({best_rps:.1f} rps, p95={self._get_p95_for(self.optimal_workers):.0f}ms)")
+        if self.saturation_point:
+            print(f"Saturation point: {self.saturation_point} workers")
+        print("")
+        sys.stdout.flush()
+
+    def _get_p95_for(self, workers):
+        for level in self.levels:
+            if level["workers"] == workers:
+                return level["p95_ms"]
+        return 0
+
+    def _run_level(self, worker_count, entity_type, schema_fqns_list, service_fqn):
+        latencies = []
+        errors = 0
+        error_lock = threading.Lock()
+        ramp_suffix = f"_ramp_{worker_count}w"
+
+        def _payload_fn(idx):
+            if entity_type == "tables" and schema_fqns_list:
+                sfqn = schema_fqns_list[idx % len(schema_fqns_list)] if schema_fqns_list else "default"
+                return {
+                    "__url__": f"{self.server_url}/api/v1/tables",
+                    "name": f"ramp_table_{worker_count}w_{idx:07d}",
+                    "databaseSchema": sfqn,
+                    "columns": [
+                        {"name": "id", "dataType": "BIGINT"},
+                        {"name": "name", "dataType": "VARCHAR", "dataLength": 255},
+                    ],
+                }
+            elif entity_type == "topics" and service_fqn:
+                return {
+                    "__url__": f"{self.server_url}/api/v1/topics",
+                    "name": f"ramp_topic_{worker_count}w_{idx:06d}",
+                    "service": service_fqn,
+                    "partitions": 3,
+                    "replicationFactor": 1,
+                }
+            else:
+                if schema_fqns_list:
+                    sfqn = schema_fqns_list[idx % len(schema_fqns_list)]
+                    return {
+                        "__url__": f"{self.server_url}/api/v1/tables",
+                        "name": f"ramp_table_{worker_count}w_{idx:07d}",
+                        "databaseSchema": sfqn,
+                        "columns": [
+                            {"name": "id", "dataType": "BIGINT"},
+                            {"name": "name", "dataType": "VARCHAR", "dataLength": 255},
+                        ],
+                    }
+                return None
+
+        def _work(idx):
+            nonlocal errors
+            t0 = time.time()
+            payload = _payload_fn(idx)
+            if payload is None:
+                return
+            url = payload.pop("__url__", None)
+            method = payload.pop("__method__", "PUT")
+            if url is None:
+                return
+            status, resp = make_request(url, data=payload, method=method,
+                                         headers=self.req_headers)
+            latency = time.time() - t0
+            with error_lock:
+                latencies.append(latency)
+                if status not in [200, 201]:
+                    errors += 1
+
+        start = time.time()
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            futures = [executor.submit(_work, i) for i in range(self.batch_size)]
+            for f in as_completed(futures):
+                try:
+                    f.result()
+                except Exception:
+                    with error_lock:
+                        errors += 1
+        elapsed = time.time() - start
+
+        if not latencies:
+            return {"workers": worker_count, "rps": 0, "p50_ms": 0, "p95_ms": 0,
+                    "p99_ms": 0, "errors": errors}
+
+        s = sorted(latencies)
+        n = len(s)
+        return {
+            "workers": worker_count,
+            "rps": round(n / elapsed, 1) if elapsed > 0 else 0,
+            "p50_ms": round(s[int(n * 0.50)] * 1000, 0),
+            "p95_ms": round(s[min(int(n * 0.95), n - 1)] * 1000, 0),
+            "p99_ms": round(s[min(int(n * 0.99), n - 1)] * 1000, 0),
+            "errors": errors,
+        }
+
+    def report_section(self):
+        if not self.levels:
+            return None
+        analysis_parts = []
+        if self.optimal_workers:
+            opt = next((l for l in self.levels if l["workers"] == self.optimal_workers), None)
+            if opt:
+                analysis_parts.append(
+                    f"Throughput peaks at {self.optimal_workers} workers ({opt['rps']} rps)."
+                )
+        if self.saturation_point:
+            sat = next((l for l in self.levels if l["workers"] == self.saturation_point), None)
+            if sat:
+                analysis_parts.append(
+                    f"At {self.saturation_point}+ workers, p95 exceeds {sat['p95_ms']:.0f}ms "
+                    f"and errors appear -- thread pool saturation."
+                )
+        return {
+            "batch_size": self.batch_size,
+            "levels": self.levels,
+            "optimal_workers": self.optimal_workers,
+            "saturation_point": self.saturation_point,
+            "analysis": " ".join(analysis_parts) if analysis_parts else "Ramp test completed.",
+        }
 
 
 # ── Helper to create a service ───────────────────────────────────────────────
@@ -989,6 +1408,35 @@ if should_run("apiCollections") and api_service_fqn and NUM_API_COLLECTIONS > 0:
                         collect_fn=collect_api_coll)
 
 phase_timings["phase_3_infrastructure"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# RAMP TEST (if enabled)
+# ══════════════════════════════════════════════════════════════════════════════
+ramp_result = None
+if RAMP_MODE:
+    ramp_tester = RampTester(SERVER_URL, dict(headers), max_workers=NUM_WORKERS,
+                             batch_size=RAMP_BATCH)
+    ramp_entity_type = "tables"
+    if ONLY_ENTITIES:
+        for candidate in ["tables", "topics", "dashboards", "pipelines"]:
+            if candidate in ONLY_ENTITIES:
+                ramp_entity_type = candidate
+                break
+
+    ramp_schema_fqns = schema_fqns if schema_fqns else None
+    ramp_service_fqn = None
+    if ramp_entity_type == "topics":
+        ramp_service_fqn = messaging_service_fqn
+    elif ramp_entity_type == "dashboards":
+        ramp_service_fqn = dashboard_service_fqn
+    elif ramp_entity_type == "pipelines":
+        ramp_service_fqn = pipeline_service_fqn
+
+    ramp_tester.run(entity_type=ramp_entity_type, schema_fqns_list=ramp_schema_fqns,
+                    service_fqn=ramp_service_fqn)
+    ramp_result = ramp_tester.report_section()
+    if ramp_result:
+        ramp_result["entity_type"] = ramp_entity_type
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PHASE 4: Core entities
@@ -1530,30 +1978,76 @@ phase_timings["phase_7_time_series"] = {"wall_clock_s": round(time.time() - phas
 # STOP HEALTH MONITOR & BUILD REPORT
 # ══════════════════════════════════════════════════════════════════════════════
 health_monitor.stop()
+introspector.scrape_after()
 overall_elapsed = time.time() - overall_start
 total_created = sum(stats.values())
 
 
 # ── Cluster sizing analysis ──────────────────────────────────────────────────
-def generate_cluster_sizing(report):
+def generate_cluster_sizing(report, ramp_data=None):
     findings = []
     recommendations = {}
+    config_summary = []
 
     entity_data = report.get("entities", {})
     health = report.get("server_health", {})
     measured_workers = report["metadata"]["workers"]
 
     max_p95 = 0
+    avg_latency_ms = 0
+    total_latency_entries = 0
+    has_503 = False
+    has_504_or_timeout = False
+    has_conn_refused = False
+    has_bimodal = False
+
     for entity, data in entity_data.items():
         if not data:
             continue
         p95 = data.get("latency_ms", {}).get("p95", 0)
+        avg = data.get("latency_ms", {}).get("avg", 0)
         if p95 > max_p95:
             max_p95 = p95
+        total_latency_entries += 1
+        avg_latency_ms += avg
         if p95 > 5000:
             findings.append(f"{entity} PUT p95={p95:.0f}ms -- severe bottleneck")
         elif p95 > 1000:
             findings.append(f"{entity} PUT p95={p95:.0f}ms -- moderate latency")
+
+        latency_analysis = data.get("latency_analysis", {})
+        if latency_analysis.get("bimodal"):
+            has_bimodal = True
+        for finding in latency_analysis.get("findings", []):
+            findings.append(f"{entity}: {finding}")
+
+        error_breakdown = data.get("error_breakdown", {})
+        for code, count in error_breakdown.items():
+            if code == "503":
+                has_503 = True
+                findings.append(
+                    f"{entity}: {count}x HTTP 503 -- admission control rejection "
+                    f"(BulkExecutor queue full)"
+                )
+            elif code in ("504", "timeout"):
+                has_504_or_timeout = True
+                findings.append(
+                    f"{entity}: {count}x HTTP {code} -- request timeout, "
+                    f"thread pool likely exhausted"
+                )
+            elif code == "connection_error":
+                has_conn_refused = True
+                findings.append(
+                    f"{entity}: {count}x connection refused/reset -- "
+                    f"server accept queue full"
+                )
+            elif code == "500":
+                findings.append(f"{entity}: {count}x HTTP 500 -- internal server error, check logs")
+            elif code == "429":
+                findings.append(f"{entity}: {count}x HTTP 429 -- rate limited")
+
+    if total_latency_entries > 0:
+        avg_latency_ms = avg_latency_ms / total_latency_entries
 
     total_checks = health.get("total_checks", 0)
     unhealthy_count = health.get("unhealthy", 0)
@@ -1579,23 +2073,121 @@ def generate_cluster_sizing(report):
                         f"({avg_first:.0f} rps -> {avg_last:.0f} rps) -- resource exhaustion"
                     )
 
-    if max_p95 > 5000:
-        rec_workers = max(2, measured_workers // 4)
-    elif max_p95 > 2000:
-        rec_workers = max(2, measured_workers // 2)
-    else:
-        rec_workers = measured_workers
-    recommendations["api_concurrency"] = {
-        "current": measured_workers,
-        "recommended": rec_workers,
-        "reason": f"Max p95 latency {max_p95:.0f}ms across entity types",
-    }
-
     overall_rps = report.get("overall", {}).get("overall_throughput_rps", 0)
+    effective_capacity = int(150 / (avg_latency_ms / 1000)) if avg_latency_ms > 0 else 0
+
+    recommendations["server_threads"] = {
+        "analysis": (
+            f"{measured_workers} concurrent writers with 150 max server threads. "
+            f"Each PUT holds a thread for ~{avg_latency_ms:.0f}ms avg. "
+            f"Effective capacity: ~{effective_capacity} rps. "
+            f"Measured: {overall_rps:.0f} rps"
+            + (" -- threads are blocked on DB/search." if overall_rps < effective_capacity * 0.5 else ".")
+        ),
+        "current_env": "SERVER_MAX_THREADS=150",
+        "recommended_env": "SERVER_MAX_THREADS=300" if max_p95 > 2000 or has_504_or_timeout else "SERVER_MAX_THREADS=150",
+        "yaml_path": "server.applicationConnectors[0].maxThreads",
+    }
+    if max_p95 > 2000 or has_504_or_timeout:
+        config_summary.append("SERVER_MAX_THREADS=300")
+
+    recommendations["virtual_threads"] = {
+        "analysis": "Java 21 virtual threads can eliminate thread pool as bottleneck for I/O-bound workloads.",
+        "current_env": "SERVER_ENABLE_VIRTUAL_THREAD=false",
+        "recommended_env": "SERVER_ENABLE_VIRTUAL_THREAD=true",
+        "yaml_path": "server.enableVirtualThreads",
+    }
+    config_summary.append("SERVER_ENABLE_VIRTUAL_THREAD=true")
+
+    db_pool_rec = 100
+    if measured_workers > 15 or has_bimodal:
+        db_pool_rec = 150
+    if max_p95 > 5000:
+        db_pool_rec = 200
+    recommendations["db_pool"] = {
+        "analysis": (
+            f"{measured_workers} concurrent writers with 100 max DB connections. "
+            f"Each PUT does multiple DB round-trips. "
+            f"At {measured_workers} concurrent, pool utilization ~{min(99, measured_workers * 100 // 100)}%. "
+            f"Connection wait time may add 50-200ms."
+        ),
+        "current_env": "DB_CONNECTION_POOL_MAX_SIZE=100",
+        "recommended_env": f"DB_CONNECTION_POOL_MAX_SIZE={db_pool_rec}",
+        "yaml_path": "database.hikari.maximumPoolSize",
+    }
+    if db_pool_rec > 100:
+        config_summary.append(f"DB_CONNECTION_POOL_MAX_SIZE={db_pool_rec}")
+
+    if has_bimodal:
+        recommendations["db_connection_timeout"] = {
+            "analysis": (
+                "Connection timeout 30s. If pool is exhausted, requests wait up to 30s "
+                "for a connection -- this explains the bimodal latency pattern."
+            ),
+            "current_env": "DB_CONNECTION_TIMEOUT=30000",
+            "recommended_env": "DB_CONNECTION_TIMEOUT=10000",
+            "note": "Fail faster to prevent cascading timeouts",
+        }
+        config_summary.append("DB_CONNECTION_TIMEOUT=10000")
+
+    if max_p95 > 2000 or measured_workers > 10:
+        recommendations["search_connections"] = {
+            "analysis": (
+                "Search max connections: 30 total, 10 per route. "
+                "Async indexing means search rarely blocks PUTs directly, "
+                "but under heavy write load the search queue can back up."
+            ),
+            "current_env": "ELASTICSEARCH_MAX_CONN_TOTAL=30",
+            "recommended_env": "ELASTICSEARCH_MAX_CONN_TOTAL=50",
+        }
+        config_summary.append("ELASTICSEARCH_MAX_CONN_TOTAL=50")
+
+    if has_503:
+        recommendations["bulk_operation"] = {
+            "analysis": "HTTP 503 errors indicate BulkExecutor queue is full.",
+            "current_env": "BULK_OPERATION_QUEUE_SIZE=1000, BULK_OPERATION_MAX_THREADS=10",
+            "recommended_env": "BULK_OPERATION_QUEUE_SIZE=2000, BULK_OPERATION_MAX_THREADS=20",
+        }
+        config_summary.append("BULK_OPERATION_QUEUE_SIZE=2000")
+        config_summary.append("BULK_OPERATION_MAX_THREADS=20")
+
+    if has_conn_refused:
+        recommendations["accept_queue"] = {
+            "analysis": "Connection refused/reset errors indicate server accept queue is full.",
+            "current_env": "SERVER_ACCEPT_QUEUE_SIZE=256",
+            "recommended_env": "SERVER_ACCEPT_QUEUE_SIZE=512",
+        }
+        config_summary.append("SERVER_ACCEPT_QUEUE_SIZE=512")
+
+    ramp_optimal = None
+    if ramp_data:
+        ramp_optimal = ramp_data.get("optimal_workers", measured_workers)
+        recommendations["api_concurrency"] = {
+            "current": measured_workers,
+            "recommended": ramp_optimal,
+            "reason": f"Ramp test shows optimal throughput at {ramp_optimal} workers",
+        }
+    else:
+        if max_p95 > 5000:
+            rec_workers = max(2, measured_workers // 4)
+        elif max_p95 > 2000:
+            rec_workers = max(2, measured_workers // 2)
+        else:
+            rec_workers = measured_workers
+        recommendations["api_concurrency"] = {
+            "current": measured_workers,
+            "recommended": rec_workers,
+            "reason": f"Max p95 latency {max_p95:.0f}ms across entity types",
+        }
+
     if overall_rps > 0:
+        rec_rps = overall_rps
+        if ramp_optimal and ramp_optimal != measured_workers:
+            scale_factor = ramp_optimal / measured_workers if measured_workers > 0 else 1
+            rec_rps = overall_rps * max(0.5, min(2.0, scale_factor))
         estimates = {}
         for target in [50000, 250000, 1000000, 5000000]:
-            secs = target / overall_rps
+            secs = target / rec_rps
             label = f"{target // 1000}k_entities"
             if secs < 3600:
                 estimates[label] = f"~{secs / 60:.0f} min"
@@ -1603,9 +2195,9 @@ def generate_cluster_sizing(report):
                 estimates[label] = f"~{secs / 3600:.1f} hours"
         recommendations["estimated_times"] = estimates
 
-    if max_p95 > 5000 or (unhealthy_count / max(1, total_checks)) > 0.1:
+    if max_p95 > 5000 or (unhealthy_count / max(1, total_checks)) > 0.1 or has_503:
         assessment = "undersized"
-    elif max_p95 > 2000:
+    elif max_p95 > 2000 or has_bimodal:
         assessment = "marginal"
     else:
         assessment = "adequate"
@@ -1614,6 +2206,7 @@ def generate_cluster_sizing(report):
         "assessment": assessment,
         "findings": findings,
         "recommendations": recommendations,
+        "config_summary": config_summary,
     }
 
 
@@ -1631,8 +2224,9 @@ report = {
         "workers": NUM_WORKERS,
         "scale": SCALE_APPLIED,
         "only_entities": list(ONLY_ENTITIES) if ONLY_ENTITIES else None,
-        "script_version": "2.0",
+        "script_version": "3.0",
     },
+    "server_info": introspector.report_section(),
     "server_health": health_monitor.summary(),
     "entities": entity_summaries,
     "phases": phase_timings,
@@ -1648,7 +2242,10 @@ report = {
     },
 }
 
-report["cluster_sizing"] = generate_cluster_sizing(report)
+if ramp_result:
+    report["ramp_test"] = ramp_result
+
+report["cluster_sizing"] = generate_cluster_sizing(report, ramp_data=ramp_result)
 
 # ── Write JSON report ────────────────────────────────────────────────────────
 report_for_file = json.loads(json.dumps(report))
@@ -1669,7 +2266,12 @@ def print_summary_table(report):
     print("\u2550" * 70)
     print("BENCHMARK RESULTS")
     print("\u2550" * 70)
+
+    si = report.get("server_info", {})
+    if si.get("version"):
+        print(f"Server: {si.get('version', '?')} (rev: {si.get('revision', '?')[:8]})")
     print("")
+
     header = f"{'Entity':<22} {'Count':>7} {'Rate/s':>8} {'p50ms':>7} {'p95ms':>7} {'p99ms':>7} {'Errors':>7}"
     print(header)
     print("\u2500" * 70)
@@ -1692,6 +2294,29 @@ def print_summary_table(report):
     err_str = f"{overall_err:.1f}%" if overall_err > 0 else "0.0%"
     print(f"{'Overall':<22} {total:>7} {overall_rps:>8.1f} {'':>7} {'':>7} {'':>7} {err_str:>7}")
     print("")
+
+    has_error_breakdowns = False
+    for name, data in report["entities"].items():
+        eb = data.get("error_breakdown", {})
+        if eb:
+            if not has_error_breakdowns:
+                print("ERROR BREAKDOWN:")
+                has_error_breakdowns = True
+            codes = ", ".join(f"{code}={cnt}" for code, cnt in sorted(eb.items()))
+            print(f"  {name}: {codes}")
+    if has_error_breakdowns:
+        print("")
+
+    has_latency_findings = False
+    for name, data in report["entities"].items():
+        la = data.get("latency_analysis", {})
+        for finding in la.get("findings", []):
+            if not has_latency_findings:
+                print("LATENCY ANALYSIS:")
+                has_latency_findings = True
+            print(f"  {name}: {finding}")
+    if has_latency_findings:
+        print("")
 
     health = report["server_health"]
     total_checks = health["total_checks"]
@@ -1722,6 +2347,14 @@ def print_summary_table(report):
     if "1000k_entities" in estimates:
         print(f"  - At current rate: 1M entities = {estimates['1000k_entities']}")
     print("")
+
+    config_summary = sizing.get("config_summary", [])
+    if config_summary:
+        print("RECOMMENDED CONFIGURATION:")
+        for env_line in config_summary:
+            print(f"  export {env_line}")
+        print("")
+
     print(f"Full report: {output_path}")
     print(f"Total time: {overall['total_wall_clock_s']:.1f}s")
 
