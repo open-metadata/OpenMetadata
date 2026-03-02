@@ -1053,7 +1053,8 @@ class LookerSource(DashboardServiceSource):
             db_service_prefixes = self.get_db_service_prefixes()
 
             if view.sql_table_name:
-                sql_table_name = self._render_table_name(view.sql_table_name)
+                sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
+                sql_table_name = self._render_table_name(sql_table_name)
 
                 for db_service_prefix in db_service_prefixes or []:
                     db_service_name, *_ = self.parse_db_service_prefix(
@@ -1171,7 +1172,8 @@ class LookerSource(DashboardServiceSource):
             db_service_prefixes = self.get_db_service_prefixes()
 
             if view.sql_table_name:
-                sql_table_name = self._render_table_name(view.sql_table_name)
+                sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
+                sql_table_name = self._render_table_name(sql_table_name)
 
                 for db_service_prefix in db_service_prefixes or []:
                     db_service_name, *_ = self.parse_db_service_prefix(
@@ -1394,6 +1396,21 @@ class LookerSource(DashboardServiceSource):
         if dialect == Dialect.BIGQUERY:
             clean_table_name = clean_table_name.strip("`")
         return clean_table_name
+
+    def _resolve_lookml_constants(self, table_name: str) -> str:
+        """Replace @{constant_name} references with values from manifest constants."""
+        if not self._main__lookml_manifest or not self._main__lookml_manifest.constants:
+            return table_name
+
+        constants_map = {
+            c["name"]: c.get("value", "") for c in self._main__lookml_manifest.constants
+        }
+
+        def replace_constant(match):
+            const_name = match.group(1)
+            return constants_map.get(const_name, match.group(0))
+
+        return re.sub(r"@\{(\w+)\}", replace_constant, table_name)
 
     @staticmethod
     def _render_table_name(table_name: str) -> str:

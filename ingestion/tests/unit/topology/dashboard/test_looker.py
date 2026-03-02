@@ -380,6 +380,53 @@ class LookerUnitTest(TestCase):
             "`BQ-project.dataset.sample_data`",
         )
 
+    def test_resolve_lookml_constants(self):
+        """
+        Check that LookML constants (@{...}) in sql_table_name are resolved from manifest
+        """
+        from metadata.ingestion.source.dashboard.looker.models import LookMLManifest
+
+        manifest = LookMLManifest(
+            project_name="test_project",
+            constants=[
+                {"name": "data_prod_dw_main", "value": "my_dataset"},
+                {"name": "schema_name", "value": "my_schema"},
+            ],
+        )
+        self.looker._main__lookml_manifest = manifest
+
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{data_prod_dw_main}.View_Dim_Countries`"
+            ),
+            "`my_dataset.View_Dim_Countries`",
+        )
+
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{schema_name}.@{data_prod_dw_main}.some_table`"
+            ),
+            "`my_schema.my_dataset.some_table`",
+        )
+
+        self.assertEqual(
+            self.looker._resolve_lookml_constants("`dataset.table`"),
+            "`dataset.table`",
+        )
+
+        self.assertEqual(
+            self.looker._resolve_lookml_constants("`@{unknown_const}.table`"),
+            "`@{unknown_const}.table`",
+        )
+
+        self.looker._main__lookml_manifest = None
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{data_prod_dw_main}.View_Dim_Countries`"
+            ),
+            "`@{data_prod_dw_main}.View_Dim_Countries`",
+        )
+
     def test_get_dashboard_sources(self):
         """
         Check how we are building the sources
