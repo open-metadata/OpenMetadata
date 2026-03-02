@@ -19,7 +19,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
 import {
-  DEFAULT_DOMAIN_VALUE,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
@@ -33,7 +32,6 @@ import {
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Domain } from '../../../../generated/entity/domains/domain';
-import { useDomainStore } from '../../../../hooks/useDomainStore';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -61,7 +59,6 @@ const DomainsWidget = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const { activeDomain } = useDomainStore();
   const [domains, setDomains] = useState<Domain[]>([]);
   const navigate = useNavigate();
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
@@ -78,8 +75,6 @@ const DomainsWidget = ({
       const sortField = getSortField(selectedSortBy);
       const sortOrder = getSortOrder(selectedSortBy);
 
-      const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-
       const [res, counts] = await Promise.all([
         searchQuery({
           query: '',
@@ -88,26 +83,6 @@ const DomainsWidget = ({
           sortField,
           sortOrder,
           searchIndex: SearchIndex.DOMAIN,
-          ...(hasActiveDomain && {
-            queryFilter: {
-              query: {
-                bool: {
-                  should: [
-                    {
-                      term: {
-                        fullyQualifiedName: activeDomain,
-                      },
-                    },
-                    {
-                      prefix: {
-                        fullyQualifiedName: `${activeDomain}.`,
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-          }),
         }),
         getAllDomainsWithAssetsCount(),
       ]);
@@ -122,13 +97,7 @@ const DomainsWidget = ({
     } finally {
       setLoading(false);
     }
-  }, [
-    selectedSortBy,
-    getSortField,
-    getSortOrder,
-    applySortToData,
-    activeDomain,
-  ]);
+  }, [selectedSortBy, getSortField, getSortOrder, applySortToData]);
 
   const handleDomainClick = useCallback(
     (domain: Domain) => {
