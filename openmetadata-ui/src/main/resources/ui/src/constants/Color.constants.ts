@@ -47,6 +47,8 @@ export const LEMON_ZEST = '#FFD700';
 export const GREY_100 = '#f5f5f5';
 export const GREY_200 = '#E9EAEB';
 export const GRAY_600 = '#535862';
+export const COLOR_GREY_400 = '#98A2B3';
+export const COLOR_GREY_300 = '#D0D5DD';
 
 export const SEVERITY_COLORS: Record<string, { bg: string; color: string }> = {
   Severity1: {

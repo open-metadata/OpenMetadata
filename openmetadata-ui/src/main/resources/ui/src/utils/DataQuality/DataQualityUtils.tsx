@@ -393,36 +393,34 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
     const payloadValue = uniqBy(payload, 'dataKey');
 
     return (
-      <div
-        className="rounded-md shadow-md p-[10px]"
-        style={{ backgroundColor: '#FFFFFF' }}>
-        <p
-          className="font-medium"
-          style={{ color: '#101828', fontSize: '12px' }}>
+      <div className="tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:shadow-md tw:p-2.5">
+        <p className="tw:m-0 tw:text-primary tw:font-medium tw:text-xs">
           {timestamp}
         </p>
-        <hr className="my-2 border-dashed" style={{ borderColor: '#D0D5DD' }} />
-        <div className="flex flex-col gap-1">
+        <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
+        <div className="tw:flex tw:flex-col tw:gap-1">
           {payloadValue.map((entry, index) => {
             const value = entry.value;
 
             return (
               <div
-                className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
+                className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm"
                 key={`item-${index}`}>
-                <span className="flex items-center">
-                  <Surface className="mr-2" height={14} version="1.1" width={4}>
+                <span className="tw:flex tw:items-center">
+                  <Surface
+                    className="tw:mr-2"
+                    height={14}
+                    version="1.1"
+                    width={4}>
                     <rect fill={entry.color} height="14" rx="2" width="4" />
                   </Surface>
-                  <span style={{ color: '#344054', fontSize: '11px' }}>
+                  <span className="tw:text-tertiary tw:text-[11px]">
                     {transformLabel
                       ? startCase(entry.name ?? (entry.dataKey as string))
                       : entry.name ?? (entry.dataKey as string)}
                   </span>
                 </span>
-                <span
-                  className="font-medium"
-                  style={{ color: '#101828', fontSize: '11px' }}>
+                <span className="tw:font-medium tw:text-primary tw:text-[11px]">
                   {valueFormatter
                     ? valueFormatter(value, entry.name ?? entry.dataKey)
                     : getEntryFormattedValue(value, isPercentage)}

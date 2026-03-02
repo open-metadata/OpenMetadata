@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Skeleton } from '@openmetadata/ui-core-components';
 import ProfilerLatestValue from '../ProfilerLatestValue/ProfilerLatestValue';
 import { ProfilerStateWrapperProps } from './ProfilerStateWrapper.interface';
 
@@ -21,15 +22,13 @@ const ProfilerStateWrapper = ({
   dataTestId,
 }: ProfilerStateWrapperProps) => {
   if (isLoading) {
-    return (
-      <div className="tw:h-95 tw:w-full tw:animate-pulse tw:rounded-lg tw:bg-quaternary" />
-    );
+    return <Skeleton height={380} variant="rounded" width="100%" />;
   }
 
   return (
     <div>
       {title && (
-        <p className="tw:m-0 tw:mb-3 tw:text-base tw:font-semibold tw:text-primary">
+        <p className="tw:m-0 tw:mb-3 tw:text-md tw:font-semibold tw:text-primary">
           {title}
         </p>
       )}

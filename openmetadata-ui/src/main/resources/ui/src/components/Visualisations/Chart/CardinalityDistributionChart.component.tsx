@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Badge } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +29,9 @@ import {
 } from 'recharts';
 import {
   CHART_BLUE_1,
+  COLOR_GREY_300,
+  COLOR_GREY_400,
+  GRAY_600,
   GREY_100,
   GREY_200,
 } from '../../../constants/Color.constants';
@@ -47,14 +52,6 @@ export interface CardinalityDistributionChartProps {
   };
   noDataPlaceholderText?: string | React.ReactNode;
 }
-
-// Hardcoded theme color constants
-const COLOR_PRIMARY = '#4689FF';
-const COLOR_GREY_400 = '#98A2B3';
-const COLOR_GREY_700 = '#535862';
-const COLOR_GREY_900 = '#101828';
-const COLOR_GREY_300 = '#D0D5DD';
-const COLOR_WHITE = '#FFFFFF';
 
 const CardinalityDistributionChart = ({
   data,
@@ -80,7 +77,7 @@ const CardinalityDistributionChart = ({
   const renderPlaceholder = useMemo(
     () => (placeholderText: string | React.ReactNode) =>
       (
-        <div className="flex items-center justify-center h-full w-full min-h-[350px]">
+        <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full tw:min-h-87.5">
           <ErrorPlaceHolder placeholderText={placeholderText} />
         </div>
       ),
@@ -102,33 +99,24 @@ const CardinalityDistributionChart = ({
       const data = payload[0].payload;
 
       return (
-        <div
-          className="rounded-md shadow-md p-[10px]"
-          style={{ backgroundColor: COLOR_WHITE }}>
-          <p className="font-medium text-xs" style={{ color: COLOR_GREY_900 }}>
+        <div className="tw:bg-primary tw:rounded-md tw:shadow-md tw:p-2.5">
+          <p className="tw:text-primary tw:font-medium tw:text-xs">
             {data.name}
           </p>
-          <hr
-            className="my-2 border-dashed"
-            style={{ borderColor: COLOR_GREY_300 }}
-          />
-          <div className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-            <span className="text-[11px]" style={{ color: COLOR_GREY_700 }}>
+          <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
+          <div className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm">
+            <span className="tw:text-tertiary tw:text-[11px]">
               {t('label.count')}
             </span>
-            <span
-              className="font-medium text-[11px]"
-              style={{ color: COLOR_GREY_900 }}>
+            <span className="tw:text-primary tw:font-medium tw:text-[11px]">
               {tooltipFormatter(data.count)}
             </span>
           </div>
-          <div className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-            <span className="text-[11px]" style={{ color: COLOR_GREY_700 }}>
+          <div className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm">
+            <span className="tw:text-tertiary tw:text-[11px]">
               {t('label.percentage')}
             </span>
-            <span
-              className="font-medium text-[11px]"
-              style={{ color: COLOR_GREY_900 }}>
+            <span className="tw:text-primary tw:font-medium tw:text-[11px]">
               {`${data.percentage}%`}
             </span>
           </div>
@@ -175,10 +163,10 @@ const CardinalityDistributionChart = ({
           dy={4}
           fill={
             isSelected
-              ? COLOR_PRIMARY
+              ? CHART_BLUE_1
               : isHighlighted
               ? COLOR_GREY_400
-              : COLOR_GREY_700
+              : GRAY_600
           }
           fontSize={12}
           fontWeight={isSelected ? 600 : 400}
@@ -195,7 +183,7 @@ const CardinalityDistributionChart = ({
   };
 
   return (
-    <div className="flex w-full" data-testid="chart-container">
+    <div className="tw:flex tw:w-full" data-testid="chart-container">
       {bothAllUnique
         ? renderPlaceholder(allValuesUniqueMessage)
         : dataEntries.map(([key, columnProfile], index) => {
@@ -223,59 +211,51 @@ const CardinalityDistributionChart = ({
 
             const containerHeight = Math.max(350, graphData.length * 30);
 
-            const colStyle: React.CSSProperties = {
-              flex: showSingleGraph ? '1 1 100%' : '1 1 50%',
-              minWidth: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              paddingLeft: showSingleGraph ? 16 : 24,
-              paddingRight: showSingleGraph ? 16 : 24,
-              paddingTop: 8,
-              paddingBottom: 8,
-              borderRight:
-                !showSingleGraph && index === 0
-                  ? `1px solid ${GREY_200}`
-                  : 'none',
-            };
+            const colClassName = classNames(
+              'tw:min-w-0 tw:flex tw:flex-col tw:pt-2 tw:pb-2',
+              showSingleGraph
+                ? 'tw:flex-1 tw:basis-full tw:px-4'
+                : 'tw:flex-1 tw:basis-1/2 tw:px-6',
+              {
+                'tw:border-r tw:border-border-secondary':
+                  !showSingleGraph && index === 0,
+              }
+            );
 
             return (
-              <div key={key} style={colStyle}>
+              <div className={colClassName} key={key}>
                 {isAllUnique ? (
                   renderPlaceholder(allValuesUniqueMessage)
                 ) : (
                   <>
-                    <div className="flex items-center justify-between mb-5">
-                      <span
-                        className="inline-block rounded-md px-3 py-1.5 text-sm font-semibold"
+                    <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
+                      <Badge
+                        className="tw:font-semibold"
+                        color="gray"
                         data-testid="date"
-                        style={{
-                          backgroundColor: GREY_100,
-                          color: COLOR_GREY_900,
-                        }}>
+                        size="lg"
+                        type="color">
                         {graphDate}
-                      </span>
-                      <span
-                        className="inline-block rounded-md px-3 py-1.5 text-sm font-semibold"
+                      </Badge>
+                      <Badge
+                        className="tw:font-semibold"
+                        color="gray"
                         data-testid="cardinality-tag"
-                        style={{
-                          backgroundColor: GREY_100,
-                          color: COLOR_GREY_900,
-                        }}>
+                        size="lg"
+                        type="color">
                         {`${t('label.total-entity', {
                           entity: t('label.category-plural'),
                         })}: ${cardinalityData.categories?.length || 0}`}
-                      </span>
+                      </Badge>
                     </div>
-                    <div
-                      className="overflow-x-hidden"
-                      style={{ flex: 1, minHeight: 350 }}>
+                    <div className="tw:flex-1 tw:min-h-87.5 tw:overflow-x-hidden">
                       <ResponsiveContainer
                         debounce={200}
                         height={containerHeight}
                         id={`${key}-cardinality`}
                         width="100%">
                         <BarChart
-                          className="w-full"
+                          className="tw:w-full"
                           data={graphData}
                           layout="vertical">
                           <CartesianGrid
@@ -328,7 +308,7 @@ const CardinalityDistributionChart = ({
                                   cursor="pointer"
                                   fill={
                                     isSelected
-                                      ? COLOR_PRIMARY
+                                      ? CHART_BLUE_1
                                       : isHighlighted
                                       ? COLOR_GREY_300
                                       : CHART_BLUE_1

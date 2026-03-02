@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Badge } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,13 +44,6 @@ import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataDistributionHistogramProps } from './Chart.interface';
 
-// Skew color theme constants (replaces theme.palette.allShades.success/error/info)
-const SKEW_THEME = {
-  success: { bg: '#DCFAE6', text: '#067647' },
-  error: { bg: '#FEE4E2', text: '#912018' },
-  info: { bg: '#EFF8FF', text: '#1849A9' },
-};
-
 const DataDistributionHistogram = ({
   data,
   noDataPlaceholderText,
@@ -69,7 +64,7 @@ const DataDistributionHistogram = ({
     isUndefined(data.currentDayData?.histogram)
   ) {
     return (
-      <div className="flex items-center justify-center h-full w-full">
+      <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full">
         <ErrorPlaceHolder placeholderText={noDataPlaceholderText} />
       </div>
     );
@@ -80,7 +75,7 @@ const DataDistributionHistogram = ({
   );
 
   return (
-    <div className="flex w-full" data-testid="chart-container">
+    <div className="tw:flex tw:w-full" data-testid="chart-container">
       {dataEntries.map(([key, columnProfile], index) => {
         const histogramData =
           (columnProfile?.histogram as HistogramClass) ||
@@ -96,45 +91,44 @@ const DataDistributionHistogram = ({
           'MMM dd, yyyy'
         );
 
-        const skewTheme = columnProfile?.nonParametricSkew
-          ? columnProfile?.nonParametricSkew > 0
-            ? SKEW_THEME.success
-            : SKEW_THEME.error
-          : SKEW_THEME.info;
+        let skewColor: 'success' | 'error' | 'blue' = 'blue';
+        if (columnProfile?.nonParametricSkew) {
+          skewColor = columnProfile.nonParametricSkew > 0 ? 'success' : 'error';
+        }
 
-        const colStyle: React.CSSProperties = {
-          flex: showSingleGraph ? '1 1 100%' : '1 1 50%',
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          paddingLeft: showSingleGraph ? 16 : 12,
-          paddingRight: showSingleGraph ? 16 : 12,
-          paddingTop: 8,
-          paddingBottom: 8,
-          borderRight:
-            !showSingleGraph && index === 0 ? `1px solid ${GREY_200}` : 'none',
-        };
+        const colClassName = classNames(
+          'tw:min-w-0 tw:flex tw:flex-col tw:pt-2 tw:pb-2',
+          showSingleGraph
+            ? 'tw:flex-1 tw:basis-full tw:px-4'
+            : 'tw:flex-1 tw:basis-1/2 tw:px-3',
+          {
+            'tw:border-r tw:border-border-secondary':
+              !showSingleGraph && index === 0,
+          }
+        );
 
         return (
-          <div key={key} style={colStyle}>
-            <div className="flex items-center justify-between mb-5">
-              <span
-                className="inline-block rounded-md px-3 py-1.5 text-sm font-semibold"
-                style={{ backgroundColor: GREY_100, color: '#101828' }}>
+          <div className={colClassName} key={key}>
+            <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
+              <Badge
+                className="tw:font-semibold"
+                color="gray"
+                data-testid="date"
+                size="lg"
+                type="color">
                 {graphDate}
-              </span>
-              <span
-                className="inline-block rounded-md px-3 py-1.5 text-sm font-semibold"
-                style={{
-                  backgroundColor: skewTheme.bg,
-                  color: skewTheme.text,
-                }}>
+              </Badge>
+              <Badge
+                className="tw:font-semibold"
+                color={skewColor}
+                size="lg"
+                type="color">
                 {`${t('label.skew')}: ${
                   columnProfile?.nonParametricSkew || '--'
                 }`}
-              </span>
+              </Badge>
             </div>
-            <div style={{ flex: 1, minHeight: 350 }}>
+            <div className="tw:flex-1 tw:min-h-87.5">
               <ResponsiveContainer
                 debounce={200}
                 height="100%"

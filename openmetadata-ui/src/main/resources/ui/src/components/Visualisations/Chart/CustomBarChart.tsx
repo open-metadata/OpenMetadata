@@ -25,6 +25,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { GREY_100, GREY_200 } from '../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
 import {
@@ -115,8 +116,8 @@ const CustomBarChart = ({
             />
           }
           cursor={{
-            fill: '#f5f5f5',
-            stroke: '#e8e8e8',
+            fill: GREY_100,
+            stroke: GREY_200,
             strokeDasharray: '3 3',
           }}
         />

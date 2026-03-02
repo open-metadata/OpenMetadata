@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { Form, Select } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -516,12 +517,7 @@ const IncidentManager = ({
     record?: TestCaseResolutionStatus
   ) => {
     if (isPermissionLoading) {
-      return (
-        <div
-          className="tw:h-6 tw:w-25 tw:animate-pulse tw:rounded tw:bg-quaternary"
-          data-testid="assignee-skeleton"
-        />
-      );
+      return <Skeleton height={24} variant="rectangular" width={100} />;
     }
 
     const hasPermission = testCasePermissions.find(
@@ -628,12 +624,7 @@ const IncidentManager = ({
         width: 100,
         render: (_, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
-            return (
-              <div
-                className="tw:h-6 tw:w-25 tw:animate-pulse tw:rounded tw:bg-quaternary"
-                data-testid="status-skeleton"
-              />
-            );
+            return <Skeleton height={24} variant="rectangular" width={100} />;
           }
           const hasPermission = testCasePermissions.find(
             (item) =>
@@ -658,12 +649,7 @@ const IncidentManager = ({
         width: 100,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
-            return (
-              <div
-                className="tw:h-6 tw:w-25 tw:animate-pulse tw:rounded tw:bg-quaternary"
-                data-testid="severity-skeleton"
-              />
-            );
+            return <Skeleton height={24} variant="rectangular" width={100} />;
           }
 
           const hasPermission = testCasePermissions.find(
@@ -717,64 +703,62 @@ const IncidentManager = ({
 
   return (
     <div className="tw:border tw:border-border-secondary tw:rounded-[10px] tw:bg-white">
-      <div className="new-form-style tw:flex tw:justify-between tw:items-center tw:p-8 tw:gap-10">
-        <div className="tw:flex tw:flex-row tw:justify-between tw:gap-10 tw:w-full">
-          <AsyncSelect
-            allowClear
-            showArrow
-            showSearch
-            api={searchTestCases}
-            className="w-min-20"
-            data-testid="test-case-select"
-            placeholder={t('label.test-case')}
-            suffixIcon={undefined}
-            value={filters.testCaseFQN}
-            onChange={(value) => updateFilters({ testCaseFQN: value })}
-          />
-          <div className="tw:flex tw:gap-10">
-            <Form.Item className="m-b-0" label={t('label.assignee')}>
-              <Assignees
+      <div className="new-form-style tw:flex tw:justify-between tw:items-center tw:p-4 tw:gap-5.5 tw:w-full">
+        <AsyncSelect
+          allowClear
+          showArrow
+          showSearch
+          api={searchTestCases}
+          className="w-min-20"
+          data-testid="test-case-select"
+          placeholder={t('label.test-case')}
+          suffixIcon={undefined}
+          value={filters.testCaseFQN}
+          onChange={(value) => updateFilters({ testCaseFQN: value })}
+        />
+        <div className="tw:flex tw:gap-5.5">
+          <Form.Item className="m-b-0" label={t('label.assignee')}>
+            <Assignees
+              allowClear
+              isSingleSelect
+              showArrow
+              className="w-min-10"
+              options={assigneeOptionsWithSelected}
+              placeholder={t('label.assignee')}
+              value={selectedAssignees}
+              onChange={handleAssigneeChange}
+              onSearch={(query) => fetchUserFilterOptions(query)}
+            />
+          </Form.Item>
+          <Form.Item className="m-b-0" label={t('label.status')}>
+            <Select
+              allowClear
+              className="w-min-10"
+              data-testid="status-select"
+              placeholder={t('label.status')}
+              value={filters.testCaseResolutionStatusType}
+              onChange={(value) =>
+                updateFilters({ testCaseResolutionStatusType: value })
+              }>
+              {Object.values(TestCaseResolutionStatusTypes).map((value) => (
+                <Select.Option key={value}>
+                  {TEST_CASE_RESOLUTION_STATUS_LABELS[value]}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          {isDateRangePickerVisible && (
+            <Form.Item className="m-b-0" label={t('label.date')}>
+              <MuiDatePickerMenu
                 allowClear
-                isSingleSelect
-                showArrow
-                className="w-min-10"
-                options={assigneeOptionsWithSelected}
-                placeholder={t('label.assignee')}
-                value={selectedAssignees}
-                onChange={handleAssigneeChange}
-                onSearch={(query) => fetchUserFilterOptions(query)}
+                showSelectedCustomRange
+                defaultDateRange={dateRangeKey}
+                handleDateRangeChange={handleDateRangeChange}
+                size="small"
+                onClear={handleDateRangeClear}
               />
             </Form.Item>
-            <Form.Item className="m-b-0" label={t('label.status')}>
-              <Select
-                allowClear
-                className="w-min-10"
-                data-testid="status-select"
-                placeholder={t('label.status')}
-                value={filters.testCaseResolutionStatusType}
-                onChange={(value) =>
-                  updateFilters({ testCaseResolutionStatusType: value })
-                }>
-                {Object.values(TestCaseResolutionStatusTypes).map((value) => (
-                  <Select.Option key={value}>
-                    {TEST_CASE_RESOLUTION_STATUS_LABELS[value]}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-            {isDateRangePickerVisible && (
-              <Form.Item className="m-b-0" label={t('label.date')}>
-                <MuiDatePickerMenu
-                  allowClear
-                  showSelectedCustomRange
-                  defaultDateRange={dateRangeKey}
-                  handleDateRangeChange={handleDateRangeChange}
-                  size="small"
-                  onClear={handleDateRangeClear}
-                />
-              </Form.Item>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
