@@ -48,28 +48,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     [key: string]: unknown;
   }) => <Component {...props}>{children}</Component>,
-  ProgressBarCircle: ({
-    valueFormatter: _vf,
-    ...props
-  }: Record<string, unknown>) => (
-    <div data-testid="progress-bar-circle" role="progressbar" {...props} />
-  ),
-  Tooltip: ({
-    children,
-    title,
-    ...props
-  }: {
-    children: React.ReactNode;
-    title: React.ReactNode;
-    [key: string]: unknown;
-  }) => (
-    <div
-      data-testid="tooltip"
-      title={typeof title === 'string' ? title : undefined}
-      {...props}>
-      {children}
-    </div>
-  ),
 }));
 
 jest.mock('./useScrollIndicator.hook', () => ({
@@ -126,7 +104,7 @@ describe('DimensionalityHeatmap Component', () => {
         { wrapper: Wrapper }
       );
 
-      expect(screen.getByRole('progressbar')).toBeInTheDocument();
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
     });
 
     it('should render empty state when data is empty', () => {

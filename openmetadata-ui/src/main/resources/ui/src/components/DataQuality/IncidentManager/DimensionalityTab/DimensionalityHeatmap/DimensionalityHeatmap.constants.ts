@@ -39,24 +39,3 @@ export const HEATMAP_CONSTANTS = {
   /** Right padding to accommodate the scroll indicator overlay */
   CONTAINER_PADDING_RIGHT: 60,
 } as const;
-
-/**
- * Tooltip styling constants
- * Using consistent spacing and typography for data quality metrics display
- */
-export const TOOLTIP_STYLES = {
-  /** Padding around tooltip content */
-  CARD_PADDING: '10px',
-
-  /** Spacing around divider line (MUI spacing units) */
-  DIVIDER_MARGIN: 2,
-
-  /** Vertical spacing between tooltip rows (MUI spacing units) */
-  STACK_SPACING: 1,
-
-  /** Font size for tooltip header (date) */
-  HEADER_FONT_SIZE: 13,
-
-  /** Font size for tooltip content (metrics) */
-  CONTENT_FONT_SIZE: 12,
-} as const;
