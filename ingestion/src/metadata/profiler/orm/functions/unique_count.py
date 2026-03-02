@@ -37,7 +37,7 @@ def _get_unique_count_expressions(
 
     Args:
         col: Column to compute unique count for
-        dialect: Database dialect name (from session.bind.dialect.name)
+        dialect: Database dialect name (from session.get_bind().dialect.name)
 
     Returns:
         (group_by_expr, count_expr): Tuple of expressions to use in GROUP BY and COUNT()
@@ -82,7 +82,7 @@ def _unique_count_query(col, session, sample):
     Uses dialect-agnostic logic via _get_unique_count_expressions().
     """
     group_by_expr, count_expr = _get_unique_count_expressions(
-        col, session.bind.dialect.name
+        col, session.get_bind().dialect.name
     )
 
     return (

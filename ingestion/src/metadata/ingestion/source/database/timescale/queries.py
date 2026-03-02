@@ -28,8 +28,8 @@ LEFT JOIN timescaledb_information.dimensions dim
     ON ht.hypertable_schema = dim.hypertable_schema
     AND ht.hypertable_name = dim.hypertable_name
     AND dim.dimension_number = 1
-WHERE ht.hypertable_schema = %(schema_name)s
-  AND ht.hypertable_name = %(table_name)s
+WHERE ht.hypertable_schema = :schema_name
+  AND ht.hypertable_name = :table_name
 """
 
 TIMESCALE_GET_COMPRESSION_SETTINGS = """
@@ -37,8 +37,8 @@ SELECT
     array_agg(DISTINCT attname ORDER BY attname) FILTER (WHERE segmentby_column_index IS NOT NULL) as segment_by_columns,
     array_agg(DISTINCT attname ORDER BY attname) FILTER (WHERE orderby_column_index IS NOT NULL) as order_by_columns
 FROM timescaledb_information.compression_settings
-WHERE hypertable_schema = %(schema_name)s
-  AND hypertable_name = %(table_name)s
+WHERE hypertable_schema = :schema_name
+  AND hypertable_name = :table_name
 GROUP BY hypertable_schema, hypertable_name
 """
 
@@ -52,7 +52,7 @@ SELECT
     materialization_hypertable_schema,
     materialization_hypertable_name
 FROM timescaledb_information.continuous_aggregates
-WHERE view_schema = %(schema_name)s
+WHERE view_schema = :schema_name
 """
 
 TIMESCALE_GET_CHUNK_INFO = """
@@ -64,8 +64,8 @@ SELECT
     is_compressed,
     chunk_tablespace
 FROM timescaledb_information.chunks
-WHERE hypertable_schema = %(schema_name)s
-  AND hypertable_name = %(table_name)s
+WHERE hypertable_schema = :schema_name
+  AND hypertable_name = :table_name
 ORDER BY range_start DESC
 LIMIT 5
 """
