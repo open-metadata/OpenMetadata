@@ -36,7 +36,7 @@ mock_redshift_config = {
             "config": {
                 "type": "Redshift",
                 "username": "username",
-                "password": "password",
+                "authType": {"password": "password"},
                 "database": "database",
                 "hostPort": "cluster.name.region.redshift.amazonaws.com:5439",
                 "sslMode": "verify-full",

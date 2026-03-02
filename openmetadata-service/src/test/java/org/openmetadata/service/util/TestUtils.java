@@ -141,7 +141,7 @@ public final class TestUtils {
               new RedshiftConnection()
                   .withHostPort("localhost:5002")
                   .withUsername("test")
-                  .withPassword("test"));
+                  .withAuthType(new basicAuth().withPassword("test")));
 
   public static final URI PIPELINE_URL = getUri("http://localhost:8080");
   public static final DatabaseConnection MYSQL_DATABASE_CONNECTION =

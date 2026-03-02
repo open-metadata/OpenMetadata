@@ -37,7 +37,7 @@ mock_redshift_config = {
             "config": {
                 "type": "Redshift",
                 "username": "username",
-                "password": "password",
+                "authType": {"password": "password"},
                 "database": "database",
                 "hostPort": "workgroup.account.region.redshift-serverless.amazonaws.com:5439",
             }
