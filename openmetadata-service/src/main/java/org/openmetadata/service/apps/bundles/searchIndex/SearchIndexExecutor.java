@@ -875,69 +875,84 @@ public class SearchIndexExecutor implements AutoCloseable {
         // Dynamically register actual readers with the phaser
         producerPhaser.bulkRegister(numReaders);
 
-        if (TIME_SERIES_ENTITIES.contains(entityType)) {
-          Long filterStartTs = null;
-          Long filterEndTs = null;
-          if (config != null) {
-            long startTs = config.getTimeSeriesStartTs(entityType);
-            if (startTs > 0) {
-              filterStartTs = startTs;
-              filterEndTs = System.currentTimeMillis();
+        try {
+          if (TIME_SERIES_ENTITIES.contains(entityType)) {
+            Long filterStartTs = null;
+            Long filterEndTs = null;
+            if (config != null) {
+              long startTs = config.getTimeSeriesStartTs(entityType);
+              if (startTs > 0) {
+                filterStartTs = startTs;
+                filterEndTs = System.currentTimeMillis();
+              }
             }
+            final Long tsStart = filterStartTs;
+            final Long tsEnd = filterEndTs;
+            submitReaders(
+                entityType,
+                totalEntityRecords,
+                fixedBatchSize,
+                numReaders,
+                producerPhaser,
+                () -> {
+                  PaginatedEntityTimeSeriesSource source =
+                      (tsStart != null)
+                          ? new PaginatedEntityTimeSeriesSource(
+                              entityType,
+                              fixedBatchSize,
+                              getSearchIndexFields(entityType),
+                              totalEntityRecords,
+                              tsStart,
+                              tsEnd)
+                          : new PaginatedEntityTimeSeriesSource(
+                              entityType,
+                              fixedBatchSize,
+                              getSearchIndexFields(entityType),
+                              totalEntityRecords);
+                  return source::readWithCursor;
+                },
+                (readers, total) -> {
+                  List<String> cursors = new ArrayList<>();
+                  int perReader = total / readers;
+                  for (int i = 1; i < readers; i++) {
+                    cursors.add(RestUtil.encodeCursor(String.valueOf(i * perReader)));
+                  }
+                  return cursors;
+                });
+          } else {
+            PaginatedEntitiesSource entSource =
+                new PaginatedEntitiesSource(
+                    entityType,
+                    fixedBatchSize,
+                    getSearchIndexFields(entityType),
+                    totalEntityRecords);
+            submitReaders(
+                entityType,
+                totalEntityRecords,
+                fixedBatchSize,
+                numReaders,
+                producerPhaser,
+                () -> {
+                  PaginatedEntitiesSource source =
+                      new PaginatedEntitiesSource(
+                          entityType,
+                          fixedBatchSize,
+                          getSearchIndexFields(entityType),
+                          totalEntityRecords);
+                  return source::readNextKeyset;
+                },
+                entSource::findBoundaryCursors);
           }
-          final Long tsStart = filterStartTs;
-          final Long tsEnd = filterEndTs;
-          submitReaders(
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to submit readers for {}, deregistering {} phaser parties",
               entityType,
-              totalEntityRecords,
-              fixedBatchSize,
               numReaders,
-              producerPhaser,
-              () -> {
-                PaginatedEntityTimeSeriesSource source =
-                    (tsStart != null)
-                        ? new PaginatedEntityTimeSeriesSource(
-                            entityType,
-                            fixedBatchSize,
-                            getSearchIndexFields(entityType),
-                            totalEntityRecords,
-                            tsStart,
-                            tsEnd)
-                        : new PaginatedEntityTimeSeriesSource(
-                            entityType,
-                            fixedBatchSize,
-                            getSearchIndexFields(entityType),
-                            totalEntityRecords);
-                return source::readWithCursor;
-              },
-              (readers, total) -> {
-                List<String> cursors = new ArrayList<>();
-                int perReader = total / readers;
-                for (int i = 1; i < readers; i++) {
-                  cursors.add(RestUtil.encodeCursor(String.valueOf(i * perReader)));
-                }
-                return cursors;
-              });
-        } else {
-          PaginatedEntitiesSource entSource =
-              new PaginatedEntitiesSource(
-                  entityType, fixedBatchSize, getSearchIndexFields(entityType), totalEntityRecords);
-          submitReaders(
-              entityType,
-              totalEntityRecords,
-              fixedBatchSize,
-              numReaders,
-              producerPhaser,
-              () -> {
-                PaginatedEntitiesSource source =
-                    new PaginatedEntitiesSource(
-                        entityType,
-                        fixedBatchSize,
-                        getSearchIndexFields(entityType),
-                        totalEntityRecords);
-                return source::readNextKeyset;
-              },
-              entSource::findBoundaryCursors);
+              e);
+          for (int i = 0; i < numReaders; i++) {
+            producerPhaser.arriveAndDeregister();
+          }
+          throw e;
         }
       } else {
         entityBatchCounters.put(entityType, new AtomicInteger(1));

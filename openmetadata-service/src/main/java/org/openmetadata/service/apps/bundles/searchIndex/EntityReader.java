@@ -108,54 +108,66 @@ public class EntityReader implements AutoCloseable {
         Math.min(calculateNumberOfReaders(totalRecords, batchSize), MAX_READERS_PER_ENTITY);
     phaser.bulkRegister(numReaders);
 
-    if (TIME_SERIES_ENTITIES.contains(entityType)) {
-      submitReaders(
+    try {
+      if (TIME_SERIES_ENTITIES.contains(entityType)) {
+        submitReaders(
+            entityType,
+            totalRecords,
+            batchSize,
+            numReaders,
+            phaser,
+            callback,
+            () -> {
+              PaginatedEntityTimeSeriesSource source =
+                  (timeSeriesStartTs != null)
+                      ? new PaginatedEntityTimeSeriesSource(
+                          entityType,
+                          batchSize,
+                          getSearchIndexFields(entityType),
+                          totalRecords,
+                          timeSeriesStartTs,
+                          timeSeriesEndTs)
+                      : new PaginatedEntityTimeSeriesSource(
+                          entityType, batchSize, getSearchIndexFields(entityType), totalRecords);
+              return source::readWithCursor;
+            },
+            (readers, total) -> {
+              List<String> cursors = new ArrayList<>();
+              int perReader = total / readers;
+              for (int i = 1; i < readers; i++) {
+                cursors.add(RestUtil.encodeCursor(String.valueOf(i * perReader)));
+              }
+              return cursors;
+            });
+      } else {
+        PaginatedEntitiesSource entSource =
+            new PaginatedEntitiesSource(
+                entityType, batchSize, getSearchIndexFields(entityType), totalRecords);
+        submitReaders(
+            entityType,
+            totalRecords,
+            batchSize,
+            numReaders,
+            phaser,
+            callback,
+            () -> {
+              PaginatedEntitiesSource source =
+                  new PaginatedEntitiesSource(
+                      entityType, batchSize, getSearchIndexFields(entityType), totalRecords);
+              return source::readNextKeyset;
+            },
+            entSource::findBoundaryCursors);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to submit readers for {}, deregistering {} phaser parties",
           entityType,
-          totalRecords,
-          batchSize,
           numReaders,
-          phaser,
-          callback,
-          () -> {
-            PaginatedEntityTimeSeriesSource source =
-                (timeSeriesStartTs != null)
-                    ? new PaginatedEntityTimeSeriesSource(
-                        entityType,
-                        batchSize,
-                        getSearchIndexFields(entityType),
-                        totalRecords,
-                        timeSeriesStartTs,
-                        timeSeriesEndTs)
-                    : new PaginatedEntityTimeSeriesSource(
-                        entityType, batchSize, getSearchIndexFields(entityType), totalRecords);
-            return source::readWithCursor;
-          },
-          (readers, total) -> {
-            List<String> cursors = new ArrayList<>();
-            int perReader = total / readers;
-            for (int i = 1; i < readers; i++) {
-              cursors.add(RestUtil.encodeCursor(String.valueOf(i * perReader)));
-            }
-            return cursors;
-          });
-    } else {
-      PaginatedEntitiesSource entSource =
-          new PaginatedEntitiesSource(
-              entityType, batchSize, getSearchIndexFields(entityType), totalRecords);
-      submitReaders(
-          entityType,
-          totalRecords,
-          batchSize,
-          numReaders,
-          phaser,
-          callback,
-          () -> {
-            PaginatedEntitiesSource source =
-                new PaginatedEntitiesSource(
-                    entityType, batchSize, getSearchIndexFields(entityType), totalRecords);
-            return source::readNextKeyset;
-          },
-          entSource::findBoundaryCursors);
+          e);
+      for (int i = 0; i < numReaders; i++) {
+        phaser.arriveAndDeregister();
+      }
+      throw e;
     }
 
     return numReaders;

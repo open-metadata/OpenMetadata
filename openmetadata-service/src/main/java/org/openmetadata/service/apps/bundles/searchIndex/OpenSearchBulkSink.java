@@ -963,6 +963,16 @@ public class OpenSearchBulkSink implements BulkSink {
         }
         circuitBreaker.recordFailure();
         handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, e);
+        boolean willRetry =
+            shouldRetry(attemptNumber, e)
+                && circuitBreaker.getState() != BulkCircuitBreaker.State.OPEN;
+        if (!willRetry) {
+          activeBulkRequests.decrementAndGet();
+          concurrentRequestSemaphore.release();
+          if (metrics != null) {
+            metrics.decrementPendingBulkRequests();
+          }
+        }
         return;
       }
 
