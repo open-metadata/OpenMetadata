@@ -117,14 +117,6 @@ def get_connection(
         )
         consumer_config["value.deserializer"] = avro_deserializer
 
-        # Log sanitized config to avoid exposing sensitive credentials
-        sanitized_config = {
-            k: "********" if "password" in k.lower() or "auth" in k.lower() else v
-            for k, v in consumer_config.items()
-            if not callable(v)  # Skip non-serializable items like deserializer
-        }
-        logger.debug(f"Using Kafka consumer config: {sanitized_config}")
-
         consumer_client = DeserializingConsumer(consumer_config)
 
     return KafkaClient(
