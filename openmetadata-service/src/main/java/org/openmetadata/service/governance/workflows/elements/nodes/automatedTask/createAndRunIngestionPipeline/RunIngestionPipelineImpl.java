@@ -80,7 +80,8 @@ public class RunIngestionPipelineImpl {
       try {
         pipelineServiceClient.runPipeline(
             ingestionPipeline,
-            Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED));
+            Entity.getEntity(
+                ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
         break;
       } catch (IngestionPipelineDeploymentException ex) {
         tryNumber++;
