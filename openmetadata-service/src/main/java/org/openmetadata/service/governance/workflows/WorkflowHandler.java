@@ -164,7 +164,8 @@ public class WorkflowHandler {
     initialize(config, false);
   }
 
-  public static void initialize(OpenMetadataApplicationConfig config, boolean isMigrationContext) {
+  public static synchronized void initialize(
+      OpenMetadataApplicationConfig config, boolean isMigrationContext) {
     if (!initialized) {
       instance = new WorkflowHandler(config, isMigrationContext);
       initialized = true;
