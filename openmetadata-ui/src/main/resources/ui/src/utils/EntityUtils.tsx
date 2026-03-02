@@ -30,7 +30,6 @@ import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/DataAssetSummaryPanel.interface';
 import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
@@ -159,6 +158,7 @@ import {
   getUsagePercentile,
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
+import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 
 export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',
@@ -2935,6 +2935,7 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.SPREADSHEET]: t('label.spreadsheet'),
   [EntityType.WORKSHEET]: t('label.worksheet'),
   [EntityType.NOTIFICATION_TEMPLATE]: t('label.notification-template'),
+  [EntityType.TABLE_COLUMN]: t('label.table-column'),
 };
 
 export const hasSchemaTab = (entityType: EntityType): boolean =>

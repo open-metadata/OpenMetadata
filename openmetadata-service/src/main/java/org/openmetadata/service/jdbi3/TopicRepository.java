@@ -407,7 +407,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName().equals("messageSchema")) {
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("messageSchema")) {
       TaskType taskType = threadContext.getThread().getTask().getType();
       if (EntityUtil.isDescriptionTask(taskType)) {
         return new MessageSchemaDescriptionWorkflow(threadContext);

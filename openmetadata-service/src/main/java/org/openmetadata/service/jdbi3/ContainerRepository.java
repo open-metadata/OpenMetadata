@@ -432,7 +432,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName().equals("dataModel")) {
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("dataModel")) {
       TaskType taskType = threadContext.getThread().getTask().getType();
       if (EntityUtil.isDescriptionTask(taskType)) {
         return new DataModelDescriptionTaskWorkflow(threadContext);

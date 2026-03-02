@@ -259,25 +259,25 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await navigateToPersonaNavigation(page);
 
     const treeItems = page.locator('.ant-tree-node-content-wrapper');
-    
+
     // Wait for the tree to be fully ready
     await expect(treeItems.first()).toBeVisible();
-    
-    const firstItem = treeItems.first();
-    const secondItem = treeItems.nth(1);
 
-    const firstItemText = await firstItem.textContent();
+    const homeItem = treeItems.getByTitle('label.home');
+    const exploreItem = treeItems.getByTitle('label.explore');
+
+    const firstItemText = await homeItem.textContent();
 
     expect(firstItemText).not.toBeNull();
 
-    const firstItemBox = await firstItem.boundingBox();
-    const secondItemBox = await secondItem.boundingBox();
+    const firstItemBox = await homeItem.boundingBox();
+    const secondItemBox = await exploreItem.boundingBox();
 
     expect(firstItemBox).not.toBeNull();
     expect(secondItemBox).not.toBeNull();
 
     if (firstItemBox && secondItemBox) {
-      await firstItem.dragTo(secondItem, {
+      await homeItem.dragTo(exploreItem, {
         sourcePosition: {
           x: firstItemBox.width / 2,
           y: firstItemBox.height / 2,
@@ -294,7 +294,6 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
       await expect(saveButton).toBeVisible();
       await expect(saveButton).toBeEnabled();
-       
     }
   });
 
@@ -335,9 +334,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await expect(page.getByText('Switch Persona')).toBeVisible();
 
     // Initially should show limited personas (2 by default)
-    const initialPersonaLabels = page.locator(
-      '[data-testid="persona-label"]'
-    ).locator('input[type="radio"]');
+    const initialPersonaLabels = page
+      .locator('[data-testid="persona-label"]')
+      .locator('input[type="radio"]');
     await initialPersonaLabels.first().click();
     await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
     await expect(page.getByTestId('app-bar-item-insights')).not.toBeVisible();
