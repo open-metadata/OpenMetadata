@@ -2592,6 +2592,7 @@
     "no-config-available": "कोणतेही कनेक्शन कॉन्फिग उपलब्ध नाहीत.",
     "no-config-plural": "कोणतेही कॉन्फिग नाहीत.",
     "no-connectors-available-for-service": "निवडलेल्या सेवा प्रकारासाठी कोणतेही कनेक्टर उपलब्ध नाहीत.",
+    "no-contract-description": "या घटकासाठी कोणताही करार परिभाषित केलेला नाही.",
     "no-conversations": "संवाद नाही!",
     "no-conversations-description": "आपल्याकडे सध्या कोणतेही खुले कार्य नाही. दर्शविण्यासाठी कोणतीही तपशील किंवा संवाद नाहीत.",
     "no-curated-assets": "Looks like you haven't curated any data assets yet.",

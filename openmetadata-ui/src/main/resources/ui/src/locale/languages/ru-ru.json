@@ -2592,6 +2592,7 @@
     "no-config-available": "Нет доступных конфигураций подключения.",
     "no-config-plural": "Нет доступных конфигураций.",
     "no-connectors-available-for-service": "Нет доступных коннекторов для выбранного типа сервиса.",
+    "no-contract-description": "Для данной сущности не определён контракт.",
     "no-conversations": "Нет обсуждений!",
     "no-conversations-description": "У вас нет открытых задач. Нет деталей или обсуждений для отображения.",
     "no-curated-assets": "Нет выбранных активов",

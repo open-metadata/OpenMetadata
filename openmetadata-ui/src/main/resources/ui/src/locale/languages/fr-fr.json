@@ -2592,6 +2592,7 @@
     "no-config-available": "Aucun paramètre de connexion disponible.",
     "no-config-plural": "Pas de Configs.",
     "no-connectors-available-for-service": "Aucun connecteur disponible pour le type de service sélectionné.",
+    "no-contract-description": "Aucun contrat n'a été défini pour cette entité.",
     "no-conversations": "Pas de conversations !",
     "no-conversations-description": "Vous n'avez pas de tâches ouvertes en ce moment. Il n'y a pas de détails ou de conversations à afficher.",
     "no-curated-assets": "Il semble que vous n'ayez pas encore organisé d'actifs de données.",

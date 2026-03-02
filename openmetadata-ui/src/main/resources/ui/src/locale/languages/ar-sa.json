@@ -2592,6 +2592,7 @@
     "no-config-available": "لا تتوفر تكوينات اتصال.",
     "no-config-plural": "لا توجد تكوينات.",
     "no-connectors-available-for-service": "لا تتوفر موصلات لنوع الخدمة المحدد.",
+    "no-contract-description": "لم يتم تحديد أي عقد لهذا الكيان.",
     "no-conversations": "لا توجد محادثات!",
     "no-conversations-description": "ليس لديك مهام مفتوحة الآن. لا توجد تفاصيل أو محادثات لعرضها.",
     "no-curated-assets": "يبدو أنك لم تقم بتنظيم أي أصول بيانات بعد.",

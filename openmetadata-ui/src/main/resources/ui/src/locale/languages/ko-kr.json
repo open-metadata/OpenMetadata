@@ -2592,6 +2592,7 @@
     "no-config-available": "사용 가능한 연결 구성이 없습니다.",
     "no-config-plural": "구성 없음.",
     "no-connectors-available-for-service": "선택된 서비스 유형에 사용 가능한 커넥터가 없습니다.",
+    "no-contract-description": "이 엔터티에 대해 정의된 계약이 없습니다.",
     "no-conversations": "대화가 없습니다!",
     "no-conversations-description": "현재 열린 작업이 없습니다. 표시할 세부 정보나 대화가 없습니다.",
     "no-curated-assets": "아직 큐레이션된 데이터 자산이 없습니다.",

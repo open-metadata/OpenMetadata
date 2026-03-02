@@ -2592,6 +2592,7 @@
     "no-config-available": "利用可能な接続設定はありません。",
     "no-config-plural": "設定がありません。",
     "no-connectors-available-for-service": "選択されたサービスタイプに利用可能なコネクタがありません。",
+    "no-contract-description": "このエンティティに対してコントラクトが定義されていません。",
     "no-conversations": "会話なし！",
     "no-conversations-description": "現在、開いているタスクはありません。表示する詳細や会話はありません。",
     "no-curated-assets": "キュレートされた資産はありません",
