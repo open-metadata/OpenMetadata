@@ -382,18 +382,13 @@ class LookerUnitTest(TestCase):
 
     def test_resolve_lookml_constants(self):
         """
-        Check that LookML constants (@{...}) in sql_table_name are resolved from manifest
+        Check that LookML constants (@{...}) in sql_table_name are resolved from manifest,
+        and unresolved constants are stripped as fallback.
         """
-        from metadata.ingestion.source.dashboard.looker.models import LookMLManifest
-
-        manifest = LookMLManifest(
-            project_name="test_project",
-            constants=[
-                {"name": "data_prod_dw_main", "value": "my_dataset"},
-                {"name": "schema_name", "value": "my_schema"},
-            ],
-        )
-        self.looker._main__lookml_manifest = manifest
+        self.looker._lookml_constants_map = {
+            "data_prod_dw_main": "my_dataset",
+            "schema_name": "my_schema",
+        }
 
         self.assertEqual(
             self.looker._resolve_lookml_constants(
@@ -409,22 +404,67 @@ class LookerUnitTest(TestCase):
             "`my_schema.my_dataset.some_table`",
         )
 
+        # No constants in input — fast path passthrough
         self.assertEqual(
             self.looker._resolve_lookml_constants("`dataset.table`"),
             "`dataset.table`",
         )
 
+        # Unknown constant is stripped, table name still usable
         self.assertEqual(
             self.looker._resolve_lookml_constants("`@{unknown_const}.table`"),
-            "`@{unknown_const}.table`",
+            "`table`",
         )
 
-        self.looker._main__lookml_manifest = None
+        # Partial resolution: known resolved, unknown stripped
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{data_prod_dw_main}.@{unknown}.table`"
+            ),
+            "`my_dataset.table`",
+        )
+
+        # Empty constants map — constants stripped, table name still usable
+        self.looker._lookml_constants_map = {}
         self.assertEqual(
             self.looker._resolve_lookml_constants(
                 "`@{data_prod_dw_main}.View_Dim_Countries`"
             ),
-            "`@{data_prod_dw_main}.View_Dim_Countries`",
+            "`View_Dim_Countries`",
+        )
+
+    def test_resolve_lookml_constants_no_strip(self):
+        """
+        Check that strip_unresolved=False keeps unknown constants as-is
+        (used for derived_table SQL where stripping would produce invalid SQL).
+        """
+        self.looker._lookml_constants_map = {
+            "dataset": "prod_dataset",
+        }
+
+        # Known constant resolved
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "SELECT * FROM @{dataset}.my_table", strip_unresolved=False
+            ),
+            "SELECT * FROM prod_dataset.my_table",
+        )
+
+        # Unknown constant left as-is
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "SELECT * FROM @{unknown}.my_table", strip_unresolved=False
+            ),
+            "SELECT * FROM @{unknown}.my_table",
+        )
+
+        # Mixed: known resolved, unknown left as-is
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "SELECT * FROM @{dataset}.@{unknown_schema}.my_table",
+                strip_unresolved=False,
+            ),
+            "SELECT * FROM prod_dataset.@{unknown_schema}.my_table",
         )
 
     def test_get_dashboard_sources(self):
