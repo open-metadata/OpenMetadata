@@ -3,7 +3,6 @@ package org.openmetadata.service.apps;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.dropwizard.configuration.ConfigurationException;
-import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.ResourceConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
@@ -27,7 +26,9 @@ public class ConfigurationReader {
     // envMap is for custom environment variables (e.g., for testing), defaulting to the system
     // environment.
     substitutor =
-        envMap == null ? new EnvironmentVariableSubstitutor(false) : new StringSubstitutor(envMap);
+        envMap == null
+            ? new org.openmetadata.service.util.YamlSafeSubstitutor(false)
+            : new StringSubstitutor(envMap);
   }
 
   public ConfigurationReader() {

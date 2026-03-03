@@ -15,7 +15,6 @@ package org.openmetadata.service;
 
 import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
 
-import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
 import io.dropwizard.core.server.DefaultServerFactory;
@@ -713,7 +712,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   public void initialize(Bootstrap<OpenMetadataApplicationConfig> bootstrap) {
     bootstrap.setConfigurationSourceProvider(
         new SubstitutingSourceProvider(
-            bootstrap.getConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)));
+            bootstrap.getConfigurationSourceProvider(),
+            new org.openmetadata.service.util.YamlSafeSubstitutor(false)));
 
     // Register custom filter factories
     bootstrap

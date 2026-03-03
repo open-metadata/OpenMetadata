@@ -19,7 +19,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
@@ -2794,7 +2793,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     config =
         factory.build(
             new SubstitutingSourceProvider(
-                new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+                new FileConfigurationSourceProvider(), new YamlSafeSubstitutor(false)),
             configFilePath);
     IndexMappingLoader.init(config.getElasticSearchConfiguration());
     Fernet.getInstance().setFernetKey(config);
