@@ -21,7 +21,7 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -37,7 +37,9 @@ from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class Users(Base):

@@ -302,21 +302,26 @@ class MssqlUnitTest(TestCase):
         mock_engine = MagicMock()
         self.mssql.engine = mock_engine
 
-        # Mock rows
-        row1 = {
+        # Mock rows as objects with _asdict() to mimic SQLAlchemy Row
+        row1 = MagicMock()
+        row1._asdict.return_value = {
             "name": "sp_include",
             "definition": "def1",
             "language": "SQL",
             "owner": "owner",
         }
-        row2 = {
+        row2 = MagicMock()
+        row2._asdict.return_value = {
             "name": "sp_exclude",
             "definition": "def2",
             "language": "SQL",
             "owner": "owner",
         }
 
-        mock_engine.execute.return_value.all.return_value = [row1, row2]
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [row1, row2]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         results = list(self.mssql.get_stored_procedures())
 

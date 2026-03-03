@@ -42,6 +42,6 @@ class BaseValidationChecker(ABC):
         from sqlalchemy import case, literal
 
         return case(
-            [(self.build_violation_sqa(metric_expressions), row_count_expr)],
+            (self.build_violation_sqa(metric_expressions), row_count_expr),
             else_=literal(0),
         )

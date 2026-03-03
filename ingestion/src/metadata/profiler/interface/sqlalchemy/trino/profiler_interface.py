@@ -73,7 +73,7 @@ class TrinoProfilerInterface(ProfilerWithStatistics, TrinoStoredStatisticsSource
                 *[metric(column).fn() for metric in metrics], **runner_kwargs
             )
             if row:
-                return dict(row)
+                return row._asdict()
         except ProgrammingError as err:
             logger.info(
                 f"Skipping window metrics for {runner.table_name}.{column.name} due to {err}"
