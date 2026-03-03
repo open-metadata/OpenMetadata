@@ -78,9 +78,9 @@ class ColumnValuesToBeBetweenValidator(
             checker = self._get_validation_checker(test_params)
 
             metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.ROW_COUNT().fn(),
-                Metrics.MIN.name: Metrics.MIN(column).fn(),
-                Metrics.MAX.name: Metrics.MAX(column).fn(),
+                DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
+                Metrics.min.name: Metrics.min(column).fn(),
+                Metrics.max.name: Metrics.max(column).fn(),
                 DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(
                     column
                 ),
@@ -97,8 +97,8 @@ class ColumnValuesToBeBetweenValidator(
             )
 
             for row in result_rows:
-                min_value = row.get(Metrics.MIN.name)
-                max_value = row.get(Metrics.MAX.name)
+                min_value = row.get(Metrics.min.name)
+                max_value = row.get(Metrics.max.name)
 
                 if min_value is None or max_value is None:
                     logger.warning(
@@ -113,8 +113,8 @@ class ColumnValuesToBeBetweenValidator(
                 max_value = self._normalize_metric_value(max_value, is_min=False)
 
                 metric_values = {
-                    Metrics.MIN.name: min_value,
-                    Metrics.MAX.name: max_value,
+                    Metrics.min.name: min_value,
+                    Metrics.max.name: max_value,
                     DIMENSION_TOTAL_COUNT_KEY: row.get(DIMENSION_TOTAL_COUNT_KEY),
                     DIMENSION_FAILED_COUNT_KEY: row.get(DIMENSION_FAILED_COUNT_KEY),
                 }

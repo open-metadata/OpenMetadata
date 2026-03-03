@@ -57,8 +57,10 @@ class ColumnNames(StaticMetric):
 
     This Metric needs to be initialised passing the Table
     information:
-    add_props(table=table)(Metrics.COLUMN_NAMES.value)
+    add_props(table=table)(Metrics.columnNames.value)
     """
+
+    schema_metric_type = MetricType.columnNames
 
     table: type
 
@@ -81,7 +83,7 @@ class ColumnNames(StaticMetric):
     def fn(self):
         if not hasattr(self, "table"):
             raise AttributeError(
-                "Column Count requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
+                "Column Count requires a table to be set: add_props(table=...)(Metrics.columnCount)"
             )
 
         col_names = ",".join(inspect(self.table).c.keys())
