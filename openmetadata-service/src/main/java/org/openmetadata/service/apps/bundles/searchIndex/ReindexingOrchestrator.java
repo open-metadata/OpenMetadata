@@ -153,6 +153,27 @@ public class ReindexingOrchestrator {
 
   private void preflightFixes() {
     LOG.info("Running preflight fixes before reindexing");
+    markStaleRunningJobsStopped();
+    cleanupOrphanedIndicesPreFlight();
+  }
+
+  private static final String APP_NAME = "SearchIndexingApplication";
+
+  private void markStaleRunningJobsStopped() {
+    try {
+      AppRunRecord currentRecord = context.getJobRecord();
+      if (currentRecord != null && currentRecord.getStartTime() != null) {
+        collectionDAO
+            .appExtensionTimeSeriesDao()
+            .markStaleEntriesStoppedBefore(APP_NAME, currentRecord.getStartTime());
+        LOG.info("Preflight: marked stale running jobs as stopped for {}", APP_NAME);
+      }
+    } catch (Exception e) {
+      LOG.warn("Preflight: failed to cleanup stale running jobs: {}", e.getMessage());
+    }
+  }
+
+  private void cleanupOrphanedIndicesPreFlight() {
     try {
       OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
       OrphanedIndexCleaner.CleanupResult result =
