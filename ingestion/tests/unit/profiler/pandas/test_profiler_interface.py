@@ -22,7 +22,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String, inspect
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -63,7 +63,11 @@ if sys.version_info < (3, 9):
     )
 
 
-class User(declarative_base()):
+class _Base(DeclarativeBase):
+    pass
+
+
+class User(_Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     name = Column(String(256))

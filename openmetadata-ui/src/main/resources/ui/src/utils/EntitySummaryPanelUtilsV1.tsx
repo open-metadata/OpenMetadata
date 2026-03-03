@@ -172,72 +172,72 @@ const NestedSchemaFieldCard: React.FC<{
   expandedRowKeys,
   onToggleExpand,
 }) => {
-    const theme = useTheme();
-    const hasChildren = !isEmpty(field.children);
-    const rowKey = field.fullyQualifiedName ?? field.name;
-    const isExpanded = expandedRowKeys.includes(rowKey);
-    const isHighlighted = highlights?.[highlightKey]?.includes(field.name);
-    const childrenCount = field.children?.length ?? 0;
+  const theme = useTheme();
+  const hasChildren = !isEmpty(field.children);
+  const rowKey = field.fullyQualifiedName ?? field.name;
+  const isExpanded = expandedRowKeys.includes(rowKey);
+  const isHighlighted = highlights?.[highlightKey]?.includes(field.name);
+  const childrenCount = field.children?.length ?? 0;
 
-    return (
-      <div>
-        <div
-          className="nested-field-card-wrapper"
-          data-row-key={rowKey}
-          style={{
-            paddingLeft: `${level * 24}px`,
-            paddingBottom: hasChildren ? '8px' : '0',
-          }}>
-          <div className="field-card-no-border">
-            <FieldCard
-              dataType={field.dataType || 'Unknown'}
-              description={field.description}
-              fieldName={getEntityName(field)}
-              glossaryTerms={field.glossaryTerms}
-              isHighlighted={isHighlighted}
-              tags={field.tags}
-            />
-          </div>
-          {hasChildren && (
-            <div className="d-flex align-items-center m-l-md gap-1">
-              {!isExpanded && (
-                <span className="d-flex">
-                  <NestedIcon />
-                </span>
-              )}
-              <Button
-                className="d-flex p-0 h-auto m-b-xs"
-                data-testid="expand-icon"
-                size="small"
-                type="link"
-                onClick={() => onToggleExpand(rowKey)}>
-                <Typography color={theme.palette.primary.main} variant="caption">
-                  {isExpanded
-                    ? t('label.show-less')
-                    : `${t('label.show-nested')} (${childrenCount})`}
-                </Typography>
-              </Button>
-            </div>
-          )}
+  return (
+    <div>
+      <div
+        className="nested-field-card-wrapper"
+        data-row-key={rowKey}
+        style={{
+          paddingLeft: `${level * 24}px`,
+          paddingBottom: hasChildren ? '8px' : '0',
+        }}>
+        <div className="field-card-no-border">
+          <FieldCard
+            dataType={field.dataType || 'Unknown'}
+            description={field.description}
+            fieldName={getEntityName(field)}
+            glossaryTerms={field.glossaryTerms}
+            isHighlighted={isHighlighted}
+            tags={field.tags}
+          />
         </div>
-        {hasChildren && isExpanded && (
-          <div>
-            {field.children?.map((child) => (
-              <NestedSchemaFieldCard
-                expandedRowKeys={expandedRowKeys}
-                field={child}
-                highlightKey={highlightKey}
-                highlights={highlights}
-                key={child.fullyQualifiedName ?? child.name}
-                level={level + 1}
-                onToggleExpand={onToggleExpand}
-              />
-            ))}
+        {hasChildren && (
+          <div className="d-flex align-items-center m-l-md gap-1">
+            {!isExpanded && (
+              <span className="d-flex">
+                <NestedIcon />
+              </span>
+            )}
+            <Button
+              className="d-flex p-0 h-auto m-b-xs"
+              data-testid="expand-icon"
+              size="small"
+              type="link"
+              onClick={() => onToggleExpand(rowKey)}>
+              <Typography color={theme.palette.primary.main} variant="caption">
+                {isExpanded
+                  ? t('label.show-less')
+                  : `${t('label.show-nested')} (${childrenCount})`}
+              </Typography>
+            </Button>
           </div>
         )}
       </div>
-    );
-  };
+      {hasChildren && isExpanded && (
+        <div>
+          {field.children?.map((child) => (
+            <NestedSchemaFieldCard
+              expandedRowKeys={expandedRowKeys}
+              field={child}
+              highlightKey={highlightKey}
+              highlights={highlights}
+              key={child.fullyQualifiedName ?? child.name}
+              level={level + 1}
+              onToggleExpand={onToggleExpand}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Shared recursive filter that preserves tree structure (used by Topic, Container, SearchIndex)
 const filterNestedFields = (
@@ -955,8 +955,8 @@ const APIEndpointSchemaV1: React.FC<{
             children: nameMatch
               ? field.children
               : filteredChildren.length > 0
-                ? filteredChildren
-                : field.children,
+              ? filteredChildren
+              : field.children,
           });
         }
 

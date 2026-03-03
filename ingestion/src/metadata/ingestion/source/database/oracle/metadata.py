@@ -15,6 +15,7 @@ import traceback
 import types
 from typing import Iterable, Optional
 
+from sqlalchemy import text
 from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
 from sqlalchemy.engine import Inspector
 
@@ -187,9 +188,10 @@ class OracleSource(CommonDbSourceService):
         schema = self.context.get().database_schema
         if not getattr(self.service_connection, "preserveIdentifierCase", False):
             schema = schema.upper()
-        results: FetchObjectList = self.engine.execute(
-            query.format(schema=schema)
-        ).all()
+        with self.engine.connect() as conn:
+            results: FetchObjectList = conn.execute(
+                text(query.format(schema=schema))
+            ).all()
         results = self.process_result(data=results)
         for row in results.items():
             stored_procedure = OracleStoredObject(

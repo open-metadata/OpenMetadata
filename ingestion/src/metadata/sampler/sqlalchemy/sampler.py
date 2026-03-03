@@ -16,7 +16,7 @@ import hashlib
 from typing import List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text
-from sqlalchemy.orm import DeclarativeMeta, Query
+from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
 from sqlalchemy.sql.sqltypes import Enum
@@ -66,7 +66,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
     run the query in the whole table.
 
     Args:
-        orm_table (Optional[DeclarativeMeta]): ORM Table
+        orm_table (Optional[type]): ORM Table
     """
 
     def __init__(self, *args, **kwargs):
@@ -186,7 +186,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 f"{self.get_sampler_table_name()}_rnd"
             )
 
-    def get_dataset(self, column=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
+    def get_dataset(self, column=None, **__) -> Union[type, AliasedClass]:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -284,7 +284,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
         with self.session_factory() as client:
-            rnd = client.execute(f"{self.sample_query}")
+            rnd = client.execute(text(f"{self.sample_query}"))
         try:
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
