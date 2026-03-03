@@ -1117,10 +1117,7 @@ public class AppsResourceIT {
 
       App appById =
           httpClient.execute(
-              HttpMethod.GET,
-              "/v1/apps/" + installedApp.getId() + "?include=all",
-              null,
-              App.class);
+              HttpMethod.GET, "/v1/apps/" + installedApp.getId() + "?include=all", null, App.class);
       assertNotNull(appById, "Disabled app should be retrievable by ID");
       assertEquals(appName, appById.getName());
 
