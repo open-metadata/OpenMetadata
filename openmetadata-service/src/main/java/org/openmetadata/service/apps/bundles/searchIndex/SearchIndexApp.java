@@ -30,8 +30,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -153,21 +151,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private String entitiesDisplayString;
   private boolean isSmartReindexing;
 
-  private final AtomicInteger consecutiveErrors = new AtomicInteger(0);
-  private final AtomicInteger consecutiveSuccesses = new AtomicInteger(0);
-  private volatile long lastBackpressureTime = 0;
-  private static final int MAX_CONSECUTIVE_ERRORS = 5;
-  private static final int BATCH_SIZE_INCREASE_THRESHOLD = 50;
-  private static final long BACKPRESSURE_WAIT_MS = 5000;
-  private final AtomicInteger originalBatchSize = new AtomicInteger(0);
-
-  // Adaptive tuning metrics
-  private volatile long lastTuneTime = 0;
-  private static final long TUNE_INTERVAL_MS = 30000; // Re-tune every 30 seconds
-  private final AtomicLong totalProcessingTime = new AtomicLong(0);
-  private final AtomicLong totalEntitiesProcessed = new AtomicLong(0);
-  private volatile double currentThroughput = 0.0;
-
   private BlockingQueue<IndexingTask<?>> taskQueue;
   private final AtomicBoolean producersDone = new AtomicBoolean(false);
 
@@ -204,10 +187,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void initializeJobState() {
     stopped = false;
-    consecutiveErrors.set(0);
-    consecutiveSuccesses.set(0);
-    lastBackpressureTime = 0;
-    originalBatchSize.set(0);
     recreateContext = null;
   }
 
@@ -637,7 +616,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
 
     batchSize.set(jobData.getBatchSize());
-    originalBatchSize.set(jobData.getBatchSize());
     sendUpdates(jobExecutionContext, true);
 
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
@@ -1028,12 +1006,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       LOG.debug("Skipping batch - stop signal received");
       return true;
     }
-
-    if (isBackpressureActive()) {
-      LOG.debug("Backpressure active, will retry later");
-      return true;
-    }
-
     return false;
   }
 
@@ -1082,171 +1054,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     LOG.info("Updating job status from {} to {}", currentStatus, newStatus);
     jobData.setStatus(newStatus);
-  }
-
-  private void handleBackpressure(String errorMessage) {
-    if (errorMessage != null && errorMessage.contains("rejected_execution_exception")) {
-      consecutiveErrors.incrementAndGet();
-      consecutiveSuccesses.set(0); // Reset success counter
-      LOG.warn(
-          "Detected backpressure from OpenSearch (consecutive errors: {})",
-          consecutiveErrors.get());
-
-      if (consecutiveErrors.get() >= MAX_CONSECUTIVE_ERRORS) {
-        int currentBatchSize = batchSize.get();
-        int newBatchSize =
-            Math.clamp(currentBatchSize / 2, 50, Integer.MAX_VALUE); // Reduce by half, minimum 50
-
-        if (newBatchSize < currentBatchSize) {
-          batchSize.set(newBatchSize);
-          LOG.info(
-              "Reduced batch size from {} to {} due to backpressure",
-              currentBatchSize,
-              newBatchSize);
-          jobData.setBatchSize(newBatchSize);
-          consecutiveErrors.set(0); // Reset counter
-
-          // Update the bulk sink's batch size
-          if (searchIndexSink instanceof OpenSearchBulkSink opensearchBulkSink) {
-            opensearchBulkSink.updateBatchSize(newBatchSize);
-          } else if (searchIndexSink instanceof ElasticSearchBulkSink elasticSearchBulkSink) {
-            elasticSearchBulkSink.updateBatchSize(newBatchSize);
-          }
-        }
-      }
-
-      // Record backpressure time
-      lastBackpressureTime = System.currentTimeMillis();
-    }
-  }
-
-  /**
-   * Check if backpressure is currently active
-   */
-  private boolean isBackpressureActive() {
-    if (lastBackpressureTime == 0) {
-      return false;
-    }
-
-    long timeSinceBackpressure = System.currentTimeMillis() - lastBackpressureTime;
-
-    // Consider backpressure active if within the wait window
-    return timeSinceBackpressure < BACKPRESSURE_WAIT_MS;
-  }
-
-  /**
-   * Perform adaptive tuning based on runtime metrics
-   */
-  private void performAdaptiveTuning() {
-    if (!shouldPerformTuning()) {
-      return;
-    }
-
-    lastTuneTime = System.currentTimeMillis();
-    updateThroughputMetrics();
-
-    TuningContext context = createTuningContext();
-    adjustBatchSize(context);
-    logTuningMetrics(context);
-  }
-
-  private boolean shouldPerformTuning() {
-    long currentTime = System.currentTimeMillis();
-    return Boolean.TRUE.equals(jobData.getAutoTune())
-        && currentTime - lastTuneTime >= TUNE_INTERVAL_MS;
-  }
-
-  private void updateThroughputMetrics() {
-    long processedEntities = totalEntitiesProcessed.get();
-    long processingTime = totalProcessingTime.get();
-    if (processingTime > 0) {
-      currentThroughput = (processedEntities * 1000.0) / processingTime;
-    }
-  }
-
-  private TuningContext createTuningContext() {
-    return new TuningContext(
-        new MemoryInfo(), batchSize.get(), consecutiveErrors.get(), consecutiveSuccesses.get());
-  }
-
-  private void adjustBatchSize(TuningContext context) {
-    if (shouldIncreaseBatchSize(context)) {
-      increaseBatchSizeForTuning(context);
-    } else if (shouldDecreaseBatchSize(context)) {
-      decreaseBatchSizeForTuning(context);
-    }
-  }
-
-  private boolean shouldIncreaseBatchSize(TuningContext context) {
-    return context.errorCount == 0
-        && context.successCount > BATCH_SIZE_INCREASE_THRESHOLD
-        && context.memInfo.usageRatio < 0.7;
-  }
-
-  private boolean shouldDecreaseBatchSize(TuningContext context) {
-    return context.memInfo.usageRatio > 0.8;
-  }
-
-  private void increaseBatchSizeForTuning(TuningContext context) {
-    int newBatchSize = Math.min(context.currentBatchSize + 50, 1000);
-    if (newBatchSize != context.currentBatchSize) {
-      batchSize.set(newBatchSize);
-      LOG.info(
-          "Auto-tune: Increased batch size from {} to {} (throughput: {} entities/sec)",
-          context.currentBatchSize,
-          newBatchSize,
-          String.format("%.1f", currentThroughput));
-      updateSinkBatchSize(newBatchSize);
-    }
-  }
-
-  private void decreaseBatchSizeForTuning(TuningContext context) {
-    int newBatchSize = Math.max(context.currentBatchSize - 100, 50);
-    if (newBatchSize != context.currentBatchSize) {
-      batchSize.set(newBatchSize);
-      LOG.warn(
-          "Auto-tune: Reduced batch size from {} to {} due to memory pressure ({}% used)",
-          context.currentBatchSize, newBatchSize, (int) (context.memInfo.usageRatio * 100));
-    }
-  }
-
-  private void logTuningMetrics(TuningContext context) {
-    if (currentThroughput <= 0) {
-      return;
-    }
-
-    Stats currentStats = searchIndexStats.get();
-    if (currentStats == null || currentStats.getJobStats() == null) {
-      return;
-    }
-
-    StepStats jobStats = currentStats.getJobStats();
-    long total = getValueOrZero(jobStats.getTotalRecords());
-    long processed = getValueOrZero(jobStats.getSuccessRecords());
-
-    if (total > 0 && processed > 0) {
-      long remaining = total - processed;
-      long etaSeconds = (long) (remaining / currentThroughput);
-      LOG.info(
-          "Auto-tune metrics: Throughput: {} entities/sec, ETA: {} minutes, Memory: {}%",
-          String.format("%.1f", currentThroughput),
-          etaSeconds / 60,
-          (int) (context.memInfo.usageRatio * 100));
-    }
-  }
-
-  private static class TuningContext {
-    final MemoryInfo memInfo;
-    final int currentBatchSize;
-    final int errorCount;
-    final int successCount;
-
-    TuningContext(MemoryInfo memInfo, int currentBatchSize, int errorCount, int successCount) {
-      this.memInfo = memInfo;
-      this.currentBatchSize = currentBatchSize;
-      this.errorCount = errorCount;
-      this.successCount = successCount;
-    }
   }
 
   private void handleJobFailure(Exception ex) {
@@ -1662,8 +1469,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     ResultList<?> entities = task.entities();
     Map<String, Object> contextData = createContextData(entityType);
 
-    long startTime = System.currentTimeMillis();
-
     int readerSuccessCount = listOrEmpty(entities.getData()).size();
     int readerFailedCount = listOrEmpty(entities.getErrors()).size();
 
@@ -1675,12 +1480,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       StepStats currentEntityStats = createEntityStats(entities);
       handleTaskSuccess(entityType, entities, currentEntityStats, jobExecutionContext);
-
-      long processingTime = System.currentTimeMillis() - startTime;
-      totalProcessingTime.addAndGet(processingTime);
-      totalEntitiesProcessed.addAndGet(entities.getData().size());
-
-      performAdaptiveTuning();
     } catch (SearchIndexException e) {
       handleSearchIndexException(entityType, entities, e, jobExecutionContext);
     } catch (Exception e) {
@@ -1726,8 +1525,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       JobExecutionContext jobExecutionContext) {
     if (entities.getErrors() != null && !entities.getErrors().isEmpty()) {
       handleReaderErrors(entities);
-    } else {
-      handleSuccessfulBatch();
     }
 
     updateStats(entityType, currentEntityStats);
@@ -1752,48 +1549,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
             .withFailedEntities(entities.getErrors()));
   }
 
-  private void handleSuccessfulBatch() {
-    if (consecutiveErrors.get() > 0) {
-      consecutiveErrors.set(0);
-      LOG.debug("Reset consecutive error counter after successful batch");
-    }
-
-    consecutiveSuccesses.incrementAndGet();
-    if (shouldIncreaseBatchSize()) {
-      increaseBatchSize();
-    }
-  }
-
-  private boolean shouldIncreaseBatchSize() {
-    return consecutiveSuccesses.get() >= BATCH_SIZE_INCREASE_THRESHOLD
-        && originalBatchSize.get() > 0;
-  }
-
-  private void increaseBatchSize() {
-    int currentBatchSize = batchSize.get();
-    int targetBatchSize = Math.clamp(currentBatchSize * 3L / 2, 1, originalBatchSize.get());
-
-    if (targetBatchSize > currentBatchSize) {
-      batchSize.set(targetBatchSize);
-      LOG.info(
-          "Increased batch size from {} to {} after {} successful batches",
-          currentBatchSize,
-          targetBatchSize,
-          consecutiveSuccesses.get());
-      jobData.setBatchSize(targetBatchSize);
-      consecutiveSuccesses.set(0);
-      updateSinkBatchSize(targetBatchSize);
-    }
-  }
-
-  private void updateSinkBatchSize(int newBatchSize) {
-    if (searchIndexSink instanceof OpenSearchBulkSink opensearchBulkSink) {
-      opensearchBulkSink.updateBatchSize(newBatchSize);
-    } else if (searchIndexSink instanceof ElasticSearchBulkSink elasticSearchBulkSink) {
-      elasticSearchBulkSink.updateBatchSize(newBatchSize);
-    }
-  }
-
   private void handleSearchIndexException(
       String entityType,
       ResultList<?> entities,
@@ -1805,15 +1560,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       if (indexingError != null) {
         jobData.setFailure(indexingError);
-        handleBackpressure(indexingError.getMessage());
       } else {
         jobData.setFailure(createSinkError(e.getMessage()));
-        handleBackpressure(e.getMessage());
       }
 
       syncSinkStatsFromBulkSink();
 
+      int readerErrorCount = listOrEmpty(entities.getErrors()).size();
       StepStats failedStats = createFailedStats(indexingError, entities.getData().size());
+      failedStats.setFailedRecords(failedStats.getFailedRecords() + readerErrorCount);
       updateStats(entityType, failedStats);
       try {
         sendUpdates(jobExecutionContext, true);
@@ -1837,7 +1592,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       int failedCount =
           entities != null && entities.getData() != null ? entities.getData().size() : 0;
-      StepStats failedStats = new StepStats().withSuccessRecords(0).withFailedRecords(failedCount);
+      int readerErrorCount = entities != null ? listOrEmpty(entities.getErrors()).size() : 0;
+      StepStats failedStats =
+          new StepStats().withSuccessRecords(0).withFailedRecords(failedCount + readerErrorCount);
 
       updateStats(entityType, failedStats);
       try {
@@ -2078,6 +1835,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     ResultList<?> entities = extractEntities(entityType, resultList);
     if (!nullOrEmpty(entities.getData()) && !stopped) {
       queueIndexingTask(entityType, entities, offset);
+    } else if (nullOrEmpty(entities.getData()) && !stopped) {
+      int errorCount = listOrEmpty(entities.getErrors()).size();
+      if (errorCount > 0) {
+        updateStats(
+            entityType, new StepStats().withSuccessRecords(0).withFailedRecords(errorCount));
+      }
     }
   }
 
@@ -2105,10 +1868,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     updateFailureStats(entityType);
   }
 
-  private void updateFailureStats(String entityType) {
+  synchronized void updateFailureStats(String entityType) {
     int remainingRecords = getRemainingRecordsToProcess(entityType);
     int failedCount = Math.min(remainingRecords, batchSize.get());
-    updateStats(entityType, new StepStats().withSuccessRecords(0).withFailedRecords(failedCount));
+    if (failedCount > 0) {
+      updateStats(entityType, new StepStats().withSuccessRecords(0).withFailedRecords(failedCount));
+    }
   }
 
   private int calculateNumberOfThreads(int totalEntityRecords, int fixedBatchSize) {
