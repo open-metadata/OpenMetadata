@@ -31,7 +31,7 @@ SET json = (json - 'preview') || jsonb_build_object(
         ELSE true
     END
 )
-WHERE json ? 'preview';
+WHERE jsonb_exists(json, 'preview');
 
 UPDATE installed_apps
 SET json = (json - 'preview') || jsonb_build_object(
@@ -42,4 +42,4 @@ SET json = (json - 'preview') || jsonb_build_object(
         ELSE true
     END
 )
-WHERE json ? 'preview';
+WHERE jsonb_exists(json, 'preview');
