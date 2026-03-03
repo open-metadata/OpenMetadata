@@ -57,18 +57,18 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
             count, match_count = self._run_results(
-                (Metrics.COUNT, Metrics.REGEX_COUNT),
+                (Metrics.valuesCount, Metrics.regexCount),
                 column,
                 expression=test_params[self.REGEX],
             )
 
             metric_values = {
-                Metrics.COUNT.name: count,
-                Metrics.REGEX_COUNT.name: match_count,
+                Metrics.valuesCount.name: count,
+                Metrics.regexCount.name: match_count,
             }
 
             if self.test_case.computePassedFailedRowCount:
-                metric_values[Metrics.ROW_COUNT.name] = self.get_row_count()
+                metric_values[Metrics.rowCount.name] = self.get_row_count()
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -123,12 +123,12 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
             dict: Mapping of Metrics enum names to Metrics enum values
         """
         metrics = {
-            Metrics.COUNT.name: Metrics.COUNT,
-            Metrics.REGEX_COUNT.name: Metrics.REGEX_COUNT,
+            Metrics.valuesCount.name: Metrics.valuesCount,
+            Metrics.regexCount.name: Metrics.regexCount,
         }
 
         if self.test_case.computePassedFailedRowCount:
-            metrics[Metrics.ROW_COUNT.name] = Metrics.ROW_COUNT
+            metrics[Metrics.rowCount.name] = Metrics.rowCount
 
         return metrics
 
@@ -158,9 +158,9 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
             raise ValueError(
                 "test_params is required for columnValuesToMatchRegex._evaluate_test_condition"
             )
-        match_regex_count = metric_values[Metrics.REGEX_COUNT.name]
-        count = metric_values[Metrics.COUNT.name]
-        total_rows = metric_values.get(Metrics.ROW_COUNT.name)
+        match_regex_count = metric_values[Metrics.regexCount.name]
+        count = metric_values[Metrics.valuesCount.name]
+        total_rows = metric_values.get(Metrics.rowCount.name)
 
         matched = count == match_regex_count
         failed_count = count - match_regex_count
@@ -189,8 +189,8 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
-        match_count = metric_values[Metrics.REGEX_COUNT.name]
-        count = metric_values[Metrics.COUNT.name]
+        match_count = metric_values[Metrics.regexCount.name]
+        count = metric_values[Metrics.valuesCount.name]
 
         if dimension_info:
             return (
@@ -212,7 +212,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         return [
             TestResultValue(
                 name=LIKE_COUNT,
-                value=str(metric_values[Metrics.REGEX_COUNT.name]),
+                value=str(metric_values[Metrics.regexCount.name]),
             ),
         ]
 

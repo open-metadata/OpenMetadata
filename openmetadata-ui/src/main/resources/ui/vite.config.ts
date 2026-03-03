@@ -143,7 +143,17 @@ export default defineConfig(({ mode }) => {
         },
       },
       watch: {
-        ignored: ['**/node_modules/**', '**/dist/**', '**/playwright/**'],
+        ignored: [
+          '**/node_modules/**',
+          '**/dist/**',
+          '**/playwright/**',
+          // Ignore test-related files so changes to them don't trigger HMR
+          '**/*.test.*',
+          '**/*.spec.*',
+          '**/*.cy.*',
+          '**/__tests__/**',
+          '**/*.mock.*',
+        ],
       },
       fs: {
         strict: false,

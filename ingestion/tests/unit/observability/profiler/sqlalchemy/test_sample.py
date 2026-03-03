@@ -191,13 +191,13 @@ class SampleTest(TestCase):
         Profile sample should be ignored in row count
         """
 
-        table_count = Metrics.ROW_COUNT.value
+        table_count = Metrics.rowCount.value
         profiler = Profiler(
             table_count,
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
-        assert res.get(Metrics.ROW_COUNT.name) == 30
+        assert res.get(Metrics.rowCount.name) == 30
 
     def test_random_sample_count(self, sampler_mock):
         """
@@ -207,23 +207,23 @@ class SampleTest(TestCase):
         get 15 rows, but for sure we should get less than 30.
         """
 
-        count = Metrics.COUNT.value
+        count = Metrics.valuesCount.value
 
         profiler = Profiler(count, profiler_interface=self.sqa_profiler_interface)
         res = profiler.compute_metrics()._column_results
-        assert res.get(User.name.name)[Metrics.COUNT.name] < 30
+        assert res.get(User.name.name)[Metrics.valuesCount.name] < 30
 
     def test_random_sample_histogram(self, sampler_mock):
         """
         Histogram should run correctly
         """
-        hist = Metrics.HISTOGRAM.value
-        count = Metrics.COUNT.value
-        min = Metrics.MIN.value
-        max = Metrics.MAX.value
-        first_quartile = Metrics.FIRST_QUARTILE.value
-        third_quartile = Metrics.THIRD_QUARTILE.value
-        iqr = Metrics.IQR.value
+        hist = Metrics.histogram.value
+        count = Metrics.valuesCount.value
+        min = Metrics.min.value
+        max = Metrics.max.value
+        first_quartile = Metrics.firstQuartile.value
+        third_quartile = Metrics.thirdQuartile.value
+        iqr = Metrics.interQuartileRange.value
 
         profiler = Profiler(
             hist,
@@ -238,7 +238,7 @@ class SampleTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # The sum of all frequencies should be sampled
-        assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
+        assert sum(res.get(User.id.name)[Metrics.histogram.name]["frequencies"]) < 30
 
         profiler = Profiler(
             hist,
@@ -253,14 +253,14 @@ class SampleTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # The sum of all frequencies should be sampled
-        assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 30.0
+        assert sum(res.get(User.id.name)[Metrics.histogram.name]["frequencies"]) == 30.0
 
     def test_random_sample_unique_count(self, sampler_mock):
         """
         Unique count should run correctly
         """
 
-        hist = Metrics.UNIQUE_COUNT.value
+        hist = Metrics.uniqueCount.value
         profiler = Profiler(
             hist,
             profiler_interface=self.sqa_profiler_interface,
@@ -268,7 +268,7 @@ class SampleTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # As sampling can yield unique rows on small dataset validate we get a value
-        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] is not None
+        assert res.get(User.name.name)[Metrics.uniqueCount.name] is not None
 
     def test_sample_data(self, sampler_mock):
         """

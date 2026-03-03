@@ -22,6 +22,7 @@ import { useLineageProvider } from '../../../../context/LineageProvider/LineageP
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
+import { useLineageStore } from '../../../../hooks/useLineageStore';
 import LineageSearchSelect from './LineageSearchSelect';
 
 const mockedNodes = [
@@ -63,19 +64,28 @@ const mockReactFlowInstance = {
 };
 
 const defaultMockProps = {
-  activeLayer: [LineageLayer.ColumnLevelLineage],
   nodes: mockedNodes,
   onNodeClick: mockNodeClick,
-  onColumnClick: mockColumnClick,
-  platformView: LineagePlatformView.None,
   reactFlowInstance: mockReactFlowInstance,
+};
+
+const defaultStoreValue = {
+  activeLayer: [LineageLayer.ColumnLevelLineage],
+  platformView: LineagePlatformView.None,
+  setPlatformView: jest.fn(),
+  isPlatformLineage: false,
+  setActiveLayer: jest.fn(),
   zoomValue: 1,
   isEditMode: false,
-  isPlatformLineage: false,
+  setSelectedColumn: mockColumnClick,
 };
 
 jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn(),
+}));
+
+jest.mock('../../../../hooks/useLineageStore', () => ({
+  useLineageStore: jest.fn().mockImplementation(() => defaultStoreValue),
 }));
 
 describe('LineageSearchSelect', () => {
@@ -144,8 +154,8 @@ describe('LineageSearchSelect', () => {
   });
 
   it('should not render when platform lineage is enabled', () => {
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      ...defaultMockProps,
+    (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
+      ...defaultStoreValue,
       isPlatformLineage: true,
     }));
 
@@ -166,6 +176,10 @@ describe('LineageSearchSelect', () => {
   });
 
   it('should handle dropdown visibility change', async () => {
+    (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
+      ...defaultStoreValue,
+      isPlatformLineage: false,
+    }));
     const { container } = render(<LineageSearchSelect />);
     await waitFor(() => {
       expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
