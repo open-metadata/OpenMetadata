@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-circle.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
@@ -34,27 +34,40 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
   const { getNode } = useReactFlow();
   const viewport = useViewport();
 
-  const renderEditButton = (edge: Edge) => {
-    const { isColumnLineage } = edge.data || {};
-    const pathData = computePathDataForEdge(
-      edge,
-      getNode(edge.source),
-      getNode(edge.target),
+  const pathData = useMemo(() => {
+    if (!selectedEdge) {
+      return null;
+    }
+
+    return computePathDataForEdge(
+      selectedEdge,
+      getNode(selectedEdge.source),
+      getNode(selectedEdge.target),
       columnsInCurrentPages
     );
+  }, [selectedEdge, getNode, columnsInCurrentPages]);
 
-    if (isColumnLineage || !pathData) {
+  const buttonPosition = useMemo(() => {
+    if (!pathData) {
+      return null;
+    }
+
+    return getAbsolutePosition(
+      pathData.edgeCenterX,
+      pathData.edgeCenterY,
+      viewport
+    );
+  }, [pathData, viewport]);
+
+  const renderEditButton = (edge: Edge) => {
+    const { isColumnLineage } = edge.data || {};
+
+    if (isColumnLineage || !buttonPosition) {
       return null;
     }
 
     return (
-      <div
-        key={`edit-${edge.id}`}
-        style={getAbsolutePosition(
-          pathData.edgeCenterX,
-          pathData.edgeCenterY,
-          viewport
-        )}>
+      <div key={`edit-${edge.id}`} style={buttonPosition}>
         <Button
           className="cursor-pointer d-flex"
           data-testid="add-pipeline"
@@ -75,25 +88,13 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
 
   const renderDeleteButton = (edge: Edge) => {
     const { isColumnLineage } = edge.data || {};
-    const pathData = computePathDataForEdge(
-      edge,
-      getNode(edge.source),
-      getNode(edge.target),
-      columnsInCurrentPages
-    );
 
-    if (!isColumnLineage || !pathData) {
+    if (!isColumnLineage || !buttonPosition) {
       return null;
     }
 
     return (
-      <div
-        key={`delete-${edge.id}`}
-        style={getAbsolutePosition(
-          pathData.edgeCenterX,
-          pathData.edgeCenterY,
-          viewport
-        )}>
+      <div key={`delete-${edge.id}`} style={buttonPosition}>
         <Button
           className="cursor-pointer d-flex"
           data-testid="delete-button"

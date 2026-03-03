@@ -174,12 +174,17 @@ function calculateColumnPosition(
   columnIndex: number,
   navigationNeeded: boolean,
   node: Node,
-  baseNodeHeight: number
+  baseNodeHeight: number,
+  columnFilterActive: boolean
 ): number {
   const columnCenterOffset =
     COLUMN_NODE_HEIGHT * columnIndex + COLUMN_NODE_HEIGHT / 2;
 
-  const navigationOffset = columnIndex >= LINEAGE_CHILD_ITEMS_PER_PAGE ? 17 : 0;
+  const navigationOffset = columnFilterActive
+    ? 0
+    : columnIndex >= LINEAGE_CHILD_ITEMS_PER_PAGE
+    ? 17
+    : 0;
 
   const yPadding = navigationNeeded
     ? getNodeYPadding(node) + 28
@@ -224,14 +229,16 @@ function getColumnLineageCoordinates(
     sourceData.columnIndex,
     sourceData.navigationNeeded,
     sourceNode,
-    sourceNodeHeight
+    sourceNodeHeight,
+    sourceData.isFilterActive
   );
 
   const targetY = calculateColumnPosition(
     targetData.columnIndex,
     targetData.navigationNeeded,
     targetNode,
-    targetNodeHeight
+    targetNodeHeight,
+    targetData.isFilterActive
   );
 
   return {

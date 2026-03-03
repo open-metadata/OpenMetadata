@@ -12,8 +12,9 @@
  */
 import { Button, Tag } from 'antd';
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
+  Edge,
   Position,
   useNodes,
   useReactFlow,
@@ -43,6 +44,7 @@ export function getAbsolutePosition(
     top: `${transformed.y}px`,
     transform: `translate(-50%, -50%) scale(${viewport.zoom})`,
     pointerEvents: 'all',
+    willChange: 'transform, left, top',
   };
 }
 
@@ -87,6 +89,187 @@ interface EdgePathData {
   targetY?: number;
 }
 
+interface PipelineButtonProps {
+  edge: Edge;
+  pathData: EdgePathData;
+  viewport: Viewport;
+  isEditMode: boolean;
+  isDQEnabled: boolean;
+  onAddPipelineClick: () => void;
+  onSetSelectedEdge: (edge: Edge) => void;
+}
+
+const PipelineButton = React.memo<PipelineButtonProps>(
+  ({
+    edge,
+    pathData,
+    viewport,
+    isEditMode,
+    isDQEnabled,
+    onAddPipelineClick,
+    onSetSelectedEdge,
+  }) => {
+    const { edge: edgeDetails, isPipelineRootNode } = edge.data || {};
+    const pipelineData = edgeDetails?.pipeline?.pipelineStatus;
+    const currentPipelineStatus = isDQEnabled
+      ? getPipelineStatusClass(pipelineData?.executionStatus)
+      : '';
+    const blinkingClass = getBlinkingClass(
+      isPipelineRootNode,
+      pipelineData?.executionStatus
+    );
+
+    const dataTestId = `pipeline-label-${edgeDetails.fromEntity.fullyQualifiedName}-${edgeDetails.toEntity.fullyQualifiedName}`;
+
+    const buttonElement = (
+      <Button
+        className={classNames(
+          'flex-center custom-edge-pipeline-button',
+          currentPipelineStatus,
+          blinkingClass
+        )}
+        data-testid={dataTestId}
+        icon={<PipelineIcon />}
+        size="small"
+        onClick={() =>
+          isEditMode ? onAddPipelineClick() : onSetSelectedEdge(edge)
+        }
+      />
+    );
+
+    return (
+      <div
+        key={`pipeline-btn-${edge.id}`}
+        style={getAbsolutePosition(
+          pathData.edgeCenterX,
+          pathData.edgeCenterY,
+          viewport
+        )}>
+        {isEditMode ? (
+          buttonElement
+        ) : (
+          <EntityPopOverCard
+            entityFQN={edgeDetails.pipeline.fullyQualifiedName}
+            entityType={edgeDetails.pipelineEntityType}
+            extraInfo={
+              pipelineData && (
+                <Tag className={currentPipelineStatus}>
+                  {pipelineData.executionStatus}
+                </Tag>
+              )
+            }>
+            {buttonElement}
+          </EntityPopOverCard>
+        )}
+      </div>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.edge.id === nextProps.edge.id &&
+      prevProps.pathData.edgeCenterX === nextProps.pathData.edgeCenterX &&
+      prevProps.pathData.edgeCenterY === nextProps.pathData.edgeCenterY &&
+      prevProps.viewport.x === nextProps.viewport.x &&
+      prevProps.viewport.y === nextProps.viewport.y &&
+      prevProps.viewport.zoom === nextProps.viewport.zoom &&
+      prevProps.isEditMode === nextProps.isEditMode &&
+      prevProps.isDQEnabled === nextProps.isDQEnabled
+    );
+  }
+);
+
+PipelineButton.displayName = 'PipelineButton';
+
+interface FunctionButtonProps {
+  edge: Edge;
+  pathData: EdgePathData;
+  viewport: Viewport;
+  isEditMode: boolean;
+  isDQEnabled: boolean;
+  onAddPipelineClick: () => void;
+  onSetSelectedEdge: (edge: Edge) => void;
+}
+
+const FunctionButton = React.memo<FunctionButtonProps>(
+  ({
+    edge,
+    pathData,
+    viewport,
+    isEditMode,
+    isDQEnabled,
+    onAddPipelineClick,
+    onSetSelectedEdge,
+  }) => {
+    const { edge: edgeDetails, isPipelineRootNode } = edge.data || {};
+    const pipelineData = edgeDetails?.pipeline?.pipelineStatus;
+    const currentPipelineStatus = isDQEnabled
+      ? getPipelineStatusClass(pipelineData?.executionStatus)
+      : '';
+    const blinkingClass = getBlinkingClass(
+      isPipelineRootNode,
+      pipelineData?.executionStatus
+    );
+
+    const dataTestId = `function-icon-${edgeDetails?.fromEntity.fullyQualifiedName}-${edgeDetails?.toEntity.fullyQualifiedName}`;
+
+    const buttonElement = (
+      <Button
+        className={classNames(
+          'flex-center custom-edge-pipeline-button',
+          blinkingClass
+        )}
+        data-testid={dataTestId}
+        icon={<FunctionIcon />}
+        size="small"
+        onClick={() =>
+          isEditMode ? onAddPipelineClick() : onSetSelectedEdge(edge)
+        }
+      />
+    );
+
+    return (
+      <div
+        key={`function-btn-${edge.id}`}
+        style={getAbsolutePosition(
+          pathData.edgeCenterX,
+          pathData.edgeCenterY,
+          viewport
+        )}>
+        {isEditMode ? (
+          buttonElement
+        ) : (
+          <EntityPopOverCard
+            entityFQN={edgeDetails?.pipeline?.fullyQualifiedName}
+            entityType={edge.data.pipelineEntityType}
+            extraInfo={
+              pipelineData && (
+                <Tag className={currentPipelineStatus}>
+                  {pipelineData.executionStatus}
+                </Tag>
+              )
+            }>
+            {buttonElement}
+          </EntityPopOverCard>
+        )}
+      </div>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.edge.id === nextProps.edge.id &&
+      prevProps.pathData.edgeCenterX === nextProps.pathData.edgeCenterX &&
+      prevProps.pathData.edgeCenterY === nextProps.pathData.edgeCenterY &&
+      prevProps.viewport.x === nextProps.viewport.x &&
+      prevProps.viewport.y === nextProps.viewport.y &&
+      prevProps.viewport.zoom === nextProps.viewport.zoom &&
+      prevProps.isEditMode === nextProps.isEditMode &&
+      prevProps.isDQEnabled === nextProps.isDQEnabled
+    );
+  }
+);
+
+FunctionButton.displayName = 'FunctionButton';
+
 export const PipelineEdgeButtons: React.FC = () => {
   const { edges } = useLineageProvider();
   const {
@@ -101,6 +284,13 @@ export const PipelineEdgeButtons: React.FC = () => {
   const { getNode } = useReactFlow();
   const nodes = useNodes();
   const viewport = useViewport();
+
+  const handleSetSelectedEdge = useCallback(
+    (edge: Edge) => {
+      setSelectedEdge(edge);
+    },
+    [setSelectedEdge]
+  );
 
   const edgesWithButtons = useMemo(() => {
     return edges.filter((edge) => {
@@ -169,7 +359,6 @@ export const PipelineEdgeButtons: React.FC = () => {
           isColumnLineage,
           columnFunctionValue,
           isExpanded,
-          isPipelineRootNode,
         } = edge.data || {};
 
         const pathData = edgePathDataMap.get(edge.id);
@@ -188,105 +377,33 @@ export const PipelineEdgeButtons: React.FC = () => {
           return null;
         }
 
-        const pipelineData = edgeDetails?.pipeline?.pipelineStatus;
-        const currentPipelineStatus = isDQEnabled
-          ? getPipelineStatusClass(pipelineData?.executionStatus)
-          : '';
-        const blinkingClass = getBlinkingClass(
-          isPipelineRootNode,
-          pipelineData?.executionStatus
-        );
-
         if (hasPipeline) {
-          const dataTestId = `pipeline-label-${edgeDetails.fromEntity.fullyQualifiedName}-${edgeDetails.toEntity.fullyQualifiedName}`;
-
-          const buttonElement = (
-            <Button
-              className={classNames(
-                'flex-center custom-edge-pipeline-button',
-                currentPipelineStatus,
-                blinkingClass
-              )}
-              data-testid={dataTestId}
-              icon={<PipelineIcon />}
-              size="small"
-              onClick={() =>
-                isEditMode ? onAddPipelineClick() : setSelectedEdge(edge)
-              }
-            />
-          );
-
           return (
-            <div
+            <PipelineButton
+              edge={edge}
+              isDQEnabled={isDQEnabled}
+              isEditMode={isEditMode}
               key={`pipeline-btn-${edge.id}`}
-              style={getAbsolutePosition(
-                pathData.edgeCenterX,
-                pathData.edgeCenterY,
-                viewport
-              )}>
-              {isEditMode ? (
-                buttonElement
-              ) : (
-                <EntityPopOverCard
-                  entityFQN={edgeDetails.pipeline.fullyQualifiedName}
-                  entityType={edgeDetails.pipelineEntityType}
-                  extraInfo={
-                    pipelineData && (
-                      <Tag className={currentPipelineStatus}>
-                        {pipelineData.executionStatus}
-                      </Tag>
-                    )
-                  }>
-                  {buttonElement}
-                </EntityPopOverCard>
-              )}
-            </div>
+              pathData={pathData}
+              viewport={viewport}
+              onAddPipelineClick={onAddPipelineClick}
+              onSetSelectedEdge={handleSetSelectedEdge}
+            />
           );
         }
 
         if (hasFunction) {
-          const dataTestId = `function-icon-${edgeDetails?.fromEntity.fullyQualifiedName}-${edgeDetails?.toEntity.fullyQualifiedName}`;
-
-          const buttonElement = (
-            <Button
-              className={classNames(
-                'flex-center custom-edge-pipeline-button',
-                blinkingClass
-              )}
-              data-testid={dataTestId}
-              icon={<FunctionIcon />}
-              size="small"
-              onClick={() =>
-                isEditMode ? onAddPipelineClick() : setSelectedEdge(edge)
-              }
-            />
-          );
-
           return (
-            <div
+            <FunctionButton
+              edge={edge}
+              isDQEnabled={isDQEnabled}
+              isEditMode={isEditMode}
               key={`function-btn-${edge.id}`}
-              style={getAbsolutePosition(
-                pathData.edgeCenterX,
-                pathData.edgeCenterY,
-                viewport
-              )}>
-              {isEditMode ? (
-                buttonElement
-              ) : (
-                <EntityPopOverCard
-                  entityFQN={edgeDetails?.pipeline?.fullyQualifiedName}
-                  entityType={edge.data.pipelineEntityType}
-                  extraInfo={
-                    pipelineData && (
-                      <Tag className={currentPipelineStatus}>
-                        {pipelineData.executionStatus}
-                      </Tag>
-                    )
-                  }>
-                  {buttonElement}
-                </EntityPopOverCard>
-              )}
-            </div>
+              pathData={pathData}
+              viewport={viewport}
+              onAddPipelineClick={onAddPipelineClick}
+              onSetSelectedEdge={handleSetSelectedEdge}
+            />
           );
         }
 
