@@ -8,9 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -1234,6 +1237,51 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     term.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
     GlossaryTerm updated = patchEntity(term.getId().toString(), term);
     assertEquals(org.openmetadata.schema.type.EntityStatus.DEPRECATED, updated.getEntityStatus());
+  }
+
+  @Test
+  void test_glossaryTermStatusTransitionUpdatesSearchIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("term_status_search"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term for search status propagation");
+
+    GlossaryTerm term = createEntity(request);
+    term.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+
+    Awaitility.await("Glossary term status should be reflected in search")
+        .atMost(java.time.Duration.ofSeconds(30))
+        .pollInterval(java.time.Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + updated.getId())
+                      .index("glossary_term_search_index")
+                      .size(5)
+                      .execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "Glossary term should be searchable");
+
+              JsonNode source = null;
+              for (JsonNode hit : hits) {
+                if (updated.getId().toString().equals(hit.path("_id").asText())
+                    || updated.getId().toString().equals(hit.path("_source").path("id").asText())) {
+                  source = hit.path("_source");
+                  break;
+                }
+              }
+              assertNotNull(source, "Expected glossary term document in search hits");
+              assertEquals(updated.getEntityStatus().value(), source.path("entityStatus").asText());
+            });
   }
 
   @Test

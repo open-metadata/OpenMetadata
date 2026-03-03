@@ -180,6 +180,23 @@ public class SearchRepository {
           FIELD_DISPLAY_NAME);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
+  /**
+   * Fields currently supported by {@link #getScriptWithParams(EntityInterface, Map, ChangeDescription)}.
+   *
+   * <p>When a non-versioned update touches any other field, we must fall back to full document
+   * indexing to avoid stale search documents.
+   */
+  private static final Set<String> PARTIAL_SCRIPT_SUPPORTED_FIELDS =
+      Set.of(
+          FIELD_DESCRIPTION,
+          FIELD_FOLLOWERS,
+          FIELD_USAGE_SUMMARY,
+          "extension",
+          "queryUsedIn",
+          "votes",
+          "pipelineStatus",
+          TEST_SUITES);
+
   @Getter private final ElasticSearchConfiguration searchConfiguration;
   @Getter private final int maxDBConnections;
 
@@ -642,12 +659,21 @@ public class SearchRepository {
         changeDescription = entity.getChangeDescription();
       }
 
-      if (changeDescription != null
-          && entity.getChangeDescription() != null
-          && Objects.equals(
-              entity.getVersion(), entity.getChangeDescription().getPreviousVersion())) {
+      boolean isNonVersionedUpdate =
+          changeDescription != null
+              && entity.getChangeDescription() != null
+              && Objects.equals(
+                  entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
+      if (isNonVersionedUpdate && canUseScriptedPartialUpdate(changeDescription)) {
         scriptTxt = getScriptWithParams(entity, doc, changeDescription);
       } else {
+        if (isNonVersionedUpdate && changeDescription != null) {
+          LOG.debug(
+              "Falling back to full document indexing for non-versioned update. entityType={}, entityId={}, changedFields={}",
+              entityType,
+              entityId,
+              getChangedFieldNames(changeDescription));
+        }
         SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
         doc = elasticSearchIndex.buildSearchIndexDoc();
       }
@@ -1762,6 +1788,27 @@ public class SearchRepository {
       }
     }
     return scriptTxt.toString();
+  }
+
+  private boolean canUseScriptedPartialUpdate(ChangeDescription changeDescription) {
+    Set<String> changedFieldNames = getChangedFieldNames(changeDescription);
+    return !changedFieldNames.isEmpty()
+        && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains);
+  }
+
+  private Set<String> getChangedFieldNames(ChangeDescription changeDescription) {
+    if (changeDescription == null) {
+      return Collections.emptySet();
+    }
+
+    Set<String> changedFields = new HashSet<>();
+    listOrEmpty(changeDescription.getFieldsAdded())
+        .forEach(fieldChange -> changedFields.add(fieldChange.getName()));
+    listOrEmpty(changeDescription.getFieldsUpdated())
+        .forEach(fieldChange -> changedFields.add(fieldChange.getName()));
+    listOrEmpty(changeDescription.getFieldsDeleted())
+        .forEach(fieldChange -> changedFields.add(fieldChange.getName()));
+    return changedFields;
   }
 
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
