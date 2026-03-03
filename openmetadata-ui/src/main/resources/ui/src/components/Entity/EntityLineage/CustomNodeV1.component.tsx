@@ -163,7 +163,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     setNodeFilterState,
   } = useLineageStore();
 
-  const [columnsExpanded, setColumnsExpanded] = useState<boolean>(false);
+  const [columnsExpanded, setColumnsExpanded] = useState<boolean>();
 
   const {
     label,
@@ -176,12 +176,20 @@ const CustomNodeV1 = (props: NodeProps) => {
     isDownstreamNode = false,
   } = data;
 
+  // sync expand state based on edit or column layer active
+  useEffect(() => {
+    setColumnsExpanded(isEditMode || isColumnLevelLineage);
+  }, [isEditMode, isColumnLevelLineage]);
+
   const toggleColumnsExpanded = useCallback(() => {
     setColumnsExpanded((prev) => !prev);
   }, []);
 
-  const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
-  const isSelected = selectedNode === node;
+  const nodeType = useMemo(
+    () => (isEditMode ? EntityLineageNodeType.DEFAULT : type),
+    [isEditMode, type]
+  );
+  const isSelected = useMemo(() => selectedNode === node, [selectedNode, node]);
   const {
     id,
     fullyQualifiedName,
@@ -190,10 +198,10 @@ const CustomNodeV1 = (props: NodeProps) => {
     downstreamExpandPerformed = false,
   } = node;
 
-  const showColumnsWithLineageOnly = nodeFilterState.get(node.id) ?? false;
-  const isChildrenListExpanded = useMemo(() => {
-    return columnsExpanded || isColumnLevelLineage;
-  }, [columnsExpanded, isColumnLevelLineage]);
+  const showColumnsWithLineageOnly = useMemo(
+    () => nodeFilterState.get(node.id) ?? false,
+    [nodeFilterState, node.id]
+  );
 
   useEffect(() => {
     if (isColumnLevelLineage) {
@@ -205,19 +213,6 @@ const CustomNodeV1 = (props: NodeProps) => {
       setNodeFilterState(node.id, false);
     };
   }, [isColumnLevelLineage]);
-
-  useEffect(() => {
-    if (isEditMode) {
-      setColumnsExpanded(true);
-      setNodeFilterState(node.id, false);
-    }
-
-    // reset on unmount
-    return () => {
-      setColumnsExpanded(false);
-      setNodeFilterState(node.id, isColumnLevelLineage);
-    };
-  }, [isEditMode]);
 
   const showDqTracing = useMemo(
     () =>
@@ -329,25 +324,19 @@ const CustomNodeV1 = (props: NodeProps) => {
   );
 
   const childElement = useMemo(() => {
-    if (!columnsExpanded && !isColumnLevelLineage) {
+    if (!columnsExpanded) {
       return null;
     }
 
     return (
       <NodeChildren
-        isChildrenListExpanded={isChildrenListExpanded}
+        isChildrenListExpanded={columnsExpanded}
         isConnectable={isConnectable}
         isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
         node={node}
       />
     );
-  }, [
-    columnsExpanded,
-    isConnectable,
-    showColumnsWithLineageOnly,
-    node,
-    isColumnLevelLineage,
-  ]);
+  }, [columnsExpanded, isConnectable, showColumnsWithLineageOnly, node]);
 
   return (
     <div

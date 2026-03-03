@@ -105,16 +105,17 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   setIsEditMode: (isEditMode: boolean) => set({ isEditMode }),
 
   toggleEditMode: () => {
-    const { activeLayer, isEditMode, updateActiveLayer, setActiveLayer } =
-      get();
+    const { isEditMode, isColumnLevelLineage } = get();
     const updatedEditMode = !isEditMode;
 
-    if (updatedEditMode) {
-      updateActiveLayer(LineageLayer.ColumnLevelLineage);
-    } else {
-      setActiveLayer(
-        activeLayer.filter((layer) => layer !== LineageLayer.ColumnLevelLineage)
-      );
+    if (updatedEditMode && !isColumnLevelLineage) {
+      set({
+        activeLayer: [LineageLayer.ColumnLevelLineage],
+        isColumnLevelLineage: true,
+      });
+    }
+
+    if (!updatedEditMode) {
       set({ tracedColumns: new Set(), tracedNodes: new Set() });
     }
 

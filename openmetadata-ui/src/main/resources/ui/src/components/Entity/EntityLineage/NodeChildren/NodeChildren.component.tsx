@@ -102,7 +102,7 @@ const NodeChildren = ({
       const searchQuery = e.target.value;
       setSearchValue(searchQuery);
       const currentNodeColumnsToSearch =
-        isOnlyShowColumnsWithLineageFilterActive
+        isOnlyShowColumnsWithLineageFilterActive && !isEditMode
           ? stableColumnsWithLineage
           : entityChildren;
 
@@ -121,13 +121,14 @@ const NodeChildren = ({
     [
       entityChildren,
       stableColumnsWithLineage,
+      isEditMode,
       isOnlyShowColumnsWithLineageFilterActive,
     ]
   );
 
   useEffect(() => {
     if (!isEmpty(entityChildren)) {
-      if (isOnlyShowColumnsWithLineageFilterActive) {
+      if (isOnlyShowColumnsWithLineageFilterActive && !isEditMode) {
         setFilteredColumns(stableColumnsWithLineage);
       } else {
         setFilteredColumns(entityChildren);
@@ -136,6 +137,7 @@ const NodeChildren = ({
   }, [
     entityChildren,
     stableColumnsWithLineage,
+    isEditMode,
     isOnlyShowColumnsWithLineageFilterActive,
   ]);
 
@@ -162,6 +164,16 @@ const NodeChildren = ({
       setIsLoading(false);
     }
   }, [node, showDataObservabilitySummary, summary]);
+
+  const pageSize = useMemo(() => {
+    return isOnlyShowColumnsWithLineageFilterActive || isEditMode
+      ? filteredColumns.length
+      : LINEAGE_CHILD_ITEMS_PER_PAGE;
+  }, [
+    isOnlyShowColumnsWithLineageFilterActive,
+    isEditMode,
+    filteredColumns.length,
+  ]);
 
   // No need to render if there's no children
   if (entityChildren.length === 0) {
@@ -199,11 +211,7 @@ const NodeChildren = ({
                 isConnectable={isConnectable}
                 isLoading={isLoading}
                 nodeId={node.id}
-                pageSize={
-                  isOnlyShowColumnsWithLineageFilterActive || isEditMode
-                    ? filteredColumns.length
-                    : LINEAGE_CHILD_ITEMS_PER_PAGE
-                }
+                pageSize={pageSize}
                 showDataObservabilitySummary={showDataObservabilitySummary}
                 summary={summary}
               />
