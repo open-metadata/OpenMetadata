@@ -20,7 +20,7 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy as sqa
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
@@ -35,7 +35,10 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
+
 
 TEST_CASE_NAME = "my_test_case"
 ENTITY_LINK_NICKNAME = "<#E::table::service.db.users::columns::nickname>"

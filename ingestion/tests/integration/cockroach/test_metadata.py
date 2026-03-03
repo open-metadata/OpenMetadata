@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.workflow.metadata import MetadataWorkflow
@@ -24,8 +24,10 @@ def prepare_cockroach(cockroach_container):
             ('Jane Smith', 30);
         """,
     ]
-    for stmt in sql:
-        engine.execute(stmt)
+    with engine.connect() as conn:
+        for stmt in sql:
+            conn.execute(text(stmt))
+        conn.commit()
 
 
 @pytest.mark.parametrize(

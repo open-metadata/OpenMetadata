@@ -20,7 +20,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -37,7 +37,9 @@ from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 if sys.version_info < (3, 9):

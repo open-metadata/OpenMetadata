@@ -20,7 +20,7 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.processor.runner import QueryRunner
@@ -28,7 +28,9 @@ from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.timeout import cls_timeout
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 if sys.version_info < (3, 9):

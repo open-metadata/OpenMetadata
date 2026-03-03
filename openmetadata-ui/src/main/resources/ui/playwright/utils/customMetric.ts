@@ -68,7 +68,7 @@ export const createCustomMetric = async ({
     })
     .click();
   await page.locator('[data-testid="profiler-add-table-test-btn"]').click();
-  await page.locator('[data-testid="custom-metric"]').click();
+  await page.getByRole('menuitemradio', { name: 'Custom metric' }).click();
 
   const customMetricResponse = page.waitForResponse(
     '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all*'
@@ -95,7 +95,7 @@ export const createCustomMetric = async ({
 
   // Click on create custom metric button
   await page.click('[data-testid="profiler-add-table-test-btn"]');
-  await page.click('[data-testid="custom-metric"]');
+  await page.getByRole('menuitemradio', { name: 'Custom metric' }).click();
   await page.click('[data-testid="submit-button"]');
 
   await validateForm(page, isColumnMetric);
