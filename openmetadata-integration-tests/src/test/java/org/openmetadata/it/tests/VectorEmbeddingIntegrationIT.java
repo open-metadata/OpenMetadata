@@ -17,8 +17,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.hc.core5.http.HttpHost;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -59,8 +61,8 @@ class VectorEmbeddingIntegrationIT {
   private ObjectMapper mapper;
   private Table testTable;
 
-  @BeforeEach
-  void setUp() throws Exception {
+  @BeforeAll
+  void setUpOnce() throws Exception {
     HttpHost httpHost = new HttpHost("http", opensearch.getHost(), opensearch.getMappedPort(9200));
     ApacheHttpClient5Transport transport =
         ApacheHttpClient5TransportBuilder.builder(httpHost)
@@ -79,6 +81,11 @@ class VectorEmbeddingIntegrationIT {
     vectorService = OpenSearchVectorService.getInstance();
 
     mapper = new ObjectMapper();
+  }
+
+  @BeforeEach
+  void setUp() throws Exception {
+    Assumptions.assumeTrue(embeddingClient != null, "Embedding client not available");
 
     testTable =
         createTestTable(
@@ -92,16 +99,22 @@ class VectorEmbeddingIntegrationIT {
   }
 
   @AfterEach
-  void tearDown() throws Exception {
-    if (embeddingClient != null) {
-      embeddingClient.close();
-    }
+  void tearDownEach() throws Exception {
     if (openSearchClient != null) {
       try {
         openSearchClient.indices().delete(d -> d.index(TEST_INDEX));
       } catch (Exception e) {
         // Ignore cleanup errors
       }
+    }
+  }
+
+  @AfterAll
+  void tearDownOnce() throws Exception {
+    if (embeddingClient != null) {
+      embeddingClient.close();
+    }
+    if (openSearchClient != null) {
       openSearchClient._transport().close();
     }
   }
