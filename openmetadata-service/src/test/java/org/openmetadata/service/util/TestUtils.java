@@ -39,6 +39,16 @@ public final class TestUtils {
     }
   }
 
+  public static String plurializeEntityType(String entityType) {
+    if (entityType.endsWith("s")) {
+      return entityType + "es";
+    } else if (entityType.endsWith("y")) {
+      return entityType.substring(0, entityType.length() - 1) + "ies";
+    } else {
+      return entityType + "s";
+    }
+  }
+
   public static void assertFieldExists(
       DocumentContext jsonContext, String jsonPath, String fieldName) {
     List<Map<String, Object>> result = jsonContext.read(jsonPath, List.class);
