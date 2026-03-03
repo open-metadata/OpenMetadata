@@ -14,8 +14,6 @@ Client to interact with databricks apis
 import json
 import traceback
 
-from requests import HTTPError
-
 from metadata.generated.schema.entity.services.connections.database.databricks.azureAdSetup import (
     AzureAdSetup,
 )
@@ -39,7 +37,6 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 TABLE_LINEAGE_PATH = "/lineage-tracking/table-lineage"
-TABLES_PATH = "/unity-catalog/tables"
 
 
 class UnityCatalogClient(DatabricksClient):
@@ -105,27 +102,3 @@ class UnityCatalogClient(DatabricksClient):
             logger.debug(traceback.format_exc())
 
         return LineageTableStreams()
-
-    def get_owner_info(self, full_table_name: str) -> str:
-        """
-        get owner info from tables API
-        """
-        try:
-            logger.debug(
-                f"Fetching owner info from Databricks API for: {full_table_name}"
-            )
-            response = self.client.get(
-                f"{self.base_url}{TABLES_PATH}/{full_table_name}",
-                headers=self.headers,
-                timeout=API_TIMEOUT,
-            )
-            if response.status_code != 200:
-                raise HTTPError(response.text)
-            return response.json().get("owner")
-        except Exception as exc:
-            logger.error(
-                f"Unexpected error while fetching owner info for table {full_table_name}: {exc}"
-            )
-            logger.debug(traceback.format_exc())
-
-        return

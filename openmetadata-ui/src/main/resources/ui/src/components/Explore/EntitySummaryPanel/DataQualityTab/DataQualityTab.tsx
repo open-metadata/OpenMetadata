@@ -18,7 +18,6 @@ import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Transi18next, getTableFQNFromColumnFQN } from '../../../../utils/CommonUtils';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
@@ -35,6 +34,10 @@ import {
 import { Include } from '../../../../generated/type/include';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getListTestCaseBySearch } from '../../../../rest/testAPI';
+import {
+  getTableFQNFromColumnFQN,
+  Transi18next,
+} from '../../../../utils/CommonUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -129,8 +132,8 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
 
   const testCaseName = isIncidentMode
     ? incident?.testCaseReference?.displayName ||
-    incident?.testCaseReference?.name ||
-    'Unknown Test Case'
+      incident?.testCaseReference?.name ||
+      'Unknown Test Case'
     : testCase.name;
 
   const severity = incident?.severity;
@@ -147,12 +150,12 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
       return [
         ...(severity
           ? [
-            {
-              label: t('label.severity'),
-              value: <Severity hasPermission={false} severity={severity} />,
-              showDottedBorder: true, // Always show border before assignee
-            },
-          ]
+              {
+                label: t('label.severity'),
+                value: <Severity hasPermission={false} severity={severity} />,
+                showDottedBorder: true, // Always show border before assignee
+              },
+            ]
           : []),
         {
           label: t('label.assignee'),
@@ -175,38 +178,38 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
     return [
       ...(columnName
         ? [
-          {
-            label: t('label.test-type'),
-            value: t('label.column'),
-            showDottedBorder: true, // Always show border before column name
-          },
-          {
-            label: t('label.column-name'),
-            value: columnName,
-            showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
-          },
-        ]
+            {
+              label: t('label.test-type'),
+              value: t('label.column'),
+              showDottedBorder: true, // Always show border before column name
+            },
+            {
+              label: t('label.column-name'),
+              value: columnName,
+              showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
+            },
+          ]
         : [
-          {
-            label: t('label.test-type'),
-            value: t('label.table'),
-            showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
-          },
-        ]),
+            {
+              label: t('label.test-type'),
+              value: t('label.table'),
+              showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
+            },
+          ]),
       ...(testCase.incidentId
         ? [
-          {
-            label: t('label.incident'),
-            value: (
-              <StatusBadgeV2
-                label="Assigned"
-                showIcon={false}
-                status={StatusType.Warning}
-              />
-            ),
-            showDottedBorder: false, // Last item, no border
-          },
-        ]
+            {
+              label: t('label.incident'),
+              value: (
+                <StatusBadgeV2
+                  label="Assigned"
+                  showIcon={false}
+                  status={StatusType.Warning}
+                />
+              ),
+              showDottedBorder: false, // Last item, no border
+            },
+          ]
         : []),
     ];
   }, [isIncidentMode, columnName, testCase.incidentId, severity, incident, t]);
@@ -386,7 +389,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
         let allIncidents = response.data || [];
 
-        if (isColumnDetailPanel && currentTestCases && currentTestCases.length > 0) {
+        if (
+          isColumnDetailPanel &&
+          currentTestCases &&
+          currentTestCases.length > 0
+        ) {
           const testCaseFQNSet = new Set(
             currentTestCases.map((testCase) => testCase.fullyQualifiedName)
           );
@@ -480,7 +487,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   }, [entityFQN]);
 
   useEffect(() => {
-    if (isColumnDetailPanel && testCases.length > 0 && hasViewTests && !hasFetchedColumnIncidents.current) {
+    if (
+      isColumnDetailPanel &&
+      testCases.length > 0 &&
+      hasViewTests &&
+      !hasFetchedColumnIncidents.current
+    ) {
       hasFetchedColumnIncidents.current = true;
       fetchIncidents(testCases);
     }
@@ -624,12 +636,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       key: 'data-quality',
       label: (
         <span
-          className={`tab-header-container ${activeTab === 'data-quality' ? 'active' : ''
-            }`}>
+          className={`tab-header-container ${
+            activeTab === 'data-quality' ? 'active' : ''
+          }`}>
           {t('label.data-quality')}
           <span
-            className={`data-quality-tab-count ${activeTab === 'data-quality' ? 'active' : ''
-              }`}>
+            className={`data-quality-tab-count ${
+              activeTab === 'data-quality' ? 'active' : ''
+            }`}>
             {statusCounts.total}
           </span>
         </span>
@@ -702,13 +716,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       key: 'incidents',
       label: (
         <span
-          className={`tab-header-container ${activeTab === 'incidents' ? 'active' : ''
-            }`}>
+          className={`tab-header-container ${
+            activeTab === 'incidents' ? 'active' : ''
+          }`}>
           {t('label.incident-plural')}
 
           <span
-            className={`data-quality-tab-count ${activeTab === 'incidents' ? 'active' : ''
-              }`}>
+            className={`data-quality-tab-count ${
+              activeTab === 'incidents' ? 'active' : ''
+            }`}>
             {incidentCounts.total}
           </span>
         </span>
@@ -731,8 +747,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             <div className="incidents-stats-container">
               <div className="incidents-stats-cards-container">
                 <button
-                  className={`incident-stat-card new-card ${activeIncidentFilter === 'new' ? 'active' : ''
-                    }`}
+                  className={`incident-stat-card new-card ${
+                    activeIncidentFilter === 'new' ? 'active' : ''
+                  }`}
                   type="button"
                   onClick={() => handleIncidentFilterChange('new')}>
                   <Typography.Text className="stat-count new">
@@ -749,8 +766,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   variant="middle"
                 />
                 <button
-                  className={`incident-stat-card ack-card ${activeIncidentFilter === 'ack' ? 'active' : ''
-                    }`}
+                  className={`incident-stat-card ack-card ${
+                    activeIncidentFilter === 'ack' ? 'active' : ''
+                  }`}
                   type="button"
                   onClick={() => handleIncidentFilterChange('ack')}>
                   <Typography.Text className="stat-count ack">
@@ -767,8 +785,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   variant="middle"
                 />
                 <button
-                  className={`incident-stat-card assigned-card ${activeIncidentFilter === 'assigned' ? 'active' : ''
-                    }`}
+                  className={`incident-stat-card assigned-card ${
+                    activeIncidentFilter === 'assigned' ? 'active' : ''
+                  }`}
                   type="button"
                   onClick={() => handleIncidentFilterChange('assigned')}>
                   <Typography.Text className="stat-count assigned">

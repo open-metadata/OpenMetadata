@@ -101,6 +101,10 @@ RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.1.5.txt"
 
 WORKDIR /home/airflow/ingestion
 
+# Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
+# but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
+RUN pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-databricks==0.2.0" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install ".[${INGESTION_DEPENDENCY}]"

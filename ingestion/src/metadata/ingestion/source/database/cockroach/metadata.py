@@ -16,7 +16,7 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, List, Optional, Tuple
 
-from sqlalchemy import sql
+from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.reflection import Inspector
 
@@ -106,7 +106,8 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()
-        results = self.engine.execute(COCKROACH_SCHEMA_COMMENTS).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(COCKROACH_SCHEMA_COMMENTS)).all()
         for row in results:
             self.schema_desc_map[(row.database_name, row.schema_name)] = row.comment
 
@@ -236,9 +237,10 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector
     ) -> Tuple[bool, TablePartition]:
-        result = self.engine.execute(
-            COCKROACH_GET_PARTITION_DETAILS, table_name=table_name
-        ).all()
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text(COCKROACH_GET_PARTITION_DETAILS), {"table_name": table_name}
+            ).all()
         if result:
             partition_details = TablePartition(
                 columns=[

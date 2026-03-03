@@ -159,6 +159,7 @@ const TeamsPage = () => {
           TabSpecificField.CHILDREN_COUNT,
           TabSpecificField.OWNS,
           TabSpecificField.PARENTS,
+          TabSpecificField.DEFAULT_PERSONA,
         ],
       });
 
@@ -257,6 +258,7 @@ const TeamsPage = () => {
           TabSpecificField.USERS,
           TabSpecificField.USER_COUNT,
           TabSpecificField.DEFAULT_ROLES,
+          TabSpecificField.DEFAULT_PERSONA,
           TabSpecificField.POLICIES,
           TabSpecificField.CHILDREN_COUNT,
           TabSpecificField.DOMAINS,
