@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -89,7 +91,7 @@ public class LineageResourceIT {
                     .withFromEntity(sourceTable.getEntityReference())
                     .withToEntity(targetTable.getEntityReference()));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
@@ -132,7 +134,7 @@ public class LineageResourceIT {
                     .withToEntity(targetTable.getEntityReference())
                     .withLineageDetails(details));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
@@ -394,7 +396,7 @@ public class LineageResourceIT {
                     .withFromEntity(pipeline.getEntityReference())
                     .withToEntity(targetTable.getEntityReference()));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "pipeline", pipeline.getId().toString(), "0", "1");
@@ -456,7 +458,7 @@ public class LineageResourceIT {
                     .withToEntity(targetTable.getEntityReference())
                     .withLineageDetails(details));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
@@ -512,7 +514,7 @@ public class LineageResourceIT {
                     .withToEntity(targetTable.getEntityReference())
                     .withLineageDetails(details));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
@@ -580,11 +582,25 @@ public class LineageResourceIT {
     return client.pipelines().create(createPipeline);
   }
 
-  private void addLineage(OpenMetadataClient client, EntityReference from, EntityReference to)
-      throws Exception {
+  private String executeAddLineage(OpenMetadataClient client, AddLineage lineage) {
+    String[] holder = {null};
+    Awaitility.await("Add lineage edge")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              holder[0] = client.lineage().addLineage(lineage);
+              return true;
+            });
+    return holder[0];
+  }
+
+  private void addLineage(OpenMetadataClient client, EntityReference from, EntityReference to) {
     AddLineage addLineage =
         new AddLineage().withEdge(new EntitiesEdge().withFromEntity(from).withToEntity(to));
-    client.lineage().addLineage(addLineage);
+    executeAddLineage(client, addLineage);
   }
 
   private void addLineage(OpenMetadataClient client, Table from, Table to) throws Exception {
@@ -669,7 +685,7 @@ public class LineageResourceIT {
                     .withToEntity(table2.getEntityReference())
                     .withLineageDetails(details));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", table1.getId().toString(), "0", "1");
@@ -714,7 +730,7 @@ public class LineageResourceIT {
                     .withToEntity(targetTable.getEntityReference())
                     .withLineageDetails(details));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
@@ -835,7 +851,7 @@ public class LineageResourceIT {
                     .withToEntity(table.getEntityReference())
                     .withLineageDetails(details));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "topic", topic.getId().toString(), "0", "1");
@@ -876,7 +892,7 @@ public class LineageResourceIT {
                     .withToEntity(dataModel.getEntityReference())
                     .withLineageDetails(details));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", table.getId().toString(), "0", "1");
@@ -917,7 +933,7 @@ public class LineageResourceIT {
                     .withToEntity(table.getEntityReference())
                     .withLineageDetails(details));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "container", container.getId().toString(), "0", "1");
@@ -958,7 +974,7 @@ public class LineageResourceIT {
                     .withToEntity(mlModel.getEntityReference())
                     .withLineageDetails(details));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", table.getId().toString(), "0", "1");
@@ -993,7 +1009,7 @@ public class LineageResourceIT {
                     .withToEntity(dashboard.getEntityReference())
                     .withLineageDetails(details));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", table.getId().toString(), "0", "1");
@@ -1038,7 +1054,7 @@ public class LineageResourceIT {
                     .withToEntity(table2.getEntityReference())
                     .withLineageDetails(details));
 
-    String result = client.lineage().addLineage(addLineage);
+    String result = executeAddLineage(client, addLineage);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", table1.getId().toString(), "0", "1");
@@ -1122,7 +1138,7 @@ public class LineageResourceIT {
                     .withToEntity(table2.getEntityReference())
                     .withLineageDetails(details1));
 
-    client.lineage().addLineage(addLineage1);
+    executeAddLineage(client, addLineage1);
 
     LineageDetails details2 = new LineageDetails();
     details2.setDescription("Updated lineage");
@@ -1141,7 +1157,7 @@ public class LineageResourceIT {
                     .withToEntity(table2.getEntityReference())
                     .withLineageDetails(details2));
 
-    String result = client.lineage().addLineage(addLineage2);
+    String result = executeAddLineage(client, addLineage2);
     assertNotNull(result);
 
     EntityLineage lineage = getLineage(client, "table", table1.getId().toString(), "0", "1");

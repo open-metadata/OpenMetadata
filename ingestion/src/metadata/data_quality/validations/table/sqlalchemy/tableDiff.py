@@ -814,7 +814,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         row_count = Metrics.ROW_COUNT()
         try:
             row = self.runner.select_first_from_table(row_count.fn())
-            return dict(row).get(Metrics.ROW_COUNT.name)
+            return row._asdict().get(Metrics.ROW_COUNT.name)
         except Exception as e:
             logger.error(f"Error getting row count: {e}")
             return None

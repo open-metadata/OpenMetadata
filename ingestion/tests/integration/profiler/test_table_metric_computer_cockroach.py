@@ -13,12 +13,11 @@
 Integration tests for CockroachTableMetricComputer against a real CockroachDB database.
 """
 
-import sys
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, Integer, String, create_engine, text
+from sqlalchemy.orm import DeclarativeBase
 from testcontainers.cockroachdb import CockroachDBContainer
 
 from metadata.generated.schema.entity.data.table import TableType
@@ -28,11 +27,9 @@ from metadata.profiler.orm.functions.table_metric_computer import (
 )
 from metadata.profiler.processor.runner import QueryRunner
 
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
 
-
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 class MetricComputerTestTable(Base):
@@ -57,15 +54,22 @@ def crdb_engine():
             "'GRANT SELECT ON TABLE system.table_statistics TO cockroach'"
         )
         engine = create_engine(container.get_connection_url())
-        engine.execute(
-            "CREATE TABLE IF NOT EXISTS public.metric_computer_test "
-            "(id INTEGER PRIMARY KEY, name VARCHAR(256))"
-        )
-        engine.execute(
-            "INSERT INTO public.metric_computer_test (id, name) "
-            "SELECT g, 'name_' || g::text FROM generate_series(1, 100) AS g"
-        )
-        engine.execute("ANALYZE metric_computer_test")
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS public.metric_computer_test "
+                    "(id INTEGER PRIMARY KEY, name VARCHAR(256))"
+                )
+            )
+            conn.execute(
+                text(
+                    "INSERT INTO public.metric_computer_test (id, name) "
+                    "SELECT g, 'name_' || g::text FROM generate_series(1, 100) AS g"
+                )
+            )
+            conn.commit()
+            conn.execute(text("ANALYZE metric_computer_test"))
+            conn.commit()
         yield engine
         engine.dispose()
 

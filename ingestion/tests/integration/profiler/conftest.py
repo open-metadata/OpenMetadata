@@ -23,13 +23,13 @@ else:
     DynamoDBClient = None
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def localstack_container():
     with LocalStackContainer("localstack/localstack:3.3") as container:
         yield container
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def ingest_sample_data(localstack_container):
     client: DynamoDBClient = boto3.client(
         "dynamodb",

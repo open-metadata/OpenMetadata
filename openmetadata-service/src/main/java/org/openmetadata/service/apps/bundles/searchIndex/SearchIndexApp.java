@@ -49,6 +49,7 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.quartz.JobExecutionContext;
@@ -92,7 +93,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private DistributedSearchIndexExecutor distributedExecutor;
   private ReindexContext recreateContext;
   private RecreateIndexHandler recreateIndexHandler;
-  private BulkSink searchIndexSink;
+  private volatile BulkSink searchIndexSink;
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -762,29 +763,46 @@ public class SearchIndexApp extends AbstractNativeApplication {
     Set<String> entitiesToFinalize = new HashSet<>(recreateContext.getEntities());
     entitiesToFinalize.removeAll(promotedEntities);
 
-    if (entitiesToFinalize.isEmpty()) {
-      LOG.info(
-          "All {} entities already promoted during execution, skipping finalizeAllEntityReindex",
-          promotedEntities.size());
-      recreateContext = null;
-      return;
-    }
-
-    LOG.info(
-        "Finalizing {} remaining entities (already promoted: {})",
-        entitiesToFinalize.size(),
-        promotedEntities.size());
+    // Vector index is a pseudo-entity with no partitions or batch tracking — handle separately
+    boolean hasVectorIndex = entitiesToFinalize.remove(VectorIndexService.VECTOR_INDEX_KEY);
 
     try {
-      for (String entityType : entitiesToFinalize) {
-        try {
-          finalizeEntityReindex(entityType, finalSuccess);
-        } catch (Exception ex) {
-          LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+      if (!entitiesToFinalize.isEmpty()) {
+        LOG.info(
+            "Finalizing {} remaining entities (already promoted: {})",
+            entitiesToFinalize.size(),
+            promotedEntities.size());
+
+        for (String entityType : entitiesToFinalize) {
+          try {
+            finalizeEntityReindex(entityType, finalSuccess);
+          } catch (Exception ex) {
+            LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+          }
         }
+      }
+
+      if (hasVectorIndex) {
+        finalizeVectorIndex(finalSuccess);
       }
     } finally {
       recreateContext = null;
+    }
+  }
+
+  private void finalizeVectorIndex(boolean finalSuccess) {
+    // Vector index data is written as a side-effect of processing real entities.
+    // Promote when the job ran to completion (even with some errors) since partial
+    // vector data is better than an orphaned rebuild index. Only discard on
+    // FAILED (job crashed) or STOPPED (user cancelled).
+    boolean vectorSuccess =
+        finalSuccess
+            || (jobData != null && jobData.getStatus() == EventPublisherJob.Status.ACTIVE_ERROR);
+
+    try {
+      finalizeEntityReindex(VectorIndexService.VECTOR_INDEX_KEY, vectorSuccess);
+    } catch (Exception ex) {
+      LOG.error("Failed to finalize vector index", ex);
     }
   }
 
@@ -814,9 +832,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void handleExecutionException(Exception ex) {
-    if (searchIndexSink != null) {
+    BulkSink sink = searchIndexSink;
+    if (sink != null) {
+      searchIndexSink = null;
       try {
-        searchIndexSink.close();
+        sink.close();
       } catch (Exception e) {
         LOG.error("Error closing search index sink", e);
       }
@@ -885,10 +905,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
       SuccessContext successContext =
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
 
+      SearchIndexJob distributedJob =
+          distributedExecutor != null ? distributedExecutor.getJobWithFreshStats() : null;
+
       try {
         String jobIdStr =
-            distributedExecutor != null
-                ? distributedExecutor.getJobWithFreshStats().getId().toString()
+            distributedJob != null
+                ? distributedJob.getId().toString()
                 : getApp().getId().toString();
         int failureCount = collectionDAO.searchIndexFailureDAO().countByJobId(jobIdStr);
         if (failureCount > 0) {
@@ -898,15 +921,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
         LOG.debug("Could not get failure count", e);
       }
 
-      if (distributedExecutor != null) {
-        SearchIndexJob distributedJob = distributedExecutor.getJobWithFreshStats();
-        if (distributedJob != null && distributedJob.getServerStats() != null) {
-          successContext.withAdditionalProperty("serverStats", distributedJob.getServerStats());
-          successContext.withAdditionalProperty(
-              "serverCount", distributedJob.getServerStats().size());
-          successContext.withAdditionalProperty(
-              "distributedJobId", distributedJob.getId().toString());
-        }
+      if (distributedJob != null && distributedJob.getServerStats() != null) {
+        successContext.withAdditionalProperty("serverStats", distributedJob.getServerStats());
+        successContext.withAdditionalProperty(
+            "serverCount", distributedJob.getServerStats().size());
+        successContext.withAdditionalProperty(
+            "distributedJobId", distributedJob.getId().toString());
       }
 
       appRecord.setSuccessContext(successContext);
@@ -952,9 +972,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
       sendUpdates(jobExecutionContext, true);
     }
 
-    if (searchIndexSink != null) {
+    BulkSink sink = searchIndexSink;
+    if (sink != null) {
+      searchIndexSink = null;
       try {
-        searchIndexSink.close();
+        sink.close();
       } catch (Exception e) {
         LOG.error("Error closing search index sink", e);
       }

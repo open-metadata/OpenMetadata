@@ -49,7 +49,7 @@ class TestConfig(TestCase):
         """
         connection = RedshiftConnection(
             username="username",
-            password="password",
+            authType=BasicAuth(password="password"),
             hostPort="localhost:1234",
             database="dev",
         )

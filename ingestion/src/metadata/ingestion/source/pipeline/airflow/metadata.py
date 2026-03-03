@@ -144,7 +144,7 @@ class AirflowSource(PipelineServiceSource):
             return self._is_remote_airflow_3
 
         try:
-            inspector = inspect(self.session.bind)
+            inspector = inspect(self.session.get_bind())
             tables = inspector.get_table_names()
 
             # Airflow 3.x removed the 'task_instance' primary key column 'map_index'
@@ -182,7 +182,7 @@ class AirflowSource(PipelineServiceSource):
             return self._execution_date_column
 
         try:
-            inspector = inspect(self.session.bind)
+            inspector = inspect(self.session.get_bind())
             columns = [col["name"] for col in inspector.get_columns("dag_run")]
             if "logical_date" in columns:
                 self._execution_date_column = "logical_date"
@@ -279,7 +279,7 @@ class AirflowSource(PipelineServiceSource):
                 .all()
             )
 
-            dag_run_dict = [dict(elem) for elem in dag_run_list]
+            dag_run_dict = [elem._asdict() for elem in dag_run_list]
 
             # Build DagRun manually to not fall into new/old columns from
             # different Airflow versions
@@ -346,7 +346,9 @@ class AirflowSource(PipelineServiceSource):
             )
 
         task_instance_dict = (
-            [dict(elem) for elem in task_instance_list] if task_instance_list else []
+            [elem._asdict() for elem in task_instance_list]
+            if task_instance_list
+            else []
         )
 
         return [

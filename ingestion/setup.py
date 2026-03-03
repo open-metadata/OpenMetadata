@@ -47,8 +47,8 @@ VERSIONS = {
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
-    "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
     "databricks-sdk": "databricks-sdk~=0.20.0",
+    "databricks-sql-connector": "databricks-sql-connector>=2.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
@@ -56,8 +56,7 @@ VERSIONS = {
     "tableau": "tableauserverclient==0.25",  # higher versions require urllib3>2.0 which conflicts other libs
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
-    "redshift": "sqlalchemy-redshift==0.8.12",
-    "snowflake": "snowflake-sqlalchemy~=1.4",
+    "snowflake": "snowflake-sqlalchemy>=1.6.1",
     "snowflake-connector": "snowflake-connector-python~=3.18.0",
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
@@ -67,12 +66,11 @@ VERSIONS = {
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
     "starrocks": "pymysql~=1.0",
-    "pydoris": "pydoris-custom>=1.0.2,<1.5",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
     "s3fs": "s3fs~=2023.12.1",
-    "sqlalchemy-bigquery": "sqlalchemy-bigquery~=1.15.0",
+    "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
     "kafka-connect": "kafka-connect-py==0.10.11",
@@ -145,6 +143,7 @@ base_requirements = {
     "azure-keyvault-secrets",  # Azure Key Vault SM
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",  # LineageParser
+    "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
     "google-cloud-secret-manager==2.24.0",
@@ -164,7 +163,7 @@ base_requirements = {
     "PyYAML~=6.0",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "sqlalchemy>=1.4.0,<2",
+    "sqlalchemy>=2.0.0,<3",
     "collate-sqllineage~=2.0",
     "tabulate==0.9.0",
     "typing-inspect",
@@ -194,12 +193,11 @@ plugins: Dict[str, Set[str]] = {
     "azure-sso": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
     "bigquery": {
-        "cachetools",
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
         VERSIONS["numpy"],
-        "sqlalchemy-bigquery~=1.15.0",
+        VERSIONS["sqlalchemy-bigquery"],
     },
     "bigtable": {
         VERSIONS["google-cloud-bigtable"],
@@ -208,7 +206,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "clickhouse": {
         "clickhouse-driver~=0.2",
-        "clickhouse-sqlalchemy~=0.2.0",
+        "clickhouse-sqlalchemy>=0.3",
         DATA_DIFF["clickhouse"],
     },
     "dagster": {
@@ -227,10 +225,13 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-identity"],
     },
     "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
-    "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
+    "db2-ibmi": {
+        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
+    },
     "databricks": {
-        VERSIONS["sqlalchemy-databricks"],
+        # sqlalchemy-databricks is pre-installed with --no-deps (SA<2 metadata conflict)
         VERSIONS["databricks-sdk"],
+        VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL~=24.1.0",
         "pyasn1~=0.6.0",
@@ -264,7 +265,9 @@ plugins: Dict[str, Set[str]] = {
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
     "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
-    "doris": {VERSIONS["pydoris"]},
+    # pydoris-custom declares sqlalchemy<2 but works at runtime with SA 2.0.
+    # Pre-installed with --no-deps in Dockerfiles.
+    "doris": set(),
     "starrocks": {VERSIONS["pymysql"]},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
@@ -273,7 +276,7 @@ plugins: Dict[str, Set[str]] = {
     },  # also requires requests-aws4auth which is in base
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {
-        "sqlalchemy_exasol>=5,<6",
+        "sqlalchemy_exasol>=6,<7",
         "exasol-integration-test-docker-environment>=3.1.0,<4",
     },
     "glue": {VERSIONS["boto3"]},
@@ -353,15 +356,13 @@ plugins: Dict[str, Set[str]] = {
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        # Going higher has memory and performance issues
-        VERSIONS["redshift"],
+        # sqlalchemy-redshift is pre-installed with --no-deps (SA<2 metadata conflict)
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
     "sample-data": {
-        "cachetools",
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
@@ -437,8 +438,8 @@ test = {
     # install dbt dependency
     "collate-dbt-artifacts-parser",
     "freezegun",
-    VERSIONS["sqlalchemy-databricks"],
     VERSIONS["databricks-sdk"],
+    VERSIONS["databricks-sql-connector"],
     VERSIONS["scikit-learn"],
     VERSIONS["pyarrow"],
     VERSIONS["trino"],
@@ -450,7 +451,6 @@ test = {
     VERSIONS["pyhive"],
     VERSIONS["mongo"],
     VERSIONS["cassandra"],
-    VERSIONS["redshift"],
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],
     VERSIONS["giturlparse"],
@@ -458,7 +458,7 @@ test = {
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
     VERSIONS["cockroach"],
-    VERSIONS["pydoris"],
+    # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
     VERSIONS["pyiceberg"],
     "testcontainers==3.7.1;python_version<'3.9'",

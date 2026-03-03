@@ -12,38 +12,27 @@
 """
 OpenMetadata high-level API Domains & Data Products test
 """
-from copy import deepcopy
-from unittest import TestCase
 from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
 
-from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.domains.createDataProduct import (
     CreateDataProductRequest,
 )
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
-from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceRequest,
-)
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain, DomainType
-from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
-    LookerConnection,
-)
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardConnection,
-    DashboardService,
-    DashboardServiceType,
-)
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.client import REST
+
+from ..integration_base import generate_name
 
 BAD_DOMAIN_RESPONSE = {
     "data": [
@@ -80,301 +69,224 @@ BAD_DOMAIN_RESPONSE = {
 }
 
 
-class OMetaDomainTest(TestCase):
-    """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
-    """
+@pytest.fixture(scope="module")
+def domain_entity(metadata):
+    """Module-scoped Domain for domain tests."""
+    name = generate_name()
+    domain = metadata.create_or_update(
+        data=CreateDomainRequest(
+            domainType=DomainType.Consumer_aligned,
+            name=name,
+            description="random",
+        )
+    )
 
-    service_entity_id = None
+    yield domain
 
-    metadata = int_admin_ometa()
+    metadata.delete(
+        entity=Domain, entity_id=domain.id, recursive=True, hard_delete=True
+    )
 
+
+@pytest.fixture(scope="module")
+def data_product_entity(metadata, domain_entity):
+    """Module-scoped DataProduct for data product tests."""
+    name = generate_name()
+    data_product = metadata.create_or_update(
+        data=CreateDataProductRequest(
+            name=name,
+            description="random",
+            domains=[domain_entity.name.root],
+        )
+    )
+
+    yield data_product
+
+    metadata.delete(entity=DataProduct, entity_id=data_product.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def domain_user(metadata):
+    """Module-scoped user for ownership tests."""
+    user_name = generate_name()
     user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
+        data=CreateUserRequest(name=user_name, email=f"{user_name.root}@user.com"),
     )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
-    service = CreateDashboardServiceRequest(
-        name="test-service-dashboard",
-        serviceType=DashboardServiceType.Looker,
-        connection=DashboardConnection(
-            config=LookerConnection(
-                hostPort="http://hostPort", clientId="id", clientSecret="secret"
+    yield user
+
+    metadata.delete(entity=User, entity_id=user.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def domain_owners(domain_user):
+    """Owner reference list for domain tests."""
+    return EntityReferenceList(root=[EntityReference(id=domain_user.id, type="user")])
+
+
+@pytest.fixture(scope="module")
+def domain_dashboard(metadata, dashboard_service):
+    """Module-scoped Dashboard for domain asset tests.
+
+    Cleanup handled by dashboard_service's recursive delete.
+    """
+    dashboard_name = generate_name()
+    dashboard = metadata.create_or_update(
+        CreateDashboardRequest(
+            name=dashboard_name,
+            service=dashboard_service.fullyQualifiedName,
+        )
+    )
+
+    return dashboard
+
+
+class TestOMetaDomainsAPI:
+    """
+    Domains & Data Products API integration tests.
+    Tests CRUD operations, assets management, and pagination.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    - dashboard_service: DashboardService (module scope)
+    """
+
+    def test_add_remove_assets_to_data_product(
+        self, metadata, domain_entity, data_product_entity, domain_dashboard
+    ):
+        """We can add assets to a data product"""
+        domains_ref = EntityReferenceList(
+            root=[EntityReference(id=domain_entity.id, type="domain")]
+        )
+        fresh_dashboard = metadata.get_by_name(
+            entity=Dashboard, fqn=domain_dashboard.fullyQualifiedName.root
+        )
+        metadata.patch_domain(
+            entity=Dashboard, source=fresh_dashboard, domains=domains_ref
+        )
+        asset_ref = EntityReference(id=domain_dashboard.id, type="dashboard")
+        metadata.add_assets_to_data_product(data_product_entity.name.root, [asset_ref])
+
+        assets_response = metadata.get_data_product_assets(
+            data_product_entity.name.root, limit=100
+        )
+        assert len(assets_response["data"]) == 1
+        assert assets_response["data"][0]["id"] == str(domain_dashboard.id.root)
+        assert assets_response["data"][0]["type"] == "dashboard"
+
+        metadata.remove_assets_from_data_product(
+            data_product_entity.name.root, [asset_ref]
+        )
+
+        assets_response = metadata.get_data_product_assets(
+            data_product_entity.name.root, limit=100
+        )
+        assert len(assets_response["data"]) == 0
+
+        status = metadata.remove_assets_from_data_product(
+            data_product_entity.name.root, [asset_ref]
+        )
+        assert status["status"] == "success"
+
+    def test_add_remove_assets_to_data_product_with_special_chars(
+        self, metadata, domain_entity, domain_dashboard
+    ):
+        """
+        Test adding/removing assets to a data product with special characters
+        (slash, hash) in its name. This validates URL encoding works correctly.
+        """
+        domains_ref = EntityReferenceList(
+            root=[EntityReference(id=domain_entity.id, type="domain")]
+        )
+
+        dp_name = EntityName("data-product/with/slashes")
+        create_dp_request = CreateDataProductRequest(
+            name=dp_name,
+            description="Data product with special chars",
+            domains=[domain_entity.name.root],
+        )
+        data_product = metadata.create_or_update(data=create_dp_request)
+
+        try:
+            fresh_dashboard = metadata.get_by_name(
+                entity=Dashboard, fqn=domain_dashboard.fullyQualifiedName.root
             )
-        ),
-    )
-    service_type = "dashboardService"
-
-    create_domain = CreateDomainRequest(
-        domainType=DomainType.Consumer_aligned, name="TestDomain", description="random"
-    )
-
-    create_data_product = CreateDataProductRequest(
-        name="TestDataProduct",
-        description="random",
-        domains=["TestDomain"],
-    )
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
-        cls.service_entity = cls.metadata.create_or_update(data=cls.service)
-
-        cls.dashboard: Dashboard = cls.metadata.create_or_update(
-            CreateDashboardRequest(
-                name="test",
-                service=cls.service_entity.fullyQualifiedName,
-            )
-        )
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
-
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=DashboardService, fqn=cls.service.name.root
-            ).id.root
-        )
-
-        cls.metadata.delete(
-            entity=DashboardService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
-
-        domain: Domain = cls.metadata.get_by_name(
-            entity=Domain, fqn=cls.create_domain.name.root
-        )
-
-        if domain:
-            cls.metadata.delete(
-                entity=Domain, entity_id=domain.id, recursive=True, hard_delete=True
+            metadata.patch_domain(
+                entity=Dashboard, source=fresh_dashboard, domains=domains_ref
             )
 
-    def test_create(self):
+            asset_ref = EntityReference(id=domain_dashboard.id, type="dashboard")
+            metadata.add_assets_to_data_product(data_product.name.root, [asset_ref])
+
+            assets_response = metadata.get_data_product_assets(
+                data_product.name.root, limit=100
+            )
+            assert len(assets_response["data"]) == 1
+            assert assets_response["data"][0]["id"] == str(domain_dashboard.id.root)
+
+            metadata.remove_assets_from_data_product(
+                data_product.name.root, [asset_ref]
+            )
+
+            assets_response = metadata.get_data_product_assets(
+                data_product.name.root, limit=100
+            )
+            assert len(assets_response["data"]) == 0
+        finally:
+            metadata.delete(
+                entity=DataProduct, entity_id=data_product.id, hard_delete=True
+            )
+
+    def test_create(self, domain_entity, data_product_entity):
         """
         We can create a Domain and we receive it back as Entity
         """
+        assert domain_entity.name is not None
+        assert domain_entity.description.root == "random"
 
-        res: Domain = self.metadata.create_or_update(data=self.create_domain)
-        self.assertEqual(res.name, self.create_domain.name)
-        self.assertEqual(res.description, self.create_domain.description)
+        assert data_product_entity.name is not None
+        assert data_product_entity.description.root == "random"
+        assert data_product_entity.domains.root[0].name == domain_entity.name.root
 
-        res: DataProduct = self.metadata.create_or_update(data=self.create_data_product)
-        self.assertEqual(res.name, self.create_data_product.name)
-        self.assertEqual(res.description, self.create_data_product.description)
-        self.assertEqual(
-            res.domains.root[0].name, self.create_data_product.domains[0].root
+    def test_data_product_with_slash_in_name(self, metadata, domain_entity):
+        """E.g., `data.product/with-slash`"""
+        name = EntityName("data.product/with-slash")
+        create_request = CreateDataProductRequest(
+            name=name,
+            description="Data product with slash in name",
+            domains=[domain_entity.name.root],
         )
+        new_data_product = metadata.create_or_update(data=create_request)
 
-    def test_get_name(self):
-        """We can fetch Domains & Data Products by name"""
-        self.metadata.create_or_update(data=self.create_domain)
+        try:
+            res = metadata.get_by_name(
+                entity=DataProduct, fqn=new_data_product.fullyQualifiedName
+            )
+            assert res.name == name
+        finally:
+            metadata.delete(
+                entity=DataProduct, entity_id=new_data_product.id, hard_delete=True
+            )
 
-        res: Domain = self.metadata.get_by_name(
-            entity=Domain, fqn=self.create_domain.name.root
-        )
-        self.assertEqual(res.name, self.create_domain.name)
-
-        self.metadata.create_or_update(data=self.create_data_product)
-
-        res: DataProduct = self.metadata.get_by_name(
-            entity=DataProduct, fqn=self.create_data_product.name.root
-        )
-        self.assertEqual(res.name, self.create_data_product.name)
-
-    def test_get_id(self):
-        """We can fetch Domains & Data Products by ID"""
-        self.metadata.create_or_update(data=self.create_domain)
-
-        res_name: Domain = self.metadata.get_by_name(
-            entity=Domain, fqn=self.create_domain.name.root
-        )
-        res: Domain = self.metadata.get_by_id(entity=Domain, entity_id=res_name.id)
-        self.assertEqual(res.name, self.create_domain.name)
-
-        self.metadata.create_or_update(data=self.create_data_product)
-
-        res_name: DataProduct = self.metadata.get_by_name(
-            entity=DataProduct, fqn=self.create_data_product.name.root
-        )
-        res: DataProduct = self.metadata.get_by_id(
-            entity=DataProduct, entity_id=res_name.id
-        )
-        self.assertEqual(res.name, self.create_data_product.name)
-
-    def test_patch_domain(self):
-        """We can add domain to an asset"""
-        domain: Domain = self.metadata.create_or_update(data=self.create_domain)
-        domains_ref = EntityReferenceList(
-            root=[EntityReference(id=domain.id, type="domain")]
-        )
-        self.metadata.patch_domain(
-            entity=Dashboard, source=self.dashboard, domains=domains_ref
-        )
-
-        updated_dashboard: Dashboard = self.metadata.get_by_name(
-            entity=Dashboard, fqn=self.dashboard.fullyQualifiedName, fields=["domains"]
-        )
-
-        self.assertEqual(updated_dashboard.domains.root[0].name, domain.name.root)
-
-    def test_add_remove_assets_to_data_product(self):
-        """We can add assets to a data product"""
-        domain: Domain = self.metadata.create_or_update(data=self.create_domain)
-        domains_ref = EntityReferenceList(
-            root=[EntityReference(id=domain.id, type="domain")]
-        )
-        # Make sure the dashboard belongs to the data product domain!
-        self.metadata.patch_domain(
-            entity=Dashboard, source=self.dashboard, domains=domains_ref
-        )
-        data_product: DataProduct = self.metadata.create_or_update(
-            data=self.create_data_product
-        )
-        asset_ref = EntityReference(id=self.dashboard.id, type="dashboard")
-        self.metadata.add_assets_to_data_product(data_product.name.root, [asset_ref])
-
-        # Use the new assets API to get assets
-        assets_response = self.metadata.get_data_product_assets(
-            data_product.name.root, limit=100
-        )
-        self.assertEqual(len(assets_response["data"]), 1)
-        self.assertEqual(assets_response["data"][0]["id"], str(self.dashboard.id.root))
-        self.assertEqual(assets_response["data"][0]["type"], "dashboard")
-
-        self.metadata.remove_assets_from_data_product(
-            data_product.name.root, [asset_ref]
-        )
-
-        # Use the new assets API to verify removal
-        assets_response = self.metadata.get_data_product_assets(
-            data_product.name.root, limit=100
-        )
-        self.assertEqual(len(assets_response["data"]), 0)
-
-        # Check what happens if we remove an asset that's not there on a Data Product
-        # We still get a success in the status
-        status = self.metadata.remove_assets_from_data_product(
-            data_product.name.root, [asset_ref]
-        )
-        self.assertEqual(status["status"], "success")
-
-    def test_get_domain_assets(self):
-        """We can get assets for a domain"""
-        domain: Domain = self.metadata.create_or_update(data=self.create_domain)
-        domains_ref = EntityReferenceList(
-            root=[EntityReference(id=domain.id, type="domain")]
-        )
-        self.metadata.patch_domain(
-            entity=Dashboard, source=self.dashboard, domains=domains_ref
-        )
-
-        # Get domain assets
-        assets_response = self.metadata.get_domain_assets(domain.name.root, limit=100)
-        self.assertGreaterEqual(len(assets_response["data"]), 1)
-
-        # Check that our dashboard is in the assets list
-        dashboard_ids = [asset["id"] for asset in assets_response["data"]]
-        self.assertIn(str(self.dashboard.id.root), dashboard_ids)
-
-        # Verify the asset has correct type
-        dashboard_asset = next(
-            (
-                asset
-                for asset in assets_response["data"]
-                if asset["id"] == str(self.dashboard.id.root)
-            ),
-            None,
-        )
-        self.assertIsNotNone(dashboard_asset)
-        self.assertEqual(dashboard_asset["type"], "dashboard")
-
-    def test_list(self):
-        """
-        We can list all our Domains
-        """
-        self.metadata.create_or_update(data=self.create_domain)
-
-        res = self.metadata.list_entities(entity=Domain)
-
-        # Fetch our test Domain. We have already inserted it, so we should find it
-        data = next(
-            iter(ent for ent in res.entities if ent.name == self.create_domain.name),
-            None,
-        )
-        assert data
-
-    def test_list_data_products(self):
-        """
-        We can list all our Data Products
-        """
-        self.metadata.create_or_update(data=self.create_domain)
-        self.metadata.create_or_update(data=self.create_data_product)
-
-        res = self.metadata.list_entities(entity=DataProduct)
-
-        # Fetch our test Data Product. We have already inserted it, so we should find it
-        data = next(
-            iter(
-                ent for ent in res.entities if ent.name == self.create_data_product.name
-            ),
-            None,
-        )
-        assert data
-
-    def test_list_all_and_paginate(self):
-        """
-        Validate generator utility to fetch all domains
-        """
-        fake_create = deepcopy(self.create_domain)
-        for i in range(0, 10):
-            fake_create.name = EntityName(self.create_domain.name.root + str(i))
-            self.metadata.create_or_update(data=fake_create)
-
-        all_entities = self.metadata.list_all_entities(
-            entity=Domain, limit=2  # paginate in batches of pairs
-        )
-        assert (
-            len(list(all_entities)) >= 10
-        )  # In case the default testing entity is not present
-
-        entity_list = self.metadata.list_entities(entity=Domain, limit=2)
-        assert len(entity_list.entities) == 2
-        after_entity_list = self.metadata.list_entities(
-            entity=Domain, limit=2, after=entity_list.after
-        )
-        assert len(after_entity_list.entities) == 2
-        before_entity_list = self.metadata.list_entities(
-            entity=Domain, limit=2, before=after_entity_list.before
-        )
-        assert before_entity_list.entities == entity_list.entities
-
-    def test_delete(self):
+    def test_delete(self, metadata):
         """
         We can delete a Domain by ID
         """
-        domain = self.metadata.create_or_update(data=self.create_domain)
-
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=Domain, fqn=domain.fullyQualifiedName
+        domain_name = generate_name()
+        domain = metadata.create_or_update(
+            data=CreateDomainRequest(
+                domainType=DomainType.Consumer_aligned,
+                name=domain_name,
+                description="domain for delete test",
+            )
         )
-        # Then fetch by ID
-        res_id = self.metadata.get_by_id(entity=Domain, entity_id=res_name.id)
 
-        # Delete
-        self.metadata.delete(entity=Domain, entity_id=str(res_id.id.root))
+        res_name = metadata.get_by_name(entity=Domain, fqn=domain.fullyQualifiedName)
+        res_id = metadata.get_by_id(entity=Domain, entity_id=res_name.id)
 
-        # Then we should not find it
-        res = self.metadata.list_entities(entity=Domain)
+        metadata.delete(entity=Domain, entity_id=str(res_id.id.root))
+
+        res = metadata.list_entities(entity=Domain)
         assert not next(
             iter(
                 ent
@@ -384,25 +296,27 @@ class OMetaDomainTest(TestCase):
             None,
         )
 
-    def test_delete_data_product(self):
+    def test_delete_data_product(self, metadata, domain_entity):
         """
         We can delete a Data Product by ID
         """
-        self.metadata.create_or_update(data=self.create_domain)
-        data_product = self.metadata.create_or_update(data=self.create_data_product)
+        dp_name = generate_name()
+        data_product = metadata.create_or_update(
+            data=CreateDataProductRequest(
+                name=dp_name,
+                description="data product for delete test",
+                domains=[domain_entity.name.root],
+            )
+        )
 
-        # Find by name
-        res_name = self.metadata.get_by_name(
+        res_name = metadata.get_by_name(
             entity=DataProduct, fqn=data_product.fullyQualifiedName
         )
-        # Then fetch by ID
-        res_id = self.metadata.get_by_id(entity=DataProduct, entity_id=res_name.id)
+        res_id = metadata.get_by_id(entity=DataProduct, entity_id=res_name.id)
 
-        # Delete
-        self.metadata.delete(entity=DataProduct, entity_id=str(res_id.id.root))
+        metadata.delete(entity=DataProduct, entity_id=str(res_id.id.root))
 
-        # Then we should not find it
-        res = self.metadata.list_entities(entity=DataProduct)
+        res = metadata.list_entities(entity=DataProduct)
         assert not next(
             iter(
                 ent
@@ -412,157 +326,7 @@ class OMetaDomainTest(TestCase):
             None,
         )
 
-    def test_update_domain(self):
-        """
-        Updating it properly changes its properties
-        """
-        res_create = self.metadata.create_or_update(data=self.create_domain)
-
-        updated = self.create_domain.model_dump(exclude_unset=True)
-        updated["owners"] = self.owners
-        updated["description"] = "Updated description"
-        updated_entity = CreateDomainRequest(**updated)
-
-        res = self.metadata.create_or_update(data=updated_entity)
-
-        # Same ID, updated properties
-        self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owners.root[0].id, self.user.id)
-        self.assertEqual(res.description.root, "Updated description")
-
-    def test_update_data_product(self):
-        """
-        Updating it properly changes its properties
-        """
-        self.metadata.create_or_update(data=self.create_domain)
-        res_create = self.metadata.create_or_update(data=self.create_data_product)
-
-        updated = self.create_data_product.model_dump(exclude_unset=True)
-        updated["owners"] = self.owners
-        updated["description"] = "Updated data product description"
-        updated_entity = CreateDataProductRequest(**updated)
-
-        res = self.metadata.create_or_update(data=updated_entity)
-
-        # Same ID, updated properties
-        self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owners.root[0].id, self.user.id)
-        self.assertEqual(res.description.root, "Updated data product description")
-
-    def test_list_versions(self):
-        """
-        test list domain entity versions
-        """
-        domain = self.metadata.create_or_update(data=self.create_domain)
-
-        res = self.metadata.get_list_entity_versions(
-            entity=Domain, entity_id=domain.id.root
-        )
-        assert res
-
-    def test_list_data_product_versions(self):
-        """
-        test list data product entity versions
-        """
-        self.metadata.create_or_update(data=self.create_domain)
-        data_product = self.metadata.create_or_update(data=self.create_data_product)
-
-        res = self.metadata.get_list_entity_versions(
-            entity=DataProduct, entity_id=data_product.id.root
-        )
-        assert res
-
-    def test_get_entity_version(self):
-        """
-        test get domain entity version
-        """
-        domain = self.metadata.create_or_update(data=self.create_domain)
-
-        res = self.metadata.get_entity_version(
-            entity=Domain, entity_id=domain.id.root, version=0.1
-        )
-
-        # check we get the correct version requested and the correct entity ID
-        assert res.version.root == 0.1
-        assert res.id == domain.id
-
-    def test_get_data_product_entity_version(self):
-        """
-        test get data product entity version
-        """
-        self.metadata.create_or_update(data=self.create_domain)
-        data_product = self.metadata.create_or_update(data=self.create_data_product)
-
-        res = self.metadata.get_entity_version(
-            entity=DataProduct, entity_id=data_product.id.root, version=0.1
-        )
-
-        # check we get the correct version requested and the correct entity ID
-        assert res.version.root == 0.1
-        assert res.id == data_product.id
-
-    def test_get_entity_ref(self):
-        """
-        test get Domain EntityReference
-        """
-        domain = self.metadata.create_or_update(data=self.create_domain)
-        entity_ref = self.metadata.get_entity_reference(
-            entity=Domain, fqn=domain.fullyQualifiedName
-        )
-
-        assert domain.id == entity_ref.id
-
-    def test_get_data_product_entity_ref(self):
-        """
-        test get Data Product EntityReference
-        """
-        self.metadata.create_or_update(data=self.create_domain)
-        data_product = self.metadata.create_or_update(data=self.create_data_product)
-        entity_ref = self.metadata.get_entity_reference(
-            entity=DataProduct, fqn=data_product.fullyQualifiedName
-        )
-
-        assert data_product.id == entity_ref.id
-
-    def test_list_w_skip_on_failure(self):
-        """
-        We can list all our Domains even when some of them are broken
-        """
-        # first validate that exception is raised when skip_on_failure is False
-        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):
-            with pytest.raises(ValidationError):
-                self.metadata.list_entities(entity=Domain)
-
-        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):
-            res = self.metadata.list_entities(entity=Domain, skip_on_failure=True)
-
-        # We should have 2 domains, the 3rd one is broken and should be skipped
-        assert len(res.entities) == 2
-
-    def test_list_all_w_skip_on_failure(self):
-        """
-        Validate generator utility to fetch all domains even when some of them are broken
-        """
-        # first validate that exception is raised when skip_on_failure is False
-        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):
-            with pytest.raises(ValidationError):
-                res = self.metadata.list_all_entities(
-                    entity=Domain,
-                    limit=1,  # paginate in batches of pairs
-                )
-                list(res)
-
-        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):
-            res = self.metadata.list_all_entities(
-                entity=Domain,
-                limit=1,
-                skip_on_failure=True,  # paginate in batches of pairs
-            )
-
-            # We should have 2 domains, the 3rd one is broken and should be skipped
-            assert len(list(res)) == 2
-
-    def test_domain_with_slash_in_name(self):
+    def test_domain_with_slash_in_name(self, metadata):
         """E.g., `domain.name/with-slash`"""
         name = EntityName("domain.name/with-slash")
         create_request = CreateDomainRequest(
@@ -570,201 +334,399 @@ class OMetaDomainTest(TestCase):
             domainType=DomainType.Consumer_aligned,
             description="Domain with slash in name",
         )
-        new_domain: Domain = self.metadata.create_or_update(data=create_request)
+        new_domain = metadata.create_or_update(data=create_request)
 
-        res: Domain = self.metadata.get_by_name(
-            entity=Domain, fqn=new_domain.fullyQualifiedName
-        )
-
-        assert res.name == name
-
-    def test_data_product_with_slash_in_name(self):
-        """E.g., `data.product/with-slash`"""
-        self.metadata.create_or_update(data=self.create_domain)
-        name = EntityName("data.product/with-slash")
-        create_request = CreateDataProductRequest(
-            name=name,
-            description="Data product with slash in name",
-            domains=["TestDomain"],
-        )
-        new_data_product: DataProduct = self.metadata.create_or_update(
-            data=create_request
-        )
-
-        res: DataProduct = self.metadata.get_by_name(
-            entity=DataProduct, fqn=new_data_product.fullyQualifiedName
-        )
-
-        assert res.name == name
-
-    def test_get_domain_assets_pagination(self):
-        """
-        Test domain assets API with pagination
-        """
-        domain: Domain = self.metadata.create_or_update(data=self.create_domain)
-        domains_ref = EntityReferenceList(
-            root=[EntityReference(id=domain.id, type="domain")]
-        )
-
-        # Create multiple dashboards and add them to domain
-        for i in range(5):
-            dashboard = self.metadata.create_or_update(
-                CreateDashboardRequest(
-                    name=f"test-dashboard-{i}",
-                    service=self.service_entity.fullyQualifiedName,
-                )
-            )
-            self.metadata.patch_domain(
-                entity=Dashboard, source=dashboard, domains=domains_ref
+        try:
+            res = metadata.get_by_name(entity=Domain, fqn=new_domain.fullyQualifiedName)
+            assert res.name == name
+        finally:
+            metadata.delete(
+                entity=Domain,
+                entity_id=new_domain.id,
+                recursive=True,
+                hard_delete=True,
             )
 
-        # Test pagination
-        assets_page1 = self.metadata.get_domain_assets(
-            domain.name.root, limit=2, offset=0
-        )
-        assets_page2 = self.metadata.get_domain_assets(
-            domain.name.root, limit=2, offset=2
-        )
-
-        # We should have at least 2 assets on first page
-        self.assertGreaterEqual(len(assets_page1["data"]), 2)
-        # And potentially more on second page
-        self.assertGreaterEqual(len(assets_page2["data"]), 0)
-
-    def test_get_data_product_assets_pagination(self):
+    def test_get_data_product_assets_pagination(
+        self, metadata, domain_entity, data_product_entity, dashboard_service
+    ):
         """
         Test data product assets API with pagination
         """
-        domain: Domain = self.metadata.create_or_update(data=self.create_domain)
         domains_ref = EntityReferenceList(
-            root=[EntityReference(id=domain.id, type="domain")]
-        )
-        data_product: DataProduct = self.metadata.create_or_update(
-            data=self.create_data_product
+            root=[EntityReference(id=domain_entity.id, type="domain")]
         )
 
-        # Create multiple dashboards and add them to the data product
         dashboards = []
-        for i in range(3):
-            dashboard = self.metadata.create_or_update(
+        for _ in range(3):
+            dashboard = metadata.create_or_update(
                 CreateDashboardRequest(
-                    name=f"test-dp-dashboard-{i}",
-                    service=self.service_entity.fullyQualifiedName,
+                    name=generate_name(),
+                    service=dashboard_service.fullyQualifiedName,
                 )
             )
-            # First assign to domain
-            self.metadata.patch_domain(
+            metadata.patch_domain(
                 entity=Dashboard, source=dashboard, domains=domains_ref
             )
             dashboards.append(dashboard)
 
-        # Add all dashboards to data product
         asset_refs = [EntityReference(id=d.id, type="dashboard") for d in dashboards]
-        self.metadata.add_assets_to_data_product(data_product.name.root, asset_refs)
+        metadata.add_assets_to_data_product(data_product_entity.name.root, asset_refs)
 
-        # Test pagination
-        assets_page1 = self.metadata.get_data_product_assets(
-            data_product.name.root, limit=2, offset=0
-        )
-        assets_page2 = self.metadata.get_data_product_assets(
-            data_product.name.root, limit=2, offset=2
-        )
+        try:
+            assets_page1 = metadata.get_data_product_assets(
+                data_product_entity.name.root, limit=2, offset=0
+            )
+            assets_page2 = metadata.get_data_product_assets(
+                data_product_entity.name.root, limit=2, offset=2
+            )
 
-        # We should have 2 assets on first page
-        self.assertEqual(len(assets_page1["data"]), 2)
-        # And 1 asset on second page
-        self.assertEqual(len(assets_page2["data"]), 1)
+            assert len(assets_page1["data"]) == 2
+            assert len(assets_page2["data"]) == 1
+        finally:
+            metadata.remove_assets_from_data_product(
+                data_product_entity.name.root, asset_refs
+            )
 
-        # Clean up
-        self.metadata.remove_assets_from_data_product(
-            data_product.name.root, asset_refs
-        )
-
-    def test_add_remove_assets_to_data_product_with_special_chars(self):
+    def test_get_data_product_entity_ref(self, metadata, data_product_entity):
         """
-        Test adding/removing assets to a data product with special characters
-        (slash, hash) in its name. This validates URL encoding works correctly.
+        test get Data Product EntityReference
         """
-        # Create domain first
-        domain: Domain = self.metadata.create_or_update(data=self.create_domain)
+        entity_ref = metadata.get_entity_reference(
+            entity=DataProduct, fqn=data_product_entity.fullyQualifiedName
+        )
+
+        assert data_product_entity.id == entity_ref.id
+
+    def test_get_data_product_entity_version(self, metadata, data_product_entity):
+        """
+        test get data product entity version
+        """
+        res = metadata.get_entity_version(
+            entity=DataProduct,
+            entity_id=data_product_entity.id.root,
+            version=0.1,
+        )
+
+        assert res.version.root == 0.1
+        assert res.id == data_product_entity.id
+
+    def test_get_domain_assets(self, metadata, domain_entity, domain_dashboard):
+        """We can get assets for a domain"""
         domains_ref = EntityReferenceList(
-            root=[EntityReference(id=domain.id, type="domain")]
+            root=[EntityReference(id=domain_entity.id, type="domain")]
+        )
+        fresh_dashboard = metadata.get_by_name(
+            entity=Dashboard, fqn=domain_dashboard.fullyQualifiedName.root
+        )
+        metadata.patch_domain(
+            entity=Dashboard, source=fresh_dashboard, domains=domains_ref
         )
 
-        # Create data product with slash in name
-        dp_name = EntityName("data-product/with/slashes")
-        create_dp_request = CreateDataProductRequest(
-            name=dp_name,
-            description="Data product with special chars",
-            domains=["TestDomain"],
-        )
-        data_product: DataProduct = self.metadata.create_or_update(
-            data=create_dp_request
-        )
+        assets_response = metadata.get_domain_assets(domain_entity.name.root, limit=100)
+        assert len(assets_response["data"]) >= 1
 
-        # Make sure dashboard belongs to the domain
-        self.metadata.patch_domain(
-            entity=Dashboard, source=self.dashboard, domains=domains_ref
+        dashboard_ids = [asset["id"] for asset in assets_response["data"]]
+        assert str(domain_dashboard.id.root) in dashboard_ids
+
+        dashboard_asset = next(
+            (
+                asset
+                for asset in assets_response["data"]
+                if asset["id"] == str(domain_dashboard.id.root)
+            ),
+            None,
         )
+        assert dashboard_asset is not None
+        assert dashboard_asset["type"] == "dashboard"
 
-        # Add asset to data product with special chars in name
-        asset_ref = EntityReference(id=self.dashboard.id, type="dashboard")
-        self.metadata.add_assets_to_data_product(data_product.name.root, [asset_ref])
-
-        # Verify asset was added using get_data_product_assets
-        assets_response = self.metadata.get_data_product_assets(
-            data_product.name.root, limit=100
-        )
-        self.assertEqual(len(assets_response["data"]), 1)
-        self.assertEqual(assets_response["data"][0]["id"], str(self.dashboard.id.root))
-
-        # Remove asset
-        self.metadata.remove_assets_from_data_product(
-            data_product.name.root, [asset_ref]
+    def test_get_domain_assets_pagination(
+        self, metadata, domain_entity, dashboard_service
+    ):
+        """
+        Test domain assets API with pagination
+        """
+        domains_ref = EntityReferenceList(
+            root=[EntityReference(id=domain_entity.id, type="domain")]
         )
 
-        # Verify asset was removed
-        assets_response = self.metadata.get_data_product_assets(
-            data_product.name.root, limit=100
-        )
-        self.assertEqual(len(assets_response["data"]), 0)
+        for _ in range(5):
+            dashboard = metadata.create_or_update(
+                CreateDashboardRequest(
+                    name=generate_name(),
+                    service=dashboard_service.fullyQualifiedName,
+                )
+            )
+            metadata.patch_domain(
+                entity=Dashboard, source=dashboard, domains=domains_ref
+            )
 
-        # Clean up
-        self.metadata.delete(
-            entity=DataProduct, entity_id=data_product.id, hard_delete=True
+        assets_page1 = metadata.get_domain_assets(
+            domain_entity.name.root, limit=2, offset=0
+        )
+        assets_page2 = metadata.get_domain_assets(
+            domain_entity.name.root, limit=2, offset=2
         )
 
-    def test_get_domain_assets_with_special_chars_in_name(self):
+        assert len(assets_page1["data"]) >= 2
+        assert len(assets_page2["data"]) >= 0
+
+    def test_get_domain_assets_with_special_chars_in_name(
+        self, metadata, domain_dashboard
+    ):
         """
         Test getting assets for a domain with special characters (slash) in its name.
         This validates URL encoding works correctly in get_domain_assets.
         """
-        # Create domain with slash in name
         domain_name = EntityName("domain/with/slashes")
         create_domain_request = CreateDomainRequest(
             name=domain_name,
             domainType=DomainType.Consumer_aligned,
             description="Domain with special chars",
         )
-        domain: Domain = self.metadata.create_or_update(data=create_domain_request)
+        domain = metadata.create_or_update(data=create_domain_request)
         domains_ref = EntityReferenceList(
             root=[EntityReference(id=domain.id, type="domain")]
         )
 
-        # Add dashboard to domain
-        self.metadata.patch_domain(
-            entity=Dashboard, source=self.dashboard, domains=domains_ref
+        try:
+            fresh_dashboard = metadata.get_by_name(
+                entity=Dashboard, fqn=domain_dashboard.fullyQualifiedName.root
+            )
+            metadata.patch_domain(
+                entity=Dashboard, source=fresh_dashboard, domains=domains_ref
+            )
+
+            assets_response = metadata.get_domain_assets(domain.name.root, limit=100)
+            assert len(assets_response["data"]) >= 1
+
+            dashboard_ids = [asset["id"] for asset in assets_response["data"]]
+            assert str(domain_dashboard.id.root) in dashboard_ids
+        finally:
+            metadata.delete(
+                entity=Domain,
+                entity_id=domain.id,
+                recursive=True,
+                hard_delete=True,
+            )
+
+    def test_get_entity_ref(self, metadata, domain_entity):
+        """
+        test get Domain EntityReference
+        """
+        entity_ref = metadata.get_entity_reference(
+            entity=Domain, fqn=domain_entity.fullyQualifiedName
         )
 
-        # Get domain assets - this should work with URL encoding
-        assets_response = self.metadata.get_domain_assets(domain.name.root, limit=100)
-        self.assertGreaterEqual(len(assets_response["data"]), 1)
+        assert domain_entity.id == entity_ref.id
 
-        # Verify our dashboard is in the assets
-        dashboard_ids = [asset["id"] for asset in assets_response["data"]]
-        self.assertIn(str(self.dashboard.id.root), dashboard_ids)
-
-        # Clean up
-        self.metadata.delete(
-            entity=Domain, entity_id=domain.id, recursive=True, hard_delete=True
+    def test_get_entity_version(self, metadata, domain_entity):
+        """
+        test get domain entity version
+        """
+        res = metadata.get_entity_version(
+            entity=Domain, entity_id=domain_entity.id.root, version=0.1
         )
+
+        assert res.version.root == 0.1
+        assert res.id == domain_entity.id
+
+    def test_get_id(self, metadata, domain_entity, data_product_entity):
+        """We can fetch Domains & Data Products by ID"""
+        res_name = metadata.get_by_name(
+            entity=Domain, fqn=domain_entity.fullyQualifiedName.root
+        )
+        res = metadata.get_by_id(entity=Domain, entity_id=res_name.id)
+        assert res.name == domain_entity.name
+
+        res_name = metadata.get_by_name(
+            entity=DataProduct, fqn=data_product_entity.fullyQualifiedName.root
+        )
+        res = metadata.get_by_id(entity=DataProduct, entity_id=res_name.id)
+        assert res.name == data_product_entity.name
+
+    def test_get_name(self, metadata, domain_entity, data_product_entity):
+        """We can fetch Domains & Data Products by name"""
+        res = metadata.get_by_name(
+            entity=Domain, fqn=domain_entity.fullyQualifiedName.root
+        )
+        assert res.name == domain_entity.name
+
+        res = metadata.get_by_name(
+            entity=DataProduct, fqn=data_product_entity.fullyQualifiedName.root
+        )
+        assert res.name == data_product_entity.name
+
+    def test_list(self, metadata, domain_entity):
+        """
+        We can list all our Domains
+        """
+        res = metadata.list_entities(entity=Domain)
+
+        data = next(
+            iter(ent for ent in res.entities if ent.name == domain_entity.name),
+            None,
+        )
+        assert data
+
+    def test_list_all_and_paginate(self, metadata, domain_entity):
+        """
+        Validate generator utility to fetch all domains
+        """
+        created_domains = []
+        try:
+            for i in range(10):
+                fake_name = EntityName(domain_entity.name.root + str(i))
+                domain = metadata.create_or_update(
+                    data=CreateDomainRequest(
+                        domainType=DomainType.Consumer_aligned,
+                        name=fake_name,
+                        description="paginate test",
+                    )
+                )
+                created_domains.append(domain)
+
+            all_entities = metadata.list_all_entities(entity=Domain, limit=2)
+            assert len(list(all_entities)) >= 10
+
+            entity_list = metadata.list_entities(entity=Domain, limit=2)
+            assert len(entity_list.entities) == 2
+            after_entity_list = metadata.list_entities(
+                entity=Domain, limit=2, after=entity_list.after
+            )
+            assert len(after_entity_list.entities) == 2
+            before_entity_list = metadata.list_entities(
+                entity=Domain, limit=2, before=after_entity_list.before
+            )
+            assert before_entity_list.entities == entity_list.entities
+        finally:
+            for domain in created_domains:
+                try:
+                    metadata.delete(
+                        entity=Domain,
+                        entity_id=domain.id,
+                        recursive=True,
+                        hard_delete=True,
+                    )
+                except Exception:
+                    pass
+
+    def test_list_all_w_skip_on_failure(self, metadata):
+        """
+        Validate generator utility to fetch all domains even when some are broken
+        """
+        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):
+            with pytest.raises(ValidationError):
+                res = metadata.list_all_entities(
+                    entity=Domain,
+                    limit=1,
+                )
+                list(res)
+
+        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):
+            res = metadata.list_all_entities(
+                entity=Domain,
+                limit=1,
+                skip_on_failure=True,
+            )
+
+            assert len(list(res)) == 2
+
+    def test_list_data_product_versions(self, metadata, data_product_entity):
+        """
+        test list data product entity versions
+        """
+        res = metadata.get_list_entity_versions(
+            entity=DataProduct, entity_id=data_product_entity.id.root
+        )
+        assert res
+
+    def test_list_data_products(self, metadata, data_product_entity):
+        """
+        We can list all our Data Products
+        """
+        res = metadata.list_entities(entity=DataProduct)
+
+        data = next(
+            iter(ent for ent in res.entities if ent.name == data_product_entity.name),
+            None,
+        )
+        assert data
+
+    def test_list_versions(self, metadata, domain_entity):
+        """
+        test list domain entity versions
+        """
+        res = metadata.get_list_entity_versions(
+            entity=Domain, entity_id=domain_entity.id.root
+        )
+        assert res
+
+    def test_list_w_skip_on_failure(self, metadata):
+        """
+        We can list all our Domains even when some of them are broken
+        """
+        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):
+            with pytest.raises(ValidationError):
+                metadata.list_entities(entity=Domain)
+
+        with patch.object(REST, "get", return_value=BAD_DOMAIN_RESPONSE):
+            res = metadata.list_entities(entity=Domain, skip_on_failure=True)
+
+        assert len(res.entities) == 2
+
+    def test_patch_domain(self, metadata, domain_entity, domain_dashboard):
+        """We can add domain to an asset"""
+        domains_ref = EntityReferenceList(
+            root=[EntityReference(id=domain_entity.id, type="domain")]
+        )
+        fresh_dashboard = metadata.get_by_name(
+            entity=Dashboard, fqn=domain_dashboard.fullyQualifiedName.root
+        )
+        metadata.patch_domain(
+            entity=Dashboard, source=fresh_dashboard, domains=domains_ref
+        )
+
+        updated_dashboard = metadata.get_by_name(
+            entity=Dashboard,
+            fqn=domain_dashboard.fullyQualifiedName.root,
+            fields=["domains"],
+        )
+
+        assert updated_dashboard.domains.root[0].name == domain_entity.name.root
+
+    def test_update_data_product(
+        self, metadata, domain_entity, data_product_entity, domain_user, domain_owners
+    ):
+        """
+        Updating it properly changes its properties
+        """
+        updated_entity = CreateDataProductRequest(
+            name=data_product_entity.name,
+            description="Updated data product description",
+            domains=[domain_entity.name.root],
+            owners=domain_owners,
+        )
+
+        res = metadata.create_or_update(data=updated_entity)
+
+        assert res.id == data_product_entity.id
+        assert res.owners.root[0].id == domain_user.id
+        assert res.description.root == "Updated data product description"
+
+    def test_update_domain(self, metadata, domain_entity, domain_user, domain_owners):
+        """
+        Updating it properly changes its properties
+        """
+        updated_entity = CreateDomainRequest(
+            domainType=DomainType.Consumer_aligned,
+            name=domain_entity.name,
+            description="Updated description",
+            owners=domain_owners,
+        )
+
+        res = metadata.create_or_update(data=updated_entity)
+
+        assert res.id == domain_entity.id
+        assert res.owners.root[0].id == domain_user.id
+        assert res.description.root == "Updated description"

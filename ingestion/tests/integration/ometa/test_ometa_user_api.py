@@ -13,280 +13,274 @@ OMeta User Mixin integration tests. The API needs to be up
 """
 import logging
 import time
-from unittest import TestCase
 
-from _openmetadata_testutils.ometa import int_admin_ometa
+import pytest
+
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceRequest,
-)
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
-    LookerConnection,
-)
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardConnection,
-    DashboardService,
-    DashboardServiceType,
-)
 from metadata.generated.schema.entity.teams.team import Team, TeamType
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
+from .conftest import _safe_delete
 
-class OMetaUserTest(TestCase):
+
+def check_es_index(metadata) -> None:
     """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
+    Wait until the index has been updated with the test user.
+    """
+    logging.info("Checking ES index status...")
+    tries = 0
+
+    res = None
+    while not res and tries <= 5:  # Kill in 5 seconds
+        res = metadata.es_search_from_fqn(
+            entity_type=User,
+            fqn_search_string="Levy",
+        )
+        if not res:
+            tries += 1
+            time.sleep(1)
+
+
+@pytest.fixture(scope="module")
+def test_team(metadata):
+    """Create a test team for user API tests."""
+    team = metadata.create_or_update(
+        data=CreateTeamRequest(
+            teamType=TeamType.Group, name="ops.team", email="ops.team@getcollate.io"
+        )
+    )
+
+    yield team
+
+    _safe_delete(
+        metadata,
+        entity=Team,
+        entity_id=team.id,
+        hard_delete=True,
+    )
+
+
+@pytest.fixture(scope="module")
+def test_user_1(metadata):
+    """Create first test user."""
+    user = metadata.create_or_update(
+        data=CreateUserRequest(
+            name="random.user.es",
+            email="random.user.es@getcollate.io",
+            description="desc_only_marker",
+        ),
+    )
+
+    yield user
+
+    _safe_delete(
+        metadata,
+        entity=User,
+        entity_id=user.id,
+        hard_delete=True,
+    )
+
+
+@pytest.fixture(scope="module")
+def test_user_2(metadata):
+    """Create second test user."""
+    user = metadata.create_or_update(
+        data=CreateUserRequest(name="Levy", email="user2.1234@getcollate.io"),
+    )
+
+    yield user
+
+    _safe_delete(
+        metadata,
+        entity=User,
+        entity_id=user.id,
+        hard_delete=True,
+    )
+
+
+@pytest.fixture(scope="module")
+def test_user_3(metadata):
+    """Create third test user."""
+    user = metadata.create_or_update(
+        data=CreateUserRequest(name="Lima", email="random.lima@getcollate.io"),
+    )
+
+    yield user
+
+    _safe_delete(
+        metadata,
+        entity=User,
+        entity_id=user.id,
+        hard_delete=True,
+    )
+
+
+@pytest.fixture(scope="module")
+def test_dashboard_for_assets(metadata, dashboard_service):
+    """Create a test dashboard for asset ownership tests."""
+    dashboard = metadata.create_or_update(
+        CreateDashboardRequest(
+            name="test-dashboard-user-assets",
+            service=dashboard_service.fullyQualifiedName,
+        )
+    )
+
+    # Wait for ES index to update
+    check_es_index(metadata)
+
+    return dashboard
+
+
+class TestOMetaUserAPI:
+    """
+    User API integration tests.
+    Tests ES search functionality and asset ownership.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    - dashboard_service: DashboardService (module scope)
+
+    Local fixtures:
+    - test_team: Team for ownership tests
+    - test_user_1, test_user_2, test_user_3: Test users
+    - test_dashboard_for_assets: Dashboard for asset tests
     """
 
-    metadata = int_admin_ometa()
-
-    @classmethod
-    def check_es_index(cls) -> None:
-        """
-        Wait until the index has been updated with the test user.
-        """
-        logging.info("Checking ES index status...")
-        tries = 0
-
-        res = None
-        while not res and tries <= 5:  # Kill in 5 seconds
-            res = cls.metadata.es_search_from_fqn(
-                entity_type=User,
-                fqn_search_string="Levy",
-            )
-            if not res:
-                tries += 1
-                time.sleep(1)
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
-
-        cls.team: Team = cls.metadata.create_or_update(
-            data=CreateTeamRequest(
-                teamType=TeamType.Group, name="ops.team", email="ops.team@getcollate.io"
-            )
-        )
-
-        cls.user_1: User = cls.metadata.create_or_update(
-            data=CreateUserRequest(
-                name="random.user.es",
-                email="random.user.es@getcollate.io",
-                description="test",
-            ),
-        )
-
-        cls.user_2: User = cls.metadata.create_or_update(
-            data=CreateUserRequest(name="Levy", email="user2.1234@getcollate.io"),
-        )
-
-        cls.user_3: User = cls.metadata.create_or_update(
-            data=CreateUserRequest(name="Lima", email="random.lima@getcollate.io"),
-        )
-
-        cls.service: DashboardService = cls.metadata.create_or_update(
-            data=CreateDashboardServiceRequest(
-                name="test-service-dashboard-user-assets",
-                serviceType=DashboardServiceType.Looker,
-                connection=DashboardConnection(
-                    config=LookerConnection(
-                        hostPort="http://hostPort", clientId="id", clientSecret="secret"
-                    )
-                ),
-            )
-        )
-
-        cls.dashboard: Dashboard = cls.metadata.create_or_update(
-            CreateDashboardRequest(
-                name="test-dashboard-user-assets",
-                service=cls.service.fullyQualifiedName,
-            )
-        )
-
-        # Leave some time for indexes to get updated, otherwise this happens too fast
-        cls.check_es_index()
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
-
-        cls.metadata.delete(
-            entity=User,
-            entity_id=cls.user_1.id,
-            hard_delete=True,
-        )
-
-        cls.metadata.delete(
-            entity=User,
-            entity_id=cls.user_2.id,
-            hard_delete=True,
-        )
-
-        cls.metadata.delete(
-            entity=User,
-            entity_id=cls.user_3.id,
-            hard_delete=True,
-        )
-
-        cls.metadata.delete(
-            entity=Team,
-            entity_id=cls.team.id,
-            hard_delete=True,
-        )
-
-        cls.metadata.delete(
-            entity=DashboardService,
-            entity_id=cls.service.id,
-            recursive=True,
-            hard_delete=True,
-        )
-
-    def test_es_search_from_email(self):
+    def test_es_search_from_email(self, metadata, test_user_1, test_user_2, test_team):
         """
         We can fetch users by its email
         """
-
         # No email returns None
-        self.assertIsNone(self.metadata.get_reference_by_email(email=None))
+        assert metadata.get_reference_by_email(email=None) is None
 
         # Non existing email returns None
-        self.assertIsNone(
-            self.metadata.get_reference_by_email(email="idonotexist@random.com")
-        )
+        assert metadata.get_reference_by_email(email="idonotexist@random.com") is None
 
         # Non existing email returns, even if they have the same domain
         # To get this fixed, we had to update the `email` field in the
         # index as a `keyword` and search by `email.keyword` in ES.
-        self.assertIsNone(
-            self.metadata.get_reference_by_email(email="idonotexist@getcollate.io")
+        assert (
+            metadata.get_reference_by_email(email="idonotexist@getcollate.io") is None
         )
 
         # I can get User 1, who has the name equal to its email
-        self.assertEqual(
-            self.user_1.id,
-            self.metadata.get_reference_by_email(email="random.user.es@getcollate.io")
+        assert (
+            test_user_1.id
+            == metadata.get_reference_by_email(email="random.user.es@getcollate.io")
             .root[0]
-            .id,
+            .id
         )
 
         # I can get User 2, who has an email not matching the name
-        self.assertEqual(
-            self.user_2.id,
-            self.metadata.get_reference_by_email(email="user2.1234@getcollate.io")
+        assert (
+            test_user_2.id
+            == metadata.get_reference_by_email(email="user2.1234@getcollate.io")
             .root[0]
-            .id,
+            .id
         )
 
         # I can get the team by its mail
-        self.assertEqual(
-            self.team.id,
-            self.metadata.get_reference_by_email(email="ops.team@getcollate.io")
+        assert (
+            test_team.id
+            == metadata.get_reference_by_email(email="ops.team@getcollate.io")
             .root[0]
-            .id,
+            .id
         )
 
-    def test_es_search_from_name(self):
+    def test_es_search_from_name(self, metadata, test_user_1, test_user_2, test_team):
         """
         We can fetch users by its name
         """
         # No email returns None
-        self.assertIsNone(self.metadata.get_reference_by_name(name=None))
+        assert metadata.get_reference_by_name(name=None) is None
 
         # Non existing email returns None
-        self.assertIsNone(self.metadata.get_reference_by_name(name="idonotexist"))
+        assert metadata.get_reference_by_name(name="idonotexist") is None
 
         # when searching for "data" user we should not get DataInsightsApplicationBot in result
-        team_data = self.metadata.get_reference_by_name(name="data").root[0]
-        self.assertEqual(team_data.name, "Data")
-        self.assertEqual(team_data.type, "team")
+        team_data = metadata.get_reference_by_name(name="data").root[0]
+        assert team_data.name == "Data"
+        assert team_data.type == "team"
 
         # We can get the user matching its name
-        self.assertEqual(
-            self.user_1.id,
-            self.metadata.get_reference_by_name(name="random.user.es").root[0].id,
+        assert (
+            test_user_1.id
+            == metadata.get_reference_by_name(name="random.user.es").root[0].id
         )
 
         # Casing does not matter
-        self.assertEqual(
-            self.user_2.id,
-            self.metadata.get_reference_by_name(name="levy").root[0].id,
-        )
+        assert test_user_2.id == metadata.get_reference_by_name(name="levy").root[0].id
 
-        self.assertEqual(
-            self.user_2.id,
-            self.metadata.get_reference_by_name(name="Levy").root[0].id,
-        )
+        assert test_user_2.id == metadata.get_reference_by_name(name="Levy").root[0].id
 
-        self.assertEqual(
-            self.user_1.id,
-            self.metadata.get_reference_by_name(name="Random User Es").root[0].id,
+        assert (
+            test_user_1.id
+            == metadata.get_reference_by_name(name="Random User Es").root[0].id
         )
 
         # I can get the team by its name
-        self.assertEqual(
-            self.team.id,
-            self.metadata.get_reference_by_name(name="OPS Team").root[0].id,
+        assert (
+            test_team.id == metadata.get_reference_by_name(name="OPS Team").root[0].id
         )
 
         # if team is not group, return none
-        self.assertIsNone(
-            self.metadata.get_reference_by_name(name="Organization", is_owner=True)
+        assert (
+            metadata.get_reference_by_name(name="Organization", is_owner=True) is None
         )
 
         # description should not affect in search
-        self.assertIsNone(
-            self.metadata.get_reference_by_name(name="test", is_owner=True)
+        assert (
+            metadata.get_reference_by_name(name="desc_only_marker", is_owner=True)
+            is None
         )
 
-    def test_get_user_assets(self):
+    def test_get_user_assets(self, metadata, test_user_1, test_dashboard_for_assets):
         """We can get assets for a user"""
         owners_ref = EntityReferenceList(
-            root=[EntityReference(id=self.user_1.id, type="user")]
+            root=[EntityReference(id=test_user_1.id, type="user")]
         )
-        self.metadata.patch(
+        metadata.patch(
             entity=Dashboard,
-            source=self.dashboard,
+            source=test_dashboard_for_assets,
             destination=Dashboard(
-                id=self.dashboard.id,
-                name=self.dashboard.name,
-                service=self.dashboard.service,
+                id=test_dashboard_for_assets.id,
+                name=test_dashboard_for_assets.name,
+                service=test_dashboard_for_assets.service,
                 owners=owners_ref,
             ),
         )
 
-        assets_response = self.metadata.get_user_assets(
-            self.user_1.name.root, limit=100
+        assets_response = metadata.get_user_assets(test_user_1.name.root, limit=100)
+        assert len(assets_response["data"]) >= 1
+        assert assets_response["data"][0]["id"] == str(
+            test_dashboard_for_assets.id.root
         )
-        self.assertGreaterEqual(len(assets_response["data"]), 1)
-        self.assertEqual(assets_response["data"][0]["id"], str(self.dashboard.id.root))
-        self.assertEqual(assets_response["data"][0]["type"], "dashboard")
+        assert assets_response["data"][0]["type"] == "dashboard"
 
-    def test_get_team_assets(self):
+    def test_get_team_assets(self, metadata, test_team, test_dashboard_for_assets):
         """We can get assets for a team"""
         owners_ref = EntityReferenceList(
-            root=[EntityReference(id=self.team.id, type="team")]
+            root=[EntityReference(id=test_team.id, type="team")]
         )
-        self.metadata.patch(
+        metadata.patch(
             entity=Dashboard,
-            source=self.dashboard,
+            source=test_dashboard_for_assets,
             destination=Dashboard(
-                id=self.dashboard.id,
-                name=self.dashboard.name,
-                service=self.dashboard.service,
+                id=test_dashboard_for_assets.id,
+                name=test_dashboard_for_assets.name,
+                service=test_dashboard_for_assets.service,
                 owners=owners_ref,
             ),
         )
 
-        assets_response = self.metadata.get_team_assets(self.team.name.root, limit=100)
-        self.assertGreaterEqual(len(assets_response["data"]), 1)
-        self.assertEqual(assets_response["data"][0]["id"], str(self.dashboard.id.root))
-        self.assertEqual(assets_response["data"][0]["type"], "dashboard")
+        assets_response = metadata.get_team_assets(test_team.name.root, limit=100)
+        assert len(assets_response["data"]) >= 1
+        assert assets_response["data"][0]["id"] == str(
+            test_dashboard_for_assets.id.root
+        )
+        assert assets_response["data"][0]["type"] == "dashboard"

@@ -17,7 +17,6 @@ import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEve
 
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.Optional;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +25,6 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -49,8 +47,7 @@ public class ChangeEventHandler implements EventHandler {
     websocketNotificationHandler.processNotifications(responseContext);
 
     // Send to Change Event Table
-    SecurityContext securityContext = requestContext.getSecurityContext();
-    String loggedInUserName = securityContext.getUserPrincipal().getName();
+    String loggedInUserName = requestContext.getSecurityContext().getUserPrincipal().getName();
     try {
       Optional<ChangeEvent> optionalChangeEvent =
           getChangeEventFromResponseContext(responseContext, loggedInUserName);
@@ -76,20 +73,9 @@ public class ChangeEventHandler implements EventHandler {
         }
 
         // Insert ChangeEvents if ENTITY Changed
+        // Audit log is written asynchronously by AuditLogConsumer from the change_event table
         if (!changeEvent.getEventType().equals(EventType.ENTITY_NO_CHANGE)) {
           Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-          try {
-            if (Entity.getAuditLogRepository() != null) {
-              boolean isBot = false;
-              if (securityContext instanceof CatalogSecurityContext catalogContext) {
-                isBot = catalogContext.isBot();
-              }
-              Entity.getAuditLogRepository().write(changeEvent, isBot);
-            }
-          } catch (Exception auditEx) {
-            LOG.warn(
-                "Failed to persist audit log for change event {}", changeEvent.getId(), auditEx);
-          }
         }
       }
     } catch (Exception e) {

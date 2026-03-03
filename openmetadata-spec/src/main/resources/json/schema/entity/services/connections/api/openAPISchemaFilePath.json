@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/api/openAPISchemaFilePath.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenAPISchemaFilePath",
+  "description": "Open API Schema File Path Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.api.OpenAPISchemaFilePath",
+  "properties": {
+    "openAPISchemaFilePath": {
+      "expose": true,
+      "title": "OpenAPI Schema File Path",
+      "description": "Path to a local OpenAPI schema file.",
+      "type": "string"
+    }
+  },
+  "required": ["openAPISchemaFilePath"],
+  "additionalProperties": false
+}
