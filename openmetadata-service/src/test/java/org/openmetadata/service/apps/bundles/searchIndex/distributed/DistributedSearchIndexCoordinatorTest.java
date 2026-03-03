@@ -104,7 +104,7 @@ class DistributedSearchIndexCoordinatorTest {
     Set<String> entities = Set.of("table", "user");
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(entities).withBatchSize(500);
 
-    when(partitionCalculator.getEntityCounts(entities))
+    when(partitionCalculator.getEntityCounts(entities, null))
         .thenReturn(java.util.Map.of("table", 10000L, "user", 5000L));
 
     SearchIndexJob job = coordinator.createJob(entities, jobConfig, "admin");
@@ -194,7 +194,7 @@ class DistributedSearchIndexCoordinatorTest {
                 .cursor(5000)
                 .build());
 
-    when(partitionCalculator.calculatePartitions(jobId, entities)).thenReturn(mockPartitions);
+    when(partitionCalculator.calculatePartitions(jobId, entities, null)).thenReturn(mockPartitions);
 
     SearchIndexJob result = coordinator.initializePartitions(jobId);
 
@@ -275,7 +275,8 @@ class DistributedSearchIndexCoordinatorTest {
     // Atomic claim succeeds
     when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(1);
-    when(partitionDAO.findLatestClaimedPartition(jobId.toString(), TEST_SERVER_ID))
+    when(partitionDAO.findLatestClaimedPartition(
+            eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(
             new SearchIndexPartitionRecord(
                 partitionId.toString(),
@@ -326,7 +327,7 @@ class DistributedSearchIndexCoordinatorTest {
     Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
 
     assertFalse(result.isPresent());
-    verify(partitionDAO, never()).findLatestClaimedPartition(anyString(), anyString());
+    verify(partitionDAO, never()).findLatestClaimedPartition(anyString(), anyString(), anyLong());
   }
 
   @Test
@@ -354,7 +355,8 @@ class DistributedSearchIndexCoordinatorTest {
 
     when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(1);
-    when(partitionDAO.findLatestClaimedPartition(jobId.toString(), TEST_SERVER_ID))
+    when(partitionDAO.findLatestClaimedPartition(
+            eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(
             new SearchIndexPartitionRecord(
                 partitionId.toString(),
@@ -405,7 +407,7 @@ class DistributedSearchIndexCoordinatorTest {
     // Should return empty - lost the race
     assertFalse(result.isPresent());
     // Should NOT call findLatestClaimedPartition since claim failed
-    verify(partitionDAO, never()).findLatestClaimedPartition(anyString(), anyString());
+    verify(partitionDAO, never()).findLatestClaimedPartition(anyString(), anyString(), anyLong());
   }
 
   @Test
@@ -418,7 +420,8 @@ class DistributedSearchIndexCoordinatorTest {
 
     when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(1);
-    when(partitionDAO.findLatestClaimedPartition(jobId.toString(), TEST_SERVER_ID))
+    when(partitionDAO.findLatestClaimedPartition(
+            eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(
             new SearchIndexPartitionRecord(
                 partitionId.toString(),
