@@ -226,6 +226,17 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"{step.name} reported warning: {Summary.from_step(step)}"
                 )
 
+    def _log_workflow_execution_info(self) -> None:
+        """Log the workflow type and ingestion runner at the start of execution"""
+        if (
+            self.ingestion_pipeline
+            and self.ingestion_pipeline.ingestionRunner
+        ):
+            logger.info(
+                f"Executing workflow [{self.ingestion_pipeline.pipelineType.value}]"
+                f" in Runner [{self.ingestion_pipeline.ingestionRunner.name}]"
+            )
+
     def execute(self) -> None:
         """
         Main entrypoint:
@@ -234,6 +245,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         3. Validate the pipeline status
         4. Update the pipeline status at the end
         """
+        self._log_workflow_execution_info()
         pipeline_state = PipelineState.success
         self.timer.trigger()
         try:
@@ -291,7 +303,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         try:
             maybe_pipeline: Optional[IngestionPipeline] = self.metadata.get_by_name(
-                entity=IngestionPipeline, fqn=self.config.ingestionPipelineFQN
+                entity=IngestionPipeline,
+                fqn=self.config.ingestionPipelineFQN,
+                fields=["ingestionRunner"],
             )
 
             if maybe_pipeline:
