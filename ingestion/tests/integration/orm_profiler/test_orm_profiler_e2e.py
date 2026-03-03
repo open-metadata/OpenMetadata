@@ -23,7 +23,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
@@ -80,7 +80,9 @@ ingestion_config = {
     },
 }
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):

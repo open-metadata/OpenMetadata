@@ -40,6 +40,8 @@ class AWSServices(Enum):
     QUICKSIGHT = "quicksight"
     ATHENA = "athena"
     RDS = "rds"
+    REDSHIFT = "redshift"
+    REDSHIFT_SERVERLESS = "redshift-serverless"
     LAKE_FORMATION = "lakeformation"
 
 
@@ -245,3 +247,9 @@ class AWSClient:
 
     def get_lake_formation_client(self):
         return self.get_client(AWSServices.LAKE_FORMATION.value)
+
+    def get_redshift_client(self):
+        return self.get_client(AWSServices.REDSHIFT.value)
+
+    def get_redshift_serverless_client(self):
+        return self.get_client(AWSServices.REDSHIFT_SERVERLESS.value)

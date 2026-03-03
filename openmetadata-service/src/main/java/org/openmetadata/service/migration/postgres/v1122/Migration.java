@@ -1,10 +1,12 @@
 package org.openmetadata.service.migration.postgres.v1122;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v1122.MigrationUtil;
 
+@Slf4j
 public class Migration extends MigrationProcessImpl {
 
   public Migration(MigrationFile migrationFile) {
@@ -14,6 +16,14 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    MigrationUtil.migrateWorkflowDefinitions();
+    // Workflow definition migration - wrap in try-catch to prevent blocking other migrations
+    try {
+      MigrationUtil.migrateWorkflowDefinitions();
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to migrate workflow definitions in v1122 migration. "
+              + "Workflow features may not work correctly until server restart.",
+          e);
+    }
   }
 }
