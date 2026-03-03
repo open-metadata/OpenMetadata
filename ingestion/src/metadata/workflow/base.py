@@ -228,13 +228,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
     def _log_workflow_execution_info(self) -> None:
         """Log the workflow type and ingestion runner at the start of execution"""
-        if (
-            self.ingestion_pipeline
-            and self.ingestion_pipeline.ingestionRunner
-        ):
+        if self.config.ingestionRunnerName:
             logger.info(
-                f"Executing workflow [{self.ingestion_pipeline.pipelineType.value}]"
-                f" in Runner [{self.ingestion_pipeline.ingestionRunner.name}]"
+                f"Executing workflow [{self.config.ingestionPipelineFQN}]"
+                f" in Runner [{self.config.ingestionRunnerName}]"
             )
 
     def execute(self) -> None:
@@ -305,7 +302,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             maybe_pipeline: Optional[IngestionPipeline] = self.metadata.get_by_name(
                 entity=IngestionPipeline,
                 fqn=self.config.ingestionPipelineFQN,
-                fields=["ingestionRunner"],
             )
 
             if maybe_pipeline:
