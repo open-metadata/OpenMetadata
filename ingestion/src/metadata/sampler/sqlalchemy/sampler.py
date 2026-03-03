@@ -258,21 +258,17 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 .all()
             )
 
-        # Process array columns manually if we used text() expressions
+        # Process rows: handle array columns and truncate large text values
+        # to prevent OOM in downstream processing.
         processed_rows = []
-        if has_array_columns:
-            for row in sqa_sample:
-                processed_row = []
-                for i, col in enumerate(sqa_columns):
-                    value = row[i]
-                    if self._handle_array_column(col):
-                        processed_value = self._process_array_value(value)
-                        processed_row.append(processed_value)
-                    else:
-                        processed_row.append(value)
-                processed_rows.append(processed_row)
-        else:
-            processed_rows = [list(row) for row in sqa_sample]
+        for row in sqa_sample:
+            processed_row = []
+            for i, col in enumerate(sqa_columns):
+                value = row[i]
+                if has_array_columns and self._handle_array_column(col):
+                    value = self._process_array_value(value)
+                processed_row.append(self._truncate_cell(value))
+            processed_rows.append(processed_row)
         return TableData(
             columns=[column.name for column in sqa_columns],
             rows=processed_rows,
@@ -291,7 +287,10 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             columns = list(rnd.keys())
         return TableData(
             columns=columns,
-            rows=[list(row) for row in rnd.fetchmany(100)],
+            rows=[
+                [self._truncate_cell(cell) for cell in row]
+                for row in rnd.fetchmany(100)
+            ],
         )
 
     def _rdn_sample_from_user_query(self) -> Query:
