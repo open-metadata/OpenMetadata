@@ -576,27 +576,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       updateEntityLinksOnGlossaryRename(oldFqn, newFqn, updated);
     }
 
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      GlossaryTermRepository repository =
-          (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
-
-      // adding the reviewer in glossary  should add the person as assignee to the task - for all
-      // draft terms present in glossary
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-
-        List<GlossaryTerm> childTerms = getAllTerms(updated);
-        for (GlossaryTerm term : childTerms) {
-          if (term.getEntityStatus().equals(EntityStatus.IN_REVIEW)) {
-            repository.updateTaskWithNewReviewers(term);
-          }
-        }
-      }
-    }
-
     public void invalidateGlossary(UUID classificationId) {
       // Glossary name changed. Invalidate the glossary and its children terms
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY, classificationId));

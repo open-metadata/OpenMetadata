@@ -62,6 +62,7 @@ export const PersonaSelectableList = ({
   popoverProps,
   personaList,
   isDefaultPersona,
+  multiSelect,
 }: PersonaSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
@@ -157,24 +158,31 @@ export const PersonaSelectableList = ({
   const handlePersonaUpdate = () => {
     setIsSaving(true);
 
-    Promise.resolve(
-      onUpdate(
-        isDefaultPersona
-          ? currentlySelectedPersonas[0]
-          : currentlySelectedPersonas
-      )
-    ).finally(() => {
-      setIsSaving(false);
-      setPopupVisible(false);
-    });
+    if (multiSelect === false) {
+      Promise.resolve(onUpdate(currentlySelectedPersonas[0])).finally(() => {
+        setIsSaving(false);
+        setPopupVisible(false);
+      });
+    } else {
+      Promise.resolve(onUpdate(currentlySelectedPersonas)).finally(() => {
+        setIsSaving(false);
+        setPopupVisible(false);
+      });
+    }
   };
 
   const handleChange = useCallback(
-    (selectedPersonas: string[]) => {
+    (selectedPersonas: string | string[]) => {
+      const selectedArr = Array.isArray(selectedPersonas)
+        ? selectedPersonas
+        : selectedPersonas
+        ? [selectedPersonas]
+        : [];
+
       const selectedPersonasList = selectOptions.filter(
         (persona) =>
           persona.fullyQualifiedName &&
-          selectedPersonas?.includes(persona.fullyQualifiedName)
+          selectedArr.includes(persona.fullyQualifiedName)
       );
       setCurrentlySelectedPersonas(selectedPersonasList);
     },

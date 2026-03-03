@@ -95,10 +95,8 @@ class ColumnValueMedianToBeBetweenValidator(
             # This avoids GROUP BY on CASE expression which causes correlation issues
             normalized_dim_cte = (
                 select(
-                    [
-                        normalized_dimension.label("normalized_dim"),
-                        column.label("col_value"),
-                    ]
+                    normalized_dimension.label("normalized_dim"),
+                    column.label("col_value"),
                 ).select_from(table)
             ).cte(CTE_NORMALIZED_DIMENSION)
 

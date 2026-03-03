@@ -37,7 +37,7 @@ mock_redshift_config = {
             "config": {
                 "type": "Redshift",
                 "username": "username",
-                "password": "password",
+                "authType": {"password": "password"},
                 "database": "database",
                 "hostPort": "cluster.name.region.redshift.amazonaws.com:5439",
                 "sslMode": "verify-full",
@@ -238,10 +238,25 @@ class RedshiftUnitTest(unittest.TestCase):
         thread_id = self.redshift_source.context.get_current_thread_id()
         self.redshift_source._connection_map[thread_id] = mock_connection
 
-        # Mock rows
-        row1 = {"name": "sp_include", "definition": "def1", "owner": "owner"}
-        row2 = {"name": "sp_exclude1", "definition": "def2", "owner": "owner"}
-        row3 = {"name": "sp_exclude2", "definition": "def2", "owner": "owner"}
+        # Mock rows as objects with _asdict() to mimic SQLAlchemy Row
+        row1 = MagicMock()
+        row1._asdict.return_value = {
+            "name": "sp_include",
+            "definition": "def1",
+            "owner": "owner",
+        }
+        row2 = MagicMock()
+        row2._asdict.return_value = {
+            "name": "sp_exclude1",
+            "definition": "def2",
+            "owner": "owner",
+        }
+        row3 = MagicMock()
+        row3._asdict.return_value = {
+            "name": "sp_exclude2",
+            "definition": "def2",
+            "owner": "owner",
+        }
 
         mock_connection.execute.return_value.all.return_value = [row1, row2, row3]
 

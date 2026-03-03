@@ -15,7 +15,7 @@ from copy import deepcopy
 from typing import Dict, List, Optional
 
 from pyathena.sqlalchemy.util import _HashableDict
-from sqlalchemy import types
+from sqlalchemy import text, types
 from sqlalchemy.engine import reflection
 
 from metadata.ingestion.source import sqa_types
@@ -234,7 +234,7 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     Gets the view definition
     """
     full_view_name = f'"{view_name}"' if not schema else f'"{schema}"."{view_name}"'
-    res = connection.execute(f"SHOW CREATE VIEW {full_view_name}").fetchall()
+    res = connection.execute(text(f"SHOW CREATE VIEW {full_view_name}")).fetchall()
     if res:
         return "\n".join(i[0] for i in res)
     return None

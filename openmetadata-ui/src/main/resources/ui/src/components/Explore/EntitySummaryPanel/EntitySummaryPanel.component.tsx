@@ -15,7 +15,7 @@ import { CloseOutlined } from '@mui/icons-material';
 import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compare, Operation as PatchOperation } from 'fast-json-patch';
+import { compare, Operation as FastJsonPatchOperation } from 'fast-json-patch';
 import { get, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -87,7 +87,6 @@ import {
   patchContainerDetails,
 } from '../../../rest/storageAPI';
 
-import { TableSearchSource } from '../../../interface/search.interface';
 import {
   getStoredProceduresByFqn,
   patchStoredProceduresDetails,
@@ -116,16 +115,17 @@ import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetail
 import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import { EntityWithServices } from '../ExplorePage.interface';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
-import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
+import {
+  EntitySummaryPanelProps,
+  SearchSourceDetails,
+} from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
 
 export default function EntitySummaryPanel({
@@ -155,8 +155,8 @@ export default function EntitySummaryPanel({
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
-  const [entityData, setEntityData] = useState<EntityData>();
-  const [entityTypeDetail, setEntityTypeDetail] = useState<Type>();
+  const [entityData, setEntityData] = useState<EntityData | null>(null);
+  const [entityTypeDetail, setEntityTypeDetail] = useState<Type | undefined>();
   const [isEntityDataLoading, setIsEntityDataLoading] = useState(false);
   const [isEntityTypeLoading, setIsEntityTypeLoading] = useState(false);
   const [lineageData, setLineageData] = useState<LineageData | null>(null);
@@ -169,7 +169,7 @@ export default function EntitySummaryPanel({
   const fqn = entityDetails?.details?.fullyQualifiedName ?? '';
 
   const entityType = useMemo(() => {
-    return get(entityDetails, 'details.entityType') as EntityType;
+    return get(entityDetails, 'details.entityType');
   }, [entityDetails]);
 
   const fetchResourcePermission = async (id: string) => {
@@ -200,108 +200,96 @@ export default function EntitySummaryPanel({
     }
   };
   // Memoize the entity fetch map to avoid recreating it on every render
-  const entityFetchMap = useMemo(() => {
+  const entityFetchMap = useMemo<
+    Record<string, (fqn: string) => Promise<object>>
+  >(() => {
     const commonFields = 'owners,domains,tags,extension';
     const domainFields = 'owners,tags,extension';
 
     return {
-      [EntityType.TABLE]: (fqn: string) =>
+      [EntityType.TABLE]: (fqn) =>
         getTableDetailsByFQN(fqn, { fields: commonFields }),
-      [EntityType.TOPIC]: (fqn: string) =>
-        getTopicByFqn(fqn, { fields: commonFields }),
-      [EntityType.DASHBOARD]: (fqn: string) =>
+      [EntityType.TOPIC]: (fqn) => getTopicByFqn(fqn, { fields: commonFields }),
+      [EntityType.DASHBOARD]: (fqn) =>
         getDashboardByFqn(fqn, { fields: commonFields }),
-      [EntityType.PIPELINE]: (fqn: string) =>
+      [EntityType.PIPELINE]: (fqn) =>
         getPipelineByFqn(fqn, { fields: commonFields }),
-      [EntityType.MLMODEL]: (fqn: string) =>
+      [EntityType.MLMODEL]: (fqn) =>
         getMlModelByFQN(fqn, { fields: commonFields }),
-      [EntityType.DATABASE]: (fqn: string) =>
+      [EntityType.DATABASE]: (fqn) =>
         getDatabaseDetailsByFQN(fqn, { fields: commonFields }),
-      [EntityType.DATABASE_SCHEMA]: (fqn: string) =>
+      [EntityType.DATABASE_SCHEMA]: (fqn) =>
         getDatabaseSchemaDetailsByFQN(fqn, { fields: commonFields }),
-      [EntityType.DASHBOARD_DATA_MODEL]: (fqn: string) =>
+      [EntityType.DASHBOARD_DATA_MODEL]: (fqn) =>
         getDataModelByFqn(fqn, { fields: commonFields }),
-      [EntityType.SEARCH_INDEX]: (fqn: string) =>
+      [EntityType.SEARCH_INDEX]: (fqn) =>
         getSearchIndexDetailsByFQN(fqn, { fields: commonFields }),
-      [EntityType.STORED_PROCEDURE]: (fqn: string) =>
+      [EntityType.STORED_PROCEDURE]: (fqn) =>
         getStoredProceduresByFqn(fqn, { fields: commonFields }),
-      [EntityType.CONTAINER]: (fqn: string) =>
+      [EntityType.CONTAINER]: (fqn) =>
         getContainerByFQN(fqn, { fields: commonFields }),
-      [EntityType.GLOSSARY_TERM]: (fqn: string) =>
+      [EntityType.GLOSSARY_TERM]: (fqn) =>
         getGlossaryTermByFQN(fqn, { fields: commonFields }),
-      [EntityType.CHART]: (fqn: string) =>
-        getChartByFqn(fqn, { fields: commonFields }),
-      [EntityType.METRIC]: (fqn: string) =>
+      [EntityType.CHART]: (fqn) => getChartByFqn(fqn, { fields: commonFields }),
+      [EntityType.METRIC]: (fqn) =>
         getMetricByFqn(fqn, { fields: commonFields }),
-      [EntityType.API_ENDPOINT]: (fqn: string) =>
+      [EntityType.API_ENDPOINT]: (fqn) =>
         getApiEndPointByFQN(fqn, { fields: commonFields }),
-      [EntityType.API_COLLECTION]: (fqn: string) =>
+      [EntityType.API_COLLECTION]: (fqn) =>
         getApiCollectionByFQN(fqn, { fields: commonFields }),
-      [EntityType.DIRECTORY]: (fqn: string) =>
+      [EntityType.DIRECTORY]: (fqn) =>
         getDriveAssetByFqn(fqn, EntityType.DIRECTORY, commonFields),
-      [EntityType.FILE]: (fqn: string) =>
+      [EntityType.FILE]: (fqn) =>
         getDriveAssetByFqn(fqn, EntityType.FILE, commonFields),
-      [EntityType.SPREADSHEET]: (fqn: string) =>
+      [EntityType.SPREADSHEET]: (fqn) =>
         getDriveAssetByFqn(fqn, EntityType.SPREADSHEET, commonFields),
-      [EntityType.WORKSHEET]: (fqn: string) =>
+      [EntityType.WORKSHEET]: (fqn) =>
         getDriveAssetByFqn(fqn, EntityType.WORKSHEET, commonFields),
-      [EntityType.DATA_PRODUCT]: (fqn: string) =>
+      [EntityType.DATA_PRODUCT]: (fqn) =>
         getDataProductByName(fqn, { fields: commonFields }),
-      [EntityType.DOMAIN]: (fqn: string) =>
+      [EntityType.DOMAIN]: (fqn) =>
         getDomainByName(fqn, { fields: domainFields }),
-    } as Record<string, (fqn: string) => Promise<EntityData>>;
+    };
   }, []);
 
-  const entityUpdateMap = useMemo(() => {
-    return {
-      [EntityType.TABLE]: (id: string, data: PatchOperation[]) =>
-        patchTableDetails(id, data),
-      [EntityType.TOPIC]: (id: string, data: PatchOperation[]) =>
-        patchTopicDetails(id, data),
-      [EntityType.DASHBOARD]: (id: string, data: PatchOperation[]) =>
-        patchDashboardDetails(id, data),
-      [EntityType.PIPELINE]: (id: string, data: PatchOperation[]) =>
-        patchPipelineDetails(id, data),
-      [EntityType.MLMODEL]: (id: string, data: PatchOperation[]) =>
-        patchMlModelDetails(id, data),
-      [EntityType.DATABASE]: (id: string, data: PatchOperation[]) =>
-        patchDatabaseDetails(id, data),
-      [EntityType.DATABASE_SCHEMA]: (id: string, data: PatchOperation[]) =>
-        patchDatabaseSchemaDetails(id, data),
-      [EntityType.DASHBOARD_DATA_MODEL]: (id: string, data: PatchOperation[]) =>
-        patchDataModelDetails(id, data),
-      [EntityType.SEARCH_INDEX]: (id: string, data: PatchOperation[]) =>
-        patchSearchIndexDetails(id, data),
-      [EntityType.STORED_PROCEDURE]: (id: string, data: PatchOperation[]) =>
-        patchStoredProceduresDetails(id, data),
-      [EntityType.CONTAINER]: (id: string, data: PatchOperation[]) =>
-        patchContainerDetails(id, data),
-      [EntityType.GLOSSARY_TERM]: (id: string, data: PatchOperation[]) =>
-        patchGlossaryTerm(id, data),
-      [EntityType.CHART]: (id: string, data: PatchOperation[]) =>
-        patchChartDetails(id, data),
-      [EntityType.METRIC]: (id: string, data: PatchOperation[]) =>
-        patchMetric(id, data),
-      [EntityType.API_ENDPOINT]: (id: string, data: PatchOperation[]) =>
-        patchApiEndPoint(id, data),
-      [EntityType.API_COLLECTION]: (id: string, data: PatchOperation[]) =>
-        patchApiCollection(id, data),
-      [EntityType.DIRECTORY]: (id: string, data: PatchOperation[]) =>
-        patchDriveAssetDetails(id, data, EntityType.DIRECTORY),
-      [EntityType.FILE]: (id: string, data: PatchOperation[]) =>
-        patchDriveAssetDetails(id, data, EntityType.FILE),
-      [EntityType.SPREADSHEET]: (id: string, data: PatchOperation[]) =>
-        patchDriveAssetDetails(id, data, EntityType.SPREADSHEET),
-      [EntityType.WORKSHEET]: (id: string, data: PatchOperation[]) =>
-        patchDriveAssetDetails(id, data, EntityType.WORKSHEET),
-      [EntityType.DATA_PRODUCT]: (id: string, data: PatchOperation[]) =>
-        patchDataProduct(id, data),
-      [EntityType.DOMAIN]: (id: string, data: PatchOperation[]) =>
-        patchDomains(id, data),
-    } as Record<
+  const entityUpdateMap = useMemo<
+    Record<
       string,
-      (id: string, data: PatchOperation[]) => Promise<Partial<EntityData>>
-    >;
+      (id: string, data: FastJsonPatchOperation[]) => Promise<object>
+    >
+  >(() => {
+    return {
+      [EntityType.TABLE]: (id, data) => patchTableDetails(id, data),
+      [EntityType.TOPIC]: (id, data) => patchTopicDetails(id, data),
+      [EntityType.DASHBOARD]: (id, data) => patchDashboardDetails(id, data),
+      [EntityType.PIPELINE]: (id, data) => patchPipelineDetails(id, data),
+      [EntityType.MLMODEL]: (id, data) => patchMlModelDetails(id, data),
+      [EntityType.DATABASE]: (id, data) => patchDatabaseDetails(id, data),
+      [EntityType.DATABASE_SCHEMA]: (id, data) =>
+        patchDatabaseSchemaDetails(id, data),
+      [EntityType.DASHBOARD_DATA_MODEL]: (id, data) =>
+        patchDataModelDetails(id, data),
+      [EntityType.SEARCH_INDEX]: (id, data) =>
+        patchSearchIndexDetails(id, data),
+      [EntityType.STORED_PROCEDURE]: (id, data) =>
+        patchStoredProceduresDetails(id, data),
+      [EntityType.CONTAINER]: (id, data) => patchContainerDetails(id, data),
+      [EntityType.GLOSSARY_TERM]: (id, data) => patchGlossaryTerm(id, data),
+      [EntityType.CHART]: (id, data) => patchChartDetails(id, data),
+      [EntityType.METRIC]: (id, data) => patchMetric(id, data),
+      [EntityType.API_ENDPOINT]: (id, data) => patchApiEndPoint(id, data),
+      [EntityType.API_COLLECTION]: (id, data) => patchApiCollection(id, data),
+      [EntityType.DIRECTORY]: (id, data) =>
+        patchDriveAssetDetails(id, data, EntityType.DIRECTORY),
+      [EntityType.FILE]: (id, data) =>
+        patchDriveAssetDetails(id, data, EntityType.FILE),
+      [EntityType.SPREADSHEET]: (id, data) =>
+        patchDriveAssetDetails(id, data, EntityType.SPREADSHEET),
+      [EntityType.WORKSHEET]: (id, data) =>
+        patchDriveAssetDetails(id, data, EntityType.WORKSHEET),
+      [EntityType.DATA_PRODUCT]: (id, data) => patchDataProduct(id, data),
+      [EntityType.DOMAIN]: (id, data) => patchDomains(id, data),
+    };
   }, []);
 
   const fetchEntityData = useCallback(async () => {
@@ -312,15 +300,36 @@ export default function EntitySummaryPanel({
     setIsEntityDataLoading(true);
     try {
       const fqn = entityDetails.details.fullyQualifiedName;
-      let entityPromise: Promise<EntityData> | null = null;
+      let entityPromise: Promise<object> | null = null;
 
       const fetchFn = entityFetchMap[entityType];
       if (fetchFn) {
         entityPromise = fetchFn(fqn);
+      } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+        entityPromise = entityUtilClassBase.getEntityByFqn(
+          entityType,
+          fqn,
+          'owners,domains,tags'
+        );
+      } else {
+        entityPromise = entityUtilClassBase.getEntityByFqn(
+          entityType,
+          fqn,
+          'owners,domains,tags,extension'
+        );
       }
 
       if (entityPromise) {
-        const data = await entityPromise;
+        const data = (await entityPromise) as {
+          description?: string;
+          displayName?: string;
+          service?: EntityReference;
+          owners?: EntityReference[];
+          domains?: EntityReference[];
+          tags?: TagLabel[];
+          dataProducts?: EntityReference[];
+        };
+        const searchDetails: SearchSourceDetails = entityDetails.details;
         // Merge API data with essential fields from entityDetails.details
         const mergedData = {
           ...data,
@@ -332,24 +341,20 @@ export default function EntitySummaryPanel({
           displayName: data.displayName,
           name: entityDetails.details.name,
           deleted: entityDetails.details.deleted,
-          serviceType: (entityDetails.details as EntityWithServices)
-            .serviceType,
-          service:
-            (data as EntityWithServices).service ??
-            entityDetails.details.service,
+          serviceType: searchDetails.serviceType,
+          service: data.service ?? entityDetails.details.service,
           // Prefer canonical data; fallback to search result if missing
           owners: data.owners ?? [],
           domains: data.domains ?? [],
           tags: data.tags ?? [],
-          dataProducts: data.dataProducts ?? entityDetails.details.dataProducts,
-          tier: entityDetails.details.tier,
-          columnNames: (entityDetails.details as TableSearchSource).columnNames,
-          database: (entityDetails.details as TableSearchSource).database,
-          databaseSchema: (entityDetails.details as TableSearchSource)
-            .databaseSchema,
-          tableType: (entityDetails.details as TableSearchSource).tableType,
+          dataProducts: data.dataProducts ?? searchDetails.dataProducts,
+          tier: searchDetails.tier,
+          columnNames: searchDetails.columnNames,
+          database: searchDetails.database,
+          databaseSchema: searchDetails.databaseSchema,
+          tableType: searchDetails.tableType,
         };
-        setEntityData(mergedData as unknown as EntityData);
+        setEntityData(mergedData as EntityData);
       } else {
         // For entity types without a dedicated API (like tableColumn),
         // use the search index data directly. The search index already
@@ -436,7 +441,7 @@ export default function EntitySummaryPanel({
         setEntityData(
           (prev) =>
             ({
-              ...(prev || entityDetails.details),
+              ...(prev ?? entityDetails.details),
               ...updatedData,
             } as EntityData)
         );
@@ -703,7 +708,7 @@ export default function EntitySummaryPanel({
 
   // Reset data when entity changes to prevent stale data
   useEffect(() => {
-    setEntityData(undefined);
+    setEntityData(null);
     setLineageData(null);
     setIsLineageLoading(false);
   }, [entityDetails?.details?.id]);
@@ -730,40 +735,6 @@ export default function EntitySummaryPanel({
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
     [entityPermissions]
   );
-
-  const summaryComponent = useMemo(() => {
-    if (isPermissionLoading) {
-      return <Loader />;
-    }
-    if (!viewPermission) {
-      return (
-        <ErrorPlaceHolder
-          className="border-none h-min-80"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.data-asset'),
-          })}
-          size={SIZE.MEDIUM}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
-      );
-    }
-    const type = (get(entityDetails, 'details.entityType') ??
-      EntityType.TABLE) as EntityType;
-    const entity = entityDetails.details;
-
-    return (
-      <DataAssetSummaryPanel
-        componentType={tab === NAV_OPTIONS.lineage ? tab : NAV_OPTIONS.explore}
-        dataAsset={
-          entity as SearchedDataProps['data'][number]['_source'] & {
-            dataProducts: DataProduct[];
-          }
-        }
-        entityType={type}
-        highlights={highlights}
-      />
-    );
-  }, [tab, entityDetails, viewPermission, isPermissionLoading]);
 
   const summaryComponentV1 = useMemo(() => {
     if (isPermissionLoading) {
@@ -966,7 +937,9 @@ export default function EntitySummaryPanel({
             )}
             <DataQualityTab
               entityFQN={entityDetails.details.fullyQualifiedName || ''}
-              entityType={entityType}
+              hasViewTests={
+                entityPermissions.ViewTests || entityPermissions.ViewAll
+              }
             />
           </>
         );
@@ -984,7 +957,7 @@ export default function EntitySummaryPanel({
               emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
                 entityType
               )}
-              entityData={entityData}
+              entityData={entityData ?? undefined}
               entityDetails={entityDetails}
               entityType={entityType}
               entityTypeDetail={entityTypeDetail}
@@ -1003,7 +976,7 @@ export default function EntitySummaryPanel({
         );
       }
       default:
-        return summaryComponent;
+        return null;
     }
   };
 

@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
-import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
@@ -86,7 +85,6 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -821,15 +819,8 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
-    TaskType taskType = threadContext.getThread().getTask().getType();
-    if (EntityUtil.isDescriptionTask(taskType)) {
-      return new DescriptionTaskWorkflow(threadContext);
-    } else if (EntityUtil.isTagTask(taskType)) {
-      return new TagTaskWorkflow(threadContext);
-    } else if (isRecognizerFeedbackTask(threadContext.getThread().getId())) {
+    if (isRecognizerFeedbackTask(threadContext.getThread().getId())) {
       return new RecognizerFeedbackTaskWorkflow(threadContext);
-    } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
-      return new ApprovalTaskWorkflow(threadContext);
     }
     return super.getTaskWorkflow(threadContext);
   }
@@ -845,36 +836,6 @@ public class TagRepository extends EntityRepository<Tag> {
     return false;
   }
 
-  public static class ApprovalTaskWorkflow extends TaskWorkflow {
-    ApprovalTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      Tag tag = (Tag) threadContext.getAboutEntity();
-      TagRepository.checkUpdatedByReviewer(tag, user);
-
-      UUID taskId = threadContext.getThread().getId();
-      Map<String, Object> variables = new HashMap<>();
-      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put(UPDATED_BY_VARIABLE, user);
-      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      boolean workflowSuccess =
-          workflowHandler.resolveTask(
-              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
-
-      if (!workflowSuccess) {
-        LOG.warn(
-            "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
-        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
-        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
-        EntityFieldUtils.setEntityField(tag, TAG, user, FIELD_ENTITY_STATUS, entityStatus, true);
-      }
-      return tag;
-    }
-  }
-
   public static class RecognizerFeedbackTaskWorkflow extends TaskWorkflow {
     RecognizerFeedbackTaskWorkflow(ThreadContext threadContext) {
       super(threadContext);
@@ -883,7 +844,7 @@ public class TagRepository extends EntityRepository<Tag> {
     @Override
     public EntityInterface performTask(String user, ResolveTask resolveTask) {
       Tag tag = (Tag) threadContext.getAboutEntity();
-      TagRepository.checkUpdatedByReviewer(tag, user);
+      EntityRepository.checkUpdatedByTaskAssignee(threadContext.getThread(), user);
 
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
@@ -929,17 +890,6 @@ public class TagRepository extends EntityRepository<Tag> {
 
     public TagUpdater(Tag original, Tag updated, Operation operation) {
       super(original, updated, operation);
-    }
-
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      // adding the reviewer should add the person as assignee to the task
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
     }
 
     @Transaction
@@ -1101,14 +1051,6 @@ public class TagRepository extends EntityRepository<Tag> {
         closeApprovalTask(updated, "Closed due to tag going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
       } // No ApprovalTask is present, and thus we don't need to worry about this.
-    }
-  }
-
-  @Override
-  protected void preDelete(Tag entity, String deletedBy) {
-    // A tag in `Draft` state can only be deleted by the reviewers
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkUpdatedByReviewer(entity, deletedBy);
     }
   }
 

@@ -18,7 +18,7 @@ from copy import deepcopy
 from typing import Any, List, Tuple
 
 from pydantic import BaseModel
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -108,10 +108,15 @@ def get_pk_constraint(
         cache_key = f"{project}.{schema}"
 
         if cache_key not in CONSTRAINT_CACHE:
-            constraints = connection.engine.execute(
-                BIGQUERY_CONSTRAINTS.format(project_id=project, dataset_name=schema)
-            )
-            CONSTRAINT_CACHE[cache_key] = constraints.fetchall()
+            with connection.engine.connect() as conn:
+                constraints = conn.execute(
+                    text(
+                        BIGQUERY_CONSTRAINTS.format(
+                            project_id=project, dataset_name=schema
+                        )
+                    )
+                )
+                CONSTRAINT_CACHE[cache_key] = constraints.fetchall()
 
         col_names = [
             row.column_name
@@ -138,10 +143,15 @@ def get_foreign_keys(
         cache_key = f"{project}.{schema}"
 
         if cache_key not in CONSTRAINT_CACHE:
-            constraints = connection.engine.execute(
-                BIGQUERY_CONSTRAINTS.format(project_id=project, dataset_name=schema)
-            )
-            CONSTRAINT_CACHE[cache_key] = constraints.fetchall()
+            with connection.engine.connect() as conn:
+                constraints = conn.execute(
+                    text(
+                        BIGQUERY_CONSTRAINTS.format(
+                            project_id=project, dataset_name=schema
+                        )
+                    )
+                )
+                CONSTRAINT_CACHE[cache_key] = constraints.fetchall()
 
         fk_list = []
         for row in CONSTRAINT_CACHE[cache_key]:

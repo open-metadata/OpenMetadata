@@ -117,8 +117,6 @@ def get_connection(
         )
         consumer_config["value.deserializer"] = avro_deserializer
 
-        logger.debug(f"Using Kafka consumer config: {consumer_config}")
-
         consumer_client = DeserializingConsumer(consumer_config)
 
     return KafkaClient(

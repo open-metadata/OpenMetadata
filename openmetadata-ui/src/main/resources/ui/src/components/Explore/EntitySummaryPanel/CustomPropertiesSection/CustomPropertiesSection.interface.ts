@@ -12,8 +12,11 @@
  */
 import { EntityType } from '../../../../enums/entity.enum';
 import { CustomProperty, Type } from '../../../../generated/entity/type';
-import { EntityData } from '../../../../pages/TasksPage/TasksPage.interface';
 import { EntityDetailsObjectInterface } from '../../ExplorePage.interface';
+
+export interface EntityData {
+  extension?: Record<string, unknown>;
+}
 
 export interface EntityDetails {
   details: {
