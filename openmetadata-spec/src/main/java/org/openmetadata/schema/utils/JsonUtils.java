@@ -304,6 +304,7 @@ public final class JsonUtils {
   /** Applies the patch on original object and returns the updated object */
   public static JsonValue applyPatch(Object original, JsonPatch patch) {
     JsonStructure targetJson = JsonUtils.getJsonStructure(original);
+    JsonStructure currentJson = targetJson;
 
     // ---------------------------------------------------------------------
     // JSON patch modification - Ignore operations related to read-only fields
@@ -314,44 +315,42 @@ public final class JsonUtils {
     // - incrementalChangeDescription: auto-generated incremental change tracking
     JsonArray array = patch.toJsonArray();
 
-    List<JsonObject> filteredPatchItems = new ArrayList<>();
+    for (JsonValue entry : array) {
+      JsonObject jsonObject = entry.asJsonObject();
+      String path = jsonObject.getString("path", null);
+      if (path == null) {
+        continue;
+      }
 
-    array.forEach(
-        entry -> {
-          JsonObject jsonObject = entry.asJsonObject();
-          String path = jsonObject.getString("path", null);
-          if (path == null) {
-            return;
-          }
+      // Skip operations on read-only auto-generated fields
+      if (isReadOnlyPatchPath(path)) {
+        continue;
+      }
 
-          // Skip operations on read-only auto-generated fields
-          if (isReadOnlyPatchPath(path)) {
-            return;
-          }
+      // For copy/move operations, also check the 'from' field if present
+      if (jsonObject.containsKey("from")) {
+        String from = jsonObject.getString("from", null);
+        if (isReadOnlyPatchPath(from)) {
+          continue;
+        }
+      }
 
-          // For copy/move operations, also check the 'from' field if present
-          if (jsonObject.containsKey("from")) {
-            String from = jsonObject.getString("from", null);
-            if (isReadOnlyPatchPath(from)) {
-              return;
-            }
-          }
+      // UI sometimes sends "replace" for optional fields that are absent in the persisted object.
+      // RFC-6902 "replace" requires the path to exist, while "add" supports this transition.
+      // Convert only when parent exists and target path is missing.
+      JsonObject operation =
+          shouldConvertReplaceToAdd(currentJson, jsonObject)
+              ? withOp(jsonObject, "add")
+              : jsonObject;
 
-          filteredPatchItems.add(jsonObject);
-        });
-
-    // Build new sorted patch
-    JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
-    filteredPatchItems.forEach(arrayBuilder::add);
-    JsonPatch filteredPatch = Json.createPatch(arrayBuilder.build());
-
-    // Apply sortedPatch
-    try {
-      return filteredPatch.apply(targetJson);
-    } catch (Exception e) {
-      LOG.debug("Failed to apply the json patch {}", filteredPatch);
-      throw e;
+      // Apply incrementally so each operation can reason about the materialized state from
+      // preceding operations in the same patch document.
+      JsonArrayBuilder singleOp = Json.createArrayBuilder();
+      singleOp.add(operation);
+      JsonPatch singlePatch = Json.createPatch(singleOp.build());
+      currentJson = singlePatch.apply(currentJson);
     }
+    return currentJson;
   }
 
   private static boolean isReadOnlyPatchPath(String path) {
@@ -363,6 +362,43 @@ public final class JsonUtils {
     }
     return READ_ONLY_PATCH_ROOT_FIELDS.stream()
         .anyMatch(root -> path.equals(root) || path.startsWith(root + "/"));
+  }
+
+  private static boolean shouldConvertReplaceToAdd(JsonStructure targetJson, JsonObject patchItem) {
+    if (!"replace".equals(patchItem.getString("op", null))) {
+      return false;
+    }
+    String path = patchItem.getString("path", null);
+    if (path == null || path.isBlank() || "/".equals(path)) {
+      return false;
+    }
+    if (jsonPointerExists(targetJson, path)) {
+      return false;
+    }
+    String parentPath = path.substring(0, path.lastIndexOf('/'));
+    if (parentPath.isEmpty()) {
+      parentPath = "/";
+    }
+    return jsonPointerExists(targetJson, parentPath);
+  }
+
+  private static boolean jsonPointerExists(JsonStructure targetJson, String path) {
+    try {
+      JsonPointer pointer = Json.createPointer(path);
+      pointer.getValue(targetJson);
+      return true;
+    } catch (Exception ex) {
+      return false;
+    }
+  }
+
+  private static JsonObject withOp(JsonObject patchItem, String op) {
+    JsonObjectBuilder builder = Json.createObjectBuilder();
+    for (Entry<String, JsonValue> entry : patchItem.entrySet()) {
+      builder.add(entry.getKey(), entry.getValue());
+    }
+    builder.add("op", op);
+    return builder.build();
   }
 
   public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {

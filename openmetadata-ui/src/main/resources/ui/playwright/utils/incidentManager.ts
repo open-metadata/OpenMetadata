@@ -196,8 +196,9 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
             )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`
           )
           .then((res) => res.json());
+        const firstStatus = Array.isArray(response?.data) ? response.data[0] : undefined;
 
-        return response.data[0]?.pipelineState;
+        return firstStatus?.pipelineState;
       },
       {
         // Custom expect message for reporting, optional.
