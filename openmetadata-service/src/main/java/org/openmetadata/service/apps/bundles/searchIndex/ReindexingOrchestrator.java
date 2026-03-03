@@ -64,6 +64,8 @@ public class ReindexingOrchestrator {
       timerSample = metrics.startJobTimer();
     }
 
+    preflightFixes();
+
     try {
       runReindexing();
     } catch (Exception ex) {
@@ -147,6 +149,24 @@ public class ReindexingOrchestrator {
 
     LOG.error("Unable to initialize jobData from JobDataMap or App configuration");
     throw new SearchIndexApp.ReindexingException("JobData is not initialized");
+  }
+
+  private void preflightFixes() {
+    LOG.info("Running preflight fixes before reindexing");
+    try {
+      OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
+      OrphanedIndexCleaner.CleanupResult result =
+          cleaner.cleanupOrphanedIndices(searchRepository.getSearchClient());
+      if (result.found() > 0) {
+        LOG.info(
+            "Preflight: cleaned up {} orphaned rebuild indices (found={}, failed={})",
+            result.deleted(),
+            result.found(),
+            result.failed());
+      }
+    } catch (Exception e) {
+      LOG.warn("Preflight: failed to cleanup orphaned indices: {}", e.getMessage());
+    }
   }
 
   private void runReindexing() throws Exception {
