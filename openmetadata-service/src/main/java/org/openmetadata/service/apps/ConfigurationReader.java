@@ -32,7 +32,7 @@ public class ConfigurationReader {
   }
 
   public ConfigurationReader() {
-    this(System.getenv());
+    this(null);
   }
 
   public AppPrivateConfig readConfigFromResource(String appName)
