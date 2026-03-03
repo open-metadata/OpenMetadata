@@ -1488,6 +1488,24 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             edges: newEdges,
           };
         });
+
+        if (selectedEdge?.id) {
+          updateEdge(selectedEdge.id, (edge) => ({
+            ...edge,
+            animated: isEmpty(pipelineData) ? false : true,
+            data: {
+              ...edge.data,
+              edge: {
+                ...edge.data?.edge,
+                pipeline: pipelineData,
+                pipelineEntityType: pipelineData?.type as
+                  | EntityType.PIPELINE
+                  | EntityType.STORED_PROCEDURE
+                  | undefined,
+              },
+            },
+          }));
+        }
       } catch {
         setLoading(false);
       } finally {

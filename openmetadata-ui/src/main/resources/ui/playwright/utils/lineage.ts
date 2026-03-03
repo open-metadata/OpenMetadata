@@ -900,7 +900,7 @@ export const updateLineageConfigFromModal = async (
 export const verifyPlatformLineageForEntity = async (
   page: Page,
   fromFqn: string,
-  toFqn: string
+  toFqn?: string
 ) => {
   // Verify relation in platform lineage
   await sidebarClick(page, SidebarItem.LINEAGE);
@@ -916,16 +916,14 @@ export const verifyPlatformLineageForEntity = async (
 
   await page.waitForTimeout(500);
 
-  const tableServiceNode = page.locator(
-    `[data-testid="lineage-node-${fromFqn}"]`
-  );
-  const topicServiceNode = page.locator(
-    `[data-testid="lineage-node-${toFqn}"]`
-  );
+  const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
 
   // ensure node will be visible in the viewport
   await performZoomOut(page);
 
-  await expect(tableServiceNode).toBeVisible();
-  await expect(topicServiceNode).toBeVisible();
+  await expect(fromNode).toBeVisible();
+
+  if (toFqn) {
+    await expect(page.getByTestId(`lineage-node-${toFqn}`)).toBeVisible();
+  }
 };

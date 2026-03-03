@@ -173,6 +173,7 @@ test.describe.serial('Lineage Settings Tests', () => {
 
         await topic.visitEntityPage(page);
         await visitLineageTab(page);
+        await performZoomOut(page);
         await verifyNodePresent(page, table);
         await verifyNodePresent(page, dashboard);
         const mlModelFqn = get(
@@ -201,7 +202,7 @@ test.describe.serial('Lineage Settings Tests', () => {
 
         await dashboard.visitEntityPage(page);
         await visitLineageTab(page);
-
+        await performZoomOut(page);
         await verifyNodePresent(page, dashboard);
         await verifyNodePresent(page, mlModel);
         await verifyNodePresent(page, topic);
