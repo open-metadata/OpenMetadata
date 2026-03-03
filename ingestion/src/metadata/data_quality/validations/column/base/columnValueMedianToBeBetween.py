@@ -61,9 +61,9 @@ class BaseColumnValueMedianToBeBetweenValidator(BaseTestValidator):
 
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
-            res = self._run_results(Metrics.MEDIAN, column)
+            res = self._run_results(Metrics.median, column)
 
-            metric_values = {Metrics.MEDIAN.name: res}
+            metric_values = {Metrics.median.name: res}
 
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -118,7 +118,7 @@ class BaseColumnValueMedianToBeBetweenValidator(BaseTestValidator):
             dict: Dictionary mapping metric names to Metrics enum values
         """
         return {
-            Metrics.MEDIAN.name: Metrics.MEDIAN,
+            Metrics.median.name: Metrics.median,
         }
 
     def _evaluate_test_condition(
@@ -141,7 +141,7 @@ class BaseColumnValueMedianToBeBetweenValidator(BaseTestValidator):
                 - failed_rows: None - not applicable for statistical validators
                 - total_rows: None - not applicable for statistical validators
         """
-        median_value = metric_values[Metrics.MEDIAN.name]
+        median_value = metric_values[Metrics.median.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -175,7 +175,7 @@ class BaseColumnValueMedianToBeBetweenValidator(BaseTestValidator):
                 "test_params is required for columnValueMedianToBeBetween._format_result_message"
             )
 
-        median_value = metric_values[Metrics.MEDIAN.name]
+        median_value = metric_values[Metrics.median.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -199,7 +199,7 @@ class BaseColumnValueMedianToBeBetweenValidator(BaseTestValidator):
         return [
             TestResultValue(
                 name=MEDIAN_METRIC_NAME,
-                value=str(metric_values[Metrics.MEDIAN.name]),
+                value=str(metric_values[Metrics.median.name]),
             ),
         ]
 

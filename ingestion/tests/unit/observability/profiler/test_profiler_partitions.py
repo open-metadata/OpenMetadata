@@ -56,7 +56,7 @@ mock_bigquery_config = {
             "profiler": {
                 "name": "my_profiler",
                 "timeout_seconds": 60,
-                "metrics": ["row_count", "min", "max", "COUNT", "null_count"],
+                "metrics": ["rowCount", "min", "max", "valuesCount", "nullCount"],
             },
         },
     },

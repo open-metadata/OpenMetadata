@@ -66,10 +66,6 @@ def run_profiler(
                         "thirdQuartile": 4.0,
                         "interQuartileRange": 2.0,
                         "nonParametricSkew": 0.0,
-                        "histogram": {
-                            "boundaries": ["1.000 to 3.339", "3.339 and up"],
-                            "frequencies": [3, 2],
-                        },
                     }
                 ),
                 "amount": ColumnProfile.model_validate(

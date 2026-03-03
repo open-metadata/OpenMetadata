@@ -47,6 +47,8 @@ class NullMissingCount(StaticMetric):
     ```
     """
 
+    schema_metric_type = MetricType.nullMissingCount
+
     @classmethod
     def name(cls):
         """

@@ -90,14 +90,14 @@ class ColumnValueLengthsToBeBetweenValidator(
 
         try:
             dfs = self.runner
-            min_impl = Metrics.MIN_LENGTH(column).get_pandas_computation()
-            max_impl = Metrics.MAX_LENGTH(column).get_pandas_computation()
-            row_count_impl = Metrics.ROW_COUNT().get_pandas_computation()
+            min_impl = Metrics.minLength(column).get_pandas_computation()
+            max_impl = Metrics.maxLength(column).get_pandas_computation()
+            row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.MIN_LENGTH.name: min_impl.create_accumulator(),
-                    Metrics.MAX_LENGTH.name: max_impl.create_accumulator(),
+                    Metrics.minLength.name: min_impl.create_accumulator(),
+                    Metrics.maxLength.name: max_impl.create_accumulator(),
                     DIMENSION_TOTAL_COUNT_KEY: row_count_impl.create_accumulator(),
                     DIMENSION_FAILED_COUNT_KEY: 0,
                 }
@@ -111,15 +111,15 @@ class ColumnValueLengthsToBeBetweenValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.MIN_LENGTH.name
+                        Metrics.minLength.name
                     ] = min_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.MIN_LENGTH.name],
+                        dimension_aggregates[dimension_value][Metrics.minLength.name],
                         group_df,
                     )
                     dimension_aggregates[dimension_value][
-                        Metrics.MAX_LENGTH.name
+                        Metrics.maxLength.name
                     ] = max_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.MAX_LENGTH.name],
+                        dimension_aggregates[dimension_value][Metrics.maxLength.name],
                         group_df,
                     )
 
@@ -143,10 +143,10 @@ class ColumnValueLengthsToBeBetweenValidator(
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
                 min_length_value = min_impl.aggregate_accumulator(
-                    agg[Metrics.MIN_LENGTH.name]
+                    agg[Metrics.minLength.name]
                 )
                 max_length_value = max_impl.aggregate_accumulator(
-                    agg[Metrics.MAX_LENGTH.name]
+                    agg[Metrics.maxLength.name]
                 )
                 total_rows = row_count_impl.aggregate_accumulator(
                     agg[DIMENSION_TOTAL_COUNT_KEY]
@@ -164,8 +164,8 @@ class ColumnValueLengthsToBeBetweenValidator(
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.MIN_LENGTH.name: min_length_value,
-                        Metrics.MAX_LENGTH.name: max_length_value,
+                        Metrics.minLength.name: min_length_value,
+                        Metrics.maxLength.name: max_length_value,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -184,15 +184,15 @@ class ColumnValueLengthsToBeBetweenValidator(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={
-                        Metrics.MIN_LENGTH.name: "min",
-                        Metrics.MAX_LENGTH.name: "max",
+                        Metrics.minLength.name: "min",
+                        Metrics.maxLength.name: "max",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
                     top_n=DEFAULT_TOP_DIMENSIONS,
                     violation_metrics=[
-                        Metrics.MIN_LENGTH.name,
-                        Metrics.MAX_LENGTH.name,
+                        Metrics.minLength.name,
+                        Metrics.maxLength.name,
                     ],
                     violation_predicate=checker.violates_pandas,
                 )
