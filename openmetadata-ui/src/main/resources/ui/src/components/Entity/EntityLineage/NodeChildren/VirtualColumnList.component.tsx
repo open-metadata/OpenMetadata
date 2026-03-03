@@ -84,6 +84,12 @@ const VirtualColumnList = ({
       prevColumnFqnsRef.current = columnFqnsKey;
       updateColumnsInCurrentPages(nodeId, columnFqns);
     }
+
+    return () => {
+      // clear columns hence edges will be discarded
+      updateColumnsInCurrentPages(nodeId, []);
+      prevColumnFqnsRef.current = '';
+    };
   }, [visibleFlatItems, nodeId, outsideFlatItems, updateColumnsInCurrentPages]);
   const canScrollUp = offset > 0;
   const canScrollDown = endIndex < flatItems.length - 1;

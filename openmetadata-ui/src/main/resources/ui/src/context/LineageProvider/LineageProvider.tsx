@@ -232,6 +232,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   // Add state for entityFqn that can be updated independently of URL params
   const [entityFqn, setEntityFqn] = useState<string>(decodedFqn);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
   const queryFilter = useMemo(() => {
     const quickFilterQuery = getQuickFilterQuery(selectedQuickFilters);
@@ -1185,6 +1186,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setSelectedEdge(undefined);
         setActiveNode(node);
         setSelectedNode(node.data.node as SourceType);
+        setIsDrawerOpen(true);
         handleLineageTracing(node);
       }
     },
@@ -1197,11 +1199,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setSelectedColumn('');
     setActiveNode(undefined);
     setSelectedNode(undefined);
-    setSelectedEdge(undefined);
+    setIsDrawerOpen(false);
   }, []);
 
   const onEdgeClick = useCallback((edge: Edge) => {
     setSelectedEdge(edge);
+    setIsDrawerOpen(true);
     setActiveNode(undefined);
     setSelectedNode(undefined);
     setTracedNodes(new Set());
@@ -1219,8 +1222,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   };
 
   const onCloseDrawer = useCallback(() => {
-    setSelectedEdge(undefined);
-    setSelectedNode(undefined);
+    setIsDrawerOpen(false);
   }, []);
 
   const onRemove = useCallback(async () => {
@@ -1913,10 +1915,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         {!isEditMode && (selectedEdge || selectedNode) && (
           <Drawer
-            open
             anchor="right"
             className="lineage-entity-panel"
             data-testid="lineage-entity-panel"
+            open={isDrawerOpen}
             sx={{
               zIndex: 999,
               '& .MuiDrawer-paper': {

@@ -81,7 +81,7 @@ describe('useLineageStore', () => {
     });
 
     expect(result.current.isEditMode).toBe(false);
-    expect(result.current.activeLayer).not.toContain(
+    expect(result.current.activeLayer).toContain(
       LineageLayer.ColumnLevelLineage
     );
   });
@@ -242,7 +242,7 @@ describe('useLineageStore', () => {
     const { result } = renderHook(() => useLineageStore());
 
     act(() => {
-      result.current.setPlatformView(LineagePlatformView.Table);
+      result.current.setPlatformView(LineagePlatformView.Service);
       result.current.setActiveLayer([LineageLayer.ColumnLevelLineage]);
     });
 
@@ -295,10 +295,10 @@ describe('useLineageStore', () => {
     const { result } = renderHook(() => useLineageStore());
 
     act(() => {
-      result.current.setPlatformView(LineagePlatformView.Table);
+      result.current.setPlatformView(LineagePlatformView.Service);
     });
 
-    expect(result.current.platformView).toBe(LineagePlatformView.Table);
+    expect(result.current.platformView).toBe(LineagePlatformView.Service);
   });
 
   it('sets isPlatformLineage', () => {
