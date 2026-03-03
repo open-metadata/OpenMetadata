@@ -127,7 +127,7 @@
     "react-aria-components": "^1.15.1",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.71.1",
-    "storybook": "^8.6.15",
+    "storybook": "^8.6.17",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
     "tailwindcss-animate": "^1.0.7",

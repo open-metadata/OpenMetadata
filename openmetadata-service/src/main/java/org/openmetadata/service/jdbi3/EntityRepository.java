@@ -1225,6 +1225,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public String getCursorAtOffset(ListFilter filter, int offset) {
     List<String> jsons = dao.listAfter(filter, 1, offset);
     if (jsons.isEmpty()) {
+      LOG.debug(
+          "getCursorAtOffset for {} at offset {} returned empty (filter condition={})",
+          entityType,
+          offset,
+          filter.getCondition(dao.getTableName()));
       return null;
     }
     T entity = JsonUtils.readValue(jsons.get(0), entityClass);

@@ -30,11 +30,26 @@ public class StatsReconciler {
     int sinkFailed = safeGet(sinkStats.getFailedRecords());
     int sinkWarnings = safeGet(sinkStats.getWarningRecords());
 
+    // Reconcile entity-level totals
+    if (stats.getEntityStats() != null
+        && stats.getEntityStats().getAdditionalProperties() != null) {
+      int reconciledTotal = 0;
+      for (StepStats es : stats.getEntityStats().getAdditionalProperties().values()) {
+        int actual = safeGet(es.getSuccessRecords()) + safeGet(es.getFailedRecords());
+        if (actual > safeGet(es.getTotalRecords())) {
+          es.setTotalRecords(actual);
+        }
+        reconciledTotal += safeGet(es.getTotalRecords());
+      }
+      if (reconciledTotal > readerTotal) {
+        readerStats.setTotalRecords(reconciledTotal);
+        readerTotal = reconciledTotal;
+      }
+    }
+
     int jobSuccess = sinkSuccess;
     int jobFailed = readerFailed + sinkFailed;
     int jobTotal = readerTotal;
-    // Warnings are informational - use reader warnings as the primary source
-    // (entities with stale references that were still indexed)
     int jobWarnings = readerWarnings;
 
     jobStats.setTotalRecords(jobTotal);

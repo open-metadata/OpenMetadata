@@ -17,11 +17,13 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String, create_engine
-from sqlalchemy.orm import Session, declarative_base
+from sqlalchemy.orm import DeclarativeBase, Session
 
 from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):
