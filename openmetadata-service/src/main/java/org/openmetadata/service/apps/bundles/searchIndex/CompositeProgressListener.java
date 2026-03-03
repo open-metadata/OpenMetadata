@@ -123,6 +123,51 @@ public class CompositeProgressListener implements ReindexingProgressListener {
   }
 
   @Override
+  public void onReaderFailure(String entityType, String entityId, String error, FailureType type) {
+    for (ReindexingProgressListener listener : listeners) {
+      try {
+        listener.onReaderFailure(entityType, entityId, error, type);
+      } catch (Exception e) {
+        LOG.error("Listener {} failed on onReaderFailure", listener.getClass().getSimpleName(), e);
+      }
+    }
+  }
+
+  @Override
+  public void onProcessFailure(String entityType, String entityId, String error) {
+    for (ReindexingProgressListener listener : listeners) {
+      try {
+        listener.onProcessFailure(entityType, entityId, error);
+      } catch (Exception e) {
+        LOG.error("Listener {} failed on onProcessFailure", listener.getClass().getSimpleName(), e);
+      }
+    }
+  }
+
+  @Override
+  public void onSinkFailure(String entityType, String entityId, String error) {
+    for (ReindexingProgressListener listener : listeners) {
+      try {
+        listener.onSinkFailure(entityType, entityId, error);
+      } catch (Exception e) {
+        LOG.error("Listener {} failed on onSinkFailure", listener.getClass().getSimpleName(), e);
+      }
+    }
+  }
+
+  @Override
+  public void onSubIndexingCompleted(String entityType, String subIndex, StepStats subIndexStats) {
+    for (ReindexingProgressListener listener : listeners) {
+      try {
+        listener.onSubIndexingCompleted(entityType, subIndex, subIndexStats);
+      } catch (Exception e) {
+        LOG.error(
+            "Listener {} failed on onSubIndexingCompleted", listener.getClass().getSimpleName(), e);
+      }
+    }
+  }
+
+  @Override
   public void onJobCompleted(Stats finalStats, long elapsedMillis) {
     for (ReindexingProgressListener listener : listeners) {
       try {
