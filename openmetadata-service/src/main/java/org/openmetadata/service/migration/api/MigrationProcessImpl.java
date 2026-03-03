@@ -50,7 +50,7 @@ public class MigrationProcessImpl implements MigrationProcess {
   }
 
   public void initializeWorkflowHandler() {
-    WorkflowHandler.initialize(openMetadataApplicationConfig);
+    WorkflowHandler.initialize(openMetadataApplicationConfig, true);
   }
 
   public PipelineServiceClientInterface getPipelineServiceClient() {
