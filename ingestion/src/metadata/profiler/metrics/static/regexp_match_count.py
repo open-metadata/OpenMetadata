@@ -68,14 +68,12 @@ class RegexCount(StaticMetric):
             )
         return SumFn(
             case(
-                [
-                    (
-                        RegexpMatchFn(
-                            column(self.col.name, self.col.type), self.expression
-                        ),
-                        1,
-                    )
-                ],
+                (
+                    RegexpMatchFn(
+                        column(self.col.name, self.col.type), self.expression
+                    ),
+                    1,
+                ),
                 else_=0,
             )
         )

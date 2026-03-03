@@ -21,7 +21,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String, func, inspect
 from sqlalchemy.exc import DBAPIError
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.api.data.createTableProfile import (
@@ -57,7 +57,11 @@ from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
-class User(declarative_base()):
+class _Base(DeclarativeBase):
+    pass
+
+
+class User(_Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     name = Column(String(256))

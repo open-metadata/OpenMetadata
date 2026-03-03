@@ -59,7 +59,8 @@ class NoSQLSampler(SamplerInterface):
         ]
         rows, cols = self.transpose_records(records, columns)
         return TableData(
-            rows=[list(map(str, row)) for row in rows], columns=[c.name for c in cols]
+            rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
+            columns=[c.name for c in cols],
         )
 
     def get_dataset(self, **__):
@@ -80,7 +81,7 @@ class NoSQLSampler(SamplerInterface):
         )
         rows, cols = self.transpose_records(records, columns)
         return TableData(
-            rows=[list(map(str, row)) for row in rows],
+            rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
             columns=[col.name for col in cols],
         )
 

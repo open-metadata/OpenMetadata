@@ -16,8 +16,8 @@ Integration tests for MySQLTableMetricComputer against a real MySQL database.
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, Integer, String, create_engine, text
+from sqlalchemy.orm import DeclarativeBase
 from testcontainers.mysql import MySqlContainer
 
 from metadata.generated.schema.entity.data.table import TableType
@@ -27,7 +27,9 @@ from metadata.profiler.orm.functions.table_metric_computer import (
 )
 from metadata.profiler.processor.runner import QueryRunner
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class MetricComputerTestTable(Base):
@@ -48,15 +50,23 @@ def mysql_engine():
     container = MySqlContainer(image="mysql:8.4.5", dbname="test_metrics")
     with container as container:
         engine = create_engine(container.get_connection_url())
-        engine.execute(
-            "CREATE TABLE IF NOT EXISTS metric_computer_test "
-            "(id INTEGER PRIMARY KEY, name VARCHAR(256))"
-        )
-        values = ", ".join(f"({i}, 'name_{i}')" for i in range(1, 101))
-        engine.execute(f"INSERT INTO metric_computer_test (id, name) VALUES {values}")
-        engine.execute("ANALYZE TABLE metric_computer_test")
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS metric_computer_test "
+                    "(id INTEGER PRIMARY KEY, name VARCHAR(256))"
+                )
+            )
+            values = ", ".join(f"({i}, 'name_{i}')" for i in range(1, 101))
+            conn.execute(
+                text(f"INSERT INTO metric_computer_test (id, name) VALUES {values}")
+            )
+            conn.execute(text("ANALYZE TABLE metric_computer_test"))
+            conn.commit()
         yield engine
-        engine.execute("DROP TABLE IF EXISTS metric_computer_test")
+        with engine.connect() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS metric_computer_test"))
+            conn.commit()
         engine.dispose()
 
 
