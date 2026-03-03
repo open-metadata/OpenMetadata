@@ -611,8 +611,9 @@ public class OsUtils {
       return;
     }
 
-    ObjectNode indexSettings = (ObjectNode) rootNode.path("settings").path("index");
-    if (!indexSettings.isMissingNode()) {
+    JsonNode indexSettingsNode = rootNode.path("settings").path("index");
+    if (!indexSettingsNode.isMissingNode() && indexSettingsNode.isObject()) {
+      ObjectNode indexSettings = (ObjectNode) indexSettingsNode;
       indexSettings.put("knn", true);
       indexSettings.put("knn.algo_param.ef_search", 1000);
       indexSettings.put("knn.advanced.filtered_exact_search_threshold", 0);
