@@ -242,6 +242,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void runReindexing(JobExecutionContext jobExecutionContext) throws Exception {
     boolean success = false;
     try {
+      preflightFixes(jobExecutionContext);
       setupEntities();
       LOG.info(
           "Search Index Job Started for Entities: {}, RecreateIndex: {}",
@@ -262,6 +263,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       handleJobCompletion();
     } finally {
       finalizeAllEntityReindex(success);
+      cleanupOrphanedIndicesPostJob();
     }
   }
 
@@ -514,6 +516,63 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
     } catch (Exception ex) {
       LOG.error("Failed in marking stale entries as stopped.", ex);
+    }
+  }
+
+  private static final String SEARCH_INDEXING_APP_NAME = "SearchIndexingApplication";
+
+  private void preflightFixes(JobExecutionContext jobExecutionContext) {
+    LOG.info("Running preflight fixes before reindexing");
+    markStaleRunningJobsStopped(jobExecutionContext);
+    cleanupOrphanedIndicesPreFlight();
+  }
+
+  private void markStaleRunningJobsStopped(JobExecutionContext jobExecutionContext) {
+    try {
+      AppRunRecord currentRecord = getJobRecord(jobExecutionContext);
+      if (currentRecord != null && currentRecord.getStartTime() != null) {
+        collectionDAO
+            .appExtensionTimeSeriesDao()
+            .markStaleEntriesStoppedBefore(SEARCH_INDEXING_APP_NAME, currentRecord.getStartTime());
+        LOG.info(
+            "Preflight: marked stale running jobs as stopped for {}", SEARCH_INDEXING_APP_NAME);
+      }
+    } catch (Exception e) {
+      LOG.warn("Preflight: failed to cleanup stale running jobs: {}", e.getMessage());
+    }
+  }
+
+  private void cleanupOrphanedIndicesPreFlight() {
+    try {
+      OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
+      OrphanedIndexCleaner.CleanupResult result =
+          cleaner.cleanupOrphanedIndices(searchRepository.getSearchClient());
+      if (result.found() > 0) {
+        LOG.info(
+            "Preflight: cleaned up {} orphaned rebuild indices (found={}, failed={})",
+            result.deleted(),
+            result.found(),
+            result.failed());
+      }
+    } catch (Exception e) {
+      LOG.warn("Preflight: failed to cleanup orphaned indices: {}", e.getMessage());
+    }
+  }
+
+  private void cleanupOrphanedIndicesPostJob() {
+    try {
+      OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
+      OrphanedIndexCleaner.CleanupResult result =
+          cleaner.cleanupOrphanedIndices(searchRepository.getSearchClient());
+      if (result.deleted() > 0) {
+        LOG.info(
+            "Cleaned up {} orphaned rebuild indices on Job End (found={}, failed={})",
+            result.deleted(),
+            result.found(),
+            result.failed());
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to cleanup orphaned indices on Job End: {}", e.getMessage());
     }
   }
 
