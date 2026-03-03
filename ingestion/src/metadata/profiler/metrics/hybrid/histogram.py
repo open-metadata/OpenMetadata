@@ -16,7 +16,7 @@ import math
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
 
 from sqlalchemy import and_, case, column, func
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from metadata.profiler.processor.runner import PandasRunner
@@ -141,7 +141,7 @@ class Histogram(HybridMetric):
 
     def fn(
         self,
-        sample: Optional[DeclarativeMeta],
+        sample: Optional[type],
         res: Dict[str, Any],
         session: Optional[Session] = None,
     ):
@@ -189,14 +189,14 @@ class Histogram(HybridMetric):
                 # for the last bin we won't add the upper bound
                 condition = and_(col >= starting_bin_bound)
                 case_stmts.append(
-                    func.count(case([(condition, col)])).label(
+                    func.count(case((condition, col))).label(
                         self._format_bin_labels(starting_bin_bound)
                     )
                 )
                 continue
 
             case_stmts.append(
-                func.count(case([(condition, col)])).label(
+                func.count(case((condition, col))).label(
                     self._format_bin_labels(
                         starting_bin_bound,
                         ending_bin_bound,
@@ -209,7 +209,7 @@ class Histogram(HybridMetric):
         rows = session.query(*case_stmts).select_from(sample).first()
 
         if rows:
-            return {"boundaries": list(rows.keys()), "frequencies": list(rows)}
+            return {"boundaries": list(rows._mapping.keys()), "frequencies": list(rows)}
         return None
 
     def df_fn(

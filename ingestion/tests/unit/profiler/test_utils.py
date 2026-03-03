@@ -18,7 +18,7 @@ from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import Column
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.sqltypes import Integer, String
 
 from metadata.ingestion.source.database.snowflake.models import SnowflakeQueryLogEntry
@@ -35,7 +35,9 @@ from metadata.utils.profiler_utils import (
 )
 from metadata.utils.sqa_utils import is_array
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class Users(Base):
