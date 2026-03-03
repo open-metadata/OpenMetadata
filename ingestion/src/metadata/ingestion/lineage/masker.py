@@ -130,6 +130,22 @@ def mask_literals_with_sqlfluff(
     return query
 
 
+@calculate_execution_time(context="GetSqlParseLineageRunner")
+def get_sqlparse_lineage_runner(query: str) -> LineageRunner:
+    lr_sqlparse = LineageRunner(query, analyzer=SqlParseLineageAnalyzer)
+    len(lr_sqlparse.source_tables)
+    return lr_sqlparse
+
+
+@calculate_execution_time(context="GetSqlFluffLineageRunner")
+def get_sqlfluff_lineage_runner(query: str, dialect: str) -> LineageRunner:
+    lr_sqlfluff = LineageRunner(
+        query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer
+    )
+    len(lr_sqlfluff.source_tables)
+    return lr_sqlfluff
+
+
 @calculate_execution_time(context="MaskQuery")
 def mask_query(
     query: str,
@@ -174,8 +190,7 @@ def mask_query_impl(
         # Since SqlGlot generalizes query structures/syntax, we will use
         # SqlParse for masking if SqlGlot is used for parsing
         if parser and isinstance(parser._analyzer, SqlGlotLineageAnalyzer):
-            masking_parser = LineageRunner(query, analyzer=SqlParseLineageAnalyzer)
-            len(masking_parser.source_tables)
+            masking_parser = get_sqlparse_lineage_runner(query)
 
         if not masking_parser:
             # Try to create a parser with the same fallback strategy as LineageParser
@@ -184,14 +199,10 @@ def mask_query_impl(
             # TODO: Evaluate if sqlparse should be the first choice here since it is
             # faster and almost same support as sqlfluff for masking literals.
             try:
-                masking_parser = LineageRunner(
-                    query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer
-                )
-                len(masking_parser.source_tables)
+                masking_parser = get_sqlparse_lineage_runner(query)
             except Exception:
-                masking_parser = LineageRunner(query, analyzer=SqlParseLineageAnalyzer)
-                len(masking_parser.source_tables)
 
+                masking_parser = get_sqlfluff_lineage_runner(query, dialect=dialect)
         logger.debug(
             f"{hash_prefix}Query masking started using [{masking_parser._analyzer.__class__.__name__}]"
             f" for parser [{parser and parser._analyzer.__class__.__name__}]"
