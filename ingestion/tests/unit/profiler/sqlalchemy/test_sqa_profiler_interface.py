@@ -71,7 +71,11 @@ class User(_Base):
     age = Column(Integer)
 
 
-class MixedCaseTable(declarative_base()):
+class _MixedCaseBase(DeclarativeBase):
+    pass
+
+
+class MixedCaseTable(_MixedCaseBase):
     """Mimics ometa_to_sqa_orm output: name keeps original case, key is lowercased."""
 
     __tablename__ = "mixed_case_test"
@@ -115,7 +119,8 @@ def sqa_profiler_interface(table_entity, sqlite_conn):
         interface = SQAProfilerInterface(
             sqlite_conn, None, table_entity, None, sampler, 5, 43200
         )
-    return interface
+    yield interface
+    interface.close()
 
 
 def test_init_interface(sqa_profiler_interface):
