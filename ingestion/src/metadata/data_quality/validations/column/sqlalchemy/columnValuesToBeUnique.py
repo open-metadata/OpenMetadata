@@ -82,12 +82,12 @@ class ColumnValuesToBeUniqueValidator(
 
             row = self.runner._select_from_dataset(
                 grouped_cte,
-                func.sum(grouped_cte.c[column.name]).label(Metrics.COUNT.name),
-                unique_count.label(Metrics.UNIQUE_COUNT.name),
+                func.sum(grouped_cte.c[column.name]).label(Metrics.valuesCount.name),
+                unique_count.label(Metrics.uniqueCount.name),
                 query_group_by_=query_group_by_,
             ).first()
             self.value = dict(row._mapping)  # type: ignore
-            res = self.value.get(Metrics.COUNT.name)
+            res = self.value.get(Metrics.valuesCount.name)
         except Exception as exc:
             raise SQLAlchemyError(exc)
 

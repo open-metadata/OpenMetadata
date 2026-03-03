@@ -56,7 +56,7 @@ class ColumnValuesToMatchRegexValidator(
             regex_count_fn = regex_count.fn()
 
             row = self.runner.dispatch_query_select_first(
-                Metrics.COUNT(column).fn(),
+                Metrics.valuesCount(column).fn(),
                 regex_count_fn,
             )
             res = dict(row._mapping)
@@ -68,7 +68,7 @@ class ColumnValuesToMatchRegexValidator(
             regex_count.expression = kwargs.get("expression")
             regex_count_fn = regex_count.fn()
             row = self.runner.dispatch_query_select_first(
-                Metrics.COUNT(column).fn(),
+                Metrics.valuesCount(column).fn(),
                 regex_count_fn,
             )
             res = dict(row._mapping)

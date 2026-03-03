@@ -170,11 +170,11 @@ class SQAValidatorMixin:
         """
         try:
             row = runner.dispatch_query_select_first(
-                Metrics.ROW_COUNT(column).fn(),
+                Metrics.rowCount(column).fn(),
                 query_filter_=query_filter,
             )
             value = dict(row._mapping)
-            res = value.get(Metrics.ROW_COUNT.name)
+            res = value.get(Metrics.rowCount.name)
         except Exception as exc:
             raise SQLAlchemyError(exc)
 
