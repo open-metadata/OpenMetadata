@@ -17,6 +17,7 @@ from time import sleep
 from typing import List, Tuple
 
 import pytest
+from sqlalchemy import text
 
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
@@ -322,17 +323,21 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @classmethod
     def wait_for_query_log(cls, timeout=600):
         start = datetime.now().timestamp()
-        cls.engine.execute("SELECT 'e2e_query_log_wait'")
+        with cls.engine.connect() as conn:
+            conn.execute(text("SELECT 'e2e_query_log_wait'"))
         latest = 0
         while latest < start:
             sleep(5)
-            latest = (
-                cls.engine.execute(
-                    'SELECT max(start_time) FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"'
+            with cls.engine.connect() as conn:
+                latest = (
+                    conn.execute(
+                        text(
+                            'SELECT max(start_time) FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"'
+                        )
+                    )
+                    .scalar()
+                    .timestamp()
                 )
-                .scalar()
-                .timestamp()
-            )
             if (datetime.now().timestamp() - start) > timeout:
                 raise TimeoutError(f"Query log not updated for {timeout} seconds")
 

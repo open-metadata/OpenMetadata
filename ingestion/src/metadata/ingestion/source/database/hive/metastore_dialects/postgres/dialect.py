@@ -11,6 +11,7 @@
 """
 Hive Metastore Postgres Dialect Mixin
 """
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
 
@@ -35,7 +36,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
 
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
-        return [row[0] for row in connection.execute('select "NAME" from "DBS";')]
+        return [row[0] for row in connection.execute(text('select "NAME" from "DBS";'))]
 
     # pylint: disable=arguments-differ
     def get_view_names(self, connection, schema=None, **kw):
@@ -43,7 +44,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
         # This allows reflection to not crash at the cost of being inaccurate
         query = self._get_table_names_base_query(schema=schema)
         query += """ WHERE "TBL_TYPE" = 'VIRTUAL_VIEW'"""
-        return [row[0] for row in connection.execute(query)]
+        return [row[0] for row in connection.execute(text(query))]
 
     def _get_table_columns(self, connection, table_name, schema):
         # Build schema join clause if schema is provided
@@ -86,7 +87,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
             UNION ALL
             SELECT * FROM partition_columns
         """
-        return connection.execute(query).fetchall()
+        return connection.execute(text(query)).fetchall()
 
     def _get_table_names_base_query(self, schema=None):
         query = 'SELECT "TBL_NAME" from "TBLS" tbl'
@@ -98,7 +99,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
     def get_table_names(self, connection, schema=None, **kw):
         query = self._get_table_names_base_query(schema=schema)
         query += """ WHERE "TBL_TYPE" != 'VIRTUAL_VIEW'"""
-        return [row[0] for row in connection.execute(query)]
+        return [row[0] for row in connection.execute(text(query))]
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
