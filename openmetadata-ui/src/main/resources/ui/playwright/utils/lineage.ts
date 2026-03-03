@@ -863,6 +863,9 @@ export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
     .getByTestId(`lineage-node-${tableFqn}`)
     .getByTestId('lineage-filter-button')
     .click();
+
+  // To remove tooltip
+  await clickOutside(page);
 };
 
 export const clickLineageNode = async (page: Page, nodeFqn: string) => {
