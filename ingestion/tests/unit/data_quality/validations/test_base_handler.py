@@ -418,9 +418,21 @@ class TestGetTopDimensions:
         validator = make_validator(top_dimensions=1)
         assert validator._get_top_dimensions() == 1
 
-    def test_returns_large_value(self, make_validator):
+    def test_caps_large_value_to_maximum(self, make_validator):
         validator = make_validator(top_dimensions=100)
-        assert validator._get_top_dimensions() == 100
+        assert validator._get_top_dimensions() == 50
+
+    def test_returns_value_at_maximum(self, make_validator):
+        validator = make_validator(top_dimensions=50)
+        assert validator._get_top_dimensions() == 50
+
+    def test_returns_value_just_below_maximum(self, make_validator):
+        validator = make_validator(top_dimensions=49)
+        assert validator._get_top_dimensions() == 49
+
+    def test_caps_value_just_above_maximum(self, make_validator):
+        validator = make_validator(top_dimensions=51)
+        assert validator._get_top_dimensions() == 50
 
     def test_returns_default_when_negative(self, make_validator):
         validator = make_validator(top_dimensions=-3)

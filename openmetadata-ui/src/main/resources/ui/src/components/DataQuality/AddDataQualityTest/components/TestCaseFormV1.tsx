@@ -1204,6 +1204,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               <InputNumber
                 className="w-full"
                 id="root/topDimensions"
+                max={50}
                 min={1}
                 placeholder="5"
               />
