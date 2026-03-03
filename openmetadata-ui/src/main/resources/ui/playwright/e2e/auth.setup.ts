@@ -213,7 +213,6 @@ setup('authenticate all users', async ({ browser }) => {
       await newAdminPage.close();
     }
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('Error during authentication setup:', error);
 
     throw error;

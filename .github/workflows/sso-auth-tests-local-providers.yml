@@ -1,0 +1,421 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# This workflow runs SSO authentication tests with local SSO providers (Keycloak SAML and LDAP)
+# No external cloud dependencies required - everything runs in Docker
+
+name: SSO Tests - Local Providers (Keycloak & LDAP)
+
+on:
+  schedule:
+    # Run every night at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allow manual trigger
+    inputs:
+      sso_provider:
+        description: "Local SSO Provider to test"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - keycloak-saml
+          - ldap
+          - all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sso-local-tests-${{ github.workflow }}-${{ github.event.inputs.sso_provider || 'scheduled' }}
+  cancel-in-progress: true
+
+jobs:
+  sso-local-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        provider: ${{ github.event.inputs.sso_provider == 'all' && fromJSON('["keycloak-saml", "ldap"]') || github.event.inputs.sso_provider && fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) || fromJSON('["keycloak-saml", "ldap"]') }}
+
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
+
+      - name: Install UI dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: yarn --ignore-scripts --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: npx playwright@1.51.1 install --with-deps chromium
+
+      # Keycloak SAML Setup
+      - name: Start Keycloak for SAML
+        if: matrix.provider == 'keycloak-saml'
+        run: |
+          docker network create openmetadata-test || true
+
+          docker run -d \
+            --name keycloak-saml \
+            --network openmetadata-test \
+            -p 8080:8080 \
+            -e KEYCLOAK_ADMIN=admin \
+            -e KEYCLOAK_ADMIN_PASSWORD=admin123 \
+            quay.io/keycloak/keycloak:23.0 \
+            start-dev
+
+          # Wait for Keycloak to be ready
+          timeout 120 bash -c 'until curl -f http://localhost:8080/health/ready; do sleep 2; done'
+          echo "Keycloak is ready"
+
+      - name: Configure Keycloak SAML Realm
+        if: matrix.provider == 'keycloak-saml'
+        run: |
+          # Get admin token
+          TOKEN=$(curl -X POST 'http://localhost:8080/realms/master/protocol/openid-connect/token' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            -d 'username=admin' \
+            -d 'password=admin123' \
+            -d 'grant_type=password' \
+            -d 'client_id=admin-cli' | jq -r '.access_token')
+
+          # Create OpenMetadata realm
+          curl -X POST 'http://localhost:8080/admin/realms' \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "realm": "openmetadata",
+              "enabled": true,
+              "displayName": "OpenMetadata SAML Realm"
+            }'
+
+          # Create SAML client
+          curl -X POST 'http://localhost:8080/admin/realms/openmetadata/clients' \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "clientId": "http://localhost:8585",
+              "name": "OpenMetadata SAML Client",
+              "enabled": true,
+              "protocol": "saml",
+              "attributes": {
+                "saml.authnstatement": "true",
+                "saml.server.signature": "true",
+                "saml.assertion.signature": "true",
+                "saml.client.signature": "false",
+                "saml_name_id_format": "email",
+                "saml_force_name_id_format": "true"
+              },
+              "redirectUris": ["http://localhost:8585/*"],
+              "baseUrl": "http://localhost:8585",
+              "adminUrl": "http://localhost:8585"
+            }'
+
+          # Create test user
+          curl -X POST 'http://localhost:8080/admin/realms/openmetadata/users' \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "username": "testuser",
+              "email": "testuser@openmetadata.org",
+              "firstName": "Test",
+              "lastName": "User",
+              "enabled": true,
+              "emailVerified": true,
+              "credentials": [{
+                "type": "password",
+                "value": "Test@123",
+                "temporary": false
+              }]
+            }'
+
+          echo "Keycloak SAML realm configured successfully"
+
+      # LDAP Setup
+      - name: Start OpenLDAP
+        if: matrix.provider == 'ldap'
+        run: |
+          docker network create openmetadata-test || true
+
+          docker run -d \
+            --name openldap \
+            --network openmetadata-test \
+            -p 389:1389 \
+            -p 636:1636 \
+            -e LDAP_ORGANISATION="OpenMetadata" \
+            -e LDAP_DOMAIN="openmetadata.org" \
+            -e LDAP_ADMIN_PASSWORD="admin123" \
+            -e LDAP_CONFIG_PASSWORD="config123" \
+            -e LDAP_READONLY_USER="true" \
+            -e LDAP_READONLY_USER_USERNAME="readonly" \
+            -e LDAP_READONLY_USER_PASSWORD="readonly123" \
+            osixia/openldap:1.5.0
+
+          # Wait for LDAP to be ready
+          sleep 10
+          echo "OpenLDAP is ready"
+
+      - name: Configure OpenLDAP with Test Users
+        if: matrix.provider == 'ldap'
+        run: |
+          # Create LDIF for organizational units and test users
+          cat > test-users.ldif << 'EOF'
+          dn: ou=users,dc=openmetadata,dc=org
+          objectClass: organizationalUnit
+          ou: users
+
+          dn: ou=groups,dc=openmetadata,dc=org
+          objectClass: organizationalUnit
+          ou: groups
+
+          dn: uid=testuser,ou=users,dc=openmetadata,dc=org
+          objectClass: inetOrgPerson
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          uid: testuser
+          cn: Test User
+          sn: User
+          givenName: Test
+          mail: testuser@openmetadata.org
+          uidNumber: 10001
+          gidNumber: 10001
+          homeDirectory: /home/testuser
+          loginShell: /bin/bash
+          userPassword: Test@123
+
+          dn: uid=adminuser,ou=users,dc=openmetadata,dc=org
+          objectClass: inetOrgPerson
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          uid: adminuser
+          cn: Admin User
+          sn: Admin
+          givenName: Admin
+          mail: admin@openmetadata.org
+          uidNumber: 10002
+          gidNumber: 10002
+          homeDirectory: /home/adminuser
+          loginShell: /bin/bash
+          userPassword: Admin@123
+
+          dn: cn=admins,ou=groups,dc=openmetadata,dc=org
+          objectClass: groupOfNames
+          cn: admins
+          member: uid=adminuser,ou=users,dc=openmetadata,dc=org
+          EOF
+
+          # Add entries to LDAP
+          docker exec openldap ldapadd -x -D "cn=admin,dc=openmetadata,dc=org" -w admin123 -f /container/service/slapd/assets/test/test-users.ldif || true
+          docker cp test-users.ldif openldap:/tmp/test-users.ldif
+          docker exec openldap ldapadd -x -D "cn=admin,dc=openmetadata,dc=org" -w admin123 -f /tmp/test-users.ldif
+
+          echo "OpenLDAP configured with test users"
+
+      # Build OpenMetadata
+      - name: Build OpenMetadata
+        run: |
+          mvn clean install -DskipTests -Dmaven.javadoc.skip=true
+        timeout-minutes: 30
+
+      # Start OpenMetadata with SSO Config
+      - name: Start OpenMetadata with Keycloak SAML
+        if: matrix.provider == 'keycloak-saml'
+        run: |
+          # Create custom openmetadata.yaml for Keycloak SAML
+          mkdir -p docker/test-config
+          cat > docker/test-config/openmetadata-keycloak-saml.yaml << 'EOF'
+          authenticationConfiguration:
+            provider: "saml"
+            providerName: "Keycloak SAML"
+            publicKeyUrls:
+              - "http://keycloak-saml:8080/realms/openmetadata/protocol/saml/descriptor"
+            authority: "http://localhost:8080"
+            clientId: "http://localhost:8585"
+            callbackUrl: "http://localhost:8585/callback"
+            samlConfiguration:
+              debugMode: false
+              idp:
+                entityId: "http://localhost:8080/realms/openmetadata"
+                ssoLoginUrl: "http://localhost:8080/realms/openmetadata/protocol/saml"
+                authorityUrl: "http://localhost:8080"
+                nameId: "email"
+              sp:
+                entityId: "http://localhost:8585"
+                acs: "http://localhost:8585/callback"
+                callback: "http://localhost:8585/callback"
+              security:
+                strictMode: false
+                tokenValidity: 3600
+                wantAssertionsSigned: false
+                wantMessagesSigned: false
+                sendSignedAuthRequest: false
+
+          authorizerConfiguration:
+            className: "org.openmetadata.service.security.DefaultAuthorizer"
+            containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+            adminPrincipals:
+              - "admin@openmetadata.org"
+            principalDomain: "http://localhost:8080"
+          EOF
+
+          # Start OpenMetadata with Docker Compose
+          cd docker/development
+          OPENMETADATA_CONFIG=/app/openmetadata-keycloak-saml.yaml docker-compose up -d
+
+          # Wait for OpenMetadata to be ready
+          timeout 180 bash -c 'until curl -f http://localhost:8585/api/v1/system/status; do sleep 5; done'
+          echo "OpenMetadata with Keycloak SAML is ready"
+
+      - name: Start OpenMetadata with LDAP
+        if: matrix.provider == 'ldap'
+        run: |
+          # Create custom openmetadata.yaml for LDAP
+          mkdir -p docker/test-config
+          cat > docker/test-config/openmetadata-ldap.yaml << 'EOF'
+          authenticationConfiguration:
+            provider: "ldap"
+            providerName: "OpenLDAP"
+            publicKeyUrls:
+              - "http://localhost:8585/api/v1/system/config/jwks"
+            authority: "http://localhost:8585"
+            clientId: "openmetadata"
+            callbackUrl: "http://localhost:8585/callback"
+            ldapConfiguration:
+              host: "openldap"
+              port: 1389
+              dnAdminPrincipal: "cn=admin,dc=openmetadata,dc=org"
+              dnAdminPassword: "admin123"
+              userBaseDN: "ou=users,dc=openmetadata,dc=org"
+              groupBaseDN: "ou=groups,dc=openmetadata,dc=org"
+              sslEnabled: false
+              maxPoolSize: 3
+              usernameAttributeName: "uid"
+              mailAttributeName: "mail"
+              groupAttributeName: "cn"
+              groupAttributeValue: "member"
+              groupMemberAttributeName: "member"
+
+          authorizerConfiguration:
+            className: "org.openmetadata.service.security.DefaultAuthorizer"
+            containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+            adminPrincipals:
+              - "admin@openmetadata.org"
+              - "adminuser"
+            principalDomain: "openmetadata.org"
+          EOF
+
+          # Start OpenMetadata with Docker Compose
+          cd docker/development
+          OPENMETADATA_CONFIG=/app/openmetadata-ldap.yaml docker-compose up -d
+
+          # Wait for OpenMetadata to be ready
+          timeout 180 bash -c 'until curl -f http://localhost:8585/api/v1/system/status; do sleep 5; done'
+          echo "OpenMetadata with LDAP is ready"
+
+      # Run Playwright Tests
+      - name: Run SSO Authentication Tests
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npx playwright test playwright/e2e/Auth/SSOAuthentication.spec.ts --workers=1
+        env:
+          SSO_PROVIDER_TYPE: ${{ matrix.provider == 'keycloak-saml' && 'saml' || 'ldap' }}
+          SSO_USERNAME: testuser
+          SSO_PASSWORD: Test@123
+          PLAYWRIGHT_TEST_BASE_URL: http://localhost:8585
+          PLAYWRIGHT_IS_OSS: true
+        timeout-minutes: 30
+
+      # Upload Results
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sso-test-results-${{ matrix.provider }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+          retention-days: 7
+
+      - name: Upload test traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sso-test-traces-${{ matrix.provider }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/test-results/**/trace.zip
+          retention-days: 7
+
+      - name: Upload SSO provider logs
+        if: failure()
+        run: |
+          mkdir -p logs
+          if [ "${{ matrix.provider }}" == "keycloak-saml" ]; then
+            docker logs keycloak-saml > logs/keycloak.log 2>&1 || true
+          else
+            docker logs openldap > logs/openldap.log 2>&1 || true
+          fi
+          docker logs openmetadata-server > logs/openmetadata.log 2>&1 || true
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sso-logs-${{ matrix.provider }}
+          path: logs/
+          retention-days: 7
+
+      # Cleanup
+      - name: Clean Up
+        if: always()
+        run: |
+          cd docker/development
+          docker-compose down --remove-orphans || true
+          docker stop keycloak-saml openldap || true
+          docker rm keycloak-saml openldap || true
+          docker network rm openmetadata-test || true
+          sudo rm -rf ${PWD}/docker-volume
+
+  notify:
+    needs: sso-local-tests
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Send notification on failure
+        run: |
+          echo "Local SSO tests failed for one or more providers (Keycloak SAML or LDAP)"
+          # Add notification logic here (Slack, email, etc.)

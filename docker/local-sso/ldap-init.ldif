@@ -1,0 +1,96 @@
+# LDIF file to initialize OpenLDAP with test users and groups
+# This creates organizational units and test users for OpenMetadata SSO testing
+
+# Organizational Unit for Users
+dn: ou=users,dc=openmetadata,dc=org
+objectClass: organizationalUnit
+objectClass: top
+ou: users
+description: OpenMetadata Users
+
+# Organizational Unit for Groups
+dn: ou=groups,dc=openmetadata,dc=org
+objectClass: organizationalUnit
+objectClass: top
+ou: groups
+description: OpenMetadata Groups
+
+# Test User 1 - Regular User
+dn: uid=testuser,ou=users,dc=openmetadata,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: top
+uid: testuser
+cn: Test User
+sn: User
+givenName: Test
+displayName: Test User
+mail: testuser@openmetadata.org
+uidNumber: 10001
+gidNumber: 10001
+homeDirectory: /home/testuser
+loginShell: /bin/bash
+userPassword: Test@123
+
+# Test User 2 - Admin User
+dn: uid=adminuser,ou=users,dc=openmetadata,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: top
+uid: adminuser
+cn: Admin User
+sn: Admin
+givenName: Admin
+displayName: Admin User
+mail: admin@openmetadata.org
+uidNumber: 10002
+gidNumber: 10002
+homeDirectory: /home/adminuser
+loginShell: /bin/bash
+userPassword: Admin@123
+
+# Test User 3 - Data Steward
+dn: uid=datasteward,ou=users,dc=openmetadata,dc=org
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: top
+uid: datasteward
+cn: Data Steward
+sn: Steward
+givenName: Data
+displayName: Data Steward
+mail: steward@openmetadata.org
+uidNumber: 10003
+gidNumber: 10003
+homeDirectory: /home/datasteward
+loginShell: /bin/bash
+userPassword: Steward@123
+
+# Admin Group
+dn: cn=admins,ou=groups,dc=openmetadata,dc=org
+objectClass: groupOfNames
+objectClass: top
+cn: admins
+description: OpenMetadata Administrators
+member: uid=adminuser,ou=users,dc=openmetadata,dc=org
+
+# Data Stewards Group
+dn: cn=datastewards,ou=groups,dc=openmetadata,dc=org
+objectClass: groupOfNames
+objectClass: top
+cn: datastewards
+description: OpenMetadata Data Stewards
+member: uid=datasteward,ou=users,dc=openmetadata,dc=org
+
+# Users Group (all users)
+dn: cn=users,ou=groups,dc=openmetadata,dc=org
+objectClass: groupOfNames
+objectClass: top
+cn: users
+description: All OpenMetadata Users
+member: uid=testuser,ou=users,dc=openmetadata,dc=org
+member: uid=adminuser,ou=users,dc=openmetadata,dc=org
+member: uid=datasteward,ou=users,dc=openmetadata,dc=org
