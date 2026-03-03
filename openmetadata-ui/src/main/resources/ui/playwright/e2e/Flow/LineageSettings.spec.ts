@@ -47,7 +47,7 @@ import {
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-test.describe('Lineage Settings Tests', () => {
+test.describe.serial('Lineage Settings Tests', () => {
   const table = new TableClass();
   const topic = new TopicClass();
   const dashboard = new DashboardClass();
