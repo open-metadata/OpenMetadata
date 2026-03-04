@@ -4,11 +4,17 @@
   "description": "Bearer token authentication for webhook endpoints.",
   "type": "object",
   "properties": {
+    "type": {
+      "description": "Authentication type discriminator.",
+      "type": "string",
+      "enum": ["bearer"],
+      "default": "bearer"
+    },
     "secretKey": {
       "description": "Secret key used for computing HMAC SHA256 signature of webhook payload, sent in the X-OM-Signature header.",
       "type": "string"
     }
   },
-  "required": ["secretKey"],
+  "required": ["type", "secretKey"],
   "additionalProperties": false
 }

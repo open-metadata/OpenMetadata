@@ -47,6 +47,7 @@ public class MigrationUtil {
           ObjectNode bearerAuth =
               JsonUtils.getObjectMapper()
                   .createObjectNode()
+                  .put("type", "bearer")
                   .put("secretKey", secretKeyNode.asText());
           configObj.set("authType", bearerAuth);
           configObj.remove("secretKey");

@@ -4,6 +4,12 @@
   "description": "OAuth2 Client Credentials configuration for webhook authentication.",
   "type": "object",
   "properties": {
+    "type": {
+      "description": "Authentication type discriminator.",
+      "type": "string",
+      "enum": ["oauth2"],
+      "default": "oauth2"
+    },
     "tokenUrl": {
       "description": "Token endpoint URL to obtain access tokens.",
       "type": "string",
@@ -22,6 +28,6 @@
       "type": "string"
     }
   },
-  "required": ["tokenUrl", "clientId", "clientSecret"],
+  "required": ["type", "tokenUrl", "clientId", "clientSecret"],
   "additionalProperties": false
 }

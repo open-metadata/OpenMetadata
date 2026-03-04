@@ -23,11 +23,13 @@ import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.SubscriptionUtil;
 import org.openmetadata.service.util.URLValidator;
@@ -137,13 +139,18 @@ public final class WebhookRecipient extends Recipient {
 
   private static void prepareWebhookHeaders(
       Builder requestBuilder, Webhook webhook, String payload) {
-    // Add HMAC signature if secret key is configured
-    if (!CommonUtil.nullOrEmpty(webhook.getSecretKey())) {
-      String hmac =
-          "sha256="
-              + CommonUtil.calculateHMAC(
-                  SubscriptionUtil.decryptWebhookSecretKey(webhook.getSecretKey()), payload);
-      requestBuilder.header("X-OM-Signature", hmac);
+    // Add HMAC signature if bearer auth is configured
+    if (webhook.getAuthType() instanceof Map<?, ?> authMap
+        && "bearer".equals(authMap.get("type"))) {
+      WebhookBearerAuth bearerAuth =
+          JsonUtils.convertValue(webhook.getAuthType(), WebhookBearerAuth.class);
+      if (bearerAuth != null && !CommonUtil.nullOrEmpty(bearerAuth.getSecretKey())) {
+        String hmac =
+            "sha256="
+                + CommonUtil.calculateHMAC(
+                    SubscriptionUtil.decryptWebhookSecretKey(bearerAuth.getSecretKey()), payload);
+        requestBuilder.header("X-OM-Signature", hmac);
+      }
     }
 
     // Add custom headers from webhook configuration

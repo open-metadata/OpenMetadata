@@ -54,7 +54,9 @@ import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
@@ -493,11 +495,17 @@ public class SubscriptionUtil {
 
   public static void prepareWebhookHeaders(
       Invocation.Builder target, Webhook webhook, String json) {
-    if (!nullOrEmpty(webhook.getSecretKey())) {
-      String hmac =
-          "sha256="
-              + CommonUtil.calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
-      target.header("X-OM-Signature", hmac);
+    if (webhook.getAuthType() instanceof Map<?, ?> authMap
+        && "bearer".equals(authMap.get("type"))) {
+      WebhookBearerAuth bearerAuth =
+          JsonUtils.convertValue(webhook.getAuthType(), WebhookBearerAuth.class);
+      if (bearerAuth != null && !nullOrEmpty(bearerAuth.getSecretKey())) {
+        String hmac =
+            "sha256="
+                + CommonUtil.calculateHMAC(
+                    decryptWebhookSecretKey(bearerAuth.getSecretKey()), json);
+        target.header("X-OM-Signature", hmac);
+      }
     }
 
     if (webhook.getHeaders() != null && !webhook.getHeaders().isEmpty()) {

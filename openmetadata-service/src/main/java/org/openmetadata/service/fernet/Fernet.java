@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import lombok.NonNull;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -130,15 +131,21 @@ public class Fernet {
           if (SubscriptionDestination.SubscriptionType.WEBHOOK.equals(subscription.getType())) {
             Webhook webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
 
-            if (webhook != null && !nullOrEmpty(webhook.getSecretKey())) {
-              String encryptedSecretKey =
-                  Fernet.getInstance().encryptIfApplies(webhook.getSecretKey());
-              webhook.withSecretKey(encryptedSecretKey);
+            if (webhook != null
+                && webhook.getAuthType() instanceof Map<?, ?> authMap
+                && "bearer".equals(authMap.get("type"))) {
+              WebhookBearerAuth bearerAuth =
+                  JsonUtils.convertValue(webhook.getAuthType(), WebhookBearerAuth.class);
+              if (bearerAuth != null && !nullOrEmpty(bearerAuth.getSecretKey())) {
+                String encryptedSecretKey =
+                    Fernet.getInstance().encryptIfApplies(bearerAuth.getSecretKey());
+                bearerAuth.withSecretKey(encryptedSecretKey);
 
-              Map<String, Object> config = (Map<String, Object>) subscription.getConfig();
-              if (config != null) {
-                config.put("secretKey", encryptedSecretKey);
-                subscription.withConfig(config);
+                Map<String, Object> config = (Map<String, Object>) subscription.getConfig();
+                if (config != null) {
+                  config.put("authType", JsonUtils.convertValue(bearerAuth, Map.class));
+                  subscription.withConfig(config);
+                }
               }
             }
           }

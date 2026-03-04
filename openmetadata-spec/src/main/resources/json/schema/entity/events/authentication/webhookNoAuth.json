@@ -3,6 +3,14 @@
   "title": "None",
   "description": "No authentication.",
   "type": "object",
-  "properties": {},
+  "properties": {
+    "type": {
+      "description": "Authentication type discriminator.",
+      "type": "string",
+      "enum": ["none"],
+      "default": "none"
+    }
+  },
+  "required": ["type"],
   "additionalProperties": false
 }

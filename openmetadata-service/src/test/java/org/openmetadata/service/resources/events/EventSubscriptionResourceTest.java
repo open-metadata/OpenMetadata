@@ -58,6 +58,7 @@ import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
@@ -133,11 +134,11 @@ public class EventSubscriptionResourceTest
     // the destination to come to the changeDescription)
     List<SubscriptionDestination> destinations = genericWebhookActionRequest.getDestinations();
     Webhook webhook = JsonUtils.convertValue(destinations.get(0).getConfig(), Webhook.class);
-    String secretKEY =
-        JsonUtils.convertValue(alert.getDestinations().get(0).getConfig(), Webhook.class)
-            .getSecretKey();
+    Webhook alertWebhook =
+        JsonUtils.convertValue(alert.getDestinations().get(0).getConfig(), Webhook.class);
+    Object encryptedAuthType = alertWebhook.getAuthType();
 
-    webhook.setSecretKey(secretKEY);
+    webhook.setAuthType(encryptedAuthType);
     Map<String, Object> updatedConfig = JsonUtils.convertValue(webhook, Map.class);
     destinations.get(0).setConfig(updatedConfig);
     genericWebhookActionRequest.withEnabled(true).withBatchSize(50).withDestinations(destinations);
@@ -2186,7 +2187,7 @@ public class EventSubscriptionResourceTest
                 new Webhook()
                     .withEndpoint(URI.create(uri))
                     .withReceivers(new HashSet<>())
-                    .withSecretKey("webhookTest")));
+                    .withAuthType(new WebhookBearerAuth().withSecretKey("webhookTest"))));
   }
 
   public List<SubscriptionDestination> getSlackWebhook(String uri) {
@@ -2199,7 +2200,7 @@ public class EventSubscriptionResourceTest
                 new Webhook()
                     .withEndpoint(URI.create(uri))
                     .withReceivers(new HashSet<>())
-                    .withSecretKey("slackTest")));
+                    .withAuthType(new WebhookBearerAuth().withSecretKey("slackTest"))));
   }
 
   public List<SubscriptionDestination> getTeamsWebhook(String uri) {
@@ -2212,7 +2213,9 @@ public class EventSubscriptionResourceTest
                 new Webhook()
                     .withEndpoint(URI.create(uri))
                     .withReceivers(new HashSet<>())
-                    .withSecretKey(MSTeamsCallbackResource.getSecretKey())));
+                    .withAuthType(
+                        new WebhookBearerAuth()
+                            .withSecretKey(MSTeamsCallbackResource.getSecretKey()))));
   }
 
   public WebhookCallbackResource.EventDetails waitForFirstEvent(
