@@ -12,11 +12,8 @@ from unittest.mock import patch
 
 import pytest
 
-from metadata.pii.algorithms.preprocessing import (
-    MAX_NLP_TEXT_LENGTH,
-    convert_to_str,
-    preprocess_values,
-)
+from metadata.pii.algorithms.preprocessing import convert_to_str, preprocess_values
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
 
 @pytest.mark.parametrize(
@@ -132,6 +129,32 @@ def test_preprocess_values_all_oversized_returns_truncated(mock_logger):
     result = preprocess_values(input_values)
 
     assert len(result) == 2
-    assert result[0] == "a" * MAX_NLP_TEXT_LENGTH
-    assert result[1] == "b" * MAX_NLP_TEXT_LENGTH
+    assert result[0] == "a" * SAMPLE_DATA_MAX_CELL_LENGTH
+    assert result[1] == "b" * SAMPLE_DATA_MAX_CELL_LENGTH
     assert mock_logger.warning.call_count == 2
+
+
+@patch("metadata.pii.algorithms.preprocessing.logger")
+def test_custom_max_length_truncates_correctly(mock_logger):
+    custom_max = 50_000
+    oversized_string = "x" * (custom_max + 1000)
+    result = convert_to_str(oversized_string, max_length=custom_max)
+
+    assert len(result) == custom_max
+    assert result == "x" * custom_max
+    mock_logger.warning.assert_called_once()
+
+
+@patch("metadata.pii.algorithms.preprocessing.logger")
+def test_preprocess_values_with_custom_max_length(mock_logger):
+    custom_max = 50_000
+    oversized_string = "a" * (custom_max + 1)
+    normal_string = "normal"
+
+    input_values = [normal_string, oversized_string]
+    result = preprocess_values(input_values, max_length=custom_max)
+
+    assert len(result) == 2
+    assert result[0] == normal_string
+    assert result[1] == "a" * custom_max
+    mock_logger.warning.assert_called_once()
