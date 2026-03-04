@@ -2757,7 +2757,7 @@ def generate_cluster_sizing(report, ramp_data=None):
     if max_p95 > 5000:
         db_pool_rec = 200
     si_data = report.get("server_info", {})
-    diag_after_db = si_data.get("diagnostics_after", {}).get("database", {})
+    diag_after_db = (si_data.get("diagnostics_after") or {}).get("database", {})
     measured_acquire_ms = diag_after_db.get("connection_acquire_avg_ms", 0)
     if measured_acquire_ms > 0:
         acquire_note = f"Measured connection acquire time: {measured_acquire_ms:.1f}ms avg."
@@ -3195,7 +3195,7 @@ def print_summary_table(report):
         snap = ssa.get("snapshot_after", {})
         gc_delta = ssa.get("gc_pause_delta_ms", 0)
         si_info = report.get("server_info", {})
-        diag_after = si_info.get("diagnostics_after", {})
+        diag_after = si_info.get("diagnostics_after") or {}
         jvm_d = diag_after.get("jvm", {})
         jetty_d = diag_after.get("jetty", {})
         db_d = diag_after.get("database", {})
