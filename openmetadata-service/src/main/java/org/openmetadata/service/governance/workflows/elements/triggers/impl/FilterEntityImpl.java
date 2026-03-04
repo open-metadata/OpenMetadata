@@ -8,6 +8,7 @@ import static org.openmetadata.service.governance.workflows.elements.triggers.Ev
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 public class FilterEntityImpl implements JavaDelegate {
   private static final Logger log = LoggerFactory.getLogger(FilterEntityImpl.class);
   private Expression excludedFieldsExpr;
+  private Expression includeFieldsExpr;
   private Expression filterExpr;
 
   @Override
@@ -43,6 +45,12 @@ public class FilterEntityImpl implements JavaDelegate {
     if (excludedFieldsExpr != null && excludedFieldsExpr.getValue(execution) != null) {
       excludedFilter =
           JsonUtils.readOrConvertValue(excludedFieldsExpr.getValue(execution), List.class);
+    }
+
+    java.util.Map<String, String> includeFields = null;
+    if (includeFieldsExpr != null && includeFieldsExpr.getValue(execution) != null) {
+      includeFields =
+          JsonUtils.readOrConvertValue(includeFieldsExpr.getValue(execution), java.util.Map.class);
     }
 
     String entityLinkStr =
@@ -62,7 +70,8 @@ public class FilterEntityImpl implements JavaDelegate {
       // We skip the entity filtering for this special case
       passesFilter = true;
     } else {
-      passesFilter = passesExcludedFilter(entityLinkStr, excludedFilter, filterLogic);
+      passesFilter =
+          passesExcludedFilter(entityLinkStr, excludedFilter, includeFields, filterLogic);
     }
 
     if (passesFilter) {
@@ -178,7 +187,10 @@ public class FilterEntityImpl implements JavaDelegate {
   }
 
   private boolean passesExcludedFilter(
-      String entityLinkStr, List<String> excludedFilter, String filterLogic) {
+      String entityLinkStr,
+      List<String> excludedFilter,
+      Map<String, String> includeFields,
+      String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
@@ -193,21 +205,9 @@ public class FilterEntityImpl implements JavaDelegate {
       ChangeDescription changeDescription = oChangeDescription.get();
       List<FieldChange> changedFields = getAllChangedFields(changeDescription);
 
-      // Check if ANY field is trigger-worthy AND not excluded
       fieldBasedFilter =
           changedFields.isEmpty()
-              || changedFields.stream()
-                  .anyMatch(
-                      field -> {
-                        String fieldName = field.getName();
-                        boolean isTriggerField =
-                            Arrays.stream(WorkflowTriggerFields.values())
-                                .map(WorkflowTriggerFields::value)
-                                .anyMatch(fieldName::equals);
-                        boolean isNotExcluded =
-                            excludedFilter == null || !excludedFilter.contains(fieldName);
-                        return isTriggerField && isNotExcluded;
-                      });
+              || passesFieldBasedFilter(changedFields, includeFields, excludedFilter, entity);
     }
 
     // Apply JSON filter
@@ -226,5 +226,123 @@ public class FilterEntityImpl implements JavaDelegate {
     allChanges.addAll(changeDescription.getFieldsDeleted());
     allChanges.addAll(changeDescription.getFieldsUpdated());
     return allChanges;
+  }
+
+  private boolean passesFieldBasedFilter(
+      List<FieldChange> changedFields,
+      Map<String, String> includeFields,
+      List<String> excludedFilter,
+      EntityInterface entity) {
+    return changedFields.stream()
+        .anyMatch(
+            field -> {
+              String fieldName = field.getName();
+              boolean isTriggerField =
+                  Arrays.stream(WorkflowTriggerFields.values())
+                      .map(WorkflowTriggerFields::value)
+                      .anyMatch(fieldName::equals);
+              if (!isTriggerField) {
+                return false;
+              }
+
+              // Check include filter first (higher priority)
+              if (includeFields != null && !includeFields.isEmpty()) {
+                boolean passesInclude = passesIncludeFilter(field, includeFields, entity);
+                if (passesInclude) {
+                  return true; // Include filter passes - trigger workflow regardless of exclude
+                }
+              }
+
+              // If no include filter matched, check exclude filter
+              return excludedFilter == null || !excludedFilter.contains(fieldName);
+            });
+  }
+
+  private boolean passesIncludeFilter(
+      FieldChange fieldChange, Map<String, String> includeFields, EntityInterface entity) {
+    String fieldName = fieldChange.getName();
+    String includeFqn = includeFields.get(fieldName);
+    if (includeFqn == null) {
+      return false;
+    }
+    String fieldValue = getFieldValueForPatternMatching(fieldChange, entity);
+    if (fieldValue == null) {
+      return false;
+    }
+    // Use contains check since fieldValue may be extracted from a list
+    // that contains multiple FQNs, or it could be an exact match
+    return fieldValue.contains(includeFqn);
+  }
+
+  private String getFieldValueForPatternMatching(FieldChange fieldChange, EntityInterface entity) {
+    Object valueToCheck = fieldChange.getNewValue();
+    if (valueToCheck == null && fieldChange.getOldValue() != null) {
+      valueToCheck = fieldChange.getOldValue();
+    }
+    if (valueToCheck == null) {
+      return null;
+    }
+    try {
+      return extractFqnFromValue(valueToCheck);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private String extractFqnFromValue(Object value) {
+    if (value == null) {
+      return null;
+    }
+
+    // FieldChange values are often stored as JSON strings, try to parse first
+    if (value instanceof String) {
+      String strValue = (String) value;
+      String trimmed = strValue.trim();
+      if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+        try {
+          Object parsed = JsonUtils.readValue(trimmed, Object.class);
+          return extractFqnFromValue(parsed);
+        } catch (Exception e) {
+          // Not valid JSON, return as-is
+          return strValue;
+        }
+      }
+      return strValue;
+    }
+
+    if (value instanceof List) {
+      List<?> valueList = (List<?>) value;
+      if (!valueList.isEmpty()) {
+        // Collect all FQNs from the list items
+        StringBuilder fqns = new StringBuilder();
+        for (Object item : valueList) {
+          String fqn = extractFqnFromSingleItem(item);
+          if (fqn != null) {
+            if (fqns.length() > 0) fqns.append(",");
+            fqns.append(fqn);
+          }
+        }
+        return fqns.length() > 0 ? fqns.toString() : null;
+      }
+      return null;
+    } else if (value instanceof Map) {
+      return extractFqnFromSingleItem(value);
+    }
+    return value.toString();
+  }
+
+  @SuppressWarnings("unchecked")
+  private String extractFqnFromSingleItem(Object item) {
+    if (item instanceof Map) {
+      Map<String, Object> map = (Map<String, Object>) item;
+      // Check "fullyQualifiedName" first (for domains, entities, etc.)
+      Object fqn = map.get("fullyQualifiedName");
+      if (fqn != null) return fqn.toString();
+      // Check "tagFQN" for tag labels
+      Object tagFqn = map.get("tagFQN");
+      if (tagFqn != null) return tagFqn.toString();
+      return null;
+    }
+    return item != null ? item.toString() : null;
   }
 }
