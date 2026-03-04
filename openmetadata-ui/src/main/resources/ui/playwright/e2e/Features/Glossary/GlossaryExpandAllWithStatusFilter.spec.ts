@@ -10,259 +10,229 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { APIRequestContext, expect, Page } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-/**
- * Test suite for verifying that "Expand All" respects the active status filter.
- *
- * Regression test for a bug where fetchExpadedTree did not pass the entityStatus
- * parameter, causing "Expand All" to show all terms regardless of the active filter.
- */
-test.describe('Glossary Expand All with Status Filter', () => {
-  test.describe.configure({ mode: 'serial' });
+const applyStatusFilter = async (page: Page, statuses: string[]) => {
+  await page.getByTestId('glossary-status-dropdown').click();
 
-  const glossary = new Glossary();
+  const statusDropdown = page.locator('.status-selection-dropdown');
+  await expect(statusDropdown).toBeVisible();
 
-  // Approved hierarchy: ApprovedParent -> [ApprovedChild1, ApprovedChild2]
-  let approvedParent: GlossaryTerm;
-  let approvedChild1: GlossaryTerm;
-  let approvedChild2: GlossaryTerm;
+  await statusDropdown.getByText('All', { exact: true }).click();
+  await statusDropdown.getByText('All', { exact: true }).click();
 
-  // Draft hierarchy: DraftParent -> DraftChild
-  let draftParent: GlossaryTerm;
-  let draftChild: GlossaryTerm;
+  for (const status of statuses) {
+    await statusDropdown.getByText(status, { exact: true }).click();
+  }
 
-  const setTermStatus = async (
-    apiContext: APIRequestContext,
-    term: GlossaryTerm,
-    status: string
-  ) => {
-    await apiContext.patch(`/api/v1/glossaryTerms/${term.responseData.id}`, {
-      data: [
+  const apiResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/glossaryTerms') &&
+      response.status() === 200
+  );
+  await page.getByRole('button', { name: /save/i }).click();
+  const response = await apiResponse;
+  expect(response.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+};
+
+const clickExpandAll = async (page: Page) => {
+  const expandButton = page.getByTestId('expand-collapse-all-button');
+  await expect(expandButton).toBeEnabled();
+
+  const termRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/glossaryTerms') &&
+      response.status() === 200
+  );
+  await expandButton.click();
+  const response = await termRes;
+  expect(response.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+};
+
+const clickCollapseAll = async (page: Page) => {
+  const collapseButton = page.getByTestId('expand-collapse-all-button');
+  await expect(collapseButton).toBeEnabled();
+
+  const termRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/glossaryTerms') &&
+      response.status() === 200
+  );
+  await collapseButton.click();
+  await termRes;
+
+  await waitForAllLoadersToDisappear(page);
+};
+
+test.describe(
+  'Glossary Expand All with Status Filter',
+  { tag: ['@Features', '@Governance'] },
+  () => {
+    const glossary = new Glossary();
+
+    let approvedParent: GlossaryTerm;
+    let approvedChild1: GlossaryTerm;
+    let approvedChild2: GlossaryTerm;
+    let draftParent: GlossaryTerm;
+    let draftChild: GlossaryTerm;
+
+    test.beforeAll('Setup glossary with mixed-status terms', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await glossary.create(apiContext);
+
+      approvedParent = new GlossaryTerm(glossary, undefined, 'ApprovedParent');
+      await approvedParent.create(apiContext);
+
+      approvedChild1 = new GlossaryTerm(glossary, undefined, 'ApprovedChild1');
+      approvedChild1.data.parent =
+        approvedParent.responseData.fullyQualifiedName;
+      await approvedChild1.create(apiContext);
+
+      approvedChild2 = new GlossaryTerm(glossary, undefined, 'ApprovedChild2');
+      approvedChild2.data.parent =
+        approvedParent.responseData.fullyQualifiedName;
+      await approvedChild2.create(apiContext);
+
+      draftParent = new GlossaryTerm(glossary, undefined, 'DraftParent');
+      await draftParent.create(apiContext);
+
+      const draftParentPatch = await apiContext.patch(
+        `/api/v1/glossaryTerms/${draftParent.responseData.id}`,
         {
-          op: 'replace',
-          path: '/entityStatus',
-          value: status,
-        },
-      ],
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
+          data: [{ op: 'replace', path: '/entityStatus', value: 'Draft' }],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        }
+      );
+      expect(draftParentPatch.status()).toBe(200);
+
+      draftChild = new GlossaryTerm(glossary, undefined, 'DraftChild');
+      draftChild.data.parent = draftParent.responseData.fullyQualifiedName;
+      await draftChild.create(apiContext);
+
+      const draftChildPatch = await apiContext.patch(
+        `/api/v1/glossaryTerms/${draftChild.responseData.id}`,
+        {
+          data: [{ op: 'replace', path: '/entityStatus', value: 'Draft' }],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        }
+      );
+      expect(draftChildPatch.status()).toBe(200);
+
+      await afterAction();
     });
-  };
 
-  const applyStatusFilter = async (page: Page, statuses: string[]) => {
-    const statusDropdown = page.getByTestId('glossary-status-dropdown');
-    await statusDropdown.click();
-    await page.waitForSelector('.status-selection-dropdown');
-
-    const allCheckbox = page.locator('.glossary-dropdown-label', {
-      hasText: 'All',
+    test.afterAll('Cleanup glossary', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await glossary.delete(apiContext);
+      await afterAction();
     });
-    await allCheckbox.click();
-    await allCheckbox.click();
 
-    for (const status of statuses) {
-      const checkbox = page.locator('.glossary-dropdown-label', {
-        hasText: status,
+    test.beforeEach(async ({ page }) => {
+      await glossary.visitEntityPage(page);
+      await expect(page.getByTestId('glossary-terms-table')).toBeVisible();
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    test('Expand All with Draft filter shows only Draft terms', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await test.step('Apply Draft status filter', async () => {
+        await applyStatusFilter(page, ['Draft']);
       });
-      await checkbox.click();
-    }
 
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/glossaryTerms') &&
-          response.status() === 200
-      ),
-      page.locator('.ant-btn-primary', { hasText: 'Save' }).click(),
-    ]);
+      await test.step('Expand all and verify only Draft terms are visible', async () => {
+        await clickExpandAll(page);
 
-    await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
-      .waitFor({ state: 'detached', timeout: 30000 })
-      .catch(() => {});
-  };
+        await expect(page.getByTestId('DraftParent')).toBeVisible();
+        await expect(page.getByTestId('DraftChild')).toBeVisible();
 
-  const clickExpandAll = async (page: Page) => {
-    const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
-    await page.getByTestId('expand-collapse-all-button').click();
-    await termRes;
+        await expect(page.getByTestId('ApprovedParent')).not.toBeVisible();
+        await expect(page.getByTestId('ApprovedChild1')).not.toBeVisible();
+        await expect(page.getByTestId('ApprovedChild2')).not.toBeVisible();
+      });
+    });
 
-    await page
-      .locator('[data-testid="loader"]')
-      .waitFor({ state: 'detached', timeout: 30000 })
-      .catch(() => {});
-  };
+    test('Expand All with Approved filter shows only Approved terms', async ({
+      page,
+    }) => {
+      test.slow();
 
-  const clickCollapseAll = async (page: Page) => {
-    await page.getByTestId('expand-collapse-all-button').click();
+      await test.step('Apply Approved status filter', async () => {
+        await applyStatusFilter(page, ['Approved']);
+      });
 
-    await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
-      .waitFor({ state: 'detached', timeout: 30000 })
-      .catch(() => {});
-  };
+      await test.step('Expand all and verify only Approved terms are visible', async () => {
+        await clickExpandAll(page);
 
-  const verifyRowStatuses = async (
-    page: Page,
-    allowedStatuses: string[]
-  ): Promise<number> => {
-    const rows = page.locator(
-      'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
-    );
-    const rowCount = await rows.count();
+        await expect(page.getByTestId('ApprovedParent')).toBeVisible();
+        await expect(page.getByTestId('ApprovedChild1')).toBeVisible();
+        await expect(page.getByTestId('ApprovedChild2')).toBeVisible();
 
-    for (let i = 0; i < rowCount; i++) {
-      const statusCell = rows.nth(i).locator('td:nth-child(3)');
-      const statusText = await statusCell.textContent();
-      if (statusText?.trim()) {
-        const hasValidStatus = allowedStatuses.some((s) =>
-          statusText.includes(s)
-        );
-        expect(hasValidStatus).toBe(true);
-      }
-    }
+        await expect(page.getByTestId('DraftParent')).not.toBeVisible();
+        await expect(page.getByTestId('DraftChild')).not.toBeVisible();
+      });
+    });
 
-    return rowCount;
-  };
+    test('Expand All with default filter shows all terms', async ({
+      page,
+    }) => {
+      test.slow();
 
-  const getRowCount = async (page: Page): Promise<number> => {
-    const rows = page.locator(
-      'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
-    );
+      await test.step('Expand all and verify all terms are visible', async () => {
+        await clickExpandAll(page);
 
-    return rows.count();
-  };
+        await expect(page.getByTestId('ApprovedParent')).toBeVisible();
+        await expect(page.getByTestId('ApprovedChild1')).toBeVisible();
+        await expect(page.getByTestId('ApprovedChild2')).toBeVisible();
+        await expect(page.getByTestId('DraftParent')).toBeVisible();
+        await expect(page.getByTestId('DraftChild')).toBeVisible();
+      });
+    });
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    test('Expand All then Collapse All then re-expand with different filter', async ({
+      page,
+    }) => {
+      test.slow();
 
-    await glossary.create(apiContext);
+      await test.step('Expand with Approved filter', async () => {
+        await applyStatusFilter(page, ['Approved']);
+        await clickExpandAll(page);
 
-    // Create Approved hierarchy
-    approvedParent = new GlossaryTerm(
-      glossary,
-      undefined,
-      'ApprovedParent'
-    );
-    await approvedParent.create(apiContext);
+        await expect(page.getByTestId('ApprovedParent')).toBeVisible();
+        await expect(page.getByTestId('ApprovedChild1')).toBeVisible();
+        await expect(page.getByTestId('ApprovedChild2')).toBeVisible();
+      });
 
-    approvedChild1 = new GlossaryTerm(
-      glossary,
-      undefined,
-      'ApprovedChild1'
-    );
-    approvedChild1.data.parent =
-      approvedParent.responseData.fullyQualifiedName;
-    await approvedChild1.create(apiContext);
+      await test.step('Collapse all', async () => {
+        await clickCollapseAll(page);
+      });
 
-    approvedChild2 = new GlossaryTerm(
-      glossary,
-      undefined,
-      'ApprovedChild2'
-    );
-    approvedChild2.data.parent =
-      approvedParent.responseData.fullyQualifiedName;
-    await approvedChild2.create(apiContext);
+      await test.step('Switch to Draft filter and expand again', async () => {
+        await applyStatusFilter(page, ['Draft']);
+        await clickExpandAll(page);
 
-    // Create Draft hierarchy
-    draftParent = new GlossaryTerm(glossary, undefined, 'DraftParent');
-    await draftParent.create(apiContext);
-    await setTermStatus(apiContext, draftParent, 'Draft');
+        await expect(page.getByTestId('DraftParent')).toBeVisible();
+        await expect(page.getByTestId('DraftChild')).toBeVisible();
 
-    draftChild = new GlossaryTerm(glossary, undefined, 'DraftChild');
-    draftChild.data.parent = draftParent.responseData.fullyQualifiedName;
-    await draftChild.create(apiContext);
-    await setTermStatus(apiContext, draftChild, 'Draft');
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test.beforeEach(async ({ page }) => {
-    await glossary.visitEntityPage(page);
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
-    await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
-      .waitFor({ state: 'detached', timeout: 30000 });
-  });
-
-  test('Expand All with Draft filter shows only Draft terms', async ({
-    page,
-  }) => {
-    await applyStatusFilter(page, ['Draft']);
-
-    await clickExpandAll(page);
-
-    const rowCount = await verifyRowStatuses(page, ['Draft']);
-    expect(rowCount).toBeGreaterThan(0);
-
-    // Approved terms should not be visible
-    const approvedParentEl = page.getByTestId(
-      approvedParent.data.displayName
-    );
-    await expect(approvedParentEl).not.toBeVisible();
-  });
-
-  test('Expand All with Approved filter shows only Approved terms', async ({
-    page,
-  }) => {
-    await applyStatusFilter(page, ['Approved']);
-
-    await clickExpandAll(page);
-
-    const rowCount = await verifyRowStatuses(page, ['Approved']);
-    expect(rowCount).toBeGreaterThan(0);
-
-    // Draft terms should not be visible
-    const draftParentEl = page.getByTestId(draftParent.data.displayName);
-    await expect(draftParentEl).not.toBeVisible();
-  });
-
-  test('Expand All with no filter shows all terms', async ({ page }) => {
-    await clickExpandAll(page);
-
-    const rowCount = await getRowCount(page);
-
-    // Should include all 5 terms (2 parents + 3 children)
-    expect(rowCount).toBe(5);
-  });
-
-  test('Expand All then Collapse All then re-expand with different filter', async ({
-    page,
-  }) => {
-    // Expand with Approved filter
-    await applyStatusFilter(page, ['Approved']);
-    await clickExpandAll(page);
-    await verifyRowStatuses(page, ['Approved']);
-
-    // Collapse all
-    await clickCollapseAll(page);
-
-    // Switch to Draft filter and expand again
-    await applyStatusFilter(page, ['Draft']);
-    await clickExpandAll(page);
-
-    const rowCount = await verifyRowStatuses(page, ['Draft']);
-    expect(rowCount).toBeGreaterThan(0);
-
-    // Approved terms should not be visible after switching filter
-    const approvedParentEl = page.getByTestId(
-      approvedParent.data.displayName
-    );
-    await expect(approvedParentEl).not.toBeVisible();
-  });
-});
+        await expect(page.getByTestId('ApprovedParent')).not.toBeVisible();
+        await expect(page.getByTestId('ApprovedChild1')).not.toBeVisible();
+        await expect(page.getByTestId('ApprovedChild2')).not.toBeVisible();
+      });
+    });
+  }
+);
