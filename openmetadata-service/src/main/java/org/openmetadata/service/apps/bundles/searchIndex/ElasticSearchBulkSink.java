@@ -51,10 +51,10 @@ public class ElasticSearchBulkSink implements BulkSink {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
-  private static final int MAX_CONCURRENT_DOC_BUILDS = 8;
-  private static final Semaphore DOC_BUILD_SEMAPHORE = new Semaphore(MAX_CONCURRENT_DOC_BUILDS);
+  private static final int MAX_CONCURRENT_DOC_BUILDS = 50;
   private static final ExecutorService DOC_BUILD_EXECUTOR =
-      Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("es-doc-build-", 0).factory());
+      Executors.newFixedThreadPool(
+          MAX_CONCURRENT_DOC_BUILDS, Thread.ofVirtual().name("es-doc-build-", 0).factory());
 
   private final ElasticSearchClient searchClient;
   protected final SearchRepository searchRepository;
@@ -168,14 +168,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> {
-                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
-                              try {
-                                addTimeSeriesEntity(entity, indexName, entityType, tracker);
-                              } finally {
-                                DOC_BUILD_SEMAPHORE.release();
-                              }
-                            },
+                            () -> addTimeSeriesEntity(entity, indexName, entityType, tracker),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -188,14 +181,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> {
-                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
-                              try {
-                                addEntity(entity, indexName, recreateIndex, tracker);
-                              } finally {
-                                DOC_BUILD_SEMAPHORE.release();
-                              }
-                            },
+                            () -> addEntity(entity, indexName, recreateIndex, tracker),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();

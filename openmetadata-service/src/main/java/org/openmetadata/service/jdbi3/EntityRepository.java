@@ -300,8 +300,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .recordStats()
           .build(new EntityLoaderWithId());
 
+  private static final int MAX_CONCURRENT_FIELD_FETCHES = 50;
   private static final ExecutorService FIELD_FETCH_EXECUTOR =
-      Executors.newThreadPerTaskExecutor(
+      Executors.newFixedThreadPool(
+          MAX_CONCURRENT_FIELD_FETCHES,
           java.lang.Thread.ofVirtual().name("field-fetch-", 0).factory());
 
   private static final LoadingCache<String, Integer> COUNT_CACHE =
