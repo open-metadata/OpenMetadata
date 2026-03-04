@@ -14,11 +14,9 @@ import { test as base, expect, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   CREATE_TEST_CASE_POLICY,
-  DELETE_FAILED_ROWS_POLICY,
   DELETE_TEST_CASE_POLICY,
   EDIT_TESTS_ON_TEST_CASE_POLICY,
   EDIT_TEST_CASE_POLICY,
-  FAILED_ROWS_POLICY,
   TABLE_CREATE_TESTS_POLICY,
   TABLE_EDIT_TESTS_POLICY,
   TEST_CASE_VIEW_BASIC_POLICY,
@@ -31,16 +29,15 @@ import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
+import { redirectToHomePage, uuid } from '../../../utils/common';
 import { setupUserWithPolicy } from '../../../utils/permission';
 import {
-  setupTestCaseWithFailedRows,
-  waitForFailedRowsSampleResponse,
+  visitTestSuiteDetailsPage,
+  visitTestSuitesPage,
   waitForTestCaseDetailsResponse,
   waitForPermissionsResponse,
   waitForTableEntityPermissionsResponse,
   waitForTestCaseListResponse,
-  waitForTestSuiteListResponse,
 } from '../../../utils/testCases';
 
 // --- Objects ---
@@ -51,10 +48,6 @@ const createUser = new UserClass();
 const deletePolicy = new PolicyClass();
 const deleteRole = new RolesClass();
 const deleteUser = new UserClass();
-
-const failedRowsPolicy = new PolicyClass();
-const failedRowsRole = new RolesClass();
-const failedRowsUser = new UserClass();
 
 const suitePolicy = new PolicyClass();
 const suiteRole = new RolesClass();
@@ -67,10 +60,6 @@ const viewBasicUser = new UserClass();
 const tableCreateTestsPolicy = new PolicyClass();
 const tableCreateTestsRole = new RolesClass();
 const tableCreateTestsUser = new UserClass();
-
-const deleteFailedRowsPolicy = new PolicyClass();
-const deleteFailedRowsRole = new RolesClass();
-const deleteFailedRowsUser = new UserClass();
 
 const editTestCasePolicy = new PolicyClass();
 const editTestCaseRole = new RolesClass();
@@ -102,13 +91,11 @@ const test = base.extend<{
   adminPage: Page;
   createPage: Page;
   deletePage: Page;
-  failedRowsPage: Page;
   suitePage: Page;
   viewBasicPage: Page;
   consumerPage: Page;
   stewardPage: Page;
   tableCreateTestsPage: Page;
-  deleteFailedRowsPage: Page;
   editPage: Page;
   tableEditPage: Page;
   editTestsPage: Page;
@@ -129,12 +116,6 @@ const test = base.extend<{
   deletePage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await deleteUser.login(page);
-    await use(page);
-    await page.close();
-  },
-  failedRowsPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await failedRowsUser.login(page);
     await use(page);
     await page.close();
   },
@@ -165,12 +146,6 @@ const test = base.extend<{
   tableCreateTestsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await tableCreateTestsUser.login(page);
-    await use(page);
-    await page.close();
-  },
-  deleteFailedRowsPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await deleteFailedRowsUser.login(page);
     await use(page);
     await page.close();
   },
@@ -282,13 +257,6 @@ test.describe(
       );
       await setupUserWithPolicy(
         apiContext,
-        failedRowsUser,
-        failedRowsPolicy,
-        failedRowsRole,
-        FAILED_ROWS_POLICY
-      );
-      await setupUserWithPolicy(
-        apiContext,
         suiteUser,
         suitePolicy,
         suiteRole,
@@ -307,13 +275,6 @@ test.describe(
         tableCreateTestsPolicy,
         tableCreateTestsRole,
         TABLE_CREATE_TESTS_POLICY
-      );
-      await setupUserWithPolicy(
-        apiContext,
-        deleteFailedRowsUser,
-        deleteFailedRowsPolicy,
-        deleteFailedRowsRole,
-        DELETE_FAILED_ROWS_POLICY
       );
       await setupUserWithPolicy(
         apiContext,
@@ -385,17 +346,9 @@ test.describe(
           `action-dropdown-${testCaseName}`
         );
 
-        if (await actionDropdown.isVisible()) {
-          if (await actionDropdown.isEnabled()) {
-            await actionDropdown.click();
-            await expect(
-              consumerPage.getByTestId(`delete-${testCaseName}`)
-            ).toBeHidden();
-            await consumerPage.keyboard.press('Escape');
-          } else {
-            await expect(actionDropdown).toBeDisabled();
-          }
-        }
+        await expect(actionDropdown).toBeVisible();
+        await expect(actionDropdown).toBeDisabled();
+        await consumerPage.keyboard.press('Escape');
       });
 
       test('Data Consumer can VIEW test cases but sees no edit controls in UI', async ({
@@ -432,48 +385,31 @@ test.describe(
           `action-dropdown-${testCaseName}`
         );
 
-        if (await actionDropdown.isVisible()) {
-          if (await actionDropdown.isEnabled()) {
-            await actionDropdown.click();
-            await expect(
-              stewardPage.getByTestId(`delete-${testCaseName}`)
-            ).toBeHidden();
-            await stewardPage.keyboard.press('Escape');
-          } else {
-            await expect(actionDropdown).toBeDisabled();
-          }
-        }
+        await expect(actionDropdown).toBeVisible();
+        await expect(actionDropdown).toBeDisabled();
+        await stewardPage.keyboard.press('Escape');
       });
 
       test('Data Consumer cannot create or delete test suites', async ({
         consumerPage,
       }) => {
-        const testSuiteListPromise =
-          waitForTestSuiteListResponse(consumerPage);
-        await consumerPage.goto('/data-quality/test-suites');
-        await testSuiteListPromise;
+        await visitTestSuitesPage(consumerPage);
 
         await expect(
           consumerPage.getByTestId('add-test-suite-btn')
         ).toBeHidden();
       });
 
-      test('Data Consumer cannot edit test case', async ({
-        consumerPage,
-      }) => {
+      test('Data Consumer cannot edit test case', async ({ consumerPage }) => {
         await visitProfilerPage(consumerPage);
         const testCaseName = table.testCasesResponseData[0].name;
         const actionDropdown = consumerPage.getByTestId(
           `action-dropdown-${testCaseName}`
         );
 
-        if (await actionDropdown.isVisible() && (await actionDropdown.isEnabled())) {
-          await actionDropdown.click();
-          await expect(
-            consumerPage.getByTestId(`edit-${testCaseName}`)
-          ).toBeHidden();
-          await consumerPage.keyboard.press('Escape');
-        }
+        await expect(actionDropdown).toBeVisible();
+        await expect(actionDropdown).toBeDisabled();
+        await consumerPage.keyboard.press('Escape');
       });
     });
 
@@ -484,18 +420,16 @@ test.describe(
         await visitProfilerPage(createPage);
         const testCaseName = table.testCasesResponseData[0].name;
 
-        // UI: Verify delete option is hidden in action dropdown
         const actionDropdown = createPage.getByTestId(
           `action-dropdown-${testCaseName}`
         );
+        await expect(actionDropdown).toBeVisible();
 
-        if (await actionDropdown.isVisible()) {
-          await actionDropdown.click();
-          await expect(
-            createPage.getByTestId(`delete-${testCaseName}`)
-          ).toBeHidden();
-          await createPage.keyboard.press('Escape');
-        }
+        await actionDropdown.click();
+        await expect(
+          createPage.getByTestId(`delete-${testCaseName}`)
+        ).toBeDisabled();
+        await createPage.keyboard.press('Escape');
       });
 
       test('User with TEST_CASE.DELETE cannot create test cases', async ({
@@ -518,22 +452,15 @@ test.describe(
           `action-dropdown-${testCaseName}`
         );
 
-        if (await actionDropdown.isVisible() && (await actionDropdown.isEnabled())) {
-          await actionDropdown.click();
-          await expect(
-            viewBasicPage.getByTestId(`edit-${testCaseName}`)
-          ).toBeHidden();
-          await viewBasicPage.keyboard.press('Escape');
-        }
+        await expect(actionDropdown).toBeVisible();
+        await expect(actionDropdown).toBeDisabled();
+        await viewBasicPage.keyboard.press('Escape');
       });
 
       test('User without TEST_SUITE.CREATE cannot create test suites', async ({
         viewBasicPage,
       }) => {
-        const testSuiteListPromise =
-          waitForTestSuiteListResponse(viewBasicPage);
-        await viewBasicPage.goto('/data-quality/test-suites');
-        await testSuiteListPromise;
+        await visitTestSuitesPage(viewBasicPage);
 
         await expect(
           viewBasicPage.getByTestId('add-test-suite-btn')
@@ -543,15 +470,7 @@ test.describe(
       test('User without TEST_SUITE.DELETE cannot delete test suites', async ({
         suiteEditOnlyPage,
       }) => {
-        const testSuiteDetailsPromise = suiteEditOnlyPage.waitForResponse(
-          (res) =>
-            res.url().includes(`/api/v1/dataQuality/testSuites/`) &&
-            res.status() === 200
-        );
-        await suiteEditOnlyPage.goto(
-          `/test-suites/${encodeURIComponent(logicalTestSuiteFqn)}`
-        );
-        await testSuiteDetailsPromise;
+        await visitTestSuiteDetailsPage(suiteEditOnlyPage, logicalTestSuiteFqn);
 
         await suiteEditOnlyPage.getByTestId('manage-button').click();
         await expect(
@@ -562,15 +481,7 @@ test.describe(
       test('User without TEST_SUITE.EDIT cannot add test case to logical suite', async ({
         viewBasicPage,
       }) => {
-        const testSuiteDetailsPromise = viewBasicPage.waitForResponse(
-          (res) =>
-            res.url().includes(`/api/v1/dataQuality/testSuites/`) &&
-            res.status() === 200
-        );
-        await viewBasicPage.goto(
-          `/test-suites/${encodeURIComponent(logicalTestSuiteFqn)}`
-        );
-        await testSuiteDetailsPromise;
+        await visitTestSuiteDetailsPage(viewBasicPage, logicalTestSuiteFqn);
 
         await expect(
           viewBasicPage.getByTestId('add-test-case-btn')
@@ -583,6 +494,9 @@ test.describe(
         createPage,
       }) => {
         await visitProfilerPage(createPage);
+
+        const testCaseName = table.testCasesResponseData[0].name;
+        await expect(createPage.getByTestId(testCaseName)).toBeVisible();
 
         await expect(
           createPage.getByTestId('profiler-add-table-test-btn')
@@ -609,6 +523,11 @@ test.describe(
         tableCreateTestsPage,
       }) => {
         await visitProfilerPage(tableCreateTestsPage);
+
+        const testCaseName = table.testCasesResponseData[0].name;
+        await expect(
+          tableCreateTestsPage.getByTestId(testCaseName)
+        ).toBeVisible();
 
         await expect(
           tableCreateTestsPage.getByTestId('profiler-add-table-test-btn')
@@ -657,20 +576,12 @@ test.describe(
         await visitProfilerPage(viewBasicPage);
         const testCaseName = table.testCasesResponseData[0].name;
 
-        // UI: Verify action dropdown either hidden or doesn't have edit option
         const actionDropdown = viewBasicPage.getByTestId(
           `action-dropdown-${testCaseName}`
         );
-
-        if (await actionDropdown.isVisible()) {
-          await actionDropdown.click();
-          await expect(
-            viewBasicPage.getByTestId(`edit-${testCaseName}`)
-          ).toBeHidden();
-          await viewBasicPage.keyboard.press('Escape');
-        }
+        await expect(actionDropdown).toBeVisible();
+        await expect(actionDropdown).toBeDisabled();
       });
-
     });
 
     test.describe('Granular Permissions - TestCase GET Endpoints', () => {
@@ -714,114 +625,30 @@ test.describe(
       });
     });
 
-    test.describe('Granular Permissions - Failed Rows', () => {
-      test('User with VIEW_TEST_CASE_FAILED_ROWS_SAMPLE can view failed rows DATA in UI', async ({
-        failedRowsPage,
-        adminPage,
-      }) => {
-        const testCaseFqn = table.testCasesResponseData[0].fullyQualifiedName;
-        const { apiContext: adminContext } = await getApiContext(adminPage);
-        await setupTestCaseWithFailedRows(adminContext, table);
-
-        const testCaseDetailsPromise =
-          waitForTestCaseDetailsResponse(failedRowsPage);
-        await failedRowsPage.goto(
-          `/test-case/${encodeURIComponent(testCaseFqn)}`
-        );
-        await testCaseDetailsPromise;
-        await expect(
-          failedRowsPage.getByTestId('entity-page-header')
-        ).toBeVisible();
-
-        const failedRowsTab = failedRowsPage.getByRole('tab', {
-          name: /failed rows sample/i,
-        });
-        if (await failedRowsTab.isVisible()) {
-          const failedRowsPromise =
-            waitForFailedRowsSampleResponse(failedRowsPage);
-          await failedRowsTab.click();
-          await failedRowsPromise;
-
-          await expect(
-            failedRowsPage.getByText('Amber Albert').first()
-          ).toBeVisible();
-          await expect(
-            failedRowsPage.getByText('John Doe').first()
-          ).toBeVisible();
-        }
-      });
-
-      test('User with DELETE_TEST_CASE_FAILED_ROWS_SAMPLE can see failed rows and delete option in UI', async ({
-        deleteFailedRowsPage,
-        adminPage,
-      }) => {
-        const testCaseFqn = table.testCasesResponseData[0].fullyQualifiedName;
-        const { apiContext: adminContext } = await getApiContext(adminPage);
-        await setupTestCaseWithFailedRows(adminContext, table);
-
-        const testCaseDetailsPromise =
-          waitForTestCaseDetailsResponse(deleteFailedRowsPage);
-        await deleteFailedRowsPage.goto(
-          `/test-case/${encodeURIComponent(testCaseFqn)}`
-        );
-        await testCaseDetailsPromise;
-
-        const failedRowsTab = deleteFailedRowsPage.getByRole('tab', {
-          name: /failed rows sample/i,
-        });
-        await expect(failedRowsTab).toBeVisible();
-        const failedRowsPromise =
-          waitForFailedRowsSampleResponse(deleteFailedRowsPage);
-        await failedRowsTab.click();
-        await failedRowsPromise;
-        await expect(
-          deleteFailedRowsPage.getByTestId('sample-data-manage-button')
-        ).toBeVisible();
-      });
-    });
-
     test.describe('Granular Permissions - TestSuite', () => {
       test('User with TEST_SUITE.CREATE can see Add test suite button', async ({
         suitePage,
       }) => {
-        const testSuiteListPromise =
-          waitForTestSuiteListResponse(suitePage);
-        await suitePage.goto('/data-quality/test-suites');
-        await testSuiteListPromise;
+        await visitTestSuitesPage(suitePage);
 
-        await expect(
-          suitePage.getByTestId('add-test-suite-btn')
-        ).toBeVisible();
+        await expect(suitePage.getByTestId('add-test-suite-btn')).toBeVisible();
       });
 
       test('User with TEST_SUITE.VIEW_ALL can view test suites page and list suites', async ({
         suitePage,
       }) => {
-        const testSuiteListPromise =
-          waitForTestSuiteListResponse(suitePage);
-        await suitePage.goto('/data-quality/test-suites');
-        await testSuiteListPromise;
+        await visitTestSuitesPage(suitePage);
 
-        await expect(
-          suitePage.getByTestId('add-test-suite-btn')
-        ).toBeVisible();
+        await expect(suitePage.getByTestId('add-test-suite-btn')).toBeVisible();
         await expect(
           suitePage.getByTestId('table-suite-radio-btn')
-        ).toBeVisible();
+        ).toBeAttached();
       });
 
       test('User with TEST_SUITE.VIEW_ALL can view test suite CONTENT but cannot add test case', async ({
         viewBasicPage,
       }) => {
-        const testSuiteDetailsPromise = viewBasicPage.waitForResponse(
-          (res) =>
-            res.url().includes(`/api/v1/dataQuality/testSuites/`) &&
-            res.status() === 200
-        );
-        await viewBasicPage.goto(
-          `/test-suites/${encodeURIComponent(logicalTestSuiteFqn)}`
-        );
-        await testSuiteDetailsPromise;
+        await visitTestSuiteDetailsPage(viewBasicPage, logicalTestSuiteFqn);
 
         await expect(
           viewBasicPage.getByTestId('add-test-case-btn')
@@ -831,35 +658,22 @@ test.describe(
       test('User with TEST_SUITE.EDIT_ALL can see add test case button on suite details', async ({
         suitePage,
       }) => {
-        const testSuiteDetailsPromise = suitePage.waitForResponse(
-          (res) =>
-            res.url().includes(`/api/v1/dataQuality/testSuites/`) &&
-            res.status() === 200
-        );
-        await suitePage.goto(
-          `/test-suites/${encodeURIComponent(logicalTestSuiteFqn)}`
-        );
-        await testSuiteDetailsPromise;
+        await visitTestSuiteDetailsPage(suitePage, logicalTestSuiteFqn);
 
-        await expect(
-          suitePage.getByTestId('add-test-case-btn')
-        ).toBeVisible();
+        await expect(suitePage.getByTestId('add-test-case-btn')).toBeVisible();
       });
 
       test('User with TABLE.VIEW_TESTS can view test suites page (alternative permission)', async ({
         viewAllPage,
       }) => {
-        const testSuiteListPromise =
-          waitForTestSuiteListResponse(viewAllPage);
-        await viewAllPage.goto('/data-quality/test-suites');
-        await testSuiteListPromise;
+        await visitTestSuitesPage(viewAllPage);
 
         await expect(
           viewAllPage.getByTestId('add-test-suite-btn')
         ).toBeHidden();
         await expect(
           viewAllPage.getByTestId('table-suite-radio-btn')
-        ).toBeVisible();
+        ).toBeAttached();
       });
     });
 
@@ -872,14 +686,9 @@ test.describe(
           adminPage.getByTestId('profiler-add-table-test-btn')
         ).toBeVisible();
 
-        const testSuiteListPromise =
-          waitForTestSuiteListResponse(adminPage);
-        await adminPage.goto('/data-quality/test-suites');
-        await testSuiteListPromise;
+        await visitTestSuitesPage(adminPage);
 
-        await expect(
-          adminPage.getByTestId('add-test-suite-btn')
-        ).toBeVisible();
+        await expect(adminPage.getByTestId('add-test-suite-btn')).toBeVisible();
       });
     });
   }

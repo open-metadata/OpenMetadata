@@ -11,137 +11,24 @@
  *  limitations under the License.
  */
 import { test as base, expect, Page } from '@playwright/test';
+import {
+  DELETE_RESULTS_POLICY,
+  EDIT_RESULTS_POLICY,
+  PARTIAL_DELETE_TC_ONLY_POLICY,
+  PARTIAL_DELETE_TABLE_ONLY_POLICY,
+  TABLE_EDIT_RESULTS_POLICY,
+  VIEW_RESULTS_POLICY,
+} from '../../../constant/dataQualityPermissions';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { setupUserWithPolicy } from '../../../utils/permission';
+import { waitForTestCaseDetailsResponse } from '../../../utils/testCases';
 import { getCurrentMillis } from '../../../utils/dateTime';
-
-// --- Policies ---
-
-// 1. View Results Policy (TEST_CASE.VIEW_ALL + TABLE.VIEW_TESTS)
-const VIEW_RESULTS_POLICY = [
-  {
-    name: `view-results-tc-${uuid()}`,
-    resources: ['testCase'],
-    operations: ['ViewAll', 'ViewBasic'],
-    effect: 'allow',
-  },
-  {
-    name: `view-results-table-${uuid()}`,
-    resources: ['table'],
-    operations: ['ViewTests', 'ViewBasic'],
-    effect: 'allow',
-  },
-  {
-    name: `view-results-all-${uuid()}`,
-    resources: ['all'],
-    operations: ['ViewBasic'],
-    effect: 'allow',
-  },
-];
-
-// 2. Edit Results Policy (TEST_CASE.EDIT_ALL + TABLE.EDIT_TESTS)
-const EDIT_RESULTS_POLICY = [
-  {
-    name: `edit-results-tc-${uuid()}`,
-    resources: ['testCase'],
-    operations: ['EditAll', 'ViewAll', 'ViewBasic'],
-    effect: 'allow',
-  },
-  {
-    name: `edit-results-table-${uuid()}`,
-    resources: ['table'],
-    operations: ['EditTests', 'ViewAll', 'ViewBasic', 'ViewTests'],
-    effect: 'allow',
-  },
-  {
-    name: `edit-results-all-${uuid()}`,
-    resources: ['all'],
-    operations: ['ViewBasic'],
-    effect: 'allow',
-  },
-];
-
-// 3. Table Edit Results Only (TABLE.EDIT_TESTS, no testCase permissions beyond view)
-const TABLE_EDIT_RESULTS_POLICY = [
-  {
-    name: `table-edit-results-${uuid()}`,
-    resources: ['table'],
-    operations: ['EditTests', 'ViewAll', 'ViewBasic', 'ViewTests'],
-    effect: 'allow',
-  },
-  {
-    name: `table-edit-results-all-${uuid()}`,
-    resources: ['all'],
-    operations: ['ViewBasic'],
-    effect: 'allow',
-  },
-];
-
-// 4. Delete Results Policy (both TEST_CASE.DELETE + TABLE.DELETE required - ALL logic)
-const DELETE_RESULTS_POLICY = [
-  {
-    name: `delete-results-tc-${uuid()}`,
-    resources: ['testCase'],
-    operations: ['Delete', 'ViewAll', 'ViewBasic'],
-    effect: 'allow',
-  },
-  {
-    name: `delete-results-table-${uuid()}`,
-    resources: ['table'],
-    operations: ['Delete', 'ViewAll', 'ViewBasic', 'ViewTests'],
-    effect: 'allow',
-  },
-  {
-    name: `delete-results-all-${uuid()}`,
-    resources: ['all'],
-    operations: ['ViewBasic'],
-    effect: 'allow',
-  },
-];
-
-// 5. Partial Delete - TEST_CASE.DELETE only (no TABLE.DELETE)
-const PARTIAL_DELETE_TC_ONLY_POLICY = [
-  {
-    name: `partial-del-tc-${uuid()}`,
-    resources: ['testCase'],
-    operations: ['Delete', 'ViewAll', 'ViewBasic'],
-    effect: 'allow',
-  },
-  {
-    name: `partial-del-tc-table-${uuid()}`,
-    resources: ['table'],
-    operations: ['ViewAll', 'ViewBasic', 'ViewTests'],
-    effect: 'allow',
-  },
-  {
-    name: `partial-del-tc-all-${uuid()}`,
-    resources: ['all'],
-    operations: ['ViewBasic'],
-    effect: 'allow',
-  },
-];
-
-// 6. Partial Delete - TABLE.DELETE only (no TEST_CASE.DELETE)
-const PARTIAL_DELETE_TABLE_ONLY_POLICY = [
-  {
-    name: `partial-del-table-${uuid()}`,
-    resources: ['table'],
-    operations: ['Delete', 'ViewAll', 'ViewBasic', 'ViewTests'],
-    effect: 'allow',
-  },
-  {
-    name: `partial-del-table-all-${uuid()}`,
-    resources: ['all'],
-    operations: ['ViewBasic'],
-    effect: 'allow',
-  },
-];
 
 // --- Objects ---
 const viewResultsPolicy = new PolicyClass();
@@ -239,8 +126,9 @@ test.describe(
     };
 
     const visitTestCaseDetailsPage = async (page: Page) => {
+      const detailsPromise = waitForTestCaseDetailsResponse(page);
       await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
-      await page.waitForLoadState('networkidle');
+      await detailsPromise;
     };
 
     test.beforeAll(async ({ browser }) => {
@@ -425,23 +313,16 @@ test.describe(
       test('User with only VIEW cannot see edit action and cannot POST results', async ({
         viewResultsPage,
       }) => {
-        // UI: Navigate to profiler, verify edit action is NOT available
         await visitProfilerPage(viewResultsPage);
         const actionDropdown = viewResultsPage.getByTestId(
           `action-dropdown-${testCaseName}`
         );
 
-        if (await actionDropdown.isVisible()) {
-          await actionDropdown.click();
-          await expect(
-            viewResultsPage.getByTestId(`edit-${testCaseName}`)
-          ).toBeHidden();
-          await viewResultsPage.keyboard.press('Escape');
-        }
+        await expect(actionDropdown).toBeVisible();
+        await expect(actionDropdown).toBeDisabled();
+        await viewResultsPage.keyboard.press('Escape');
 
-        // API: Verify POST is forbidden
         const { apiContext } = await getApiContext(viewResultsPage);
-
         const res = await apiContext.post(
           `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
             testCaseFqn
@@ -465,13 +346,10 @@ test.describe(
         const actionDropdown = viewResultsPage.getByTestId(
           `action-dropdown-${testCaseName}`
         );
-        if (await actionDropdown.isVisible()) {
-          await actionDropdown.click();
-          await expect(
-            viewResultsPage.getByTestId(`edit-${testCaseName}`)
-          ).toBeHidden();
-          await viewResultsPage.keyboard.press('Escape');
-        }
+
+        await expect(actionDropdown).toBeVisible();
+        await expect(actionDropdown).toBeDisabled();
+        await viewResultsPage.keyboard.press('Escape');
 
         const { apiContext } = await getApiContext(viewResultsPage);
 
@@ -510,7 +388,7 @@ test.describe(
 
         const { apiContext: adminContext } = await getApiContext(adminPage);
         const ts = getCurrentMillis() + 10000;
-        await adminContext.post(
+        const postRes = await adminContext.post(
           `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
             testCaseFqn
           )}`,
@@ -532,12 +410,13 @@ test.describe(
         );
         expect(res.status()).toBe(403);
 
-        // Cleanup
-        await adminContext.delete(
-          `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
-            testCaseFqn
-          )}/${ts}`
-        );
+        if (postRes.ok()) {
+          await adminContext.delete(
+            `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
+              testCaseFqn
+            )}/${ts}`
+          );
+        }
       });
 
       test('User with only TABLE.DELETE (no TEST_CASE.DELETE) cannot DELETE results', async ({
@@ -552,7 +431,7 @@ test.describe(
 
         const { apiContext: adminContext } = await getApiContext(adminPage);
         const ts = getCurrentMillis() + 11000;
-        await adminContext.post(
+        const postRes = await adminContext.post(
           `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
             testCaseFqn
           )}`,
@@ -574,12 +453,13 @@ test.describe(
         );
         expect(res.status()).toBe(403);
 
-        // Cleanup
-        await adminContext.delete(
-          `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
-            testCaseFqn
-          )}/${ts}`
-        );
+        if (postRes.ok()) {
+          await adminContext.delete(
+            `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
+              testCaseFqn
+            )}/${ts}`
+          );
+        }
       });
     });
   }

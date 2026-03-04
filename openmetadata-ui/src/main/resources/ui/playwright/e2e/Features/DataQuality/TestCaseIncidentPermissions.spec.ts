@@ -95,23 +95,11 @@ test.describe(
 
     const visitTestCaseIncidentPage = async (page: Page) => {
       await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
-      // Wait for test case page to load
-      await expect(page.getByTestId('entity-page-header')).toBeVisible({
-        timeout: 10000,
-      });
-      // Click the Incident tab to activate it (if visible)
+      await expect(page.getByTestId('entity-page-header')).toBeVisible();
       const incidentTab = page.getByRole('tab', { name: /Incident/i });
-      try {
-        await expect(incidentTab).toBeVisible({ timeout: 5000 });
-        await incidentTab.click();
-        // Wait for incident tab content to load
-        await expect(page.getByTestId('issue-tab-container')).toBeVisible({
-          timeout: 10000,
-        });
-      } catch {
-        // Tab may not be visible for users without incident view permissions
-        // Individual tests will handle verification
-      }
+      await expect(incidentTab).toBeVisible();
+      await incidentTab.click();
+      await expect(page.getByTestId('issue-tab-container')).toBeVisible();
     };
 
     test.beforeAll(async ({ browser }) => {
@@ -143,15 +131,14 @@ test.describe(
         timestamp: failedTimestamp,
       });
 
-      // Fetch the incident created for this test case
-      const incidentListRes = await apiContext.get(
-        `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=${
-          failedTimestamp - 60000
-        }&endTs=${failedTimestamp + 60000}`
-      );
+      const incidentUrl = `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=${
+        failedTimestamp - 60000
+      }&endTs=${failedTimestamp + 60000}`;
+
+      const incidentListRes = await apiContext.get(incidentUrl);
       const incidentList = await incidentListRes.json();
 
-      if (incidentList.data && incidentList.data.length > 0) {
+      if (incidentList.data?.length > 0) {
         const incident = incidentList.data.find(
           (i: { testCaseReference?: { fullyQualifiedName?: string } }) =>
             i.testCaseReference?.fullyQualifiedName === testCaseFqn
@@ -203,9 +190,7 @@ test.describe(
         viewIncidentsPage,
       }) => {
         await visitTestCaseIncidentPage(viewIncidentsPage);
-        await expect(
-          viewIncidentsPage.getByTestId('open-task')
-        ).toBeVisible();
+        await expect(viewIncidentsPage.getByTestId('open-task')).toBeVisible();
         await expect(
           viewIncidentsPage.getByTestId('closed-task')
         ).toBeVisible();
@@ -218,15 +203,13 @@ test.describe(
         viewIncidentsPage,
       }) => {
         await visitTestCaseIncidentPage(viewIncidentsPage);
-        await expect(
-          viewIncidentsPage.getByTestId('open-task')
-        ).toBeVisible();
+        await expect(viewIncidentsPage.getByTestId('open-task')).toBeVisible();
         await expect(
           viewIncidentsPage.getByTestId('closed-task')
         ).toBeVisible();
-        await expect(
-          viewIncidentsPage.getByTestId('open-task')
-        ).toContainText(/open/i);
+        await expect(viewIncidentsPage.getByTestId('open-task')).toContainText(
+          /open/i
+        );
         await expect(
           viewIncidentsPage.getByTestId('edit-resolution-icon')
         ).toBeHidden();
@@ -253,9 +236,7 @@ test.describe(
         editIncidentsPage,
       }) => {
         await visitTestCaseIncidentPage(editIncidentsPage);
-        await expect(
-          editIncidentsPage.getByTestId('open-task')
-        ).toBeVisible();
+        await expect(editIncidentsPage.getByTestId('open-task')).toBeVisible();
         const editIcon = editIncidentsPage.getByTestId('edit-resolution-icon');
         await expect(editIcon.first()).toBeVisible();
       });
@@ -279,9 +260,7 @@ test.describe(
         viewIncidentsPage,
       }) => {
         await visitTestCaseIncidentPage(viewIncidentsPage);
-        await expect(
-          viewIncidentsPage.getByTestId('open-task')
-        ).toBeVisible();
+        await expect(viewIncidentsPage.getByTestId('open-task')).toBeVisible();
         await expect(
           viewIncidentsPage.getByTestId('edit-resolution-icon')
         ).toBeHidden();
@@ -322,9 +301,7 @@ test.describe(
         consumerLikePage,
       }) => {
         await visitTestCaseIncidentPage(consumerLikePage);
-        await expect(
-          consumerLikePage.getByTestId('open-task')
-        ).toBeVisible();
+        await expect(consumerLikePage.getByTestId('open-task')).toBeVisible();
         await expect(
           consumerLikePage.getByTestId('edit-resolution-icon')
         ).toBeHidden();

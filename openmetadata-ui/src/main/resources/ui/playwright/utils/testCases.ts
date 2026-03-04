@@ -117,6 +117,28 @@ export const waitForTestSuiteListResponse = (page: Page) =>
       res.status() === 200
   );
 
+export const visitTestSuitesPage = async (page: Page) => {
+  const listPromise = waitForTestSuiteListResponse(page);
+  await page.goto('/data-quality/test-suites');
+  await listPromise;
+};
+
+export const waitForTestSuiteDetailsResponse = (page: Page) =>
+  page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/dataQuality/testSuites/') &&
+      res.status() === 200
+  );
+
+export const visitTestSuiteDetailsPage = async (
+  page: Page,
+  suiteFqn: string
+) => {
+  const detailsPromise = waitForTestSuiteDetailsResponse(page);
+  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`);
+  await detailsPromise;
+};
+
 export const waitForFailedRowsSampleResponse = (page: Page) =>
   page.waitForResponse(
     (res) =>
@@ -316,7 +338,6 @@ export const uploadCSVFile = async (page: Page, filePath: string) => {
   await page.setInputFiles('[type="file"]', filePath);
   await page.waitForSelector('[data-testid="upload-file-widget"]', {
     state: 'hidden',
-    timeout: 10000,
   });
 };
 
@@ -325,9 +346,7 @@ export const uploadCSVFile = async (page: Page, filePath: string) => {
  * @param page - Playwright page object
  */
 export const validateImportGrid = async (page: Page) => {
-  await expect(page.getByRole('grid')).toBeVisible({
-    timeout: 15000,
-  });
+  await expect(page.getByRole('grid')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Previous' })).toBeVisible();
   await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -671,7 +690,7 @@ export const performE2EExportImportFlow = async (
     await visitDataQualityTab(page, table);
     await expect(
       page.getByTestId(`e2e_${testNamePrefix}_complete_test`)
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible();
   });
 
   // Step 6: Bulk edit - Update display names and add tags
