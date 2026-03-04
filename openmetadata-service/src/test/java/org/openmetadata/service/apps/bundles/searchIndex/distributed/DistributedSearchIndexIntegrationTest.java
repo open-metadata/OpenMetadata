@@ -249,7 +249,7 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     assertEquals(1, claimed, "Should claim exactly one partition");
 
     SearchIndexPartitionRecord claimedPartition =
-        partitionDAO.findLatestClaimedPartition(jobId, "server-1");
+        partitionDAO.findLatestClaimedPartition(jobId, "server-1", now);
     assertNotNull(claimedPartition, "Should find the claimed partition");
     assertEquals("PROCESSING", claimedPartition.status());
     assertEquals("server-1", claimedPartition.assignedServer());
@@ -778,7 +778,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     int processedPartitions = 0;
 
     while (partitionDAO.claimNextPartitionAtomic(jobId, serverId, now) > 0) {
-      SearchIndexPartitionRecord claimed = partitionDAO.findLatestClaimedPartition(jobId, serverId);
+      SearchIndexPartitionRecord claimed =
+          partitionDAO.findLatestClaimedPartition(jobId, serverId, now);
       assertNotNull(claimed, "Should have a claimed partition");
 
       partitionDAO.updateProgress(

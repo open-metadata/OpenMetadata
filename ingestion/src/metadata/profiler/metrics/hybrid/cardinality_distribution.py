@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 if TYPE_CHECKING:
     from metadata.profiler.processor.runner import PandasRunner
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.distinct_count import DistinctCount
@@ -39,12 +40,14 @@ class CardinalityDistribution(HybridMetric):
     with an "Others" bucket. Only works for concatenable types (strings, enums).
     """
 
+    schema_metric_type = MetricType.cardinalityDistribution
+
     threshold_percentage: float = 0.02  # 2% threshold for "Others" bucket
     min_buckets: int = 5  # Minimum number of top categories to show
 
     @classmethod
     def name(cls):
-        return "cardinalityDistribution"
+        return MetricType.cardinalityDistribution.value
 
     @property
     def metric_type(self):
