@@ -41,6 +41,8 @@ class UniqueCount(QueryMetric):
     Given a column, count the number of values appearing only once
     """
 
+    schema_metric_type = MetricType.uniqueCount
+
     @classmethod
     def name(cls):
         return MetricType.uniqueCount.value

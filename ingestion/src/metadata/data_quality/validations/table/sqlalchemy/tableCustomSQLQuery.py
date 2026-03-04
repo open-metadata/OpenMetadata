@@ -360,11 +360,11 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         table_metric_computer: TableMetricComputer = TableMetricComputer(
             dialect,
             runner=self.runner,
-            metrics=[Metrics.ROW_COUNT],
+            metrics=[Metrics.rowCount],
             conn_config=self.runtime_params.conn_config,
             entity=self.runtime_params.entity,
         )
         row = table_metric_computer.compute()
         if row:
-            return row._asdict().get(Metrics.ROW_COUNT.value.name())
+            return row._asdict().get(Metrics.rowCount.name)
         return None
