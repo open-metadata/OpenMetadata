@@ -117,6 +117,8 @@ class StdDev(StaticMetric):
     Given a column, return the Standard Deviation value.
     """
 
+    schema_metric_type = MetricType.stddev
+
     @classmethod
     def name(cls):
         return MetricType.stddev.value

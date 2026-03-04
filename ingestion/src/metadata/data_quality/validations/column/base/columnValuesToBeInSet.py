@@ -61,18 +61,18 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
             count_in_set = self._run_results(
-                Metrics.COUNT_IN_SET, column, values=test_params[self.ALLOWED_VALUES]
+                Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES]
             )
 
             metric_values = {
-                Metrics.COUNT_IN_SET.name: count_in_set,
+                Metrics.countInSet.name: count_in_set,
             }
 
             if test_params[self.MATCH_ENUM]:
                 row_count = self._run_results(
-                    Metrics.ROW_COUNT, column, values=test_params[self.ALLOWED_VALUES]
+                    Metrics.rowCount, column, values=test_params[self.ALLOWED_VALUES]
                 )
-                metric_values[Metrics.ROW_COUNT.name] = row_count
+                metric_values[Metrics.rowCount.name] = row_count
 
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -135,11 +135,11 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             dict: Mapping of Metrics enum names to Metrics enum values
         """
         metrics = {
-            Metrics.COUNT_IN_SET.name: Metrics.COUNT_IN_SET,
+            Metrics.countInSet.name: Metrics.countInSet,
         }
 
         if test_params[self.MATCH_ENUM]:
-            metrics[Metrics.ROW_COUNT.name] = Metrics.ROW_COUNT
+            metrics[Metrics.rowCount.name] = Metrics.rowCount
 
         return metrics
 
@@ -169,11 +169,11 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             raise ValueError(
                 "test_params is required for columnValuesToBeInSet._evaluate_test_condition"
             )
-        count_in_set = metric_values[Metrics.COUNT_IN_SET.name]
+        count_in_set = metric_values[Metrics.countInSet.name]
         match_enum = test_params[self.MATCH_ENUM]
 
         if match_enum:
-            row_count = metric_values.get(Metrics.ROW_COUNT.name, 0)
+            row_count = metric_values.get(Metrics.rowCount.name, 0)
             failed_count = row_count - count_in_set
             matched = failed_count == 0
             total_rows = row_count
@@ -205,7 +205,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
-        count_in_set = metric_values[Metrics.COUNT_IN_SET.name]
+        count_in_set = metric_values[Metrics.countInSet.name]
 
         if dimension_info:
             return (
@@ -227,7 +227,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         return [
             TestResultValue(
                 name=ALLOWED_VALUE_COUNT,
-                value=str(metric_values[Metrics.COUNT_IN_SET.name]),
+                value=str(metric_values[Metrics.countInSet.name]),
             ),
         ]
 
@@ -282,7 +282,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             column: The main column being validated
             dimension_col: Single dimension column object
             metrics_to_compute: Dictionary mapping Metrics enum names to Metrics objects
-                              e.g., {"COUNT_IN_SET": Metrics.COUNT_IN_SET}
+                              e.g., {"COUNT_IN_SET": Metrics.countInSet}
             test_params: Dictionary with test-specific parameters (allowed_values, match_enum)
             top_n: Number of top dimension values before grouping as "Others"
 

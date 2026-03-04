@@ -138,6 +138,38 @@ public class LoggingProgressListener implements ReindexingProgressListener {
   }
 
   @Override
+  public void onReaderFailure(String entityType, String entityId, String error, FailureType type) {
+    if (type == FailureType.ENTITY_NOT_FOUND) {
+      LOG.warn("Reader warning for {} [{}]: {}", entityType, entityId, error);
+    } else {
+      LOG.error("Reader failure for {} [{}] ({}): {}", entityType, entityId, type, error);
+    }
+  }
+
+  @Override
+  public void onProcessFailure(String entityType, String entityId, String error) {
+    LOG.error("Process failure for {} [{}]: {}", entityType, entityId, error);
+  }
+
+  @Override
+  public void onSinkFailure(String entityType, String entityId, String error) {
+    LOG.error("Sink failure for {} [{}]: {}", entityType, entityId, error);
+  }
+
+  @Override
+  public void onSubIndexingCompleted(String entityType, String subIndex, StepStats subIndexStats) {
+    long success =
+        subIndexStats.getSuccessRecords() != null ? subIndexStats.getSuccessRecords() : 0;
+    long failed = subIndexStats.getFailedRecords() != null ? subIndexStats.getFailedRecords() : 0;
+    LOG.info(
+        "Sub-indexing completed for {} [{}] - Success: {}, Failed: {}",
+        entityType,
+        subIndex,
+        success,
+        failed);
+  }
+
+  @Override
   public void onJobStopped(Stats currentStats) {
     LOG.info("Reindexing job stopped by user request");
     if (currentStats != null && currentStats.getJobStats() != null) {

@@ -61,10 +61,10 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
 
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
-            stddev_value = self._run_results(Metrics.STDDEV, column)
+            stddev_value = self._run_results(Metrics.stddev, column)
 
             metric_values = {
-                Metrics.STDDEV.name: stddev_value,
+                Metrics.stddev.name: stddev_value,
             }
 
         except (ValueError, RuntimeError) as exc:
@@ -128,7 +128,7 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
             dict: Dictionary mapping metric names to Metrics enum values
         """
         return {
-            Metrics.STDDEV.name: Metrics.STDDEV,
+            Metrics.stddev.name: Metrics.stddev,
         }
 
     def _evaluate_test_condition(
@@ -151,7 +151,7 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
                 - failed_rows: None - not applicable for statistical validators
                 - total_rows: None - not applicable for statistical validators
         """
-        stddev_value = metric_values[Metrics.STDDEV.name]
+        stddev_value = metric_values[Metrics.stddev.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -185,7 +185,7 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
                 "test_params is required for columnValueStdDevToBeBetween._format_result_message"
             )
 
-        stddev_value = metric_values[Metrics.STDDEV.name]
+        stddev_value = metric_values[Metrics.stddev.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -209,7 +209,7 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
         return [
             TestResultValue(
                 name=STDDEV,
-                value=str(metric_values[Metrics.STDDEV.name]),
+                value=str(metric_values[Metrics.stddev.name]),
             ),
         ]
 

@@ -86,13 +86,13 @@ class ColumnValuesToBeNotNullValidator(
 
         try:
             dfs = self.runner
-            null_count_impl = Metrics.NULL_COUNT(column).get_pandas_computation()
-            row_count_impl = Metrics.ROW_COUNT().get_pandas_computation()
+            null_count_impl = Metrics.nullCount(column).get_pandas_computation()
+            row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.NULL_COUNT.name: null_count_impl.create_accumulator(),
-                    Metrics.ROW_COUNT.name: row_count_impl.create_accumulator(),
+                    Metrics.nullCount.name: null_count_impl.create_accumulator(),
+                    Metrics.rowCount.name: row_count_impl.create_accumulator(),
                 }
             )
 
@@ -104,32 +104,32 @@ class ColumnValuesToBeNotNullValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.NULL_COUNT.name
+                        Metrics.nullCount.name
                     ] = null_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.NULL_COUNT.name],
+                        dimension_aggregates[dimension_value][Metrics.nullCount.name],
                         group_df,
                     )
                     dimension_aggregates[dimension_value][
-                        Metrics.ROW_COUNT.name
+                        Metrics.rowCount.name
                     ] = row_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.ROW_COUNT.name],
+                        dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
                 null_count = null_count_impl.aggregate_accumulator(
-                    agg[Metrics.NULL_COUNT.name]
+                    agg[Metrics.nullCount.name]
                 )
                 row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.ROW_COUNT.name]
+                    agg[Metrics.rowCount.name]
                 )
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.NULL_COUNT.name: null_count,
-                        Metrics.ROW_COUNT.name: row_count,
+                        Metrics.nullCount.name: null_count,
+                        Metrics.rowCount.name: row_count,
                         DIMENSION_TOTAL_COUNT_KEY: row_count,
                         DIMENSION_FAILED_COUNT_KEY: null_count,
                     }

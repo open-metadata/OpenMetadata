@@ -74,18 +74,18 @@ class ColumnValueMeanToBeBetweenValidator(
         dimension_results = []
 
         try:
-            row_count_expr = Metrics.ROW_COUNT().fn()
-            mean_expr = Metrics.MEAN(column).fn()
+            row_count_expr = Metrics.rowCount().fn()
+            mean_expr = Metrics.mean(column).fn()
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                Metrics.MEAN.name: mean_expr,
+                Metrics.mean.name: mean_expr,
             }
 
             failed_count_builder = (
                 lambda cte, row_count_expr: self._get_validation_checker(
                     test_params
                 ).build_agg_level_violation_sqa(
-                    [getattr(cte.c, Metrics.MEAN.name)], row_count_expr
+                    [getattr(cte.c, Metrics.mean.name)], row_count_expr
                 )
             )
 
@@ -102,13 +102,13 @@ class ColumnValueMeanToBeBetweenValidator(
             )
 
             for row in result_rows:
-                mean_value = row.get(Metrics.MEAN.name)
+                mean_value = row.get(Metrics.mean.name)
 
                 if mean_value is None:
                     continue
 
                 metric_values = {
-                    Metrics.MEAN.name: mean_value,
+                    Metrics.mean.name: mean_value,
                 }
 
                 evaluation = self._evaluate_test_condition(metric_values, test_params)

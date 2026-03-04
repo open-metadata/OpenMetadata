@@ -73,18 +73,18 @@ class ColumnValueMinToBeBetweenValidator(
         dimension_results = []
 
         try:
-            row_count_expr = Metrics.ROW_COUNT().fn()
-            min_expr = Metrics.MIN(column).fn()
+            row_count_expr = Metrics.rowCount().fn()
+            min_expr = Metrics.min(column).fn()
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: func.count(),
-                Metrics.MIN.name: min_expr,
+                Metrics.min.name: min_expr,
             }
 
             failed_count_builder = (
                 lambda cte, row_count_expr: self._get_validation_checker(
                     test_params
                 ).build_agg_level_violation_sqa(
-                    [getattr(cte.c, Metrics.MIN.name)], row_count_expr
+                    [getattr(cte.c, Metrics.min.name)], row_count_expr
                 )
             )
 
@@ -101,13 +101,13 @@ class ColumnValueMinToBeBetweenValidator(
             )
 
             for row in result_rows:
-                min_value = row.get(Metrics.MIN.name)
+                min_value = row.get(Metrics.min.name)
 
                 if min_value is None:
                     continue
 
                 metric_values = {
-                    Metrics.MIN.name: min_value,
+                    Metrics.min.name: min_value,
                 }
 
                 evaluation = self._evaluate_test_condition(metric_values, test_params)

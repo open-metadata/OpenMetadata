@@ -64,7 +64,7 @@ class ColumnValueMedianToBeBetweenValidator(
 
         Strategy:
         1. Normalize dimension values in CTE (simple column, no CASE in GROUP BY)
-        2. Use Metrics.MEDIAN on CTE columns (automatically handles CTE reference)
+        2. Use Metrics.median on CTE columns (automatically handles CTE reference)
         3. Build dimensional aggregation query with custom CTE chain
         4. Pass 2: Recompute "Others" median (existing logic, unchanged)
 
@@ -104,20 +104,20 @@ class ColumnValueMedianToBeBetweenValidator(
             normalized_dim_col = normalized_dim_cte.c.normalized_dim
             col_value_col = normalized_dim_cte.c.col_value
 
-            row_count_expr = Metrics.ROW_COUNT().fn()
+            row_count_expr = Metrics.rowCount().fn()
             median_expr = add_props(dimension_col="normalized_dim")(
-                Metrics.MEDIAN.value
+                Metrics.median.value
             )(col_value_col).fn()
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                Metrics.MEDIAN.name: median_expr,
+                Metrics.median.name: median_expr,
             }
 
             failed_count_builder = (
                 lambda cte, row_count_expr: self._get_validation_checker(
                     test_params
                 ).build_agg_level_violation_sqa(
-                    [getattr(cte.c, Metrics.MEDIAN.name)], row_count_expr
+                    [getattr(cte.c, Metrics.median.name)], row_count_expr
                 )
             )
 
@@ -132,7 +132,7 @@ class ColumnValueMedianToBeBetweenValidator(
                 top_n=top_n,
             )
             for row in result_rows:
-                median_value = row.get(Metrics.MEDIAN.name)
+                median_value = row.get(Metrics.median.name)
 
                 if median_value is None:
                     logger.debug(
@@ -142,7 +142,7 @@ class ColumnValueMedianToBeBetweenValidator(
                     )
                     continue
 
-                metric_values = {Metrics.MEDIAN.name: median_value}
+                metric_values = {Metrics.median.name: median_value}
                 evaluation = self._evaluate_test_condition(metric_values, test_params)
 
                 dimension_result = self._create_dimension_result(
@@ -164,12 +164,12 @@ class ColumnValueMedianToBeBetweenValidator(
     def _get_others_metric_expressions_builder(self, test_params):
         def build_others_metric_expressions(others_source):
             col = others_source.c.col_value
-            row_count_expr = Metrics.ROW_COUNT().fn()
-            median_expr = Metrics.MEDIAN.value(col).fn()
+            row_count_expr = Metrics.rowCount().fn()
+            median_expr = Metrics.median.value(col).fn()
 
             return {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                Metrics.MEDIAN.name: median_expr,
+                Metrics.median.name: median_expr,
             }
 
         return build_others_metric_expressions
