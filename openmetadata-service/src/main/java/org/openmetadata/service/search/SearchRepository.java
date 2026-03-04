@@ -374,33 +374,9 @@ public class SearchRepository {
           "Vector search service initialized with provider={}, dimension={}",
           cfg.getNaturalLanguageSearch().getEmbeddingProvider(),
           embeddingClient.getDimension());
-
-      ensureVectorIndexDimension();
     } catch (Exception e) {
       LOG.error("Failed to initialize vector search service: {}", e.getMessage(), e);
     }
-  }
-
-  public void ensureVectorIndexDimension() {
-    if (embeddingClient == null) {
-      return;
-    }
-    int dimension = embeddingClient.getDimension();
-    for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
-      try {
-        String mapping = readIndexMapping(entry.getValue());
-        if (mapping != null) {
-          searchClient.updateIndex(entry.getValue(), mapping);
-        }
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to ensure vector index dimension for {}: {}",
-            entry.getKey(),
-            e.getMessage(),
-            e);
-      }
-    }
-    LOG.info("Ensured vector index dimension={} across all entity indexes", dimension);
   }
 
   public void updateHybridSearchPipeline(double keywordWeight, double semanticWeight) {
