@@ -2625,8 +2625,9 @@ def generate_cluster_sizing(report, ramp_data=None):
     has_conn_refused = False
     has_bimodal = False
 
+    _skip_in_sizing = {"realistic_combined"}
     for entity, data in entity_data.items():
-        if not data:
+        if not data or entity in _skip_in_sizing:
             continue
         p95 = data.get("latency_ms", {}).get("p95", 0)
         avg = data.get("latency_ms", {}).get("avg", 0)
@@ -2680,7 +2681,7 @@ def generate_cluster_sizing(report, ramp_data=None):
         findings.append(f"Health check failed {unhealthy_count} times ({pct:.0f}%) -- server overwhelmed")
 
     for entity, data in entity_data.items():
-        if not data:
+        if not data or entity in _skip_in_sizing:
             continue
         windows = data.get("throughput_over_time", [])
         if len(windows) >= 4:
@@ -2696,6 +2697,33 @@ def generate_cluster_sizing(report, ramp_data=None):
                         f"{entity}: throughput degraded {degradation:.0f}% "
                         f"({avg_first:.0f} rps -> {avg_last:.0f} rps) -- resource exhaustion"
                     )
+
+    rc_data = entity_data.get("realistic_combined")
+    if rc_data:
+        rc_p95 = rc_data.get("latency_ms", {}).get("p95", 0)
+        rc_p50 = rc_data.get("latency_ms", {}).get("p50", 0)
+        rc_rps = rc_data.get("throughput_rps", 0)
+        rc_err = rc_data.get("error_rate_pct", 0)
+        findings.append(
+            f"REALISTIC MODE: {rc_data.get('created', 0)} entities across "
+            f"{len([k for k in entity_data if k not in _skip_in_sizing and not k.startswith('read_') and not k.startswith('mixed_')])} "
+            f"types at combined {rc_rps:.0f} rps (p50={rc_p50:.0f}ms, p95={rc_p95:.0f}ms, errors={rc_err:.1f}%)"
+        )
+        if rc_p95 > max_p95 * 1.5 and max_p95 > 0:
+            findings.append(
+                f"Cross-entity contention: combined p95 ({rc_p95:.0f}ms) is "
+                f"{rc_p95/max_p95:.1f}x the worst individual entity p95 ({max_p95:.0f}ms) "
+                f"-- shared resource contention (DB pool, thread pool, or locks)"
+            )
+        rc_analysis = rc_data.get("latency_analysis", {})
+        if rc_analysis.get("bimodal"):
+            has_bimodal = True
+            findings.append(
+                "Realistic workload shows bimodal latency -- "
+                "cross-entity lock contention or connection pool exhaustion"
+            )
+        if rc_p95 > max_p95:
+            max_p95 = rc_p95
 
     overall_rps = report.get("overall", {}).get("overall_throughput_rps", 0)
     effective_capacity = int(150 / (avg_latency_ms / 1000)) if avg_latency_ms > 0 else 0
