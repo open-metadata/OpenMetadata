@@ -25,8 +25,10 @@ public class RunIngestionPipelineImpl {
   public static final String SUCCESS = "SUCCESS";
   public static final String FAILED = "FAILED";
   public static final String RUNNING = "RUNNING";
-  public static final String RUN_INGESTION_PIPELINE = "runIngestionPipeline";
   public static final String WAIT_FOR_PIPELINE_COMPLETION = "waitForPipelineCompletion";
+
+  static long pollingIntervalMillis = 30 * 1_000L;
+
   private final PipelineServiceClientInterface pipelineServiceClient;
 
   public RunIngestionPipelineImpl(PipelineServiceClientInterface pipelineServiceClient) {
@@ -82,7 +84,7 @@ public class RunIngestionPipelineImpl {
 
   private void runIngestionPipeline(IngestionPipeline ingestionPipeline) {
     int maxRetries = 3;
-    long backoffMillis = 15 * 1000;
+    long backoffMillis = 15 * 1000L;
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -90,23 +92,20 @@ public class RunIngestionPipelineImpl {
             ingestionPipeline,
             Entity.getEntity(
                 ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
-        return; // Success
+        return;
       } catch (IngestionPipelineDeploymentException ex) {
         if (attempt == maxRetries) {
           throw new RuntimeException("Failed to run pipeline after " + attempt + " attempts", ex);
         }
 
-        // Use Resilience4j for delay (not Thread.sleep)
-        RetryConfig delayConfig =
-            RetryConfig.<Boolean>custom()
-                .maxAttempts(1)
-                .waitDuration(Duration.ofMillis(backoffMillis))
-                .build();
+        try {
+          Thread.sleep(backoffMillis);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException("Interrupted while waiting to retry pipeline run", ie);
+        }
 
-        Retry.of("runIngestionPipelineDelay-" + attempt, delayConfig)
-            .executeSupplier(() -> true); // Just to trigger delay
-
-        backoffMillis *= 2; // Exponential increase: 15s -> 30s
+        backoffMillis *= 2;
       }
     }
   }
@@ -120,7 +119,7 @@ public class RunIngestionPipelineImpl {
     RetryConfig retryConfig =
         RetryConfig.<String>custom()
             .maxAttempts(Integer.MAX_VALUE)
-            .waitDuration(Duration.ofMillis(30 * 1_000L))
+            .waitDuration(Duration.ofMillis(pollingIntervalMillis))
             .retryOnResult(RUNNING::equals)
             .failAfterMaxAttempts(false)
             .build();
@@ -129,7 +128,6 @@ public class RunIngestionPipelineImpl {
 
     Supplier<String> completionChecker =
         () -> {
-          // Check timeout first
           if (System.currentTimeMillis() - startTime > timeoutMillis) {
             return "TIMEOUT";
           }
@@ -143,7 +141,7 @@ public class RunIngestionPipelineImpl {
                   .getData();
 
           if (statuses.isEmpty()) {
-            return RUNNING; // Continue polling
+            return RUNNING;
           }
 
           PipelineStatus status = statuses.getLast();
@@ -155,7 +153,6 @@ public class RunIngestionPipelineImpl {
             return SUCCESS;
           }
 
-          // QUEUED, RUNNING, or any other non-terminal state - continue polling
           return RUNNING;
         };
 

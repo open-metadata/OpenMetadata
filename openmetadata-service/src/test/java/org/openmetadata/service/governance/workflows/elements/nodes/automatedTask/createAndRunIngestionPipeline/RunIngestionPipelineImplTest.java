@@ -51,6 +51,8 @@ class RunIngestionPipelineImplTest {
 
   @BeforeEach
   void setUp() {
+    RunIngestionPipelineImpl.pollingIntervalMillis = 100L;
+
     // Mock Entity static methods
     mockedEntity = mockStatic(Entity.class);
     mockedEntity
@@ -74,6 +76,7 @@ class RunIngestionPipelineImplTest {
 
   @AfterEach
   void tearDown() {
+    RunIngestionPipelineImpl.pollingIntervalMillis = 30 * 1_000L;
     if (mockedEntity != null) {
       mockedEntity.close();
     }
@@ -199,7 +202,6 @@ class RunIngestionPipelineImplTest {
 
   @Test
   void testWaitForCompletionPollingForRunningState() {
-    // This test will take ~60 seconds due to 30-second polling
     // Mock sequence: RUNNING -> RUNNING -> SUCCESS
     PipelineStatus runningStatus = createPipelineStatus(PipelineStatusType.RUNNING);
     PipelineStatus successStatus = createPipelineStatus(PipelineStatusType.SUCCESS);
@@ -211,13 +213,9 @@ class RunIngestionPipelineImplTest {
 
     long startTime = System.currentTimeMillis();
     boolean result =
-        runIngestionPipelineImpl.waitForCompletion(
-            mockRepository, testPipeline, startTime, 95000); // 95 second timeout for test
-    long duration = System.currentTimeMillis() - startTime;
+        runIngestionPipelineImpl.waitForCompletion(mockRepository, testPipeline, startTime, 5000);
 
     assertTrue(result);
-    // Should have taken ~60 seconds (2 * 30s polling intervals)
-    assertTrue(duration >= 60000, "Expected at least 60 seconds for 2 polling intervals");
     verify(mockRepository, times(3)).listPipelineStatus(anyString(), anyLong(), anyLong());
   }
 
@@ -234,8 +232,7 @@ class RunIngestionPipelineImplTest {
 
     long startTime = System.currentTimeMillis();
     boolean result =
-        runIngestionPipelineImpl.waitForCompletion(
-            mockRepository, testPipeline, startTime, 35000); // Give enough time for one 30s poll
+        runIngestionPipelineImpl.waitForCompletion(mockRepository, testPipeline, startTime, 5000);
 
     assertTrue(result);
     verify(mockRepository, times(2)).listPipelineStatus(anyString(), anyLong(), anyLong());
