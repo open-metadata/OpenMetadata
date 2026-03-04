@@ -5143,10 +5143,6 @@ export interface Pipeline {
      */
     computeColumnMetrics?: boolean;
     /**
-     * Option to turn on/off computing profiler metrics.
-     */
-    computeMetrics?: boolean;
-    /**
      * Option to turn on/off table metric computation. If enabled, profiler will compute table
      * level metrics.
      */
@@ -5591,6 +5587,17 @@ export interface CollateAIAppConfig {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Per-entity-type override for time series max days. Keys are entity type names (e.g.
+     * testCaseResult, queryCostRecord), values are number of days. Entities not listed here use
+     * the default Time Series Max Days value.
+     */
+    timeSeriesEntityDays?: { [key: string]: number };
+    /**
+     * Maximum age in days for time series data during reindexing. Default 0 (index all data).
+     * Set to a positive value like 15 to limit to recent data only.
+     */
+    timeSeriesMaxDays?: number;
     /**
      * Enable distributed indexing to scale reindexing across multiple servers with fault
      * tolerance and parallel processing
