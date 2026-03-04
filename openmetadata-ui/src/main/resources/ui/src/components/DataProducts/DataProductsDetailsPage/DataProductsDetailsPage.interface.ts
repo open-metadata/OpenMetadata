@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 
 export interface DataProductsDetailsPageProps {
@@ -17,12 +18,15 @@ export interface DataProductsDetailsPageProps {
   isVersionsView?: boolean;
   onUpdate: (dataProductDetails: DataProduct) => Promise<void>;
   onDelete: () => Promise<void>;
+  onRefresh?: () => Promise<void>;
   isFollowing?: boolean;
   isFollowingLoading?: boolean;
   handleFollowingClick?: () => void;
+  onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
 }
 
 export enum DataProductTabs {
   DOCUMENTATION = 'documentation',
   ASSETS = 'assets',
+  CONTRACT = 'contract',
 }

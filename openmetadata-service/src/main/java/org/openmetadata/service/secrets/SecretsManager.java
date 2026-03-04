@@ -198,25 +198,6 @@ public abstract class SecretsManager {
   }
 
   /**
-   * Decrypts a single secret value that may be Fernet-encrypted and/or stored in external SM.
-   * Handles the two-layer encryption: Fernet wrapping around external SM references.
-   *
-   * @param value The value to decrypt (may be fernet:..., secret:..., or plain text)
-   * @return The decrypted value
-   */
-  public String decryptSecretIfNeeded(String value) {
-    if (value == null || value.isEmpty()) {
-      return value;
-    }
-    // First, Fernet-decrypt if tokenized
-    String fernetDecrypted = Fernet.isTokenized(value) ? fernet.decrypt(value) : value;
-    // Then, fetch from external SM if it's a secret reference
-    return Boolean.TRUE.equals(isSecret(fernetDecrypted))
-        ? getSecretValue(fernetDecrypted)
-        : fernetDecrypted;
-  }
-
-  /**
    * Deletes QueryRunner config secrets from the secrets manager.
    * Uses the same path structure as encryptQueryRunnerConfig:
    * /{cluster}/DatabaseService/{serviceName}/queryrunner/{configType}/{field}
@@ -469,16 +450,12 @@ public abstract class SecretsManager {
                   String fieldValue = (String) obj;
                   // get setMethod
                   Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
-                  // First Fernet-decrypt if tokenized, then fetch from external SM if it's a secret
-                  // reference
-                  String fernetDecrypted =
-                      Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue;
-                  String finalValue =
-                      Boolean.TRUE.equals(isSecret(fernetDecrypted))
-                          ? getSecretValue(fernetDecrypted)
-                          : fernetDecrypted;
-                  // set new value
-                  ReflectionUtil.setValueInMethod(toDecryptObject, finalValue, toSet);
+                  // Only Fernet-decrypt. Secret references (secret:/path) are returned as-is
+                  // for the ingestion client to resolve. The server does not fetch secrets.
+                  ReflectionUtil.setValueInMethod(
+                      toDecryptObject,
+                      Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue,
+                      toSet);
                 }
               });
       return toDecryptObject;
@@ -512,7 +489,7 @@ public abstract class SecretsManager {
                   String fieldValue = (String) obj;
                   // get setMethod
                   Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
-                  // set new value
+                  // Fetch from SM if it's a secret reference
                   ReflectionUtil.setValueInMethod(
                       toDecryptObject,
                       Boolean.TRUE.equals(isSecret(fieldValue))

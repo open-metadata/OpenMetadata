@@ -233,9 +233,11 @@ const MlModelPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateMlModelVotes(id, data);
-      const details = await getMlModelByFQN(mlModelFqn, {
-        fields: defaultFields,
-      });
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      const details = await getMlModelByFQN(mlModelFqn, { fields });
       setMlModelDetail(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

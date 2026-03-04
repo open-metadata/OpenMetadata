@@ -90,12 +90,32 @@ export const getUpdatedContractDetails = (
   contract: DataContract,
   formValues: DataContract
 ) => {
-  return omit({ ...contract, ...formValues, name: contract?.name ?? '' }, [
+  const merged: Record<string, unknown> = {
+    ...contract,
+    ...formValues,
+    name: contract?.name ?? '',
+  };
+
+  // Convert termsOfUse from object {content, inherited} to plain string (CreateDataContract format)
+  if (
+    merged.termsOfUse &&
+    typeof merged.termsOfUse === 'object' &&
+    'content' in merged.termsOfUse
+  ) {
+    merged.termsOfUse = (merged.termsOfUse as { content?: string }).content;
+  }
+
+  return omit(merged, [
     'id',
     'fullyQualifiedName',
     'version',
     'updatedAt',
     'updatedBy',
+    'createdAt',
+    'createdBy',
+    'href',
+    'contractUpdates',
+    'inherited',
     'testSuite',
     'deleted',
     'changeDescription',
@@ -393,6 +413,14 @@ export const getDataContractTabByEntity = (entityType: EntityType) => {
         EDataContractTab.CONTRACT_DETAIL,
         EDataContractTab.TERMS_OF_SERVICE,
         EDataContractTab.SCHEMA,
+        EDataContractTab.SEMANTICS,
+        EDataContractTab.SECURITY,
+        EDataContractTab.SLA,
+      ];
+    case EntityType.DATA_PRODUCT:
+      return [
+        EDataContractTab.CONTRACT_DETAIL,
+        EDataContractTab.TERMS_OF_SERVICE,
         EDataContractTab.SEMANTICS,
         EDataContractTab.SECURITY,
         EDataContractTab.SLA,

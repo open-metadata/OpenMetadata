@@ -35,6 +35,7 @@ import {
   AZURESQL,
   BIGQUERY,
   BIGTABLE,
+  BURSTIQ,
   CASSANDRA,
   CLICKHOUSE,
   COCKROACH,
@@ -121,7 +122,6 @@ import {
   UNITYCATALOG,
   VERTICA,
 } from '../constants/Services.constant';
-import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
@@ -148,7 +148,6 @@ import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
-import { SearchSourceAlias } from '../interface/search.interface';
 import {
   ConfigData,
   ExtraInfoType,
@@ -193,6 +192,8 @@ class ServiceUtilClassBase {
     DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
     PipelineServiceType.Mulesoft,
+    DatabaseServiceType.MicrosoftFabric,
+    PipelineServiceType.MicrosoftFabricPipeline,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -538,6 +539,9 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.Synapse:
         return SYNAPSE;
 
+      case this.DatabaseServiceTypeSmallCase.BurstIQ:
+        return BURSTIQ;
+
       case this.MessagingServiceTypeSmallCase.CustomMessaging:
         return TOPIC_DEFAULT;
 
@@ -732,9 +736,10 @@ class ServiceUtilClassBase {
     }
   }
 
-  public getServiceTypeLogo(
-    searchSource: SearchSuggestions[number] | SearchSourceAlias
-  ): string {
+  public getServiceTypeLogo(searchSource: {
+    serviceType?: string;
+    entityType?: string;
+  }): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
@@ -760,6 +765,7 @@ class ServiceUtilClassBase {
 
     return this.getServiceLogo(type);
   }
+
   public getDataAssetsService(serviceType: string): ExplorePageTabs {
     const database = this.DatabaseServiceTypeSmallCase;
     const messaging = this.MessagingServiceTypeSmallCase;

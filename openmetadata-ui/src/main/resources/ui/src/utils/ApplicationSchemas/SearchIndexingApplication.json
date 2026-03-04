@@ -147,6 +147,35 @@
       "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
       "type": "boolean",
       "default": false
+    },
+    "useDistributedIndexing": {
+      "title": "Use Distributed Indexing",
+      "description": "Enable distributed indexing to scale reindexing across multiple servers with fault tolerance and parallel processing",
+      "type": "boolean",
+      "default": true
+    },
+    "partitionSize": {
+      "title": "Partition Size",
+      "description": "Number of entities per partition for distributed indexing. Smaller values create more partitions for better distribution across servers. Range: 1000-50000.",
+      "type": "integer",
+      "default": 10000,
+      "minimum": 1000,
+      "maximum": 50000
+    },
+    "timeSeriesMaxDays": {
+      "title": "Time Series Max Days",
+      "description": "Maximum age in days for time series data during reindexing. Default 0 (index all data). Set to a positive value like 15 to limit to recent data only.",
+      "type": "integer",
+      "default": 0,
+      "minimum": -1
+    },
+    "timeSeriesEntityDays": {
+      "title": "Time Series Entity Days Override",
+      "description": "Per-entity-type override for time series max days. Keys are entity type names (e.g. testCaseResult, queryCostRecord), values are number of days. Entities not listed here use the default Time Series Max Days value.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      }
     }
   },
   "additionalProperties": false

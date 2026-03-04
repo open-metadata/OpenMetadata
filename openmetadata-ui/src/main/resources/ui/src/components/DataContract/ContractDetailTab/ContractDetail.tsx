@@ -21,6 +21,7 @@ import {
   MenuProps,
   RadioChangeEvent,
   Row,
+  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -35,6 +36,7 @@ import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as RunIcon } from '../../../assets/svg/ic-circle-pause.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export-box.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
+import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as ImportIconSelected } from '../../../assets/svg/import-icon-selected.svg';
@@ -52,6 +54,7 @@ import { ContractExecutionStatus } from '../../../generated/type/contractExecuti
 import {
   exportContractToODCSYaml,
   getContractResultByResultId,
+  validateContractByEntityId,
   validateContractById,
 } from '../../../rest/contractAPI';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
@@ -82,11 +85,21 @@ import ContractYaml from '../ContractYaml/ContractYaml.component';
 import ContractImportModal from '../ODCSImportModal';
 import './contract-detail.less';
 
+interface TermsOfUse {
+  content?: string;
+  inherited?: boolean;
+}
+
+interface ContractWithInheritance extends Omit<DataContract, 'termsOfUse'> {
+  termsOfUse?: TermsOfUse | string;
+}
+
 const ContractDetail: React.FC<{
   contract?: DataContract | null;
   entityId: string;
   entityType: string;
   entityName?: string;
+  hasEditPermission?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onContractUpdated?: () => void;
@@ -95,6 +108,7 @@ const ContractDetail: React.FC<{
   entityId,
   entityType,
   entityName,
+  hasEditPermission = false,
   onEdit,
   onDelete,
   onContractUpdated,
@@ -147,6 +161,7 @@ const ContractDetail: React.FC<{
     );
   }, [latestContractResults]);
 
+  const isInheritedContract = Boolean(contract?.inherited);
   const addContractActionsItems = useMemo(() => {
     return [
       {
@@ -194,54 +209,58 @@ const ContractDetail: React.FC<{
 
   const contractActionsItems: MenuProps['items'] = useMemo(() => {
     return [
-      {
-        label: (
-          <div
-            className="contract-action-dropdown-item"
-            data-testid="contract-edit-button">
-            <EditIcon className="anticon" />
+      ...(hasEditPermission
+        ? [
+            {
+              label: (
+                <div
+                  className="contract-action-dropdown-item"
+                  data-testid="contract-edit-button">
+                  <EditIcon className="anticon" />
 
-            {t('label.edit')}
-          </div>
-        ),
-        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EDIT,
-      },
-      {
-        label: (
-          <div
-            className="contract-action-dropdown-item"
-            data-testid="contract-run-now-button">
-            <RunIcon className="anticon" />
+                  {t('label.edit')}
+                </div>
+              ),
+              key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EDIT,
+            },
+            {
+              label: (
+                <div
+                  className="contract-action-dropdown-item"
+                  data-testid="contract-run-now-button">
+                  <RunIcon className="anticon" />
 
-            {t('label.run-now')}
-          </div>
-        ),
-        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.RUN_NOW,
-      },
-      {
-        label: (
-          <div
-            className="contract-action-dropdown-item"
-            data-testid="import-openmetadata-contract-button">
-            <ImportIcon className="anticon" />
+                  {t('label.run-now')}
+                </div>
+              ),
+              key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.RUN_NOW,
+            },
+            {
+              label: (
+                <div
+                  className="contract-action-dropdown-item"
+                  data-testid="import-openmetadata-contract-button">
+                  <ImportIcon className="anticon" />
 
-            {t('label.import')}
-          </div>
-        ),
-        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA,
-      },
-      {
-        label: (
-          <div
-            className="contract-action-dropdown-item"
-            data-testid="import-odcs-contract-button">
-            <ImportIcon className="anticon" />
+                  {t('label.import')}
+                </div>
+              ),
+              key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA,
+            },
+            {
+              label: (
+                <div
+                  className="contract-action-dropdown-item"
+                  data-testid="import-odcs-contract-button">
+                  <ImportIcon className="anticon" />
 
-            {t('label.import-odcs')}
-          </div>
-        ),
-        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS,
-      },
+                  {t('label.import-odcs')}
+                </div>
+              ),
+              key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS,
+            },
+          ]
+        : []),
       {
         label: (
           <div
@@ -266,30 +285,50 @@ const ContractDetail: React.FC<{
         ),
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT_ODCS,
       },
-      {
-        type: 'divider',
-      },
-      {
-        label: (
-          <div
-            className="contract-action-dropdown-item contract-action-dropdown-delete-item"
-            data-testid="delete-contract-button">
-            <DeleteIcon className="anticon" />
+      ...(hasEditPermission
+        ? [
+            {
+              type: 'divider' as const,
+            },
+            {
+              label: (
+                <div
+                  className={`contract-action-dropdown-item contract-action-dropdown-delete-item ${
+                    isInheritedContract ? 'disabled' : ''
+                  }`}
+                  data-testid="delete-contract-button"
+                  title={
+                    isInheritedContract
+                      ? t('message.inherited-contract-cannot-be-deleted')
+                      : undefined
+                  }>
+                  <DeleteIcon className="anticon" />
 
-            {t('label.delete')}
-          </div>
-        ),
-        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.DELETE,
-      },
+                  {t('label.delete')}
+                </div>
+              ),
+              key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.DELETE,
+              disabled: isInheritedContract,
+            },
+          ]
+        : []),
     ];
-  }, []);
+  }, [isInheritedContract, hasEditPermission, t]);
 
   const handleExportContract = useCallback(() => {
     if (!contract) {
       return;
     }
-
-    downloadContractYamlFile(contract);
+    try {
+      downloadContractYamlFile(contract);
+      showSuccessToast(
+        t('message.entity-exported-successfully', {
+          entity: t('label.contract'),
+        })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
   }, [contract]);
 
   const handleExportODCSContract = useCallback(async () => {
@@ -325,16 +364,26 @@ const ContractDetail: React.FC<{
   }, [onContractUpdated]);
 
   const handleRunNow = async () => {
-    if (contract?.id) {
-      try {
-        setValidateLoading(true);
+    if (!contract) {
+      return;
+    }
+
+    try {
+      setValidateLoading(true);
+      // Use entity-based validation for inherited contracts to materialize and store results
+      if (isInheritedContract && contract.entity?.id && contract.entity?.type) {
+        await validateContractByEntityId(
+          contract.entity.id,
+          contract.entity.type
+        );
+      } else if (contract.id) {
         await validateContractById(contract.id);
-        showSuccessToast(t('message.contract-validation-trigger-successfully'));
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setValidateLoading(false);
       }
+      showSuccessToast(t('message.contract-validation-trigger-successfully'));
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setValidateLoading(false);
     }
   };
 
@@ -423,11 +472,25 @@ const ContractDetail: React.FC<{
           gutter={[0, 4]}
           justify="space-between">
           <Col span={20}>
-            <Typography.Text
-              className="contract-title"
-              data-testid="contract-title">
-              {getEntityName(contract)}
-            </Typography.Text>
+            <div className="d-flex items-center gap-2">
+              <Typography.Text
+                className="contract-title"
+                data-testid="contract-title">
+                {getEntityName(contract)}
+              </Typography.Text>
+              {(contract as ContractWithInheritance & { inherited?: boolean })
+                .inherited && (
+                <Tooltip
+                  title={t('label.inherited-entity', {
+                    entity: t('label.contract'),
+                  })}>
+                  <InheritIcon
+                    className="inherit-icon cursor-pointer"
+                    width={16}
+                  />
+                </Tooltip>
+              )}
+            </div>
           </Col>
           <Col className="d-flex justify-end" span={4}>
             <div className="contract-action-container">
@@ -567,6 +630,20 @@ const ContractDetail: React.FC<{
   }, [contract]);
 
   if (!contract) {
+    if (!hasEditPermission) {
+      return (
+        <ErrorPlaceHolder
+          icon={
+            <EmptyContractIcon className="empty-contract-icon" height={140} />
+          }
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
+          <Typography.Paragraph className="m-t-md w-80" type="secondary">
+            {t('message.no-contract-description')}
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
+      );
+    }
+
     return (
       <>
         <ContractImportModal
@@ -702,7 +779,7 @@ const ContractDetail: React.FC<{
             {showContractStatusAlert && (
               <Col className="contract-card-items" span={24}>
                 <AlertBar
-                  defafultExpand
+                  defaultExpand
                   className="h-full"
                   message={latestContractResults?.result ?? ''}
                   type="error"
@@ -728,21 +805,52 @@ const ContractDetail: React.FC<{
             )}
 
             {/* Terms of Use Component */}
-            {!isDescriptionContentEmpty(contract.termsOfUse ?? '') && (
-              <Col className="contract-card-items" span={24}>
-                <div className="contract-card-header-container">
-                  <Typography.Text className="contract-card-header">
-                    {t('label.terms-of-service')}
-                  </Typography.Text>
-                  <Divider className="contract-dash-separator" />
-                </div>
+            {(() => {
+              const contractWithInheritance =
+                contract as ContractWithInheritance;
+              const termsOfUse = contractWithInheritance?.termsOfUse;
+              const termsContent =
+                typeof termsOfUse === 'string'
+                  ? termsOfUse
+                  : termsOfUse?.content ?? '';
+              const isInherited =
+                typeof termsOfUse === 'object' && termsOfUse?.inherited;
 
-                <RichTextEditorPreviewerV1
-                  enableSeeMoreVariant
-                  markdown={contract.termsOfUse ?? ''}
-                />
-              </Col>
-            )}
+              if (isDescriptionContentEmpty(termsContent)) {
+                return null;
+              }
+
+              const inheritedIcon = isInherited ? (
+                <Tooltip
+                  title={t('label.inherited-entity', {
+                    entity: t('label.terms-of-service'),
+                  })}>
+                  <InheritIcon
+                    className="inherit-icon cursor-pointer"
+                    width={14}
+                  />
+                </Tooltip>
+              ) : null;
+
+              return (
+                <Col className="contract-card-items" span={24}>
+                  <div className="contract-card-header-container">
+                    <div className="d-flex items-center gap-1">
+                      <Typography.Text className="contract-card-header">
+                        {t('label.terms-of-service')}
+                      </Typography.Text>
+                      {inheritedIcon}
+                    </div>
+                    <Divider className="contract-dash-separator" />
+                  </div>
+
+                  <RichTextEditorPreviewerV1
+                    enableSeeMoreVariant
+                    markdown={termsContent}
+                  />
+                </Col>
+              );
+            })()}
 
             {/* SLA Component */}
             <ContractSLA contract={contract} />
@@ -771,21 +879,39 @@ const ContractDetail: React.FC<{
             )}
 
             {/* Security Component */}
-            {!isEmpty(contract.security) && (
-              <Col
-                className="contract-card-items"
-                data-testid="security-card"
-                span={24}>
-                <div className="contract-card-header-container">
-                  <Typography.Text className="contract-card-header">
-                    {t('label.security')}
-                  </Typography.Text>
-                  <Divider className="contract-dash-separator" />
-                </div>
+            {!isEmpty(contract.security) &&
+              (() => {
+                const inheritedIcon = contract.security?.inherited ? (
+                  <Tooltip
+                    title={t('label.inherited-entity', {
+                      entity: t('label.security'),
+                    })}>
+                    <InheritIcon
+                      className="inherit-icon cursor-pointer"
+                      width={14}
+                    />
+                  </Tooltip>
+                ) : null;
 
-                <ContractSecurityCard security={contract.security} />
-              </Col>
-            )}
+                return (
+                  <Col
+                    className="contract-card-items"
+                    data-testid="security-card"
+                    span={24}>
+                    <div className="contract-card-header-container">
+                      <div className="d-flex items-center gap-1">
+                        <Typography.Text className="contract-card-header">
+                          {t('label.security')}
+                        </Typography.Text>
+                        {inheritedIcon}
+                      </div>
+                      <Divider className="contract-dash-separator" />
+                    </div>
+
+                    <ContractSecurityCard security={contract.security} />
+                  </Col>
+                );
+              })()}
 
             {/* Semantics Component */}
             {contract?.semantics && contract?.semantics.length > 0 && (

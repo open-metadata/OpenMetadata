@@ -15,7 +15,7 @@ Regex Count Metric definition
 # pylint: disable=duplicate-code
 
 import traceback
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import case, column, not_
 
@@ -30,6 +30,8 @@ from metadata.utils.logger import profiler_logger
 if TYPE_CHECKING:
     import pandas as pd
 
+    from metadata.profiler.processor.runner import PandasRunner
+
 logger = profiler_logger()
 
 
@@ -41,8 +43,10 @@ class NotRegexCount(StaticMetric):
     rows that match the forbidden regex pattern
 
     This Metric needs to be initialised passing the expression to check
-    add_props(expression="j%")(Metrics.NOT_REGEX_COUNT.value)
+    add_props(expression="j%")(Metrics.notRegexCount.value)
     """
+
+    schema_metric_type = MetricType.notRegexCount
 
     expression: str
 
@@ -62,26 +66,26 @@ class NotRegexCount(StaticMetric):
         """sqlalchemy function"""
         if not hasattr(self, "expression"):
             raise AttributeError(
-                "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_REGEX_COUNT)"
+                "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.notRegexCount)"
             )
         return SumFn(
             case(
-                [
-                    (
-                        not_(
-                            RegexpMatchFn(
-                                column(self.col.name, self.col.type), self.expression
-                            ),
+                (
+                    not_(
+                        RegexpMatchFn(
+                            column(self.col.name, self.col.type), self.expression
                         ),
-                        0,
-                    )
-                ],
+                    ),
+                    0,
+                ),
                 else_=1,
             )
         )
 
-    def df_fn(self, dfs):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """pandas function"""
+        if dfs is None:
+            return None
         computation = self.get_pandas_computation()
         accumulator = computation.create_accumulator()
         for df in dfs:
@@ -99,7 +103,7 @@ class NotRegexCount(StaticMetric):
         """Returns the logic to compute this metric using Pandas"""
         if not hasattr(self, "expression"):
             raise AttributeError(
-                "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.NOT_REGEX_COUNT)"
+                "Not Regex Count requires an expression to be set: add_props(expression=...)(Metrics.notRegexCount)"
             )
 
         return PandasComputation[int, int](

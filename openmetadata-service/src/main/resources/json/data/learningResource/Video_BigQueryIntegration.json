@@ -1,0 +1,18 @@
+{
+  "name": "Video_BigQueryIntegration",
+  "displayName": "Connecting BigQuery to Collate",
+  "description": "Learn how to connect your BigQuery database to Collate's AI-powered platform. Unlock Google's data ecosystem with seamless integration.",
+  "resourceType": "Video",
+  "categories": ["Discovery", "Administration"],
+  "difficulty": "Intermediate",
+  "source": {
+    "url": "https://www.youtube.com/watch?v=aOaWniA9K40",
+    "provider": "YouTube"
+  },
+  "estimatedDuration": 600,
+  "contexts": [
+    {"pageId": "table"},
+    {"pageId": "explore"}
+  ],
+  "status": "Active"
+}

@@ -17,7 +17,7 @@ from collections import Counter
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import column, func
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import Session
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import QueryMetric
@@ -29,6 +29,8 @@ from metadata.utils.logger import profiler_logger
 if TYPE_CHECKING:
     import pandas as pd
 
+    from metadata.profiler.processor.runner import PandasRunner
+
 logger = profiler_logger()
 
 
@@ -39,6 +41,8 @@ class UniqueCount(QueryMetric):
     Given a column, count the number of values appearing only once
     """
 
+    schema_metric_type = MetricType.uniqueCount
+
     @classmethod
     def name(cls):
         return MetricType.uniqueCount.value
@@ -47,9 +51,7 @@ class UniqueCount(QueryMetric):
     def metric_type(self):
         return int
 
-    def query(
-        self, sample: Optional[DeclarativeMeta], session: Optional[Session] = None
-    ):
+    def query(self, sample: Optional[type], session: Optional[Session] = None):
         """
         Build the Unique Count metric
         """
@@ -65,19 +67,21 @@ class UniqueCount(QueryMetric):
         col = column(self.col.name, self.col.type)
 
         # TODO: Move all connectors from subquery to COUNT(IF) or COUNTIF for peformance
-        if session.bind.dialect.name == Dialects.BigQuery:
+        if session.get_bind().dialect.name == Dialects.BigQuery:
             return func.countif(col == 1).label(self.name())
 
-        unique_count_query = _unique_count_query_mapper[session.bind.dialect.name](
-            col, session, sample
-        )
+        unique_count_query = _unique_count_query_mapper[
+            session.get_bind().dialect.name
+        ](col, session, sample)
         only_once_sub = unique_count_query.subquery("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_sub)
 
-    def df_fn(self, dfs=None):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """
         Build the Unique Count metric
         """
+        if dfs is None:
+            return None
         try:
             computation = self.get_pandas_computation()
             accumulator = computation.create_accumulator()

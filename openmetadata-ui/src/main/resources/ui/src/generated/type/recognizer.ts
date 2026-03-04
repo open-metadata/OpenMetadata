@@ -146,7 +146,7 @@ export interface EntityReference {
  *
  * Pattern-based recognizer using regular expressions
  *
- * Deny list recognizer that matches against a list of specific values
+ * Exact terms recognizer that matches against a list of specific values
  *
  * Context-aware recognizer using surrounding text
  *
@@ -166,18 +166,14 @@ export interface RecognizerConfig {
     patterns?:   Pattern[];
     regexFlags?: RegexFlags;
     /**
-     * The entity type this recognizer detects
+     * Language supported by this recognizer
      */
-    supportedEntity?: PIIEntity;
-    /**
-     * Language supported by this recognizer (ISO 639-1 code)
-     */
-    supportedLanguage?: string;
+    supportedLanguage?: ClassificationLanguage;
     type:               any;
     /**
      * List of values to match against
      */
-    denyList?: string[];
+    exactTerms?: string[];
     /**
      * Words that indicate the presence of the entity
      */
@@ -298,8 +294,6 @@ export interface RegexFlags {
 }
 
 /**
- * The entity type this recognizer detects
- *
  * Enum of PII (Personally Identifiable Information) tags for classification and detection
  * of sensitive data. Based on Presidio supported entities
  * (https://microsoft.github.io/presidio/supported_entities/).
@@ -343,6 +337,97 @@ export enum PIIEntity {
     UsItin = "US_ITIN",
     UsPassport = "US_PASSPORT",
     UsSsn = "US_SSN",
+}
+
+/**
+ * Language supported by this recognizer
+ *
+ * Supported languages for auto classification recognizers (ISO 639-1 codes). Use 'any' to
+ * apply all recognizers regardless of their configured language.
+ */
+export enum ClassificationLanguage {
+    AF = "af",
+    Am = "am",
+    Any = "any",
+    Ar = "ar",
+    Az = "az",
+    Be = "be",
+    Bg = "bg",
+    Bn = "bn",
+    Bs = "bs",
+    CA = "ca",
+    CS = "cs",
+    Cy = "cy",
+    Da = "da",
+    De = "de",
+    El = "el",
+    En = "en",
+    Es = "es",
+    Et = "et",
+    Eu = "eu",
+    Fa = "fa",
+    Fi = "fi",
+    Fr = "fr",
+    Ga = "ga",
+    Gl = "gl",
+    Gu = "gu",
+    HT = "ht",
+    He = "he",
+    Hi = "hi",
+    Hr = "hr",
+    Hu = "hu",
+    Hy = "hy",
+    ID = "id",
+    Is = "is",
+    It = "it",
+    Ja = "ja",
+    KM = "km",
+    Ka = "ka",
+    Kk = "kk",
+    Kn = "kn",
+    Ko = "ko",
+    Ku = "ku",
+    Ky = "ky",
+    LV = "lv",
+    Lo = "lo",
+    Lt = "lt",
+    MS = "ms",
+    MT = "mt",
+    Mi = "mi",
+    Mk = "mk",
+    Ml = "ml",
+    Mn = "mn",
+    Mr = "mr",
+    My = "my",
+    Ne = "ne",
+    Nl = "nl",
+    No = "no",
+    PS = "ps",
+    Pa = "pa",
+    Pl = "pl",
+    Pt = "pt",
+    Ro = "ro",
+    Ru = "ru",
+    Si = "si",
+    Sk = "sk",
+    Sl = "sl",
+    So = "so",
+    Sq = "sq",
+    Sr = "sr",
+    Sv = "sv",
+    Sw = "sw",
+    Ta = "ta",
+    Te = "te",
+    Th = "th",
+    Tl = "tl",
+    Tr = "tr",
+    Uk = "uk",
+    Ur = "ur",
+    Uz = "uz",
+    Vi = "vi",
+    Yi = "yi",
+    Zh = "zh",
+    Zu = "zu",
 }
 
 /**

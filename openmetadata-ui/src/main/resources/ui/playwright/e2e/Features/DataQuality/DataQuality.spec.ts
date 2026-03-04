@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { DOMAIN_TAGS } from '../../../constant/config';
+import {
+  DOMAIN_TAGS,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+} from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
@@ -71,7 +74,12 @@ const testCaseResult = {
 
 test.describe(
   'Data Quality',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  {
+    tag: [
+      `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`,
+      PLAYWRIGHT_INGESTION_TAG_OBJ.tag,
+    ],
+  },
   () => {
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -165,7 +173,7 @@ test.describe(
       await visitDataQualityTab(page, table1);
 
       await page.click('[data-testid="profiler-add-table-test-btn"]');
-      await page.getByRole('menuitem', { name: 'Test case' }).click();
+      await page.getByRole('menuitemradio', { name: 'Test case' }).click();
 
       /**
        * Step: Create table test case
@@ -369,7 +377,7 @@ test.describe(
 
       await visitDataQualityTab(page, table1);
       await page.click('[data-testid="profiler-add-table-test-btn"]');
-      await page.getByRole('menuitem', { name: 'Test case' }).click();
+      await page.getByRole('menuitemradio', { name: 'Test case' }).click();
       await page
         .getByTestId('select-table-card')
         .getByText('Column Level')
@@ -382,7 +390,7 @@ test.describe(
        */
       await test.step('Create', async () => {
         const testDefinitionResponse = page.waitForResponse(
-          '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
+          '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
         await page.click('[id="root\\/column"]');
         await page.click(`[title="${NEW_COLUMN_TEST_CASE.column}"]`);
@@ -988,7 +996,9 @@ test.describe(
         );
 
         await page
-          .getByTestId(filterTable1.entityResponseData?.['fullyQualifiedName'])
+          .getByTestId(
+            filterTable1.entityResponseData?.['fullyQualifiedName'] || ''
+          )
           .click();
         await getTestCaseByTable;
         await verifyFilterTestCase(page);
@@ -1141,7 +1151,7 @@ test.describe(
         );
         await page
           .getByTestId('table-profiler-container')
-          .getByTestId('searchbar')
+          .getByRole('textbox', { name: 'Search test case' })
           .fill(testCases[0]);
         await searchTestCase;
 
@@ -1247,13 +1257,13 @@ test.describe(
 
           await page.click('[data-testid="page-size-selection-dropdown"]');
 
-          const dropdownMenu = page.waitForSelector('.ant-dropdown-menu', {
+          // Wait for dropdown menu to be visible
+          await page.waitForSelector('.ant-dropdown-menu', {
             state: 'visible',
             timeout: 5000,
           });
 
           // Verify dropdown options are visible
-          await expect(dropdownMenu).toBeDefined();
           await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
         });
       } finally {

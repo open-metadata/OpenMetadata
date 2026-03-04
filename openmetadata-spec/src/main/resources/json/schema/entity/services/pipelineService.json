@@ -39,7 +39,8 @@
         "Wherescape",
         "SSIS",
         "Snowplow",
-        "Mulesoft"
+        "Mulesoft",
+        "MicrosoftFabricPipeline"
       ],
       "javaEnums": [
         {
@@ -110,6 +111,9 @@
         },
         {
           "name": "Mulesoft"
+        },
+        {
+          "name": "MicrosoftFabricPipeline"
         }
       ]
     },
@@ -192,6 +196,9 @@
             },
             {
               "$ref": "./connections/pipeline/mulesoftConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/microsoftFabricPipelineConnection.json"
             }
           ]
         }
@@ -279,6 +286,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "entityStatus": {
+      "description": "Status of the entity.",
+      "$ref": "../../type/status.json"
     },
     "dataProducts" : {
       "description": "List of data products this entity is part of.",

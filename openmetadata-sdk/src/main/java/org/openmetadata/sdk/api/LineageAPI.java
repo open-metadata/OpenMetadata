@@ -90,9 +90,10 @@ public class LineageAPI {
     return OpenMetadata.client().lineage().deleteLineage(fromEntity, toEntity);
   }
 
-  public static String exportLineage(String entityType, String entityId)
+  public static String exportLineage(
+      String fqn, String type, String upstreamDepth, String downstreamDepth)
       throws OpenMetadataException {
-    return OpenMetadata.client().lineage().exportLineage(entityType, entityId);
+    return OpenMetadata.client().lineage().exportLineage(fqn, type, upstreamDepth, downstreamDepth);
   }
 
   public static CompletableFuture<String> getLineageAsync(String entity) {

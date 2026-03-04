@@ -33,6 +33,7 @@ class MockTextEncoder {
 global.TextEncoder = MockTextEncoder as unknown as typeof TextEncoder;
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../../utils/date-time/DateTimeUtils'),
   formatDateTimeWithTimezone: jest
     .fn()
     .mockReturnValue('formatDateTimeWithTimezone'),
@@ -69,6 +70,7 @@ jest.mock('../../../common/Badge/Badge.component', () =>
 );
 
 jest.mock('../../../../constants/constants', () => ({
+  ...jest.requireActual('../../../../constants/constants'),
   ICON_DIMENSION: {
     with: 14,
     height: 14,
@@ -193,6 +195,95 @@ const mockProps6 = {
   },
 };
 
+const mockPropsWithProcessStats = {
+  data: {
+    ...mockProps1.data,
+    successContext: {
+      stats: {
+        jobStats: {
+          totalRecords: 274,
+          failedRecords: 0,
+          successRecords: 274,
+        },
+        readerStats: {
+          totalRecords: 280,
+          failedRecords: 2,
+          successRecords: 278,
+          warningRecords: 4,
+        },
+        processStats: {
+          totalRecords: 278,
+          failedRecords: 4,
+          successRecords: 274,
+          warningRecords: 0,
+        },
+        sinkStats: {
+          totalRecords: 274,
+          failedRecords: 0,
+          successRecords: 274,
+        },
+      },
+    },
+  },
+};
+
+const mockPropsWithVectorStats = {
+  data: {
+    ...mockProps1.data,
+    successContext: {
+      stats: {
+        jobStats: {
+          totalRecords: 274,
+          failedRecords: 0,
+          successRecords: 274,
+        },
+        vectorStats: {
+          totalRecords: 274,
+          failedRecords: 10,
+          successRecords: 264,
+          warningRecords: 5,
+        },
+      },
+    },
+  },
+};
+
+const mockPropsWithAllPipelineStats = {
+  data: {
+    ...mockProps1.data,
+    successContext: {
+      stats: {
+        jobStats: {
+          totalRecords: 300,
+          failedRecords: 10,
+          successRecords: 290,
+        },
+        readerStats: {
+          totalRecords: 310,
+          failedRecords: 5,
+          successRecords: 305,
+          warningRecords: 3,
+        },
+        processStats: {
+          totalRecords: 305,
+          failedRecords: 5,
+          successRecords: 300,
+        },
+        sinkStats: {
+          totalRecords: 300,
+          failedRecords: 5,
+          successRecords: 295,
+        },
+        vectorStats: {
+          totalRecords: 295,
+          failedRecords: 5,
+          successRecords: 290,
+        },
+      },
+    },
+  },
+};
+
 describe('AppLogsViewer component', () => {
   it('should contain all necessary elements', () => {
     render(<AppLogsViewer {...mockProps1} />);
@@ -282,5 +373,57 @@ describe('AppLogsViewer component', () => {
     ).not.toBeInTheDocument();
 
     expect(await screen.findByTestId('lazy-log')).toBeInTheDocument();
+  });
+
+  it('should render process stats when processStats is present', () => {
+    render(<AppLogsViewer {...mockPropsWithProcessStats} />);
+
+    expect(
+      screen.getByTestId('stats-component-label.process-stat-plural')
+    ).toBeInTheDocument();
+  });
+
+  it('should render vector stats when vectorStats is present', () => {
+    render(<AppLogsViewer {...mockPropsWithVectorStats} />);
+
+    expect(
+      screen.getByTestId('stats-component-label.vector-stat-plural')
+    ).toBeInTheDocument();
+  });
+
+  it('should render all pipeline stats in correct order', () => {
+    render(<AppLogsViewer {...mockPropsWithAllPipelineStats} />);
+
+    expect(
+      screen.getByTestId('stats-component-label.overall-stat-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('stats-component-label.reader-stat-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('stats-component-label.process-stat-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('stats-component-label.sink-stat-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('stats-component-label.vector-stat-plural')
+    ).toBeInTheDocument();
+  });
+
+  it('should not render process stats when processStats is not present', () => {
+    render(<AppLogsViewer {...mockProps1} />);
+
+    expect(
+      screen.queryByTestId('stats-component-label.process-stat-plural')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should not render vector stats when vectorStats is not present', () => {
+    render(<AppLogsViewer {...mockProps1} />);
+
+    expect(
+      screen.queryByTestId('stats-component-label.vector-stat-plural')
+    ).not.toBeInTheDocument();
   });
 });

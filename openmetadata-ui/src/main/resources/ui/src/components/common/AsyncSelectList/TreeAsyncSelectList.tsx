@@ -446,6 +446,30 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     }
   }, [glossaries]);
 
+  const treeData = useMemo(() => {
+    return convertGlossaryTermsToTreeOptions(
+      isNull(searchOptions)
+        ? (glossaries as ModifiedGlossaryTerm[])
+        : (searchOptions as unknown as ModifiedGlossaryTerm[]),
+      0,
+      isParentSelectable
+    );
+  }, [glossaries, searchOptions, expandableKeys.current, isParentSelectable]);
+
+  const defaultSelectedValues = useMemo(() => {
+    if (!initialOptions || initialOptions.length === 0) {
+      return isMultiSelect ? [] : undefined;
+    }
+    if (isMultiSelect) {
+      return initialOptions.map((option) => ({
+        value: option.value,
+        label: option.label,
+      }));
+    }
+
+    return initialOptions[0]?.value;
+  }, [initialOptions, isMultiSelect]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     switch (e.key) {
       case 'Escape':
@@ -486,6 +510,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         'new-chip-style': newLook,
       })}
       data-testid="tag-selector"
+      defaultValue={defaultSelectedValues}
       dropdownRender={
         hasNoActionButtons ? (menu: ReactElement) => menu : dropdownRender
       }

@@ -28,6 +28,7 @@ import { DomainSelectableListProps } from './DomainSelectableList.interface';
 const DomainSelectableList = ({
   children,
   disabled,
+  getPopupContainer: getPopupContainerProp,
   hasPermission,
   multiple = false,
   onCancel,
@@ -110,7 +111,6 @@ const DomainSelectableList = ({
             </FocusTrapWithContainer>
           )
         }
-        getPopupContainer={getVisiblePopupContainer}
         open={popupVisible}
         overlayClassName={`domain-select-popover w-400 ${overlayClassName}`}
         placement="bottomRight"
@@ -121,7 +121,8 @@ const DomainSelectableList = ({
             setPopupVisible(visible);
           }
         }}
-        {...popoverProps}>
+        {...popoverProps}
+        getPopupContainer={getPopupContainerProp ?? getVisiblePopupContainer}>
         {children ??
           (!isVersionView && (
             <EditIconButton
@@ -140,6 +141,7 @@ const DomainSelectableList = ({
     );
   }, [
     children,
+    getPopupContainerProp,
     hasPermission,
     handleCancel,
     handleUpdate,

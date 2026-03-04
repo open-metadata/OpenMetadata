@@ -762,8 +762,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     PatternRecognizer patternConfig =
         new PatternRecognizer()
             .withType("pattern")
-            .withSupportedEntity(PIIEntity.EMAIL_ADDRESS)
-            .withSupportedLanguage("en")
+            .withSupportedLanguage(ClassificationLanguage.EN)
             .withPatterns(
                 List.of(
                     new Pattern()
@@ -773,6 +772,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
 
     Recognizer emailRecognizer =
         new Recognizer()
+            .withId(UUID.randomUUID())
             .withName("email_recognizer")
             .withDisplayName("Email Recognizer")
             .withDescription("Detects email addresses")
@@ -812,8 +812,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     PatternRecognizer ssnConfig =
         new PatternRecognizer()
             .withType("pattern")
-            .withSupportedEntity(PIIEntity.US_SSN)
-            .withSupportedLanguage("en")
+            .withSupportedLanguage(ClassificationLanguage.EN)
             .withPatterns(
                 List.of(
                     new Pattern()
@@ -823,6 +822,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
 
     Recognizer ssnRecognizer =
         new Recognizer()
+            .withId(UUID.randomUUID())
             .withName("ssn_recognizer")
             .withDisplayName("SSN Recognizer")
             .withDescription("Detects US Social Security Numbers")
@@ -913,29 +913,27 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     Classification classification = createClassification(getEntityName(test) + "_Classification");
 
     // Create recognizers
-    DenyListRecognizer denyListConfig =
-        new DenyListRecognizer()
-            .withType("deny_list")
-            .withSupportedEntity(PIIEntity.CREDIT_CARD)
-            .withSupportedLanguage("en")
-            .withDenyList(List.of("password", "secret", "token", "key"))
+    ExactTermsRecognizer exactTermsConfig =
+        new ExactTermsRecognizer()
+            .withType("exact_terms")
+            .withSupportedLanguage(ClassificationLanguage.EN)
+            .withExactTerms(List.of("password", "secret", "token", "key"))
             .withRegexFlags(
                 new RegexFlags().withMultiline(true).withDotAll(true).withIgnoreCase(false));
 
-    Recognizer denyListRecognizer =
+    Recognizer exactTermsRecognizer =
         new Recognizer()
             .withName("sensitive_terms_recognizer")
             .withDisplayName("Sensitive Terms Recognizer")
             .withDescription("Detects sensitive terms")
             .withEnabled(true)
-            .withRecognizerConfig(denyListConfig)
+            .withRecognizerConfig(exactTermsConfig)
             .withConfidenceThreshold(0.95);
 
     ContextRecognizer contextConfig =
         new ContextRecognizer()
             .withType("context")
-            .withSupportedEntity(PIIEntity.PERSON)
-            .withSupportedLanguage("en")
+            .withSupportedLanguage(ClassificationLanguage.EN)
             .withContextWords(List.of("name", "person", "user", "customer"))
             .withMinScore(0.4)
             .withMaxScore(0.8);
@@ -953,7 +951,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     CreateTag createTag =
         createRequest(getEntityName(test))
             .withClassification(classification.getName())
-            .withRecognizers(List.of(denyListRecognizer, contextRecognizer))
+            .withRecognizers(List.of(exactTermsRecognizer, contextRecognizer))
             .withAutoClassificationEnabled(true)
             .withAutoClassificationPriority(90);
 
@@ -965,20 +963,22 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     assertTrue(tag.getAutoClassificationEnabled());
     assertEquals(90, tag.getAutoClassificationPriority());
 
-    // Verify deny list recognizer
-    Recognizer denyList =
+    // Verify exact terms recognizer
+    Recognizer exactTerms =
         tag.getRecognizers().stream()
             .filter(r -> "sensitive_terms_recognizer".equals(r.getName()))
             .findFirst()
             .orElse(null);
-    assertNotNull(denyList);
+    assertNotNull(exactTerms);
     // The recognizerConfig might be a Map if deserialization didn't work properly
-    if (denyList.getRecognizerConfig() instanceof DenyListRecognizer) {
-      assertEquals("deny_list", ((DenyListRecognizer) denyList.getRecognizerConfig()).getType());
-      assertEquals(4, ((DenyListRecognizer) denyList.getRecognizerConfig()).getDenyList().size());
+    if (exactTerms.getRecognizerConfig() instanceof ExactTermsRecognizer) {
+      assertEquals(
+          "exact_terms", ((ExactTermsRecognizer) exactTerms.getRecognizerConfig()).getType());
+      assertEquals(
+          4, ((ExactTermsRecognizer) exactTerms.getRecognizerConfig()).getExactTerms().size());
     } else {
       // Skip validation if it's not properly deserialized - this is a known issue
-      assertNotNull(denyList.getRecognizerConfig());
+      assertNotNull(exactTerms.getRecognizerConfig());
     }
 
     // Verify context recognizer
@@ -1026,8 +1026,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     PatternRecognizer config =
         new PatternRecognizer()
             .withType("pattern")
-            .withSupportedEntity(PIIEntity.ES_NIE)
-            .withSupportedLanguage("en")
+            .withSupportedLanguage(ClassificationLanguage.EN)
             .withPatterns(List.of());
 
     Recognizer invalidConfidence =

@@ -256,18 +256,13 @@ public class S3LogStorage implements LogStorageInterface {
       } else {
         return StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey));
       }
+    } else if (Boolean.TRUE.equals(config.getEnabled())) {
+      LOG.info("Using AWS DefaultCredentialsProvider (IAM auth enabled)");
+      return DefaultCredentialsProvider.create();
     } else {
-      try {
-        AwsCredentialsProvider defaultProvider = DefaultCredentialsProvider.create();
-        defaultProvider.resolveCredentials(); // Triggers validation
-        LOG.info("Using AWS DefaultCredentialsProvider");
-        return defaultProvider;
-      } catch (Exception e) {
-        LOG.warn(
-            "Default credentials not found. Falling back to static credentials. Reason: {}",
-            e.getMessage());
-        return StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey));
-      }
+      throw new IllegalArgumentException(
+          "AWS credentials not configured for S3 log storage. Either provide "
+              + "awsAccessKeyId/awsSecretAccessKey or set enabled=true to use IAM authentication.");
     }
   }
 

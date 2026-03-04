@@ -42,123 +42,40 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { Field } from '../generated/type/schema';
 import { TagLabel } from '../generated/type/tagLabel';
-import { getDataModelColumnsByFQN } from '../rest/dataModelsAPI';
+import {
+  getDataModelColumnsByFQN,
+  searchDataModelColumnsByFQN,
+} from '../rest/dataModelsAPI';
 import {
   getTableColumnsByFQN,
   getTableList,
   searchTableColumnsByFQN,
 } from '../rest/tableAPI';
+import { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 
 import { pruneEmptyChildren } from './TableUtils';
 const { Text } = AntTypography;
 
-export const getEntityChildDetailsV1 = (
-  entityType: EntityType,
-  entityInfo: SearchedDataProps['data'][number]['_source'],
-  highlights?: SearchedDataProps['data'][number]['highlight'],
-  loading?: boolean,
+/**
+ * Shared utility to filter items by search text using case-insensitive
+ * name/displayName matching. Used by all entity child components.
+ */
+const filterItemsBySearchText = <T extends { name?: string }>(
+  items: T[],
   searchText?: string
-) => {
-  // kept for potential future use; remove unused to satisfy linter
-  switch (entityType) {
-    case EntityType.TABLE:
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return (
-        <SchemaFieldCardsV1
-          entityInfo={entityInfo as TableEntity}
-          entityType={entityType}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.DATABASE_SCHEMA:
-      return (
-        <DatabaseSchemaTablesV1
-          entityInfo={entityInfo as DatabaseSchema}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    case EntityType.DASHBOARD:
-      return (
-        <DashboardChartsV1
-          entityInfo={entityInfo as Dashboard}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    case EntityType.TOPIC:
-      return (
-        <TopicFieldCardsV1
-          entityInfo={entityInfo as Topic}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    case EntityType.CONTAINER:
-      return (
-        <ContainerFieldCardsV1
-          entityInfo={entityInfo as Container}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    case EntityType.SEARCH_INDEX:
-      return (
-        <SearchIndexFieldCardsV1
-          entityInfo={entityInfo as SearchIndex}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    case EntityType.API_ENDPOINT:
-      return (
-        <APIEndpointSchemaV1
-          entityInfo={entityInfo as APIEndpoint}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    case EntityType.DATABASE:
-      return (
-        <DatabaseSchemasV1
-          entityInfo={entityInfo}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    case EntityType.PIPELINE:
-      return (
-        <PipelineTasksV1
-          entityInfo={entityInfo as Pipeline}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    case EntityType.API_COLLECTION:
-      return (
-        <APICollectionEndpointsV1
-          entityInfo={entityInfo as APICollection}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    default:
-      return null;
+): T[] => {
+  if (!searchText) {
+    return items;
   }
+  const lowerSearch = searchText.toLowerCase();
+
+  return items.filter(
+    (item) =>
+      item.name?.toLowerCase().includes(lowerSearch) ||
+      getEntityName(item)?.toLowerCase().includes(lowerSearch)
+  );
 };
 
 // Recursive component to render nested columns
@@ -182,6 +99,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
     <div>
       <div
         className="nested-field-card-wrapper"
+        data-row-key={column.fullyQualifiedName ?? column.name}
         key={column.fullyQualifiedName ?? column.name}
         style={{
           paddingLeft: `${level * 24}px`,
@@ -207,6 +125,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
             )}
             <Button
               className="d-flex p-0 h-auto m-b-xs"
+              data-testid="expand-icon"
               size="small"
               type="link"
               onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
@@ -238,6 +157,114 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
   );
 };
 
+const NestedSchemaFieldCard: React.FC<{
+  field: GenericNestedField;
+  highlights?: Record<string, string[]>;
+  highlightKey?: string; // e.g. 'field', 'column'
+  level?: number;
+  expandedRowKeys: string[];
+  onToggleExpand: (key: string) => void;
+}> = ({
+  field,
+  highlights,
+  highlightKey = 'field',
+  level = 0,
+  expandedRowKeys,
+  onToggleExpand,
+}) => {
+  const theme = useTheme();
+  const hasChildren = !isEmpty(field.children);
+  const rowKey = field.fullyQualifiedName ?? field.name;
+  const isExpanded = expandedRowKeys.includes(rowKey);
+  const isHighlighted = highlights?.[highlightKey]?.includes(field.name);
+  const childrenCount = field.children?.length ?? 0;
+
+  return (
+    <div>
+      <div
+        className="nested-field-card-wrapper"
+        data-row-key={rowKey}
+        style={{
+          paddingLeft: `${level * 24}px`,
+          paddingBottom: hasChildren ? '8px' : '0',
+        }}>
+        <div className="field-card-no-border">
+          <FieldCard
+            dataType={field.dataType || 'Unknown'}
+            description={field.description}
+            fieldName={getEntityName(field)}
+            glossaryTerms={field.glossaryTerms}
+            isHighlighted={isHighlighted}
+            tags={field.tags}
+          />
+        </div>
+        {hasChildren && (
+          <div className="d-flex align-items-center m-l-md gap-1">
+            {!isExpanded && (
+              <span className="d-flex">
+                <NestedIcon />
+              </span>
+            )}
+            <Button
+              className="d-flex p-0 h-auto m-b-xs"
+              data-testid="expand-icon"
+              size="small"
+              type="link"
+              onClick={() => onToggleExpand(rowKey)}>
+              <Typography color={theme.palette.primary.main} variant="caption">
+                {isExpanded
+                  ? t('label.show-less')
+                  : `${t('label.show-nested')} (${childrenCount})`}
+              </Typography>
+            </Button>
+          </div>
+        )}
+      </div>
+      {hasChildren && isExpanded && (
+        <div>
+          {field.children?.map((child) => (
+            <NestedSchemaFieldCard
+              expandedRowKeys={expandedRowKeys}
+              field={child}
+              highlightKey={highlightKey}
+              highlights={highlights}
+              key={child.fullyQualifiedName ?? child.name}
+              level={level + 1}
+              onToggleExpand={onToggleExpand}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Shared recursive filter that preserves tree structure (used by Topic, Container, SearchIndex)
+const filterNestedFields = (
+  fieldList: GenericNestedField[],
+  searchText: string
+): GenericNestedField[] => {
+  const lowerSearch = searchText.toLowerCase();
+
+  return fieldList.reduce<GenericNestedField[]>((acc, field) => {
+    const nameMatch =
+      field.name?.toLowerCase().includes(lowerSearch) ||
+      getEntityName(field)?.toLowerCase().includes(lowerSearch);
+    const filteredChildren = field.children
+      ? filterNestedFields(field.children, searchText)
+      : [];
+
+    if (nameMatch || filteredChildren.length > 0) {
+      acc.push({
+        ...field,
+        children: nameMatch ? field.children : filteredChildren,
+      });
+    }
+
+    return acc;
+  }, []);
+};
+
 // Component for Table and Dashboard Data Model schema fields
 const SchemaFieldCardsV1: React.FC<{
   entityInfo: TableEntity;
@@ -263,10 +290,14 @@ const SchemaFieldCardsV1: React.FC<{
       setIsLoading(true);
       try {
         const offset = (page - 1) * (columnsPaging.limit ?? PAGE_SIZE_LARGE);
+        const fields =
+          entityType === EntityType.TABLE
+            ? 'tags,customMetrics,description,extension'
+            : 'tags,description,extension';
         const params = {
           offset,
           limit: columnsPaging.limit,
-          fields: 'tags,customMetrics,description',
+          fields,
           ...(search && { q: search }),
         };
 
@@ -284,7 +315,9 @@ const SchemaFieldCardsV1: React.FC<{
             paging = response.paging;
           }
         } else {
-          const response = await getDataModelColumnsByFQN(fqn, params);
+          const response = search
+            ? await searchDataModelColumnsByFQN(fqn, params)
+            : await getDataModelColumnsByFQN(fqn, params);
           data = response.data;
           paging = response.paging;
         }
@@ -379,14 +412,6 @@ const SchemaFieldCardsV1: React.FC<{
     );
   }
 
-  if (isEmpty(columns) && hasInitialized) {
-    return (
-      <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
-      </div>
-    );
-  }
-
   if (!hasInitialized) {
     return (
       <div className="flex-center p-lg">
@@ -395,7 +420,7 @@ const SchemaFieldCardsV1: React.FC<{
     );
   }
 
-  if (isEmpty(columns) && searchText && hasInitialized) {
+  if (isEmpty(columns) && searchText) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">
@@ -404,6 +429,14 @@ const SchemaFieldCardsV1: React.FC<{
             name: searchText,
           })}
         </Text>
+      </div>
+    );
+  }
+
+  if (isEmpty(columns)) {
+    return (
+      <div className="no-data-container">
+        <Text className="no-data-text">{t('message.no-data-available')}</Text>
       </div>
     );
   }
@@ -433,8 +466,24 @@ const TopicFieldCardsV1: React.FC<{
   entityInfo: Topic;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const schemaFields = entityInfo.messageSchema?.schemaFields || [];
+
+  const filteredFields = useMemo(
+    () =>
+      searchText
+        ? filterNestedFields(schemaFields as GenericNestedField[], searchText)
+        : schemaFields,
+    [schemaFields, searchText]
+  );
+
+  const handleToggleExpand = useCallback((key: string) => {
+    setExpandedRowKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  }, []);
 
   if (loading) {
     return (
@@ -444,7 +493,7 @@ const TopicFieldCardsV1: React.FC<{
     );
   }
 
-  if (isEmpty(schemaFields)) {
+  if (isEmpty(filteredFields)) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -454,24 +503,16 @@ const TopicFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row>
-        {schemaFields.map((field: any) => {
-          const isHighlighted = highlights?.field?.includes(field.name);
-
-          return (
-            <Col key={field.name} span={24}>
-              <FieldCard
-                dataType={field.dataType || 'Unknown'}
-                description={field.description}
-                fieldName={getEntityName(field)}
-                glossaryTerms={field.glossaryTerms}
-                isHighlighted={isHighlighted}
-                tags={field.tags}
-              />
-            </Col>
-          );
-        })}
-      </Row>
+      {filteredFields.map((field: any) => (
+        <NestedSchemaFieldCard
+          expandedRowKeys={expandedRowKeys}
+          field={field}
+          highlightKey="field"
+          highlights={highlights}
+          key={field.fullyQualifiedName ?? field.name}
+          onToggleExpand={handleToggleExpand}
+        />
+      ))}
     </div>
   );
 };
@@ -481,8 +522,24 @@ const ContainerFieldCardsV1: React.FC<{
   entityInfo: Container;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const columns = entityInfo.dataModel?.columns || [];
+
+  const filteredColumns = useMemo(
+    () =>
+      searchText
+        ? filterNestedFields(columns as GenericNestedField[], searchText)
+        : columns,
+    [columns, searchText]
+  );
+
+  const handleToggleExpand = useCallback((key: string) => {
+    setExpandedRowKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  }, []);
 
   if (loading) {
     return (
@@ -492,7 +549,7 @@ const ContainerFieldCardsV1: React.FC<{
     );
   }
 
-  if (isEmpty(columns)) {
+  if (isEmpty(filteredColumns)) {
     return (
       <div className="no-data-container text-grey-muted m-t-md d-flex justify-center align-items-center">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -502,24 +559,16 @@ const ContainerFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row>
-        {columns.map((column: any) => {
-          const isHighlighted = highlights?.column?.includes(column.name);
-
-          return (
-            <Col key={column.name} span={24}>
-              <FieldCard
-                dataType={column.dataType || 'Unknown'}
-                description={column.description}
-                fieldName={getEntityName(column)}
-                glossaryTerms={column.glossaryTerms}
-                isHighlighted={isHighlighted}
-                tags={column.tags}
-              />
-            </Col>
-          );
-        })}
-      </Row>
+      {filteredColumns.map((column: any) => (
+        <NestedSchemaFieldCard
+          expandedRowKeys={expandedRowKeys}
+          field={column}
+          highlightKey="column"
+          highlights={highlights}
+          key={column.fullyQualifiedName ?? column.name}
+          onToggleExpand={handleToggleExpand}
+        />
+      ))}
     </div>
   );
 };
@@ -529,8 +578,14 @@ const PipelineTasksV1: React.FC<{
   entityInfo: Pipeline;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
   const tasks = entityInfo.tasks || [];
+
+  const filteredTasks = useMemo(
+    () => filterItemsBySearchText(tasks, searchText),
+    [tasks, searchText]
+  );
 
   if (loading) {
     return (
@@ -540,7 +595,7 @@ const PipelineTasksV1: React.FC<{
     );
   }
 
-  if (isEmpty(tasks)) {
+  if (isEmpty(filteredTasks)) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -551,7 +606,7 @@ const PipelineTasksV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {tasks.map((task: any) => {
+        {filteredTasks.map((task: any) => {
           const isHighlighted = highlights?.tasks?.includes(task.name);
 
           return (
@@ -577,7 +632,8 @@ const APICollectionEndpointsV1: React.FC<{
   entityInfo: APICollection;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
   const [endpoints, setEndpoints] = useState<APIEndpoint[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasInitialized, setHasInitialized] = useState<boolean>(false);
@@ -635,6 +691,11 @@ const APICollectionEndpointsV1: React.FC<{
     };
   }, [fqn]);
 
+  const filteredEndpoints = useMemo(
+    () => filterItemsBySearchText(endpoints, searchText),
+    [endpoints, searchText]
+  );
+
   if (loading || (isLoading && !hasInitialized)) {
     return (
       <div className="flex-center p-lg">
@@ -643,7 +704,7 @@ const APICollectionEndpointsV1: React.FC<{
     );
   }
 
-  if (isEmpty(endpoints) && hasInitialized) {
+  if (isEmpty(filteredEndpoints) && hasInitialized) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -663,7 +724,7 @@ const APICollectionEndpointsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {endpoints.map((endpoint: any) => {
+        {filteredEndpoints.map((endpoint: any) => {
           const isHighlighted = highlights?.apiEndpoints?.includes(
             endpoint.name
           );
@@ -690,7 +751,8 @@ const DatabaseSchemaTablesV1: React.FC<{
   entityInfo: DatabaseSchema;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
   const [tables, setTables] = useState<TableEntity[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasInitialized, setHasInitialized] = useState<boolean>(false);
@@ -728,6 +790,11 @@ const DatabaseSchemaTablesV1: React.FC<{
     };
   }, [fqn]);
 
+  const filteredTables = useMemo(
+    () => filterItemsBySearchText(tables, searchText),
+    [tables, searchText]
+  );
+
   const loadMoreBtn = useMemo(() => {
     // For now, we fetch all tables at once, so no load more button needed
     // This can be enhanced later with proper cursor-based pagination
@@ -742,7 +809,7 @@ const DatabaseSchemaTablesV1: React.FC<{
     );
   }
 
-  if (isEmpty(tables) && hasInitialized) {
+  if (isEmpty(filteredTables) && hasInitialized) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -762,7 +829,7 @@ const DatabaseSchemaTablesV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {tables.map((table) => {
+        {filteredTables.map((table) => {
           const isHighlighted = highlights?.table?.includes(table.name);
 
           return (
@@ -788,8 +855,14 @@ const DashboardChartsV1: React.FC<{
   entityInfo: Dashboard;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
   const charts = entityInfo.charts || [];
+
+  const filteredCharts = useMemo(
+    () => filterItemsBySearchText(charts, searchText),
+    [charts, searchText]
+  );
 
   if (loading) {
     return (
@@ -799,7 +872,7 @@ const DashboardChartsV1: React.FC<{
     );
   }
 
-  if (isEmpty(charts)) {
+  if (isEmpty(filteredCharts)) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -810,7 +883,7 @@ const DashboardChartsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {charts.map((chart: any) => {
+        {filteredCharts.map((chart: any) => {
           const isHighlighted = highlights?.chart?.includes(chart.name);
 
           return (
@@ -835,7 +908,8 @@ const APIEndpointSchemaV1: React.FC<{
   entityInfo: APIEndpoint;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, loading, searchText }) => {
   const [viewType, setViewType] = useState<
     'request-schema' | 'response-schema'
   >('request-schema');
@@ -856,17 +930,49 @@ const APIEndpointSchemaV1: React.FC<{
   ];
 
   const activeSchemaFields = useMemo(() => {
-    return viewType === 'request-schema'
-      ? requestSchemaFields
-      : responseSchemaFields;
-  }, [viewType, requestSchemaFields, responseSchemaFields]);
+    const fields =
+      viewType === 'request-schema'
+        ? requestSchemaFields
+        : responseSchemaFields;
+
+    if (!searchText) {
+      return fields;
+    }
+
+    const lowerSearch = searchText.toLowerCase();
+    const filterFields = (fieldList: Field[]): Field[] => {
+      return fieldList.reduce<Field[]>((acc, field) => {
+        const nameMatch =
+          field.name?.toLowerCase().includes(lowerSearch) ||
+          getEntityName(field)?.toLowerCase().includes(lowerSearch);
+        const filteredChildren = field.children
+          ? filterFields(field.children)
+          : [];
+
+        if (nameMatch || filteredChildren.length > 0) {
+          acc.push({
+            ...field,
+            children: nameMatch
+              ? field.children
+              : filteredChildren.length > 0
+              ? filteredChildren
+              : field.children,
+          });
+        }
+
+        return acc;
+      }, []);
+    };
+
+    return filterFields(fields);
+  }, [viewType, requestSchemaFields, responseSchemaFields, searchText]);
 
   // Get all row keys for expandable functionality
   const getAllRowKeys = (fields: Field[]): string[] => {
     const keys: string[] = [];
     const traverse = (fieldList: Field[]) => {
       for (const field of fieldList) {
-        keys.push(field.name);
+        keys.push(field.fullyQualifiedName ?? field.name);
         if (field.children && field.children.length > 0) {
           traverse(field.children);
         }
@@ -901,7 +1007,7 @@ const APIEndpointSchemaV1: React.FC<{
       key: 'name',
       width: 200,
       render: (name: string, record: Record<string, any>) => (
-        <div className="d-inline-flex w-max-90">
+        <div className="d-inline-flex" style={{ maxWidth: '68%' }}>
           <span className="break-word">{record.displayName || name}</span>
         </div>
       ),
@@ -997,7 +1103,7 @@ const APIEndpointSchemaV1: React.FC<{
               childrenColumnName: 'children',
             }}
             pagination={false}
-            rowKey="name"
+            rowKey="fullyQualifiedName"
             scroll={{ x: 800 }}
             size="small"
           />
@@ -1012,8 +1118,14 @@ const DatabaseSchemasV1: React.FC<{
   entityInfo: any;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, loading, searchText }) => {
   const databaseSchemas = entityInfo.databaseSchemas || [];
+
+  const filteredSchemas = useMemo(
+    () => filterItemsBySearchText(databaseSchemas, searchText),
+    [databaseSchemas, searchText]
+  );
 
   if (loading) {
     return (
@@ -1023,7 +1135,7 @@ const DatabaseSchemasV1: React.FC<{
     );
   }
 
-  if (isEmpty(databaseSchemas)) {
+  if (isEmpty(filteredSchemas)) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -1034,7 +1146,7 @@ const DatabaseSchemasV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {databaseSchemas.map((schema: any) => {
+        {filteredSchemas.map((schema: any) => {
           return (
             <Col key={schema.id} span={24}>
               <FieldCard
@@ -1056,8 +1168,24 @@ const SearchIndexFieldCardsV1: React.FC<{
   entityInfo: SearchIndex;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, highlights, loading, searchText }) => {
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const fields = entityInfo.fields || [];
+
+  const filteredFields = useMemo(
+    () =>
+      searchText
+        ? filterNestedFields(fields as GenericNestedField[], searchText)
+        : fields,
+    [fields, searchText]
+  );
+
+  const handleToggleExpand = useCallback((key: string) => {
+    setExpandedRowKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  }, []);
 
   if (loading) {
     return (
@@ -1067,7 +1195,7 @@ const SearchIndexFieldCardsV1: React.FC<{
     );
   }
 
-  if (isEmpty(fields)) {
+  if (isEmpty(filteredFields)) {
     return (
       <div className="no-data-container">
         <Text className="no-data-text">{t('message.no-data-available')}</Text>
@@ -1077,24 +1205,132 @@ const SearchIndexFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row>
-        {fields.map((field: any) => {
-          const isHighlighted = highlights?.field?.includes(field.name);
-
-          return (
-            <Col key={field.name} span={24}>
-              <FieldCard
-                dataType={field.dataType || 'Unknown'}
-                description={field.description}
-                fieldName={field.name}
-                glossaryTerms={field.glossaryTerms}
-                isHighlighted={isHighlighted}
-                tags={field.tags}
-              />
-            </Col>
-          );
-        })}
-      </Row>
+      {filteredFields.map((field: any) => (
+        <NestedSchemaFieldCard
+          expandedRowKeys={expandedRowKeys}
+          field={field}
+          highlightKey="field"
+          highlights={highlights}
+          key={field.fullyQualifiedName ?? field.name}
+          onToggleExpand={handleToggleExpand}
+        />
+      ))}
     </div>
   );
+};
+
+export const getEntityChildDetailsV1 = (
+  entityType: EntityType,
+  entityInfo: SearchedDataProps['data'][number]['_source'],
+  highlights?: SearchedDataProps['data'][number]['highlight'],
+  loading?: boolean,
+  searchText?: string
+) => {
+  // kept for potential future use; remove unused to satisfy linter
+  switch (entityType) {
+    case EntityType.TABLE:
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return (
+        <SchemaFieldCardsV1
+          entityInfo={entityInfo as TableEntity}
+          entityType={entityType}
+          highlights={highlights}
+          loading={loading}
+          searchText={searchText}
+        />
+      );
+
+    case EntityType.DATABASE_SCHEMA:
+      return (
+        <DatabaseSchemaTablesV1
+          entityInfo={entityInfo as DatabaseSchema}
+          highlights={highlights}
+          loading={loading}
+          searchText={searchText}
+        />
+      );
+
+    case EntityType.DASHBOARD:
+      return (
+        <DashboardChartsV1
+          entityInfo={entityInfo as Dashboard}
+          highlights={highlights}
+          loading={loading}
+          searchText={searchText}
+        />
+      );
+
+    case EntityType.TOPIC:
+      return (
+        <TopicFieldCardsV1
+          entityInfo={entityInfo as Topic}
+          highlights={highlights}
+          loading={loading}
+          searchText={searchText}
+        />
+      );
+
+    case EntityType.CONTAINER:
+      return (
+        <ContainerFieldCardsV1
+          entityInfo={entityInfo as Container}
+          highlights={highlights}
+          loading={loading}
+          searchText={searchText}
+        />
+      );
+
+    case EntityType.SEARCH_INDEX:
+      return (
+        <SearchIndexFieldCardsV1
+          entityInfo={entityInfo as SearchIndex}
+          highlights={highlights}
+          loading={loading}
+          searchText={searchText}
+        />
+      );
+
+    case EntityType.API_ENDPOINT:
+      return (
+        <APIEndpointSchemaV1
+          entityInfo={entityInfo as APIEndpoint}
+          highlights={highlights}
+          loading={loading}
+          searchText={searchText}
+        />
+      );
+
+    case EntityType.DATABASE:
+      return (
+        <DatabaseSchemasV1
+          entityInfo={entityInfo}
+          highlights={highlights}
+          loading={loading}
+          searchText={searchText}
+        />
+      );
+
+    case EntityType.PIPELINE:
+      return (
+        <PipelineTasksV1
+          entityInfo={entityInfo as Pipeline}
+          highlights={highlights}
+          loading={loading}
+          searchText={searchText}
+        />
+      );
+
+    case EntityType.API_COLLECTION:
+      return (
+        <APICollectionEndpointsV1
+          entityInfo={entityInfo as APICollection}
+          highlights={highlights}
+          loading={loading}
+          searchText={searchText}
+        />
+      );
+
+    default:
+      return null;
+  }
 };

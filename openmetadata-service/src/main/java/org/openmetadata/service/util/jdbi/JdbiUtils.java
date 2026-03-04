@@ -55,7 +55,8 @@ public class JdbiUtils {
   }
 
   public static int getOffset(String offset) {
-    return offset != null ? Integer.parseInt(RestUtil.decodeCursor(offset)) : 0;
+    String decoded = RestUtil.decodeCursor(offset);
+    return offset != null && decoded != null ? Integer.parseInt(decoded) : 0;
   }
 
   public static String getAfterOffset(int offsetInt, int limit, int total) {

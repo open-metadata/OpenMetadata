@@ -18,7 +18,10 @@ from metadata.data_quality.builders.validator_builder import (
     SourceType,
     ValidatorBuilder,
 )
-from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
+from metadata.data_quality.interface.test_suite_interface import (
+    TestDefinition,
+    TestSuiteInterface,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
@@ -70,9 +73,19 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
     ) -> ValidatorBuilder:
+        test_definition = self.ometa_client.get_by_name(
+            entity=TestDefinition,
+            fqn=test_case.testDefinition.fullyQualifiedName,
+        )
+        if test_definition is None:
+            raise ValueError(
+                f"Cannot find TestDefinition for test case {test_case.fullyQualifiedName}"
+            )
+
         return self.validator_builder_class(
             runner=self._runner,
             test_case=test_case,
+            test_definition=test_definition,
             entity_type=entity_type,
             source_type=SourceType.PANDAS,
         )

@@ -6,10 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -30,9 +32,11 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 
 /**
  * Integration tests for DashboardDataModel entity operations.
@@ -48,6 +52,13 @@ public class DashboardDataModelResourceIT
 
   {
     supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return DashboardDataModelResource.COLLECTION_PATH;
   }
 
   // ===================================================================
@@ -686,12 +697,22 @@ public class DashboardDataModelResourceIT
       createEntity(request);
     }
 
-    // Wait for indexing
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
+    Awaitility.await("Wait for data models to be indexed")
+        .atMost(Duration.ofSeconds(15))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              ListParams checkParams = new ListParams();
+              checkParams.setLimit(100);
+              checkParams.setService(service.getFullyQualifiedName());
+              ListResponse<DashboardDataModel> checkList = listEntities(checkParams);
+              return checkList.getData().stream()
+                      .filter(dm -> dm.getName().startsWith(ns.prefix("dm_pagination_")))
+                      .count()
+                  >= 3;
+            });
 
     ListParams params = new ListParams();
     params.setFields("tags");
@@ -786,5 +807,27 @@ public class DashboardDataModelResourceIT
     assertEquals(3, deletedByName.getColumns().size());
 
     hardDeleteEntity(dataModel.getId().toString());
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateDashboardDataModel> createRequests) {
+    return SdkClients.adminClient().dashboardDataModels().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(
+      List<CreateDashboardDataModel> createRequests) {
+    return SdkClients.adminClient().dashboardDataModels().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateDashboardDataModel createInvalidRequestForBulk(TestNamespace ns) {
+    CreateDashboardDataModel request = new CreateDashboardDataModel();
+    request.setName(ns.prefix("invalid_data_model"));
+    return request;
   }
 }

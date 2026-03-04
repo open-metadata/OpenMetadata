@@ -22,6 +22,7 @@ import athena from '../assets/img/service-icon-athena.png';
 import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import bigtable from '../assets/img/service-icon-bigtable.png';
+import burstiq from '../assets/img/service-icon-burstiq.png';
 import cassandra from '../assets/img/service-icon-cassandra.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
 import cockroach from '../assets/img/service-icon-cockroach.png';
@@ -228,6 +229,7 @@ export const GRAFANA = grafana;
 export const GOOGLE_DRIVE = googleDrive;
 export const SFTP = sftp;
 export const TIMESCALE = timescale;
+export const BURSTIQ = burstiq;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -456,6 +458,11 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
+  DatabaseServiceType.MicrosoftFabric,
+  PipelineServiceType.MicrosoftFabricPipeline,
+  DatabaseServiceType.BurstIQ,
+  DatabaseServiceType.StarRocks,
+  DriveServiceType.SFTP,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -487,11 +494,18 @@ export const ADVANCED_PROPERTIES = [
   'sampleDataCount',
   'threadCount',
   'timeoutSeconds',
+  'metrics',
   'sslConfig',
   'sslMode',
   'schemaRegistrySSL',
   'consumerConfigSSL',
   'verify',
+  'useNonce',
+  'disablePkce',
+  'maxClockSkew',
+  'tokenValidity',
+  'maxAge',
+  'sessionExpiry',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
@@ -546,4 +560,6 @@ export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
   [PipelineServiceType.OpenLineage, 'Open Lineage'],
   [MetadataServiceType.AlationSink, 'Alation Sink'],
   [SearchServiceType.ElasticSearch, 'Elasticsearch'],
+  [DatabaseServiceType.MicrosoftFabric, 'Microsoft Fabric'],
+  [PipelineServiceType.MicrosoftFabricPipeline, 'Microsoft Fabric Pipeline'],
 ]);

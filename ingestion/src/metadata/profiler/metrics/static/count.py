@@ -15,7 +15,7 @@ Count Metric definition
 # pylint: disable=duplicate-code
 
 import traceback
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import column, func
 
@@ -28,6 +28,8 @@ from metadata.utils.logger import profiler_logger
 if TYPE_CHECKING:
     import pandas as pd
 
+    from metadata.profiler.processor.runner import PandasRunner
+
 logger = profiler_logger()
 
 
@@ -37,6 +39,8 @@ class Count(StaticMetric):
 
     Given a column, return the count. Ignores NULL values
     """
+
+    schema_metric_type = MetricType.valuesCount
 
     @classmethod
     def name(cls):
@@ -51,8 +55,10 @@ class Count(StaticMetric):
         """sqlalchemy function"""
         return func.count(CountFn(column(self.col.name, self.col.type)))
 
-    def df_fn(self, dfs=None):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """pandas function"""
+        if dfs is None:
+            return None
         computation = self.get_pandas_computation()
         accumulator = computation.create_accumulator()
         for df in dfs:

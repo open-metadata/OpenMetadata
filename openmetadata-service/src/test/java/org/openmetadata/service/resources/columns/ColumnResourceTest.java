@@ -30,6 +30,8 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,12 +49,19 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.BulkColumnUpdatePreview;
+import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
+import org.openmetadata.schema.api.data.ColumnGridItem;
+import org.openmetadata.schema.api.data.ColumnGridResponse;
+import org.openmetadata.schema.api.data.ColumnUpdate;
+import org.openmetadata.schema.api.data.ColumnUpdatePreview;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.GroupedColumnsResponse;
 import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
@@ -89,6 +98,7 @@ import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
@@ -1453,17 +1463,289 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  void test_searchColumns_byColumnName() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    CreateTable createTable1 =
+        new CreateTable()
+            .withName("search_test_table1_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("order_id").withDataType(ColumnDataType.BIGINT),
+                    new Column()
+                        .withName("customer_name")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+    Table table1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("search_test_table2_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("order_id").withDataType(ColumnDataType.BIGINT),
+                    new Column()
+                        .withName("product_name")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+    Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    WebTarget target = getResource("columns/search").queryParam("columnName", "order_id");
+    GroupedColumnsResponse[] responseArray =
+        TestUtils.get(target, GroupedColumnsResponse[].class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(responseArray);
+    List<GroupedColumnsResponse> response = Arrays.asList(responseArray);
+    assertTrue(response.size() >= 1);
+
+    GroupedColumnsResponse orderIdGroup =
+        response.stream()
+            .filter(g -> g.getColumnName().equals("order_id"))
+            .findFirst()
+            .orElseThrow();
+
+    assertEquals("order_id", orderIdGroup.getColumnName());
+    assertTrue(orderIdGroup.getTotalCount() >= 2);
+    assertTrue(
+        orderIdGroup.getOccurrences().stream()
+            .anyMatch(o -> o.getEntityFQN().equals(table1.getFullyQualifiedName())));
+    assertTrue(
+        orderIdGroup.getOccurrences().stream()
+            .anyMatch(o -> o.getEntityFQN().equals(table2.getFullyQualifiedName())));
+  }
+
+  @Test
+  void test_searchColumns_withEntityTypeFilter() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName("filter_test_table_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName("metric_value").withDataType(ColumnDataType.DOUBLE)));
+    Table filterTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    CreateDashboardDataModel createDataModel =
+        new CreateDashboardDataModel()
+            .withName("filter_test_model_" + testId)
+            .withService(dashboardDataModel.getService().getFullyQualifiedName())
+            .withDataModelType(DataModelType.MetabaseDataModel)
+            .withColumns(
+                List.of(new Column().withName("metric_value").withDataType(ColumnDataType.DOUBLE)));
+    DashboardDataModel filterDataModel =
+        dataModelResourceTest.createEntity(createDataModel, ADMIN_AUTH_HEADERS);
+
+    WebTarget targetTableOnly =
+        getResource("columns/search")
+            .queryParam("columnName", "metric_value")
+            .queryParam("entityTypes", "table");
+    GroupedColumnsResponse[] tableResponseArray =
+        TestUtils.get(targetTableOnly, GroupedColumnsResponse[].class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(tableResponseArray);
+    List<GroupedColumnsResponse> tableResponse = Arrays.asList(tableResponseArray);
+    GroupedColumnsResponse tableGroup =
+        tableResponse.stream()
+            .filter(g -> g.getColumnName().equals("metric_value"))
+            .findFirst()
+            .orElseThrow();
+
+    assertTrue(
+        tableGroup.getOccurrences().stream().allMatch(o -> o.getEntityType().equals("table")));
+    assertTrue(
+        tableGroup.getOccurrences().stream()
+            .noneMatch(o -> o.getEntityType().equals("dashboardDataModel")));
+  }
+
+  @Test
+  void test_bulkUpdateColumns_async() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    CreateTable createBulkTable =
+        new CreateTable()
+            .withName("bulk_update_table_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("col1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255),
+                    new Column()
+                        .withName("col2")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255),
+                    new Column()
+                        .withName("col3")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+    Table bulkTable = tableResourceTest.createEntity(createBulkTable, ADMIN_AUTH_HEADERS);
+
+    TagLabel testTag =
+        new TagLabel()
+            .withTagFQN(personalDataTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    List<ColumnUpdate> columnUpdates =
+        List.of(
+            new ColumnUpdate()
+                .withColumnFQN(bulkTable.getFullyQualifiedName() + ".col1")
+                .withEntityType("table")
+                .withDisplayName("Column 1")
+                .withDescription("First column updated"),
+            new ColumnUpdate()
+                .withColumnFQN(bulkTable.getFullyQualifiedName() + ".col2")
+                .withEntityType("table")
+                .withDisplayName("Column 2")
+                .withTags(List.of(testTag)),
+            new ColumnUpdate()
+                .withColumnFQN(bulkTable.getFullyQualifiedName() + ".col3")
+                .withEntityType("table")
+                .withDescription("Third column updated")
+                .withTags(List.of(testTag)));
+
+    BulkColumnUpdateRequest request =
+        new BulkColumnUpdateRequest().withColumnUpdates(columnUpdates);
+
+    WebTarget target = getResource("columns/bulk-update-async");
+    org.openmetadata.service.util.CSVImportResponse asyncResponse =
+        TestUtils.post(
+            target,
+            request,
+            org.openmetadata.service.util.CSVImportResponse.class,
+            OK.getStatusCode(),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(asyncResponse);
+    assertNotNull(asyncResponse.getJobId());
+    assertEquals("Bulk column update is in progress.", asyncResponse.getMessage());
+
+    await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              Table updatedTable =
+                  tableResourceTest.getEntity(
+                      bulkTable.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+              Column col1 =
+                  updatedTable.getColumns().stream()
+                      .filter(c -> c.getName().equals("col1"))
+                      .findFirst()
+                      .orElse(null);
+              Column col2 =
+                  updatedTable.getColumns().stream()
+                      .filter(c -> c.getName().equals("col2"))
+                      .findFirst()
+                      .orElse(null);
+              Column col3 =
+                  updatedTable.getColumns().stream()
+                      .filter(c -> c.getName().equals("col3"))
+                      .findFirst()
+                      .orElse(null);
+
+              return col1 != null
+                  && "Column 1".equals(col1.getDisplayName())
+                  && "First column updated".equals(col1.getDescription())
+                  && col2 != null
+                  && "Column 2".equals(col2.getDisplayName())
+                  && col2.getTags() != null
+                  && col2.getTags().size() == 1
+                  && col3 != null
+                  && "Third column updated".equals(col3.getDescription())
+                  && col3.getTags() != null
+                  && col3.getTags().size() == 1;
+            });
+  }
+
+  @Test
+  void test_bulkUpdateColumns_partialFailure() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    CreateTable createPartialTable =
+        new CreateTable()
+            .withName("partial_fail_table_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("valid_col")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+    Table partialTable = tableResourceTest.createEntity(createPartialTable, ADMIN_AUTH_HEADERS);
+
+    List<ColumnUpdate> columnUpdates =
+        List.of(
+            new ColumnUpdate()
+                .withColumnFQN(partialTable.getFullyQualifiedName() + ".valid_col")
+                .withEntityType("table")
+                .withDisplayName("Valid Column"),
+            new ColumnUpdate()
+                .withColumnFQN(partialTable.getFullyQualifiedName() + ".invalid_col")
+                .withEntityType("table")
+                .withDisplayName("Invalid Column"));
+
+    BulkColumnUpdateRequest request =
+        new BulkColumnUpdateRequest().withColumnUpdates(columnUpdates);
+
+    WebTarget target = getResource("columns/bulk-update-async");
+    org.openmetadata.service.util.CSVImportResponse asyncResponse =
+        TestUtils.post(
+            target,
+            request,
+            org.openmetadata.service.util.CSVImportResponse.class,
+            OK.getStatusCode(),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(asyncResponse);
+    assertNotNull(asyncResponse.getJobId());
+
+    await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              Table updatedTable =
+                  tableResourceTest.getEntity(partialTable.getId(), "columns", ADMIN_AUTH_HEADERS);
+              Column validCol =
+                  updatedTable.getColumns().stream()
+                      .filter(c -> c.getName().equals("valid_col"))
+                      .findFirst()
+                      .orElse(null);
+
+              return validCol != null && "Valid Column".equals(validCol.getDisplayName());
+            });
+  }
+
+  @Test
+  void test_searchColumns_allColumns() throws IOException {
+    WebTarget target = getResource("columns/search");
+    GroupedColumnsResponse[] responseArray =
+        TestUtils.get(target, GroupedColumnsResponse[].class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(responseArray);
+    List<GroupedColumnsResponse> response = Arrays.asList(responseArray);
+    assertTrue(response.size() > 0);
+
+    for (GroupedColumnsResponse group : response) {
+      assertNotNull(group.getColumnName());
+      assertNotNull(group.getOccurrences());
+      assertTrue(group.getTotalCount() > 0);
+      assertEquals(group.getOccurrences().size(), group.getTotalCount());
+    }
+  }
+
+  @Test
   void test_tableColumnCustomProperties_completeLifecycle() throws IOException {
-    // Test complete lifecycle for table column custom properties
-    // This test verifies the new feature to add/update/remove custom properties on table columns
     String testPropName = "testTableProp_" + UUID.randomUUID().toString().substring(0, 8);
 
-    // First check if tableColumn type exists and get basic types
     Type stringType = typeResourceTest.getEntityByName("string", "", ADMIN_AUTH_HEADERS);
     Type intType = typeResourceTest.getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
 
     try {
-      // 1. Create custom properties for table columns
       Type tableColumnType =
           typeResourceTest.getEntityByName(TABLE_COLUMN, "customProperties", ADMIN_AUTH_HEADERS);
 
@@ -1484,7 +1766,6 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       typeResourceTest.addAndCheckCustomProperty(
           tableColumnType.getId(), intProperty, OK, ADMIN_AUTH_HEADERS);
 
-      // 2. Add custom property values to table column
       String columnFQN = table.getFullyQualifiedName() + ".name";
       UpdateColumn addValues = new UpdateColumn();
       Map<String, Object> extension = new HashMap<>();
@@ -1493,7 +1774,6 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       addValues.setExtension(extension);
 
       Column columnWithValues = updateColumnByFQN(columnFQN, addValues);
-      // Verify custom properties were added (extension may be null on some backends)
       if (columnWithValues.getExtension() != null) {
         @SuppressWarnings("unchecked")
         Map<String, Object> addedExt = (Map<String, Object>) columnWithValues.getExtension();
@@ -1501,7 +1781,6 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
         assertEquals(42, addedExt.get(testPropName + "_int"));
       }
 
-      // 3. Update custom property values
       UpdateColumn updateValues = new UpdateColumn();
       Map<String, Object> updatedExtension = new HashMap<>();
       updatedExtension.put(testPropName + "_string", "updated-value");
@@ -1516,7 +1795,6 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
         assertEquals(100, updatedExt.get(testPropName + "_int"));
       }
 
-      // 4. Verify persistence in table entity
       Table persistedTable =
           tableResourceTest.getEntity(table.getId(), "columns", ADMIN_AUTH_HEADERS);
       Column nameColumn =
@@ -1524,7 +1802,6 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
               .filter(c -> c.getName().equals("name"))
               .findFirst()
               .orElseThrow();
-      // Check if custom properties were persisted
       if (nameColumn.getExtension() != null) {
         @SuppressWarnings("unchecked")
         Map<String, Object> persistedExt = (Map<String, Object>) nameColumn.getExtension();
@@ -1532,12 +1809,10 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
         assertEquals(100, persistedExt.get(testPropName + "_int"));
       }
 
-      // 5. Remove custom property values
       UpdateColumn removeValues = new UpdateColumn();
       removeValues.setExtension(new HashMap<>());
       Column columnWithoutValues = updateColumnByFQN(columnFQN, removeValues);
 
-      // Verify values are removed
       if (columnWithoutValues.getExtension() != null) {
         @SuppressWarnings("unchecked")
         Map<String, Object> removedExt = (Map<String, Object>) columnWithoutValues.getExtension();
@@ -1546,7 +1821,6 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       }
 
     } finally {
-      // Clean up custom properties from type definition
       try {
         Type tableColumnType =
             typeResourceTest.getEntityByName(TABLE_COLUMN, "customProperties", ADMIN_AUTH_HEADERS);
@@ -1563,19 +1837,83 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  void test_bulkUpdatePreview_searchBased() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    CreateTable createTable1 =
+        new CreateTable()
+            .withName("preview_test_table1_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("status_code")
+                        .withDataType(ColumnDataType.INT)
+                        .withDescription("Original description 1")));
+    Table table1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("preview_test_table2_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("status_code")
+                        .withDataType(ColumnDataType.INT)
+                        .withDescription("Original description 2")
+                        .withDisplayName("Status")));
+    Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    BulkColumnUpdateRequest previewRequest =
+        new BulkColumnUpdateRequest()
+            .withColumnName("status_code")
+            .withDescription("Updated description for all status_code columns")
+            .withDisplayName("HTTP Status Code");
+
+    WebTarget previewTarget = getResource("columns/bulk-update-preview");
+    BulkColumnUpdatePreview preview =
+        TestUtils.post(
+            previewTarget,
+            previewRequest,
+            BulkColumnUpdatePreview.class,
+            OK.getStatusCode(),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(preview);
+    assertEquals(2, preview.getTotalColumns());
+    assertEquals(2, preview.getColumnPreviews().size());
+
+    for (ColumnUpdatePreview columnPreview : preview.getColumnPreviews()) {
+      assertTrue(columnPreview.getHasChanges());
+      assertNotNull(columnPreview.getCurrentValues());
+      assertNotNull(columnPreview.getNewValues());
+
+      assertEquals("HTTP Status Code", columnPreview.getNewValues().getDisplayName());
+      assertEquals(
+          "Updated description for all status_code columns",
+          columnPreview.getNewValues().getDescription());
+
+      assertTrue(
+          columnPreview.getCurrentValues().getDescription() != null
+              && columnPreview
+                  .getCurrentValues()
+                  .getDescription()
+                  .startsWith("Original description"));
+    }
+  }
+
+  @Test
   void test_dashboardDataModelColumnCustomProperties_completeLifecycle() throws IOException {
-    // Test complete lifecycle for dashboard data model columns
     String stringPropName = "dashStringProp_" + UUID.randomUUID().toString().substring(0, 8);
     String intPropName = "dashIntProp_" + UUID.randomUUID().toString().substring(0, 8);
 
     try {
-      // 1. Create custom properties for dashboard data model columns
       createCustomPropertyForColumnEntity(
           DASHBOARD_DATA_MODEL_COLUMN, stringPropName, "string", "Dashboard string property");
       createCustomPropertyForColumnEntity(
           DASHBOARD_DATA_MODEL_COLUMN, intPropName, "integer", "Dashboard integer property");
 
-      // 2. Add custom property values to dashboard column
       String columnFQN = dashboardDataModel.getFullyQualifiedName() + ".metric1";
       UpdateColumn addValues = new UpdateColumn();
       Map<String, Object> extension = new HashMap<>();
@@ -1590,7 +1928,6 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       assertEquals("dashboard-value", addedExt.get(stringPropName));
       assertEquals(999, addedExt.get(intPropName));
 
-      // 3. Verify persistence in dashboard data model entity
       DashboardDataModel persistedModel =
           dataModelResourceTest.getEntity(
               dashboardDataModel.getId(), "columns", ADMIN_AUTH_HEADERS);
@@ -1606,10 +1943,744 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
       assertEquals(999, persistedExt.get(intPropName));
 
     } finally {
-      // Clean up custom properties
       deleteCustomPropertyForColumnEntity(DASHBOARD_DATA_MODEL_COLUMN, stringPropName);
       deleteCustomPropertyForColumnEntity(DASHBOARD_DATA_MODEL_COLUMN, intPropName);
     }
+  }
+
+  @Test
+  void test_bulkUpdateSearchBased_propagation() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    // Create 3 tables with same column name "user_id"
+    CreateTable createTable1 =
+        new CreateTable()
+            .withName("propagate_table1_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName("user_id").withDataType(ColumnDataType.BIGINT)));
+    Table table1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("propagate_table2_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName("user_id").withDataType(ColumnDataType.BIGINT)));
+    Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 =
+        new CreateTable()
+            .withName("propagate_table3_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName("user_id").withDataType(ColumnDataType.BIGINT)));
+    Table table3 = tableResourceTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    TagLabel userTag =
+        new TagLabel()
+            .withTagFQN(personalDataTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    // Bulk update using search-based propagation
+    BulkColumnUpdateRequest request =
+        new BulkColumnUpdateRequest()
+            .withColumnName("user_id")
+            .withDisplayName("User Identifier")
+            .withDescription("Unique identifier for the user")
+            .withTags(List.of(userTag));
+
+    WebTarget target = getResource("columns/bulk-update-async");
+    org.openmetadata.service.util.CSVImportResponse asyncResponse =
+        TestUtils.post(
+            target,
+            request,
+            org.openmetadata.service.util.CSVImportResponse.class,
+            OK.getStatusCode(),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(asyncResponse);
+    assertNotNull(asyncResponse.getJobId());
+
+    // Wait for async update to complete
+    await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              Table t1 =
+                  tableResourceTest.getEntity(table1.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+              Table t2 =
+                  tableResourceTest.getEntity(table2.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+              Table t3 =
+                  tableResourceTest.getEntity(table3.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+
+              Column col1 =
+                  t1.getColumns().stream()
+                      .filter(c -> c.getName().equals("user_id"))
+                      .findFirst()
+                      .orElse(null);
+              Column col2 =
+                  t2.getColumns().stream()
+                      .filter(c -> c.getName().equals("user_id"))
+                      .findFirst()
+                      .orElse(null);
+              Column col3 =
+                  t3.getColumns().stream()
+                      .filter(c -> c.getName().equals("user_id"))
+                      .findFirst()
+                      .orElse(null);
+
+              // All 3 columns should be updated with same metadata
+              return col1 != null
+                  && "User Identifier".equals(col1.getDisplayName())
+                  && "Unique identifier for the user".equals(col1.getDescription())
+                  && col1.getTags() != null
+                  && col1.getTags().size() == 1
+                  && col2 != null
+                  && "User Identifier".equals(col2.getDisplayName())
+                  && "Unique identifier for the user".equals(col2.getDescription())
+                  && col2.getTags() != null
+                  && col2.getTags().size() == 1
+                  && col3 != null
+                  && "User Identifier".equals(col3.getDisplayName())
+                  && "Unique identifier for the user".equals(col3.getDescription())
+                  && col3.getTags() != null
+                  && col3.getTags().size() == 1;
+            });
+  }
+
+  @Test
+  void test_bulkUpdateSearchBased_withEntityTypeFilter() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    // Create table with "metric" column
+    CreateTable createTable =
+        new CreateTable()
+            .withName("filter_table_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName("metric").withDataType(ColumnDataType.DOUBLE)));
+    Table filterTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Create dashboard data model with "metric" column
+    CreateDashboardDataModel createDataModel =
+        new CreateDashboardDataModel()
+            .withName("filter_model_" + testId)
+            .withService(dashboardDataModel.getService().getFullyQualifiedName())
+            .withDataModelType(DataModelType.MetabaseDataModel)
+            .withColumns(
+                List.of(new Column().withName("metric").withDataType(ColumnDataType.DOUBLE)));
+    DashboardDataModel filterModel =
+        dataModelResourceTest.createEntity(createDataModel, ADMIN_AUTH_HEADERS);
+
+    // Update only table columns (filter by entityType)
+    BulkColumnUpdateRequest request =
+        new BulkColumnUpdateRequest()
+            .withColumnName("metric")
+            .withEntityTypes(List.of("table"))
+            .withDescription("Table metric only");
+
+    WebTarget target = getResource("columns/bulk-update-async");
+    org.openmetadata.service.util.CSVImportResponse asyncResponse =
+        TestUtils.post(
+            target,
+            request,
+            org.openmetadata.service.util.CSVImportResponse.class,
+            OK.getStatusCode(),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(asyncResponse);
+
+    // Wait for async update
+    await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              Table t =
+                  tableResourceTest.getEntity(filterTable.getId(), "columns", ADMIN_AUTH_HEADERS);
+              DashboardDataModel dm =
+                  dataModelResourceTest.getEntity(
+                      filterModel.getId(), "columns", ADMIN_AUTH_HEADERS);
+
+              Column tableCol =
+                  t.getColumns().stream()
+                      .filter(c -> c.getName().equals("metric"))
+                      .findFirst()
+                      .orElse(null);
+              Column modelCol =
+                  dm.getColumns().stream()
+                      .filter(c -> c.getName().equals("metric"))
+                      .findFirst()
+                      .orElse(null);
+
+              // Table column should be updated, dashboard model column should NOT
+              return tableCol != null
+                  && "Table metric only".equals(tableCol.getDescription())
+                  && modelCol != null
+                  && modelCol.getDescription() == null;
+            });
+  }
+
+  @Test
+  void test_bulkUpdatePreview_showsDiff() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    TagLabel existingTag =
+        new TagLabel()
+            .withTagFQN(personalDataTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    // Create table with column that has existing metadata
+    String uniqueColumnName = "user_contact_email_" + testId;
+    CreateTable createTable =
+        new CreateTable()
+            .withName("diff_test_table_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(uniqueColumnName)
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)
+                        .withDisplayName("Email Address")
+                        .withDescription("User's email address")
+                        .withTags(List.of(existingTag))));
+    Table diffTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    TagLabel newTag =
+        new TagLabel()
+            .withTagFQN(piiTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    // Preview update with different values
+    BulkColumnUpdateRequest previewRequest =
+        new BulkColumnUpdateRequest()
+            .withColumnName(uniqueColumnName)
+            .withDisplayName("Contact Email")
+            .withDescription("Primary contact email")
+            .withTags(List.of(newTag));
+
+    WebTarget previewTarget = getResource("columns/bulk-update-preview");
+    BulkColumnUpdatePreview preview =
+        TestUtils.post(
+            previewTarget,
+            previewRequest,
+            BulkColumnUpdatePreview.class,
+            OK.getStatusCode(),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(preview);
+    assertEquals(1, preview.getTotalColumns());
+    assertEquals(1, preview.getColumnPreviews().size());
+
+    ColumnUpdatePreview columnPreview = preview.getColumnPreviews().get(0);
+    assertTrue(columnPreview.getHasChanges());
+
+    // Verify current values
+    assertEquals("Email Address", columnPreview.getCurrentValues().getDisplayName());
+    assertEquals("User's email address", columnPreview.getCurrentValues().getDescription());
+    assertEquals(1, columnPreview.getCurrentValues().getTags().size());
+    assertEquals(
+        personalDataTag.getFullyQualifiedName(),
+        columnPreview.getCurrentValues().getTags().get(0).getTagFQN());
+
+    // Verify new values
+    assertEquals("Contact Email", columnPreview.getNewValues().getDisplayName());
+    assertEquals("Primary contact email", columnPreview.getNewValues().getDescription());
+    assertEquals(1, columnPreview.getNewValues().getTags().size());
+    assertEquals(
+        piiTag.getFullyQualifiedName(), columnPreview.getNewValues().getTags().get(0).getTagFQN());
+  }
+
+  @Test
+  void test_exportCSV() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    // Create tables with same column name
+    TagLabel exportTag =
+        new TagLabel()
+            .withTagFQN(personalDataTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    CreateTable createTable1 =
+        new CreateTable()
+            .withName("csv_export_table1_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("export_col")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)
+                        .withDisplayName("Export Column")
+                        .withDescription("Test export column")
+                        .withTags(List.of(exportTag))));
+    Table exportTable1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("csv_export_table2_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("export_col")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+    Table exportTable2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    // Export CSV
+    WebTarget target = getResource("columns/export").queryParam("columnName", "export_col");
+    String csv = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(csv);
+    assertTrue(csv.contains("column.name*,column.displayName,column.description"));
+    assertTrue(csv.contains("export_col"));
+    assertTrue(csv.contains("Export Column"));
+    assertTrue(csv.contains("Test export column"));
+    assertTrue(csv.contains(personalDataTag.getFullyQualifiedName()));
+  }
+
+  @Test
+  void test_importCSV_dryRun() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    // Create test table
+    CreateTable createTable =
+        new CreateTable()
+            .withName("csv_import_table_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("import_col")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+    Table importTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Prepare CSV
+    String csv =
+        "column.name*,column.displayName,column.description,column.tags,column.glossaryTerms\n"
+            + "import_col,Imported Column,Description from CSV,"
+            + personalDataTag.getFullyQualifiedName()
+            + ",";
+
+    // Import with dry-run
+    WebTarget target = getResource("columns/import").queryParam("dryRun", "true");
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(jakarta.ws.rs.client.Entity.entity(csv, MediaType.TEXT_PLAIN));
+    org.openmetadata.schema.type.csv.CsvImportResult result =
+        TestUtils.readResponse(
+            response, org.openmetadata.schema.type.csv.CsvImportResult.class, OK.getStatusCode());
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun());
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+
+    // Verify column was NOT actually updated (dry-run)
+    Table unchangedTable =
+        tableResourceTest.getEntity(importTable.getId(), "columns", ADMIN_AUTH_HEADERS);
+    Column unchangedCol =
+        unchangedTable.getColumns().stream()
+            .filter(c -> c.getName().equals("import_col"))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(unchangedCol);
+    assertNull(unchangedCol.getDisplayName());
+    assertNull(unchangedCol.getDescription());
+  }
+
+  @Test
+  void test_importCSV_actualImport() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    // Create 2 tables with same column name
+    CreateTable createTable1 =
+        new CreateTable()
+            .withName("csv_import_table1_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("csv_import_col")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+    Table importTable1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("csv_import_table2_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("csv_import_col")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+    Table importTable2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    // Prepare CSV
+    String csv =
+        "column.name*,column.displayName,column.description,column.tags,column.glossaryTerms\n"
+            + "csv_import_col,CSV Imported,Imported via CSV,"
+            + piiTag.getFullyQualifiedName()
+            + ",";
+
+    // Import without dry-run
+    WebTarget target = getResource("columns/import").queryParam("dryRun", "false");
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(jakarta.ws.rs.client.Entity.entity(csv, MediaType.TEXT_PLAIN));
+    org.openmetadata.schema.type.csv.CsvImportResult result =
+        TestUtils.readResponse(
+            response, org.openmetadata.schema.type.csv.CsvImportResult.class, OK.getStatusCode());
+
+    assertNotNull(result);
+    assertFalse(result.getDryRun());
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+
+    // Verify BOTH columns were updated (propagation)
+    Table updatedTable1 =
+        tableResourceTest.getEntity(importTable1.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+    Column updatedCol1 =
+        updatedTable1.getColumns().stream()
+            .filter(c -> c.getName().equals("csv_import_col"))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(updatedCol1);
+    assertEquals("CSV Imported", updatedCol1.getDisplayName());
+    assertEquals("Imported via CSV", updatedCol1.getDescription());
+    assertEquals(1, updatedCol1.getTags().size());
+
+    Table updatedTable2 =
+        tableResourceTest.getEntity(importTable2.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
+    Column updatedCol2 =
+        updatedTable2.getColumns().stream()
+            .filter(c -> c.getName().equals("csv_import_col"))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(updatedCol2);
+    assertEquals("CSV Imported", updatedCol2.getDisplayName());
+    assertEquals("Imported via CSV", updatedCol2.getDescription());
+    assertEquals(1, updatedCol2.getTags().size());
+  }
+
+  @Test
+  void test_importCSVAsync() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    // Create test table
+    CreateTable createTable =
+        new CreateTable()
+            .withName("csv_async_table_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName("async_col").withDataType(ColumnDataType.BIGINT)));
+    Table asyncTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Prepare CSV
+    String csv =
+        "column.name*,column.displayName,column.description,column.tags,column.glossaryTerms\n"
+            + "async_col,Async Import,Async CSV import,,";
+
+    // Import async
+    WebTarget target = getResource("columns/import-async");
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(jakarta.ws.rs.client.Entity.entity(csv, MediaType.TEXT_PLAIN));
+    org.openmetadata.service.util.CSVImportResponse asyncResponse =
+        TestUtils.readResponse(
+            response, org.openmetadata.service.util.CSVImportResponse.class, OK.getStatusCode());
+
+    assertNotNull(asyncResponse);
+    assertNotNull(asyncResponse.getJobId());
+    assertEquals("CSV column import is in progress.", asyncResponse.getMessage());
+
+    // Wait for async import to complete
+    await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              Table updated =
+                  tableResourceTest.getEntity(asyncTable.getId(), "columns", ADMIN_AUTH_HEADERS);
+              Column col =
+                  updated.getColumns().stream()
+                      .filter(c -> c.getName().equals("async_col"))
+                      .findFirst()
+                      .orElse(null);
+
+              return col != null
+                  && "Async Import".equals(col.getDisplayName())
+                  && "Async CSV import".equals(col.getDescription());
+            });
+  }
+
+  @Test
+  void test_getColumnGrid_basic() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    CreateTable createTable1 =
+        new CreateTable()
+            .withName("grid_table1_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("grid_col1")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withDisplayName("Grid Column 1")
+                        .withDescription("First grid column"),
+                    new Column()
+                        .withName("grid_col2")
+                        .withDataType(ColumnDataType.STRING)
+                        .withDisplayName("Grid Column 2")
+                        .withDescription("Second grid column")));
+    tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("grid_table2_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("grid_col1")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withDisplayName("Grid Column 1")
+                        .withDescription("First grid column"),
+                    new Column()
+                        .withName("grid_col3")
+                        .withDataType(ColumnDataType.INT)
+                        .withDisplayName("Grid Column 3")));
+    tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              WebTarget target = getResource("columns/grid").queryParam("size", "100");
+              Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+              if (response.getStatus() != OK.getStatusCode()) {
+                return false;
+              }
+              ColumnGridResponse gridResponse =
+                  TestUtils.readResponse(response, ColumnGridResponse.class, OK.getStatusCode());
+              return gridResponse != null && gridResponse.getColumns().size() >= 2;
+            });
+
+    WebTarget target = getResource("columns/grid").queryParam("size", "100");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    ColumnGridResponse gridResponse =
+        TestUtils.readResponse(response, ColumnGridResponse.class, OK.getStatusCode());
+
+    assertNotNull(gridResponse);
+    assertNotNull(gridResponse.getColumns());
+    assertTrue(gridResponse.getTotalUniqueColumns() >= 2);
+
+    Optional<ColumnGridItem> gridCol1 =
+        gridResponse.getColumns().stream()
+            .filter(item -> "grid_col1".equals(item.getColumnName()))
+            .findFirst();
+    assertTrue(gridCol1.isPresent());
+    assertEquals(2, gridCol1.get().getTotalOccurrences());
+    assertFalse(gridCol1.get().getHasVariations());
+    assertEquals(1, gridCol1.get().getGroups().size());
+  }
+
+  @Test
+  void test_getColumnGrid_withMetadataVariations() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    CreateTable createTable1 =
+        new CreateTable()
+            .withName("var_table1_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("varying_col")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withDisplayName("Display A")
+                        .withDescription("Description A")
+                        .withTags(
+                            List.of(
+                                new TagLabel()
+                                    .withTagFQN(personalDataTag.getFullyQualifiedName())
+                                    .withSource(TagLabel.TagSource.CLASSIFICATION)))));
+    tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("var_table2_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("varying_col")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withDisplayName("Display B")
+                        .withDescription("Description B")
+                        .withTags(
+                            List.of(
+                                new TagLabel()
+                                    .withTagFQN(businessMetricsTag.getFullyQualifiedName())
+                                    .withSource(TagLabel.TagSource.CLASSIFICATION)))));
+    tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              WebTarget target =
+                  getResource("columns/grid")
+                      .queryParam("columnNamePattern", "varying_col")
+                      .queryParam("hasConflicts", "true");
+              Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+              if (response.getStatus() != OK.getStatusCode()) {
+                return false;
+              }
+              ColumnGridResponse gridResponse =
+                  TestUtils.readResponse(response, ColumnGridResponse.class, OK.getStatusCode());
+              return gridResponse != null && !gridResponse.getColumns().isEmpty();
+            });
+
+    WebTarget target =
+        getResource("columns/grid")
+            .queryParam("columnNamePattern", "varying_col")
+            .queryParam("hasConflicts", "true");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    ColumnGridResponse gridResponse =
+        TestUtils.readResponse(response, ColumnGridResponse.class, OK.getStatusCode());
+
+    assertNotNull(gridResponse);
+    assertEquals(1, gridResponse.getColumns().size());
+
+    ColumnGridItem item = gridResponse.getColumns().get(0);
+    assertEquals("varying_col", item.getColumnName());
+    assertEquals(2, item.getTotalOccurrences());
+    assertTrue(item.getHasVariations());
+    assertEquals(2, item.getGroups().size());
+  }
+
+  @Test
+  void test_getColumnGrid_withPagination() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName("pagination_table_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("pag_col1").withDataType(ColumnDataType.BIGINT),
+                    new Column().withName("pag_col2").withDataType(ColumnDataType.STRING),
+                    new Column().withName("pag_col3").withDataType(ColumnDataType.INT)));
+    tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              WebTarget target = getResource("columns/grid").queryParam("size", "1");
+              Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+              if (response.getStatus() != OK.getStatusCode()) {
+                return false;
+              }
+              ColumnGridResponse gridResponse =
+                  TestUtils.readResponse(response, ColumnGridResponse.class, OK.getStatusCode());
+              return gridResponse != null && !gridResponse.getColumns().isEmpty();
+            });
+
+    WebTarget firstPageTarget = getResource("columns/grid").queryParam("size", "1");
+    Response firstPageResponse = SecurityUtil.addHeaders(firstPageTarget, ADMIN_AUTH_HEADERS).get();
+    ColumnGridResponse firstPage =
+        TestUtils.readResponse(firstPageResponse, ColumnGridResponse.class, OK.getStatusCode());
+
+    assertNotNull(firstPage);
+    assertEquals(1, firstPage.getColumns().size());
+
+    if (firstPage.getCursor() != null) {
+      WebTarget secondPageTarget =
+          getResource("columns/grid")
+              .queryParam("size", "1")
+              .queryParam("cursor", firstPage.getCursor());
+      Response secondPageResponse =
+          SecurityUtil.addHeaders(secondPageTarget, ADMIN_AUTH_HEADERS).get();
+      ColumnGridResponse secondPage =
+          TestUtils.readResponse(secondPageResponse, ColumnGridResponse.class, OK.getStatusCode());
+
+      assertNotNull(secondPage);
+      assertEquals(1, secondPage.getColumns().size());
+      assertFalse(
+          firstPage
+              .getColumns()
+              .get(0)
+              .getColumnName()
+              .equals(secondPage.getColumns().get(0).getColumnName()));
+    }
+  }
+
+  @Test
+  void test_getColumnGrid_withFilters() throws IOException {
+    String testId = UUID.randomUUID().toString().replaceAll("[^A-Za-z0-9]", "");
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName("filter_table_" + testId)
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("filter_col")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withDescription("Has description"),
+                    new Column().withName("empty_col").withDataType(ColumnDataType.STRING)));
+    tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              WebTarget target =
+                  getResource("columns/grid")
+                      .queryParam("columnNamePattern", "filter")
+                      .queryParam("entityTypes", "table");
+              Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+              if (response.getStatus() != OK.getStatusCode()) {
+                return false;
+              }
+              ColumnGridResponse gridResponse =
+                  TestUtils.readResponse(response, ColumnGridResponse.class, OK.getStatusCode());
+              return gridResponse != null && !gridResponse.getColumns().isEmpty();
+            });
+
+    WebTarget target =
+        getResource("columns/grid")
+            .queryParam("columnNamePattern", "filter")
+            .queryParam("entityTypes", "table");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    ColumnGridResponse gridResponse =
+        TestUtils.readResponse(response, ColumnGridResponse.class, OK.getStatusCode());
+
+    assertNotNull(gridResponse);
+    assertTrue(
+        gridResponse.getColumns().stream()
+            .anyMatch(item -> "filter_col".equals(item.getColumnName())));
   }
 
   @Test
@@ -2087,6 +3158,4 @@ class ColumnResourceTest extends OpenMetadataApplicationTest {
     Type typeEntity = TestUtils.get(target, Type.class, ADMIN_AUTH_HEADERS);
     return typeEntity.getEntityReference();
   }
-
-  // Removed addCustomProperty and updateEntityType methods as they are now inline
 }

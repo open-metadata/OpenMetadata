@@ -18,6 +18,7 @@ import { toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -33,6 +34,7 @@ import {
   getDataProductVersionsList,
   patchDataProduct,
   removeFollower,
+  updateDataProductVotes,
 } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -131,6 +133,8 @@ const DataProductsPage = () => {
           TabSpecificField.TAGS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.REVIEWERS,
+          TabSpecificField.VOTES,
+          TabSpecificField.CERTIFICATION,
         ],
       });
       setDataProduct(data);
@@ -247,6 +251,44 @@ const DataProductsPage = () => {
     setIsFollowingLoading(false);
   }, [isFollowing, unFollowDataProduct, followDataProduct]);
 
+  // Refresh data product without showing loader (for port updates)
+  const refreshDataProduct = useCallback(async () => {
+    if (!dataProductFqn) {
+      return;
+    }
+    try {
+      const data = await getDataProductByName(dataProductFqn, {
+        fields: [
+          TabSpecificField.DOMAINS,
+          TabSpecificField.OWNERS,
+          TabSpecificField.EXPERTS,
+          TabSpecificField.ASSETS,
+          TabSpecificField.EXTENSION,
+          TabSpecificField.TAGS,
+          TabSpecificField.FOLLOWERS,
+          TabSpecificField.REVIEWERS,
+          TabSpecificField.VOTES,
+          TabSpecificField.CERTIFICATION,
+        ],
+      });
+      setDataProduct(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [dataProductFqn]);
+
+  const handleUpdateVote = useCallback(
+    async (data: QueryVote, id: string) => {
+      try {
+        await updateDataProductVotes(id, data);
+        await refreshDataProduct();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [refreshDataProduct]
+  );
+
   useEffect(() => {
     if (dataProductFqn) {
       fetchDataProductByFqn(dataProductFqn);
@@ -295,7 +337,9 @@ const DataProductsPage = () => {
           isFollowingLoading={isFollowingLoading}
           isVersionsView={Boolean(version)}
           onDelete={handleDataProductDelete}
+          onRefresh={refreshDataProduct}
           onUpdate={handleDataProductUpdate}
+          onUpdateVote={handleUpdateVote}
         />
       </PageLayoutV1>
 

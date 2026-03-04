@@ -55,6 +55,7 @@ import {
   getClassificationVersionsPath,
 } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -83,6 +84,7 @@ const ClassificationDetails = forwardRef(
       handleAddNewTagClick,
       disableEditButton,
       isVersionView = false,
+      isClassificationLoading = false,
       handleToggleDisable,
     }: Readonly<ClassificationDetailsProps>,
     ref
@@ -94,6 +96,7 @@ const ClassificationDetails = forwardRef(
     const navigate = useNavigate();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
+    const isLoading = isTagsLoading || isClassificationLoading;
     const previousClassificationRef = useRef<string | undefined>();
     const isClassificationChangingRef = useRef(false);
     const {
@@ -472,7 +475,7 @@ const ClassificationDetails = forwardRef(
         )}
 
         <GenericProvider<Classification>
-          data={currentClassification as Classification}
+          data={(currentClassification as Classification) ?? {}}
           isVersionView={isVersionView}
           permissions={classificationPermissions}
           type={EntityType.CLASSIFICATION as CustomizeEntityType}
@@ -499,7 +502,7 @@ const ClassificationDetails = forwardRef(
                   columns={tableColumn}
                   customPaginationProps={{
                     currentPage,
-                    isLoading: isTagsLoading,
+                    isLoading,
                     pageSize,
                     paging,
                     showPagination,
@@ -508,7 +511,7 @@ const ClassificationDetails = forwardRef(
                   }}
                   data-testid="table"
                   dataSource={tags}
-                  loading={isTagsLoading}
+                  loading={isLoading}
                   locale={{
                     emptyText: (
                       <ErrorPlaceHolder
@@ -535,6 +538,7 @@ const ClassificationDetails = forwardRef(
                   dataTestId="classification-owner-name"
                   hasPermission={editOwnerPermission}
                 />
+                {tagClassBase.getClassificationReviewerWidget()}
               </div>
             </Col>
           </Row>

@@ -27,7 +27,7 @@ export interface TestDefinition {
     /**
      * Description of the testcase.
      */
-    description: string;
+    description?: string;
     /**
      * Display Name that identifies this test case.
      */
@@ -101,6 +101,11 @@ export interface TestDefinition {
      * User who made the update.
      */
     updatedBy?: string;
+    /**
+     * Class name of the validator to use for this test definition. This field is used to map
+     * the test definition to its corresponding validation logic in the data quality framework.
+     */
+    validatorClass?: string;
     /**
      * Metadata version of the entity.
      */

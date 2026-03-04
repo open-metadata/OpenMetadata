@@ -15,6 +15,7 @@ import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 
 export interface SearchDropdownProps {
   triggerButtonSize?: 'large' | 'middle' | 'small';
+  dropdownClassName?: string;
   label: string;
   isSuggestionsLoading?: boolean;
   options: SearchDropdownOption[];
@@ -31,6 +32,8 @@ export interface SearchDropdownProps {
   hideCounts?: boolean; // Determines if the count should be displayed or not.
   hasNullOption?: boolean; // Determines if the null option should be displayed or not. For e.g No Owner, No Tier etc
   showSelectedCounts?: boolean; // Show counts instead of labels for selected items
+  hideSearchBar?: boolean; // Determines if the search bar should be hidden. Default is false
+  singleSelect?: boolean; // Enable single-select mode with radio buttons instead of checkboxes
 }
 
 export interface SearchDropdownOption {
@@ -38,4 +41,5 @@ export interface SearchDropdownOption {
   label: string;
   labelKeyOptions?: Record<string, string | number | boolean>;
   count?: number;
+  description?: string;
 }

@@ -32,5 +32,6 @@
   "supportsDynamicAssertion": true,
   "provider": "system",
   "enabled": true,
-  "dataQualityDimension": "Accuracy"
+  "dataQualityDimension": "Accuracy",
+  "validatorClass": "ColumnValuesToBeBetweenValidator"
 }

@@ -1101,7 +1101,7 @@ public class OpenSearchSourceBuilderFactory
                               .maxExpansions(10)
                               .prefixLength(1)
                               .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
-                              .tieBreaker((double) DEFAULT_TIE_BREAKER)
+                              .tieBreaker(DEFAULT_TIE_BREAKER)
                               .boost(multiplier)));
       combinedQuery.should(fuzzyQuery);
     }

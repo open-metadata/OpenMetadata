@@ -789,6 +789,72 @@ class K8sPipelineClientTest {
     return clientWithOMJob;
   }
 
+  @Test
+  void testSanitizeName_RemovesTrailingHyphensAfterTruncation() {
+    // Test case 1: Name that becomes 53 chars and ends with hyphen after truncation
+    String longNameWithHyphen = "update-logger-level-for-test-pipeline-with-very-long-name-suffix-";
+    String sanitized = client.sanitizeName(longNameWithHyphen);
+
+    // Should be truncated to 53 chars and NOT end with hyphen
+    assertTrue(sanitized.length() <= 53, "Sanitized name should be <= 53 chars");
+    assertFalse(sanitized.endsWith("-"), "Sanitized name should not end with hyphen");
+    assertTrue(
+        sanitized.matches("^[a-z0-9][a-z0-9-]*[a-z0-9]$"),
+        "Sanitized name should match K8s DNS-1123 format");
+  }
+
+  @Test
+  void testSanitizeName_HandlesShortNames() {
+    String shortName = "test-pipeline";
+    String sanitized = client.sanitizeName(shortName);
+
+    assertEquals("test-pipeline", sanitized, "Short names should not be modified");
+  }
+
+  @Test
+  void testSanitizeName_HandlesSpecialCharacters() {
+    String nameWithSpecialChars = "test_pipeline.config@2024";
+    String sanitized = client.sanitizeName(nameWithSpecialChars);
+
+    assertEquals("test-pipeline-config-2024", sanitized, "Special chars should be replaced");
+    assertFalse(sanitized.endsWith("-"), "Should not end with hyphen");
+  }
+
+  @Test
+  void testSanitizeName_HandlesUppercase() {
+    String uppercaseName = "TEST-PIPELINE-NAME";
+    String sanitized = client.sanitizeName(uppercaseName);
+
+    assertEquals("test-pipeline-name", sanitized, "Should be converted to lowercase");
+  }
+
+  @Test
+  void testSanitizeName_EnsuresMaxLength() {
+    // Create a name longer than 53 chars that ends with alphanumeric
+    String veryLongName = "a".repeat(60);
+    String sanitized = client.sanitizeName(veryLongName);
+
+    assertTrue(sanitized.length() <= 53, "Should truncate to max 53 chars");
+    assertEquals(53, sanitized.length(), "Should use full 53 chars when possible");
+  }
+
+  @Test
+  void testSanitizeName_WithPrefixFitsK8sLimit() {
+    // Test that with common prefixes (om-config-, om-cronjob-) total stays under 63
+    String longName = "a".repeat(60);
+    String sanitized = client.sanitizeName(longName);
+
+    String withConfigPrefix = "om-config-" + sanitized; // 10 chars prefix
+    String withCronjobPrefix = "om-cronjob-" + sanitized; // 11 chars prefix
+
+    assertTrue(
+        withConfigPrefix.length() <= 63,
+        "With om-config- prefix should be <= 63 chars, was: " + withConfigPrefix.length());
+    assertTrue(
+        withCronjobPrefix.length() <= 63,
+        "With om-cronjob- prefix should be <= 63 chars, was: " + withCronjobPrefix.length());
+  }
+
   private static Map<String, String> toEnvMap(List<V1EnvVar> envVars) {
     return envVars.stream()
         .collect(Collectors.toMap(V1EnvVar::getName, V1EnvVar::getValue, (a, b) -> b));

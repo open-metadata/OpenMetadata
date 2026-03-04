@@ -3,9 +3,11 @@ package org.openmetadata.sdk.fluent;
 import java.util.*;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
@@ -98,6 +100,38 @@ public final class Tables {
     return getClient().tables().update(id, entity);
   }
 
+  public static Table addSampleData(String id, TableData sampleData) {
+    return getClient().tables().updateSampleData(id, sampleData);
+  }
+
+  public static Table addSampleData(UUID id, TableData sampleData) {
+    return addSampleData(id.toString(), sampleData);
+  }
+
+  public static Table getSampleData(String id) {
+    return getClient().tables().getSampleData(id);
+  }
+
+  public static Table getSampleData(UUID id) {
+    return getSampleData(id.toString());
+  }
+
+  public static Table addCustomMetric(String id, CustomMetric customMetric) {
+    return getClient().tables().updateCustomMetric(id, customMetric);
+  }
+
+  public static Table addCustomMetric(UUID id, CustomMetric customMetric) {
+    return addCustomMetric(id.toString(), customMetric);
+  }
+
+  public static void deleteCustomMetric(String id, String metricName) {
+    getClient().tables().deleteCustomMetric(id, metricName);
+  }
+
+  public static void deleteCustomMetric(UUID id, String metricName) {
+    deleteCustomMetric(id.toString(), metricName);
+  }
+
   public static void delete(String id) {
     getClient().tables().delete(id);
   }
@@ -145,6 +179,14 @@ public final class Tables {
 
   public static org.openmetadata.sdk.fluent.collections.TableCollection collection() {
     return new org.openmetadata.sdk.fluent.collections.TableCollection(getClient());
+  }
+
+  public static TableOperations forTable(String id) {
+    return new TableOperations(getClient(), id);
+  }
+
+  public static TableOperations forTable(UUID id) {
+    return forTable(id.toString());
   }
 
   // ==================== Import/Export ====================
@@ -253,7 +295,7 @@ public final class Tables {
       return this;
     }
 
-    public FluentTable fetch() {
+    public org.openmetadata.sdk.fluent.wrappers.FluentTable fetch() {
       Table table;
       if (includes.isEmpty()) {
         table = isFqn ? client.tables().getByName(identifier) : client.tables().get(identifier);
@@ -264,11 +306,39 @@ public final class Tables {
                 ? client.tables().getByName(identifier, fields)
                 : client.tables().get(identifier, fields);
       }
-      return new FluentTable(table, client);
+      return new org.openmetadata.sdk.fluent.wrappers.FluentTable(table, client);
     }
 
     public TableDeleter delete() {
       return new TableDeleter(client, identifier);
+    }
+  }
+
+  // ==================== Table Operations ====================
+
+  public static class TableOperations {
+    private final OpenMetadataClient client;
+    private final String tableId;
+
+    TableOperations(OpenMetadataClient client, String tableId) {
+      this.client = client;
+      this.tableId = tableId;
+    }
+
+    public Table addSampleData(TableData sampleData) {
+      return client.tables().updateSampleData(tableId, sampleData);
+    }
+
+    public Table getSampleData() {
+      return client.tables().getSampleData(tableId);
+    }
+
+    public Table addCustomMetric(CustomMetric customMetric) {
+      return client.tables().updateCustomMetric(tableId, customMetric);
+    }
+
+    public void deleteCustomMetric(String metricName) {
+      client.tables().deleteCustomMetric(tableId, metricName);
     }
   }
 
@@ -280,7 +350,7 @@ public final class Tables {
     private boolean recursive = false;
     private boolean hardDelete = false;
 
-    TableDeleter(OpenMetadataClient client, String id) {
+    public TableDeleter(OpenMetadataClient client, String id) {
       this.client = client;
       this.id = id;
     }
@@ -325,21 +395,22 @@ public final class Tables {
       return this;
     }
 
-    public List<FluentTable> fetch() {
+    public List<org.openmetadata.sdk.fluent.wrappers.FluentTable> fetch() {
       var params = new org.openmetadata.sdk.models.ListParams();
       if (limit != null) params.setLimit(limit);
       if (after != null) params.setAfter(after);
       filters.forEach(params::addFilter);
 
       var response = client.tables().list(params);
-      List<FluentTable> items = new ArrayList<>();
+      List<org.openmetadata.sdk.fluent.wrappers.FluentTable> items = new ArrayList<>();
       for (Table item : response.getData()) {
-        items.add(new FluentTable(item, client));
+        items.add(new org.openmetadata.sdk.fluent.wrappers.FluentTable(item, client));
       }
       return items;
     }
 
-    public void forEach(java.util.function.Consumer<FluentTable> action) {
+    public void forEach(
+        java.util.function.Consumer<org.openmetadata.sdk.fluent.wrappers.FluentTable> action) {
       fetch().forEach(action);
     }
   }

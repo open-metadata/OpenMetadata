@@ -23,7 +23,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import IconAuth0 from '../../assets/img/icon-auth0.png';
+import IconAuth0 from '../../assets/img/icon-auth0.svg';
 import IconCognito from '../../assets/img/icon-aws-cognito.png';
 import IconAzure from '../../assets/img/icon-azure.png';
 import IconGoogle from '../../assets/img/icon-google.png';
@@ -209,7 +209,7 @@ const SignInPage = () => {
           {alert && (
             <div className="login-alert">
               <AlertBar
-                defafultExpand
+                defaultExpand
                 message={alert?.message}
                 type={alert?.type}
               />

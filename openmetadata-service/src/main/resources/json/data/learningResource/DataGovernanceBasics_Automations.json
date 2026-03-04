@@ -1,0 +1,15 @@
+{
+  "name": "Data Governance Basics: Automations",
+  "description": "Discover how to apply PII-sensitive tags to columns using filters and automations",
+  "resourceType": "Storylane",
+  "categories": ["DataGovernance"],
+  "source": {
+    "url": "https://collate.storylane.io/share/h198unat3nfb"
+  },
+  "contexts": [
+    {"pageId": "automations"},
+    {"pageId": "tags"},
+    {"pageId": "classification"}
+  ],
+  "status": "Active"
+}

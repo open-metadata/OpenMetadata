@@ -110,6 +110,31 @@ class AssetKey(BaseModel):
         """Convert asset key path to dot-separated string"""
         return ".".join(self.path)
 
+    def normalize(self, strip_prefix: int = 0) -> "AssetKey":
+        """
+        Return a new AssetKey with N leading segments removed.
+
+        Args:
+            strip_prefix: Number of leading segments to remove
+
+        Returns:
+            New AssetKey with normalized path
+        """
+        if strip_prefix <= 0:
+            return self
+
+        if strip_prefix >= len(self.path):
+            from metadata.utils.logger import ingestion_logger
+
+            logger = ingestion_logger()
+            logger.warning(
+                f"stripAssetKeyPrefixLength ({strip_prefix}) is >= asset key length "
+                f"({len(self.path)}). Asset key: {self.to_string()}"
+            )
+            return self
+
+        return AssetKey(path=self.path[strip_prefix:])
+
 
 class DagsterAssetReference(BaseModel):
     assetKey: AssetKey

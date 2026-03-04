@@ -13,7 +13,6 @@
 
 import { useOktaAuth } from '@okta/okta-react';
 import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
-
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -33,10 +32,8 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const logout = async () => {
       try {
-        // Perform logout on Okta
         oktaAuth.tokenManager.clear();
       } finally {
-        // Cleanup application state
         handleSuccessfulLogout();
       }
     };

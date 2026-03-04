@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Divider, Stack, Typography } from '@mui/material';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { FC, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import StatusBadge from '../../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../../common/StatusBadge/StatusBadge.interface';
-import { TOOLTIP_STYLES } from './DimensionalityHeatmap.constants';
 import { HeatmapCellData } from './DimensionalityHeatmap.interface';
 import { getStatusLabel } from './DimensionalityHeatmap.utils';
 
@@ -28,24 +27,18 @@ interface TooltipRowProps {
 
 const TooltipRow: FC<TooltipRowProps> = ({ label, value }) => {
   return (
-    <Box className="d-flex items-center justify-between " gap={20}>
+    <div className="heatmap-cell-tooltip__row tw:flex tw:items-center tw:justify-between">
       <Typography
-        sx={(theme) => ({
-          color: theme.palette.allShades.gray[700],
-          fontSize: theme.typography.pxToRem(TOOLTIP_STYLES.CONTENT_FONT_SIZE),
-          whiteSpace: 'nowrap',
-        })}>
+        as="span"
+        className="heatmap-cell-tooltip__label tw:whitespace-nowrap tw:text-[12px] tw:text-gray-700">
         {label}
       </Typography>
       <Typography
-        sx={(theme) => ({
-          color: theme.palette.allShades.gray[900],
-          fontWeight: theme.typography.fontWeightMedium,
-          fontSize: theme.typography.pxToRem(TOOLTIP_STYLES.CONTENT_FONT_SIZE),
-        })}>
+        as="span"
+        className="heatmap-cell-tooltip__value tw:font-medium tw:text-[12px] tw:text-gray-900">
         {value}
       </Typography>
-    </Box>
+    </div>
   );
 };
 
@@ -94,27 +87,17 @@ export const HeatmapCellTooltip: FC<HeatmapCellTooltipProps> = ({ cell }) => {
   );
 
   return (
-    <Card
-      sx={(theme) => ({
-        p: TOOLTIP_STYLES.CARD_PADDING,
-        bgcolor: theme.palette.allShades.white,
-      })}>
+    <div className="tw:rounded-lg tw:bg-white tw:p-2.5 tw:shadow-sm">
       <Typography
-        sx={(theme) => ({
-          color: theme.palette.allShades.gray[900],
-          fontWeight: theme.typography.fontWeightMedium,
-          fontSize: theme.typography.pxToRem(TOOLTIP_STYLES.HEADER_FONT_SIZE),
-        })}>
+        as="span"
+        className="tw:block tw:text-[13px] tw:font-medium tw:text-gray-900">
         {cell.date}
       </Typography>
-      <Divider
-        sx={(theme) => ({
-          my: TOOLTIP_STYLES.DIVIDER_MARGIN,
-          borderStyle: 'dashed',
-          borderColor: theme.palette.allShades.gray[300],
-        })}
+      <div
+        aria-hidden
+        className="tw:my-2 tw:border-b tw:border-dashed tw:border-gray-300"
       />
-      <Stack spacing={TOOLTIP_STYLES.STACK_SPACING}>
+      <div className="tw:flex tw:flex-col tw:gap-2">
         {rows.map(
           (row) =>
             !isUndefined(row.value) && (
@@ -123,14 +106,16 @@ export const HeatmapCellTooltip: FC<HeatmapCellTooltipProps> = ({ cell }) => {
         )}
         {cell.result?.testResultValue &&
           cell.result.testResultValue.length > 0 &&
-          cell.result.testResultValue.map((resultValue, index) => (
+          cell.result.testResultValue.map((resultValue) => (
             <TooltipRow
-              key={`result-value-${index}`}
+              key={`${resultValue.name ?? 'value'}-${String(
+                resultValue.value
+              )}`}
               label={resultValue.name || t('label.value')}
               value={resultValue.value || '-'}
             />
           ))}
-      </Stack>
-    </Card>
+      </div>
+    </div>
   );
 };

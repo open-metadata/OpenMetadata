@@ -31,11 +31,11 @@ ORACLE_ALL_VIEW_DEFINITIONS = textwrap.dedent(
 SELECT
     LOWER(v.view_name) AS "view_name",
     LOWER(v.owner) AS "schema",
-    text AS view_def,
+    text AS "view_def",
     CASE
         WHEN text IS NOT NULL THEN NULL
         ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
-    END AS view_ddl
+    END AS "view_ddl"
 FROM DBA_VIEWS v
 JOIN DBA_USERS u
     ON v.owner = u.username
@@ -44,17 +44,60 @@ UNION ALL
 SELECT
     LOWER(m.mview_name) AS "view_name",
     LOWER(m.owner) AS "schema",
-    query AS view_def,
+    query AS "view_def",
     CASE
         WHEN query IS NOT NULL THEN NULL
         ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
-    END AS view_ddl
+    END AS "view_ddl"
 FROM DBA_MVIEWS m
 JOIN DBA_USERS u
     ON m.owner = u.username
 WHERE u.oracle_maintained = 'N'
 """
 )
+
+ORACLE_ALL_TABLE_COMMENTS_PRESERVE_CASE = textwrap.dedent(
+    """
+SELECT
+    comments "table_comment",
+    table_name "table_name",
+    owner "schema"
+FROM DBA_TAB_COMMENTS
+where comments is not null and owner not in ('SYSTEM', 'SYS')
+"""
+)
+
+
+ORACLE_ALL_VIEW_DEFINITIONS_PRESERVE_CASE = textwrap.dedent(
+    """
+SELECT
+    v.view_name AS "view_name",
+    v.owner AS "schema",
+    text AS "view_def",
+    CASE
+        WHEN text IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
+    END AS "view_ddl"
+FROM DBA_VIEWS v
+JOIN DBA_USERS u
+    ON v.owner = u.username
+WHERE u.oracle_maintained = 'N'
+UNION ALL
+SELECT
+    m.mview_name AS "view_name",
+    m.owner AS "schema",
+    query AS "view_def",
+    CASE
+        WHEN query IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
+    END AS "view_ddl"
+FROM DBA_MVIEWS m
+JOIN DBA_USERS u
+    ON m.owner = u.username
+WHERE u.oracle_maintained = 'N'
+"""
+)
+
 
 GET_VIEW_NAMES = textwrap.dedent(
     """
@@ -121,7 +164,11 @@ SELECT
 FROM
     DBA_SOURCE
 WHERE TYPE IN ('PACKAGE', 'PACKAGE BODY') AND owner = '{schema}'
-ORDER BY OWNER, NAME, LINE
+ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE
 """
 )
 
@@ -145,7 +192,11 @@ WHERE
         WHERE
             ROWNUM = 1
     )
-ORDER BY OWNER, NAME, LINE
+ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE
 """
 )
 

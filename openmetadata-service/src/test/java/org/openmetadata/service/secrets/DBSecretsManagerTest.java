@@ -46,6 +46,7 @@ public class DBSecretsManagerTest {
   static void setUp() {
     secretsManager =
         DBSecretsManager.getInstance(
+            SecretsManagerProvider.DB,
             new SecretsManager.SecretsConfig(
                 "openmetadata", "prefix", List.of("key:value", "key2:value2"), null));
     Fernet fernet = Mockito.mock(Fernet.class);

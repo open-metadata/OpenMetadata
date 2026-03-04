@@ -20,7 +20,9 @@ import sqlalchemy.types as sqltypes
 import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT, StructuredType
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
+from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
+from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier, Token
 
@@ -269,18 +271,27 @@ class SnowflakeSource(
 
     def set_session_query_tag(self) -> None:
         """
-        Method to set query tag for current session
+        Register a pool event on the engine so that every connection
+        checked out from the pool gets the QUERY_TAG set automatically.
+        In SA 2.0, each engine.connect() may return a different pooled
+        connection, so setting the tag on a single connection is not enough.
+
+        Called after set_inspector() which creates a new engine per database,
+        so we register the event on the current self.engine.
         """
         if self.service_connection.queryTag:
-            self.engine.execute(
-                SNOWFLAKE_SESSION_TAG_QUERY.format(
-                    query_tag=self.service_connection.queryTag
-                )
-            )
+            query_tag = self.service_connection.queryTag
+
+            @event.listens_for(self.engine, "connect")
+            def _set_query_tag(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute(SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=query_tag))
+                cursor.close()
 
     def set_partition_details(self) -> None:
         self.partition_details.clear()
-        results = self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(SNOWFLAKE_GET_CLUSTER_KEY)).all()
         for row in results:
             if row.CLUSTERING_KEY:
                 self.partition_details[
@@ -289,22 +300,27 @@ class SnowflakeSource(
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()
-        results = self.engine.execute(SNOWFLAKE_GET_SCHEMA_COMMENTS).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(SNOWFLAKE_GET_SCHEMA_COMMENTS)).all()
         for row in results:
             self.schema_desc_map[(row.DATABASE_NAME, row.SCHEMA_NAME)] = row.COMMENT
 
     def set_database_description_map(self) -> None:
         self.database_desc_map.clear()
         if not self.database_desc_map:
-            results = self.engine.execute(SNOWFLAKE_GET_DATABASE_COMMENTS).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(text(SNOWFLAKE_GET_DATABASE_COMMENTS)).all()
             for row in results:
                 self.database_desc_map[row.DATABASE_NAME] = row.COMMENT
 
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
-        results = self.engine.execute(
-            SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)
-        ).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(
+                text(
+                    SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)
+                )
+            ).all()
         self.external_location_map = {
             (row.database_name, row.schema_name, row.name): row.location
             for row in results
@@ -317,15 +333,24 @@ class SnowflakeSource(
             return
 
         try:
-            results = self.engine.execute(
-                SNOWFLAKE_FETCH_SCHEMA_TAGS.format(
-                    database_name=database_name,
-                    account_usage=self.service_connection.accountUsageSchema,
-                )
-            ).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    text(
+                        SNOWFLAKE_FETCH_SCHEMA_TAGS.format(
+                            database_name=database_name,
+                            account_usage=self.service_connection.accountUsageSchema,
+                        )
+                    )
+                ).all()
 
             for row in results:
                 schema_name = row.SCHEMA_NAME
+                if not row.TAG_VALUE:
+                    logger.warning(
+                        f"Skipping tag '{row.TAG_NAME}' for schema '{schema_name}' - "
+                        "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
+                    )
+                    continue
                 if schema_name not in self.schema_tags_map:
                     self.schema_tags_map[schema_name] = []
                 self.schema_tags_map[schema_name].append(
@@ -352,7 +377,7 @@ class SnowflakeSource(
         return self.service_connection.database
 
     def get_database_names_raw(self) -> Iterable[str]:
-        results = self.connection.execute(SNOWFLAKE_GET_DATABASES)
+        results = self.connection.execute(text(SNOWFLAKE_GET_DATABASES))
         for res in results:
             row = list(res)
             yield row[1]
@@ -497,10 +522,12 @@ class SnowflakeSource(
             result = []
             try:
                 result = self.connection.execute(
-                    SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                        database_name=self.context.get().database,
-                        schema_name=schema_name,
-                        account_usage=self.service_connection.accountUsageSchema,
+                    text(
+                        SNOWFLAKE_FETCH_TABLE_TAGS.format(
+                            database_name=self.context.get().database,
+                            schema_name=schema_name,
+                            account_usage=self.service_connection.accountUsageSchema,
+                        )
                     )
                 )
 
@@ -511,10 +538,12 @@ class SnowflakeSource(
                         f"Error fetching tags {exc}. Trying with quoted names"
                     )
                     result = self.connection.execute(
-                        SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                            database_name=f'"{self.context.get().database}"',
-                            schema_name=f'"{self.context.get().database_schema}"',
-                            account_usage=self.service_connection.accountUsageSchema,
+                        text(
+                            SNOWFLAKE_FETCH_TABLE_TAGS.format(
+                                database_name=f'"{self.context.get().database}"',
+                                schema_name=f'"{self.context.get().database_schema}"',
+                                account_usage=self.service_connection.accountUsageSchema,
+                            )
                         )
                     )
                 except Exception as inner_exc:
@@ -524,6 +553,13 @@ class SnowflakeSource(
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
+                # row[0] = TAG_NAME, row[1] = TAG_VALUE
+                if not row[1]:
+                    logger.warning(
+                        f"Skipping tag '{row[0]}' for '{'.'.join(fqn_elements)}' - "
+                        "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
+                    )
+                    continue
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=FullyQualifiedEntityName(
                         fqn._build(  # pylint: disable=protected-access
@@ -654,7 +690,8 @@ class SnowflakeSource(
 
     def _get_org_name(self) -> Optional[str]:
         try:
-            res = self.engine.execute(SNOWFLAKE_GET_ORGANIZATION_NAME).one()
+            with self.engine.connect() as conn:
+                res = conn.execute(text(SNOWFLAKE_GET_ORGANIZATION_NAME)).one()
             if res:
                 return res.NAME
         except Exception as exc:
@@ -664,7 +701,8 @@ class SnowflakeSource(
 
     def _get_current_account(self) -> Optional[str]:
         try:
-            res = self.engine.execute(SNOWFLAKE_GET_CURRENT_ACCOUNT).one()
+            with self.engine.connect() as conn:
+                res = conn.execute(text(SNOWFLAKE_GET_CURRENT_ACCOUNT)).one()
             if res:
                 return res.ACCOUNT
         except Exception as exc:
@@ -760,15 +798,20 @@ class SnowflakeSource(
         self, query: str
     ) -> Iterable[SnowflakeStoredProcedure]:
         try:
-            results = self.engine.execute(
-                query.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                    account_usage=self.service_connection.accountUsageSchema,
-                )
-            ).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    text(
+                        query.format(
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
+                            account_usage=self.service_connection.accountUsageSchema,
+                        )
+                    )
+                ).all()
             for row in results:
-                stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
+                stored_procedure = SnowflakeStoredProcedure.model_validate(
+                    row._asdict()
+                )
                 if stored_procedure.definition is None:
                     logger.debug(
                         f"Missing ownership permissions on procedure {stored_procedure.name}."
@@ -809,15 +852,19 @@ class SnowflakeSource(
                 query = SNOWFLAKE_DESC_STORED_PROCEDURE
             else:
                 query = SNOWFLAKE_DESC_FUNCTION
-            res = self.engine.execute(
-                query.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                    procedure_name=stored_procedure.name,
-                    procedure_signature=stored_procedure.unquote_signature(),
+            with self.engine.connect() as conn:
+                res = conn.execute(
+                    text(
+                        query.format(
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
+                            procedure_name=stored_procedure.name,
+                            procedure_signature=stored_procedure.unquote_signature(),
+                        )
+                    )
                 )
-            )
-            return dict(res.all()).get("body", "")
+                rows = res.all()
+                return rows[0]._mapping["body"] if rows else ""
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error fetching stored procedure definition: {exc}")
@@ -909,7 +956,11 @@ class SnowflakeSource(
         # since stream does not define columns separately in Snowflake
         if table_type == TableType.Stream:
             cursor = self.connection.execute(
-                SNOWFLAKE_GET_STREAM.format(stream_name=table_name, schema=schema_name)
+                text(
+                    SNOWFLAKE_GET_STREAM.format(
+                        stream_name=table_name, schema=schema_name
+                    )
+                )
             )
             try:
                 result = cursor.fetchone()
@@ -957,14 +1008,14 @@ class SnowflakeSource(
         i.e. fetching view definition of all the views in schema storing it
         in cache and using the same cache to fetch the view definition.
 
-        To fetch defintion for other types of tables, we have used the
+        To fetch definition for other types of tables, we have used the
         get_ddl method, since this method only accepts string literal as arguments
         it is not possible to do something like this:
 
         select table_name, schema, get_ddl('table', table_name) from information_schema.tables
         so we have to fetch the ddl for each table individually.
 
-        Alternavies are executing an stroed procedure to automate this but
+        Alternatives are executing an stored procedure to automate this but
         it requires additional permissions like execute which users may not be comfortable doing.
         Or reconstruct the ddl from column types, which we can explore in the future.
         """
@@ -978,6 +1029,10 @@ class SnowflakeSource(
                 schema_definition = inspector.get_stream_definition(
                     self.connection, table_name, schema_name
                 )
+            elif table_type == TableType.Stage:
+                # Snowflake Stage does not have a DDL or definition,
+                # so we will return None for stage type
+                pass
             elif self.source_config.includeDDL or table_type == TableType.Dynamic:
                 schema_definition = inspector.get_table_ddl(
                     self.connection, table_name, schema_name

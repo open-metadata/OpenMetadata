@@ -30,7 +30,11 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
 )
+from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.domains.createDataProduct import (
+    CreateDataProductRequest,
+)
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -86,7 +90,10 @@ from metadata.ingestion.models.patch_request import (
     PatchedEntity,
     PatchRequest,
 )
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.pipeline_status import (
+    OMetaBulkPipelineStatus,
+    OMetaPipelineStatus,
+)
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.tests_data import (
@@ -210,6 +217,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 entity_request,
                 (
                     CreateDomainRequest,
+                    CreateDataProductRequest,
                     CreateDataContractRequest,
                     CreateTeamRequest,
                     CreateContainerRequest,
@@ -217,6 +225,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateTestCaseRequest,
                     CreateTestSuiteRequest,
                     CreateTestDefinitionRequest,
+                    CreateGlossaryRequest,
                 ),
             )
         ):
@@ -434,6 +443,18 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self, record: OMetaTagAndClassification
     ) -> Either[Tag]:
         """PUT Classification and Tag to OM API"""
+        tag_name = (
+            record.tag_request.name.root
+            if hasattr(record.tag_request.name, "root")
+            else str(record.tag_request.name)
+        )
+        if not tag_name or not tag_name.strip():
+            logger.warning(
+                f"Skipping tag with empty name for classification "
+                f"'{record.classification_request.name}'"
+            )
+            return Either(right=None)
+
         self.metadata.create_or_update(record.classification_request)
         tag = self.metadata.create_or_update(record.tag_request)
         return Either(right=tag)
@@ -628,6 +649,15 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         pipeline = self.metadata.add_pipeline_status(
             fqn=record.pipeline_fqn, status=record.pipeline_status
+        )
+        return Either(right=pipeline)
+
+    @_run_dispatch.register
+    def write_bulk_pipeline_status(
+        self, record: OMetaBulkPipelineStatus
+    ) -> Either[Pipeline]:
+        pipeline = self.metadata.add_bulk_pipeline_status(
+            fqn=record.pipeline_fqn, statuses=record.pipeline_statuses
         )
         return Either(right=pipeline)
 
