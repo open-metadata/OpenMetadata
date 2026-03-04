@@ -101,8 +101,7 @@ public class RunIngestionPipelineImpl {
                   Entity.getEntity(
                       ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED)));
     } catch (Exception ex) {
-      throw new RuntimeException(
-          "Failed to run pipeline after retries: " + ex.getMessage(), ex);
+      throw new RuntimeException("Failed to run pipeline after retries: " + ex.getMessage(), ex);
     }
   }
 
@@ -117,6 +116,7 @@ public class RunIngestionPipelineImpl {
             .maxAttempts(Integer.MAX_VALUE)
             .waitDuration(Duration.ofMillis(pollingIntervalMillis))
             .retryOnResult(RUNNING::equals)
+            .retryOnException(ex -> true)
             .failAfterMaxAttempts(false)
             .build();
 
