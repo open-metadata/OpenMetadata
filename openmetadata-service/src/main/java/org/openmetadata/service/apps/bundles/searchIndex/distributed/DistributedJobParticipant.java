@@ -19,9 +19,13 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -230,13 +234,53 @@ public class DistributedJobParticipant implements Managed {
                 });
   }
 
+  private AppRunRecordContext resolveAppRunRecordContext() {
+    try {
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      App app = appRepository.getDao().findEntityByName("SearchIndexingApplication");
+      AppRunRecord latestRecord = appRepository.getLatestAppRuns(app);
+      if (latestRecord != null) {
+        return new AppRunRecordContext(app.getId(), latestRecord.getStartTime());
+      }
+    } catch (Exception e) {
+      LOG.warn("Could not resolve app run record context for stats aggregator", e);
+    }
+    return null;
+  }
+
+  private void restoreAppRunRecordToRunning(UUID appId, long startTime) {
+    try {
+      collectionDAO.appExtensionTimeSeriesDao().markEntryRunning(appId.toString(), startTime);
+      LOG.info("Restored appRunRecord to running for appId={}, startTime={}", appId, startTime);
+    } catch (Exception e) {
+      LOG.warn("Failed to restore appRunRecord to running", e);
+    }
+  }
+
+  private record AppRunRecordContext(UUID appId, long startTime) {}
+
   /** Process partitions for a job. */
   private void processJobPartitions(SearchIndexJob job) {
     LOG.info("Server {} joining distributed job {} to process partitions", serverId, job.getId());
 
     BulkSink bulkSink = null;
     IndexingFailureRecorder failureRecorder = null;
+    DistributedJobStatsAggregator statsAggregator = null;
     try {
+      AppRunRecordContext appCtx = resolveAppRunRecordContext();
+      if (appCtx != null) {
+        restoreAppRunRecordToRunning(appCtx.appId(), appCtx.startTime());
+        statsAggregator =
+            new DistributedJobStatsAggregator(
+                coordinator,
+                job.getId(),
+                appCtx.appId(),
+                appCtx.startTime(),
+                DistributedJobStatsAggregator.DEFAULT_POLL_INTERVAL_MS);
+        statsAggregator.start();
+        LOG.info("Started stats aggregator for recovered job {}", job.getId());
+      }
+
       // Create failure recorder for this participation
       failureRecorder =
           new IndexingFailureRecorder(collectionDAO, job.getId().toString(), serverId);
@@ -378,7 +422,13 @@ public class DistributedJobParticipant implements Managed {
     } catch (Exception e) {
       LOG.error("Error participating in job {}", job.getId(), e);
     } finally {
-      // Flush and close the failure recorder first (before closing sink)
+      if (statsAggregator != null) {
+        try {
+          statsAggregator.stop();
+        } catch (Exception e) {
+          LOG.warn("Error stopping stats aggregator", e);
+        }
+      }
       if (failureRecorder != null) {
         try {
           failureRecorder.close();
@@ -386,7 +436,6 @@ public class DistributedJobParticipant implements Managed {
           LOG.warn("Error closing failure recorder", e);
         }
       }
-      // Close the bulk sink
       if (bulkSink != null) {
         try {
           bulkSink.close();
