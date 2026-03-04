@@ -55,7 +55,9 @@ public class SearchUtil {
           "spreadsheet_search_index",
           Entity.SPREADSHEET,
           "file_search_index",
-          Entity.FILE -> true;
+          Entity.FILE,
+          "metric_search_index",
+          Entity.METRIC -> true;
       default -> false;
     };
   }
@@ -121,6 +123,7 @@ public class SearchUtil {
       case "file_search_index", Entity.FILE -> Entity.FILE;
       case "worksheet_search_index", Entity.WORKSHEET -> Entity.WORKSHEET;
       case "spreadsheet_search_index", Entity.SPREADSHEET -> Entity.SPREADSHEET;
+      case "metric_search_index", Entity.METRIC -> Entity.METRIC;
       case "dataAsset" -> "dataAsset";
       default -> "dataAsset";
     };
