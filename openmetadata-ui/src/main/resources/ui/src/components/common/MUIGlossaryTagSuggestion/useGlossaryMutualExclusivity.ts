@@ -26,13 +26,8 @@ export const useGlossaryMutualExclusivity = () => {
     return glossaryMutuallyExclusiveMap.current.get(key);
   }, []);
 
-  const clearExclusivity = useCallback(() => {
-    glossaryMutuallyExclusiveMap.current.clear();
-  }, []);
-
   return {
     setExclusivity,
     getExclusivity,
-    clearExclusivity,
   };
 };
