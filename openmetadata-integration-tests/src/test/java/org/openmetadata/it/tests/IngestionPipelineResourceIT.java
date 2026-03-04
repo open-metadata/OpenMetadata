@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -396,6 +397,8 @@ public class IngestionPipelineResourceIT
 
     DatabaseServiceMetadataPipeline metadataPipeline =
         new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+    DatabaseServiceQueryUsagePipeline usagePipeline =
+        new DatabaseServiceQueryUsagePipeline().withQueryLogDuration(1);
 
     CreateIngestionPipeline metadataRequest =
         new CreateIngestionPipeline()
@@ -405,17 +408,28 @@ public class IngestionPipelineResourceIT
             .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
             .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
 
-    IngestionPipeline metadataPipelineEntity = createEntity(metadataRequest);
+    CreateIngestionPipeline usageRequest =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("usage_pipeline"))
+            .withPipelineType(PipelineType.USAGE)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(usagePipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
 
-    ListParams params = new ListParams();
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("pipelineType", "metadata");
-    params.setQueryParams(queryParams);
+    IngestionPipeline metadataPipelineEntity = createEntity(metadataRequest);
+    IngestionPipeline usagePipelineEntity = createEntity(usageRequest);
+
+    ListParams params =
+        new ListParams()
+            .withService(service.getFullyQualifiedName())
+            .withPipelineType("metadata")
+            .withLimit(100);
 
     ListResponse<IngestionPipeline> result = listEntities(params);
-    assertTrue(result.getData().size() >= 1);
     assertTrue(
         result.getData().stream().anyMatch(p -> p.getId().equals(metadataPipelineEntity.getId())));
+    assertTrue(
+        result.getData().stream().noneMatch(p -> p.getId().equals(usagePipelineEntity.getId())));
   }
 
   @Test
@@ -756,6 +770,69 @@ public class IngestionPipelineResourceIT
 
     assertNotNull(retrieved);
     assertEquals(PipelineStatusType.SUCCESS, retrieved.getPipelineState());
+  }
+
+  @Test
+  void test_listPipelineStatusReturnsLatestRunsWithoutTimestampFilters(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("status_list_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+    long baseTimestamp = System.currentTimeMillis() - (48L * 60 * 60 * 1000);
+    List<String> runIdsInAscendingTimestamp = new ArrayList<>();
+
+    for (int i = 0; i < 7; i++) {
+      String runId = UUID.randomUUID().toString();
+      runIdsInAscendingTimestamp.add(runId);
+      PipelineStatus status =
+          new PipelineStatus()
+              .withPipelineState(PipelineStatusType.SUCCESS)
+              .withRunId(runId)
+              .withTimestamp(baseTimestamp + (i * 1000L));
+      client.getHttpClient().execute(HttpMethod.PUT, path, status, PipelineStatus.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> response =
+        client.getHttpClient().execute(HttpMethod.GET, path, null, Map.class);
+    List<?> rawData = (List<?>) response.get("data");
+
+    assertNotNull(rawData);
+    assertEquals(5, rawData.size());
+
+    List<String> expectedLatestRunIds = new ArrayList<>(runIdsInAscendingTimestamp.subList(2, 7));
+    Collections.reverse(expectedLatestRunIds);
+
+    List<String> actualRunIds = new ArrayList<>();
+    List<Long> actualTimestamps = new ArrayList<>();
+    long oneDayAgo = System.currentTimeMillis() - (24L * 60 * 60 * 1000);
+
+    for (Object item : rawData) {
+      PipelineStatus status = JsonUtils.convertValue(item, PipelineStatus.class);
+      actualRunIds.add(status.getRunId());
+      actualTimestamps.add(status.getTimestamp());
+      assertTrue(status.getTimestamp() < oneDayAgo);
+    }
+
+    assertEquals(expectedLatestRunIds, actualRunIds);
+    for (int i = 1; i < actualTimestamps.size(); i++) {
+      assertTrue(actualTimestamps.get(i - 1) >= actualTimestamps.get(i));
+    }
   }
 
   @Test

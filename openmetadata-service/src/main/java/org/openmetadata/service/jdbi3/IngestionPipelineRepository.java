@@ -21,6 +21,7 @@ import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +81,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
+  private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
@@ -597,26 +599,49 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public ResultList<PipelineStatus> listPipelineStatus(
       String ingestionPipelineFQN, Long startTs, Long endTs) {
+    return listPipelineStatus(ingestionPipelineFQN, startTs, endTs, null);
+  }
+
+  public ResultList<PipelineStatus> listPipelineStatus(
+      String ingestionPipelineFQN, Long startTs, Long endTs, Integer limit) {
     IngestionPipeline ingestionPipeline =
         getByName(null, ingestionPipelineFQN, getFields("service"));
+    Long effectiveStartTs = Optional.ofNullable(startTs).orElse(Long.MIN_VALUE);
+    Long effectiveEndTs = Optional.ofNullable(endTs).orElse(Long.MAX_VALUE);
     List<PipelineStatus> pipelineStatusList =
         JsonUtils.readObjects(
             getResultsFromAndToTimestamps(
                 ingestionPipeline.getFullyQualifiedName(),
                 PIPELINE_STATUS_EXTENSION,
-                startTs,
-                endTs),
+                effectiveStartTs,
+                effectiveEndTs),
             PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
     if (pipelineServiceClient != null) {
       allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
     }
     allPipelineStatusList.addAll(pipelineStatusList);
+    allPipelineStatusList.sort(
+        Comparator.comparing(
+            PipelineStatus::getTimestamp, Comparator.nullsLast(Comparator.reverseOrder())));
+
+    Integer effectiveLimit = resolvePipelineStatusLimit(startTs, endTs, limit);
+    if (effectiveLimit != null && allPipelineStatusList.size() > effectiveLimit) {
+      allPipelineStatusList = new ArrayList<>(allPipelineStatusList.subList(0, effectiveLimit));
+    }
+
     return new ResultList<>(
         allPipelineStatusList,
         String.valueOf(startTs),
         String.valueOf(endTs),
         allPipelineStatusList.size());
+  }
+
+  private Integer resolvePipelineStatusLimit(Long startTs, Long endTs, Integer limit) {
+    if (limit != null) {
+      return limit;
+    }
+    return startTs == null && endTs == null ? DEFAULT_RECENT_RUN_LIMIT : null;
   }
 
   /* Get the status of the external application by converting the configuration so that it can be
