@@ -265,7 +265,7 @@ class BaseTestValidator(ABC):
 
         Returns:
             dict: Dictionary mapping metric names to Metrics enum values
-                  e.g., {"MIN": Metrics.MIN} or {"COUNT": Metrics.COUNT, "UNIQUE_COUNT": Metrics.UNIQUE_COUNT}
+                  e.g., {"MIN": Metrics.min} or {"COUNT": Metrics.valuesCount, "UNIQUE_COUNT": Metrics.uniqueCount}
         """
         return {}
 

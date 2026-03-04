@@ -18,6 +18,7 @@ import traceback
 from collections import defaultdict
 from itertools import groupby, product
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+from urllib.parse import urlparse
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -25,6 +26,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     KafkaBrokerConfig,
     KinesisBrokerConfig,
@@ -33,6 +35,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.openLineageC
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -49,12 +52,15 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.pipeline.openlineage.models import (
+    EntityDetails,
     EventType,
     LineageEdge,
     LineageNode,
     OpenLineageEvent,
     TableDetails,
     TableFQN,
+    TopicDetails,
+    TopicFQN,
 )
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     FQNNotFoundException,
@@ -102,6 +108,29 @@ class OpenlineageSource(PipelineServiceSource):
         self.metadata.compute_percentile(Pipeline, self.today)
         self.metadata.close()
 
+    @staticmethod
+    def _get_entity_details(data: Dict) -> EntityDetails:
+        """
+        Determine the entity type (table or topic) from an OpenLineage input/output entry
+        based on the namespace prefix.
+
+        :param data: single input/output entry from an OpenLineage event
+        :return: EntityDetails with entity_type and corresponding details (TableDetails or TopicDetails)
+        """
+        namespace = data.get("namespace", "")
+
+        # Kafka topic detection
+        if namespace.startswith("kafka://"):
+            return EntityDetails(
+                entity_type="topic",
+                topic_details=OpenlineageSource._get_topic_details(data),
+            )
+        else:
+            return EntityDetails(
+                entity_type="table",
+                table_details=OpenlineageSource._get_table_details(data),
+            )
+
     @classmethod
     def _get_table_details(cls, data: Dict) -> TableDetails:
         """
@@ -144,6 +173,33 @@ class OpenlineageSource(PipelineServiceSource):
         # may store names in different cases (e.g. Trino lowercases, Spark preserves original)
         return TableDetails(name=name_parts[-1].lower(), schema=name_parts[-2].lower())
 
+    @staticmethod
+    def _get_topic_details(data: Dict) -> TopicDetails:
+        """
+        Extract topic name and broker hostname from an OpenLineage event.
+
+        :param data: single input/output entry from an OpenLineage event
+        :return: TopicDetails with topic name and broker hostname
+        :raises ValueError: if namespace or name is missing from the data
+        """
+        try:
+            namespace = data["namespace"]
+        except KeyError:
+            raise ValueError("Topic namespace is not present")
+
+        try:
+            name = data["name"]
+        except KeyError:
+            raise ValueError("Topic name is not present")
+
+        broker_hostname = urlparse(namespace).hostname
+        if not broker_hostname:
+            raise ValueError(
+                f"Could not extract broker hostname from namespace: {namespace}"
+            )
+
+        return TopicDetails(name=name, broker_hostname=broker_hostname)
+
     def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
         if not self.get_db_service_names():
             if not self._db_service_names_warned:
@@ -163,6 +219,81 @@ class OpenlineageSource(PipelineServiceSource):
                 return f"{schema_fqn}.{table_details.name}"
             except FQNNotFoundException:
                 return None
+
+    def _build_broker_to_service_map(self) -> Dict[str, str]:
+        """
+        Build a cache mapping broker hostnames to messaging service FQNs.
+        Reads each messaging service's connection config to extract bootstrapServers.
+
+        :return: dictionary with key=broker_hostname and value=service FQN
+        """
+        if not hasattr(self, "_broker_to_service"):
+            self._broker_to_service = {}
+            try:
+                services = self.metadata.list_all_entities(
+                    entity=MessagingService,
+                    fields=["connection"],
+                )
+
+                for svc in services:
+                    try:
+                        bootstrap_servers = svc.connection.config.bootstrapServers or ""
+                        svc_fqn = svc.fullyQualifiedName.root
+                        for broker in bootstrap_servers.split(","):
+                            hostname = broker.strip().split(":")[0]
+                            if hostname:
+                                self._broker_to_service[hostname] = svc_fqn
+                    except Exception:
+                        logger.debug(
+                            f"Could not extract bootstrapServers from service {svc.name}"
+                        )
+
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error building broker-to-service map: {exc}")
+
+        return self._broker_to_service
+
+    def _find_service_fqn_by_broker(self, broker_hostname: str) -> Optional[str]:
+        """
+        Find the messaging service FQN whose bootstrapServers contains the given broker hostname.
+
+        :param broker_hostname: hostname extracted from OpenLineage kafka:// namespace
+        :return: fully qualified name of the matching MessagingService, or None
+        """
+        broker_map = self._build_broker_to_service_map()
+        return broker_map.get(broker_hostname)
+
+    def _get_topic_entity(self, topic_details: TopicDetails) -> Optional[Topic]:
+        """
+        Look up a Topic entity by finding the messaging service from the broker hostname,
+        then constructing the topic FQN as {service_fqn}.{topic_name}.
+
+        :param topic_details: TopicDetails with name and broker_hostname
+        :return: Topic entity from OpenMetadata, or None
+        """
+        try:
+            service_fqn = self._find_service_fqn_by_broker(
+                topic_details.broker_hostname
+            )
+            if not service_fqn:
+                logger.warning(
+                    f"No messaging service found for broker: {topic_details.broker_hostname}"
+                )
+                return None
+
+            topic_fqn = f"{service_fqn}.{fqn.quote_name(topic_details.name)}"
+            topic = self.metadata.get_by_name(Topic, topic_fqn)
+
+            if not topic:
+                logger.warning(f"Topic not found in OpenMetadata: {topic_fqn}")
+
+            return topic
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error finding topic for {topic_details.name}: {exc}")
+            return None
 
     def _get_schema_fqn_from_om(self, schema: str) -> Optional[str]:
         """
@@ -321,7 +452,10 @@ class OpenlineageSource(PipelineServiceSource):
         result = {}
 
         for table in tables:
-            table_fqn = self._get_table_fqn(OpenlineageSource._get_table_details(table))
+            entity_details = self._get_entity_details(table)
+            if entity_details.entity_type != "table":
+                continue
+            table_fqn = self._get_table_fqn(entity_details.table_details)
 
             if table_fqn:
                 result[OpenlineageSource._get_ol_table_name(table)] = table_fqn
@@ -352,9 +486,12 @@ class OpenlineageSource(PipelineServiceSource):
         ol_name_to_fqn_map = self._build_ol_name_to_fqn_map(inputs + outputs)
 
         for table in outputs:
-            output_table_fqn = self._get_table_fqn(
-                OpenlineageSource._get_table_details(table)
-            )
+            entity_details = self._get_entity_details(table)
+            # Column-level lineage is only supported for tables for now.
+            if entity_details.entity_type != "table":
+                continue
+
+            output_table_fqn = self._get_table_fqn(entity_details.table_details)
             for field_name, field_spec in (
                 table.get("facets", {})
                 .get("columnLineage", {})
@@ -410,32 +547,55 @@ class OpenlineageSource(PipelineServiceSource):
         output_edges: List[LineageNode] = []
 
         for spec in [(inputs, input_edges), (outputs, output_edges)]:
-            tables, tables_list = spec
+            entities, entity_list = spec
+            for entity_data in entities:
+                entity_details = self._get_entity_details(entity_data)
+                if entity_details.entity_type == "table":
+                    create_table_request = self.get_create_table_request(entity_data)
 
-            for table in tables:
-                create_table_request = self.get_create_table_request(table)
+                    if create_table_request:
+                        yield create_table_request
 
-                if create_table_request:
-                    yield create_table_request
+                    table_fqn = self._get_table_fqn(entity_details.table_details)
 
-                table_fqn = self._get_table_fqn(
-                    OpenlineageSource._get_table_details(table)
-                )
-
-                if table_fqn:
-                    tables_list.append(
-                        LineageNode(
-                            fqn=TableFQN(value=table_fqn),
-                            uuid=self.metadata.get_by_name(Table, table_fqn).id,
+                    if table_fqn:
+                        entity_list.append(
+                            LineageNode(
+                                fqn=TableFQN(value=table_fqn),
+                                uuid=self.metadata.get_by_name(
+                                    Table, table_fqn
+                                ).id.root,
+                                node_type="table",
+                            )
                         )
-                    )
+
+                elif entity_details.entity_type == "topic":
+                    topic_entity = self._get_topic_entity(entity_details.topic_details)
+
+                    if topic_entity:
+                        entity_list.append(
+                            LineageNode(
+                                fqn=TopicFQN(
+                                    value=topic_entity.fullyQualifiedName.root
+                                ),
+                                uuid=topic_entity.id.root,
+                                node_type="topic",
+                            )
+                        )
+                    else:
+                        logger.warning(
+                            f"Topic entity not found for topic: {entity_details.topic_details.name} "
+                            f"with broker: {entity_details.topic_details.broker_hostname}. "
+                            f"Ensure the topic exists in OpenMetadata and the messaging service "
+                            f"has matching bootstrapServers."
+                        )
+
+        column_lineage = self._get_column_lineage(inputs, outputs)
 
         edges = [
             LineageEdge(from_node=n[0], to_node=n[1])
             for n in product(input_edges, output_edges)
         ]
-
-        column_lineage = self._get_column_lineage(inputs, outputs)
 
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
@@ -496,6 +656,14 @@ class OpenlineageSource(PipelineServiceSource):
                     logger.debug("no new messages")
                     empty_msg_cnt += 1
                     if empty_msg_cnt * pool_timeout > broker.sessionTimeout:
+                        session_active = False
+                elif message.error():
+                    logger.warning(f"Kafka consumer error: {message.error()}")
+                    empty_msg_cnt += 1
+                    if (
+                        empty_msg_cnt * pool_timeout
+                        > self.service_connection.sessionTimeout
+                    ):
                         session_active = False
                 else:
                     logger.debug(f"new message {message.value()}")

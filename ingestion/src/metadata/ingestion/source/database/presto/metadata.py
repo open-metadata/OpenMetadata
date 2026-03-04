@@ -18,7 +18,7 @@ from copy import deepcopy
 from typing import Iterable, Optional
 
 from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
-from sqlalchemy import types, util
+from sqlalchemy import text, types, util
 from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.data.database import Database
@@ -100,7 +100,7 @@ def get_table_comment(self, connection, table_name, schema=None, **kw):
     fmt_query = PRESTO_SHOW_CREATE_TABLE.format(
         schema_table_name=".".join(filter(None, [schema, table_name]))
     )
-    results = connection.execute(fmt_query)
+    results = connection.execute(text(fmt_query))
     for res in results:
         matches = re.findall(r"COMMENT '(.*)'", res[0])
         if matches:
@@ -149,7 +149,7 @@ class PrestoSource(CommonDbSourceService):
             self.set_inspector(database_name=configured_catalog)
             yield configured_catalog
         else:
-            results = self.connection.execute("SHOW CATALOGS")
+            results = self.connection.execute(text("SHOW CATALOGS"))
             for res in results:
                 if res:
                     new_catalog = res[0]
