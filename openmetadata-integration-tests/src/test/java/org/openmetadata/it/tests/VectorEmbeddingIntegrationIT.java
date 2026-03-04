@@ -292,8 +292,33 @@ class VectorEmbeddingIntegrationIT {
 
     JsonNode indexConfig = mapper.readTree(enrichedMapping);
     int actualDimension = embeddingClient.getDimension();
-    ((ObjectNode) indexConfig.get("mappings").get("properties").get("embedding"))
-        .put("dimension", actualDimension);
+
+    // In integration tests there is no full SearchRepository context, so
+    // addKnnVectorSettings (called by enrichIndexMappingForOpenSearch) correctly
+    // skips knn_vector setup. We build the embedding field manually here.
+    ObjectNode properties = (ObjectNode) indexConfig.get("mappings").get("properties");
+    if (!properties.has("embedding")) {
+      ObjectNode embeddingNode = mapper.createObjectNode();
+      embeddingNode.put("type", "knn_vector");
+      embeddingNode.put("dimension", actualDimension);
+
+      ObjectNode methodNode = mapper.createObjectNode();
+      methodNode.put("name", "hnsw");
+      methodNode.put("engine", "lucene");
+      methodNode.put("space_type", "cosinesimil");
+      ObjectNode paramsNode = mapper.createObjectNode();
+      paramsNode.put("m", 48);
+      paramsNode.put("ef_construction", 256);
+      methodNode.set("parameters", paramsNode);
+      embeddingNode.set("method", methodNode);
+
+      properties.set("embedding", embeddingNode);
+
+      ObjectNode indexSettings = (ObjectNode) indexConfig.get("settings").get("index");
+      indexSettings.put("knn", true);
+    } else {
+      ((ObjectNode) properties.get("embedding")).put("dimension", actualDimension);
+    }
 
     String indexMapping = mapper.writeValueAsString(indexConfig);
 
