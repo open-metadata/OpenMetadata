@@ -4,7 +4,6 @@ DataContracts entity SDK with fluent API for ODCS import/export
 
 from dataclasses import dataclass, field
 from typing import Any, Optional, Type
-from uuid import UUID
 
 from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
@@ -13,9 +12,8 @@ from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.datacontract.odcs.odcsDataContract import (
     ODCSDataContract,
 )
-from metadata.generated.schema.type.basic import Uuid
 from metadata.sdk.entities.base import BaseEntity
-from metadata.sdk.types import OMetaClient
+from metadata.sdk.types import OMetaClient, UuidLike, _ensure_uuid
 
 
 @dataclass
@@ -193,11 +191,11 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         return DataContract
 
     @classmethod
-    def export_odcs(cls, contract_id: UUID) -> ODCSExportOperation:
+    def export_odcs(cls, contract_id: UuidLike) -> ODCSExportOperation:
         """Export a DataContract to ODCS format.
 
         Args:
-            contract_id: UUID of the data contract to export
+            contract_id: UUID of the data contract to export (accepts str, uuid.UUID, or schema Uuid)
 
         Returns:
             ODCSExportOperation for fluent configuration
@@ -234,11 +232,11 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         )
 
     @classmethod
-    def import_odcs(cls, entity_id: UUID, entity_type: str) -> ODCSImportOperation:
+    def import_odcs(cls, entity_id: UuidLike, entity_type: str) -> ODCSImportOperation:
         """Import a DataContract from ODCS format.
 
         Args:
-            entity_id: UUID of the entity (table/topic) to attach the contract to
+            entity_id: UUID of the entity (table/topic) to attach the contract to (accepts str, uuid.UUID, or schema Uuid)
             entity_type: Type of the entity (e.g., 'table', 'topic')
 
         Returns:
@@ -264,20 +262,20 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         )
 
     @classmethod
-    def get_by_entity(cls, entity_id: UUID, entity_type: str) -> Optional[DataContract]:
+    def get_by_entity(cls, entity_id: UuidLike, entity_type: str) -> Optional[DataContract]:
         """
         Get the effective data contract for an entity
         """
         client = cls._get_client()
-        return client.get_data_contract_by_entity_id(Uuid(entity_id), entity_type)
+        return client.get_data_contract_by_entity_id(_ensure_uuid(entity_id), entity_type)
 
     @classmethod
-    def validate_by_entity(cls, entity_id: UUID, entity_type: str) -> Optional[Any]:
+    def validate_by_entity(cls, entity_id: UuidLike, entity_type: str) -> Optional[Any]:
         """
         Validate a data contract for an entity
         """
         client = cls._get_client()
-        return client.validate_data_contract_by_entity_id(Uuid(entity_id), entity_type)
+        return client.validate_data_contract_by_entity_id(_ensure_uuid(entity_id), entity_type)
 
     @classmethod
     def validate_request(cls, request: Any) -> Optional[Any]:
@@ -298,7 +296,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
     @classmethod
     def validate_odcs_yaml(
         cls,
-        entity_id: UUID,
+        entity_id: UuidLike,
         entity_type: str,
         yaml_content: str,
         object_name: Optional[str] = None,
@@ -308,7 +306,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         """
         client = cls._get_client()
         return client.validate_odcs_yaml(
-            Uuid(entity_id),
+            _ensure_uuid(entity_id),
             entity_type,
             yaml_content,
             object_name,
@@ -323,9 +321,9 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         return client.parse_odcs_yaml(yaml_content)
 
     @classmethod
-    def delete_results_before(cls, contract_id: UUID, timestamp: int) -> bool:
+    def delete_results_before(cls, contract_id: UuidLike, timestamp: int) -> bool:
         """
         Delete all data contract results before a specific timestamp
         """
         client = cls._get_client()
-        return client.delete_data_contract_results_before(Uuid(contract_id), timestamp)
+        return client.delete_data_contract_results_before(_ensure_uuid(contract_id), timestamp)
