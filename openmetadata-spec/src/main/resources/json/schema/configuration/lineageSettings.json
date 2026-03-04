@@ -5,6 +5,7 @@
   "description": "This schema defines the Lineage Settings.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.lineage.LineageSettings",
+  "javaInterfaces": ["org.openmetadata.schema.configuration.OpenMetadataConfig"],
   "definitions": {
     "lineageLayer": {
       "javaType": "org.openmetadata.schema.api.lineage.LineageLayer",
@@ -118,6 +119,11 @@
     }
   },
   "properties": {
+    "configSource": {
+      "description": "Determines where this configuration is read from.",
+      "$ref": "../type/configSource.json",
+      "default": "DB"
+    },
     "upstreamDepth": {
       "description": "Upstream Depth for Lineage.",
       "type": "integer",

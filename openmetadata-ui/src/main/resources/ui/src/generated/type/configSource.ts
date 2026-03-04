@@ -11,26 +11,6 @@
  *  limitations under the License.
  */
 /**
- * This schema defines the Asset Certification Settings.
- */
-export interface AssetCertificationSettings {
-    /**
-     * Classification that can be used for certifications.
-     */
-    allowedClassification: string;
-    /**
-     * Determines where this configuration is read from.
-     */
-    configSource?: ConfigSource;
-    /**
-     * ISO 8601 duration for the validity period.
-     */
-    validityPeriod: string;
-}
-
-/**
- * Determines where this configuration is read from.
- *
  * Determines where configuration is read from.
  */
 export enum ConfigSource {

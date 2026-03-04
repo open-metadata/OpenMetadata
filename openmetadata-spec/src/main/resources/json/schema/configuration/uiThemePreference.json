@@ -5,7 +5,13 @@
   "description": "This schema defines  UI related configuration and settings.",
   "type": "object",
   "javaType": "org.openmetadata.api.configuration.UiThemePreference",
+  "javaInterfaces": ["org.openmetadata.schema.configuration.OpenMetadataConfig"],
   "properties": {
+    "configSource": {
+      "description": "Determines where this configuration is read from.",
+      "$ref": "../type/configSource.json",
+      "default": "DB"
+    },
     "customLogoConfig": {
       "$ref": "../configuration/logoConfiguration.json",
       "description": "References the LogoConfiguration schema which includes settings related to the custom logos used in the application's user interface."

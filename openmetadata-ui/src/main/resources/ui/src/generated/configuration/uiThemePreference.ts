@@ -15,6 +15,10 @@
  */
 export interface UIThemePreference {
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * References the LogoConfiguration schema which includes settings related to the custom
      * logos used in the application's user interface.
      */
@@ -24,6 +28,17 @@ export interface UIThemePreference {
      * application's user interface.
      */
     customTheme: ThemeConfiguration;
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }
 
 /**

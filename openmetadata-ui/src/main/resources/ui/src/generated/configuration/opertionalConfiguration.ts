@@ -23,6 +23,10 @@ export interface OpertionalConfiguration {
  */
 export interface SMTPSettings {
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * Emailing Entity
      */
     emailingEntity?: string;
@@ -59,6 +63,17 @@ export interface SMTPSettings {
     username?: string;
 }
 
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
+}
+
 export enum Templates {
     Collate = "collate",
     Openmetadata = "openmetadata",
@@ -74,6 +89,10 @@ export enum TransportationStrategy {
  * This schema defines the OpenMetadata base URL configuration
  */
 export interface OpenMetadataBaseURLConfiguration {
+    /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
     /**
      * OpenMetadata Server Endpoint
      */

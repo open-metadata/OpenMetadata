@@ -35,6 +35,10 @@ export interface AuthorizerConfiguration {
      */
     className: string;
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * Filter for the request authorization.
      */
     containerRequestFilter: string;
@@ -59,4 +63,15 @@ export interface AuthorizerConfiguration {
      * Use Roles from Provider
      */
     useRolesFromProvider?: boolean;
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }

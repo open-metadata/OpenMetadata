@@ -19,6 +19,7 @@ import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import ConfigSourceIndicator from '../../../components/Settings/ConfigSourceIndicator';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -31,6 +32,7 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
+import { ConfigSource } from '../../../generated/type/configSource';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import {
   getSettingsConfigFromConfigType,
@@ -47,6 +49,9 @@ const EditUrlConfigurationPage = () => {
   const [activeField, setActiveField] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [updating, setUpdating] = useState<boolean>(false);
+  const [configSource, setConfigSource] = useState<ConfigSource>();
+
+  const isEnvManaged = configSource === ConfigSource.Env;
 
   const fetchCustomLogoConfig = async () => {
     try {
@@ -56,7 +61,16 @@ const EditUrlConfigurationPage = () => {
         SettingType.OpenMetadataBaseURLConfiguration
       );
 
-      form.setFieldsValue({ ...(data.config_value ?? {}) });
+      const configValue = data.config_value as OpenMetadataBaseURLConfiguration;
+      setConfigSource(configValue?.configSource);
+
+      if (configValue?.configSource === ConfigSource.Env) {
+        navigate(-1);
+
+        return;
+      }
+
+      form.setFieldsValue({ ...(configValue ?? {}) });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -125,6 +139,11 @@ const EditUrlConfigurationPage = () => {
   const firstPanelChildren = (
     <>
       <TitleBreadcrumb titleLinks={breadcrumb} />
+      {configSource && !isEnvManaged && (
+        <div className="m-t-md">
+          <ConfigSourceIndicator configSource={configSource} />
+        </div>
+      )}
       <Form
         className="m-t-md"
         data-testid="custom-login-config-form"
