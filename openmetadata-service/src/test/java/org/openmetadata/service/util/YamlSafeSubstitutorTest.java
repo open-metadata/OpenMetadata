@@ -154,6 +154,41 @@ class YamlSafeSubstitutorTest {
     assertTrue(result.startsWith("\""), "Unmatched [ should be quoted");
   }
 
+  // --- Already YAML-quoted values are preserved ---
+
+  @Test
+  void quoteIfNeeded_leavesAlreadyDoubleQuotedValuesUnchanged() {
+    assertEquals("\"opensearch\"", YamlSafeSubstitutor.quoteIfNeeded("\"opensearch\""));
+    assertEquals("\"\"", YamlSafeSubstitutor.quoteIfNeeded("\"\""));
+    assertEquals(
+        "\"open-metadata.org\"", YamlSafeSubstitutor.quoteIfNeeded("\"open-metadata.org\""));
+    assertEquals("\"RS256\"", YamlSafeSubstitutor.quoteIfNeeded("\"RS256\""));
+    assertEquals("\"pa>ssword\"", YamlSafeSubstitutor.quoteIfNeeded("\"pa>ssword\""));
+  }
+
+  @Test
+  void quoteIfNeeded_leavesAlreadySingleQuotedValuesUnchanged() {
+    assertEquals("'opensearch'", YamlSafeSubstitutor.quoteIfNeeded("'opensearch'"));
+    assertEquals("''", YamlSafeSubstitutor.quoteIfNeeded("''"));
+  }
+
+  @Test
+  void quoteIfNeeded_leavesSpacePrefixedQuotedValuesUnchanged() {
+    // Docker Compose ${VAR:- "value"} pattern produces leading space + quotes
+    assertEquals(" \"opensearch\"", YamlSafeSubstitutor.quoteIfNeeded(" \"opensearch\""));
+    assertEquals(" \"openmetadata\"", YamlSafeSubstitutor.quoteIfNeeded(" \"openmetadata\""));
+  }
+
+  @Test
+  void quoteIfNeeded_stillQuotesUnmatchedQuotes() {
+    // Single quote at start, no matching close — should still be quoted
+    String result = YamlSafeSubstitutor.quoteIfNeeded("\"unmatched");
+    assertTrue(result.startsWith("\"") && result.endsWith("\""), "Unmatched \" should be quoted");
+
+    result = YamlSafeSubstitutor.quoteIfNeeded("'unmatched");
+    assertTrue(result.startsWith("\"") && result.endsWith("\""), "Unmatched ' should be quoted");
+  }
+
   // --- yamlDoubleQuote escaping ---
 
   @Test
@@ -524,5 +559,41 @@ class YamlSafeSubstitutorTest {
     Map<String, Object> config = YAML_MAPPER.readValue(result, Map.class);
     Map<String, Object> cache = (Map<String, Object>) config.get("cache");
     assertEquals("redis://my-cluster.cache.amazonaws.com:6379", cache.get("url"));
+  }
+
+  @Test
+  void fullSubstitution_dockerComposeQuotedDefaultsPreserved() throws Exception {
+    // Docker Compose ${VAR:- "value"} pattern produces env vars with leading space + quotes.
+    // These should pass through without re-quoting, as YAML treats them as quoted scalars.
+    StringSubstitutor sub =
+        createTestSubstitutor(
+            Map.of(
+                "SEARCH_TYPE", " \"opensearch\"",
+                "CLUSTER_ALIAS", " \"openmetadata\""));
+
+    String template =
+        "elasticsearch:\n"
+            + "  searchType: ${SEARCH_TYPE:- \"elasticsearch\"}\n"
+            + "  clusterAlias: ${CLUSTER_ALIAS:-\"\"}\n";
+    String result = sub.replace(template);
+
+    Map<String, Object> config = YAML_MAPPER.readValue(result, Map.class);
+    Map<String, Object> es = (Map<String, Object>) config.get("elasticsearch");
+    assertEquals("opensearch", es.get("searchType"));
+    assertEquals("openmetadata", es.get("clusterAlias"));
+  }
+
+  @Test
+  void fullSubstitution_alreadyQuotedPasswordNotReQuoted() throws Exception {
+    // If an env var value is already wrapped in YAML quotes, don't double-escape
+    StringSubstitutor sub = createTestSubstitutor(Map.of("PASSWORD", "\"pa>ssword\""));
+
+    String template = "database:\n  password: ${PASSWORD:-default}\n";
+    String result = sub.replace(template);
+
+    Map<String, Object> config = YAML_MAPPER.readValue(result, Map.class);
+    Map<String, Object> db = (Map<String, Object>) config.get("database");
+    // YAML strips the quotes — same behavior as before YamlSafeSubstitutor
+    assertEquals("pa>ssword", db.get("password"));
   }
 }

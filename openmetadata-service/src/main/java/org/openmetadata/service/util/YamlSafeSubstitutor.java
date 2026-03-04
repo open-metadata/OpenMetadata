@@ -96,6 +96,18 @@ public class YamlSafeSubstitutor extends EnvironmentVariableSubstitutor {
       return false;
     }
 
+    // Don't quote values that are already YAML-quoted. Docker Compose defaults using the
+    // ${VAR:- "value"} pattern produce env vars with optional leading whitespace and surrounding
+    // quotes (e.g., ' "opensearch"'). Re-quoting these would double-escape them.
+    String trimmed = value.trim();
+    if (trimmed.length() >= 2) {
+      char qFirst = trimmed.charAt(0);
+      char qLast = trimmed.charAt(trimmed.length() - 1);
+      if ((qFirst == '"' && qLast == '"') || (qFirst == '\'' && qLast == '\'')) {
+        return false;
+      }
+    }
+
     char first = value.charAt(0);
 
     // Characters that are YAML indicators when they appear at the start of a scalar value:
