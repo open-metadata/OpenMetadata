@@ -101,3 +101,22 @@ $$section
 ### Sample Data Rows Count $(id="sampleDataCount")
 Set the number of rows to ingest when `Ingest Sample Data` toggle is on. Defaults to 50.
 $$
+
+$$section
+### Maximum Cell Length $(id="maxCellLength")
+
+Controls the maximum character length for text fields in sample data and NLP processing during auto classification. Cell values exceeding this limit will be truncated during both sampling and NLP analysis to prevent memory issues and control processing time.
+
+**Default**: 1000 characters
+
+**When to increase**: If your sensitive data patterns or PII information appears in longer text fields (e.g., large JSON blobs, long descriptions, comments, or articles), you may need to increase this value to preserve the full content for accurate classification.
+
+**Performance impact**:
+- **Memory**: Larger values consume more memory during sampling. Each character adds approximately 1KB of memory across all sampled rows. For example, setting this to 10,000 characters on a table with 50 sample rows would use roughly 500KB per column containing long text.
+- **Processing time**: Larger values significantly increase NLP processing time. NLP analysis is computationally expensive, and doubling this value can more than double the processing time per column, impacting overall pipeline execution time.
+
+**Recommendation**: The default 1000 characters balances accuracy and performance for most use cases. For tables with very long text columns (e.g., articles, logs, or transcripts), consider:
+- First, verifying that sensitive data actually appears beyond the 1000-character mark
+- Testing with a slightly higher value (e.g., 2000-3000) on a subset of tables before applying broadly
+- Monitoring both memory usage and pipeline execution times to ensure they remain acceptable
+$$
