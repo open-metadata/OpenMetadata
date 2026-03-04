@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -41,6 +43,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
@@ -139,6 +142,10 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
 
     Boolean recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
+    ReindexContext reindexContext =
+        contextData.containsKey(RECREATE_CONTEXT)
+            ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
+            : null;
 
     // Extract StageStatsTracker from context for stats recording
     StageStatsTracker tracker = extractTracker(contextData);
@@ -201,7 +208,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                                 addEntity(entity, indexName, recreateIndex, tracker);
                                 // Index columns separately when processing table entities
                                 if (Entity.TABLE.equals(entityType)) {
-                                  indexTableColumns(entity, recreateIndex);
+                                  indexTableColumns(entity, recreateIndex, reindexContext);
                                 }
                               } finally {
                                 DOC_BUILD_SEMAPHORE.release();
@@ -379,7 +386,8 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
   }
 
-  private void indexTableColumns(EntityInterface entity, boolean recreateIndex) {
+  private void indexTableColumns(
+      EntityInterface entity, boolean recreateIndex, ReindexContext reindexContext) {
     if (!(entity instanceof Table table)) {
       return;
     }
@@ -390,7 +398,14 @@ public class ElasticSearchBulkSink implements BulkSink {
       return;
     }
 
-    String columnIndexName = columnIndexMapping.getIndexName(searchRepository.getClusterAlias());
+    String columnIndexName;
+    if (reindexContext != null) {
+      Optional<String> stagedIndex = reindexContext.getStagedIndex(Entity.TABLE_COLUMN);
+      columnIndexName =
+          stagedIndex.orElse(columnIndexMapping.getIndexName(searchRepository.getClusterAlias()));
+    } else {
+      columnIndexName = columnIndexMapping.getIndexName(searchRepository.getClusterAlias());
+    }
     List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
 
     for (Column column : flattenedColumns) {

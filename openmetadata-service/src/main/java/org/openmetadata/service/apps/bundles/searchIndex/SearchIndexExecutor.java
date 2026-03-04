@@ -1087,7 +1087,30 @@ public class SearchIndexExecutor implements AutoCloseable {
           entitySuccess,
           stagedIndexOpt.get());
       defaultHandler.promoteEntityIndex(entityContext, entitySuccess);
+
+      // When promoting the table index, also promote the column index since columns
+      // are indexed as part of table processing
+      if (Entity.TABLE.equals(entityType)) {
+        promoteColumnIndex(defaultHandler, entitySuccess);
+      }
     }
+  }
+
+  private void promoteColumnIndex(DefaultRecreateHandler handler, boolean tableSuccess) {
+    if (recreateContext == null) {
+      return;
+    }
+    Optional<String> columnStagedIndex = recreateContext.getStagedIndex(Entity.TABLE_COLUMN);
+    if (columnStagedIndex.isEmpty()) {
+      return;
+    }
+    EntityReindexContext columnContext = buildEntityReindexContext(Entity.TABLE_COLUMN);
+    LOG.info(
+        "Promoting column index (success={}, stagedIndex={})",
+        tableSuccess,
+        columnStagedIndex.get());
+    handler.promoteEntityIndex(columnContext, tableSuccess);
+    promotedEntities.add(Entity.TABLE_COLUMN);
   }
 
   private ResultList<?> readWithRetry(

@@ -35,6 +35,15 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       recreateIndexFromMapping(context, indexMapping, entityType);
     }
 
+    // When recreating the table index, also recreate the column index since columns
+    // are indexed as part of table processing (columns are not standalone entities)
+    if (entities.contains(Entity.TABLE)) {
+      IndexMapping columnIndexMapping = searchRepository.getIndexMapping(Entity.TABLE_COLUMN);
+      if (columnIndexMapping != null && !entities.contains(Entity.TABLE_COLUMN)) {
+        recreateIndexFromMapping(context, columnIndexMapping, Entity.TABLE_COLUMN);
+      }
+    }
+
     return context;
   }
 

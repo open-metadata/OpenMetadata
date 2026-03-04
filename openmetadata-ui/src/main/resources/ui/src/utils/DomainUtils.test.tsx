@@ -198,6 +198,7 @@ describe('isDomainExist', () => {
                           EntityType.TEST_SUITE,
                           EntityType.QUERY,
                           EntityType.TEST_CASE,
+                          EntityType.TABLE_COLUMN,
                         ],
                       },
                     },
@@ -254,7 +255,8 @@ describe('isDomainExist', () => {
       expect(excludedEntityTypes).toContain(EntityType.TEST_SUITE);
       expect(excludedEntityTypes).toContain(EntityType.QUERY);
       expect(excludedEntityTypes).toContain(EntityType.TEST_CASE);
-      expect(excludedEntityTypes).toHaveLength(4);
+      expect(excludedEntityTypes).toContain(EntityType.TABLE_COLUMN);
+      expect(excludedEntityTypes).toHaveLength(5);
     });
 
     it('should handle empty string parameters', () => {

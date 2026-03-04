@@ -23,8 +23,7 @@
     "indexMappingFile": "/elasticsearch/%s/column_index_mapping.json",
     "alias": "column",
     "parentAliases": [
-      "all",
-      "dataAsset"
+      "all"
     ],
     "childAliases": []
   },
