@@ -49,6 +49,15 @@ ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
 logger = ingestion_logger()
 
 
+def _load_domains(self, connection, **kw):
+    """
+    Override to return empty dict since Redshift does not support user-created
+    domains and pg_catalog.pg_collation does not exist in Redshift, causing a
+    ProgrammingError that aborts the transaction and breaks all subsequent queries.
+    """
+    return {}
+
+
 # pylint: disable=protected-access
 @calculate_execution_time()
 def get_columns(self, connection, table_name, schema=None, **kw):
