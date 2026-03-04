@@ -59,9 +59,9 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
 
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
-            min_value = self._run_results(Metrics.MIN, column)
+            min_value = self._run_results(Metrics.min, column)
 
-            metric_values = {Metrics.MIN.name: min_value}
+            metric_values = {Metrics.min.name: min_value}
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -70,7 +70,7 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
                 self.execution_date,
                 TestCaseStatus.Aborted,
                 msg,
-                [TestResultValue(name=Metrics.MIN.name, value=None)],
+                [TestResultValue(name=Metrics.min.name, value=None)],
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
@@ -118,7 +118,7 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
             dict: Dictionary mapping metric names to Metrics enum values
         """
         return {
-            Metrics.MIN.name: Metrics.MIN,
+            Metrics.min.name: Metrics.min,
         }
 
     def _evaluate_test_condition(
@@ -141,7 +141,7 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
                 - failed_rows: None - not applicable for statistical validators
                 - total_rows: None - not applicable for statistical validators
         """
-        min_value = metric_values[Metrics.MIN.name]
+        min_value = metric_values[Metrics.min.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -175,7 +175,7 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
                 "test_params is required for columnValueMinToBeBetween._format_result_message"
             )
 
-        min_value = metric_values[Metrics.MIN.name]
+        min_value = metric_values[Metrics.min.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -198,8 +198,8 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
         """
         return [
             TestResultValue(
-                name=Metrics.MIN.name,
-                value=str(metric_values[Metrics.MIN.name]),
+                name=Metrics.min.name,
+                value=str(metric_values[Metrics.min.name]),
             ),
         ]
 

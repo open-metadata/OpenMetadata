@@ -13,7 +13,7 @@
 Datalake Azure Blob Client
 """
 from functools import partial
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, Optional, Set
 
 from azure.storage.blob import BlobServiceClient
 
@@ -23,6 +23,11 @@ from metadata.generated.schema.entity.services.connections.database.datalake.azu
 )
 from metadata.ingestion.source.database.datalake.clients.base import DatalakeBaseClient
 from metadata.utils.constants import DEFAULT_DATABASE
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
+AZURE_COLD_TIERS: Set[str] = {"Cool", "Cold", "Archive"}
 
 
 class DatalakeAzureBlobClient(DatalakeBaseClient):
@@ -52,10 +57,23 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
         for schema in self._client.list_containers(name_starts_with=prefix):
             yield schema["name"]
 
-    def get_table_names(self, bucket_name: str, prefix: Optional[str]) -> Iterable[str]:
+    def get_table_names(
+        self,
+        bucket_name: str,
+        prefix: Optional[str],
+        skip_cold_storage: bool = False,
+    ) -> Iterable[str]:
         container_client = self._client.get_container_client(bucket_name)
 
         for file in container_client.list_blobs(name_starts_with=prefix or None):
+            if skip_cold_storage:
+                blob_tier = getattr(file, "blob_tier", None)
+                if blob_tier and blob_tier in AZURE_COLD_TIERS:
+                    logger.debug(
+                        f"Skipping cold storage object: {file.name} "
+                        f"(blob_tier: {blob_tier})"
+                    )
+                    continue
             yield file.name
 
     def close(self, service_connection):

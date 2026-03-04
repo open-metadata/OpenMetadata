@@ -74,11 +74,11 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
     @classmethod
     def get_metric_stats_map(cls) -> Dict[MetricRegistry, str]:
         return {
-            cls.metrics.NULL_RATIO: "nulls_fractions",
-            cls.metrics.DISTINCT_COUNT: "distinct_values_count",
-            cls.metrics.ROW_COUNT: "row_count",
-            cls.metrics.MAX: "high_value",
-            cls.metrics.MIN: "low_value",
+            cls.metrics.nullProportion: "nulls_fractions",
+            cls.metrics.distinctCount: "distinct_values_count",
+            cls.metrics.rowCount: "row_count",
+            cls.metrics.max: "high_value",
+            cls.metrics.min: "low_value",
         }
 
     @classmethod
@@ -169,7 +169,7 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
     ) -> Dict[str, Any]:
         return {
             # trino stats are in fractions, so we need to convert them to counts (unlike our default profiler)
-            self.metrics.NULL_COUNT.name: (
+            self.metrics.nullCount.name: (
                 int(table_stats.row_count * column_stats.nulls_fraction)
                 if None not in [table_stats.row_count, column_stats.nulls_fraction]
                 else None
