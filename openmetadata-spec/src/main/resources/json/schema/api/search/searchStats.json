@@ -54,6 +54,17 @@
       "description": "Indicates if search indexing job is currently running. Orphan cleanup is not allowed while indexing is in progress.",
       "type": "boolean",
       "default": false
+    },
+    "expectedIndexCount": {
+      "description": "Total number of expected indices from entity index mappings.",
+      "type": "integer"
+    },
+    "missingIndexes": {
+      "description": "List of expected index names that are missing from the search cluster.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "definitions": {
