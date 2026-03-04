@@ -811,8 +811,12 @@ public class IngestionPipelineResourceIT
     Map<String, Object> response =
         client.getHttpClient().execute(HttpMethod.GET, path, null, Map.class);
     List<?> rawData = (List<?>) response.get("data");
+    Map<String, Object> paging = (Map<String, Object>) response.get("paging");
 
     assertNotNull(rawData);
+    assertNotNull(paging);
+    assertNull(paging.get("before"));
+    assertNull(paging.get("after"));
     assertEquals(5, rawData.size());
 
     List<String> expectedLatestRunIds = new ArrayList<>(runIdsInAscendingTimestamp.subList(2, 7));

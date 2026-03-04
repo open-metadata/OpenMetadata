@@ -632,8 +632,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     return new ResultList<>(
         allPipelineStatusList,
-        String.valueOf(startTs),
-        String.valueOf(endTs),
+        startTs != null ? String.valueOf(startTs) : null,
+        endTs != null ? String.valueOf(endTs) : null,
         allPipelineStatusList.size());
   }
 
