@@ -335,7 +335,7 @@ describe('Test UserListPage component', () => {
             },
           },
         },
-        searchIndex: 'user_search_index',
+        searchIndex: 'user',
         includeDeleted: false,
       });
     });
@@ -368,7 +368,7 @@ describe('Test UserListPage component', () => {
             },
           },
         },
-        searchIndex: 'user_search_index',
+        searchIndex: 'user',
         includeDeleted: false,
       });
     });

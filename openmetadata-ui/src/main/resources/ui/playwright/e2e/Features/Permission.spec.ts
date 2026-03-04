@@ -208,7 +208,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
       state: 'detached',
     });
     const queryListResponse = userPage.waitForResponse(
-      '/api/v1/search/query?q=*&index=query_search_index*'
+      '/api/v1/search/query?q=*&index=query*'
     );
     await userPage.click('[data-testid="table_queries"]');
     await queryListResponse;

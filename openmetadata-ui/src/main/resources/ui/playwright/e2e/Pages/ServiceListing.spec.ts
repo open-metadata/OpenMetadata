@@ -52,7 +52,7 @@ test.describe('Service Listing', () => {
     await page.getByTestId('filter-icon').click();
 
     const searchService1Response = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=database_service_search_index&*'
+      '/api/v1/search/query?q=*&index=databaseService&*'
     );
     await page.getByLabel(databaseService1.entity.serviceType).check();
     await searchService1Response;
@@ -61,7 +61,7 @@ test.describe('Service Listing', () => {
 
     await page.getByLabel(databaseService2.entity.serviceType).check();
     const searchService2Response = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=database_service_search_index&*'
+      '/api/v1/search/query?q=*&index=databaseService&*'
     );
 
     await page.getByTestId('searchbar').fill(databaseService2.entity.name);
@@ -69,7 +69,7 @@ test.describe('Service Listing', () => {
 
     await page.getByTestId('filter-icon').click();
     const searchService2Response2 = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=database_service_search_index&*'
+      '/api/v1/search/query?q=*&index=databaseService&*'
     );
     await page.getByLabel(databaseService1.entity.serviceType).uncheck();
     await searchService2Response2;

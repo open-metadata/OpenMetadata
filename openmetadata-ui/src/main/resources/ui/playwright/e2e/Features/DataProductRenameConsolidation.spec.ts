@@ -391,7 +391,7 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       const searchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=user_search_index')
+          response.url().includes('index=user')
       );
       await page
         .getByTestId('owner-select-users-search-bar')

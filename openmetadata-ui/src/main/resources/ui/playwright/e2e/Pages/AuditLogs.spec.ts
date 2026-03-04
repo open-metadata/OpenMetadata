@@ -296,7 +296,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const userSearchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=user_search_index')
+          response.url().includes('index=user')
       );
       await searchInput.fill('admin');
       await userSearchResponse;
@@ -338,10 +338,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
             response.request().method() === 'GET'
         );
 
-        await page
-          .locator('.ant-dropdown-menu-item:visible')
-          .first()
-          .click();
+        await page.locator('.ant-dropdown-menu-item:visible').first().click();
         await page.getByTestId('update-btn').click();
         const response = await auditLogResponse;
         expect(response.status()).toBe(200);
@@ -851,11 +848,11 @@ test.describe(
             state: 'visible',
           });
 
-            const todayCell = page
-              .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
-              .first();
-            await todayCell.click();
-            await todayCell.click();
+          const todayCell = page
+            .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
+            .first();
+          await todayCell.click();
+          await todayCell.click();
 
           const exportApiCall = page.waitForRequest(
             (request) =>

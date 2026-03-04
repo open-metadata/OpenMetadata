@@ -66,11 +66,11 @@ test('Query Entity', async ({ page }) => {
 
   await test.step('Create a new query entity', async () => {
     const queryResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=query_search_index*'
+      '/api/v1/search/query?q=*&index=query*'
     );
     await page.click(`[data-testid="table_queries"]`);
     const tableResponse = page.waitForResponse(
-      '/api/v1/search/query?q=&index=table_search_index&from=0&size=*'
+      '/api/v1/search/query?q=&index=table&from=0&size=*'
     );
     await queryResponse;
     await page.click(`[data-testid="add-query-btn"]`);
@@ -88,7 +88,7 @@ test('Query Entity', async ({ page }) => {
       .filter({ hasText: 'Please Select a Query Used In' })
       .click();
     const tableSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*&index=table_search_index*`
+      `/api/v1/search/query?q=*&index=table*`
     );
     await page.keyboard.type(queryData.queryUsedIn.table1);
     await tableSearchResponse;
@@ -114,7 +114,7 @@ test('Query Entity', async ({ page }) => {
 
   await test.step('Update owner, description and tag', async () => {
     const ownerListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=&index=user_search_index&*'
+      '/api/v1/search/query?q=&index=user&*'
     );
     await page
       .getByTestId(
@@ -189,7 +189,7 @@ test('Query Entity', async ({ page }) => {
     await page.keyboard.type(`${queryData.queryUsedIn.table1}`);
     await page.click('[data-testid="edit-query-used-in"]');
     const tableSearchResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=table_search_index*'
+      '/api/v1/search/query?q=*&index=table*'
     );
     await page.keyboard.type(queryData.queryUsedIn.table2);
     await tableSearchResponse;
@@ -212,9 +212,7 @@ test('Query Entity', async ({ page }) => {
     const userName = user2.getUserDisplayName();
     await queryFilters({
       filter: userName,
-      apiKey: `/api/v1/search/query?*${encodeURI(
-        userName
-      )}*index=user_search_index,team_search_index*`,
+      apiKey: `/api/v1/search/query?*${encodeURI(userName)}*index=user,team*`,
       key: 'Owner',
       page,
     });
@@ -227,7 +225,7 @@ test('Query Entity', async ({ page }) => {
       filter: queryData.owner,
       apiKey: `/api/v1/search/query?*${encodeURI(
         queryData.owner
-      )}*index=user_search_index,team_search_index*`,
+      )}*index=user,team*`,
       key: 'Owner',
       page,
     });
@@ -237,7 +235,7 @@ test('Query Entity', async ({ page }) => {
 
     await queryFilters({
       filter: 'None',
-      apiKey: '/api/v1/search/query?*None*index=tag_search_index*',
+      apiKey: '/api/v1/search/query?*None*index=tag*',
       key: 'Tag',
       page,
     });
@@ -248,7 +246,7 @@ test('Query Entity', async ({ page }) => {
 
     await queryFilters({
       filter: queryData.tagName,
-      apiKey: `/api/v1/search/query?*${queryData.tagName}*index=tag_search_index*`,
+      apiKey: `/api/v1/search/query?*${queryData.tagName}*index=tag*`,
       key: 'Tag',
       page,
     });
@@ -321,7 +319,7 @@ test('Verify query duration', async ({ page }) => {
   await redirectToHomePage(page);
   await table2.visitEntityPage(page);
   const queryResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=query_search_index*'
+    '/api/v1/search/query?q=*&index=query*'
   );
   await page.click(`[data-testid="table_queries"]`);
   await queryResponse;
@@ -350,7 +348,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   await redirectToHomePage(page);
   await table1.visitEntityPage(page);
   const queryResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=query_search_index*'
+    '/api/v1/search/query?q=*&index=query*'
   );
   await page.click(`[data-testid="table_queries"]`);
   await queryResponse;
@@ -362,7 +360,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   await expect(page.getByTestId('previous')).toBeDisabled();
 
   const nextResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=query_search_index&from=15&size=15**'
+    '/api/v1/search/query?q=*&index=query&from=15&size=15**'
   );
   await page.click('[data-testid="next"]');
   await nextResponse;
@@ -374,7 +372,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   await expect(page.getByTestId('next')).toBeDisabled();
 
   const previousResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=query_search_index&from=0&size=15**'
+    '/api/v1/search/query?q=*&index=query&from=0&size=15**'
   );
   await page.click('[data-testid="previous"]');
   await previousResponse;
@@ -390,7 +388,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   // Change page size to 25
   await page.locator('.ant-pagination-options-size-changer').click();
   const pageSizeResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=query_search_index&from=0&size=25&deleted=false&query_filter=**'
+    '/api/v1/search/query?q=*&index=query&from=0&size=25&deleted=false&query_filter=**'
   );
   await page.getByTitle('25 / Page').click();
   await pageSizeResponse;

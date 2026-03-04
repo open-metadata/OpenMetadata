@@ -495,7 +495,7 @@ test.describe('Domains', () => {
       await Promise.all([
         createSubDomain(page, subDomain.data),
         page.waitForResponse(
-          '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9&deleted=false*'
+          '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
         ),
       ]);
 
@@ -551,14 +551,14 @@ test.describe('Domains', () => {
       await selectDomain(page, domain.data);
 
       // const selectSubDomainRes = page.waitForResponse(
-      //   '/api/v1/search/query?q=&index=domain_search_index*'
+      //   '/api/v1/search/query?q=&index=domain*'
       // );
       // await page.getByTestId('subdomains').getByText('Sub Domains').click();
       // await selectSubDomainRes;
       // await verifyDomain(page, subDomain.data, domain.data, false);
 
       const subDomainApiRes1 = page.waitForResponse(
-        '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9&deleted=false*'
+        '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
       );
 
       // Create new sub domain under the existing sub domain
@@ -1206,23 +1206,28 @@ test.describe('Domains', () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
         await waitForAllLoadersToDisappear(page);
         await page.click('[data-testid="add-domain"]');
-        await page.waitForSelector('h6:has-text("Add Domain")', { state: 'visible' });
+        await page.waitForSelector('h6:has-text("Add Domain")', {
+          state: 'visible',
+        });
       });
 
       await test.step('Fill domain form', async () => {
         await fillDomainForm(page, testDomain.data);
       });
 
-      await test.step('Search and select tag via MUITagSuggestion', async () => {
-        await selectTagInMUITagSuggestion(page, {
-          searchTerm: tag.data.displayName,
-          tagFqn: tag.responseData.fullyQualifiedName,
-        });
+      await test.step(
+        'Search and select tag via MUITagSuggestion',
+        async () => {
+          await selectTagInMUITagSuggestion(page, {
+            searchTerm: tag.data.displayName,
+            tagFqn: tag.responseData.fullyQualifiedName,
+          });
 
-        await expect(page.locator('[data-testid="tag-suggestion"]')).toContainText(
-          tag.data.displayName
-        );
-      });
+          await expect(
+            page.locator('[data-testid="tag-suggestion"]')
+          ).toContainText(tag.data.displayName);
+        }
+      );
 
       await test.step('Save domain and verify tag is applied', async () => {
         const domainRes = page.waitForResponse('/api/v1/domains');
@@ -1242,7 +1247,9 @@ test.describe('Domains', () => {
     }
   });
 
-  test('Create subdomain with tags using MUITagSuggestion', async ({ page }) => {
+  test('Create subdomain with tags using MUITagSuggestion', async ({
+    page,
+  }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const parentDomain = new Domain();
     const subDomain = new SubDomain(parentDomain);
@@ -1251,30 +1258,36 @@ test.describe('Domains', () => {
       await parentDomain.create(apiContext);
       await page.reload();
 
-      await test.step('Navigate to domain and open subdomain modal', async () => {
-        await sidebarClick(page, SidebarItem.DOMAIN);
-        await waitForAllLoadersToDisappear(page);
-        await selectDomain(page, parentDomain.data);
+      await test.step(
+        'Navigate to domain and open subdomain modal',
+        async () => {
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await waitForAllLoadersToDisappear(page);
+          await selectDomain(page, parentDomain.data);
 
-        await page.getByTestId('domain-details-add-button').click();
-        await page.getByRole('menuitem', { name: 'Sub Domains' }).click();
-        await expect(page.getByText('Add Sub Domain')).toBeVisible();
-      });
+          await page.getByTestId('domain-details-add-button').click();
+          await page.getByRole('menuitem', { name: 'Sub Domains' }).click();
+          await expect(page.getByText('Add Sub Domain')).toBeVisible();
+        }
+      );
 
       await test.step('Fill subdomain form', async () => {
         await fillDomainForm(page, subDomain.data, false);
       });
 
-      await test.step('Search and select tag via MUITagSuggestion', async () => {
-        await selectTagInMUITagSuggestion(page, {
-          searchTerm: tag.data.displayName,
-          tagFqn: tag.responseData.fullyQualifiedName,
-        });
+      await test.step(
+        'Search and select tag via MUITagSuggestion',
+        async () => {
+          await selectTagInMUITagSuggestion(page, {
+            searchTerm: tag.data.displayName,
+            tagFqn: tag.responseData.fullyQualifiedName,
+          });
 
-        await expect(
-          page.locator('[data-testid="tag-suggestion"]')
-        ).toContainText(tag.data.displayName);
-      });
+          await expect(
+            page.locator('[data-testid="tag-suggestion"]')
+          ).toContainText(tag.data.displayName);
+        }
+      );
 
       await test.step('Save subdomain and verify tag is applied', async () => {
         const saveRes = page.waitForResponse('/api/v1/domains');
@@ -1375,7 +1388,7 @@ test.describe('Domains', () => {
     await confirmationInput.fill('DELETE');
 
     const dpListRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=data_product_search_index*'
+      '/api/v1/search/query?q=&index=dataProduct*'
     );
     const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
 
@@ -1695,7 +1708,7 @@ test.describe('Domains', () => {
       await domain.visitEntityPage(page);
 
       const dpRes = page.waitForResponse(
-        '/api/v1/search/query?q=&index=data_product_search_index&*'
+        '/api/v1/search/query?q=&index=dataProduct&*'
       );
       // Navigate to data products tab
       await page.getByTestId('data_products').click();
@@ -1761,7 +1774,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -1793,7 +1806,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponseAfterRename = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -1878,7 +1891,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse1 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -1908,7 +1921,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse2 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -1938,7 +1951,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse3 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -2336,7 +2349,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse1 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -2361,7 +2374,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse2 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -2393,7 +2406,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse3 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -2548,7 +2561,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const subdomainSearchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain_search_index') &&
+          response.url().includes('index=domain') &&
           response.status() === 200
       );
 
@@ -2667,7 +2680,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
         const subdomainSearchResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/search/query') &&
-            response.url().includes('index=domain_search_index') &&
+            response.url().includes('index=domain') &&
             response.status() === 200
         );
 

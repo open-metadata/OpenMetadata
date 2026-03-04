@@ -181,7 +181,7 @@ describe('DataProductsWidget', () => {
         '',
         'updatedAt',
         'desc',
-        'data_product_search_index'
+        'dataProduct'
       );
     });
 

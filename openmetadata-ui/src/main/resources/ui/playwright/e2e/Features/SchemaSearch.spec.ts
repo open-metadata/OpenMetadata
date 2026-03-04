@@ -79,7 +79,7 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
     await schemaResponse;
 
     const searchResponse = page.waitForResponse(
-      '/api/v1/search/query?q=**&index=database_schema_search_index**'
+      '/api/v1/search/query?q=**&index=databaseSchema**'
     );
 
     await page.fill('[data-testid="searchbar"]', schemaName);
