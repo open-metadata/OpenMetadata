@@ -5,7 +5,7 @@
     "entities": [
       "all"
     ],
-    "recreateIndex": false,
+    "recreateIndex": true,
     "batchSize": "100",
     "payLoadSize": 104857600,
     "producerThreads": 1,
@@ -16,11 +16,12 @@
     "initialBackoff": 1000,
     "maxBackoff": 10000,
     "searchIndexMappingLanguage": "EN",
-    "autoTune": false
+    "autoTune": false,
+    "timeSeriesMaxDays": 0
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",
-    "cronExpression": "0 0 * * *"
+    "cronExpression": "30 0 * * *"
   },
   "supportsInterrupt": true
 }

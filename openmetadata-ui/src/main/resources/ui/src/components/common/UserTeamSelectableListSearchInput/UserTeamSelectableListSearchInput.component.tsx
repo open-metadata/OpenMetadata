@@ -15,6 +15,7 @@ import { noop } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { EntityReference } from '../../../generated/entity/teams/user';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
@@ -23,6 +24,7 @@ import './user-team-selectable-list-search-input.less';
 
 interface UserTeamSelectableListSearchProps extends UserSelectDropdownProps {
   disabled?: boolean;
+  placeholder?: string;
 }
 
 const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchProps> =
@@ -37,6 +39,7 @@ const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchPr
     previewSelected = false,
     listHeight,
     tooltipText,
+    placeholder,
   }) => {
     const [popoverVisible, setPopoverVisible] = useState(false);
     const [selectedUsers, setSelectedUsers] = useState<EntityReference[]>([]);
@@ -96,7 +99,7 @@ const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchPr
 
       const tagProps = {
         id: selectedAssignee?.name ?? value,
-        name: selectedAssignee?.name ?? value,
+        name: getEntityName(selectedAssignee) || value,
         closable: closable,
         onRemove: onClose,
         size: UserTagSize.small,
@@ -118,6 +121,7 @@ const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchPr
           filterOption={false}
           mode="multiple"
           notFoundContent={null}
+          placeholder={placeholder}
           suffixIcon={null}
           tagRender={customTagRender}
           value={selectedValues}

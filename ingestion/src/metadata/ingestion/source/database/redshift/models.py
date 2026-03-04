@@ -12,12 +12,20 @@
 Redshift models
 """
 import re
-from typing import Dict, List, Optional, Tuple
+from enum import Enum
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
 from pydantic import BaseModel
 
 TableName = str
 SchemaName = str
+
+
+class RedshiftInstanceType(Enum):
+    """Redshift Instance Types"""
+
+    PROVISIONED = "PROVISIONED"
+    SERVERLESS = "SERVERLESS"
 
 
 class RedshiftStoredProcedure(BaseModel):
@@ -75,23 +83,22 @@ class RedshiftTableMap(BaseModel):
                 if table.deleted
             ]
 
-        deleted_tables = []
-
-        for schema_name in self.table_map:
-            deleted_tables.extend(
-                [
-                    (schema_name, table.name)
-                    for table in self.table_map.get(schema_name, {}).values()
-                    if table.deleted
-                ]
-            )
-
-        return deleted_tables
-
-    def get_not_deleted(self, schema_name: SchemaName) -> List[TableName]:
-        """Returns all not deleted table names for a given schema."""
+        # Single-pass flat generator avoids building per-schema intermediate lists.
         return [
+            (schema, table.name)
+            for schema, tables in self.table_map.items()
+            for table in tables.values()
+            if table.deleted
+        ]
+
+    def get_not_deleted(self, schema_name: SchemaName) -> FrozenSet[TableName]:
+        """Returns all not-deleted table names for a given schema as a frozenset.
+
+        Returns a frozenset so callers can use `name in result` with O(1) average
+        cost instead of the O(n) cost of a list membership check.
+        """
+        return frozenset(
             table.name
             for table in self.table_map.get(schema_name, {}).values()
             if not table.deleted
-        ]
+        )

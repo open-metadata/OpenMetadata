@@ -96,7 +96,6 @@ export const omitDeep = <T>(
   obj: T,
   predicate: (value: string, key: string | number | symbol) => boolean
 ): T => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return transform(obj as any, function (result, value, key) {
     if (isObject(value)) {
       value = omitDeep(value, predicate) as unknown as string;
@@ -106,7 +105,6 @@ export const omitDeep = <T>(
       if (isArray(obj) && isArray(result)) {
         result.push(value);
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (result as any)[key] = value;
       }
     }

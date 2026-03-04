@@ -31,8 +31,10 @@ import {
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addPolicy } from '../../../rest/rolesAPIV1';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getPolicyWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RuleForm from '../RuleForm/RuleForm';
@@ -109,6 +111,15 @@ const AddPolicyPage = () => {
     []
   );
 
+  const translatedAddPolicyBreadcrumb = useMemo(
+    () =>
+      ADD_POLICY_PAGE_BREADCRUMB.map((option) => ({
+        ...option,
+        name: translateWithNestedKeys(option.name, option.nameData),
+      })),
+    [t]
+  );
+
   return (
     <ResizablePanels
       className="content-height-with-resizable-panel"
@@ -118,7 +129,7 @@ const AddPolicyPage = () => {
         allowScroll: true,
         children: (
           <div data-testid="add-policy-container">
-            <TitleBreadcrumb titleLinks={ADD_POLICY_PAGE_BREADCRUMB} />
+            <TitleBreadcrumb titleLinks={translatedAddPolicyBreadcrumb} />
             <div className="m-t-md">
               <Typography.Paragraph
                 className="text-base"
@@ -189,7 +200,11 @@ const AddPolicyPage = () => {
                 entity: t('label.policy'),
               })}
             </Typography.Paragraph>
-            <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
+            <Typography.Text>
+              {t('message.add-policy-message', {
+                brandName: brandClassBase.getPageTitle(),
+              })}
+            </Typography.Text>
           </>
         ),
         className: 'content-resizable-panel-container',

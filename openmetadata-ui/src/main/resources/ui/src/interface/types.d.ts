@@ -15,6 +15,7 @@ declare module 'Models' {
   import { EntityType } from '../enums/entity.enum';
   import { CreateDashboardService } from '../generated/api/services/createDashboardService';
   import { CreateDatabaseService } from '../generated/api/services/createDatabaseService';
+  import { CreateDriveService } from '../generated/api/services/createDriveService';
   import { CreateMessagingService } from '../generated/api/services/createMessagingService';
   import { CreateMlModelService } from '../generated/api/services/createMlModelService';
   import { CreatePipelineService } from '../generated/api/services/createPipelineService';
@@ -39,7 +40,8 @@ declare module 'Models' {
     | CreateMessagingService
     | CreateStorageService
     | CreateSearchService
-    | CreateSecurityService;
+    | CreateSecurityService
+    | CreateDriveService;
 
   export type EntityTags = {
     isRemovable?: boolean;
@@ -69,6 +71,7 @@ declare module 'Models' {
     key: string;
     doc_count: number;
     label?: string;
+    [key: string]: unknown; // Allow dynamic properties for ES aggregations like 'top_hits#top'
   };
 
   export type FormattedTableData = {
@@ -142,7 +145,8 @@ declare module 'Models' {
     | 'storageServices'
     | 'searchServices'
     | 'apiServices'
-    | 'securityServices';
+    | 'securityServices'
+    | 'driveServices';
 
   export type SearchDataFunctionType = {
     queryString: string;
@@ -195,6 +199,7 @@ declare module 'Models' {
 
   export type StepperStepType = {
     name: string;
+    nameData?: Record<string, string | number | boolean>;
     step: number;
   };
 
@@ -258,7 +263,14 @@ declare module 'Models' {
     | Mlmodel
     | Container;
 
-  export type DateFilterType = Record<string, { days: number; title: string }>;
+  export type DateFilterType = Record<
+    string,
+    {
+      days: number;
+      title: string;
+      titleData?: Record<string, string | number | boolean>;
+    }
+  >;
 
   export type TagFilterOptions = {
     text: string;

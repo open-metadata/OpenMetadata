@@ -81,6 +81,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         )
         column_info["distkey"] = col.distkey
         column_info["sortkey"] = col.sortkey
+        column_info["ordinal_position"] = col.attnum
         column_info["system_data_type"] = col.format_type
         columns.append(column_info)
     return columns
@@ -109,7 +110,7 @@ def _get_column_info(self, *args, **kwargs):
     )._get_column_info(*args, **kwdrs)
 
     # raw_data_type is not included in column_info as
-    # redhift doesn't support complex data types directly
+    # redshift doesn't support complex data types directly
     # https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
 
     if "info" not in column_info:
@@ -139,7 +140,7 @@ def _get_schema_column_info(
     schema_clause = f"AND schema = '{schema if schema else ''}'"
     all_columns = defaultdict(list)
     result = connection.execute(
-        REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)
+        sa.text(REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause))
     )
     for col in result:
         key = RelationKey(col.table_name, col.schema, connection)
@@ -411,9 +412,20 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
     """
     view = self._get_redshift_relation(connection, view_name, schema, **kw)
+
+    # Remove "WITH NO SCHEMA BINDING" clause
     pattern = re.compile("WITH NO SCHEMA BINDING", re.IGNORECASE)
     view_definition = str(sa.text(pattern.sub("", view.view_definition)))
-    if not view_definition.startswith("create"):
+
+    # If the view definition does not contain a CREATE VIEW statement (including
+    # variants like CREATE OR REPLACE VIEW, CREATE OR REPLACE MATERIALIZED VIEW,
+    # or CREATE EXTERNAL VIEW), add a CREATE VIEW prefix to make sure the lineage
+    # parser can parse it correctly.
+    create_view_pattern = re.compile(
+        r"CREATE\s+(OR\s+REPLACE\s+)?(EXTERNAL\s+|MATERIALIZED\s+)?VIEW",
+        re.IGNORECASE,
+    )
+    if not create_view_pattern.search(view_definition):
         view_definition = (
             f"CREATE VIEW {view.schema}.{view.relname} AS {view_definition}"
         )

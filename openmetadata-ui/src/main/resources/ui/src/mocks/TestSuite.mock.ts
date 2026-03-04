@@ -567,6 +567,52 @@ export const MOCK_TABLE_COLUMN_NAME_TO_EXIST = {
   deleted: false,
 };
 
+export const MOCK_TABLE_DIFF_DEFINITION = {
+  id: 'table-diff-test-id',
+  name: 'tableDiff',
+  displayName: 'Table Diff',
+  fullyQualifiedName: 'tableDiff',
+  description: 'Compare two tables',
+  entityType: 'TABLE',
+  testPlatforms: ['OpenMetadata'],
+  supportedDataTypes: [],
+  parameterDefinition: [
+    {
+      name: 'table2',
+      displayName: 'Table 2',
+      dataType: 'STRING',
+      description: 'Second table to compare',
+      required: true,
+    },
+    {
+      name: 'keyColumns',
+      displayName: 'Key Columns',
+      dataType: 'ARRAY',
+      description: 'Key columns for table 1',
+      required: false,
+    },
+    {
+      name: 'table2.keyColumns',
+      displayName: 'Table 2 Key Columns',
+      dataType: 'ARRAY',
+      description: 'Key columns for table 2',
+      required: false,
+    },
+    {
+      name: 'useColumns',
+      displayName: 'Use Columns',
+      dataType: 'ARRAY',
+      description: 'Additional columns to compare',
+      required: false,
+    },
+  ],
+  version: 0.1,
+  updatedAt: 1675211404184,
+  updatedBy: 'admin',
+  href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/table-diff-test-id',
+  deleted: false,
+};
+
 export const MOCK_TABLE_TEST_WITH_COLUMN = {
   id: 'id',
   name: 'tableColumnNameToExist',
@@ -590,5 +636,87 @@ export const MOCK_TABLE_TEST_WITH_COLUMN = {
   updatedAt: 1672236872076,
   updatedBy: 'admin',
   href: 'href',
+  deleted: false,
+};
+
+export const MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET = {
+  id: 'test-def-column-values-in-set',
+  name: 'columnValuesToBeInSet',
+  displayName: 'Column Values To Be In Set',
+  fullyQualifiedName: 'columnValuesToBeInSet',
+  description:
+    'This schema defines the test ColumnValuesToBeInSet. Test the column values are in the set.',
+  entityType: 'COLUMN',
+  testPlatforms: ['OpenMetadata'],
+  supportedDataTypes: ['STRING', 'INT'],
+  parameterDefinition: [
+    {
+      name: 'allowedValues',
+      displayName: 'Allowed Values',
+      dataType: 'ARRAY',
+      description: 'An Array of values.',
+      required: true,
+    },
+    {
+      name: 'matchEnum',
+      displayName: 'Match enum',
+      dataType: 'BOOLEAN',
+      description:
+        'If enabled, validate that each value independently matches the enum.',
+      required: false,
+    },
+  ],
+  version: 0.1,
+  updatedAt: 1672236872076,
+  updatedBy: 'admin',
+  href: 'href',
+  deleted: false,
+};
+
+export const MOCK_TEST_CASE_WITH_BOOLEAN_PARAM = {
+  id: 'test-case-with-boolean',
+  name: 'column_values_in_set_test',
+  displayName: 'Column Values In Set Test',
+  fullyQualifiedName:
+    'sample_data.ecommerce_db.shopify.dim_address.status.column_values_in_set_test',
+  description: 'Test that column values are in allowed set',
+  testDefinition: {
+    id: 'test-def-column-values-in-set',
+    type: 'testDefinition',
+    name: 'columnValuesToBeInSet',
+    fullyQualifiedName: 'columnValuesToBeInSet',
+    description:
+      'This schema defines the test ColumnValuesToBeInSet. Test the column values are in the set.',
+    displayName: 'Column Values To Be In Set',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/test-def-column-values-in-set',
+  },
+  entityLink:
+    '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::status>',
+  entityFQN: 'sample_data.ecommerce_db.shopify.dim_address.status',
+  testSuite: {
+    id: '9842a678-5d48-4942-b25a-c07511fcedbb',
+    type: 'testSuite',
+    name: 'critical_metrics_suite',
+    fullyQualifiedName: 'critical_metrics_suite',
+    description:
+      'This is a critical test suite running tests important for the business',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/dataQuality/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
+  },
+  parameterValues: [
+    {
+      name: 'allowedValues',
+      value: '["active","inactive","pending"]',
+    },
+    {
+      name: 'matchEnum',
+      value: 'false',
+    },
+  ],
+  version: 0.1,
+  updatedAt: 1676033824688,
+  updatedBy: 'admin',
+  href: 'http://localhost:8585/api/v1/dataQuality/testCases/test-case-with-boolean',
   deleted: false,
 };

@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Button, Col, Divider, Drawer, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';

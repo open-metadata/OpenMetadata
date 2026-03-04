@@ -1,0 +1,369 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../styles/variables.less';
+.scim-token-card {
+  background-color: @white;
+  padding: @size-mlg @size-md;
+  border-radius: @size-sm;
+  border: 1px solid @grey-15;
+  .ant-card-body {
+    padding: 0px;
+  }
+  .ant-input-affix-wrapper {
+    border-radius: @size-xs;
+  }
+  .card-title {
+    color: @grey-700;
+    font-style: normal;
+    font-weight: 600;
+    line-height: @size-lg;
+    margin-bottom: @size-xs;
+    font-size: @font-size-base;
+  }
+  .card-description {
+    font-weight: @font-regular;
+    color: @grey-700;
+  }
+  .read-docs-link {
+    color: @blue-12;
+    margin-left: @size-xs;
+  }
+  .token-label {
+    color: @text-color-tertiary;
+    font-weight: 600;
+    margin-bottom: @size-md;
+  }
+  .created-by-label,
+  .created-on-label {
+    color: @grey-400;
+    font-weight: 500;
+    margin-right: @size-3xl;
+  }
+
+  .created-by-value,
+  .created-on-value {
+    font-weight: 500;
+  }
+  .generate-scim-token-btn {
+    width: @size-3xl * 2 + @size-lg;
+  }
+  .scim-token-card .ant-divider.scim-divider {
+    margin: 0;
+    width: 100%;
+    min-width: 100%;
+  }
+}
+
+.scim-modal-delete {
+  .ant-modal-content {
+    width: @size-2xl * 8 + @size-md !important;
+    padding-bottom: 0;
+    border-radius: @border-rad-sm;
+  }
+  .ant-modal-body {
+    padding-bottom: @size-2xl - @size-md;
+  }
+
+  .scim-modal-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: @size-md;
+  }
+
+  .scim-modal-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: @size-2xl;
+    height: @size-2xl;
+    border-radius: 50%;
+    background-color: @alert-error-icon-bg-1;
+  }
+
+  .scim-modal-delete-title {
+    font-weight: 600;
+  }
+
+  .scim-modal-delete-desc {
+    font-weight: @font-regular;
+    color: @grey-600;
+  }
+  .ant-modal-footer {
+    padding: 0;
+  }
+
+  .ant-modal-footer,
+  .ant-modal-footer .ant-btn-group {
+    display: flex;
+    justify-content: center;
+    gap: @size-md;
+    border-top: none !important;
+    padding-bottom: @size-lg;
+  }
+  .ant-btn {
+    height: @btn-height-lg;
+    font-weight: @font-semibold;
+    padding: @size-sm - 2px @size-xl;
+    border-radius: @size-md;
+  }
+  .ant-modal-header {
+    display: none !important;
+  }
+
+  .scim-modal-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-top: none !important;
+    padding: 0;
+  }
+  .scim-modal-cancel-button {
+    background-color: @white;
+    color: @black;
+    border: 1px solid @grey-400;
+    padding: @size-sm - 2px @size-xl;
+    border-radius: @border-rad-xs;
+    width: @size-3xl * 2 + @size-lg + @size-sm;
+    font-weight: @font-medium;
+  }
+  .scim-modal-delete-button {
+    background-color: @red-14;
+    color: @white;
+    padding: @size-sm - 2px @size-xl;
+    border-radius: @size-xs;
+    width: @size-3xl * 2 + @size-lg + @size-sm;
+  }
+}
+.enable-sso-card-container {
+  background-color: @white;
+  padding: @size-md;
+  border-radius: @border-rad-sm;
+  margin: @size-xs 0 @size-lg 0;
+  border: 1px solid @grey-15;
+  .enable-self-signup-header {
+    color: @grey-700;
+    font-weight: @font-semibold;
+    line-height: @size-mlg;
+    font-size: @font-size-base;
+    margin: 0;
+  }
+  .enable-self-signup-desc {
+    color: @grey-600;
+    font-weight: @font-regular;
+  }
+
+  .enable-self-signup-text {
+    color: @grey-700;
+  }
+  .enable-self-signup-desc {
+    color: @grey-600;
+  }
+
+  // Custom toggle styling to match design
+  .ant-switch {
+    width: @size-xl;
+    height: @size-mlg;
+    border-radius: @size-mlg;
+    background-color: @grey-300;
+    border: none;
+    position: relative;
+
+    .ant-switch-handle {
+      width: @size-md;
+      height: @size-md;
+      border-radius: 50%;
+      background-color: @white;
+      box-shadow: @box-shadow-small-dark;
+      top: @size-xxs / 2;
+      left: @size-xxs / 2;
+      border: none;
+      position: absolute;
+      transition: all 0.2s ease;
+
+      &::before {
+        display: none;
+      }
+    }
+
+    &.ant-switch-checked {
+      background-color: @primary-6;
+
+      .ant-switch-handle {
+        left: calc(100% - @size-md - @size-xxs / 2);
+        background-color: @white;
+      }
+    }
+
+    &:hover:not(.ant-switch-disabled) {
+      background-color: @grey-400;
+
+      &.ant-switch-checked {
+        background-color: @primary-7;
+      }
+    }
+
+    &:focus {
+      box-shadow: @button-box-shadow-focus;
+    }
+
+    .ant-switch-inner {
+      display: none;
+    }
+  }
+}
+.settings-sso {
+  border: 1px solid @grey-15;
+  border-radius: @size-sm;
+  padding: @size-lg;
+  height: calc(100vh - (@om-navbar-height + @size-2xl));
+  margin-top: @size-xs;
+  transition: height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  // Tab styling for configured SSO
+  .ant-tabs .ant-tabs-tab {
+    .ant-tabs-tab-btn {
+      color: @grey-700;
+      font-weight: 500;
+      font-size: @font-size-base;
+    }
+  }
+
+  // Active tab styling for configured SSO
+  .ant-tabs .ant-tabs-tab.ant-tabs-tab-active {
+    color: @blue-34;
+    padding: 0px;
+
+    .ant-tabs-tab-btn {
+      color: @blue-34;
+      font-weight: 500;
+      font-size: @font-size-base;
+    }
+  }
+
+  .ant-tabs .ant-tabs-ink-bar {
+    background-color: @blue-34;
+  }
+}
+
+// When alert is visible with configured SSO, adjust container height
+.sso-settings-page:has(#page-alert) {
+  .settings-sso {
+    height: calc(100vh - (@om-navbar-height + @size-2xl) - 78px) !important;
+  }
+}
+
+.sso-provider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: @size-lg;
+  gap: @size-xs;
+
+  color: @grey-900;
+  .sso-form-header {
+    color: @grey-900;
+  }
+}
+
+// SSO-specific breadcrumb styling - only applies within SSO settings page
+.sso-settings-page {
+  .content-height-with-resizable-panel {
+    height: calc(100vh - var(--ant-navbar-height) - @size-2xl + @size-md);
+  }
+}
+
+// When alert is visible in SSO settings page, adjust container height
+.sso-settings-page:has(#page-alert) {
+  .content-height-with-resizable-panel {
+    height: calc(
+      100vh - var(--ant-navbar-height) - @size-2xl + @size-md - 78px
+    ) !important;
+  }
+}
+
+.sso-settings-page {
+  .right-panel-splitter {
+    margin-left: @size-sm;
+  }
+  .breadcrumb-container {
+    ol .breadcrumb-item {
+      a.link-title {
+        color: @navigation-text-color;
+        font-size: @font-size-base;
+        font-weight: @font-regular;
+        line-height: @size-mlg;
+        text-decoration: none;
+
+        &:hover {
+          color: @primary-6;
+          text-decoration: none;
+        }
+      }
+
+      span.inactive-link,
+      span.inactive-link.cursor-text,
+      span.link-title.inactive-link {
+        color: @blue-44 !important;
+
+        font-size: @font-size-base;
+        font-weight: @font-regular;
+        line-height: @size-mlg;
+
+        &.font-medium {
+          font-weight: @font-regular;
+          color: @blue-44;
+        }
+      }
+
+      span.text-sm.font-regular.p-x-xs.text-grey-muted {
+        font-size: 12px;
+        line-height: 18px;
+      }
+
+      span.text-grey-muted {
+        color: @navigation-text-color;
+
+        font-size: @font-size-base;
+        font-weight: @font-regular;
+        line-height: @size-mlg;
+        margin: 0 @size-xs;
+        padding: 0;
+        visibility: hidden;
+        position: relative;
+
+        &::after {
+          content: '>';
+          visibility: visible;
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          color: @navigation-text-color;
+        }
+      }
+    }
+  }
+}
+.scim-modal-delete.ant-modal {
+  width: @size-3xl * 6 + @size-md !important;
+}
+
+.sso-settings-page,
+.sso-configuration-form-card,
+.sso-field-group,
+.settings-sso {
+  .ant-select-dropdown {
+    border-radius: @border-rad-xs;
+  }
+}

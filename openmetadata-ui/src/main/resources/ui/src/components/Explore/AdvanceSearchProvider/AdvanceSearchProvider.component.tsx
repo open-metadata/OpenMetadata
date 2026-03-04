@@ -17,9 +17,8 @@ import {
   ImmutableTree,
   OldJsonTree,
   Utils as QbUtils,
-  ValueSource,
 } from '@react-awesome-query-builder/antd';
-import { get, isEmpty, isEqual, isNil, isString } from 'lodash';
+import { isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import {
   createContext,
@@ -30,16 +29,14 @@ import {
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
-import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import {
   getEmptyJsonTree,
-  getTierOptions,
   getTreeConfig,
+  processEntityTypeFields,
 } from '../../../utils/AdvancedSearchUtils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -81,7 +78,6 @@ export const AdvanceSearchProvider = ({
   entityType,
 }: AdvanceSearchProviderProps) => {
   const tabsInfo = searchClassBase.getTabsInfo();
-  const tierOptions = useMemo(getTierOptions, []);
   const location = useCustomLocation();
   const navigate = useNavigate();
   const { tab } = useRequiredParams<UrlParams>();
@@ -109,7 +105,6 @@ export const AdvanceSearchProvider = ({
       searchIndex: searchIndex,
       searchOutputType: searchOutputType,
       isExplorePage,
-      tierOptions,
     })
   );
 
@@ -172,7 +167,6 @@ export const AdvanceSearchProvider = ({
         searchIndex: searchIndex,
         searchOutputType: searchOutputType,
         isExplorePage,
-        tierOptions,
       })
     );
   }, [searchIndex, isExplorePage]);
@@ -233,53 +227,13 @@ export const AdvanceSearchProvider = ({
       const res = await getAllCustomProperties();
 
       Object.entries(res).forEach(([resEntityType, fields]) => {
-        // If entityType is specified, only include custom properties for that entity type
-        if (
-          entityType &&
-          entityType !== EntityType.ALL &&
-          resEntityType !== entityType
-        ) {
-          return;
-        }
-
-        if (Array.isArray(fields) && fields.length > 0) {
-          fields.forEach((field) => {
-            if (field.name && field.type) {
-              const { subfieldsKey, dataObject } =
-                advancedSearchClassBase.getCustomPropertiesSubFields(field);
-
-              // If entityType is specified, return subfields directly without entityType wrapper
-              if (entityType) {
-                subfields[subfieldsKey] = {
-                  ...dataObject,
-                  valueSources: dataObject.valueSources as ValueSource[],
-                };
-              } else {
-                // Create nested subfields for each entity type (e.g., table, database, etc.)
-                const entitySubfields: Record<string, Field> = {};
-
-                entitySubfields[subfieldsKey] = {
-                  ...dataObject,
-                  valueSources: dataObject.valueSources as ValueSource[],
-                };
-
-                // Only create the entity type field if it has custom properties
-                if (!isEmpty(entitySubfields)) {
-                  subfields[resEntityType] = {
-                    label:
-                      resEntityType.charAt(0).toUpperCase() +
-                      resEntityType.slice(1),
-                    type: '!group',
-                    subfields: {
-                      ...get(subfields[resEntityType], 'subfields', {}),
-                      ...entitySubfields,
-                    },
-                  };
-                }
-              }
-            }
-          });
-        }
+        processEntityTypeFields(
+          resEntityType,
+          fields,
+          subfields,
+          entityType,
+          searchOutputType
+        );
       });
     } catch {
       return subfields;
@@ -293,7 +247,6 @@ export const AdvanceSearchProvider = ({
       searchIndex: searchIndex,
       searchOutputType: searchOutputType,
       isExplorePage,
-      tierOptions,
     });
 
     let extensionSubField = customProps;
@@ -367,9 +320,8 @@ export const AdvanceSearchProvider = ({
       query: elasticSearchFormat(treeInternal, config),
     };
     setQueryFilter(qFilter);
-    setSQLQuery(
-      treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
-    );
+    const val = QbUtils.sqlFormat(treeInternal, config);
+    setSQLQuery(treeInternal ? val ?? '' : '');
 
     updateURL && handleTreeUpdate(treeInternal);
     setShowModal(false);

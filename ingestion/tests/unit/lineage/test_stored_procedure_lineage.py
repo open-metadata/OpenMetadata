@@ -19,11 +19,14 @@ import unittest
 import uuid
 from datetime import datetime
 from typing import Iterator
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureCode,
+)
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.models import Dialect
@@ -34,6 +37,18 @@ from metadata.ingestion.source.database.lineage_processors import (
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     StoredProcedureLineageMixin,
 )
+
+
+def _create_engine_mock(return_value=None):
+    """Create a MagicMock engine that supports the context manager protocol for connect()."""
+    mock_engine = MagicMock()
+    mock_conn = MagicMock()
+    if return_value is not None:
+        mock_conn.execute.return_value.all.return_value = return_value
+    mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+    mock_engine._mock_conn = mock_conn
+    return mock_engine
 
 
 class TestableStoredProcedureMixin(StoredProcedureLineageMixin):
@@ -51,7 +66,7 @@ class TestableStoredProcedureMixin(StoredProcedureLineageMixin):
         self.service_connection = Mock()
         self.service_connection.type.value = "mysql"
         self.status = Mock()
-        self.engine = Mock()
+        self.engine = _create_engine_mock([])
         self.procedure_graph_map = {}
 
     def get_stored_procedure_sql_statement(self):
@@ -74,25 +89,20 @@ class TestStoredProcedureStreaming(unittest.TestCase):
     def test_yield_stored_procedure_queries_is_generator(self):
         """Ensure yield_stored_procedure_queries returns a generator"""
         # Mock the engine execution with mock row that behaves like SQLAlchemy row
-        mock_row1 = Mock()
-        mock_row1.keys.return_value = [
-            "PROCEDURE_NAME",
-            "QUERY_TEXT",
-            "QUERY_TYPE",
-            "PROCEDURE_TEXT",
-            "PROCEDURE_START_TIME",
-            "PROCEDURE_END_TIME",
-        ]
-        mock_row1.__getitem__ = lambda self, key: {
+        row1_data = {
             "PROCEDURE_NAME": "proc1",
             "QUERY_TEXT": "SELECT * FROM t1",
             "QUERY_TYPE": "SELECT",
             "PROCEDURE_TEXT": "CALL proc1()",
             "PROCEDURE_START_TIME": datetime.now(),
             "PROCEDURE_END_TIME": datetime.now(),
-        }.get(key)
+        }
+        mock_row1 = Mock()
+        mock_row1._asdict.return_value = row1_data
+        mock_row1.keys.return_value = list(row1_data.keys())
+        mock_row1.__getitem__ = lambda self, key: row1_data.get(key)
 
-        self.mixin.engine.execute.return_value.all.return_value = [mock_row1]
+        self.mixin.engine._mock_conn.execute.return_value.all.return_value = [mock_row1]
 
         # Get the generator
         queries = self.mixin.yield_stored_procedure_queries()
@@ -148,26 +158,22 @@ class TestStoredProcedureStreaming(unittest.TestCase):
         # Mock query results - simulate streaming
         query_results = []
         for i, proc_name in enumerate(["Proc1", "Proc2"], 1):
-            mock_row = Mock()
-            mock_row.keys.return_value = [
-                "PROCEDURE_NAME",
-                "QUERY_TEXT",
-                "QUERY_TYPE",
-                "PROCEDURE_TEXT",
-                "PROCEDURE_START_TIME",
-                "PROCEDURE_END_TIME",
-            ]
-            mock_row.__getitem__ = lambda self, key, pn=proc_name, idx=i: {
-                "PROCEDURE_NAME": pn,
-                "QUERY_TEXT": f"SELECT * FROM table{idx}",
+            row_data = {
+                "PROCEDURE_NAME": proc_name,
+                "QUERY_TEXT": f"SELECT * FROM table{i}",
                 "QUERY_TYPE": "SELECT",
-                "PROCEDURE_TEXT": f"CALL {pn}()",
+                "PROCEDURE_TEXT": f"CALL {proc_name}()",
                 "PROCEDURE_START_TIME": datetime.now(),
                 "PROCEDURE_END_TIME": datetime.now(),
-            }.get(key)
+            }
+            mock_row = Mock()
+            mock_row._asdict.return_value = row_data
+            mock_row.keys.return_value = list(row_data.keys())
             query_results.append(mock_row)
 
-        self.mixin.engine.execute.return_value.all.return_value = query_results
+        self.mixin.engine._mock_conn.execute.return_value.all.return_value = (
+            query_results
+        )
 
         # Get the producer
         results = list(self.mixin.procedure_lineage_producer())
@@ -183,26 +189,22 @@ class TestStoredProcedureStreaming(unittest.TestCase):
         # Create a large number of mock queries
         large_query_results = []
         for i in range(1000):
-            mock_row = Mock()
-            mock_row.keys.return_value = [
-                "PROCEDURE_NAME",
-                "QUERY_TEXT",
-                "QUERY_TYPE",
-                "PROCEDURE_TEXT",
-                "PROCEDURE_START_TIME",
-                "PROCEDURE_END_TIME",
-            ]
-            mock_row.__getitem__ = lambda self, key, idx=i: {
-                "PROCEDURE_NAME": f"Proc{idx % 10}",  # 10 different procedures
-                "QUERY_TEXT": f"SELECT * FROM table{idx}",
+            row_data = {
+                "PROCEDURE_NAME": f"Proc{i % 10}",
+                "QUERY_TEXT": f"SELECT * FROM table{i}",
                 "QUERY_TYPE": "SELECT",
-                "PROCEDURE_TEXT": f"CALL Proc{idx % 10}()",
+                "PROCEDURE_TEXT": f"CALL Proc{i % 10}()",
                 "PROCEDURE_START_TIME": datetime.now(),
                 "PROCEDURE_END_TIME": datetime.now(),
-            }.get(key)
+            }
+            mock_row = Mock()
+            mock_row._asdict.return_value = row_data
+            mock_row.keys.return_value = list(row_data.keys())
             large_query_results.append(mock_row)
 
-        self.mixin.engine.execute.return_value.all.return_value = large_query_results
+        self.mixin.engine._mock_conn.execute.return_value.all.return_value = (
+            large_query_results
+        )
 
         # The generator should not load all into memory at once
         queries_gen = self.mixin.yield_stored_procedure_queries()
@@ -271,25 +273,21 @@ class TestStoredProcedureStreaming(unittest.TestCase):
             "metadata.utils.filters.filter_by_database", side_effect=[False, True]
         ):
             # Mock query results
-            mock_row = Mock()
-            mock_row.keys.return_value = [
-                "PROCEDURE_NAME",
-                "QUERY_TEXT",
-                "QUERY_TYPE",
-                "PROCEDURE_TEXT",
-                "PROCEDURE_START_TIME",
-                "PROCEDURE_END_TIME",
-            ]
-            mock_row.__getitem__ = lambda self, key: {
+            row_data = {
                 "PROCEDURE_NAME": "IncludedProc",
                 "QUERY_TEXT": "SELECT * FROM table1",
                 "QUERY_TYPE": "SELECT",
                 "PROCEDURE_TEXT": "CALL IncludedProc()",
                 "PROCEDURE_START_TIME": datetime.now(),
                 "PROCEDURE_END_TIME": datetime.now(),
-            }.get(key)
+            }
+            mock_row = Mock()
+            mock_row._asdict.return_value = row_data
+            mock_row.keys.return_value = list(row_data.keys())
 
-            self.mixin.engine.execute.return_value.all.return_value = [mock_row]
+            self.mixin.engine._mock_conn.execute.return_value.all.return_value = [
+                mock_row
+            ]
 
             # Get results
             results = list(self.mixin.procedure_lineage_producer())
@@ -390,26 +388,20 @@ class TestIntegration(unittest.TestCase):
         # Setup mock query results
         mock_rows = []
         for i in range(3):
-            mock_row = Mock()
-            mock_row.keys.return_value = [
-                "PROCEDURE_NAME",
-                "QUERY_TEXT",
-                "QUERY_TYPE",
-                "PROCEDURE_TEXT",
-                "PROCEDURE_START_TIME",
-                "PROCEDURE_END_TIME",
-            ]
-            mock_row.__getitem__ = lambda self, key, idx=i: {
+            row_data = {
                 "PROCEDURE_NAME": "IntegrationProc",
-                "QUERY_TEXT": f"SELECT * FROM table{idx}",
+                "QUERY_TEXT": f"SELECT * FROM table{i}",
                 "QUERY_TYPE": "SELECT",
                 "PROCEDURE_TEXT": "CALL IntegrationProc()",
                 "PROCEDURE_START_TIME": datetime.now(),
                 "PROCEDURE_END_TIME": datetime.now(),
-            }.get(key)
+            }
+            mock_row = Mock()
+            mock_row._asdict.return_value = row_data
+            mock_row.keys.return_value = list(row_data.keys())
             mock_rows.append(mock_row)
 
-        mixin.engine.execute.return_value.all.return_value = mock_rows
+        mixin.engine._mock_conn.execute.return_value.all.return_value = mock_rows
 
         # Execute the flow
         results = list(mixin.procedure_lineage_producer())
@@ -430,7 +422,7 @@ class TestIntegration(unittest.TestCase):
         mixin.metadata.paginate_es = Mock(return_value=iter([]))
 
         # Mock query results to return empty list
-        mixin.engine.execute.return_value.all.return_value = []
+        mixin.engine._mock_conn.execute.return_value.all.return_value = []
 
         # Call procedure_lineage_producer
         list(mixin.procedure_lineage_producer())
@@ -501,6 +493,7 @@ class TestTempTableLineage(unittest.TestCase):
                     procedure=self.test_procedure,
                     procedure_graph_map=procedure_graph_map,
                     enableTempTableLineage=True,
+                    parser_type=QueryParserType.Auto,
                 )
             )
 
@@ -534,6 +527,7 @@ class TestTempTableLineage(unittest.TestCase):
                     procedure=self.test_procedure,
                     procedure_graph_map=procedure_graph_map,
                     enableTempTableLineage=False,
+                    parser_type=QueryParserType.Auto,
                 )
             )
 
@@ -565,6 +559,7 @@ class TestTempTableLineage(unittest.TestCase):
                     procedure=self.test_procedure,
                     procedure_graph_map=procedure_graph_map,
                     enableTempTableLineage=True,
+                    parser_type=QueryParserType.Auto,
                 )
             )
 
@@ -687,6 +682,7 @@ class TestProcedureGraphProcessing(unittest.TestCase):
                     procedure=test_procedure,
                     procedure_graph_map=procedure_graph_map,
                     enableTempTableLineage=True,
+                    parser_type=QueryParserType.Auto,
                 )
             )
 
@@ -708,6 +704,7 @@ class TestProcedureGraphProcessing(unittest.TestCase):
                     procedure=test_procedure,
                     procedure_graph_map=procedure_graph_map,
                     enableTempTableLineage=True,
+                    parser_type=QueryParserType.Auto,
                 )
             )
 

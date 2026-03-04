@@ -308,7 +308,6 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-conditional-expect, jest/no-try-expect
       expect(error).toEqual(mockError);
     }
   });
@@ -339,7 +338,66 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-conditional-expect, jest/no-try-expect
+      expect(error).toEqual(mockError);
+    }
+  });
+
+  it('should not call refresh for auth/refresh api', async () => {
+    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+    const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
+
+    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    const [, errorHandler] = mockUse.mock.calls[0];
+    const mockError = {
+      response: {
+        status: 401,
+        data: { message: 'Token expired' },
+      },
+      config: {
+        url: 'auth/refresh',
+        headers: {},
+        baseURL: '',
+      },
+    };
+
+    try {
+      await errorHandler?.(mockError);
+    } catch (error) {
+      expect(error).toEqual(mockError);
+    }
+  });
+
+  it('should not call refresh for /auth/refresh api', async () => {
+    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+    const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
+
+    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    const [, errorHandler] = mockUse.mock.calls[0];
+    const mockError = {
+      response: {
+        status: 401,
+        data: { message: 'Token expired' },
+      },
+      config: {
+        url: '/auth/refresh',
+        headers: {},
+        baseURL: '',
+      },
+    };
+
+    try {
+      await errorHandler?.(mockError);
+    } catch (error) {
       expect(error).toEqual(mockError);
     }
   });
@@ -370,7 +428,6 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-conditional-expect, jest/no-try-expect
       expect(error).toEqual(mockError);
     }
   });
@@ -402,9 +459,8 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-conditional-expect, jest/no-try-expect
       expect(error).toEqual(mockError);
-      // eslint-disable-next-line jest/no-conditional-expect, jest/no-try-expect
+
       expect(mockRefreshToken).toHaveBeenCalledTimes(0);
     }
   });

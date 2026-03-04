@@ -19,6 +19,7 @@
       "enum": [
         "GoogleDrive",
         "SharePoint",
+        "Sftp",
         "CustomDrive"
       ],
       "javaEnums": [
@@ -27,6 +28,9 @@
         },
         {
           "name": "SharePoint"
+        },
+        {
+          "name": "Sftp"
         },
         {
           "name": "CustomDrive"
@@ -49,6 +53,9 @@
             },
             {
               "$ref": "connections/drive/sharePointConnection.json"
+            },
+            {
+              "$ref": "connections/drive/sftpConnection.json"
             },
             {
               "$ref": "connections/drive/customDriveConnection.json"
@@ -114,6 +121,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "description": "Link to the resource corresponding to this drive service.",

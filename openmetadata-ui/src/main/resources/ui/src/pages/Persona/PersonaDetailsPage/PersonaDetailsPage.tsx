@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckCircleOutlined, XOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Modal, Row, Tabs, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -20,6 +19,8 @@ import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/complete.svg';
+import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
 import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -46,7 +47,11 @@ import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getUserById } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { getSettingPath } from '../../../utils/RouterUtils';
+import { getCustomizePageCategories } from '../../../utils/Persona/PersonaUtils';
+import {
+  getPersonaDetailsPath,
+  getSettingPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './persona-details-page.less';
 
@@ -63,32 +68,50 @@ export const PersonaDetailsPage = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const location = useCustomLocation();
-  const { activeKey, fullHash } = useMemo(() => {
+  const { activeKey, activeCategory, fullHash } = useMemo(() => {
     const activeKey = (location.hash?.replace('#', '') || 'customize-ui').split(
       '.'
     )[0];
+    const activeCategory = (location.hash?.replace('#', '') || '').split(
+      '.'
+    )[1];
 
     return {
       activeKey,
+      activeCategory,
       fullHash: location.hash?.replace('#', ''),
     };
   }, [location.hash]);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const breadcrumb = useMemo(
-    () => [
+  const breadcrumb = useMemo(() => {
+    const breadcrumbList = [
       {
         name: t('label.persona-plural'),
         url: getSettingPath(GlobalSettingsMenuCategory.PERSONA),
       },
       {
         name: getEntityName(personaDetails),
-        url: '',
+        url: `${getPersonaDetailsPath(fqn)}#customize-ui`,
       },
-    ],
-    [personaDetails]
-  );
+    ];
+
+    if (activeCategory) {
+      const category = getCustomizePageCategories().find(
+        (category) => category.key === activeCategory
+      );
+
+      if (category) {
+        breadcrumbList.push({
+          name: category.label,
+          url: '',
+        });
+      }
+    }
+
+    return breadcrumbList;
+  }, [personaDetails, activeCategory, fqn]);
 
   useEffect(() => {
     getEntityPermissionByFqn(ResourceEntity.PERSONA, fqn).then(
@@ -277,7 +300,7 @@ export const PersonaDetailsPage = () => {
                 ? t('message.remove-default-persona-description')
                 : t('message.set-default-persona-menu-description')
             }
-            icon={(isDefault ? XOutlined : CheckCircleOutlined) as SvgComponent}
+            icon={isDefault ? CloseCircleOutlined : CheckCircleOutlined}
             id={isDefault ? 'remove-default-button' : 'set-as-default-button'}
             name={
               isDefault ? t('label.remove-default') : t('label.set-as-default')
@@ -287,7 +310,7 @@ export const PersonaDetailsPage = () => {
         onClick: handleDefaultActionClick,
       },
     ] as ItemType[];
-  }, [personaDetails?.default, handleDefaultActionClick, t]);
+  }, [personaDetails?.default, handleDefaultActionClick]);
 
   if (isLoading) {
     return <Loader />;

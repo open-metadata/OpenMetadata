@@ -55,6 +55,7 @@ from metadata.profiler.metrics.system.system import System
 from metadata.profiler.metrics.window.first_quartile import FirstQuartile
 from metadata.profiler.metrics.window.median import Median
 from metadata.profiler.metrics.window.third_quartile import ThirdQuartile
+from metadata.profiler.metrics.window.value_rank import ValueRank
 from metadata.profiler.registry import MetricRegistry
 
 
@@ -66,48 +67,50 @@ class Metrics(MetricRegistry):
     """
 
     # Static Metrics
-    MEAN = Mean
-    COUNT = Count
-    COUNT_IN_SET = CountInSet
-    COLUMN_COUNT = ColumnCount
-    DISTINCT_COUNT = DistinctCount
-    DISTINCT_RATIO = DistinctRatio
-    ILIKE_COUNT = ILikeCount
-    LIKE_COUNT = LikeCount
-    NOT_LIKE_COUNT = NotLikeCount
-    REGEX_COUNT = RegexCount
-    NOT_REGEX_COUNT = NotRegexCount
-    MAX = Max
-    MAX_LENGTH = MaxLength
-    MIN = Min
-    MIN_LENGTH = MinLength
-    NULL_COUNT = NullCount
-    ROW_COUNT = RowCount
-    STDDEV = StdDev
-    SUM = Sum
-    UNIQUE_COUNT = UniqueCount
-    UNIQUE_RATIO = UniqueRatio
-    COLUMN_NAMES = ColumnNames
+    # pylint: disable=invalid-name
+    mean = Mean
+    valuesCount = Count
+    countInSet = CountInSet
+    columnCount = ColumnCount
+    distinctCount = DistinctCount
+    distinctProportion = DistinctRatio
+    iLikeCount = ILikeCount
+    likeCount = LikeCount
+    notLikeCount = NotLikeCount
+    regexCount = RegexCount
+    notRegexCount = NotRegexCount
+    max = Max
+    maxLength = MaxLength
+    min = Min
+    minLength = MinLength
+    nullCount = NullCount
+    rowCount = RowCount
+    stddev = StdDev
+    sum = Sum
+    uniqueCount = UniqueCount
+    uniqueProportion = UniqueRatio
+    columnNames = ColumnNames
 
     # Composed Metrics
-    DUPLICATE_COUNT = DuplicateCount
-    ILIKE_RATIO = ILikeRatio
-    LIKE_RATIO = LikeRatio
-    NULL_RATIO = NullRatio
-    IQR = InterQuartileRange
-    NON_PARAMETRIC_SKEW = NonParametricSkew
+    duplicateCount = DuplicateCount
+    iLikeRatio = ILikeRatio
+    likeRatio = LikeRatio
+    nullProportion = NullRatio
+    interQuartileRange = InterQuartileRange
+    nonParametricSkew = NonParametricSkew
 
     # Window Metrics
-    MEDIAN = Median
-    FIRST_QUARTILE = FirstQuartile
-    THIRD_QUARTILE = ThirdQuartile
+    median = Median
+    firstQuartile = FirstQuartile
+    thirdQuartile = ThirdQuartile
+    valueRank = ValueRank
 
     # System Metrics
-    SYSTEM = System
+    system = System
 
     # Hybrid Metrics
-    HISTOGRAM = Histogram
-    CARDINALITY_DISTRIBUTION = CardinalityDistribution
+    histogram = Histogram
+    cardinalityDistribution = CardinalityDistribution
 
     # Missing Count
-    NULL_MISSING_COUNT = NullMissingCount
+    nullMissingCount = NullMissingCount

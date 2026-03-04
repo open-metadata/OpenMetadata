@@ -12,13 +12,24 @@
  */
 
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-test.describe('Online Users Feature', () => {
+const testUser = new UserClass();
+
+test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await testUser.create(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -29,6 +40,10 @@ test.describe('Online Users Feature', () => {
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
     await page.waitForLoadState('networkidle');
 
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     // Verify we're on the Online Users page
     await expect(
       page.getByRole('heading', { name: 'Online Users' })
@@ -38,12 +53,18 @@ test.describe('Online Users Feature', () => {
     await expect(page.getByTestId('online-users-table')).toBeVisible();
 
     // Verify table headers
-    await expect(page.getByRole('cell', { name: 'Username' })).toBeVisible();
     await expect(
-      page.getByRole('cell', { name: 'Last Activity' })
+      page.getByRole('columnheader', { name: 'Username' })
     ).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'Teams' })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'Roles' })).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Last Activity' })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Teams' })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Roles' })
+    ).toBeVisible();
 
     // Check for time filter dropdown (labeled as "Time window:")
     const timeWindowText = page.getByText('Time window:');
@@ -73,6 +94,10 @@ test.describe('Online Users Feature', () => {
 
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
     await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     // Admin user should appear in the online users list
     const adminLink = page.locator('a').filter({ hasText: 'admin' }).first();
@@ -104,6 +129,10 @@ test.describe('Online Users Feature', () => {
   test('Should filter users by time window', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
     await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     // Find the time filter dropdown by looking for the one that contains "Last"
     const timeFilterDropdown = page
@@ -156,8 +185,12 @@ test.describe('Online Users Feature', () => {
   test('Should show correct last activity format', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
     await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
     // Check various time formats in the Last Activity column
-    const activityCells = page.locator('tbody tr td:nth-child(2)');
+    const activityCells = page.locator('tbody tr td:nth-child(3)');
     const count = await activityCells.count();
 
     // If no users are online within the time window, that's ok - just skip
@@ -175,5 +208,49 @@ test.describe('Online Users Feature', () => {
       // Should contain either "Online now" or time format like "51 minutes ago"
       expect(text).toMatch(/(Online now|\d+\s+(minutes?|hours?|days?)\s+ago)/);
     }
+  });
+
+  test('Should show user displayName in online users table', async ({
+    browser,
+    page,
+  }) => {
+    await test.step('Visit Explore Page as New User', async () => {
+      const userPage = await browser.newPage();
+      await testUser.login(userPage);
+      await redirectToHomePage(userPage);
+
+      // 1 step - go to explore page using new user
+      await sidebarClick(userPage, SidebarItem.EXPLORE);
+      await userPage.waitForLoadState('networkidle');
+
+      await userPage.close();
+    });
+
+    await test.step('Verify Online User as Admin', async () => {
+      const displayName = testUser.responseData.displayName;
+
+      // 2 step - go to online user page and check that user display name should present
+      await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      // Search for the user to ensure it is visible in the list
+      const searchResponse = page.waitForResponse(
+        '/api/v1/search/query?q=*&index=*&from=0&size=*'
+      );
+      await page.getByTestId('searchbar').fill(displayName);
+      await searchResponse;
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        page.getByRole('cell', { name: displayName }).first()
+      ).toBeVisible();
+    });
   });
 });

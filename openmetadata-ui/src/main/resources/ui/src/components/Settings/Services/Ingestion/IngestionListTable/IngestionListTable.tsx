@@ -46,6 +46,7 @@ import {
   getEpochMillisForPastDays,
 } from '../../../../../utils/date-time/DateTimeUtils';
 import {
+  getColumnSorter,
   getEntityName,
   highlightSearchText,
 } from '../../../../../utils/EntityUtils';
@@ -325,6 +326,7 @@ function IngestionListTable({
         dataIndex: 'name',
         key: 'name',
         fixed: 'left' as FixedType,
+        sorter: getColumnSorter<IngestionPipeline, 'name'>('name'),
         render: customRenderNameField ?? renderNameField(searchText),
       },
       ...(showDescriptionCol
@@ -484,7 +486,7 @@ function IngestionListTable({
           }}
           pagination={false}
           rowKey="fullyQualifiedName"
-          scroll={{ x: 1300 }}
+          scroll={data.length > 0 ? { x: 1300 } : undefined}
           size="small"
           {...extraTableProps}
         />

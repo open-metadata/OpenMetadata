@@ -69,6 +69,7 @@ function FiltersConfigForm({
     return {
       ...connSch.schema,
       properties: propertiesWithoutFilters,
+      additionalProperties: false, // Disable additional properties for default filters form
     };
   }, [connSch.schema.properties]);
 

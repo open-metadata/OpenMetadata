@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -41,18 +41,21 @@ export enum SettingType {
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
     LoginConfiguration = "loginConfiguration",
+    OpenLineageSettings = "openLineageSettings",
     OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
     ScimConfiguration = "scimConfiguration",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
+    SecurityConfiguration = "securityConfiguration",
     SlackAppConfiguration = "slackAppConfiguration",
     SlackBot = "slackBot",
     SlackChat = "slackChat",
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
 
@@ -61,7 +64,11 @@ export enum SettingType {
  *
  * This schema defines the Authentication Configuration.
  *
+ * Authentication configuration
+ *
  * This schema defines the Authorization Configuration.
+ *
+ * Authorization configuration
  *
  * This schema defines the Elastic Search Configuration.
  *
@@ -79,6 +86,8 @@ export enum SettingType {
  *
  * This schema defines the Slack App Information
  *
+ * This schema defines the Microsoft Teams App configuration
+ *
  * This schema defines the profiler configuration. It is used to configure globally the
  * metrics to compute for specific data types.
  *
@@ -87,6 +96,11 @@ export enum SettingType {
  * This schema defines the Lineage Settings.
  *
  * This schema defines the Workflow Settings.
+ *
+ * Complete security configuration including authentication and authorization
+ *
+ * Settings for OpenLineage HTTP API integration. Configure how OpenMetadata receives and
+ * processes lineage events from external systems like Spark, Airflow, and Flink.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -112,6 +126,8 @@ export interface PipelineServiceClientConfiguration {
      * can set this value to false to not check the Pipeline Service Client component health.
      *
      * Is Task Notification Enabled?
+     *
+     * Enable or disable the OpenLineage HTTP API endpoint.
      */
     enabled?: boolean;
     /**
@@ -172,17 +188,34 @@ export interface PipelineServiceClientConfiguration {
      */
     clientType?: ClientType;
     /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
+    /**
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
+    /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
     /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
+    /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
     /**
      * LDAP Configuration in case the Provider is LDAP
      */
@@ -254,6 +287,11 @@ export interface PipelineServiceClientConfiguration {
      */
     useRolesFromProvider?: boolean;
     /**
+     * AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled.
+     * When enabled, uses standard AWS environment variables or configured credentials.
+     */
+    aws?: Aws;
+    /**
      * Batch Size for Requests
      */
     batchSize?: number;
@@ -266,13 +304,22 @@ export interface PipelineServiceClientConfiguration {
      */
     connectionTimeoutSecs?: number;
     /**
-     * Elastic Search Host
+     * Elastic Search Host. Supports single host or comma-separated list for multiple hosts
+     * (e.g., 'localhost' or 'es-node1:9200,es-node2:9200,es-node3:9200').
      */
     host?: string;
     /**
      * Keep Alive Timeout in Seconds
      */
     keepAliveTimeoutSecs?: number;
+    /**
+     * Maximum connections per host/route in the connection pool
+     */
+    maxConnPerRoute?: number;
+    /**
+     * Maximum total connections in the connection pool across all hosts
+     */
+    maxConnTotal?: number;
     /**
      * Configuration for natural language search capabilities
      */
@@ -288,7 +335,8 @@ export interface PipelineServiceClientConfiguration {
      */
     payLoadSize?: number;
     /**
-     * Elastic Search port
+     * Elastic Search port. Used when host does not include port. Ignored when using
+     * comma-separated hosts with ports.
      */
     port?: number;
     /**
@@ -378,6 +426,10 @@ export interface PipelineServiceClientConfiguration {
      */
     openMetadataUrl?: string;
     /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
      * Client Secret of the Application.
      */
     clientSecret?: string;
@@ -385,8 +437,24 @@ export interface PipelineServiceClientConfiguration {
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
      */
-    signingSecret?:       string;
-    metricConfiguration?: MetricConfigurationDefinition[];
+    signingSecret?: string;
+    /**
+     * User Token
+     */
+    userToken?: string;
+    /**
+     * Azure AD Application (Client) ID for the Teams bot
+     */
+    microsoftAppId?: string;
+    /**
+     * Azure AD Client Secret for the Teams bot
+     */
+    microsoftAppPassword?: string;
+    /**
+     * Azure AD Tenant ID (optional, for single-tenant bots). Use 'common' for multi-tenant.
+     */
+    microsoftAppTenantId?: string;
+    metricConfiguration?:  MetricConfigurationDefinition[];
     /**
      * Configurations of allowed searchable fields for each entity type
      */
@@ -421,9 +489,17 @@ export interface PipelineServiceClientConfiguration {
      */
     downstreamDepth?: number;
     /**
+     * Performance configuration for lineage graph builder.
+     */
+    graphPerformanceConfig?: GraphPerformanceConfig;
+    /**
      * Lineage Layer.
      */
     lineageLayer?: LineageLayer;
+    /**
+     * Pipeline View Mode for Lineage.
+     */
+    pipelineViewMode?: PipelineViewMode;
     /**
      * Upstream Depth for Lineage.
      */
@@ -437,9 +513,42 @@ export interface PipelineServiceClientConfiguration {
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
     /**
+     * Used to set up the History CleanUp Settings.
+     */
+    runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
+    /**
      * Semantics rules defined in the data contract.
      */
     entitySemantics?: SemanticsRule[];
+    /**
+     * Authentication configuration
+     */
+    authenticationConfiguration?: AuthenticationConfiguration;
+    /**
+     * Authorization configuration
+     */
+    authorizerConfiguration?: AuthorizerConfiguration;
+    /**
+     * Automatically create Table and Pipeline entities when they are referenced in OpenLineage
+     * events but don't exist in OpenMetadata.
+     */
+    autoCreateEntities?: boolean;
+    /**
+     * Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage
+     * jobs. This service must exist in OpenMetadata.
+     */
+    defaultPipelineService?: string;
+    /**
+     * List of OpenLineage event types to process. Only events matching these types will create
+     * lineage. Default is to only process COMPLETE events.
+     */
+    eventTypeFilter?: EventTypeFilter[];
+    /**
+     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names. Used to
+     * resolve dataset references to existing tables. Example: 'postgresql://prod-db:5432' ->
+     * 'prod-postgres'
+     */
+    namespaceToServiceMapping?: { [key: string]: string };
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -878,122 +987,93 @@ export enum AuthProvider {
 }
 
 /**
+ * This schema defines the Authentication Configuration.
+ *
+ * Authentication configuration
+ */
+export interface AuthenticationConfiguration {
+    /**
+     * Authentication Authority
+     */
+    authority?: string;
+    /**
+     * Callback URL
+     */
+    callbackUrl?: string;
+    /**
+     * Client ID
+     */
+    clientId?: string;
+    /**
+     * Client Type
+     */
+    clientType?: ClientType;
+    /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
+    /**
+     * Enable Self Sign Up
+     */
+    enableSelfSignup?: boolean;
+    /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
+    /**
+     * Jwt Principal Claim
+     */
+    jwtPrincipalClaims: string[];
+    /**
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
+     */
+    jwtPrincipalClaimsMapping?: string[];
+    /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
+    /**
+     * LDAP Configuration in case the Provider is LDAP
+     */
+    ldapConfiguration?: LDAPConfiguration;
+    /**
+     * Oidc Configuration for Confidential Client Type
+     */
+    oidcConfiguration?: OidcClientConfig;
+    provider:           AuthProvider;
+    /**
+     * Custom OIDC Authentication Provider Name
+     */
+    providerName: string;
+    /**
+     * List of Public Key URLs
+     */
+    publicKeyUrls?: string[];
+    /**
+     * This is used by auth provider provide response as either id_token or code.
+     */
+    responseType?: ResponseType;
+    /**
+     * Saml Configuration that is applicable only when the provider is Saml
+     */
+    samlConfiguration?: SamlSSOClientConfig;
+    /**
+     * Token Validation Algorithm to use.
+     */
+    tokenValidationAlgorithm?: TokenValidationAlgorithm;
+}
+
+/**
  * Client Type
  */
 export enum ClientType {
     Confidential = "confidential",
     Public = "public",
-}
-
-/**
- * Semantics rule defined in the data contract.
- */
-export interface SemanticsRule {
-    /**
-     * Description of the semantics rule.
-     */
-    description: string;
-    /**
-     * Indicates if the semantics rule is enabled.
-     */
-    enabled: boolean;
-    /**
-     * Type of the entity to which this semantics rule applies.
-     */
-    entityType?: string;
-    /**
-     * List of entities to ignore for this semantics rule.
-     */
-    ignoredEntities?: string[];
-    /**
-     * JSON Tree to represents rule in UI.
-     */
-    jsonTree?: string;
-    /**
-     * Name of the semantics rule.
-     */
-    name:      string;
-    provider?: ProviderType;
-    /**
-     * Definition of the semantics rule.
-     */
-    rule: string;
-}
-
-/**
- * Type of provider of an entity. Some entities are provided by the `system`. Some are
- * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled. Some apps such as AutoPilot create entities with
- * `automation` provider type. These entities can be deleted by the user.
- */
-export enum ProviderType {
-    Automation = "automation",
-    System = "system",
-    User = "user",
-}
-
-/**
- * Used to set up the Workflow Executor Settings.
- */
-export interface ExecutorConfiguration {
-    /**
-     * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
-     */
-    corePoolSize?: number;
-    /**
-     * The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids
-     * jobs that takes too long to run being retried while running.
-     */
-    jobLockTimeInMillis?: number;
-    /**
-     * Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers.
-     */
-    maxPoolSize?: number;
-    /**
-     * Amount of Tasks that can be queued to be picked up by the Workflow Executor.
-     */
-    queueSize?: number;
-    /**
-     * The amount of Tasks that the Workflow Executor is able to pick up each time it looks for
-     * more.
-     */
-    tasksDuePerAcquisition?: number;
-}
-
-export interface GlobalSettings {
-    /**
-     * List of global aggregations to include in the search query.
-     */
-    aggregations?: Aggregation[];
-    /**
-     * Flag to enable or disable RBAC Search Configuration globally.
-     */
-    enableAccessControl?: boolean;
-    /**
-     * Optional list of numeric field-based boosts applied globally.
-     */
-    fieldValueBoosts?: FieldValueBoost[];
-    /**
-     * Which fields to highlight by default.
-     */
-    highlightFields?:   string[];
-    maxAggregateSize?:  number;
-    maxAnalyzedOffset?: number;
-    maxResultHits?:     number;
-    /**
-     * List of field=value term-boost rules that apply only to this asset.
-     */
-    termBoosts?: TermBoost[];
-}
-
-/**
- * Used to set up the History CleanUp Settings.
- */
-export interface HistoryCleanUpConfiguration {
-    /**
-     * Cleans the Workflow Task that were finished, after given number of days.
-     */
-    cleanAfterNumberOfDays?: number;
 }
 
 /**
@@ -1181,6 +1261,527 @@ export enum TruststoreConfigType {
 }
 
 /**
+ * Oidc Configuration for Confidential Client Type
+ *
+ * Oidc client security configs.
+ */
+export interface OidcClientConfig {
+    /**
+     * Callback Url.
+     */
+    callbackUrl?: string;
+    /**
+     * Client Authentication Method.
+     */
+    clientAuthenticationMethod?: ClientAuthenticationMethod;
+    /**
+     * Custom Params.
+     */
+    customParams?: { [key: string]: any };
+    /**
+     * Disable PKCE.
+     */
+    disablePkce?: boolean;
+    /**
+     * Discovery Uri for the Client.
+     */
+    discoveryUri: string;
+    /**
+     * Client ID.
+     */
+    id: string;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    maxAge?: string;
+    /**
+     * Max Clock Skew
+     */
+    maxClockSkew?: string;
+    /**
+     * Preferred Jws Algorithm.
+     */
+    preferredJwsAlgorithm?: string;
+    /**
+     * Prompt whether login/consent
+     */
+    prompt?: string;
+    /**
+     * Auth0 Client Secret Key.
+     */
+    responseType?: string;
+    /**
+     * Oidc Request Scopes.
+     */
+    scope?: string;
+    /**
+     * Client Secret.
+     */
+    secret: string;
+    /**
+     * Server Url.
+     */
+    serverUrl?: string;
+    /**
+     * Validity for the Session in case of confidential clients
+     */
+    sessionExpiry?: number;
+    /**
+     * Tenant in case of Azure.
+     */
+    tenant: string;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    tokenValidity?: number;
+    /**
+     * IDP type (Example Google,Azure).
+     */
+    type?: string;
+    /**
+     * Use Nonce.
+     */
+    useNonce?: string;
+}
+
+/**
+ * Client Authentication Method.
+ */
+export enum ClientAuthenticationMethod {
+    ClientSecretBasic = "client_secret_basic",
+    ClientSecretJwt = "client_secret_jwt",
+    ClientSecretPost = "client_secret_post",
+    PrivateKeyJwt = "private_key_jwt",
+}
+
+/**
+ * This is used by auth provider provide response as either id_token or code.
+ *
+ * Response Type
+ */
+export enum ResponseType {
+    Code = "code",
+    IDToken = "id_token",
+}
+
+/**
+ * Saml Configuration that is applicable only when the provider is Saml
+ *
+ * SAML SSO client security configs.
+ */
+export interface SamlSSOClientConfig {
+    /**
+     * Get logs from the Library in debug mode
+     */
+    debugMode?: boolean;
+    idp:        Idp;
+    /**
+     * Ordered list of SAML attribute names to check for display name. First available attribute
+     * wins. Defaults to common OIDC/SAML attribute names.
+     */
+    samlDisplayNameAttributes?: string[];
+    security?:                  Security;
+    sp:                         SP;
+}
+
+/**
+ * This schema defines defines the identity provider config.
+ */
+export interface Idp {
+    /**
+     * Authority URL (deprecated, use entityId instead).
+     */
+    authorityUrl?: string;
+    /**
+     * Identity Provider Entity ID usually same as the SSO login URL.
+     */
+    entityId: string;
+    /**
+     * X509 Certificate
+     */
+    idpX509Certificate?: string;
+    /**
+     * Name ID format for SAML assertions
+     */
+    nameId?: string;
+    /**
+     * SSO Login URL.
+     */
+    ssoLoginUrl: string;
+}
+
+/**
+ * This schema defines defines the security config for SAML.
+ */
+export interface Security {
+    /**
+     * KeyStore Alias
+     */
+    keyStoreAlias?: string;
+    /**
+     * KeyStore File Path
+     */
+    keyStoreFilePath?: string;
+    /**
+     * KeyStore Password
+     */
+    keyStorePassword?: string;
+    /**
+     * Encrypt Name Id while sending requests from SP.
+     */
+    sendEncryptedNameId?: boolean;
+    /**
+     * Sign the Authn Request while sending.
+     */
+    sendSignedAuthRequest?: boolean;
+    /**
+     * Want the Metadata of this SP to be signed.
+     */
+    signSpMetadata?: boolean;
+    /**
+     * Only accept valid signed and encrypted assertions if the relevant flags are set
+     */
+    strictMode?: boolean;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    tokenValidity?: number;
+    /**
+     * In case of strict mode whether to validate XML format.
+     */
+    validateXml?: boolean;
+    /**
+     * SP requires the assertion received to be encrypted.
+     */
+    wantAssertionEncrypted?: boolean;
+    /**
+     * SP requires the assertions received to be signed.
+     */
+    wantAssertionsSigned?: boolean;
+    /**
+     * SP requires the messages received to be signed.
+     */
+    wantMessagesSigned?: boolean;
+}
+
+/**
+ * This schema defines defines the identity provider config.
+ */
+export interface SP {
+    /**
+     * Assertion Consumer URL.
+     */
+    acs: string;
+    /**
+     * Service Provider Entity ID usually same as the SSO login URL.
+     */
+    callback: string;
+    /**
+     * Service Provider Entity ID.
+     */
+    entityId: string;
+    /**
+     * Sp Private Key for Signing and Encryption Only
+     */
+    spPrivateKey?: string;
+    /**
+     * X509 Certificate
+     */
+    spX509Certificate?: string;
+}
+
+/**
+ * Token Validation Algorithm to use.
+ */
+export enum TokenValidationAlgorithm {
+    Es256 = "ES256",
+    Es384 = "ES384",
+    Es512 = "ES512",
+    Rs256 = "RS256",
+    Rs384 = "RS384",
+    Rs512 = "RS512",
+}
+
+/**
+ * This schema defines the Authorization Configuration.
+ *
+ * Authorization configuration
+ */
+export interface AuthorizerConfiguration {
+    /**
+     * List of unique admin principals.
+     */
+    adminPrincipals: string[];
+    /**
+     * Allowed Domains to access
+     */
+    allowedDomains?: string[];
+    /**
+     * List of unique email domains that are allowed to signup on the platforms
+     */
+    allowedEmailRegistrationDomains?: string[];
+    /**
+     * **@Deprecated** List of unique bot principals
+     */
+    botPrincipals?: string[];
+    /**
+     * Class Name for authorizer.
+     */
+    className: string;
+    /**
+     * Filter for the request authorization.
+     */
+    containerRequestFilter: string;
+    /**
+     * Enable Secure Socket Connection.
+     */
+    enableSecureSocketConnection: boolean;
+    /**
+     * Enable Enforce Principal Domain
+     */
+    enforcePrincipalDomain: boolean;
+    /**
+     * Principal Domain
+     */
+    principalDomain: string;
+    /**
+     * List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT
+     * TO BE USED IN PRODUCTION SETUP**
+     */
+    testPrincipals?: string[];
+    /**
+     * Use Roles from Provider
+     */
+    useRolesFromProvider?: boolean;
+}
+
+/**
+ * AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled.
+ * When enabled, uses standard AWS environment variables or configured credentials.
+ */
+export interface Aws {
+    /**
+     * Enable AWS IAM authentication for OpenSearch. When enabled, requires region to be
+     * configured. Defaults to false for backward compatibility.
+     */
+    enabled?: boolean;
+    /**
+     * AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch
+     * Serverless)
+     */
+    serviceName?: string;
+    [property: string]: any;
+}
+
+/**
+ * Semantics rule defined in the data contract.
+ */
+export interface SemanticsRule {
+    /**
+     * Description of the semantics rule.
+     */
+    description: string;
+    /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
+    /**
+     * List of entities to ignore for this semantics rule.
+     */
+    ignoredEntities?: string[];
+    /**
+     * Whether this rule was inherited from a Data Product.
+     */
+    inherited?: boolean;
+    /**
+     * JSON Tree to represents rule in UI.
+     */
+    jsonTree?: string;
+    /**
+     * Name of the semantics rule.
+     */
+    name:      string;
+    provider?: ProviderType;
+    /**
+     * Definition of the semantics rule.
+     */
+    rule: string;
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
+}
+
+export enum EventTypeFilter {
+    Abort = "ABORT",
+    Complete = "COMPLETE",
+    Fail = "FAIL",
+    Other = "OTHER",
+    Running = "RUNNING",
+    Start = "START",
+}
+
+/**
+ * Used to set up the Workflow Executor Settings.
+ */
+export interface ExecutorConfiguration {
+    /**
+     * The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls
+     * how often Flowable polls for new jobs.
+     */
+    asyncJobAcquisitionInterval?: number;
+    /**
+     * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
+     */
+    corePoolSize?: number;
+    /**
+     * The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids
+     * jobs that takes too long to run being retried while running.
+     */
+    jobLockTimeInMillis?: number;
+    /**
+     * Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers.
+     */
+    maxPoolSize?: number;
+    /**
+     * Amount of Tasks that can be queued to be picked up by the Workflow Executor.
+     */
+    queueSize?: number;
+    /**
+     * The amount of Tasks that the Workflow Executor is able to pick up each time it looks for
+     * more.
+     */
+    tasksDuePerAcquisition?: number;
+    /**
+     * The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls
+     * how often Flowable polls for scheduled jobs.
+     */
+    timerJobAcquisitionInterval?: number;
+}
+
+export interface GlobalSettings {
+    /**
+     * List of global aggregations to include in the search query.
+     */
+    aggregations?: Aggregation[];
+    /**
+     * Flag to enable or disable RBAC Search Configuration globally.
+     */
+    enableAccessControl?: boolean;
+    /**
+     * Optional list of numeric field-based boosts applied globally.
+     */
+    fieldValueBoosts?: FieldValueBoost[];
+    /**
+     * Which fields to highlight by default.
+     */
+    highlightFields?:   string[];
+    maxAggregateSize?:  number;
+    maxAnalyzedOffset?: number;
+    maxResultHits?:     number;
+    /**
+     * List of field=value term-boost rules that apply only to this asset.
+     */
+    termBoosts?: TermBoost[];
+}
+
+/**
+ * Performance configuration for lineage graph builder.
+ *
+ * Configuration for lineage graph performance and scalability
+ */
+export interface GraphPerformanceConfig {
+    /**
+     * Cache time-to-live in seconds
+     */
+    cacheTTLSeconds?: number;
+    /**
+     * Enable caching for small/medium graphs
+     */
+    enableCaching?: boolean;
+    /**
+     * Enable progress tracking for long-running queries
+     */
+    enableProgressTracking?: boolean;
+    /**
+     * Batch size for fetching large graph nodes
+     */
+    largeGraphBatchSize?: number;
+    /**
+     * Maximum number of graphs to cache
+     */
+    maxCachedGraphs?: number;
+    /**
+     * Maximum nodes to keep in memory before switching to streaming
+     */
+    maxInMemoryNodes?: number;
+    /**
+     * Batch size for fetching medium graph nodes
+     */
+    mediumGraphBatchSize?: number;
+    /**
+     * Node count threshold for medium graphs (optimized batching)
+     */
+    mediumGraphThreshold?: number;
+    /**
+     * Report progress every N nodes processed
+     */
+    progressReportInterval?: number;
+    /**
+     * Scroll context timeout in minutes
+     */
+    scrollTimeoutMinutes?: number;
+    /**
+     * Batch size for fetching small graph nodes from search backend
+     */
+    smallGraphBatchSize?: number;
+    /**
+     * Node count threshold for small graphs (eligible for caching)
+     */
+    smallGraphThreshold?: number;
+    /**
+     * Batch size for streaming very large graphs
+     */
+    streamingBatchSize?: number;
+    /**
+     * Use Elasticsearch/OpenSearch scroll API for large result sets
+     */
+    useScrollForLargeGraphs?: boolean;
+}
+
+/**
+ * Used to set up the History CleanUp Settings.
+ */
+export interface HistoryCleanUpConfiguration {
+    /**
+     * Batch size used when cleaning up Flowable History data
+     */
+    batchSize?: number;
+    /**
+     * Cleans the Workflow Task that were finished, after given number of days.
+     */
+    cleanAfterNumberOfDays?: number;
+    /**
+     * Cron expression used by Flowable's history cleaning job
+     * (setHistoryCleaningTimeCycleConfig). For example: '0 0 1 * * ?' runs daily at 01:00, '0 *
+     * * ? * *' runs every minute (testing only).
+     */
+    timeCycleConfig?: string;
+}
+
+/**
  * Lineage Layer.
  *
  * Lineage Layers
@@ -1211,6 +1812,10 @@ export interface LogStorageConfiguration {
      */
     bucketName?: string;
     /**
+     * Enable it for pipelines deployed in the server
+     */
+    enabled?: boolean;
+    /**
      * Enable server-side encryption for S3 objects
      */
     enableServerSideEncryption?: boolean;
@@ -1218,6 +1823,10 @@ export interface LogStorageConfiguration {
      * Number of days after which logs are automatically deleted (0 means no expiration)
      */
     expirationDays?: number;
+    /**
+     * KMS Key ID for server-side encryption (if applicable)
+     */
+    kmsKeyId?: string;
     /**
      * Maximum number of concurrent log streams allowed
      */
@@ -1227,9 +1836,9 @@ export interface LogStorageConfiguration {
      */
     prefix?: string;
     /**
-     * AWS region for the S3 bucket (required for S3 type)
+     * Server-side encryption algorithm (if applicable)
      */
-    region?: string;
+    sseAlgorithm?: SSEAlgorithm;
     /**
      * S3 storage class for log objects
      */
@@ -1283,6 +1892,12 @@ export interface AWSCredentials {
      */
     awsSessionToken?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * EndPoint URL for the AWS
      */
     endPointURL?: string;
@@ -1290,6 +1905,14 @@ export interface AWSCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Server-side encryption algorithm (if applicable)
+ */
+export enum SSEAlgorithm {
+    Aes256 = "AES256",
+    AwsKms = "aws:kms",
 }
 
 /**
@@ -1355,6 +1978,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -1464,6 +2088,10 @@ export interface NaturalLanguageSearch {
      */
     bedrock?: Bedrock;
     /**
+     * Embedding generation using Deep Java Library (DJL)
+     */
+    djl?: Djl;
+    /**
      * The provider to use for generating vector embeddings (e.g., bedrock, openai).
      */
     embeddingProvider?: string;
@@ -1472,9 +2100,18 @@ export interface NaturalLanguageSearch {
      */
     enabled?: boolean;
     /**
+     * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
+     * endpoints.
+     */
+    openai?: Openai;
+    /**
      * Fully qualified class name of the NLQService implementation to use
      */
     providerClass?: string;
+    /**
+     * Enable or disable semantic search using vector embeddings
+     */
+    semanticSearchEnabled?: boolean;
 }
 
 /**
@@ -1482,9 +2119,9 @@ export interface NaturalLanguageSearch {
  */
 export interface Bedrock {
     /**
-     * AWS access key for Bedrock service authentication
+     * AWS credentials configuration for Bedrock service
      */
-    accessKey?: string;
+    awsConfig?: AWSBaseConfig;
     /**
      * Dimension of the embedding vector
      */
@@ -1497,18 +2134,91 @@ export interface Bedrock {
      * Bedrock model identifier to use for query transformation
      */
     modelId?: string;
+}
+
+/**
+ * AWS credentials configuration for Bedrock service
+ *
+ * Base AWS configuration for authentication. Supports static credentials, IAM roles, and
+ * default credential provider chain.
+ */
+export interface AWSBaseConfig {
     /**
-     * AWS Region for Bedrock service
+     * AWS Access Key ID. Falls back to default credential provider chain if not set.
+     */
+    accessKeyId?: string;
+    /**
+     * ARN of IAM role to assume for cross-account access.
+     */
+    assumeRoleArn?: string;
+    /**
+     * Session name for assumed role.
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
+     * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
+     */
+    endpointUrl?: string;
+    /**
+     * AWS Region (e.g., us-east-1). Required when AWS authentication is enabled.
      */
     region?: string;
     /**
-     * AWS secret key for Bedrock service authentication
+     * AWS Secret Access Key. Falls back to default credential provider chain if not set.
      */
-    secretKey?: string;
+    secretAccessKey?: string;
     /**
-     * Set to true to use IAM role based authentication instead of access/secret keys.
+     * AWS Session Token for temporary credentials.
      */
-    useIamRole?: boolean;
+    sessionToken?: string;
+}
+
+/**
+ * Embedding generation using Deep Java Library (DJL)
+ */
+export interface Djl {
+    /**
+     * DJL model name for embedding generation
+     */
+    embeddingModel?: string;
+}
+
+/**
+ * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
+ * endpoints.
+ */
+export interface Openai {
+    /**
+     * API key for authenticating with OpenAI or Azure OpenAI.
+     */
+    apiKey?: string;
+    /**
+     * Azure OpenAI API version. Only used with Azure OpenAI.
+     */
+    apiVersion?: string;
+    /**
+     * Azure OpenAI deployment name. Required when using Azure OpenAI.
+     */
+    deploymentName?: string;
+    /**
+     * Dimension of the embedding vector. Default is 1536 for text-embedding-3-small.
+     */
+    embeddingDimension?: number;
+    /**
+     * OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).
+     */
+    embeddingModelId?: string;
+    /**
+     * Custom endpoint URL. For Azure OpenAI, use the Azure resource endpoint (e.g.,
+     * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
+     */
+    endpoint?: string;
 }
 
 /**
@@ -1646,228 +2356,23 @@ export interface TitleSection {
 }
 
 /**
- * Oidc Configuration for Confidential Client Type
+ * Pipeline View Mode for Lineage.
  *
- * Oidc client security configs.
+ * Determines the view mode for pipelines in lineage.
  */
-export interface OidcClientConfig {
-    /**
-     * Callback Url.
-     */
-    callbackUrl?: string;
-    /**
-     * Client Authentication Method.
-     */
-    clientAuthenticationMethod?: ClientAuthenticationMethod;
-    /**
-     * Custom Params.
-     */
-    customParams?: { [key: string]: any };
-    /**
-     * Disable PKCE.
-     */
-    disablePkce?: boolean;
-    /**
-     * Discovery Uri for the Client.
-     */
-    discoveryUri?: string;
-    /**
-     * Client ID.
-     */
-    id?: string;
-    /**
-     * Validity for the JWT Token created from SAML Response
-     */
-    maxAge?: string;
-    /**
-     * Max Clock Skew
-     */
-    maxClockSkew?: string;
-    /**
-     * Preferred Jws Algorithm.
-     */
-    preferredJwsAlgorithm?: string;
-    /**
-     * Prompt whether login/consent
-     */
-    prompt?: string;
-    /**
-     * Auth0 Client Secret Key.
-     */
-    responseType?: string;
-    /**
-     * Oidc Request Scopes.
-     */
-    scope?: string;
-    /**
-     * Client Secret.
-     */
-    secret?: string;
-    /**
-     * Server Url.
-     */
-    serverUrl?: string;
-    /**
-     * Validity for the Session in case of confidential clients
-     */
-    sessionExpiry?: number;
-    /**
-     * Tenant in case of Azure.
-     */
-    tenant?: string;
-    /**
-     * Validity for the JWT Token created from SAML Response
-     */
-    tokenValidity?: number;
-    /**
-     * IDP type (Example Google,Azure).
-     */
-    type?: string;
-    /**
-     * Use Nonce.
-     */
-    useNonce?: string;
+export enum PipelineViewMode {
+    Edge = "Edge",
+    Node = "Node",
 }
 
 /**
- * Client Authentication Method.
+ * Used to set up the History CleanUp Settings.
  */
-export enum ClientAuthenticationMethod {
-    ClientSecretBasic = "client_secret_basic",
-    ClientSecretJwt = "client_secret_jwt",
-    ClientSecretPost = "client_secret_post",
-    PrivateKeyJwt = "private_key_jwt",
-}
-
-/**
- * This is used by auth provider provide response as either id_token or code.
- *
- * Response Type
- */
-export enum ResponseType {
-    Code = "code",
-    IDToken = "id_token",
-}
-
-/**
- * Saml Configuration that is applicable only when the provider is Saml
- *
- * SAML SSO client security configs.
- */
-export interface SamlSSOClientConfig {
+export interface RunTimeCleanUpConfiguration {
     /**
-     * Get logs from the Library in debug mode
+     * Batch size used when cleaning up Flowable Run Time data
      */
-    debugMode?: boolean;
-    idp:        Idp;
-    security?:  Security;
-    sp:         SP;
-}
-
-/**
- * This schema defines defines the identity provider config.
- */
-export interface Idp {
-    /**
-     * Authority URL to redirect the users on Sign In page
-     */
-    authorityUrl?: string;
-    /**
-     * Identity Provider Entity ID usually same as the SSO login URL.
-     */
-    entityId: string;
-    /**
-     * X509 Certificate
-     */
-    idpX509Certificate?: string;
-    /**
-     * Authority URL to redirect the users on Sign In page
-     */
-    nameId?: string;
-    /**
-     * SSO Login URL.
-     */
-    ssoLoginUrl: string;
-}
-
-/**
- * This schema defines defines the security config for SAML.
- */
-export interface Security {
-    /**
-     * KeyStore Alias
-     */
-    keyStoreAlias?: string;
-    /**
-     * KeyStore File Path
-     */
-    keyStoreFilePath?: string;
-    /**
-     * KeyStore Password
-     */
-    keyStorePassword?: string;
-    /**
-     * Encrypt Name Id while sending requests from SP.
-     */
-    sendEncryptedNameId?: boolean;
-    /**
-     * Sign the Authn Request while sending.
-     */
-    sendSignedAuthRequest?: boolean;
-    /**
-     * Want the Metadata of this SP to be signed.
-     */
-    signSpMetadata?: boolean;
-    /**
-     * Only accept valid signed and encrypted assertions if the relevant flags are set
-     */
-    strictMode?: boolean;
-    /**
-     * Validity for the JWT Token created from SAML Response
-     */
-    tokenValidity?: number;
-    /**
-     * In case of strict mode whether to validate XML format.
-     */
-    validateXml?: boolean;
-    /**
-     * SP requires the assertion received to be encrypted.
-     */
-    wantAssertionEncrypted?: boolean;
-    /**
-     * SP requires the assertions received to be signed.
-     */
-    wantAssertionsSigned?: boolean;
-    /**
-     * SP requires the messages received to be signed.
-     */
-    wantMessagesSigned?: boolean;
-}
-
-/**
- * This schema defines defines the identity provider config.
- */
-export interface SP {
-    /**
-     * Assertion Consumer URL.
-     */
-    acs: string;
-    /**
-     * Service Provider Entity ID usually same as the SSO login URL.
-     */
-    callback: string;
-    /**
-     * Service Provider Entity ID.
-     */
-    entityId: string;
-    /**
-     * Sp Private Key for Signing and Encryption Only
-     */
-    spPrivateKey?: string;
-    /**
-     * X509 Certificate
-     */
-    spX509Certificate?: string;
+    batchSize?: number;
 }
 
 /**
@@ -1925,15 +2430,6 @@ export interface Config {
 export enum Templates {
     Collate = "collate",
     Openmetadata = "openmetadata",
-}
-
-/**
- * Token Validation Algorithm to use.
- */
-export enum TokenValidationAlgorithm {
-    Rs256 = "RS256",
-    Rs384 = "RS384",
-    Rs512 = "RS512",
 }
 
 export enum TransportationStrategy {

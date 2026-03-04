@@ -30,6 +30,12 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 from metadata.generated.schema.entity.services.connections.database.common.jwtAuth import (
     JwtAuth,
 )
+from metadata.generated.schema.entity.services.connections.database.databricks.databricksOAuth import (
+    DatabricksOauth,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+    PersonalAccessToken,
+)
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
     DatabricksScheme,
@@ -130,13 +136,11 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_result = (
-            "databricks+connector://token:KlivDTACWXKmZVfN1qIM@1.1.1.1:443"
-        )
+        expected_result = "databricks+connector://1.1.1.1:443"
         databricks_conn_obj = DatabricksConnection(
             scheme=DatabricksScheme.databricks_connector,
             hostPort="1.1.1.1:443",
-            token="KlivDTACWXKmZVfN1qIM",
+            authType=PersonalAccessToken(token="KlivDTACWXKmZVfN1qIM"),
             httpPath="/sql/1.0/warehouses/abcdedfg",
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
@@ -146,14 +150,16 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_result = (
-            "databricks+connector://token:KlivDTACWXKmZVfN1qIM@1.1.1.1:443"
-        )
+        expected_result = "databricks+connector://1.1.1.1:443"
         databricks_conn_obj = DatabricksConnection(
             scheme=DatabricksScheme.databricks_connector,
             hostPort="1.1.1.1:443",
-            token="KlivDTACWXKmZVfN1qIM",
+            authType=DatabricksOauth(
+                clientId="d40e2905-88ef-42ab-8898-fbefff2d071d",
+                clientSecret="secret-value",
+            ),
             httpPath="/sql/1.0/warehouses/abcdedfg",
+            catalog="main",
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
 
@@ -750,7 +756,7 @@ class SourceConnectionTest(TestCase):
         expected_url = "redshift+psycopg2://username:strong_password@cluster.name.region.redshift.amazonaws.com:5439/dev"
         redshift_conn_obj = RedshiftConnection(
             username="username",
-            password="strong_password",
+            authType=BasicAuth(password="strong_password"),
             hostPort="cluster.name.region.redshift.amazonaws.com:5439",
             scheme=RedshiftScheme.redshift_psycopg2,
             database="dev",
@@ -926,7 +932,7 @@ class SourceConnectionTest(TestCase):
         expected_args = {}
         redshift_conn_obj = RedshiftConnection(
             username="user",
-            password=None,
+            authType=BasicAuth(password=None),
             hostPort="localhost:443",
             database="tiny",
             connectionArguments=None,
@@ -938,7 +944,7 @@ class SourceConnectionTest(TestCase):
         expected_args = {"user": "user-to-be-impersonated"}
         redshift_conn_obj = RedshiftConnection(
             username="user",
-            password=None,
+            authType=BasicAuth(password=None),
             hostPort="localhost:443",
             database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},

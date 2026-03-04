@@ -27,7 +27,7 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter_factory
 )
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -134,10 +134,16 @@ class TestSuiteInterface(ABC):
         try:
             return validator.run_validation()
         except Exception as err:
-            logger.error(
+            message = (
                 f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             )
-            raise RuntimeError(err)
+            logger.exception(message)
+            return validator.get_test_case_result_object(
+                validator.execution_date,
+                TestCaseStatus.Aborted,
+                message,
+                [],
+            )
 
     def _get_table_config(self):
         """Get the sampling configuration for the data quality tests"""

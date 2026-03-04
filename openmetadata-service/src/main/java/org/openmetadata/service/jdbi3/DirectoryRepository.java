@@ -25,6 +25,7 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FILE;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.services.DriveService;
@@ -49,6 +51,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.DirectoryResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -108,6 +111,20 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   }
 
   @Override
+  public void storeEntities(List<Directory> directories) {
+    List<Directory> directoriesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Directory directory : directories) {
+      // Clone for storage
+      String jsonCopy = gson.toJson(directory);
+      directoriesToStore.add(gson.fromJson(jsonCopy, Directory.class));
+    }
+
+    storeMany(directoriesToStore);
+  }
+
+  @Override
   public void storeRelationships(Directory directory) {
     // Add relationship from service to directory
     addRelationship(
@@ -146,13 +163,72 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   public void clearFields(Directory directory, EntityUtil.Fields fields) {
     directory.withUsageSummary(
         fields.contains("usageSummary") ? directory.getUsageSummary() : null);
+    directory.withNumberOfFiles(
+        fields.contains("numberOfFiles") ? directory.getNumberOfFiles() : null);
+    directory.withNumberOfSubDirectories(
+        fields.contains("numberOfSubDirectories") ? directory.getNumberOfSubDirectories() : null);
   }
 
   @Override
-  public void setFields(Directory directory, EntityUtil.Fields fields) {
+  public void setFields(
+      Directory directory, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     directory.withService(getService(directory));
     directory.withParent(getParentDirectory(directory));
-    directory.withChildren(fields.contains("children") ? getChildrenRefs(directory) : null);
+
+    // Calculate and set directory statistics
+    if (fields.contains("children")
+        || fields.contains("numberOfFiles")
+        || fields.contains("numberOfSubDirectories")
+        || fields.contains("totalSize")) {
+      List<EntityReference> children = getChildrenRefs(directory);
+      directory.withChildren(fields.contains("children") ? children : null);
+
+      // Calculate statistics from children
+      if (children != null && !children.isEmpty()) {
+        int fileCount = 0;
+        int dirCount = 0;
+        long totalSize = 0L;
+
+        for (EntityReference child : children) {
+          if (FILE.equals(child.getType())) {
+            fileCount++;
+            // Get file size if available
+            try {
+              org.openmetadata.schema.entity.data.File file =
+                  Entity.getEntity(child, "", Include.NON_DELETED);
+              if (file.getSize() != null) {
+                totalSize += file.getSize();
+              }
+            } catch (Exception e) {
+              // Ignore if file can't be loaded
+            }
+          } else if (DIRECTORY.equals(child.getType())) {
+            dirCount++;
+          } else if (SPREADSHEET.equals(child.getType())) {
+            fileCount++; // Count spreadsheets as files
+            try {
+              org.openmetadata.schema.entity.data.Spreadsheet spreadsheet =
+                  Entity.getEntity(child, "", Include.NON_DELETED);
+              if (spreadsheet.getSize() != null) {
+                totalSize += spreadsheet.getSize();
+              }
+            } catch (Exception e) {
+              // Ignore if spreadsheet can't be loaded
+            }
+          }
+        }
+
+        directory.withNumberOfFiles(fileCount);
+        directory.withNumberOfSubDirectories(dirCount);
+        // Convert long to Integer, checking for overflow
+        directory.withTotalSize(
+            totalSize > 0
+                ? (totalSize > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalSize)
+                : null);
+      }
+    } else {
+      directory.withChildren(null);
+    }
   }
 
   @Override
@@ -224,9 +300,21 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   }
 
   @Override
+  public boolean supportsBulkImportVersioning() {
+    return false;
+  }
+
+  @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Directory directory = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
-    return new DirectoryCsv(directory, user, recursive).exportCsv(List.of(directory));
+    return new DirectoryCsv(directory, user, recursive).exportCsv(List.of(directory), callback);
   }
 
   @Override
@@ -298,7 +386,16 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                 .withFullyQualifiedName(directoryFqn);
 
         if (!nullOrEmpty(parentFqn)) {
-          EntityReference parentRef = getEntityReference(printer, csvRecord, 3, DIRECTORY);
+          // Use dependency resolution for parent directory lookup
+          EntityReference parentRef = null;
+          try {
+            Directory parentDirectory =
+                getEntityWithDependencyResolution(DIRECTORY, parentFqn, "*", Include.NON_DELETED);
+            parentRef = parentDirectory.getEntityReference();
+          } catch (EntityNotFoundException parentEx) {
+            // Fall back to regular lookup
+            parentRef = getEntityReference(printer, csvRecord, 3, DIRECTORY);
+          }
           newDirectory.withParent(parentRef);
         }
       }

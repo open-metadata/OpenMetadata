@@ -135,10 +135,7 @@ public class DataQualityWorkflow {
     try {
       searchRepository
           .getSearchClient()
-          .deleteByQuery(
-              indexName,
-              String.format(
-                  "{\"@timestamp\": {\"gte\": %s, \"lte\": %s}}", startTimestamp, endTimestamp));
+          .deleteByRangeQuery(indexName, "@timestamp", null, startTimestamp, null, endTimestamp);
     } catch (Exception rx) {
       throw new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
     }
@@ -160,15 +157,23 @@ public class DataQualityWorkflow {
       deleteDataBeforeInserting(getIndexNameByType(source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, entityType);
 
-      while (!source.isDone().get()) {
+      String keysetCursor = null;
+      while (true) {
         try {
-          processEntity(source.readNext(null), contextData, source);
+          ResultList<? extends EntityTimeSeriesInterface> resultList =
+              source.readNextKeyset(keysetCursor);
+          keysetCursor = resultList.getPaging().getAfter();
+          processEntity(resultList, contextData, source);
+          if (keysetCursor == null) {
+            break;
+          }
         } catch (SearchIndexException ex) {
           source.updateStats(
               ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
           String errorMessage =
               String.format("Failed processing Data from %s: %s", source.getEntityType(), ex);
           workflowStats.addFailure(errorMessage);
+          break;
         } finally {
           updateWorkflowStats("[DataQualityWorkflow] " + source.getEntityType(), source.getStats());
         }

@@ -13,10 +13,13 @@
 Histogram Metric definition
 """
 import math
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
 
 from sqlalchemy import and_, case, column, func
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import Session
+
+if TYPE_CHECKING:
+    from metadata.profiler.processor.runner import PandasRunner
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.composed.iqr import InterQuartileRange
@@ -46,6 +49,8 @@ class Histogram(HybridMetric):
     - For a quantifiable value, return the usual AVG
     - For a concatenable (str, text...) return the AVG length
     """
+
+    schema_metric_type = MetricType.histogram
 
     @classmethod
     def name(cls):
@@ -138,7 +143,7 @@ class Histogram(HybridMetric):
 
     def fn(
         self,
-        sample: Optional[DeclarativeMeta],
+        sample: Optional[type],
         res: Dict[str, Any],
         session: Optional[Session] = None,
     ):
@@ -186,14 +191,14 @@ class Histogram(HybridMetric):
                 # for the last bin we won't add the upper bound
                 condition = and_(col >= starting_bin_bound)
                 case_stmts.append(
-                    func.count(case([(condition, col)])).label(
+                    func.count(case((condition, col))).label(
                         self._format_bin_labels(starting_bin_bound)
                     )
                 )
                 continue
 
             case_stmts.append(
-                func.count(case([(condition, col)])).label(
+                func.count(case((condition, col))).label(
                     self._format_bin_labels(
                         starting_bin_bound,
                         ending_bin_bound,
@@ -206,19 +211,19 @@ class Histogram(HybridMetric):
         rows = session.query(*case_stmts).select_from(sample).first()
 
         if rows:
-            return {"boundaries": list(rows.keys()), "frequencies": list(rows)}
+            return {"boundaries": list(rows._mapping.keys()), "frequencies": list(rows)}
         return None
 
     def df_fn(
         self,
         res: Dict[str, Any],
-        dfs=None,
+        dfs: Optional["PandasRunner"] = None,
     ):
         """_summary_
 
         Args:
             res (Dict[str, Any]): dictionnary of columns values
-            dfs (List[DataFrame]): list of dataframes
+            dfs (Optional[PandasRunner]): list of dataframes
 
         Returns:
             Dict
@@ -227,9 +232,7 @@ class Histogram(HybridMetric):
         import numpy as np
         import pandas as pd
 
-        dfs = cast(List[pd.DataFrame], dfs)  # satisfy mypy
-
-        if not is_quantifiable(self.col.type):
+        if self.col is None or not is_quantifiable(self.col.type):
             return None
 
         # get the metric need for the freedman-diaconis rule
@@ -254,6 +257,9 @@ class Histogram(HybridMetric):
         bins.append(np.inf)  # add the last bin
 
         frequencies = np.zeros(num_bins)
+
+        if dfs is None:
+            return None
 
         for df in dfs:
             if not frequencies.any():

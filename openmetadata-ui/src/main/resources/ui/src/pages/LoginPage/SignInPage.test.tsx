@@ -19,11 +19,13 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
+import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import SignInPage from './SignInPage';
 
 const mockuseApplicationStore = useApplicationStore as unknown as jest.Mock;
+const mockUseAuthProvider = useAuthProvider as unknown as jest.Mock;
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
@@ -34,6 +36,25 @@ jest.mock('../../hooks/useApplicationStore', () => ({
       },
     },
     getOidcToken: jest.fn(),
+  })),
+}));
+
+jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn().mockImplementation(() => ({
+    onLoginHandler: jest.fn(),
+  })),
+}));
+
+jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => ({
+  useBasicAuth: jest.fn().mockImplementation(() => ({
+    handleLogin: jest.fn(),
+  })),
+}));
+
+jest.mock('../../hooks/useAlertStore', () => ({
+  useAlertStore: jest.fn().mockImplementation(() => ({
+    alert: null,
+    resetAlert: jest.fn(),
   })),
 }));
 
@@ -53,19 +74,24 @@ jest.mock('../../components/Layout/CarouselLayout/CarouselLayout', () => ({
   CarouselLayout: jest.fn().mockImplementation(({ children }) => children),
 }));
 
+jest.mock('../../components/common/Loader/Loader', () => {
+  return jest.fn().mockReturnValue(<div data-testid="loader">Loading...</div>);
+});
+
 describe('Test SignInPage Component', () => {
   afterEach(() => {
     jest.clearAllMocks();
+    jest.useRealTimers();
   });
 
   afterAll(() => {
     jest.resetAllMocks();
   });
 
-  it('Component should render', async () => {
+  it('Component should render for Basic auth provider', async () => {
     mockuseApplicationStore.mockReturnValue({
       isAuthDisabled: false,
-      authConfig: { provider: 'google' },
+      authConfig: { provider: 'basic' },
       onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
       getOidcToken: jest.fn(),
@@ -96,7 +122,6 @@ describe('Test SignInPage Component', () => {
     mockuseApplicationStore.mockReturnValue({
       isAuthDisabled: false,
       authConfig: { provider },
-      onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
       getOidcToken: jest.fn(),
     });
@@ -104,7 +129,6 @@ describe('Test SignInPage Component', () => {
       wrapper: MemoryRouter,
     });
     const isUnknow = provider === 'unknown-provider';
-
     const signinButton = await findByText(
       container,
       isUnknow
@@ -115,10 +139,32 @@ describe('Test SignInPage Component', () => {
     expect(signinButton).toBeInTheDocument();
   });
 
-  it('Sign in button should render correctly with custom provider name', async () => {
+  it('SSO providers should auto-redirect when enableAutoRedirect is true', async () => {
+    const onLoginHandler = jest.fn();
+    mockUseAuthProvider.mockReturnValue({ onLoginHandler });
+
     mockuseApplicationStore.mockReturnValue({
       isAuthDisabled: false,
-      authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
+      authConfig: { provider: 'google', enableAutoRedirect: true },
+      onLogoutHandler: jest.fn(),
+      getOidcToken: jest.fn(),
+    });
+
+    const { container } = render(<SignInPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const loader = await findByTestId(container, 'loader');
+
+    expect(loader).toBeInTheDocument();
+
+    expect(onLoginHandler).toHaveBeenCalled();
+  });
+
+  it('Basic auth provider should show login form', async () => {
+    mockuseApplicationStore.mockReturnValue({
+      isAuthDisabled: false,
+      authConfig: { provider: 'basic' },
       onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
       getOidcToken: jest.fn(),
@@ -126,15 +172,32 @@ describe('Test SignInPage Component', () => {
     const { container } = render(<SignInPage />, {
       wrapper: MemoryRouter,
     });
+
+    const emailInput = await findByTestId(container, 'email');
+
+    expect(emailInput).toBeInTheDocument();
+  });
+
+  it('Custom OIDC provider should show sign-in button by default', async () => {
+    mockuseApplicationStore.mockReturnValue({
+      isAuthDisabled: false,
+      authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
+      onLogoutHandler: jest.fn(),
+      getOidcToken: jest.fn(),
+    });
+    const { container } = render(<SignInPage />, {
+      wrapper: MemoryRouter,
+    });
+
     const signinButton = await findByText(container, /label.sign-in-with-sso/i);
 
     expect(signinButton).toBeInTheDocument();
   });
 
-  it('Page should render the correct logo image', async () => {
+  it('Page should render the correct logo image for Basic auth', async () => {
     mockuseApplicationStore.mockReturnValue({
       isAuthDisabled: false,
-      authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
+      authConfig: { provider: 'basic' },
       onLoginHandler: jest.fn(),
       onLogoutHandler: jest.fn(),
       getOidcToken: jest.fn(),

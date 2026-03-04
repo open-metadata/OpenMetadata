@@ -8,10 +8,9 @@ import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationOps;
 
 /**
- * Migration framework interface that supports three implementation approaches:
- * 1. Flyway (deprecated, do not add new migrations here)
- * 2. Native SQL migrations
- * 3. Java-based migrations
+ * Migration framework interface that supports two implementation approaches:
+ * 1. Native SQL migrations
+ * 2. Java-based migrations
  *
  * <p><strong>Migration Execution Order:</strong>
  * Migrations are executed in a specific sequence that must be maintained:
@@ -73,6 +72,8 @@ public interface MigrationProcess {
   String getSchemaChangesFilePath();
 
   String getPostDDLScriptFilePath();
+
+  String getMigrationsDir();
 
   // Handle Non-transactional supported SQLs here Example changes in table struct (DDL
   Map<String, QueryStatus> runSchemaChanges(boolean isForceMigration);

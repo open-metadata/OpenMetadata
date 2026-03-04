@@ -36,7 +36,6 @@ class BrandClassBase {
     return `https://open-metadata.org/product-updates#${versionWithV}`;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getBlogLink(_version: string) {
     // Since medium doens't follow any fixed structure we will just return the blog link
     return 'https://blog.open-metadata.org/announcing-openmetadata-1-8-948eb14d41c7';

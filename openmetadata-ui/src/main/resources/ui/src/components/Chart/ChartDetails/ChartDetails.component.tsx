@@ -22,6 +22,7 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Chart } from '../../../generated/entity/data/chart';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -36,7 +37,11 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -71,7 +76,8 @@ const ChartDetails = ({
     tab: EntityTabs;
   }>();
   const { customizedPage, isLoading } = useCustomPages('Chart' as PageType);
-  const { fqn: decodedChartFQN } = useFqn();
+  const { entityFqn: decodedChartFQN } = useFqn({ type: EntityType.CHART });
+
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -197,6 +203,7 @@ const ChartDetails = ({
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editAllPermission: chartPermissions.EditAll && !deleted,
@@ -206,6 +213,10 @@ const ChartDetails = ({
         (chartPermissions.EditAll || chartPermissions.EditCustomFields) &&
         !deleted,
       viewAllPermission: chartPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        chartPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [chartPermissions, deleted]
   );
@@ -217,6 +228,7 @@ const ChartDetails = ({
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       chartDetails,
       deleted: deleted ?? false,
       handleFeedCount,
@@ -233,6 +245,7 @@ const ChartDetails = ({
       EntityTabs.DETAILS
     );
   }, [
+    customizedPage,
     feedCount.totalCount,
     activeTab,
     chartDetails,
@@ -273,11 +286,7 @@ const ChartDetails = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.chart'),
-      })}
-      title="Table details">
+    <PageLayoutV1 pageTitle={getEntityName(chartDetails)} title="Table details">
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

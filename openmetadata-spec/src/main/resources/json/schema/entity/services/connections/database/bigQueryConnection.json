@@ -53,6 +53,12 @@
       "description": "GCP Credentials",
       "$ref": "../../../../security/credentials/gcpCredentials.json"
     },
+    "includePolicyTags": {
+      "title": "Include Policy Tags",
+      "description": "Option to include policy tags as part of column description.",
+      "type": "boolean",
+      "default": true
+    },
     "taxonomyProjectID": {
       "title": "Taxonomy Project IDs",
       "description": "Project IDs used to fetch policy tags",
@@ -95,6 +101,11 @@
     "databaseFilterPattern": {
       "title": "Default Database Filter Pattern",
       "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "storedProcedureFilterPattern": {
+      "title": "Default Stored Procedure Filter Pattern",
+      "description": "Regex to only include/exclude stored procedures that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
     },
     "supportsMetadataExtraction": {

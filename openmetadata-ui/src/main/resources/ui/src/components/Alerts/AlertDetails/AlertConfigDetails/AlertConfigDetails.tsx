@@ -14,14 +14,30 @@
 import { Col, Divider, Form, Row } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import {
+  NotificationTemplate,
+  ProviderType,
+} from '../../../../generated/entity/events/notificationTemplate';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { FilterResourceDescriptor } from '../../../../generated/events/filterResourceDescriptor';
 import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
+import { getAllNotificationTemplates } from '../../../../rest/notificationtemplateAPI';
 import { getResourceFunctions } from '../../../../rest/observabilityAPI';
-import { getModifiedAlertDataForForm } from '../../../../utils/Alerts/AlertsUtil';
+import alertsClassBase from '../../../../utils/AlertsClassBase';
 import Fqn from '../../../../utils/Fqn';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import AlertFormSourceItem from '../../AlertFormSourceItem/AlertFormSourceItem';
@@ -29,7 +45,10 @@ import DestinationFormItem from '../../DestinationFormItem/DestinationFormItem.c
 import ObservabilityFormFiltersItem from '../../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import './alert-config-details.less';
-import { AlertConfigDetailsProps } from './AlertConfigDetails.interface';
+import {
+  AlertConfigDetailsProps,
+  AlertConfigLoadingState,
+} from './AlertConfigDetails.interface';
 
 function AlertConfigDetails({
   alertDetails,
@@ -37,11 +56,19 @@ function AlertConfigDetails({
 }: AlertConfigDetailsProps) {
   const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
-  const modifiedAlertData = getModifiedAlertDataForForm(alertDetails);
-  const [fetching, setFetching] = useState<number>(0);
+  const { getResourcePermission } = usePermissionProvider();
+  const modifiedAlertData =
+    alertsClassBase.getModifiedAlertDataForForm(alertDetails);
+  const [loadingState, setLoadingState] = useState<AlertConfigLoadingState>({
+    templates: false,
+    functions: false,
+  });
+  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]
   >([]);
+  const [templateResourcePermission, setTemplateResourcePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const { supportedFilters, supportedTriggers } = useMemo(
     () => ({
@@ -59,7 +86,7 @@ function AlertConfigDetails({
 
   const fetchFunctions = useCallback(async () => {
     try {
-      setFetching((prev) => prev + 1);
+      setLoadingState((prev) => ({ ...prev, functions: true }));
       const filterResources = await (isNotificationAlert
         ? getNotificationResourceFunctions()
         : getResourceFunctions());
@@ -70,15 +97,57 @@ function AlertConfigDetails({
         t('server.entity-fetch-error', { entity: t('label.config') })
       );
     } finally {
-      setFetching((prev) => prev - 1);
+      setLoadingState((prev) => ({ ...prev, functions: false }));
     }
   }, [isNotificationAlert]);
+
+  const extraFormWidgets = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+    []
+  );
+
+  const fetchTemplates = useCallback(async () => {
+    setLoadingState((state) => ({ ...state, templates: true }));
+    try {
+      const permission = await getResourcePermission(
+        ResourceEntity.NOTIFICATION_TEMPLATE
+      );
+
+      setTemplateResourcePermission(permission);
+
+      if (getPrioritizedViewPermission(permission, Operation.ViewAll)) {
+        const { data } = await getAllNotificationTemplates({
+          limit: PAGE_SIZE_LARGE,
+          provider: ProviderType.User,
+        });
+
+        setTemplates(data);
+      }
+    } catch {
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.template-plural') })
+      );
+    } finally {
+      setLoadingState((state) => ({ ...state, templates: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isEmpty(extraFormWidgets)) {
+      fetchTemplates();
+    }
+  }, [extraFormWidgets]);
 
   useEffect(() => {
     fetchFunctions();
   }, [Fqn]);
 
-  if (fetching) {
+  const isLoading = useMemo(
+    () => Object.values(loadingState).some((val) => val),
+    [loadingState]
+  );
+
+  if (isLoading) {
     return <Loader />;
   }
 
@@ -127,6 +196,27 @@ function AlertConfigDetails({
         <Col span={24}>
           <DestinationFormItem isViewMode />
         </Col>
+        {!isEmpty(extraFormWidgets) && (
+          <>
+            {Object.entries(extraFormWidgets).map(([name, Widget]) => (
+              <Fragment key={name}>
+                <Col>
+                  <Divider dashed type="vertical" />
+                </Col>
+                <Col span={24}>
+                  <Widget
+                    isViewMode
+                    alertDetails={modifiedAlertData}
+                    formRef={form}
+                    loading={isLoading}
+                    templateResourcePermission={templateResourcePermission}
+                    templates={templates}
+                  />
+                </Col>
+              </Fragment>
+            ))}
+          </>
+        )}
       </Row>
     </Form>
   );

@@ -29,5 +29,7 @@
   ],
   "supportsDynamicAssertion": true,
   "provider": "system",
-  "dataQualityDimension": "Integrity"
+  "enabled": true,
+  "dataQualityDimension": "Integrity",
+  "validatorClass": "TableRowCountToBeBetweenValidator"
 }

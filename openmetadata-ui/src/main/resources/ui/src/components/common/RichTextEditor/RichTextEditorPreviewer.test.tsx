@@ -25,7 +25,6 @@ import { PreviewerProp } from './RichTextEditor.interface';
 import RichTextEditorPreviewer from './RichTextEditorPreviewer';
 
 const mockDescription =
-  // eslint-disable-next-line max-len
   '**Headings**\n\n# H1\n## H2\n### H3\n\n***\n**Bold**\n\n**bold text**\n\n\n***\n**Italic**\n\n*italic*\n\n***\n**BlockQuote**\n\n> blockquote\n\n***\n**Ordered List**\n\n1. First item\n2. Second item\n3. Third item\n\n\n***\n**Unordered List**\n\n- First item\n- Second item\n- Third item\n\n\n***\n**Code**\n\n`code`\n\n\n***\n**Horizontal Rule**\n\n---\n\n\n***\n**Link**\n[title](https://www.example.com)\n\n\n***\n**Image**\n\n![alt text](https://github.com/open-metadata/OpenMetadata/blob/main/docs/.gitbook/assets/openmetadata-banner.png?raw=true)\n\n\n***\n**Table**\n\n| Syntax | Description |\n| ----------- | ----------- |\n| Header | Title |\n| Paragraph | Text |\n***\n\n**Fenced Code Block**\n\n```\n{\n  "firstName": "John",\n  "lastName": "Smith",\n  "age": 25\n}\n```\n\n\n***\n**Strikethrough**\n~~The world is flat.~~\n';
 
 const mockCodeBlockMarkdown =
@@ -587,5 +586,291 @@ describe('Test RichTextEditor Previewer Component', () => {
     const readMoreButton = await findByTestId(container, 'read-more-button');
 
     expect(readMoreButton).toBeInTheDocument();
+  });
+
+  it('Should handle clipboard copy on code block copy icon click', async () => {
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: jest.fn().mockResolvedValue(undefined),
+      },
+    });
+
+    const { container } = render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        markdown={mockCodeBlockMarkdown}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const copyIcon = await findByTestId(container, 'code-block-copy-icon');
+
+    fireEvent.mouseDown(copyIcon);
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalled();
+  });
+
+  it('Should set data-copied attribute to true after copying', async () => {
+    jest.useFakeTimers();
+
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: jest.fn().mockResolvedValue(undefined),
+      },
+    });
+
+    const { container } = render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        markdown={mockCodeBlockMarkdown}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const copyIcon = await findByTestId(container, 'code-block-copy-icon');
+
+    await act(async () => {
+      fireEvent.mouseDown(copyIcon);
+    });
+
+    jest.advanceTimersByTime(2000);
+
+    jest.useRealTimers();
+  });
+
+  it('Should apply custom className to container', () => {
+    const customClass = 'custom-previewer-class';
+    render(<RichTextEditorPreviewer {...mockProp} className={customClass} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const container = screen.getByTestId('viewer-container');
+
+    expect(container).toHaveClass('rich-text-editor-container', customClass);
+  });
+
+  it('Should apply textVariant className to markdown-parser', async () => {
+    const { container } = render(
+      <RichTextEditorPreviewer {...mockProp} textVariant="white" />,
+      { wrapper: MemoryRouter }
+    );
+
+    const markdownParser = await findByTestId(container, 'markdown-parser');
+
+    expect(markdownParser).toHaveClass('white');
+  });
+
+  it('Should apply reducePreviewLineClass when not expanded', async () => {
+    const { container } = render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        reducePreviewLineClass="custom-reduce-class"
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const markdownParser = await findByTestId(container, 'markdown-parser');
+
+    expect(markdownParser).toHaveClass('custom-reduce-class');
+  });
+
+  it('Should not apply reducePreviewLineClass when expanded', async () => {
+    const { container } = render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        isDescriptionExpanded
+        reducePreviewLineClass="custom-reduce-class"
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const markdownParser = await findByTestId(container, 'markdown-parser');
+
+    expect(markdownParser).not.toHaveClass('custom-reduce-class');
+  });
+
+  it('Should render with RTL direction when i18n.dir() returns rtl', () => {
+    jest.spyOn(require('react-i18next'), 'useTranslation').mockReturnValue({
+      t: (key: string) => key,
+      i18n: { dir: () => 'rtl' },
+    });
+
+    render(<RichTextEditorPreviewer {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const container = screen.getByTestId('viewer-container');
+
+    expect(container).toHaveClass('text-right');
+    expect(container).toHaveAttribute('dir', 'rtl');
+  });
+
+  it('Should not show read more button when showReadMoreBtn is false', () => {
+    render(<RichTextEditorPreviewer {...mockProp} showReadMoreBtn={false} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+  });
+
+  it('Should format HTML content using formatContent utility', () => {
+    const htmlMarkdown = '<p>Test HTML content</p>';
+    render(<RichTextEditorPreviewer {...mockProp} markdown={htmlMarkdown} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
+  });
+
+  it('Should handle markdown without HTML tags', () => {
+    const plainMarkdown = 'Plain text without any HTML';
+    render(<RichTextEditorPreviewer {...mockProp} markdown={plainMarkdown} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByText(plainMarkdown)).toBeInTheDocument();
+  });
+
+  it('Should render latex content using replaceLatex', () => {
+    const latexMarkdown = '$$latex \\frac{a}{b}$$';
+    render(<RichTextEditorPreviewer {...mockProp} markdown={latexMarkdown} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
+  });
+
+  it('Should handle clipboard copy errors gracefully', async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: jest.fn().mockRejectedValue(new Error('Copy failed')),
+      },
+    });
+
+    const { container } = render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        markdown={mockCodeBlockMarkdown}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const copyIcon = await findByTestId(container, 'code-block-copy-icon');
+
+    await act(async () => {
+      fireEvent.mouseDown(copyIcon);
+    });
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('Should render with default maxLength when not specified', () => {
+    const { maxLength: _maxLength, ...propsWithoutMaxLength } = mockProp;
+    render(<RichTextEditorPreviewer {...propsWithoutMaxLength} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
+  });
+
+  it('Should cleanup mousedown event listener on unmount', () => {
+    const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
+    const { unmount } = render(<RichTextEditorPreviewer {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    unmount();
+
+    expect(removeEventListenerSpy).toHaveBeenCalledWith(
+      'mousedown',
+      expect.any(Function)
+    );
+
+    removeEventListenerSpy.mockRestore();
+  });
+
+  it('Should render unique Viewer component key for each render', () => {
+    const { rerender } = render(
+      <RichTextEditorPreviewer {...mockProp} markdown="First content" />,
+      { wrapper: MemoryRouter }
+    );
+
+    const firstRender = screen.getByTestId('markdown-parser');
+
+    rerender(
+      <RichTextEditorPreviewer {...mockProp} markdown="Second content" />
+    );
+
+    const secondRender = screen.getByTestId('markdown-parser');
+
+    expect(firstRender).toBe(secondRender);
+  });
+
+  it('Should render link with target="_blank" attribute', async () => {
+    const markdownWithLink = '[External Link](https://example.com)';
+    const { container } = render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        isDescriptionExpanded
+        markdown={markdownWithLink}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const markdownParser = await findByTestId(container, 'markdown-parser');
+    const link = markdownParser.querySelector('a');
+
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('Should handle extendedAutolinks in Viewer', () => {
+    const markdownWithAutolink = 'Visit https://example.com for more info';
+    render(
+      <RichTextEditorPreviewer {...mockProp} markdown={markdownWithAutolink} />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
+  });
+
+  it('Should apply customHTMLRenderer to Viewer', async () => {
+    const markdownWithCode = '```javascript\nconst foo = "bar";\n```';
+    const { container } = render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        isDescriptionExpanded
+        markdown={markdownWithCode}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const markdownParser = await findByTestId(container, 'markdown-parser');
+
+    expect(markdownParser.querySelector('pre')).toBeInTheDocument();
+  });
+
+  it('Should update readMore state when isDescriptionExpanded changes', () => {
+    const { rerender } = render(
+      <RichTextEditorPreviewer {...mockProp} isDescriptionExpanded={false} />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+
+    rerender(<RichTextEditorPreviewer {...mockProp} isDescriptionExpanded />);
+
+    expect(screen.getByTestId('read-less-button')).toBeInTheDocument();
+  });
+
+  it('Should render with empty markdown string', () => {
+    render(<RichTextEditorPreviewer {...mockProp} markdown="" />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
   });
 });

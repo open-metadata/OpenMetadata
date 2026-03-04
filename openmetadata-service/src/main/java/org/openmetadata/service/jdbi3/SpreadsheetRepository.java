@@ -25,6 +25,7 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 import static org.openmetadata.service.Entity.WORKSHEET;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateSpreadsheet;
 import org.openmetadata.schema.entity.data.Directory;
@@ -51,6 +53,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.SpreadsheetResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -114,6 +117,20 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   }
 
   @Override
+  public void storeEntities(List<Spreadsheet> spreadsheets) {
+    List<Spreadsheet> spreadsheetsToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Spreadsheet spreadsheet : spreadsheets) {
+      // Clone for storage
+      String jsonCopy = gson.toJson(spreadsheet);
+      spreadsheetsToStore.add(gson.fromJson(jsonCopy, Spreadsheet.class));
+    }
+
+    storeMany(spreadsheetsToStore);
+  }
+
+  @Override
   public void storeRelationships(Spreadsheet spreadsheet) {
     // Add relationship from service to spreadsheet
     addRelationship(
@@ -163,7 +180,8 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   }
 
   @Override
-  public void setFields(Spreadsheet spreadsheet, EntityUtil.Fields fields) {
+  public void setFields(
+      Spreadsheet spreadsheet, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     spreadsheet.withService(getContainer(spreadsheet.getId()));
     spreadsheet.withDirectory(getDirectory(spreadsheet));
     if (fields.contains("worksheets")) {
@@ -230,8 +248,16 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Spreadsheet spreadsheet = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
-    return new SpreadsheetCsv(spreadsheet, user, recursive).exportCsv(listOf(spreadsheet));
+    return new SpreadsheetCsv(spreadsheet, user, recursive)
+        .exportCsv(listOf(spreadsheet), callback);
   }
 
   @Override
@@ -263,7 +289,9 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
               new CsvHeader().withName("domain"),
               new CsvHeader().withName("dataProducts"),
               new CsvHeader().withName("experts"),
-              new CsvHeader().withName("reviewers"));
+              new CsvHeader().withName("reviewers"),
+              new CsvHeader().withName("createdTime"),
+              new CsvHeader().withName("modifiedTime"));
 
       DOCUMENTATION = new CsvDocumentation().withHeaders(HEADERS).withSummary("Spreadsheet");
     }
@@ -339,7 +367,11 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                       Pair.of(9, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(10, TagLabel.TagSource.GLOSSARY))))
           .withDomains(getDomains(printer, csvRecord, 11))
-          .withDataProducts(getDataProducts(printer, csvRecord, 12));
+          .withDataProducts(getDataProducts(printer, csvRecord, 12))
+          .withCreatedTime(
+              nullOrEmpty(csvRecord.get(15)) ? null : Long.parseLong(csvRecord.get(15)))
+          .withModifiedTime(
+              nullOrEmpty(csvRecord.get(16)) ? null : Long.parseLong(csvRecord.get(16)));
 
       if (processRecord) {
         createEntity(printer, csvRecord, newSpreadsheet, SPREADSHEET);
@@ -353,7 +385,11 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
       addField(recordList, entity.getDisplayName());
       addField(recordList, entity.getDescription());
       addField(recordList, entity.getDirectory().getFullyQualifiedName());
-      addField(recordList, entity.getMimeType().toString());
+      addField(recordList, entity.getMimeType() != null ? entity.getMimeType().toString() : "");
+      addField(
+          recordList, entity.getCreatedTime() != null ? entity.getCreatedTime().toString() : "");
+      addField(
+          recordList, entity.getModifiedTime() != null ? entity.getModifiedTime().toString() : "");
       addField(recordList, entity.getPath());
       addField(recordList, entity.getSize() != null ? entity.getSize().toString() : "");
       addField(recordList, entity.getFileVersion());
@@ -415,6 +451,8 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("mimeType", original.getMimeType(), updated.getMimeType());
+      recordChange("createdTime", original.getCreatedTime(), updated.getCreatedTime());
+      recordChange("modifiedTime", original.getModifiedTime(), updated.getModifiedTime());
       recordChange("path", original.getPath(), updated.getPath());
       recordChange("driveFileId", original.getDriveFileId(), updated.getDriveFileId());
       recordChange("size", original.getSize(), updated.getSize());

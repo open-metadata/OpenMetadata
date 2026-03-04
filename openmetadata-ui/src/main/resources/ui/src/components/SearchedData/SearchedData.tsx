@@ -26,12 +26,12 @@ import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard'
 import PaginationComponent from '../PaginationComponent/PaginationComponent';
 import { SearchedDataProps } from './SearchedData.interface';
 
-const ASSETS_NAME = [
+const ASSETS_NAME = new Set([
   'table_name',
   'topic_name',
   'dashboard_name',
   'pipeline_name',
-];
+]);
 
 const SearchedData: React.FC<SearchedDataProps> = ({
   children,
@@ -56,7 +56,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         ? Object.entries(highlight)
             .filter(([key]) => !key.includes('.ngram'))
             .map(([key, value]) => ({ key, value: value?.length || 1 }))
-            .filter((d) => !ASSETS_NAME.includes(d.key))
+            .filter((d) => !ASSETS_NAME.has(d.key))
         : [];
 
       const source = highlightEntityNameAndDescription(table, highlight);
@@ -72,6 +72,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}
+            searchValue={filter?.search as string}
             showTags={false}
             source={source}
           />

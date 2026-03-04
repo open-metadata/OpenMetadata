@@ -24,6 +24,7 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
+import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import Loader from '../../../common/Loader/Loader';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import type { AppPlugin } from '../plugins/AppPlugin';
@@ -36,6 +37,9 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { permissions } = usePermissionProvider();
   const { setApplicationsName } = useApplicationStore();
+
+  // Create extension registry (singleton for the app lifecycle)
+  const [extensionRegistry] = useState(() => new ExtensionPointRegistry());
 
   const fetchApplicationList = useCallback(async () => {
     try {
@@ -76,9 +80,24 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       .filter(Boolean) as AppPlugin[];
   }, [applications]);
 
+  // Let plugins contribute to extension points
+  useEffect(() => {
+    installedPluginInstances.forEach((plugin) => {
+      try {
+        plugin.contributeExtensions?.(extensionRegistry);
+      } catch {
+        // Silently ignore errors during plugin contribution
+      }
+    });
+  }, [installedPluginInstances, extensionRegistry]);
+
   const appContext = useMemo(() => {
-    return { applications, plugins: installedPluginInstances };
-  }, [applications, installedPluginInstances]);
+    return {
+      applications,
+      plugins: installedPluginInstances,
+      extensionRegistry,
+    };
+  }, [applications, installedPluginInstances, extensionRegistry]);
 
   return (
     <ApplicationsContext.Provider value={appContext}>

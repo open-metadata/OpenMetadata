@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12.05" cy="11.94" r="1.92"/>
+    <circle cx="17.93" cy="5.48" r="1.31"/>
+    <circle cx="17.52" cy="17.82" r="1.31"/>
+    <circle cx="6.07" cy="6.48" r="1.31"/>
+    <circle cx="6.34" cy="18.52" r="1.31"/>
+    <line x1="13.18" y1="10.33" x2="17.03" y2="6.48"/>
+    <line x1="7.25" y1="17.5" x2="11.1" y2="13.65"/>
+    <line x1="13.4" y1="13.45" x2="16.52" y2="16.73"/>
+    <line x1="7.15" y1="7.45" x2="10.26" y2="10.73"/>
+  </g>
+</svg>

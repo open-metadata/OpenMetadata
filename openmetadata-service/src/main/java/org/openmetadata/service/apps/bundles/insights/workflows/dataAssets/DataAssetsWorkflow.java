@@ -204,15 +204,22 @@ public class DataAssetsWorkflow {
           searchInterface.getEntityAttributeFields(
               dataInsightsSearchConfiguration, source.getEntityType()));
 
-      while (!source.isDone().get()) {
+      String keysetCursor = null;
+      while (true) {
         try {
-          processEntity(source.readNext(null), contextData, source);
+          ResultList<? extends EntityInterface> resultList = source.readNextKeyset(keysetCursor);
+          keysetCursor = resultList.getPaging().getAfter();
+          processEntity(resultList, contextData, source);
+          if (keysetCursor == null) {
+            break;
+          }
         } catch (SearchIndexException ex) {
           source.updateStats(
               ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
           String errorMessage =
               String.format("Failed processing Data from %s: %s", source.getName(), ex);
           workflowStats.addFailure(errorMessage);
+          break;
         } finally {
           updateWorkflowStats(source.getName(), source.getStats());
         }
@@ -249,10 +256,11 @@ public class DataAssetsWorkflow {
   private void deleteBasedOnDataRetentionPolicy(String dataStreamName) throws SearchIndexException {
     long retentionLimitTimestamp =
         TimestampUtils.subtractDays(System.currentTimeMillis(), dataAssetsConfig.getRetention());
-    String rangeTermQuery =
-        String.format("{ \"@timestamp\": { \"lte\": %s } }", retentionLimitTimestamp);
     try {
-      searchRepository.getSearchClient().deleteByQuery(dataStreamName, rangeTermQuery);
+      searchRepository
+          .getSearchClient()
+          .deleteByRangeQuery(
+              dataStreamName, "@timestamp", null, null, null, retentionLimitTimestamp);
     } catch (Exception rx) {
       throw new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
     }
@@ -264,13 +272,20 @@ public class DataAssetsWorkflow {
             "{ \"@timestamp\": { \"gte\": %s, \"lte\": %s } }", startTimestamp, endTimestamp);
     try {
       if (dataAssetsConfig.getServiceFilter() == null) {
-        searchRepository.getSearchClient().deleteByQuery(dataStreamName, rangeTermQuery);
+        searchRepository
+            .getSearchClient()
+            .deleteByRangeQuery(
+                dataStreamName, "@timestamp", null, startTimestamp, null, endTimestamp);
       } else {
         searchRepository
             .getSearchClient()
             .deleteByRangeAndTerm(
                 dataStreamName,
-                rangeTermQuery,
+                "@timestamp",
+                null,
+                startTimestamp,
+                null,
+                endTimestamp,
                 "service.name.keyword",
                 dataAssetsConfig.getServiceFilter().getServiceName());
       }

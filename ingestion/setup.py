@@ -20,22 +20,24 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.10.5",
+    "airflow": "apache-airflow==3.1.5",
     "adlfs": "adlfs>=2023.1.0",
-    "avro": "avro>=1.11.3,<1.12",
-    "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
+    "aiobotocore": "aiobotocore~=2.26.0",
+    "avro": "avro>=1.11.4,<1.12",
+    "boto3": "boto3~=1.41.5",
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
-    "gcsfs": "gcsfs>=2023.1.0",
+    "gcsfs": "gcsfs~=2023.12.1",
     "great-expectations": "great-expectations~=0.18.0",
     "great-expectations-1xx": "great-expectations~=1.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
+    "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
-    "pandas": "pandas~=2.0.0",
+    "pandas": "pandas~=2.0.3",
     "pyarrow": "pyarrow~=16.0",
-    "pydantic": "pydantic~=2.0,>=2.7.0",
+    "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
@@ -45,8 +47,8 @@ VERSIONS = {
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
-    "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
     "databricks-sdk": "databricks-sdk~=0.20.0",
+    "databricks-sql-connector": "databricks-sql-connector>=2.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
@@ -54,8 +56,8 @@ VERSIONS = {
     "tableau": "tableauserverclient==0.25",  # higher versions require urllib3>2.0 which conflicts other libs
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
     "mongo": "pymongo~=4.3",
-    "redshift": "sqlalchemy-redshift==0.8.12",
-    "snowflake": "snowflake-sqlalchemy~=1.4",
+    "snowflake": "snowflake-sqlalchemy>=1.6.1",
+    "snowflake-connector": "snowflake-connector-python~=3.18.0",
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
@@ -63,24 +65,32 @@ VERSIONS = {
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
-    "pydoris": "pydoris==1.0.2",
+    "starrocks": "pymysql~=1.0",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
-    "pyathena": "pyathena~=3.0",
-    "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
+    "pyathena": "pyathena~=3.25.0",
+    "s3fs": "s3fs~=2023.12.1",
+    "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
+    "asammdf": "asammdf~=7.4.5",
+    "kafka-connect": "kafka-connect-py==0.10.11",
+    "griffe2md": "griffe2md~=1.2",
+    "factory-boy": "factory-boy~=3.3.3",
 }
 
 COMMONS = {
     "datalake": {
+        VERSIONS["asammdf"],
         VERSIONS["avro"],
         VERSIONS["boto3"],
+        VERSIONS["ijson"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
         VERSIONS["numpy"],
         # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
         # Using this as an alternative
         "cramjam~=2.7",
+        "fastavro>=1.2.0",
     },
     "hive": {
         "pure-transport==0.2.0",
@@ -133,9 +143,10 @@ base_requirements = {
     "azure-keyvault-secrets",  # Azure Key Vault SM
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",  # LineageParser
+    "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
-    "google-cloud-secret-manager==2.22.1",
+    "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
@@ -152,25 +163,26 @@ base_requirements = {
     "PyYAML~=6.0",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage~=1.6.0",
+    "sqlalchemy>=2.0.0,<3",
+    "collate-sqllineage~=2.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools~=70.0",
+    "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
     "shapely",
-    "collate-data-diff>=0.11.6",
+    "collate-data-diff>=0.11.9",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
+    "jaraco.context==6.0.1",
     # TODO: Remove one once we have updated datadiff version
-    "snowflake-connector-python>=3.13.1,<4.0.0",
+    VERSIONS["snowflake-connector"],
     "mysql-connector-python>=8.0.29;python_version<'3.9'",
     "mysql-connector-python>=9.1;python_version>='3.9'",
+    "httpx~=0.28.0",
 }
 
 plugins: Dict[str, Set[str]] = {
     "airflow": {
-        "opentelemetry-exporter-otlp==1.27.0",
-        "protobuf<5",
+        "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
         VERSIONS["airflow"],
     },  # Same as ingestion container. For development.
@@ -181,12 +193,11 @@ plugins: Dict[str, Set[str]] = {
     "azure-sso": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
     "bigquery": {
-        "cachetools",
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
         VERSIONS["numpy"],
-        "sqlalchemy-bigquery>=1.2.2",
+        VERSIONS["sqlalchemy-bigquery"],
     },
     "bigtable": {
         VERSIONS["google-cloud-bigtable"],
@@ -195,7 +206,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "clickhouse": {
         "clickhouse-driver~=0.2",
-        "clickhouse-sqlalchemy~=0.2.0",
+        "clickhouse-sqlalchemy>=0.3",
         DATA_DIFF["clickhouse"],
     },
     "dagster": {
@@ -214,10 +225,13 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-identity"],
     },
     "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
-    "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
+    "db2-ibmi": {
+        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
+    },
     "databricks": {
-        VERSIONS["sqlalchemy-databricks"],
+        # sqlalchemy-databricks is pre-installed with --no-deps (SA<2 metadata conflict)
         VERSIONS["databricks-sdk"],
+        VERSIONS["databricks-sql-connector"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL~=24.1.0",
         "pyasn1~=0.6.0",
@@ -228,15 +242,19 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
         VERSIONS["adlfs"],
+        VERSIONS["aiobotocore"],
         *COMMONS["datalake"],
     },
     "datalake-gcs": {
         VERSIONS["google-cloud-monitoring"],
         VERSIONS["google-cloud-storage"],
         VERSIONS["gcsfs"],
+        VERSIONS["aiobotocore"],
         *COMMONS["datalake"],
     },
     "datalake-s3": {
+        VERSIONS["s3fs"],
+        VERSIONS["aiobotocore"],
         *COMMONS["datalake"],
     },
     "deltalake": {
@@ -247,16 +265,18 @@ plugins: Dict[str, Set[str]] = {
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
     "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
-    "doris": {"pydoris==1.0.2"},
+    # pydoris-custom declares sqlalchemy<2 but works at runtime with SA 2.0.
+    # Pre-installed with --no-deps in Dockerfiles.
+    "doris": set(),
+    "starrocks": {VERSIONS["pymysql"]},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
         VERSIONS["elasticsearch8"],
-        "httpx>=0.23.0",
     },  # also requires requests-aws4auth which is in base
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {
-        "sqlalchemy_exasol>=5,<6",
+        "sqlalchemy_exasol>=6,<7",
         "exasol-integration-test-docker-environment>=3.1.0,<4",
     },
     "glue": {VERSIONS["boto3"]},
@@ -291,7 +311,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
     },
     "kafka": {*COMMONS["kafka"]},
-    "kafkaconnect": {"kafka-connect-py==0.10.11"},
+    "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
     "looker": {
         VERSIONS["looker-sdk"],
@@ -300,7 +320,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny~=2.22.0"},
+    "mlflow": {"mlflow-skinny~=3.6.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
@@ -331,13 +351,12 @@ plugins: Dict[str, Set[str]] = {
     },
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
-    "pymssql": {"pymssql~=2.2.0"},
+    "pymssql": {"pymssql~=2.3.9"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        # Going higher has memory and performance issues
-        VERSIONS["redshift"],
+        # sqlalchemy-redshift is pre-installed with --no-deps (SA<2 metadata conflict)
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
@@ -359,6 +378,10 @@ plugins: Dict[str, Set[str]] = {
     "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5", DATA_DIFF["vertica"]},
+    # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
+    # Install with: pip install 'openmetadata-ingestion[pandas]'
+    "pandas": {VERSIONS["pandas"], VERSIONS["numpy"]},
+    "pyarrow": {VERSIONS["pyarrow"]},
     "pii-processor": {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
@@ -370,6 +393,7 @@ plugins: Dict[str, Set[str]] = {
 
 dev = {
     "black==22.3.0",
+    "uvloop==0.21.0",
     "datamodel-code-generator==0.25.6",
     "boto3-stubs",
     "mypy-boto3-glue",
@@ -377,6 +401,7 @@ dev = {
     "pre-commit",
     "pycln",
     "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
+    "basedpyright~=1.14",
     # For publishing
     "twine",
     "build",
@@ -388,31 +413,33 @@ test_unit = {
     "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
+    "pytest-rerunfailures",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
+    VERSIONS["factory-boy"],
 }
 
 test = {
     # Install Airflow as it's not part of `all` plugin
-    "opentelemetry-exporter-otlp==1.27.0",
+    "opentelemetry-exporter-otlp==1.37.0",
     VERSIONS["airflow"],
     "boto3-stubs",
     "mypy-boto3-glue",
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "basedpyright~=1.14",
     "pytest==7.0.1",
     "pytest-cov",
+    "pytest-xdist~=3.5",
     "pytest-order",
     "dirty-equals",
     # install dbt dependency
     "collate-dbt-artifacts-parser",
     "freezegun",
-    VERSIONS["sqlalchemy-databricks"],
     VERSIONS["databricks-sdk"],
+    VERSIONS["databricks-sql-connector"],
     VERSIONS["scikit-learn"],
     VERSIONS["pyarrow"],
     VERSIONS["trino"],
@@ -424,7 +451,6 @@ test = {
     VERSIONS["pyhive"],
     VERSIONS["mongo"],
     VERSIONS["cassandra"],
-    VERSIONS["redshift"],
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],
     VERSIONS["giturlparse"],
@@ -432,7 +458,8 @@ test = {
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
     VERSIONS["cockroach"],
-    VERSIONS["pydoris"],
+    # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
+    VERSIONS["starrocks"],
     VERSIONS["pyiceberg"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",
@@ -442,26 +469,29 @@ test = {
     *plugins["kafka"],
     "kafka-python==2.0.2",
     *plugins["pii-processor"],
-    "requests==2.31.0",
+    "requests>=2.31.0,<3",
     f"{DATA_DIFF['mysql']}",
     *plugins["deltalake"],
     *plugins["datalake-gcs"],
     *plugins["pgspider"],
     *plugins["clickhouse"],
-    *plugins["mssql"],
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
-    VERSIONS["pyiceberg"],
-    VERSIONS["pydoris"],
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     *plugins["exasol"],
     VERSIONS["opensearch"],
+    VERSIONS["kafka-connect"],
+    VERSIONS["factory-boy"],
+}
+
+docs = {
+    VERSIONS["griffe2md"],
 }
 
 if sys.version_info >= (3, 9):
@@ -534,5 +564,6 @@ setup(
                 "sklearn",
             }
         ),
+        "docs": docs,
     },
 )

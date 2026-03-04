@@ -13,20 +13,22 @@
 
 import { Team } from '../../../../generated/entity/teams/team';
 import i18n from '../../../../utils/i18next/LocalUtil';
-import { TeamsPageTab } from './team.interface';
+import { TeamsPageTab, TeamTab } from './team.interface';
 
 export const getTabs = (
   currentTeam: Team,
   isGroupType: boolean,
   isOrganization: boolean,
   teamsCount: number,
-  assetsCount: number
-) => {
-  const tabs = {
+  assetsCount: number,
+  isTeamsLoading: boolean
+): TeamTab[] => {
+  const tabs: Record<string, TeamTab> = {
     teams: {
       name: i18n.t('label.team-plural'),
       count: teamsCount,
       key: TeamsPageTab.TEAMS,
+      isLoading: isTeamsLoading,
     },
     users: {
       name: i18n.t('label.user-plural'),

@@ -11,9 +11,7 @@
 """
 MySQL connection test
 """
-import sys
 
-import pytest
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
@@ -23,9 +21,6 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
     MysqlConnection,
 )
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-
-if sys.version_info < (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
 def test_test_connection(metadata, mysql_container):

@@ -50,6 +50,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
     Workbook,
     WorkbookDetails,
 )
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.fqn import build_es_fqn_search_string
@@ -91,6 +92,8 @@ class SigmaSource(DashboardServiceSource):
         """
         get list of dashboard
         """
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         return self.client.get_dashboards()
 
     def get_dashboard_name(self, dashboard: Workbook) -> Optional[str]:
@@ -318,7 +321,7 @@ class SigmaSource(DashboardServiceSource):
             try:
                 datamodel_columns.append(
                     Column(
-                        name=col,
+                        name=truncate_column_name(col),
                         displayName=col,
                         dataType=DataType.UNKNOWN,
                         dataTypeDisplay="Sigma Field",
@@ -367,6 +370,8 @@ class SigmaSource(DashboardServiceSource):
         Get owner from email
         """
         try:
+            if not self.source_config.includeOwners:
+                return None
             if dashboard_details.ownerId:
                 owner = self.client.get_owner_detail(dashboard_details.ownerId)
                 return self.metadata.get_reference_by_email(owner.email)

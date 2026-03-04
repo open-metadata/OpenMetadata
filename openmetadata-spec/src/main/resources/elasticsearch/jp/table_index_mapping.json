@@ -29,9 +29,8 @@
           ]
         },
         "om_ngram": {
-          "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
+          "type": "custom",
+          "tokenizer": "n_gram_tokenizer",
           "filter": [
             "lowercase"
           ]
@@ -62,7 +61,21 @@
           "preserve_original": true,
           "stem_english_possessive": true
         }
+      },
+      "tokenizer": {
+        "n_gram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
+        }
       }
+    },
+    "index": {
+      "max_ngram_diff": 1
     }
   },
   "mappings": {
@@ -244,7 +257,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -340,7 +360,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -449,7 +476,7 @@
         }
       },
       "extension": {
-        "type": "object"
+        "type": "flattened"
       },
       "dataProducts": {
         "properties": {
@@ -480,6 +507,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -499,16 +527,169 @@
         }
       },
       "lifeCycle": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "upstreamLineage": {
-        "type": "object"
+        "properties": {
+          "fromEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "toEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "pipeline": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "columns": {
+            "properties": {
+              "fromColumns": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "toColumn": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "docId": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 512
+              }
+            }
+          }
+        }
       },
       "upstreamEntityRelationship": {
-        "type": "object"
+        "properties": {
+          "entity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "relatedEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "entityRelationship": {
-        "type": "object"
+        "properties": {
+          "entity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "relatedEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "location": {
         "properties": {
@@ -618,6 +799,14 @@
           }
         }
       },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "tags": {
         "properties": {
           "tagFQN": {
@@ -709,6 +898,57 @@
           "expiryDate": {
             "type": "date",
             "format": "strict_date_optional_time||epoch_millis"
+          }
+        }
+      },
+      "fqnHash": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 512
+          }
+        }
+      },
+      "customPropertiesTyped": {
+        "type": "nested",
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "propertyType": {
+            "type": "keyword"
+          },
+          "stringValue": {
+            "type": "keyword"
+          },
+          "textValue": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "longValue": {
+            "type": "long"
+          },
+          "doubleValue": {
+            "type": "double"
+          },
+          "start": {
+            "type": "long"
+          },
+          "end": {
+            "type": "long"
+          },
+          "refId": {
+            "type": "keyword"
+          },
+          "refType": {
+            "type": "keyword"
+          },
+          "refName": {
+            "type": "keyword"
+          },
+          "refFqn": {
+            "type": "keyword"
           }
         }
       }

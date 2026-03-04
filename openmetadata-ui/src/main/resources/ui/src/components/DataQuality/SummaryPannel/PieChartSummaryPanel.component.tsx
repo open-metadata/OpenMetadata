@@ -78,9 +78,9 @@ const PieChartSummaryPanel = ({
 
   const percentages = useMemo(
     () => ({
-      testSuccess: calculatePercentage(successTests, totalTests),
-      healthy: calculatePercentage(healthyDataAssets, totalDQEntities),
-      coverage: calculatePercentage(totalDQEntities, totalEntityCount),
+      testSuccess: calculatePercentage(successTests, totalTests, 2, true),
+      healthy: calculatePercentage(healthyDataAssets, totalDQEntities, 2, true),
+      coverage: calculatePercentage(totalDQEntities, totalEntityCount, 2, true),
     }),
     [
       successTests,

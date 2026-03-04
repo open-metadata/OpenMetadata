@@ -12,8 +12,19 @@
  */
 import { expect, Page, test as base } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
+import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -23,34 +34,20 @@ import {
 } from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
 
-const entityCreationConfig: EntityDataClassCreationConfig = {
-  apiService: true,
-  apiCollection: true,
-  databaseService: true,
-  dashboardService: true,
-  messagingService: true,
-  database: true,
-  databaseSchema: true,
-  mlmodelService: true,
-  pipelineService: true,
-  searchIndexService: true,
-  storageService: true,
-  entityDetails: true,
+const entities = {
+  'Api Service': new ApiServiceClass(),
+  'Api Collection': new ApiCollectionClass(),
+  'Dashboard Service': new DashboardServiceClass(),
+  'Database Service': new DatabaseServiceClass(),
+  'Messaging Service': new MessagingServiceClass(),
+  'Mlmodel Service': new MlmodelServiceClass(),
+  'Pipeline Service': new PipelineServiceClass(),
+  'SearchIndex Service': new SearchIndexServiceClass(),
+  'Storage Service': new StorageServiceClass(),
+  Database: new DatabaseClass(),
+  'Database Schema': new DatabaseSchemaClass(),
+  'Drive Service': new DriveServiceClass(),
 };
-
-const entities = [
-  EntityDataClass.apiService,
-  EntityDataClass.apiCollection1,
-  EntityDataClass.databaseService,
-  EntityDataClass.dashboardService,
-  EntityDataClass.messagingService,
-  EntityDataClass.mlmodelService,
-  EntityDataClass.pipelineService,
-  EntityDataClass.searchIndexService,
-  EntityDataClass.storageService,
-  EntityDataClass.database,
-  EntityDataClass.databaseSchema,
-];
 
 // use the admin user to login
 
@@ -73,12 +70,8 @@ test.describe('Service Version pages', () => {
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
 
-    await EntityDataClass.preRequisitesForTests(
-      apiContext,
-      entityCreationConfig
-    );
-
-    for (const entity of entities) {
+    for (const entity of Object.values(entities)) {
+      await entity.create(apiContext);
       const domain = EntityDataClass.domain1.responseData;
       await entity.patch(apiContext, [
         {
@@ -130,10 +123,6 @@ test.describe('Service Version pages', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);
 
-    await EntityDataClass.postRequisitesForTests(
-      apiContext,
-      entityCreationConfig
-    );
     await afterAction();
   });
 
@@ -141,13 +130,33 @@ test.describe('Service Version pages', () => {
     await redirectToHomePage(page);
   });
 
-  entities.forEach((entity) => {
-    test(`${entity.getType()}`, async ({ page }) => {
+  Object.entries(entities).forEach(([key, entity]) => {
+    /**
+     * Tests comprehensive version history tracking for service entities
+     * @description This test validates the version history feature for service entities across multiple version increments.
+     * It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for:
+     * - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive)
+     * - Version 0.3: Owner assignments showing user ownership changes
+     * - Version 0.3: Tier assignments displaying tier classification updates
+     * - Version 0.4: Soft deletion state with appropriate deleted badge visibility
+     *
+     * The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered
+     * in the UI to highlight what changed between versions
+     */
+    test(key, async ({ page }) => {
       await entity.visitEntityPage(page);
       const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
 
+      /**
+       * Step 1: Validate version 0.2 changes
+       * @description Verifies that the version page displays diff indicators for domain, description, and tag additions.
+       * Expects to see:
+       * - Domain link with diff-added class showing the newly assigned domain
+       * - Description container with diff-added showing the updated description text
+       * - Two tags (PersonalData.SpecialCategory and PII.Sensitive) marked as added in the right panel
+       */
       await test.step(
         'should show edited tags and description changes',
         async () => {
@@ -177,9 +186,15 @@ test.describe('Service Version pages', () => {
         }
       );
 
+      /**
+       * Step 2: Validate owner change tracking in version 0.3
+       * @description Tests that adding an owner to the service creates a new version (0.3) and displays
+       * the owner addition with a diff-added indicator. Exits version view, adds a user owner,
+       * then re-enters version view to verify the change is tracked
+       */
       await test.step('should show owner changes', async () => {
         await page.locator('[data-testid="version-button"]').click();
-        const OWNER1 = EntityDataClass.user1.getUserName();
+        const OWNER1 = EntityDataClass.user1.getUserDisplayName();
 
         await addMultiOwner({
           page,
@@ -199,6 +214,12 @@ test.describe('Service Version pages', () => {
         ).toBeVisible();
       });
 
+      /**
+       * Step 3: Validate tier assignment tracking in version 0.3
+       * @description Tests that assigning a tier (Tier1) to the service is tracked in version history.
+       * Exits version view, assigns a tier, then re-enters version view to verify the tier assignment
+       * is displayed with a diff-added indicator
+       */
       await test.step('should show tier changes', async () => {
         await page.locator('[data-testid="version-button"]').click();
 
@@ -213,6 +234,20 @@ test.describe('Service Version pages', () => {
         ).toBeVisible();
       });
 
+      /**
+       * Step 4: Validate soft deletion tracking in version 0.4
+       * @description Tests that soft deleting the service creates version 0.4 and properly displays the deleted state.
+       * This step:
+       * 1. Exits version view
+       * 2. Initiates soft delete through the manage menu
+       * 3. Confirms deletion with 'DELETE' text input
+       * 4. Waits for async deletion to complete (hardDelete=false&recursive=true)
+       * 5. Verifies deletion toast notification
+       * 6. Reloads the page and confirms the deleted badge is visible
+       * 7. Opens version 0.4 view and verifies the deleted badge persists in version history
+       *
+       * This ensures that soft-deleted entities remain viewable in version history with proper deleted indicators
+       */
       await test.step(
         'should show version details after soft deleted',
         async () => {

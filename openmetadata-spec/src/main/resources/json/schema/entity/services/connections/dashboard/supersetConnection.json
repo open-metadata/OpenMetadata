@@ -41,10 +41,7 @@
         {
           "$ref": "../database/mysqlConnection.json"
         }
-      ],
-      "default": {
-        "provider": "db"
-      }
+      ]
     },
     "dashboardFilterPattern": {
       "description": "Regex to exclude or include dashboards that matches the pattern.",

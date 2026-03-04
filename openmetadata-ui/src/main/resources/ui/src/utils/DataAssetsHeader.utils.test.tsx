@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
+import { render } from '@testing-library/react';
+import { Tooltip, Typography } from 'antd';
 import React from 'react';
 import { EntityType } from '../enums/entity.enum';
+import {
+  Spreadsheet,
+  SpreadsheetMIMEType,
+} from '../generated/entity/data/spreadsheet';
 import { mockContainerData } from '../mocks/ContainerVersion.mock';
 import { MOCK_DASHBOARD_DATA_MODEL } from '../mocks/DashboardDataModel.mock';
 import { mockDashboardData } from '../mocks/dashboardVersion.mock';
@@ -35,13 +41,14 @@ import { mockStoredProcedureData } from '../mocks/StoredProcedure.mock';
 import { MOCK_TABLE } from '../mocks/TableData.mock';
 import { mockTopicData } from '../mocks/TopicVersion.mock';
 import {
+  ExtraInfoLabel,
   getDataAssetsHeaderInfo,
   getEntityExtraInfoLength,
 } from './DataAssetsHeader.utils';
 
+// Mock only ExtraInfoLink, not ExtraInfoLabel as we want to test it
 jest.mock('./DataAssetsHeader.utils', () => ({
   ...jest.requireActual('./DataAssetsHeader.utils'),
-  ExtraInfoLabel: jest.fn().mockImplementation(({ value }) => value),
   ExtraInfoLink: jest.fn().mockImplementation(({ value }) => value),
 }));
 jest.mock('./EntityUtils', () => ({
@@ -70,6 +77,12 @@ jest.mock('./EntityUtils', () => ({
       url: 'url',
     },
   ]),
+  getBreadcrumbForEntityWithParent: jest.fn().mockReturnValue([
+    {
+      name: 'entityName',
+      url: 'url',
+    },
+  ]),
 }));
 
 jest.mock('./StringsUtils', () => ({
@@ -79,6 +92,17 @@ jest.mock('./StringsUtils', () => ({
 
 jest.mock('./TableUtils', () => ({
   getUsagePercentile: jest.fn().mockReturnValue('getUsagePercentile'),
+}));
+
+jest.mock('./date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('./date-time/DateTimeUtils'),
+  formatDateTime: jest
+    .fn()
+    .mockImplementation((timestamp) => `formatted-${timestamp}`),
+  getEpochMillisForPastDays: jest
+    .fn()
+    .mockImplementation((days) => Date.now() - days * 24 * 60 * 60 * 1000),
+  getCurrentMillis: jest.fn().mockReturnValue(Date.now()),
 }));
 
 jest.mock('../constants/constants', () => ({
@@ -500,6 +524,76 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
   });
 
+  // Test for Spreadsheet entity
+  it('Function getDataAssetsHeaderInfo should return data for Spreadsheet entity', () => {
+    const mockSpreadsheet: Spreadsheet = {
+      id: 'spreadsheet-123',
+      name: 'test-spreadsheet',
+      fullyQualifiedName: 'service.directory.test-spreadsheet',
+      mimeType:
+        'application/vnd.google-apps.spreadsheet' as SpreadsheetMIMEType,
+      createdTime: 1609459200000,
+      modifiedTime: 1640995200000,
+      service: {
+        id: 'service-123',
+        name: 'google-drive',
+        type: 'driveService',
+      },
+    };
+
+    const assetData = getDataAssetsHeaderInfo(
+      EntityType.SPREADSHEET,
+      mockSpreadsheet,
+      'test-spreadsheet',
+      []
+    );
+
+    // contains all breadcrumbs
+    expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
+
+    // contains extra data
+    expect(JSON.stringify(assetData.extraInfo)).toContain('label.mime-type');
+    expect(JSON.stringify(assetData.extraInfo)).toContain(
+      'application/vnd.google-apps.spreadsheet'
+    );
+
+    expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
+    expect(JSON.stringify(assetData.extraInfo)).toContain(
+      'formatted-1609459200000'
+    );
+
+    expect(JSON.stringify(assetData.extraInfo)).toContain(
+      'label.modified-time'
+    );
+    expect(JSON.stringify(assetData.extraInfo)).toContain(
+      'formatted-1640995200000'
+    );
+
+    // Test with missing optional data
+    const assetWithNoExtraData = getDataAssetsHeaderInfo(
+      EntityType.SPREADSHEET,
+      {
+        ...mockSpreadsheet,
+        mimeType: undefined,
+        createdTime: undefined,
+        modifiedTime: undefined,
+      },
+      'test-spreadsheet',
+      []
+    );
+
+    // Should not contain extra data when fields are undefined
+    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+      'label.mime-type'
+    );
+    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+      'label.created-time'
+    );
+    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+      'label.modified-time'
+    );
+  });
+
   // Test for Search entity
   it('Function getDataAssetsHeaderInfo should return data for Search entity', () => {
     // Search Service
@@ -646,6 +740,30 @@ describe('Tests for DataAssetsHeaderUtils', () => {
   });
 });
 
+describe('ExtraInfoLabel', () => {
+  it('should handle React node as value', () => {
+    const nodeValue = (
+      <Tooltip title="Full text value">
+        <Typography.Text ellipsis className="w-full">
+          Truncated text value
+        </Typography.Text>
+      </Tooltip>
+    );
+
+    const { container } = render(
+      <ExtraInfoLabel label="MIME Type" value={nodeValue} />
+    );
+
+    // Check that the component renders without error
+    expect(
+      container.querySelector('.extra-info-container')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('.extra-info-label-heading')
+    ).toHaveTextContent('MIME Type');
+  });
+});
+
 describe('getEntityExtraInfoLength', () => {
   it('should return 0 for non-React elements', () => {
     expect(getEntityExtraInfoLength(null)).toBe(0);
@@ -717,6 +835,7 @@ describe('getEntityExtraInfoLength', () => {
       <div>
         <span>Always shown</span>
         {showExtra && <span>Conditional child</span>}
+        {/* eslint-disable-next-line no-constant-binary-expression */}
         {false && <span>Never shown</span>}
         {null}
         {undefined}

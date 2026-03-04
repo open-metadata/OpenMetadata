@@ -14,18 +14,34 @@ import { renderHook } from '@testing-library/react-hooks';
 import { getUserByName } from '../../rest/userAPI';
 import { useUserProfile } from './useUserProfile';
 
-jest.mock('../useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockImplementation(() => ({
+jest.mock('../useApplicationStore', () => {
+  const mockUserProfile = {
+    profile: {
+      iamge512: 'profile512',
+    },
+  };
+
+  const mockState = {
     userProfilePics: {
-      userJohn: {
-        profile: {
-          iamge512: 'profile512',
-        },
-      },
+      userJohn: mockUserProfile,
+      userjohn: mockUserProfile,
     },
     updateUserProfilePics: jest.fn(),
-  })),
-}));
+  };
+
+  const mockUseApplicationStore = Object.assign(
+    jest.fn((selector: (state: typeof mockState) => unknown) => {
+      if (typeof selector === 'function') {
+        return selector(mockState);
+      }
+
+      return mockState;
+    }),
+    { getState: jest.fn(() => mockState) }
+  );
+
+  return { useApplicationStore: mockUseApplicationStore };
+});
 
 jest.mock('../../rest/userAPI', () => ({
   getUserByName: jest.fn(),

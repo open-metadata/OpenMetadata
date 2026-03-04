@@ -11,6 +11,7 @@ import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 
 public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
@@ -36,6 +37,9 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
       doc.put("columnNames", columnsWithChildrenName);
       // Add flat column names field for fuzzy search to avoid array-based clause multiplication
       doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
+
+      // Transform column extensions to typed custom properties
+      SearchIndexUtils.transformColumnExtensions(doc, Entity.DASHBOARD_DATA_MODEL_COLUMN);
     }
     ParseTags parseTags =
         new ParseTags(Entity.getEntityTags(Entity.DASHBOARD_DATA_MODEL, dashboardDataModel));
@@ -49,6 +53,8 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     doc.putAll(commonAttributes);
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("service", getEntityWithDisplayName(dashboardDataModel.getService()));
     doc.put("upstreamLineage", SearchIndex.getLineageData(dashboardDataModel.getEntityReference()));
     doc.put("domains", getEntitiesWithDisplayName(dashboardDataModel.getDomains()));

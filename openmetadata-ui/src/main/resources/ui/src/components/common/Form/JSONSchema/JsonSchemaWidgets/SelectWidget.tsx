@@ -14,7 +14,20 @@ import { WidgetProps } from '@rjsf/utils';
 import { Select } from 'antd';
 import { capitalize } from 'lodash';
 import { FC } from 'react';
+import { filterSelectOptions } from '../../../../../utils/CommonUtils';
+import { getPopupContainer } from '../../../../../utils/formUtils';
 import TreeSelectWidget from './TreeSelectWidget';
+
+const getDisplayLabel = (
+  label: string | number | boolean | null,
+  shouldCapitalize: boolean
+): string | number | boolean | null => {
+  if (shouldCapitalize && typeof label === 'string') {
+    return capitalize(label);
+  }
+
+  return label;
+};
 
 const SelectWidget: FC<WidgetProps> = (props) => {
   if (props.schema.uiFieldType === 'treeSelect') {
@@ -26,10 +39,13 @@ const SelectWidget: FC<WidgetProps> = (props) => {
   return (
     <Select
       allowClear
+      showSearch
       autoFocus={rest.autofocus}
       className="d-block w-full"
-      data-testid="select-widget"
+      data-testid={`select-widget-${rest.id}`}
       disabled={rest.disabled}
+      filterOption={filterSelectOptions}
+      getPopupContainer={getPopupContainer}
       id={rest.id}
       mode={rest.multiple ? 'multiple' : undefined}
       open={props.readonly ? false : undefined}
@@ -38,16 +54,39 @@ const SelectWidget: FC<WidgetProps> = (props) => {
       onBlur={() => onBlur(rest.id, rest.value)}
       onChange={(value) => onChange(value)}
       onFocus={() => onFocus(rest.id, rest.value)}>
-      {(rest.options.enumOptions ?? []).map((option) => (
-        <Select.Option
-          data-testid={`select-option-${option.label}`}
-          key={option.value}
-          value={option.value}>
-          {capitalize(option.label)}
-        </Select.Option>
-      ))}
+      {(rest.options.enumOptions ?? []).map((option) => {
+        const displayLabel = getDisplayLabel(
+          option.label,
+          rest.capitalizeOptionLabel
+        );
+
+        return (
+          <Select.Option
+            data-key={option.value}
+            data-testid={`select-option-${option.label}`}
+            key={option.value}
+            labelValue={String(displayLabel)}
+            value={option.value}>
+            {displayLabel}
+          </Select.Option>
+        );
+      })}
     </Select>
   );
 };
 
-export default SelectWidget;
+function withSelectWidget(WrappedComponent: FC<WidgetProps>) {
+  return function SelectWidget({
+    capitalizeOptionLabel = false,
+    ...props
+  }: WidgetProps & { capitalizeOptionLabel?: boolean }) {
+    return (
+      <WrappedComponent
+        {...props}
+        capitalizeOptionLabel={capitalizeOptionLabel}
+      />
+    );
+  };
+}
+
+export default withSelectWidget(SelectWidget);

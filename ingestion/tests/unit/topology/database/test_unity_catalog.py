@@ -15,7 +15,7 @@ Test unitycatalog using the topology
 
 from typing import List
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from databricks.sdk.service.catalog import (
     CatalogInfo,
@@ -69,7 +69,7 @@ mock_unitycatalog_config = {
                 "type": "UnityCatalog",
                 "catalog": "hive_metastore",
                 "databaseSchema": "default",
-                "token": "123sawdtesttoken",
+                "authType": {"token": "123sawdtesttoken"},
                 "hostPort": "localhost:443",
                 "httpPath": "/sql/1.0/warehouses/abcdedfg",
                 "connectionTimeout": 120,
@@ -483,6 +483,8 @@ EXPTECTED_TABLE = [
                     dataType=DataType.INT,
                     dataLength=1,
                     dataTypeDisplay="int",
+                    ordinalPosition=0,
+                    tags=None,
                 ),
                 Column(
                     name=ColumnName(root="array_data"),
@@ -490,18 +492,24 @@ EXPTECTED_TABLE = [
                     arrayDataType=DataType.INT,
                     dataLength=1,
                     dataTypeDisplay="array<int>",
+                    ordinalPosition=1,
+                    tags=None,
                 ),
                 Column(
                     name=ColumnName(root="map_data"),
                     dataType=DataType.MAP,
                     dataLength=1,
                     dataTypeDisplay="map<string,int>",
+                    ordinalPosition=2,
+                    tags=None,
                 ),
                 Column(
                     name=ColumnName(root="struct_data"),
                     dataType=DataType.STRUCT,
                     dataLength=1,
                     dataTypeDisplay="struct<a:int,b:string,c:array<string>,d:struct<abc:int>>",
+                    ordinalPosition=3,
+                    tags=None,
                     children=[
                         Column(
                             name=ColumnName(root="a"),
@@ -549,6 +557,7 @@ EXPTECTED_TABLE = [
                 root="local_unitycatalog.hive_metastore.do_it_all_with_default_schema"
             ),
             tags=None,
+            locationPath="s3://awsdatalake-testing/databricks-new-metastore/3849887a-24ae-4b8e-a470-9d953589f80e/tables/fe201793-8483-4edd-90a7-d27332d1418a",
         ),
         left=None,
     )
@@ -561,15 +570,22 @@ class unitycatalogUnitTest(TestCase):
     """
 
     @patch(
+        "metadata.ingestion.source.database.unitycatalog.connection.get_sqlalchemy_connection"
+    )
+    @patch(
         "metadata.ingestion.source.database.unitycatalog.metadata.UnitycatalogSource.test_connection"
     )
     def __init__(
         self,
         methodName,
         test_connection,
+        mock_sqlalchemy_connection,
     ) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
+
+        mock_engine = MagicMock()
+        mock_sqlalchemy_connection.return_value = mock_engine
 
         self.config = OpenMetadataWorkflowConfig.model_validate(
             mock_unitycatalog_config
@@ -603,14 +619,76 @@ class unitycatalogUnitTest(TestCase):
             self.unitycatalog_source.get_database_schema_names()
         )
 
-    @patch("databricks.sdk.service.catalog.TablesAPI.get")
-    def test_yield_table(self, mock_data):
-        mock_data.return_value = MOCK_TABLE_INFO
+    def test_yield_table(self):
         table_list = []
-        self.unitycatalog_source.context.get().table_data = MOCK_CONTEXT_TABLEDATA
+        self.unitycatalog_source.context.get().table_data = MOCK_TABLE_INFO
         for table in self.unitycatalog_source.yield_table(("complex_data", "Regular")):
             if isinstance(table, Either):
                 table_list.append(table)
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):
             self.assertEqual(expected, original)
+
+    def test_get_schema_definition(self):
+        # Check view definition
+        mock_mv_table = TableInfo(
+            catalog_name="demo",
+            schema_name="default",
+            name="test_mv",
+            table_type=DatabricksTableType.MATERIALIZED_VIEW,
+            view_definition="SELECT user_id, COUNT(*) FROM events GROUP BY user_id",
+        )
+
+        mv_result = self.unitycatalog_source.get_schema_definition(
+            table_name="test_mv",
+            table_type=TableType.MaterializedView,
+            table=mock_mv_table,
+        )
+
+        assert (
+            mv_result
+            == "CREATE MATERIALIZED VIEW `demo`.`default`.`test_mv` AS SELECT user_id, COUNT(*) FROM events GROUP BY user_id"
+        )
+
+        # Check schema definition when includeDDL is True
+        self.unitycatalog_source.source_config.includeDDL = True
+        mock_regular_table = TableInfo(
+            catalog_name="demo",
+            schema_name="default",
+            name="test_table",
+            table_type=DatabricksTableType.MANAGED,
+            data_source_format=DataSourceFormat.DELTA,
+        )
+
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = [
+            "CREATE TABLE `demo`.`default`.`test_table` (id INT) USING DELTA"
+        ]
+
+        mock_connection = MagicMock()
+        mock_connection.execute.return_value = mock_cursor
+
+        with patch.object(
+            self.unitycatalog_source.engine, "connect", return_value=mock_connection
+        ):
+            table_with_ddl_result = self.unitycatalog_source.get_schema_definition(
+                table_name="test_table",
+                table_type=TableType.Regular,
+                table=mock_regular_table,
+            )
+
+        assert (
+            table_with_ddl_result
+            == "CREATE TABLE `demo`.`default`.`test_table` (id INT) USING DELTA"
+        )
+
+        # Check schema definition when includeDDL is False
+        self.unitycatalog_source.source_config.includeDDL = False
+
+        table_without_ddl_result = self.unitycatalog_source.get_schema_definition(
+            table_name="test_table",
+            table_type=TableType.Regular,
+            table=mock_regular_table,
+        )
+
+        assert table_without_ddl_result is None

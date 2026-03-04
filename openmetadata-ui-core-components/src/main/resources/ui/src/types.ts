@@ -36,10 +36,13 @@ export interface ColorPalette {
 export interface ThemeColors {
   white: string;
   brand: ColorPalette;
-  gray: ColorPalette & { 750: string }; // Gray has extra 750 shade
+  gray: ColorPalette & { 725: string; 750: string }; // Gray has extra custom shades
   blueGray: Partial<ColorPalette> & {
+    40: string; // Custom shade for search field background
     75: string; // Custom shade for chip background
+    125: string; // Custom shade for card header fills
     150: string; // Custom shade for chip border
+    250: string; // Custom shade for search field borders
   };
   blue: ColorPalette;
   blueLight: ColorPalette;
@@ -60,6 +63,8 @@ export interface ThemeColors {
 export interface CustomColors {
   primaryColor?: string;
   infoColor?: string;
+  hoverColor?:string;
+  selectedColor?:string;
   successColor?: string;
   warningColor?: string;
   errorColor?: string;

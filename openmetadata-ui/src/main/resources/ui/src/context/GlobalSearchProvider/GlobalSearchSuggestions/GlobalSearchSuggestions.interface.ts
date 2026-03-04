@@ -120,6 +120,26 @@ export interface APICollectionSource extends CommonSource {
   api_collection_name: string;
 }
 
+export interface DirectorySource extends CommonSource {
+  directory_id: string;
+  directory_name: string;
+}
+
+export interface FileSource extends CommonSource {
+  file_id: string;
+  file_name: string;
+}
+
+export interface SpreadsheetSource extends CommonSource {
+  spreadsheet_id: string;
+  spreadsheet_name: string;
+}
+
+export interface WorksheetSource extends CommonSource {
+  worksheet_id: string;
+  worksheet_name: string;
+}
+
 export interface Option {
   _index: string;
   _id: string;
@@ -139,7 +159,11 @@ export interface Option {
         ChartSource &
         APIEndpointSource &
         APICollectionSource &
-        MetricSource;
+        MetricSource &
+        DirectorySource &
+        FileSource &
+        SpreadsheetSource &
+        WorksheetSource;
 }
 
 export type SearchSuggestions =
@@ -160,4 +184,33 @@ export type SearchSuggestions =
   | APICollectionSource[]
   | MetricSource[]
   | DatabaseSource[]
-  | DatabaseSchemaSource[];
+  | DatabaseSchemaSource[]
+  | DirectorySource[]
+  | FileSource[]
+  | SpreadsheetSource[]
+  | WorksheetSource[];
+
+export interface SuggestionsObject {
+  tableSuggestions: TableSource[];
+  topicSuggestions: TopicSource[];
+  dashboardSuggestions: DashboardSource[];
+  pipelineSuggestions: PipelineSource[];
+  mlModelSuggestions: MlModelSource[];
+  containerSuggestions: ContainerSearchSource[];
+  storedProcedureSuggestions: StoredProcedureSearchSource[];
+  dataModelSuggestions: DashboardDataModelSearchSource[];
+  glossaryTermSuggestions: GlossarySource[];
+  tagSuggestions: TagSource[];
+  searchIndexSuggestions: SearchIndexSource[];
+  dataProductSuggestions: DataProductSource[];
+  chartSuggestions: ChartSource[];
+  apiEndpointSuggestions: APIEndpointSource[];
+  apiCollectionSuggestions: APICollectionSource[];
+  metricSuggestions: MetricSource[];
+  databaseSuggestions: DatabaseSource[];
+  databaseSchemaSuggestions: DatabaseSchemaSource[];
+  directorySuggestions: DirectorySource[];
+  fileSuggestions: FileSource[];
+  spreadsheetSuggestions: SpreadsheetSource[];
+  worksheetSuggestions: WorksheetSource[];
+}

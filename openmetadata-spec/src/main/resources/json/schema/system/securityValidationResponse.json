@@ -1,0 +1,63 @@
+{
+  "$id": "https://open-metadata.org/schema/system/securityValidationResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SecurityValidationResponse",
+  "description": "Response for security configuration validation",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.SecurityValidationResponse",
+  "definitions": {
+    "validationResult": {
+      "javaType": "org.openmetadata.schema.system.ValidationResult",
+      "description": "Legacy validation result for backward compatibility",
+      "type": "object",
+      "properties": {
+        "component": {
+          "description": "Component being validated (e.g., oidc, ldap, saml)",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status of the validation (success/failed)",
+          "type": "string"
+        },
+        "message": {
+          "description": "Validation message or error details",
+          "type": "string"
+        }
+      },
+      "required": ["component", "status", "message"],
+      "additionalProperties": false
+    },
+    "fieldError": {
+      "javaType": "org.openmetadata.schema.system.FieldError",
+      "type": "object",
+      "properties": {
+        "field": {
+          "description": "Field path that has the error (e.g., 'authenticationConfiguration.oidcConfiguration.clientId')",
+          "type": "string"
+        },
+        "error": {
+          "description": "Concise error message for display under form field",
+          "type": "string"
+        }
+      },
+      "required": ["field", "error"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "status": {
+      "description": "Overall validation status (success/failed)",
+      "type": "string",
+      "enum": ["success", "failed"]
+    },
+    "errors": {
+      "description": "List of field errors (only present when status is 'failed')",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/fieldError"
+      }
+    }
+  },
+  "required": ["status"],
+  "additionalProperties": false
+} 

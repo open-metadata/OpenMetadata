@@ -17,7 +17,6 @@ import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEve
 
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.Optional;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -48,8 +47,7 @@ public class ChangeEventHandler implements EventHandler {
     websocketNotificationHandler.processNotifications(responseContext);
 
     // Send to Change Event Table
-    SecurityContext securityContext = requestContext.getSecurityContext();
-    String loggedInUserName = securityContext.getUserPrincipal().getName();
+    String loggedInUserName = requestContext.getSecurityContext().getUserPrincipal().getName();
     try {
       Optional<ChangeEvent> optionalChangeEvent =
           getChangeEventFromResponseContext(responseContext, loggedInUserName);
@@ -75,6 +73,7 @@ public class ChangeEventHandler implements EventHandler {
         }
 
         // Insert ChangeEvents if ENTITY Changed
+        // Audit log is written asynchronously by AuditLogConsumer from the change_event table
         if (!changeEvent.getEventType().equals(EventType.ENTITY_NO_CHANGE)) {
           Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
         }
@@ -94,7 +93,9 @@ public class ChangeEventHandler implements EventHandler {
         .withEventType(changeEvent.getEventType())
         .withEntityId(changeEvent.getEntityId())
         .withEntityType(changeEvent.getEntityType())
+        .withEntityFullyQualifiedName(changeEvent.getEntityFullyQualifiedName())
         .withUserName(changeEvent.getUserName())
+        .withImpersonatedBy(changeEvent.getImpersonatedBy())
         .withTimestamp(changeEvent.getTimestamp())
         .withChangeDescription(changeEvent.getChangeDescription())
         .withCurrentVersion(changeEvent.getCurrentVersion());

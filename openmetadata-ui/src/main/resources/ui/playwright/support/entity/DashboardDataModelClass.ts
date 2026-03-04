@@ -12,63 +12,128 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  Column,
+  DashboardDataModel,
+  DataType,
+} from '../../../src/generated/entity/data/dashboardDataModel';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import {
-  EntityTypeEndpoint,
-  ResponseDataType,
-  ResponseDataWithServiceType,
-} from './Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class DashboardDataModelClass extends EntityClass {
-  private dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
-  private projectName = `pw-project-${uuid()}`;
-  service = {
-    name: `pw-dashboard-service-${uuid()}`,
-    serviceType: 'Superset',
+  private readonly dashboardDataModelName: string;
+  private readonly projectName: string;
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Superset',
-        hostPort: 'http://localhost:8088',
+        type: string;
+        hostPort: string;
         connection: {
-          provider: 'ldap',
-          username: 'admin',
-          password: 'admin',
-        },
-        supportsMetadataExtraction: true,
-      },
-    },
+          provider: string;
+          username: string;
+          password: string;
+        };
+        supportsMetadataExtraction: boolean;
+      };
+    };
   };
 
-  children = [
-    {
-      name: 'country_name',
-      dataType: 'VARCHAR',
-      dataLength: 256,
-      dataTypeDisplay: 'varchar',
-      description: 'Name of the country.',
-    },
-  ];
+  children: Column[];
 
-  entity = {
-    name: this.dashboardDataModelName,
-    displayName: this.dashboardDataModelName,
-    service: this.service.name,
-    columns: this.children,
-    dataModelType: 'SupersetDataModel',
-    project: this.projectName,
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
+    description: string;
+    columns: Column[];
+    dataModelType: string;
+    project: string;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
-  entityResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
+  entityResponseData: DashboardDataModel = {} as DashboardDataModel;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.DataModel);
-    this.service.name = name ?? this.service.name;
+
+    this.dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
+    this.projectName = `pw-project-${uuid()}`;
+
+    this.service = {
+      name: name ?? `pw-dashboard-service-${uuid()}`,
+      serviceType: 'Superset',
+      connection: {
+        config: {
+          type: 'Superset',
+          hostPort: 'http://localhost:8088',
+          connection: {
+            provider: 'ldap',
+            username: 'admin',
+            password: 'admin',
+          },
+          supportsMetadataExtraction: true,
+        },
+      },
+    };
+
+    this.children = [
+      {
+        name: 'country_name',
+        dataType: DataType.Varchar,
+        dataLength: 256,
+        dataTypeDisplay: 'varchar',
+        description: 'Name of the country.',
+      },
+      {
+        name: 'user_details',
+        dataType: DataType.Varchar,
+        dataLength: 256,
+        dataTypeDisplay: 'varchar',
+        description: 'User details.',
+        children: [
+          {
+            name: 'name',
+            dataType: DataType.Varchar,
+            dataLength: 256,
+            dataTypeDisplay: 'varchar',
+            description: 'Name of the user.',
+            children: [
+              {
+                name: 'first_name',
+                dataType: DataType.Varchar,
+                dataLength: 256,
+                dataTypeDisplay: 'varchar',
+                description: 'First name of the user.',
+              },
+              {
+                name: 'last_name',
+                dataType: DataType.Varchar,
+                dataLength: 256,
+                dataTypeDisplay: 'varchar',
+                description: 'Last name of the user.',
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    this.entity = {
+      name: this.dashboardDataModelName,
+      displayName: this.dashboardDataModelName,
+      description: `Description for ${this.dashboardDataModelName}`,
+      service: this.service.name,
+      columns: this.children,
+      dataModelType: 'SupersetDataModel',
+      project: this.projectName,
+    };
+
     this.type = 'DashboardDataModel';
     this.childrenTabId = 'model';
     this.childrenSelectorId = this.children[0].name;
@@ -93,6 +158,9 @@ export class DashboardDataModelClass extends EntityClass {
     this.serviceResponseData = await serviceResponse.json();
     this.entityResponseData = await entityResponse.json();
 
+    this.childrenSelectorId =
+      this.entityResponseData.columns[0].fullyQualifiedName ?? '';
+
     return {
       service: serviceResponse.body,
       entity: entityResponse.body,
@@ -107,7 +175,7 @@ export class DashboardDataModelClass extends EntityClass {
     patchData: Operation[];
   }) {
     const response = await apiContext.patch(
-      `/api/v1/dashboard/datamodels/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      `/api/v1/dashboard/datamodels/name/${this.entityResponseData?.fullyQualifiedName}`,
       {
         data: patchData,
         headers: {
@@ -123,25 +191,35 @@ export class DashboardDataModelClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
     };
   }
 
+  public set(data: {
+    entity: DashboardDataModel;
+    service: ResponseDataType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+  }
+
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
+      dataTestId: `${
+        this.entityResponseData.service?.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/dashboardServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
+        this.serviceResponseData?.fullyQualifiedName ?? ''
       )}?recursive=true&hardDelete=true`
     );
 

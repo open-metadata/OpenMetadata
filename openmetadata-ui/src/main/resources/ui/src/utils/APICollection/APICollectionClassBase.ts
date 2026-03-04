@@ -43,6 +43,7 @@ export interface APICollectionDetailPageTabProps {
   handleFeedCount: (data: FeedCounts) => void;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   apiEndpointCount: number;
   labelMap: Record<EntityTabs, string>;
 }
@@ -79,6 +80,7 @@ class APICollectionClassBase {
     return [
       EntityTabs.API_ENDPOINT,
       EntityTabs.ACTIVITY_FEED,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

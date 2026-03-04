@@ -1,0 +1,29 @@
+[
+  {
+    "name": "fraud-detection-model",
+    "algorithm": "mlmodel",
+    "dashboard": "sample_superset.eta_predictions_performance",
+    "mlStore": {
+      "storage": "s3://sagemaker-us-east-1-123456789/fraud-detection-model/model.tar.gz",
+      "imageRepository": "123456789.dkr.ecr.us-east-1.amazonaws.com/fraud-detection:v1.2.3"
+    }
+  },
+  {
+    "name": "customer-churn-predictor",
+    "algorithm": "mlmodel",
+    "dashboard": "sample_superset.forecast_sales_performance",
+    "mlStore": {
+      "storage": "s3://sagemaker-us-east-1-123456789/churn-model/model-v2.tar.gz",
+      "imageRepository": "123456789.dkr.ecr.us-east-1.amazonaws.com/churn-predictor:v2.0.1"
+    }
+  },
+  {
+    "name": "recommendation-engine",
+    "algorithm": "mlmodel",
+    "dashboard": "sample_superset.eta_predictions_performance",
+    "mlStore": {
+      "storage": "s3://sagemaker-us-east-1-123456789/recommendations/collaborative-filter.tar.gz",
+      "imageRepository": "123456789.dkr.ecr.us-east-1.amazonaws.com/recommendation-engine:latest"
+    }
+  }
+]

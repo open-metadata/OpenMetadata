@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,7 +18,12 @@ export interface NodeInformation {
      * Entity object.
      */
     entity?: any;
-    paging?: LayerPaging;
+    /**
+     * Depth of the node from the root entity in the lineage graph. Root entity has depth 0, its
+     * immediate upstream/downstream entities have depth 1, and so on.
+     */
+    nodeDepth?: number;
+    paging?:    LayerPaging;
     [property: string]: any;
 }
 

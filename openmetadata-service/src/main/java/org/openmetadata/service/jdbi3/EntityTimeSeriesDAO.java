@@ -20,6 +20,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.jdbi.BindFQN;
 
 public interface EntityTimeSeriesDAO {
@@ -148,6 +149,7 @@ public interface EntityTimeSeriesDAO {
           + "WHERE ranked.row_num = 1 LIMIT :limit OFFSET :offset")
   List<String> listWithOffset(
       @Define("table") String table,
+      @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Define("partition") String partition,
       @Bind("limit") int limit,
@@ -160,6 +162,7 @@ public interface EntityTimeSeriesDAO {
     return latest
         ? listWithOffset(
             getTimeSeriesTableName(),
+            filter.getQueryParams(),
             filter.getCondition(),
             getPartitionFieldName(),
             limit,
@@ -179,6 +182,121 @@ public interface EntityTimeSeriesDAO {
   default List<String> listWithOffset(ListFilter filter, int limit, int offset) {
     return listWithOffset(
         getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), limit, offset);
+  }
+
+  record TimeSeriesRow(String json, long timestamp, String entityFQNHash) {}
+
+  record TimeSeriesCursor(long afterTs, String afterFQNHash) {
+    /** Encodes a keyset cursor position as {@code "timestamp|entityFQNHash"}. */
+    public static String format(long timestamp, String entityFQNHash) {
+      return timestamp + "|" + entityFQNHash;
+    }
+
+    /** Decodes a Base64 keyset cursor back into its timestamp and FQN hash components. */
+    public static TimeSeriesCursor parse(String keysetCursor) {
+      if (keysetCursor == null || keysetCursor.isEmpty()) {
+        return new TimeSeriesCursor(0, "");
+      }
+      String decoded = RestUtil.decodeCursor(keysetCursor);
+      int sep = decoded.indexOf('|');
+      if (sep < 0) {
+        throw new IllegalArgumentException(
+            "Malformed keyset cursor (missing '|'): " + keysetCursor);
+      }
+      return new TimeSeriesCursor(
+          Long.parseLong(decoded.substring(0, sep)), decoded.substring(sep + 1));
+    }
+  }
+
+  /** Holds the extracted JSON payloads and next-page cursor from a keyset query result. */
+  record KeysetPage(List<String> jsons, String afterCursor) {
+    public static KeysetPage from(List<TimeSeriesRow> rows, int limitParam) {
+      boolean hasMoreData = rows.size() > limitParam;
+      List<TimeSeriesRow> rowsToProcess = hasMoreData ? rows.subList(0, limitParam) : rows;
+      List<String> jsons = rowsToProcess.stream().map(TimeSeriesRow::json).toList();
+      String afterCursor = null;
+      if (hasMoreData) {
+        TimeSeriesRow lastRow = rowsToProcess.get(rowsToProcess.size() - 1);
+        afterCursor = TimeSeriesCursor.format(lastRow.timestamp(), lastRow.entityFQNHash());
+      }
+      return new KeysetPage(jsons, afterCursor);
+    }
+  }
+
+  class TimeSeriesRowMapper implements RowMapper<TimeSeriesRow> {
+    @Override
+    public TimeSeriesRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new TimeSeriesRow(
+          rs.getString("json"), rs.getLong("timestamp"), rs.getString("entityFQNHash"));
+    }
+  }
+
+  @SqlQuery(
+      "SELECT json, timestamp, entityFQNHash FROM <table> <cond> "
+          + "AND (timestamp > :afterTs OR (timestamp = :afterTs AND entityFQNHash > :afterFQNHash)) "
+          + "ORDER BY timestamp ASC, entityFQNHash ASC LIMIT :limit")
+  @RegisterRowMapper(TimeSeriesRowMapper.class)
+  List<TimeSeriesRow> listAfterKeyset(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Bind("limit") int limit,
+      @Bind("afterTs") long afterTs,
+      @Bind("afterFQNHash") String afterFQNHash);
+
+  default List<TimeSeriesRow> listAfterKeyset(
+      ListFilter filter, int limit, long afterTs, String afterFQNHash) {
+    return listAfterKeyset(
+        getTimeSeriesTableName(),
+        filter.getQueryParams(),
+        filter.getCondition(),
+        limit,
+        afterTs,
+        afterFQNHash);
+  }
+
+  @SqlQuery(
+      "SELECT json, timestamp, entityFQNHash FROM <table> <cond> "
+          + "AND timestamp >= :startTs AND timestamp <= :endTs "
+          + "AND (timestamp > :afterTs OR (timestamp = :afterTs AND entityFQNHash > :afterFQNHash)) "
+          + "ORDER BY timestamp ASC, entityFQNHash ASC LIMIT :limit")
+  @RegisterRowMapper(TimeSeriesRowMapper.class)
+  List<TimeSeriesRow> listAfterKeysetWithRange(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Bind("limit") int limit,
+      @Bind("startTs") long startTs,
+      @Bind("endTs") long endTs,
+      @Bind("afterTs") long afterTs,
+      @Bind("afterFQNHash") String afterFQNHash);
+
+  default List<TimeSeriesRow> listAfterKeysetWithRange(
+      ListFilter filter, int limit, long startTs, long endTs, long afterTs, String afterFQNHash) {
+    return listAfterKeysetWithRange(
+        getTimeSeriesTableName(),
+        filter.getQueryParams(),
+        filter.getCondition(),
+        limit,
+        startTs,
+        endTs,
+        afterTs,
+        afterFQNHash);
+  }
+
+  @SqlQuery(
+      "SELECT json, timestamp, entityFQNHash FROM <table> <cond> "
+          + "ORDER BY timestamp ASC, entityFQNHash ASC LIMIT 1 OFFSET :offset")
+  @RegisterRowMapper(TimeSeriesRowMapper.class)
+  TimeSeriesRow getCursorAtOffset(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Bind("offset") int offset);
+
+  default TimeSeriesRow getCursorAtOffset(ListFilter filter, int offset) {
+    return getCursorAtOffset(
+        getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), offset);
   }
 
   @ConnectionAwareSqlUpdate(
@@ -400,6 +518,35 @@ public interface EntityTimeSeriesDAO {
     deleteBeforeTimestamp(getTimeSeriesTableName(), entityFQNHash, extension, timestamp);
   }
 
+  @ConnectionAwareSqlUpdate(
+      value =
+          "DELETE FROM <table> "
+              + "WHERE entityFQNHash = :entityFQNHash "
+              + "AND extension = :extension "
+              + "<mysqlCond>",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "DELETE FROM <table> "
+              + "WHERE entityFQNHash = :entityFQNHash "
+              + "AND extension = :extension "
+              + "<psqlCond>",
+      connectionType = POSTGRES)
+  void deleteExtensionByKeyInternal(
+      @Define("table") String table,
+      @Bind("value") String value,
+      @BindFQN("entityFQNHash") String entityFQNHash,
+      @Bind("extension") String extension,
+      @Define("mysqlCond") String mysqlCond,
+      @Define("psqlCond") String psqlCond);
+
+  default void deleteExtensionByKey(String key, String value, String entityFQN, String extension) {
+    String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
+    String psqlCond = String.format("AND json->>'%s' = :value", key);
+    deleteExtensionByKeyInternal(
+        getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
+  }
+
   @SqlQuery(
       "SELECT json FROM <table> where entityFQNHash = :entityFQNHash and extension = :extension "
           + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
@@ -541,6 +688,27 @@ public interface EntityTimeSeriesDAO {
     } else {
       insert(fqn, extension, jsonSchema, entityJson);
     }
+  }
+
+  @ConnectionAwareSqlUpdate(
+      value =
+          "DELETE FROM <table> "
+              + "WHERE json->>'id' IN ( "
+              + "  SELECT json->>'id' FROM <table> "
+              + "  WHERE timestamp < :cutoffTs ORDER BY timestamp LIMIT :limit "
+              + ")",
+      connectionType = POSTGRES)
+  @ConnectionAwareSqlUpdate(
+      value =
+          """
+            DELETE FROM <table> WHERE timestamp < :cutoffTs ORDER BY timestamp LIMIT :limit
+            """,
+      connectionType = MYSQL)
+  int deleteRecordsBeforeCutOff(
+      @Define("table") String table, @Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
+
+  default int deleteRecordsBeforeCutOff(long cutoffTs, int limit) {
+    return deleteRecordsBeforeCutOff(getTimeSeriesTableName(), cutoffTs, limit);
   }
 
   /** @deprecated */

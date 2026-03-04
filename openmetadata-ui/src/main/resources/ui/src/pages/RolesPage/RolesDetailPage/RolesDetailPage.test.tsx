@@ -66,6 +66,7 @@ jest.mock(
 );
 
 jest.mock('../../../constants/constants', () => ({
+  ...jest.requireActual('../../../constants/constants'),
   getUserPath: jest.fn(),
 }));
 

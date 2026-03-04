@@ -11,6 +11,7 @@
 """
 Hive Metastore Mysql Dialect
 """
+from sqlalchemy import text
 from sqlalchemy.dialects.mysql.pymysql import MySQLDialect_pymysql
 from sqlalchemy.engine import reflection
 
@@ -35,14 +36,14 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
 
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
-        return [row[0] for row in connection.execute("select NAME from DBS;")]
+        return [row[0] for row in connection.execute(text("select NAME from DBS;"))]
 
     def get_view_names(self, connection, schema=None, **kw):
         # Hive does not provide functionality to query tableType
         # This allows reflection to not crash at the cost of being inaccurate
         query = self._get_table_names_base_query(schema=schema)
         query += """ WHERE TBL_TYPE = 'VIRTUAL_VIEW'"""
-        return [row[0] for row in connection.execute(query)]
+        return [row[0] for row in connection.execute(text(query))]
 
     def _get_table_columns(self, connection, table_name, schema):
         schema_join = (
@@ -54,36 +55,31 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
             else ""
         )
 
+        # Rewritten to avoid CTE syntax for MySQL < 8.0 compatibility
+        # Using direct UNION ALL of subqueries instead of WITH clause
         query = f"""
-            WITH regular_columns AS (
-                SELECT 
-                    col.COLUMN_NAME,
-                    col.TYPE_NAME, 
-                    col.COMMENT
-                FROM COLUMNS_V2 col
-                JOIN CDS cds ON col.CD_ID = cds.CD_ID
-                JOIN SDS sds ON sds.CD_ID = cds.CD_ID
-                JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
-                    AND tbsl.TBL_NAME = '{table_name}'
-                            {schema_join}
-                        ),
-                        partition_columns AS (
-                SELECT 
-                    pk.PKEY_NAME as COLUMN_NAME,
-                    pk.PKEY_TYPE as TYPE_NAME,
-                    pk.PKEY_COMMENT as COMMENT
-                FROM PARTITION_KEYS pk
-                JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
-                    AND tbsl.TBL_NAME = '{table_name}'
-                {schema_join}
-            )
-            -- Combine regular and partition columns
-            SELECT * FROM regular_columns
+            SELECT 
+                col.COLUMN_NAME,
+                col.TYPE_NAME, 
+                col.COMMENT
+            FROM COLUMNS_V2 col
+            JOIN CDS cds ON col.CD_ID = cds.CD_ID
+            JOIN SDS sds ON sds.CD_ID = cds.CD_ID
+            JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
+                AND tbsl.TBL_NAME = '{table_name}'
+            {schema_join}
             UNION ALL
-            SELECT * FROM partition_columns
+            SELECT 
+                pk.PKEY_NAME as COLUMN_NAME,
+                pk.PKEY_TYPE as TYPE_NAME,
+                pk.PKEY_COMMENT as COMMENT
+            FROM PARTITION_KEYS pk
+            JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
+                AND tbsl.TBL_NAME = '{table_name}'
+            {schema_join}
         """
 
-        return connection.execute(query).fetchall()
+        return connection.execute(text(query)).fetchall()
 
     def _get_table_names_base_query(self, schema=None):
         query = "SELECT TBL_NAME from TBLS tbl"
@@ -95,7 +91,7 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
     def get_table_names(self, connection, schema=None, **kw):
         query = self._get_table_names_base_query(schema=schema)
         query += """ WHERE TBL_TYPE != 'VIRTUAL_VIEW'"""
-        return [row[0] for row in connection.execute(query)]
+        return [row[0] for row in connection.execute(text(query))]
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):

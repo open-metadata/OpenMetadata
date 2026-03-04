@@ -106,6 +106,21 @@ def get_table_or_column_fqn(entity_link: str) -> str:
     )
 
 
+def get_column_name_or_none(entity_link: str) -> Optional[str]:
+    """It attempts to get a column from an entity link
+
+    Args:
+        entity_link: entity link
+
+    Returns:
+        The column name or None
+    """
+    split_entity_link = split(entity_link)
+    if len(split_entity_link) == 4 and split_entity_link[2] == "columns":
+        return split_entity_link[3]
+    return None
+
+
 get_entity_link_registry = class_register()
 
 

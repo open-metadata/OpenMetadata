@@ -19,7 +19,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getAPIfromSource,
@@ -34,6 +37,7 @@ import './domain-label.less';
 import { DomainLabelProps } from './DomainLabel.interface';
 
 export const DomainLabel = ({
+  showDashPlaceholder,
   afterDomainUpdateAction,
   hasPermission,
   domains,
@@ -50,6 +54,12 @@ export const DomainLabel = ({
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
 
+  const defaultDomainText = useMemo(() => {
+    return showDashPlaceholder
+      ? NO_DATA_PLACEHOLDER
+      : t('label.no-entity', { entity: t('label.domain-plural') });
+  }, [showDashPlaceholder]);
+
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
@@ -64,6 +74,8 @@ export const DomainLabel = ({
             ...entityDetailsResponse,
             domains: Array.isArray(selectedDomain)
               ? selectedDomain
+              : isEmpty(selectedDomain)
+              ? []
               : [selectedDomain],
           });
 
@@ -132,9 +144,9 @@ export const DomainLabel = ({
                 <DomainIcon
                   className="d-flex"
                   color={DE_ACTIVE_COLOR}
-                  height={16}
+                  height={20}
                   name="folder"
-                  width={16}
+                  width={20}
                 />
               </Typography.Text>
             )}
@@ -166,8 +178,12 @@ export const DomainLabel = ({
                 })),
                 className: 'domain-tooltip-list',
               }}>
-              <Typography.Text className="domain-count-button flex-center text-sm font-medium">
-                <span>+{remainingCount}</span>
+              <Typography.Text
+                className={`flex-center cursor-pointer align-middle ant-typography-secondary domain-count-button ${
+                  remainingCount <= 9 ? 'h-6 w-6' : ''
+                }`}
+                data-testid="domain-count-button">
+                <span className="ant-typography domain-count-label">{`+${remainingCount}`}</span>
               </Typography.Text>
             </Dropdown>
           </div>
@@ -185,7 +201,7 @@ export const DomainLabel = ({
           textClassName
         )}
         data-testid="no-domain-text">
-        {t('label.no-entity', { entity: t('label.domain-plural') })}
+        {defaultDomainText}
       </Typography.Text>
     );
   }, [
@@ -226,7 +242,7 @@ export const DomainLabel = ({
               <Typography.Text className="domain-link right-panel-label m-r-xss">
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
-                  : t('label.no-entity', { entity: t('label.domain-plural') })}
+                  : defaultDomainText}
               </Typography.Text>
             )}
             {selectableList}
@@ -240,7 +256,7 @@ export const DomainLabel = ({
     }
 
     return (
-      <div className="d-flex flex-col domain-label-container gap-2 justify-start">
+      <div className="d-flex flex-col gap-2 justify-start">
         {headerLayout && (
           <div
             className="d-flex text-sm gap-1 font-medium items-center "

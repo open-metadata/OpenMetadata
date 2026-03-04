@@ -9,7 +9,9 @@
     "salesforceType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Salesforce"],
+      "enum": [
+        "Salesforce"
+      ],
       "default": "Salesforce"
     }
   },
@@ -22,18 +24,29 @@
     },
     "username": {
       "title": "Username",
-      "description": "Username to connect to the Salesforce. This user should have privileges to read all the metadata in Redshift.",
+      "description": "Username to connect to Salesforce. This user should have privileges to read all the metadata in Salesforce.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "Password to connect to the Salesforce.",
+      "description": "Password to connect to Salesforce.",
       "type": "string",
       "format": "password"
     },
     "securityToken": {
       "title": "Security Token",
-      "description": "Salesforce Security Token.",
+      "description": "Salesforce Security Token for username/password authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "consumerKey": {
+      "title": "Consumer Key",
+      "description": "Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from your Salesforce Connected App configuration. Required along with Consumer Secret for OAuth authentication.",
+      "type": "string"
+    },
+    "consumerSecret": {
+      "title": "Consumer Secret",
+      "description": "Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained from your Salesforce Connected App configuration. Required along with Consumer Key for OAuth authentication.",
       "type": "string",
       "format": "password"
     },
@@ -42,10 +55,14 @@
       "description": "Salesforce Organization ID is the unique identifier for your Salesforce identity",
       "type": "string"
     },
-    "sobjectName": {
-      "title": "Object Name",
-      "description": "Salesforce Object Name.",
-      "type": "string"
+    "sobjectNames": {
+      "title": "Object Names",
+      "description": "List of Salesforce Object Names to ingest. If specified, only these objects will be fetched. Leave empty to fetch all objects (subject to tableFilterPattern).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
     },
     "databaseName": {
       "title": "Database Name",
@@ -77,7 +94,7 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
@@ -97,6 +114,5 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false,
-  "required": ["username"]
+  "additionalProperties": false
 }

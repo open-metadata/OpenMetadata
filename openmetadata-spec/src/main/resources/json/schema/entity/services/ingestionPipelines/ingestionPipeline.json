@@ -216,6 +216,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../../type/basic.json#/definitions/impersonatedBy"
+    },
     "changeDescription": {
       "description": "Change that led to this version of the entity.",
       "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"

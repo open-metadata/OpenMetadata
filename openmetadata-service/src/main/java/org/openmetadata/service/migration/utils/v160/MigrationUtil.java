@@ -37,7 +37,7 @@ public class MigrationUtil {
       Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
       boolean noViewAllRule = true;
       for (Rule rule : organizationPolicy.getRules()) {
-        if (rule.getName().equals("OrganizationPolicy-View-All-Rule")) {
+        if (rule.getName().equals("OrganizationPolicy-ViewAll-Rule")) {
           noViewAllRule = false;
           break;
         }

@@ -14,8 +14,6 @@
 import { EntityType } from '../../../../enums/entity.enum';
 
 export interface LineageControlButtonsProps {
-  handleFullScreenViewClick?: () => void;
-  onExitFullScreenViewClick?: () => void;
   deleted?: boolean;
   hasEditAccess: boolean;
   entityType?: EntityType;

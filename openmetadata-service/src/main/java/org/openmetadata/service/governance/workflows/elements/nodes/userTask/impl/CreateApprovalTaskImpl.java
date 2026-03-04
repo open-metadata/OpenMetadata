@@ -17,9 +17,11 @@ import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
@@ -38,6 +40,8 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Slf4j
 public class CreateApprovalTaskImpl implements TaskListener {
   private Expression inputNamespaceMapExpr;
+  private Expression approvalThresholdExpr;
+  private Expression rejectionThresholdExpr;
 
   @Override
   public void notify(DelegateTask delegateTask) {
@@ -51,10 +55,35 @@ public class CreateApprovalTaskImpl implements TaskListener {
               (String)
                   varHandler.getNamespacedVariable(
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
-      GlossaryTerm entity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+
+      // Get approval threshold, default to 1 if not set
+      Integer approvalThreshold = 1;
+      if (approvalThresholdExpr != null) {
+        String thresholdStr = (String) approvalThresholdExpr.getValue(delegateTask);
+        if (thresholdStr != null && !thresholdStr.isEmpty()) {
+          approvalThreshold = Integer.parseInt(thresholdStr);
+        }
+      }
+
+      // Get rejection threshold, default to 1 if not set
+      Integer rejectionThreshold = 1;
+      if (rejectionThresholdExpr != null) {
+        String thresholdStr = (String) rejectionThresholdExpr.getValue(delegateTask);
+        if (thresholdStr != null && !thresholdStr.isEmpty()) {
+          rejectionThreshold = Integer.parseInt(thresholdStr);
+        }
+      }
 
       Thread task = createApprovalTask(entity, assignees);
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
+
+      // Set the thresholds as task variables for use in WorkflowHandler
+      delegateTask.setVariable("approvalThreshold", approvalThreshold);
+      delegateTask.setVariable("rejectionThreshold", rejectionThreshold);
+      // Use separate lists for approvers and rejecters - simpler and cleaner
+      delegateTask.setVariable("approversList", new ArrayList<String>());
+      delegateTask.setVariable("rejectersList", new ArrayList<String>());
     } catch (Exception exc) {
       LOG.error(
           String.format(
@@ -86,7 +115,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
         assigneeEntityLink.getEntityType(), assigneeEntityLink.getEntityFQN(), Include.NON_DELETED);
   }
 
-  private Thread createApprovalTask(GlossaryTerm entity, List<EntityReference> assignees) {
+  private Thread createApprovalTask(EntityInterface entity, List<EntityReference> assignees) {
     FeedRepository feedRepository = Entity.getFeedRepository();
     MessageParser.EntityLink about =
         new MessageParser.EntityLink(
@@ -94,12 +123,30 @@ public class CreateApprovalTaskImpl implements TaskListener {
 
     Thread thread;
 
+    ChangeEvent changeEvent;
     try {
       thread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      // If there's a Task already opened, we resolve the Flowable task before creating a new
-      // UserTask in the new WorkflowInstance
+      // Update the existing thread with new assignees before terminating the workflow
+      thread.getTask().setAssignees(FeedMapper.formatAssignees(assignees));
+
+      thread.withUpdatedBy(entity.getUpdatedBy()).withUpdatedAt(System.currentTimeMillis());
+
+      // Save the updated thread to database
+      Entity.getCollectionDAO().feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
+
+      // Now terminate the old workflow instance
       WorkflowHandler.getInstance()
           .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
+      // Create and publish ChangeEvent for notification system
+      changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(EventType.THREAD_UPDATED)
+              .withEntityId(thread.getId())
+              .withEntityType(Entity.THREAD)
+              .withUserName(entity.getUpdatedBy())
+              .withTimestamp(thread.getUpdatedAt())
+              .withEntity(thread);
     } catch (EntityNotFoundException ex) {
       TaskDetails taskDetails =
           new TaskDetails()
@@ -120,9 +167,20 @@ public class CreateApprovalTaskImpl implements TaskListener {
               .withUpdatedAt(System.currentTimeMillis());
       feedRepository.create(thread);
 
-      // Send WebSocket Notification
-      WebsocketNotificationHandler.handleTaskNotification(thread);
+      // Create and publish ChangeEvent for notification system
+      changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(EventType.THREAD_CREATED)
+              .withEntityId(thread.getId())
+              .withEntityType(Entity.THREAD)
+              .withUserName(entity.getUpdatedBy())
+              .withTimestamp(thread.getUpdatedAt())
+              .withEntity(thread);
     }
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
+    // Send WebSocket Notification
+    WebsocketNotificationHandler.handleTaskNotification(thread);
     return thread;
   }
 }

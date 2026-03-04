@@ -20,14 +20,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.resources.EntityResourceTest.GOOGLE_DRIVE_SERVICE_REFERENCE;
+import static org.openmetadata.service.resources.EntityResourceTest.PERSONAL_DATA_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,8 +52,10 @@ import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -607,5 +614,455 @@ class SpreadsheetResourceTest extends EntityResourceTest<Spreadsheet, CreateSpre
     GoogleDriveConnection googleDriveConnection =
         new GoogleDriveConnection().withDriveId("test-drive-id").withCredentials(gcpCredentials);
     return new DriveConnection().withConfig(googleDriveConnection);
+  }
+
+  @Test
+  void test_listSpreadsheetsWithRootParameter(TestInfo test) throws IOException {
+    // Create drive service
+    DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
+    CreateDriveService createService =
+        driveServiceResourceTest
+            .createRequest(test)
+            .withName("driveForSpreadsheetRootTest")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    DriveService service = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a directory at root level (no parent)
+    CreateDirectory createDir =
+        new CreateDirectory()
+            .withName("sheetsDir")
+            .withService(service.getFullyQualifiedName())
+            .withPath("/sheets");
+    Directory sheetsDir =
+        TestUtils.post(
+            getResource("drives/directories"), createDir, Directory.class, ADMIN_AUTH_HEADERS);
+
+    // Create spreadsheets at root level (no parent directory)
+    CreateSpreadsheet createRootSpreadsheet1 =
+        createRequest("rootSpreadsheet1").withService(service.getFullyQualifiedName());
+    Spreadsheet rootSpreadsheet1 = createAndCheckEntity(createRootSpreadsheet1, ADMIN_AUTH_HEADERS);
+
+    CreateSpreadsheet createRootSpreadsheet2 =
+        createRequest("rootSpreadsheet2").withService(service.getFullyQualifiedName());
+    Spreadsheet rootSpreadsheet2 = createAndCheckEntity(createRootSpreadsheet2, ADMIN_AUTH_HEADERS);
+
+    // Create spreadsheets in directory (have parent - NOT root)
+    CreateSpreadsheet createChildSpreadsheet1 =
+        createRequest("childSpreadsheet1")
+            .withService(service.getFullyQualifiedName())
+            .withParent(
+                new EntityReference()
+                    .withId(sheetsDir.getId())
+                    .withType("directory")
+                    .withFullyQualifiedName(sheetsDir.getFullyQualifiedName()));
+    Spreadsheet childSpreadsheet1 =
+        createAndCheckEntity(createChildSpreadsheet1, ADMIN_AUTH_HEADERS);
+
+    CreateSpreadsheet createChildSpreadsheet2 =
+        createRequest("childSpreadsheet2")
+            .withService(service.getFullyQualifiedName())
+            .withParent(
+                new EntityReference()
+                    .withId(sheetsDir.getId())
+                    .withType("directory")
+                    .withFullyQualifiedName(sheetsDir.getFullyQualifiedName()));
+    Spreadsheet childSpreadsheet2 =
+        createAndCheckEntity(createChildSpreadsheet2, ADMIN_AUTH_HEADERS);
+
+    // Test 1: List all spreadsheets without root parameter
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", service.getFullyQualifiedName());
+    ResultList<Spreadsheet> allSpreadsheets = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(4, allSpreadsheets.getData().size());
+
+    // Test 2: List only root spreadsheets with root=true (spreadsheets with no parent)
+    queryParams.put("root", "true");
+    ResultList<Spreadsheet> rootSpreadsheets = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, rootSpreadsheets.getData().size());
+
+    // Verify only root spreadsheets are returned (those with no parent)
+    for (Spreadsheet spreadsheet : rootSpreadsheets.getData()) {
+      assertNull(spreadsheet.getDirectory());
+      assertTrue(
+          spreadsheet.getName().equals("rootSpreadsheet1")
+              || spreadsheet.getName().equals("rootSpreadsheet2"));
+    }
+
+    // Test 3: List with root=false should return all spreadsheets
+    queryParams.put("root", "false");
+    ResultList<Spreadsheet> nonRootSpreadsheets = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(4, nonRootSpreadsheets.getData().size());
+  }
+
+  @Test
+  void test_listSpreadsheetsWithRootParameterAndPagination(TestInfo test) throws IOException {
+    // Create drive service
+    DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
+    CreateDriveService createService =
+        driveServiceResourceTest
+            .createRequest(test)
+            .withName("driveForSpreadsheetPaginationTest")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    DriveService service = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a directory for child spreadsheets
+    CreateDirectory createDir =
+        new CreateDirectory()
+            .withName("spreadsheetsFolder")
+            .withService(service.getFullyQualifiedName())
+            .withPath("/spreadsheets");
+    Directory folder =
+        TestUtils.post(
+            getResource("drives/directories"), createDir, Directory.class, ADMIN_AUTH_HEADERS);
+
+    // Create multiple root spreadsheets for pagination testing
+    List<Spreadsheet> rootSpreadsheets = new ArrayList<>();
+    for (int i = 1; i <= 7; i++) {
+      CreateSpreadsheet createRoot =
+          createRequest("rootSpreadsheet" + i).withService(service.getFullyQualifiedName());
+      rootSpreadsheets.add(createAndCheckEntity(createRoot, ADMIN_AUTH_HEADERS));
+    }
+
+    // Create spreadsheets in directory (not root) - these should not appear in root results
+    for (int i = 1; i <= 3; i++) {
+      CreateSpreadsheet createChild =
+          createRequest("childSpreadsheet" + i)
+              .withService(service.getFullyQualifiedName())
+              .withParent(
+                  new EntityReference()
+                      .withId(folder.getId())
+                      .withType("directory")
+                      .withFullyQualifiedName(folder.getFullyQualifiedName()));
+      createAndCheckEntity(createChild, ADMIN_AUTH_HEADERS);
+    }
+
+    // Test 1: Paginate through root spreadsheets with limit
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", service.getFullyQualifiedName());
+    queryParams.put("root", "true");
+    queryParams.put("limit", "3");
+
+    ResultList<Spreadsheet> firstPage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(3, firstPage.getData().size());
+    assertNotNull(firstPage.getPaging().getAfter());
+
+    // Verify all returned spreadsheets are root level (no directory)
+    for (Spreadsheet spreadsheet : firstPage.getData()) {
+      assertNull(spreadsheet.getDirectory());
+    }
+
+    // Test 2: Get next page using after parameter
+    queryParams.put("after", firstPage.getPaging().getAfter());
+    ResultList<Spreadsheet> secondPage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(3, secondPage.getData().size());
+
+    // Verify second page spreadsheets are also root level
+    for (Spreadsheet spreadsheet : secondPage.getData()) {
+      assertNull(spreadsheet.getDirectory());
+    }
+
+    // Test 3: Get last page
+    queryParams.put("after", secondPage.getPaging().getAfter());
+    ResultList<Spreadsheet> lastPage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, lastPage.getData().size());
+    assertNull(lastPage.getData().get(0).getDirectory());
+
+    // Test 4: Verify total count of root spreadsheets
+    queryParams.remove("after");
+    queryParams.remove("limit");
+    ResultList<Spreadsheet> allRootSpreadsheets = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(7, allRootSpreadsheets.getData().size());
+
+    // Test 5: Verify pagination with different limit
+    queryParams.put("limit", "5");
+    ResultList<Spreadsheet> largePage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(5, largePage.getData().size());
+    assertNotNull(largePage.getPaging().getAfter());
+
+    queryParams.put("after", largePage.getPaging().getAfter());
+    ResultList<Spreadsheet> remainingPage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, remainingPage.getData().size());
+  }
+
+  @Test
+  void test_listSpreadsheetsWithRootParameterEmptyResult(TestInfo test) throws IOException {
+    // Create drive service
+    DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
+    CreateDriveService createService =
+        driveServiceResourceTest
+            .createRequest(test)
+            .withName("driveForSpreadsheetEmptyTest")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    DriveService service = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create multiple directories
+    List<Directory> directories = new ArrayList<>();
+    for (int i = 1; i <= 2; i++) {
+      CreateDirectory createDir =
+          new CreateDirectory()
+              .withName("folder" + i)
+              .withService(service.getFullyQualifiedName())
+              .withPath("/folder" + i);
+      directories.add(
+          TestUtils.post(
+              getResource("drives/directories"), createDir, Directory.class, ADMIN_AUTH_HEADERS));
+    }
+
+    // Create only spreadsheets in directories (no root spreadsheets)
+    for (Directory dir : directories) {
+      for (int i = 1; i <= 2; i++) {
+        CreateSpreadsheet createChild =
+            createRequest(dir.getName() + "_spreadsheet" + i)
+                .withService(service.getFullyQualifiedName())
+                .withParent(
+                    new EntityReference()
+                        .withId(dir.getId())
+                        .withType("directory")
+                        .withFullyQualifiedName(dir.getFullyQualifiedName()));
+        createAndCheckEntity(createChild, ADMIN_AUTH_HEADERS);
+      }
+    }
+
+    // Test: List root spreadsheets should return empty result
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", service.getFullyQualifiedName());
+    queryParams.put("root", "true");
+
+    ResultList<Spreadsheet> rootSpreadsheets = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(0, rootSpreadsheets.getData().size());
+
+    // Verify all spreadsheets are in directories
+    queryParams.put("root", "false");
+    ResultList<Spreadsheet> allSpreadsheets = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(4, allSpreadsheets.getData().size());
+    for (Spreadsheet spreadsheet : allSpreadsheets.getData()) {
+      assertNotNull(spreadsheet.getDirectory());
+      assertEquals("directory", spreadsheet.getDirectory().getType());
+    }
+  }
+
+  @Test
+  void test_listSpreadsheetsWithRootParameterAcrossMultipleServices(TestInfo test)
+      throws IOException {
+    DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
+
+    // Create first drive service (Google Sheets)
+    CreateDriveService createService1 =
+        driveServiceResourceTest
+            .createRequest(test)
+            .withName("googleSheetsService")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    DriveService service1 =
+        driveServiceResourceTest.createEntity(createService1, ADMIN_AUTH_HEADERS);
+
+    // Create second drive service (Excel Online)
+    CreateDriveService createService2 =
+        driveServiceResourceTest
+            .createRequest(test)
+            .withName("excelOnlineService")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    DriveService service2 =
+        driveServiceResourceTest.createEntity(createService2, ADMIN_AUTH_HEADERS);
+
+    // Create directory in first service
+    CreateDirectory createGoogleDir =
+        new CreateDirectory()
+            .withName("googleSheetsFolder")
+            .withService(service1.getFullyQualifiedName())
+            .withPath("/sheets");
+    Directory googleDir =
+        TestUtils.post(
+            getResource("drives/directories"),
+            createGoogleDir,
+            Directory.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Create root spreadsheets in first service
+    for (int i = 1; i <= 2; i++) {
+      CreateSpreadsheet createGoogleRoot =
+          createRequest("googleSheet" + i).withService(service1.getFullyQualifiedName());
+      createAndCheckEntity(createGoogleRoot, ADMIN_AUTH_HEADERS);
+    }
+
+    // Create child spreadsheets in first service
+    for (int i = 1; i <= 2; i++) {
+      CreateSpreadsheet createGoogleChild =
+          createRequest("googleChildSheet" + i)
+              .withService(service1.getFullyQualifiedName())
+              .withParent(
+                  new EntityReference()
+                      .withId(googleDir.getId())
+                      .withType("directory")
+                      .withFullyQualifiedName(googleDir.getFullyQualifiedName()));
+      createAndCheckEntity(createGoogleChild, ADMIN_AUTH_HEADERS);
+    }
+
+    // Create directory in second service
+    CreateDirectory createExcelDir =
+        new CreateDirectory()
+            .withName("excelFolder")
+            .withService(service2.getFullyQualifiedName())
+            .withPath("/excel");
+    Directory excelDir =
+        TestUtils.post(
+            getResource("drives/directories"), createExcelDir, Directory.class, ADMIN_AUTH_HEADERS);
+
+    // Create root spreadsheets in second service
+    for (int i = 1; i <= 4; i++) {
+      CreateSpreadsheet createExcelRoot =
+          createRequest("excelWorkbook" + i).withService(service2.getFullyQualifiedName());
+      createAndCheckEntity(createExcelRoot, ADMIN_AUTH_HEADERS);
+    }
+
+    // Create child spreadsheets in second service
+    CreateSpreadsheet createExcelChild =
+        createRequest("excelChildWorkbook")
+            .withService(service2.getFullyQualifiedName())
+            .withParent(
+                new EntityReference()
+                    .withId(excelDir.getId())
+                    .withType("directory")
+                    .withFullyQualifiedName(excelDir.getFullyQualifiedName()));
+    createAndCheckEntity(createExcelChild, ADMIN_AUTH_HEADERS);
+
+    // Test 1: List root spreadsheets for first service
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", service1.getFullyQualifiedName());
+    queryParams.put("root", "true");
+
+    ResultList<Spreadsheet> googleRootSpreadsheets = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, googleRootSpreadsheets.getData().size());
+    for (Spreadsheet spreadsheet : googleRootSpreadsheets.getData()) {
+      assertNull(spreadsheet.getDirectory());
+      assertTrue(spreadsheet.getName().startsWith("googleSheet"));
+    }
+
+    // Test 2: List root spreadsheets for second service
+    queryParams.put("service", service2.getFullyQualifiedName());
+    ResultList<Spreadsheet> excelRootSpreadsheets = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(4, excelRootSpreadsheets.getData().size());
+    for (Spreadsheet spreadsheet : excelRootSpreadsheets.getData()) {
+      assertNull(spreadsheet.getDirectory());
+      assertTrue(spreadsheet.getName().startsWith("excelWorkbook"));
+    }
+
+    // Test 3: Verify total spreadsheets in first service
+    queryParams.put("service", service1.getFullyQualifiedName());
+    queryParams.put("root", "false");
+    ResultList<Spreadsheet> allGoogleSpreadsheets = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(4, allGoogleSpreadsheets.getData().size()); // 2 root + 2 child
+
+    // Test 4: Verify total spreadsheets in second service
+    queryParams.put("service", service2.getFullyQualifiedName());
+    ResultList<Spreadsheet> allExcelSpreadsheets = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(5, allExcelSpreadsheets.getData().size()); // 4 root + 1 child
+
+    // Test 5: Verify pagination with root parameter across services
+    queryParams.put("service", service2.getFullyQualifiedName());
+    queryParams.put("root", "true");
+    queryParams.put("limit", "2");
+
+    ResultList<Spreadsheet> firstServicePage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, firstServicePage.getData().size());
+    assertNotNull(firstServicePage.getPaging().getAfter());
+
+    queryParams.put("after", firstServicePage.getPaging().getAfter());
+    ResultList<Spreadsheet> secondServicePage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, secondServicePage.getData().size());
+
+    // Verify all are from the same service and are root level
+    for (Spreadsheet spreadsheet : secondServicePage.getData()) {
+      assertNull(spreadsheet.getDirectory());
+      assertTrue(
+          spreadsheet
+              .getService()
+              .getFullyQualifiedName()
+              .equals(service2.getFullyQualifiedName()));
+    }
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    CreateSpreadsheet botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    Spreadsheet entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", entity.getDescription());
+    assertEquals(1, entity.getTags().size());
+
+    String originalJson = JsonUtils.pojoToJson(entity);
+    String userDescription = "User-edited description - should be preserved";
+    entity.setDescription(userDescription);
+    entity.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Spreadsheet userEditedEntity =
+        patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedEntity.getDescription());
+    assertEquals(2, userEditedEntity.getTags().size());
+
+    CreateSpreadsheet botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    Spreadsheet verifyEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        userDescription,
+        verifyEntity.getDescription(),
+        "Bot should not overwrite user's description");
+
+    assertEquals(
+        3, verifyEntity.getTags().size(), "Tags should be merged (2 user tags + 1 new bot tag)");
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(USER_ADDRESS_TAG_LABEL.getTagFQN())));
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(PERSONAL_DATA_TAG_LABEL.getTagFQN())));
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(PII_SENSITIVE_TAG_LABEL.getTagFQN())));
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    CreateSpreadsheet botCreate =
+        createRequest(test.getDisplayName()).withDescription("Bot initial description");
+
+    Spreadsheet entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(entity);
+    entity.setDescription("User description");
+    Spreadsheet userEditedEntity =
+        patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals("User description", userEditedEntity.getDescription());
+
+    CreateSpreadsheet adminUpdate =
+        createRequest(test.getDisplayName()).withDescription("Admin override description");
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+
+    Spreadsheet verifyEntity = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals("Admin override description", verifyEntity.getDescription());
   }
 }

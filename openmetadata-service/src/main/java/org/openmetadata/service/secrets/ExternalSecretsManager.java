@@ -45,11 +45,12 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   }
 
   public void upsertSecret(String secretName, String secretValue) {
+    String sanitizedValue = cleanNullOrEmpty(secretValue);
     if (existSecret(secretName)) {
-      updateSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
+      updateSecret(secretName, sanitizedValue);
       sleep();
     } else {
-      storeSecret(secretName, secretValue != null ? secretValue : NULL_SECRET_STRING);
+      storeSecret(secretName, sanitizedValue);
       sleep();
     }
   }

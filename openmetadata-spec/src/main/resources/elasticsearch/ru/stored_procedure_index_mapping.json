@@ -260,7 +260,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -356,7 +363,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -448,7 +462,16 @@
         "null_value": 0
       },
       "votes": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "upVotes": {
+            "type": "integer"
+          },
+          "downVotes": {
+            "type": "integer"
+          }
+        }
       },
       "code": {
         "type": "keyword"
@@ -478,6 +501,14 @@
           }
         }
       },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "tags": {
         "properties": {
           "tagFQN": {
@@ -505,13 +536,14 @@
         }
       },
       "extension": {
-        "type": "object"
+        "type": "flattened"
       },
       "sourceUrl": {
         "type": "keyword"
       },
       "lifeCycle": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "domains": {
         "properties": {
@@ -564,16 +596,117 @@
         "type": "keyword"
       },
       "descriptionSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "tagSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "tierSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "upstreamLineage": {
-        "type": "object"
+        "properties": {
+          "fromEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "toEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "pipeline": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "columns": {
+            "properties": {
+              "fromColumns": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "toColumn": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "docId": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 512
+              }
+            }
+          }
+        }
       },
       "certification": {
         "type": "object",
@@ -612,6 +745,57 @@
           "expiryDate": {
             "type": "date",
             "format": "strict_date_optional_time||epoch_millis"
+          }
+        }
+      },
+      "fqnHash": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 512
+          }
+        }
+      },
+      "customPropertiesTyped": {
+        "type": "nested",
+        "properties": {
+          "name": {
+            "type": "keyword"
+          },
+          "propertyType": {
+            "type": "keyword"
+          },
+          "stringValue": {
+            "type": "keyword"
+          },
+          "textValue": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "longValue": {
+            "type": "long"
+          },
+          "doubleValue": {
+            "type": "double"
+          },
+          "start": {
+            "type": "long"
+          },
+          "end": {
+            "type": "long"
+          },
+          "refId": {
+            "type": "keyword"
+          },
+          "refType": {
+            "type": "keyword"
+          },
+          "refName": {
+            "type": "keyword"
+          },
+          "refFqn": {
+            "type": "keyword"
           }
         }
       }

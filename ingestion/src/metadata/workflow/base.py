@@ -58,6 +58,7 @@ from metadata.utils.streamable_logger import (
     setup_streamable_logging_for_workflow,
 )
 from metadata.workflow.workflow_output_handler import WorkflowOutputHandler
+from metadata.workflow.workflow_resource_metrics import WorkflowResourceMetrics
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = ingestion_logger()
@@ -103,9 +104,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self._ingestion_pipeline: Optional[IngestionPipeline] = None
         self._start_ts = datetime_to_ts(datetime.now())
 
-        self._execution_time_tracker = ExecutionTimeTracker(
-            self.workflow_config.loggerLevel == LogLevels.DEBUG
-        )
+        # Execution time tracking is always enabled for workflows regardless of the log level
+        self._execution_time_tracker = ExecutionTimeTracker(enabled=True)
 
         set_loggers_level(self.workflow_config.loggerLevel.value)
 
@@ -118,8 +118,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         if (
             self.config.ingestionPipelineFQN
             and self.config.pipelineRunId
-            and self.ingestion_pipeline
-            and self.ingestion_pipeline.enableStreamableLogs
+            and self.config.enableStreamableLogs
         ):
             setup_streamable_logging_for_workflow(
                 metadata=self.metadata,
@@ -260,6 +259,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             ingestion_status = self.build_ingestion_status()
             self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
             self.stop()
+            self.print_status()
 
     @property
     def run_id(self) -> str:
@@ -271,7 +271,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             if self.config.pipelineRunId:
                 self._run_id = str(self.config.pipelineRunId.root)
             else:
-                self._run_id = str(uuid.uuid4())
+                self._run_id = str(uuid.uuid4())  # pylint: disable=no-member
 
         return self._run_id
 
@@ -317,6 +317,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                         ),
                         sourceConfig=self.config.source.sourceConfig,
                         airflowConfig=AirflowConfig(),
+                        enableStreamableLogs=self.config.enableStreamableLogs,
                     )
                 )
 
@@ -360,6 +361,20 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f" updated {len(step.status.updated_records)} records,"
                     f" filtered {len(step.status.filtered)} records,"
                     f" found {len(step.status.failures)} errors"
+                )
+
+            # Only calculate resource metrics when debug is enabled
+            # for no unnecessary computations
+            if self._is_debug_enabled():
+                metrics = WorkflowResourceMetrics()
+                logger.debug(
+                    f"Workflow Resources - "
+                    f"CPU: {metrics.cpu_usage_percent:.2f}% "
+                    f"({metrics.system_cpu_cores}c/{metrics.system_cpu_threads}t) | "
+                    f"Memory: {metrics.memory_used_mb:.2f}MB/"
+                    f"{metrics.memory_total_mb:.2f}MB "
+                    f"({metrics.memory_usage_percent:.2f}%) | "
+                    f"Processes: {metrics.active_processes}"
                 )
 
         except Exception as exc:

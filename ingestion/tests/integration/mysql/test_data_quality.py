@@ -1,4 +1,3 @@
-import sys
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List
@@ -9,6 +8,7 @@ from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_ob
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
+    ServiceConnections,
     TestSuiteConfigType,
     TestSuitePipeline,
 )
@@ -18,21 +18,24 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
-
 
 @pytest.fixture()
-def get_test_suite_config(workflow_config, sink_config):
+def get_test_suite_config(workflow_config, sink_config, db_service):
     def inner(entity_fqn: str, test_case_definitions: List[TestCaseDefinition]):
         return {
             "source": {
                 "type": "mysql",
-                "serviceName": "MyTestSuite",
+                "serviceName": f"MyTestSuite_{db_service.name.root}",
                 "sourceConfig": {
                     "config": TestSuitePipeline(
                         type=TestSuiteConfigType.TestSuite,
                         entityFullyQualifiedName=entity_fqn,
+                        serviceConnections=[
+                            ServiceConnections(
+                                serviceName=db_service.name.root,
+                                serviceConnection=db_service.connection,
+                            )
+                        ],
                     )
                 },
             },
@@ -209,7 +212,6 @@ def test_column_test_cases(
     metadata: OpenMetadata,
     parameters: TestColumnParameter,
     get_test_suite_config,
-    cleanup_fqns,
 ):
     run_workflow(MetadataWorkflow, ingestion_config)
     test_suite_config = get_test_suite_config(
@@ -223,7 +225,6 @@ def test_column_test_cases(
         fields=["*"],
         nullable=False,
     )
-    cleanup_fqns(TestCase, test_case.fullyQualifiedName.root)
     parameters.expected_result.timestamp = (
         test_case.testCaseResult.timestamp
     )  # timestamp is not deterministic

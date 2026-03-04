@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/type/recognizers/pattern.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pattern",
+  "description": "Pattern objects used for PatternRecognizers",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.recognizers.Pattern",
+  "properties": {
+    "name": {
+      "description": "Name of the pattern",
+      "type": "string"
+    },
+    "regex": {
+      "description": "Regular expression pattern",
+      "type": "string"
+    },
+    "score": {
+      "description": "Confidence score for this pattern (0.0 to 1.0)",
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 0.8
+    }
+  },
+  "additionalProperties": false,
+  "required": ["name", "regex"]
+}

@@ -20,7 +20,7 @@ public class WorkflowInstanceExecutionIdSetterListener implements JavaDelegate {
     // CRITICAL: Always set the execution ID first - this is mandatory for stage tracking
     UUID workflowInstanceExecutionId = UUID.randomUUID();
     execution.setVariable(WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE, workflowInstanceExecutionId);
-    LOG.info(
+    LOG.debug(
         "[WORKFLOW_EXEC_ID_SET] Workflow: {}, ProcessInstance: {}, ExecutionId: {} - Execution ID initialized",
         workflowName,
         processInstanceId,
@@ -40,7 +40,7 @@ public class WorkflowInstanceExecutionIdSetterListener implements JavaDelegate {
         execution.setVariable(Workflow.FAILURE_VARIABLE, true);
         execution.setVariable("startupError", "Missing required variable: relatedEntity");
       } else {
-        LOG.info(
+        LOG.debug(
             "[WORKFLOW_EXEC_STARTED] Workflow: {}, ProcessInstance: {}, ExecutionId: {}, RelatedEntity: {} - Workflow execution initialized successfully",
             workflowName,
             processInstanceId,

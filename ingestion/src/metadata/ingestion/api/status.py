@@ -28,6 +28,9 @@ logger = ingestion_logger()
 
 
 MAX_STACK_TRACE_LENGTH = 1_000_000
+# Max items per list rendered in as_string() to bound memory usage
+MAX_STATUS_DISPLAY_ITEMS = 1_000
+
 TruncatedStr = Annotated[
     Optional[str], AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)
 ]
@@ -72,6 +75,20 @@ class Status(BaseModel):
             else:
                 self.records.append(log_name)
 
+    def scanned_all(self, record: Any) -> None:
+        """
+        Clean up the status results we want to show.
+
+        We allow to not consider specific records that
+        are not worth keeping record of.
+        """
+        record = [get_log_name(r) for r in record if get_log_name(r)]
+        if record:
+            if isinstance(record, (PatchRequest, PatchedEntity)):
+                self.updated_records.extend(record)
+            else:
+                self.records.extend(record)
+
     def updated(self, record: Any) -> None:
         if log_name := get_log_name(record):
             self.updated_records.append(log_name)
@@ -86,7 +103,18 @@ class Status(BaseModel):
         self.filtered.append({key: reason})
 
     def as_string(self) -> str:
-        return pprint.pformat(self.__dict__, width=150)
+        parts = []
+        for key, value in self.__dict__.items():
+            if isinstance(value, list) and len(value) > MAX_STATUS_DISPLAY_ITEMS:
+                header = (
+                    f"[{len(value)} total items"
+                    f" — showing first {MAX_STATUS_DISPLAY_ITEMS}]"
+                )
+                formatted = pprint.pformat(value[:MAX_STATUS_DISPLAY_ITEMS], width=150)
+                parts.append(f"'{key}': {header}\n{formatted}")
+            else:
+                parts.append(f"'{key}': {pprint.pformat(value, width=150)}")
+        return "{\n " + ",\n ".join(parts) + "}"
 
     def failed(self, error: StackTraceError) -> None:
         """

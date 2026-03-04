@@ -15,7 +15,8 @@ import test from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
 import { addAndTriggerAutoClassificationPipeline } from '../../utils/autoClassification';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { resetTokenFromBotPage } from '../../utils/bot';
+import { createNewPage, getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const mysqlService = new MysqlIngestionClass({
@@ -25,7 +26,7 @@ const mysqlService = new MysqlIngestionClass({
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
-  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
+  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'retain-on-failure',
   video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
@@ -35,6 +36,15 @@ test.describe.configure({
 });
 
 test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
+  test.beforeAll(async ({ browser }) => {
+    if (!process.env.PLAYWRIGHT_IS_OSS) {
+      // Todo: Remove this patch once the issue is fixed #19140
+      const { page, afterAction } = await createNewPage(browser);
+      await resetTokenFromBotPage(page, 'testsuite-bot');
+      await afterAction();
+    }
+  });
+
   test('should be able to auto classify data', async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(
@@ -48,17 +58,9 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     await addAndTriggerAutoClassificationPipeline(page, mysqlService);
 
     // Check if the classification is successful
-    const getDatabases = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/databases?service=') &&
-        response.request().method() === 'GET' &&
-        response.status() === 200
-    );
 
     // Click on databases tab
     await page.click('.ant-tabs-nav-list [data-testid="databases"]');
-
-    await getDatabases;
 
     // Click on the database name
     await page.getByTestId('column-name').getByText('default').click();
@@ -77,7 +79,7 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     await test
       .expect(
         page.locator(
-          `[data-row-key*="user_name"] [data-testid="tag-PII.Sensitive"] `
+          `[data-row-key*="user_name"] [data-testid="tag-General.Person"] `
         )
       )
       .toBeAttached();
@@ -85,18 +87,7 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     await test
       .expect(
         page.locator(
-          `[data-row-key*="DWH_X10"] [data-testid="tag-PII.Sensitive"] `
-        )
-      )
-      .toBeAttached();
-
-    mysqlService.name;
-
-    // Verify the non sensitive tags
-    await test
-      .expect(
-        page.locator(
-          `[data-row-key*="address"] [data-testid="tag-PII.Sensitive"] `
+          `[data-row-key*="DWH_X10"] [data-testid="tag-General.Email"] `
         )
       )
       .toBeAttached();

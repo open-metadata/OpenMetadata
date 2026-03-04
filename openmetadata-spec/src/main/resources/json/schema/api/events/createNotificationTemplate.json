@@ -19,11 +19,17 @@
       "description": "Description of this notification template",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "templateSubject": {
+      "description": "Handlebars template for notification subject line",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
     "templateBody": {
       "description": "Handlebars template content for rendering notifications",
       "type": "string",
       "minLength": 1,
-      "maxLength": 10240
+      "maxLength": 65536
     },
     "owners": {
       "description": "Owners of this template",
@@ -38,6 +44,6 @@
       }
     }
   },
-  "required": ["name", "templateBody"],
+  "required": ["name", "templateSubject", "templateBody"],
   "additionalProperties": false
 }

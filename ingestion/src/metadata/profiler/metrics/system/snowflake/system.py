@@ -9,8 +9,17 @@ import sqlalchemy.orm
 from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
 
-from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
+from metadata.generated.schema.entity.data.table import (
+    DmlOperationType,
+    SystemProfile,
+    Table,
+    TableType,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 from metadata.ingestion.source.database.snowflake.models import (
+    SnowflakeDynamicTableRefreshEntry,
     SnowflakeQueryLogEntry,
     SnowflakeQueryResult,
 )
@@ -290,7 +299,13 @@ class SnowflakeSystemMetricsComputer(
 ):
     """Snowflake system metrics source"""
 
-    def __init__(self, session: Session, runner: QueryRunner):
+    def __init__(
+        self,
+        session: Session,
+        runner: QueryRunner,
+        service_connection_config: SnowflakeConnection,
+        table_entity: Table,
+    ):
         self.session = session
         self.runner = runner
         self.table = runner.table_name
@@ -299,8 +314,19 @@ class SnowflakeSystemMetricsComputer(
         self.resolver = SnowflakeTableResovler(
             session=session,
         )
+        self.service_connection_config = service_connection_config
+        self.table_entity = table_entity
+
+    @property
+    def is_dynamic_table(self) -> bool:
+        """Check if the table is a dynamic table"""
+        return self.table_entity.tableType == TableType.Dynamic
 
     def get_inserts(self) -> List[SystemProfile]:
+        if self.is_dynamic_table:
+            return self._get_dynamic_table_system_profile(
+                "rows_inserted", DmlOperationType.INSERT
+            )
         return self.get_system_profile(
             self.database,
             self.schema,
@@ -319,6 +345,10 @@ class SnowflakeSystemMetricsComputer(
         )
 
     def get_updates(self) -> List[SystemProfile]:
+        if self.is_dynamic_table:
+            return self._get_dynamic_table_system_profile(
+                "rows_updated", DmlOperationType.UPDATE
+            )
         return self.get_system_profile(
             self.database,
             self.schema,
@@ -337,6 +367,10 @@ class SnowflakeSystemMetricsComputer(
         )
 
     def get_deletes(self) -> List[SystemProfile]:
+        if self.is_dynamic_table:
+            return self._get_dynamic_table_system_profile(
+                "rows_deleted", DmlOperationType.DELETE
+            )
         return self.get_system_profile(
             self.database,
             self.schema,
@@ -351,6 +385,40 @@ class SnowflakeSystemMetricsComputer(
             ),
             "rows_deleted",
             DmlOperationType.DELETE,
+        )
+
+    def _get_dynamic_table_refresh_entries(
+        self,
+    ) -> List[SnowflakeDynamicTableRefreshEntry]:
+        """Get dynamic table refresh history entries from cache or query"""
+        return self.get_or_update_cache(
+            self.table,
+            SnowflakeDynamicTableRefreshEntry.get_for_table,
+            session=self.session,
+            tablename=self.table,
+            service_connection_config=self.service_connection_config,
+        )
+
+    def _get_dynamic_table_system_profile(
+        self,
+        rows_affected_field: str,
+        operation: DmlOperationType,
+    ) -> List[SystemProfile]:
+        """Get system profile from dynamic table refresh history"""
+        refresh_entries = self._get_dynamic_table_refresh_entries()
+        return TypeAdapter(List[SystemProfile]).validate_python(
+            [
+                {
+                    "timestamp": datetime_to_timestamp(
+                        entry.start_time, milliseconds=True
+                    ),
+                    "operation": operation,
+                    "rowsAffected": getattr(entry, rows_affected_field) or 0,
+                }
+                for entry in refresh_entries
+                if (getattr(entry, rows_affected_field) or 0) > 0
+                and CaseInsensitiveString(self.table) == entry.table_name
+            ]
         )
 
     @staticmethod
@@ -403,6 +471,7 @@ class SnowflakeSystemMetricsComputer(
             SnowflakeQueryLogEntry.get_for_table,
             session=self.session,
             tablename=table,
+            service_connection_config=self.service_connection_config,
         )
         results = [
             get_snowflake_system_queries(

@@ -43,6 +43,7 @@ export interface APIEndpointDetailPageTabProps {
   handleFeedCount: (data: FeedCounts) => void;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   editLineagePermission: boolean;
   labelMap: Record<EntityTabs, string>;
 }
@@ -80,6 +81,7 @@ class APIEndpointClassBase {
       EntityTabs.SCHEMA,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

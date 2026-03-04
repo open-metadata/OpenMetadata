@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import * as reactI18next from 'react-i18next';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { FormSubmitType } from '../../../enums/form.enum';
@@ -28,6 +29,13 @@ jest.mock(
     })),
   })
 );
+
+jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
+  __esModule: true,
+  default: {
+    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
+  },
+}));
 
 const mockViewService = jest.fn();
 const mockDeployService = jest.fn();
@@ -149,5 +157,88 @@ describe('Test SuccessScreen component', () => {
     render(<SuccessScreen {...mockProps} />);
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
+  });
+
+  it('should render with correct brandName (OpenMetadata or Collate) in Airflow messages', () => {
+    const mockT = jest.fn((key: string, params?: Record<string, string>) => {
+      if (key === 'message.manage-airflow-api-failed' && params?.brandName) {
+        return `Failed to find ${params.brandName} - Managed Airflow APIs`;
+      }
+      if (key === 'message.airflow-guide-message' && params?.brandName) {
+        return (
+          `${params.brandName} uses Airflow to run Ingestion Connectors. ` +
+          `We developed Managed APIs to deploy ingestion connectors. ` +
+          `Please use ${params.brandName} Airflow instance or refer to ` +
+          `the guide below to install the managed APIs in your Airflow installation.`
+        );
+      }
+
+      return key;
+    });
+
+    jest.spyOn(reactI18next, 'useTranslation').mockReturnValue({
+      t: mockT,
+      i18n: { language: 'en-US' },
+      ready: true,
+    } as any);
+
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+      fetchAirflowStatus: jest.fn(),
+      isFetchingStatus: false,
+      platform: PIPELINE_SERVICE_PLATFORM,
+    }));
+    render(<SuccessScreen {...mockProps} />);
+
+    const airflowMessage = screen.getByTestId('airflow-platform-message');
+
+    expect(airflowMessage).toBeInTheDocument();
+    // Verify actual brand name is rendered
+    expect(airflowMessage.textContent).toMatch(/OpenMetadata|Collate/);
+    expect(airflowMessage.textContent).not.toContain('{{brandName}}');
+
+    // Verify translation was called with brandName
+    expect(mockT).toHaveBeenCalledWith('message.manage-airflow-api-failed', {
+      brandName: 'OpenMetadata',
+    });
+    expect(mockT).toHaveBeenCalledWith('message.airflow-guide-message', {
+      brandName: 'OpenMetadata',
+    });
+  });
+
+  it('should render with correct brandName (OpenMetadata or Collate) in Argo messages', () => {
+    const mockT = jest.fn((key: string, params?: Record<string, string>) => {
+      if (key === 'message.pipeline-scheduler-message' && params?.brandName) {
+        return `The Ingestion Scheduler is unable to respond. Please reach out to ${params.brandName} support. Thank you.`;
+      }
+
+      return key;
+    });
+
+    jest.spyOn(reactI18next, 'useTranslation').mockReturnValue({
+      t: mockT,
+      i18n: { language: 'en-US' },
+      ready: true,
+    } as any);
+
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+      fetchAirflowStatus: jest.fn(),
+      isFetchingStatus: false,
+      platform: 'Argo',
+    }));
+    render(<SuccessScreen {...mockProps} />);
+
+    const argoMessage = screen.getByTestId('argo-platform-message');
+
+    expect(argoMessage).toBeInTheDocument();
+    // Verify actual brand name is rendered
+    expect(argoMessage.textContent).toMatch(/OpenMetadata|Collate/);
+    expect(argoMessage.textContent).not.toContain('{{brandName}}');
+
+    // Verify translation was called with brandName
+    expect(mockT).toHaveBeenCalledWith('message.pipeline-scheduler-message', {
+      brandName: 'OpenMetadata',
+    });
   });
 });

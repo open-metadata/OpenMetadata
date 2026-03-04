@@ -15,6 +15,7 @@ import { Button, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { removeAttachmentsWithoutUrl } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
@@ -42,7 +43,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
         try {
           const content =
             markdownRef.current?.getEditorContent?.()?.trim() ?? '';
-          await onSave?.(content);
+          await onSave?.(removeAttachmentsWithoutUrl(content));
         } catch (error) {
           showErrorToast(error as AxiosError);
         } finally {

@@ -10,12 +10,111 @@
       "javaType": "org.openmetadata.schema.api.lineage.LineageLayer",
       "description": "Lineage Layers",
       "type": "string",
-      "enum": [
-        "EntityLineage",
-        "ColumnLevelLineage",
-        "DataObservability"
-      ],
+      "enum": ["EntityLineage", "ColumnLevelLineage", "DataObservability"],
       "default": "EntityLineage"
+    },
+    "pipelineViewMode": {
+      "javaType": "org.openmetadata.schema.api.lineage.PipelineViewMode",
+      "description": "Determines the view mode for pipelines in lineage.",
+      "type": "string",
+      "enum": ["Edge", "Node"],
+      "default": "Node"
+    },
+    "graphPerformanceConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.lineage.GraphPerformanceConfig",
+      "description": "Configuration for lineage graph performance and scalability",
+      "properties": {
+        "smallGraphThreshold": {
+          "description": "Node count threshold for small graphs (eligible for caching)",
+          "type": "integer",
+          "default": 5000,
+          "minimum": 100
+        },
+        "mediumGraphThreshold": {
+          "description": "Node count threshold for medium graphs (optimized batching)",
+          "type": "integer",
+          "default": 50000,
+          "minimum": 1000
+        },
+        "maxInMemoryNodes": {
+          "description": "Maximum nodes to keep in memory before switching to streaming",
+          "type": "integer",
+          "default": 100000,
+          "minimum": 10000
+        },
+        "smallGraphBatchSize": {
+          "description": "Batch size for fetching small graph nodes from search backend",
+          "type": "integer",
+          "default": 10000,
+          "minimum": 1000,
+          "maximum": 10000
+        },
+        "mediumGraphBatchSize": {
+          "description": "Batch size for fetching medium graph nodes",
+          "type": "integer",
+          "default": 5000,
+          "minimum": 500,
+          "maximum": 10000
+        },
+        "largeGraphBatchSize": {
+          "description": "Batch size for fetching large graph nodes",
+          "type": "integer",
+          "default": 1000,
+          "minimum": 100,
+          "maximum": 5000
+        },
+        "streamingBatchSize": {
+          "description": "Batch size for streaming very large graphs",
+          "type": "integer",
+          "default": 500,
+          "minimum": 50,
+          "maximum": 1000
+        },
+        "enableCaching": {
+          "description": "Enable caching for small/medium graphs",
+          "type": "boolean",
+          "default": true
+        },
+        "cacheTTLSeconds": {
+          "description": "Cache time-to-live in seconds",
+          "type": "integer",
+          "default": 300,
+          "minimum": 60,
+          "maximum": 3600
+        },
+        "maxCachedGraphs": {
+          "description": "Maximum number of graphs to cache",
+          "type": "integer",
+          "default": 100,
+          "minimum": 10,
+          "maximum": 1000
+        },
+        "enableProgressTracking": {
+          "description": "Enable progress tracking for long-running queries",
+          "type": "boolean",
+          "default": false
+        },
+        "progressReportInterval": {
+          "description": "Report progress every N nodes processed",
+          "type": "integer",
+          "default": 1000,
+          "minimum": 100
+        },
+        "useScrollForLargeGraphs": {
+          "description": "Use Elasticsearch/OpenSearch scroll API for large result sets",
+          "type": "boolean",
+          "default": true
+        },
+        "scrollTimeoutMinutes": {
+          "description": "Scroll context timeout in minutes",
+          "type": "integer",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 30
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -36,8 +135,21 @@
     "lineageLayer": {
       "description": "Lineage Layer.",
       "$ref": "#/definitions/lineageLayer"
+    },
+    "pipelineViewMode": {
+      "description": "Pipeline View Mode for Lineage.",
+      "$ref": "#/definitions/pipelineViewMode"
+    },
+    "graphPerformanceConfig": {
+      "description": "Performance configuration for lineage graph builder.",
+      "$ref": "#/definitions/graphPerformanceConfig"
     }
   },
-  "required": ["upstreamDepth", "downstreamDepth", "lineageLayer"],
+  "required": [
+    "upstreamDepth",
+    "downstreamDepth",
+    "lineageLayer",
+    "pipelineViewMode"
+  ],
   "additionalProperties": false
 }

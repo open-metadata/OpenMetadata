@@ -52,11 +52,7 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import {
-  BackgroundJob,
-  EnumCleanupArgs,
-  JobType,
-} from '../../generated/jobs/backgroundJob';
+import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -70,7 +66,7 @@ import {
 } from '../../utils/BrowserNotificationUtils';
 import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getDomainDisplayName } from '../../utils/EntityUtils';
 import {
   getEntityFQN,
   getEntityType,
@@ -248,7 +244,7 @@ const NavBar = () => {
         const { jobArgs, status, jobType } = backgroundJobData;
 
         if (jobType === JobType.CustomPropertyEnumCleanup) {
-          const enumCleanupArgs = jobArgs as EnumCleanupArgs;
+          const enumCleanupArgs = jobArgs;
           if (!enumCleanupArgs.entityType) {
             showErrorToast(
               {
@@ -280,11 +276,11 @@ const NavBar = () => {
       icon: Logo,
     });
     notification.onclick = () => {
-      const isChrome = window.navigator.userAgent.indexOf('Chrome');
+      const isChrome = globalThis.navigator.userAgent.indexOf('Chrome');
       // Applying logic to open a new window onclick of browser notification from chrome
       // As it does not open the concerned tab by default.
       if (isChrome > -1) {
-        window.open(path);
+        globalThis.open(path);
       } else {
         navigate(path);
       }
@@ -317,7 +313,7 @@ const NavBar = () => {
       const now = Date.now();
 
       if (lastFetchTime) {
-        const timeSinceLastFetch = now - parseInt(lastFetchTime);
+        const timeSinceLastFetch = now - Number.parseInt(lastFetchTime);
         if (timeSinceLastFetch < ONE_HOUR_MS) {
           // Less than 1 hour since last fetch, skip API call
           return;
@@ -433,6 +429,11 @@ const NavBar = () => {
     []
   );
 
+  const domainDisplayName = useMemo(
+    () => getDomainDisplayName(activeDomainEntityRef, activeDomain),
+    [activeDomainEntityRef, activeDomain, t]
+  );
+
   const handleLanguageChange = useCallback(({ key }: MenuInfo) => {
     i18next.changeLanguage(key);
     setPreference({ language: key as SupportedLocales });
@@ -443,14 +444,14 @@ const NavBar = () => {
     <>
       <Header>
         <div className="navbar-container">
-          <div className="flex-center">
+          <div className="flex-center gap-2">
             <Tooltip
               placement="right"
               title={
                 isSidebarCollapsed ? t('label.expand') : t('label.collapse')
               }>
               <Button
-                className="mr-2 w-6 h-6 p-0 flex-center"
+                className="w-6 h-6 p-0 flex-center"
                 data-testid="sidebar-toggle"
                 icon={
                   isSidebarCollapsed ? (
@@ -484,7 +485,7 @@ const NavBar = () => {
                   onUpdate={handleDomainChange}>
                   <Button
                     className={classNames(
-                      'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
+                      'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium',
                       {
                         'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
                       }
@@ -500,9 +501,7 @@ const NavBar = () => {
                       width={20}
                     />
                     <Typography.Text ellipsis className="domain-text">
-                      {activeDomainEntityRef
-                        ? getEntityName(activeDomainEntityRef)
-                        : activeDomain}
+                      {domainDisplayName}
                     </Typography.Text>
                     <DropDownIcon width={12} />
                   </Button>
@@ -522,6 +521,7 @@ const NavBar = () => {
               trigger={['click']}>
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
+                data-testid="language-selector-button"
                 type="text">
                 {language ? upperCase(language.split('-')[0]) : ''}{' '}
                 <DropDownIcon width={12} />
@@ -532,6 +532,7 @@ const NavBar = () => {
               className="cursor-pointer"
               dropdownRender={() => (
                 <NotificationBox
+                  activeTab={activeTab}
                   hasMentionNotification={hasMentionNotification}
                   hasTaskNotification={hasTaskNotification}
                   onMarkMentionsNotificationRead={

@@ -12,16 +12,19 @@
 Test datalake utils
 """
 
+import json
 import os
 from unittest import TestCase
 
 import pandas as pd
 
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.readers.dataframe.dsv import DSVDataFrameReader
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
     GenericDataFrameColumnParser,
+    JsonDataFrameColumnParser,
     ParquetDataFrameColumnParser,
     get_file_format_type,
 )
@@ -590,3 +593,277 @@ class TestParquetDataFrameColumnParser(TestCase):
             self.assertIn(SupportedTypes.CSVGZ, dsv_types)
         except Exception as e:
             self.fail(f"CSVGZ integration test failed: {e}")
+
+
+class TestIcebergDeltaLakeMetadataParsing(TestCase):
+    """Test Iceberg/Delta Lake metadata JSON parsing"""
+
+    def test_iceberg_metadata_parsing(self):
+        """Test parsing of Iceberg/Delta Lake metadata files with nested schema.fields structure"""
+
+        # Sample Iceberg/Delta Lake metadata structure
+        iceberg_metadata = {
+            "format-version": 1,
+            "table-uuid": "e9182d72-131b-48fe-b530-79edc044fb01",
+            "location": "s3://bucket/path/table",
+            "schema": {
+                "type": "struct",
+                "schema-id": 0,
+                "fields": [
+                    {
+                        "id": 1,
+                        "name": "customer_id",
+                        "required": False,
+                        "type": "string",
+                    },
+                    {
+                        "id": 2,
+                        "name": "customer_type_cd",
+                        "required": False,
+                        "type": "string",
+                    },
+                    {"id": 3, "name": "amount", "required": True, "type": "double"},
+                    {
+                        "id": 4,
+                        "name": "is_active",
+                        "required": False,
+                        "type": "boolean",
+                    },
+                    {"id": 5, "name": "order_count", "required": False, "type": "int"},
+                    {
+                        "id": 6,
+                        "name": "created_date",
+                        "required": False,
+                        "type": "date",
+                    },
+                    {
+                        "id": 7,
+                        "name": "updated_timestamp",
+                        "required": False,
+                        "type": "timestamp",
+                    },
+                    {
+                        "id": 8,
+                        "name": "metadata",
+                        "required": False,
+                        "type": {
+                            "type": "struct",
+                            "fields": [
+                                {
+                                    "id": 9,
+                                    "name": "source_system",
+                                    "required": False,
+                                    "type": "string",
+                                },
+                                {
+                                    "id": 10,
+                                    "name": "last_sync_time",
+                                    "required": False,
+                                    "type": "timestamp",
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        }
+
+        # Convert to JSON string as would be received from file
+        raw_data = json.dumps(iceberg_metadata)
+
+        # Create a dummy DataFrame (required by parser but not used for Iceberg metadata)
+        df = pd.DataFrame()
+
+        # Create parser and parse columns
+        parser = JsonDataFrameColumnParser(df, raw_data=raw_data)
+        columns = parser.get_columns()
+
+        # Verify the correct number of columns were parsed
+        self.assertEqual(len(columns), 8)
+
+        # Verify field names were correctly parsed
+        expected_names = [
+            "customer_id",
+            "customer_type_cd",
+            "amount",
+            "is_active",
+            "order_count",
+            "created_date",
+            "updated_timestamp",
+            "metadata",
+        ]
+        actual_names = [col.displayName for col in columns]
+        self.assertEqual(expected_names, actual_names)
+
+        # Verify data types were correctly mapped
+        expected_types = [
+            DataType.STRING,  # customer_id
+            DataType.STRING,  # customer_type_cd
+            DataType.DOUBLE,  # amount
+            DataType.BOOLEAN,  # is_active
+            DataType.INT,  # order_count
+            DataType.DATE,  # created_date
+            DataType.TIMESTAMP,  # updated_timestamp
+            DataType.STRUCT,  # metadata
+        ]
+        actual_types = [col.dataType for col in columns]
+        self.assertEqual(expected_types, actual_types)
+
+        # Verify nested struct field (metadata)
+        metadata_column = columns[7]
+        self.assertEqual(metadata_column.displayName, "metadata")
+        self.assertEqual(metadata_column.dataType, DataType.STRUCT)
+        self.assertIsNotNone(metadata_column.children)
+        self.assertEqual(len(metadata_column.children), 2)
+
+        # Verify nested field details
+        nested_fields = metadata_column.children
+        self.assertEqual(nested_fields[0]["displayName"], "source_system")
+        self.assertEqual(nested_fields[0]["dataType"], DataType.STRING.value)
+        self.assertEqual(nested_fields[1]["displayName"], "last_sync_time")
+        self.assertEqual(nested_fields[1]["dataType"], DataType.TIMESTAMP.value)
+
+    def test_is_iceberg_delta_metadata_detection(self):
+        """Test detection of Iceberg/Delta Lake metadata format"""
+        df = pd.DataFrame()
+        parser = JsonDataFrameColumnParser(df, raw_data=None)
+
+        # Test valid Iceberg/Delta Lake metadata
+        valid_metadata = {"schema": {"fields": [{"name": "field1", "type": "string"}]}}
+        self.assertTrue(parser._is_iceberg_delta_metadata(valid_metadata))
+
+        # Test invalid formats
+        invalid_cases = [
+            {},  # Empty dict
+            {"schema": "not_a_dict"},  # Schema not a dict
+            {"schema": {}},  # No fields
+            {"schema": {"fields": "not_a_list"}},  # Fields not a list
+            {"properties": {}},  # JSON Schema format (not Iceberg)
+        ]
+
+        for invalid_case in invalid_cases:
+            with self.subTest(invalid_case=invalid_case):
+                self.assertFalse(parser._is_iceberg_delta_metadata(invalid_case))
+
+    def test_fallback_to_json_schema_parser(self):
+        """Test that non-Iceberg JSON files fall back to standard JSON Schema parser"""
+        # Standard JSON Schema format
+        json_schema = {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+        }
+
+        raw_data = json.dumps(json_schema)
+        df = pd.DataFrame()
+
+        # This should use the standard JSON Schema parser, not Iceberg parser
+        parser = JsonDataFrameColumnParser(df, raw_data=raw_data)
+        columns = parser.get_columns()
+
+        # The standard parser behavior would be different
+        # This test ensures we don't break existing JSON Schema parsing
+        self.assertIsNotNone(columns)
+
+
+class TestCSVQuotedHeaderFix(TestCase):
+    """Test CSV parsing with quoted header fix for malformed CSV files"""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up a DSVDataFrameReader instance for testing"""
+        from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+            LocalConfig,
+        )
+
+        cls.csv_reader = DSVDataFrameReader(
+            config_source=LocalConfig(), client=None, separator=","
+        )
+        cls.tsv_reader = DSVDataFrameReader(
+            config_source=LocalConfig(), client=None, separator="\t"
+        )
+
+    def test_normal_csv_no_fix_applied(self):
+        """Test that normal CSV files with proper headers are not modified"""
+        df = pd.DataFrame(
+            {
+                "Year": [2024, 2024, 2024],
+                "Industry_code": ["99999", "99999", "99999"],
+                "Industry_name": ["All industries", "All industries", "All industries"],
+                "Units": [
+                    "Dollars (millions)",
+                    "Dollars (millions)",
+                    "Dollars (millions)",
+                ],
+                "Value": [979594, 838626, 112188],
+            }
+        )
+
+        result = self.csv_reader._fix_malformed_quoted_chunk([df], ",")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result[0].columns), 5)
+        self.assertEqual(
+            list(result[0].columns),
+            ["Year", "Industry_code", "Industry_name", "Units", "Value"],
+        )
+        self.assertEqual(len(result[0]), 3)
+
+    def test_malformed_csv_quoted_header_fix_applied(self):
+        """Test that malformed CSV with quoted header row is properly fixed"""
+        malformed_header = "managementLevel,businessAllocation2Key,validFrom,fillable,businessAllocation1English"
+        df = pd.DataFrame(columns=[malformed_header])
+
+        result = self.csv_reader._fix_malformed_quoted_chunk([df], ",")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result[0].columns), 5)
+        self.assertEqual(
+            list(result[0].columns),
+            [
+                "managementLevel",
+                "businessAllocation2Key",
+                "validFrom",
+                "fillable",
+                "businessAllocation1English",
+            ],
+        )
+
+    def test_single_column_csv_without_separator_no_fix(self):
+        """Test that single column CSV without separator in name is not modified"""
+        df = pd.DataFrame(columns=["single_column_name"])
+
+        result = self.csv_reader._fix_malformed_quoted_chunk([df], ",")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(list(result[0].columns), ["single_column_name"])
+
+    def test_quoted_header_with_special_characters(self):
+        """Test parsing quoted header containing special characters"""
+        malformed_header = '"col1","col2 with spaces","col3&special","col4/slash"'
+        df = pd.DataFrame(columns=[malformed_header])
+
+        result = self.csv_reader._fix_malformed_quoted_chunk([df], ",")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result[0].columns), 4)
+        self.assertEqual(
+            list(result[0].columns),
+            ["col1", "col2 with spaces", "col3&special", "col4/slash"],
+        )
+
+    def test_tsv_malformed_header_fix(self):
+        """Test that malformed TSV with tab-separated quoted header is properly fixed"""
+        malformed_header = "col1\tcol2\tcol3\tcol4"
+        df = pd.DataFrame(columns=[malformed_header])
+
+        result = self.tsv_reader._fix_malformed_quoted_chunk([df], "\t")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result[0].columns), 4)
+        self.assertEqual(list(result[0].columns), ["col1", "col2", "col3", "col4"])
+
+    def test_empty_chunk_list_returns_empty(self):
+        """Test that empty chunk list returns empty list"""
+        result = self.csv_reader._fix_malformed_quoted_chunk([], ",")
+        self.assertEqual(result, [])

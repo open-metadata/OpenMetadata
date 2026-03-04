@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -48,6 +48,10 @@ export interface MetadataExporterAppConfig {
  * Snowflake Connection Config
  *
  * Databricks Connection Config
+ *
+ * Google BigQuery Connection Config
+ *
+ * Trino Connection Config
  */
 export interface Connection {
     /**
@@ -100,6 +104,8 @@ export interface Connection {
     /**
      * Username to connect to Snowflake. This user should have privileges to read all the
      * metadata in Snowflake.
+     *
+     * Username to connect to Trino.
      */
     username?: string;
     /**
@@ -107,9 +113,17 @@ export interface Connection {
      */
     warehouse?: string;
     /**
+     * Choose between different authentication types for Databricks.
+     *
+     * Choose Auth Config Type.
+     */
+    authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
+     *
+     * Catalog of the data source.
      */
     catalog?: string;
     /**
@@ -122,10 +136,16 @@ export interface Connection {
      * Database Schema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
+     *
+     * Database Schema of the data source.
      */
     databaseSchema?: string;
     /**
      * Host and port of the Databricks service.
+     *
+     * BigQuery APIs URL.
+     *
+     * Host and port of the Trino service.
      */
     hostPort?: string;
     /**
@@ -133,17 +153,247 @@ export interface Connection {
      */
     httpPath?: string;
     /**
-     * Generated Token to connect to Databricks.
+     * Billing Project ID
+     */
+    billingProjectId?: string;
+    /**
+     * GCP Credentials
+     */
+    credentials?: GCPCredentials;
+    /**
+     * Taxonomy location used to fetch policy tags
+     */
+    taxonomyLocation?: string;
+    /**
+     * Project IDs used to fetch policy tags
+     */
+    taxonomyProjectID?: string[];
+    /**
+     * Location used to query INFORMATION_SCHEMA.JOBS_BY_PROJECT to fetch usage data. You can
+     * pass multi-regions, such as `us` or `eu`, or you specific region. Australia and Asia
+     * multi-regions are not yet in GA.
+     */
+    usageLocation?: string;
+}
+
+/**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
+ * Common Database Connection Config
+ *
+ * Azure Database Connection Config
+ */
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
      */
     token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
+    /**
+     * Password to connect to source.
+     */
+    password?: string;
+    /**
+     * JWT to connect to source.
+     */
+    jwt?:         string;
+    azureConfig?: AzureCredentials;
+}
+
+/**
+ * Azure Cloud Credentials
+ */
+export interface AzureCredentials {
+    /**
+     * Account Name of your storage account
+     */
+    accountName?: string;
+    /**
+     * Your Service Principal App ID (Client ID)
+     */
+    clientId?: string;
+    /**
+     * Your Service Principal Password (Client Secret)
+     */
+    clientSecret?: string;
+    /**
+     * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
+     */
+    scopes?: string;
+    /**
+     * Tenant ID of your Azure Subscription
+     */
+    tenantId?: string;
+    /**
+     * Key Vault Name
+     */
+    vaultName?: string;
+}
+
+/**
+ * Database Authentication types not requiring config.
+ */
+export enum NoConfigAuthenticationTypes {
+    OAuth2 = "OAuth2",
+}
+
+/**
+ * GCP Credentials
+ *
+ * GCP credentials configs.
+ */
+export interface GCPCredentials {
+    /**
+     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+     * Credentials Path
+     */
+    gcpConfig: GCPCredentialsConfiguration;
+    /**
+     * we enable the authenticated service account to impersonate another service account
+     */
+    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
+}
+
+/**
+ * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+ * Credentials Path
+ *
+ * Pass the raw credential values provided by GCP
+ *
+ * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
+ */
+export interface GCPCredentialsConfiguration {
+    /**
+     * Google Cloud auth provider certificate.
+     */
+    authProviderX509CertUrl?: string;
+    /**
+     * Google Cloud auth uri.
+     */
+    authUri?: string;
+    /**
+     * Google Cloud email.
+     */
+    clientEmail?: string;
+    /**
+     * Google Cloud Client ID.
+     */
+    clientId?: string;
+    /**
+     * Google Cloud client certificate uri.
+     */
+    clientX509CertUrl?: string;
+    /**
+     * Google Cloud private key.
+     */
+    privateKey?: string;
+    /**
+     * Google Cloud private key id.
+     */
+    privateKeyId?: string;
+    /**
+     * Project ID
+     *
+     * GCP Project ID to parse metadata from
+     */
+    projectId?: string[] | string;
+    /**
+     * Google Cloud token uri.
+     */
+    tokenUri?: string;
+    /**
+     * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
+     */
+    type?: string;
+    /**
+     * Path of the file containing the GCP credentials info
+     */
+    path?: string;
+    /**
+     * Google Security Token Service audience which contains the resource name for the workload
+     * identity pool and the provider identifier in that pool.
+     */
+    audience?: string;
+    /**
+     * This object defines the mechanism used to retrieve the external credential from the local
+     * environment so that it can be exchanged for a GCP access token via the STS endpoint
+     */
+    credentialSource?: { [key: string]: string };
+    /**
+     * Google Cloud Platform account type.
+     */
+    externalType?: string;
+    /**
+     * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
+     * spec.
+     */
+    subjectTokenType?: string;
+    /**
+     * Google Security Token Service token exchange endpoint.
+     */
+    tokenURL?: string;
+    [property: string]: any;
+}
+
+/**
+ * we enable the authenticated service account to impersonate another service account
+ *
+ * Pass the values to impersonate a service account of Google Cloud
+ */
+export interface GCPImpersonateServiceAccountValues {
+    /**
+     * The impersonated service account email
+     */
+    impersonateServiceAccount?: string;
+    /**
+     * Number of seconds the delegated credential should be valid
+     */
+    lifetime?: number;
+    [property: string]: any;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum Scheme {
+    Bigquery = "bigquery",
     DatabricksConnector = "databricks+connector",
     Snowflake = "snowflake",
+    Trino = "trino",
 }
 
 /**
@@ -152,11 +402,14 @@ export enum Scheme {
  * Service type.
  */
 export enum Type {
+    BigQuery = "BigQuery",
     Databricks = "Databricks",
     Snowflake = "Snowflake",
+    Trino = "Trino",
 }
 
 export enum EventType {
+    EntityHistory = "ENTITY_HISTORY",
     Profile = "PROFILE",
     TestCaseResults = "TEST_CASE_RESULTS",
 }

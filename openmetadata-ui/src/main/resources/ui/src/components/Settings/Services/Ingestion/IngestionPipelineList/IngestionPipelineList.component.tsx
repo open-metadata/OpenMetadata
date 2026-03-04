@@ -14,7 +14,10 @@ import { Button, Col, Row, TablePaginationConfig } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { FilterValue, TableRowSelection } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
-import { isNil, map, startCase } from 'lodash';
+import capitalize from 'lodash/capitalize';
+import isNil from 'lodash/isNil';
+import map from 'lodash/map';
+import startCase from 'lodash/startCase';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAirflowStatus } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -63,7 +66,13 @@ export const IngestionPipelineList = ({
 
   const pagingInfo = usePaging();
 
-  const { handlePageChange, paging, handlePagingChange, pageSize } = pagingInfo;
+  const {
+    handlePageChange,
+    paging,
+    handlePagingChange,
+    pageSize,
+    pagingCursor,
+  } = pagingInfo;
 
   const { t } = useTranslation();
 
@@ -91,8 +100,7 @@ export const IngestionPipelineList = ({
     const selectedPipelines =
       pipelines?.filter(
         (p) =>
-          p.fullyQualifiedName &&
-          selectedRowKeys.indexOf(p.fullyQualifiedName) > -1
+          p.fullyQualifiedName && selectedRowKeys.includes(p.fullyQualifiedName)
       ) ?? [];
 
     const promises = (selectedPipelines ?? [])?.map((pipeline) =>
@@ -105,8 +113,8 @@ export const IngestionPipelineList = ({
       await Promise.all(promises);
 
       showSuccessToast(
-        `${t('label.pipeline-plural')}  ${t('label.re-deploy')}  ${t(
-          'label.successfully-lowercase'
+        `${t('label.pipeline-plural')} ${t('label.re-deploy')} ${capitalize(
+          t('label.successfully-lowercase')
         )}`
       );
     } catch (error) {
@@ -165,15 +173,30 @@ export const IngestionPipelineList = ({
           paging: { [cursorType]: paging[cursorType] },
           limit: pageSize,
         });
-        handlePageChange(currentPage);
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
     },
     [fetchPipelines, paging, handlePageChange]
   );
 
   useEffect(() => {
-    isAirflowAvailable && fetchPipelines({ limit: pageSize });
-  }, [serviceName, isAirflowAvailable, pageSize]);
+    if (isAirflowAvailable) {
+      const { cursorType, cursorValue } = pagingCursor ?? {};
+
+      if (cursorType && cursorValue) {
+        fetchPipelines({
+          paging: { [cursorType]: cursorValue },
+          limit: pageSize,
+        });
+      } else {
+        fetchPipelines({ limit: pageSize });
+      }
+    }
+  }, [serviceName, isAirflowAvailable, pageSize, pagingCursor]);
 
   const handleTableChange: TableProps<IngestionPipeline>['onChange'] =
     useCallback(

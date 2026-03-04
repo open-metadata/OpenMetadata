@@ -17,10 +17,13 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+    PersonalAccessToken,
+)
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
@@ -31,7 +34,9 @@ from metadata.sampler.sqlalchemy.unitycatalog.sampler import (
     UnityCatalogSamplerInterface,
 )
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class _TestTableModel(Base):
@@ -67,15 +72,16 @@ class UnityCatalogSamplerTest(TestCase):
 
         self.unity_catalog_conn = UnityCatalogConnection(
             hostPort="localhost:443",
-            token="test_token",
+            authType=PersonalAccessToken(token="test_token"),
             httpPath="/sql/1.0/warehouses/test",
             catalog="test_catalog",
         )
 
+    @patch("metadata.sampler.sqlalchemy.databricks.sampler.databricks_get_connection")
     @patch(
         "metadata.sampler.sqlalchemy.unitycatalog.sampler.UnityCatalogSamplerInterface.build_table_orm"
     )
-    def test_handle_array_column(self, mock_build_table_orm):
+    def test_handle_array_column(self, mock_build_table_orm, mock_get_connection):
         """Test array column detection"""
         mock_build_table_orm.return_value = _TestTableModel
 

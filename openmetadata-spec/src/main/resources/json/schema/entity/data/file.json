@@ -98,6 +98,18 @@
       "description": "File size in bytes",
       "type": "integer"
     },
+    "columns": {
+      "description": "Column definitions for structured data files (CSV, etc.)",
+      "type": "array",
+      "items": {
+        "$ref": "../data/table.json#/definitions/column"
+      },
+      "default": null
+    },
+    "sampleData": {
+      "description": "Sample data from the file",
+      "$ref": "../data/table.json#/definitions/tableData"
+    },
     "checksum": {
       "description": "File checksum/hash",
       "type": "string"
@@ -169,6 +181,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
@@ -218,8 +234,7 @@
     },
     "entityStatus": {
       "description": "Status of the File.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "service"],

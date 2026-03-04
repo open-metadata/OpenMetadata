@@ -11,15 +11,24 @@
  *  limitations under the License.
  */
 
+import { Tooltip as MuiTooltip } from '@mui/material';
 import { Button, Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import { FunctionComponent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
+import {
+  getTagName,
+  getTagRedirectLink,
+  getTagTooltip,
+} from '../../../utils/TagsUtils';
+import TagChip from '../../common/atoms/TagChip/TagChip';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import './tags-viewer.less';
 import { DisplayType, TagsViewerProps } from './TagsViewer.interface';
@@ -30,26 +39,77 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   displayType = DisplayType.POPOVER,
   showNoDataPlaceholder = true,
   newLook = false,
+  entityFqn,
 }: TagsViewerProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
+  let muiTags = false;
+  try {
+    const context = useGenericContext();
+    muiTags = context.muiTags || false;
+  } catch {
+    // Context not available, use default TagsV1
+  }
+
   const getTagsElement = useCallback(
-    (tag: EntityTags) => (
-      <TagsV1
-        className={classNames(
-          { 'diff-added tw-mx-1': tag?.added },
-          { 'diff-removed': tag?.removed }
-        )}
-        isVersionPage={tag?.added || tag?.removed}
-        key={tag.tagFQN}
-        newLook={newLook}
-        showOnlyName={tag.source === TagSource.Glossary}
-        startWith={TAG_START_WITH.SOURCE_ICON}
-        tag={tag}
-      />
-    ),
-    []
+    (tag: EntityTags) => {
+      if (muiTags) {
+        const tagName = getTagName(tag, true);
+        const redirectLink = getTagRedirectLink(tag);
+
+        return (
+          <MuiTooltip
+            enterDelay={500}
+            key={tag.tagFQN}
+            placement="bottom-start"
+            slotProps={{
+              tooltip: {
+                sx: {
+                  bgcolor: 'common.black',
+                  color: 'common.white',
+                },
+              },
+            }}
+            title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
+            <Link
+              className={classNames(
+                'w-full',
+                { 'diff-added tw-mx-1': tag?.added },
+                { 'diff-removed': tag?.removed }
+              )}
+              data-testid="tag-redirect-link"
+              to={redirectLink}>
+              <TagChip
+                data-testid="tags"
+                label={tagName}
+                labelDataTestId={`tag-${tag.tagFQN}`}
+                size="large"
+                tagColor={tag.style?.color}
+                variant="blueGray"
+              />
+            </Link>
+          </MuiTooltip>
+        );
+      }
+
+      return (
+        <TagsV1
+          className={classNames(
+            { 'diff-added tw-mx-1': tag?.added },
+            { 'diff-removed': tag?.removed }
+          )}
+          entityFqn={entityFqn}
+          isVersionPage={tag?.added || tag?.removed}
+          key={tag.tagFQN}
+          newLook={newLook}
+          showOnlyName={tag.source === TagSource.Glossary}
+          startWith={TAG_START_WITH.SOURCE_ICON}
+          tag={tag}
+        />
+      );
+    },
+    [muiTags, newLook, entityFqn]
   );
 
   // sort tags by source so that "Glossary" tags always comes first
@@ -88,7 +148,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const popoverRenderElement = useMemo(
     () =>
       sortedTagsBySource.slice(sizeCap).length > 0 && (
-        <div className="m-t-xss" data-testid="popover-element">
+        <div data-testid="popover-element">
           <Popover
             content={
               <div className="d-flex flex-column flex-wrap gap-2">
@@ -101,7 +161,9 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             placement="bottom"
             trigger="click">
             <Tag
-              className="cursor-pointer plus-more-tag"
+              className={classNames('cursor-pointer plus-more-tag', {
+                'new-look': newLook,
+              })}
               data-testid="plus-more-count">{`+${
               sortedTagsBySource.length - (sizeCap ?? 0)
             } more`}</Tag>

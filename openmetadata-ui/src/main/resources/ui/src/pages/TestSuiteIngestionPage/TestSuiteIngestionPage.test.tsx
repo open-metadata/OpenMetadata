@@ -156,7 +156,6 @@ describe('TestSuiteIngestionPage', () => {
       fqn: 'testSuiteFQN',
       ingestionFQN: 'ingestionFQN',
     }));
-    getIngestionPipelineByFqn as jest.Mock;
 
     await act(async () => {
       render(

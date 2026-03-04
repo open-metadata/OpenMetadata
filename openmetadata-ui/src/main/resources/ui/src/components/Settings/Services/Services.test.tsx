@@ -163,6 +163,7 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
 
 jest.mock('../../../utils/ServiceUtils', () => ({
   getOptionalFields: jest.fn(),
+  getSearchIndexFromService: jest.fn(),
   getResourceEntityFromServiceCategory: jest.fn(),
   getServiceTypesFromServiceCategory: jest.fn(),
 }));
@@ -185,6 +186,7 @@ jest.mock('../../../utils/TableColumn.util', () => ({
       render: () => <div>OwnerLabel</div>,
     },
   ]),
+  descriptionTableObject: jest.fn().mockImplementation(() => []),
 }));
 
 jest.mock('../../common/ListView/ListView.component', () => ({

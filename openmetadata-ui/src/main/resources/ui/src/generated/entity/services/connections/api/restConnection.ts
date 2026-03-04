@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,13 +19,17 @@ export interface RESTConnection {
      */
     apiCollectionFilterPattern?: FilterPattern;
     /**
+     * Regex to only fetch api endpoints with names matching the pattern.
+     */
+    apiEndpointFilterPattern?: FilterPattern;
+    /**
      * Documentation URL for the schema.
      */
     docURL?: string;
     /**
-     * Open API Schema URL.
+     * OpenAPI Schema source config. Either a URL or a file path must be provided.
      */
-    openAPISchemaURL: string;
+    openAPISchemaConnection: OpenAPISchemaConnection;
     /**
      * Supports Metadata Extraction.
      */
@@ -44,6 +48,8 @@ export interface RESTConnection {
  * Regex to only fetch api collections with names matching the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only fetch api endpoints with names matching the pattern.
  */
 export interface FilterPattern {
     /**
@@ -54,6 +60,24 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * OpenAPI Schema source config. Either a URL or a file path must be provided.
+ *
+ * Open API Schema URL Connection Config
+ *
+ * Open API Schema File Path Connection Config
+ */
+export interface OpenAPISchemaConnection {
+    /**
+     * Open API Schema URL.
+     */
+    openAPISchemaURL?: string;
+    /**
+     * Path to a local OpenAPI schema file.
+     */
+    openAPISchemaFilePath?: string;
 }
 
 /**

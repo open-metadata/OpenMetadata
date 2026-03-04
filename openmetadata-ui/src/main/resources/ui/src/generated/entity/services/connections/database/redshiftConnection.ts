@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,10 @@
  * Redshift  Connection Config
  */
 export interface RedshiftConnection {
+    /**
+     * Choose Auth Configuration Type.
+     */
+    authType?:            AuthConfigurationType;
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
@@ -33,11 +37,7 @@ export interface RedshiftConnection {
      * Ingest data from all databases in Redshift. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?: boolean;
-    /**
-     * Password to connect to Redshift.
-     */
-    password?:                string;
+    ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -46,9 +46,13 @@ export interface RedshiftConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                                RedshiftScheme;
-    sslConfig?:                             Config;
-    sslMode?:                               SSLMode;
+    scheme?:    RedshiftScheme;
+    sslConfig?: Config;
+    sslMode?:   SSLMode;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?:          FilterPattern;
     supportsDatabase?:                      boolean;
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
@@ -75,11 +79,80 @@ export interface RedshiftConnection {
 }
 
 /**
+ * Choose Auth Configuration Type.
+ *
+ * Common Database Connection Config
+ *
+ * IAM Auth Database Connection Config
+ */
+export interface AuthConfigurationType {
+    /**
+     * Password to connect to source.
+     */
+    password?:  string;
+    awsConfig?: AWSCredentials;
+}
+
+/**
+ * AWS credentials configs.
+ */
+export interface AWSCredentials {
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
+     */
+    assumeRoleArn?: string;
+    /**
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion: string;
+    /**
+     * AWS Secret Access Key.
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
+}
+
+/**
  * Regex to only include/exclude databases that matches the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
  */
@@ -162,6 +235,12 @@ export interface AwsCredentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */

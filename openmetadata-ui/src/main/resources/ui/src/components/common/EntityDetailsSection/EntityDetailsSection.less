@@ -1,0 +1,60 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import '../../../styles/variables.less';
+
+.entity-details-section {
+  .no-data-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+
+    .no-data-text {
+      color: #8c8c8c;
+      font-size: 13px;
+    }
+  }
+  .schema-field-cards-container {
+    .no-data-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 20px;
+      background: #fafafa;
+      border-radius: 8px;
+      border: 1px dashed #d9d9d9;
+
+      .no-data-text {
+        color: #8c8c8c;
+        font-size: 14px;
+      }
+    }
+
+    .nested-field-card-wrapper {
+      border-bottom: 0.6px solid @grey-15;
+      .field-card-no-border {
+        .field-card {
+          border-bottom: none;
+        }
+      }
+    }
+  }
+}
+.no-data-placeholder {
+  color: @grey-500 !important;
+  font-size: 12px !important;
+}
+.searchbar-container {
+  margin-bottom: 0 !important;
+  margin-top: 8px;
+}

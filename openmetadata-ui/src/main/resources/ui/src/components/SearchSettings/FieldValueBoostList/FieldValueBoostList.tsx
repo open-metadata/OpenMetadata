@@ -44,10 +44,16 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
 
   const columns = useMemo(() => {
     return [
-      ...fieldValueBoostBaseColumns,
+      ...fieldValueBoostBaseColumns.map((col) => ({
+        ...col,
+        title: t(col.title),
+      })),
       ...(!entitySearchSettingsPage
         ? [
-            ...fieldValueBoostAdditionalColumns,
+            ...fieldValueBoostAdditionalColumns.map((col) => ({
+              ...col,
+              title: t(col.title),
+            })),
             {
               title: t('label.greater-than'),
               key: 'gt',
@@ -107,6 +113,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
       },
     ];
   }, [
+    t,
     handleEditFieldValueBoost,
     handleDeleteFieldValueBoost,
     entitySearchSettingsPage,

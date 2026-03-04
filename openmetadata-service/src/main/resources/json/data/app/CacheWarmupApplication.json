@@ -1,0 +1,17 @@
+{
+  "name": "CacheWarmupApplication",
+  "displayName": "Cache Warmup",
+  "appConfiguration": {
+    "entities": [
+      "all"
+    ],
+    "batchSize": 100,
+    "consumerThreads": 4,
+    "queueSize": 1000
+  },
+  "appSchedule": {
+    "scheduleTimeline": "Custom",
+    "cronExpression": "0 0 * * *"
+  },
+  "supportsInterrupt": true
+}

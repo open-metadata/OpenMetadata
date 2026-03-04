@@ -156,12 +156,20 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "owners": {
       "description": "Owners of this metrics.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "description": "Reviewers of this Metric.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
@@ -210,8 +218,7 @@
     },
     "entityStatus": {
       "description": "Status of the Metric.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name"],

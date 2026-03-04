@@ -44,7 +44,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
 public class ReportDataResource extends EntityTimeSeriesResource<ReportData, ReportDataRepository> {
-  public static final String COLLECTION_PATH = "v1/analytics/dataInsights/data";
+  public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/data";
 
   public ReportDataResource(Authorizer authorizer) {
     super(Entity.ENTITY_REPORT_DATA, authorizer);

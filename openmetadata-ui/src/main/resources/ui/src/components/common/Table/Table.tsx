@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -34,7 +33,7 @@ import {
 import { useAntdColumnResize } from 'react-antd-column-resize';
 import { Column } from 'react-antd-column-resize/dist/useAntdColumnResize/types';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
+import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   getCustomizeColumnDetails,
@@ -228,9 +227,7 @@ const Table = <T extends Record<string, unknown>>(
   }, [isCustomizeColumnEnable, rest.columns, rest.staticVisibleColumns]);
 
   useEffect(() => {
-    if (!isCustomizeColumnEnable) {
-      setPropsColumns(rest.columns ?? []);
-    } else {
+    if (isCustomizeColumnEnable) {
       const filteredColumns = (rest.columns ?? []).filter(
         (item) =>
           columnDropdownSelections.includes(item.key as string) ||
@@ -238,6 +235,8 @@ const Table = <T extends Record<string, unknown>>(
       );
 
       setPropsColumns(getReorderedColumns(dropdownColumnList, filteredColumns));
+    } else {
+      setPropsColumns(rest.columns ?? []);
     }
   }, [
     isCustomizeColumnEnable,
@@ -274,8 +273,8 @@ const Table = <T extends Record<string, unknown>>(
                 {...searchProps}
                 removeMargin
                 placeholder={searchProps?.placeholder ?? t('label.search')}
-                searchValue={searchProps?.value}
-                typingInterval={searchProps?.searchDebounceTime ?? 500}
+                searchValue={searchProps?.searchValue}
+                typingInterval={searchProps?.typingInterval ?? 500}
                 onSearch={handleSearchAction}
               />
             </Col>
@@ -290,7 +289,7 @@ const Table = <T extends Record<string, unknown>>(
               {rest.extraTableFilters}
               {isCustomizeColumnEnable && (
                 <Dropdown
-                  className="custom-column-dropdown-menu text-primary"
+                  className="custom-column-dropdown-menu"
                   menu={menu}
                   open={isDropdownVisible}
                   placement="bottomRight"
@@ -299,10 +298,11 @@ const Table = <T extends Record<string, unknown>>(
                   <Button
                     className="remove-button-background-hover"
                     data-testid="column-dropdown"
-                    icon={<Icon component={ColumnIcon} />}
+                    icon={<ColumnIcon />}
                     size="small"
+                    title={t('label.show-or-hide-column-plural')}
                     type="text">
-                    {t('label.column-plural')}
+                    {t('label.customize')}
                   </Button>
                 </Dropdown>
               )}
@@ -341,5 +341,4 @@ const Table = <T extends Record<string, unknown>>(
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default forwardRef<HTMLDivElement, TableProps<any>>(Table);

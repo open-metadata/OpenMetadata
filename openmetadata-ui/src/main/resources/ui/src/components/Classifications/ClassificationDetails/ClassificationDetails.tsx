@@ -15,7 +15,6 @@ import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {
   forwardRef,
@@ -23,6 +22,7 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,6 +55,7 @@ import {
   getClassificationVersionsPath,
 } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -83,6 +84,8 @@ const ClassificationDetails = forwardRef(
       handleAddNewTagClick,
       disableEditButton,
       isVersionView = false,
+      isClassificationLoading = false,
+      handleToggleDisable,
     }: Readonly<ClassificationDetailsProps>,
     ref
   ) => {
@@ -93,10 +96,14 @@ const ClassificationDetails = forwardRef(
     const navigate = useNavigate();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
+    const isLoading = isTagsLoading || isClassificationLoading;
+    const previousClassificationRef = useRef<string | undefined>();
+    const isClassificationChangingRef = useRef(false);
     const {
       currentPage,
       paging,
       pageSize,
+      pagingCursor,
       handlePageChange,
       handlePageSizeChange,
       handlePagingChange,
@@ -111,7 +118,7 @@ const ClassificationDetails = forwardRef(
       setTags([]);
       try {
         const { data, paging: tagPaging } = await getTags({
-          fields: TabSpecificField.USAGE_COUNT,
+          fields: `${TabSpecificField.USAGE_COUNT},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS}`,
           parent: currentClassificationName,
           after: paging?.after,
           before: paging?.before,
@@ -142,8 +149,12 @@ const ClassificationDetails = forwardRef(
             [cursorType]: paging[cursorType],
           }
         );
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     };
 
     const {
@@ -154,20 +165,23 @@ const ClassificationDetails = forwardRef(
       description,
       isTier,
       isSystemClassification,
+      isClassificationDeleted,
     } = useMemo(
       () => getClassificationInfo(currentClassification, isVersionView),
       [currentClassification, isVersionView]
     );
 
     const versionHandler = useCallback(() => {
-      isVersionView
-        ? navigate(getClassificationDetailsPath(tagCategoryName))
-        : navigate(
-            getClassificationVersionsPath(
-              tagCategoryName,
-              toString(currentVersion)
-            )
-          );
+      if (isVersionView) {
+        navigate(getClassificationDetailsPath(tagCategoryName));
+      } else {
+        navigate(
+          getClassificationVersionsPath(
+            tagCategoryName,
+            toString(currentVersion)
+          )
+        );
+      }
     }, [currentVersion, tagCategoryName]);
 
     const {
@@ -176,8 +190,12 @@ const ClassificationDetails = forwardRef(
       createPermission,
       deletePermission,
       editDisplayNamePermission,
-    } = useMemo(
-      () => ({
+      editOwnerPermission,
+      editDomainPermission,
+    } = useMemo(() => {
+      const isEditable = !isClassificationDisabled && !isClassificationDeleted;
+
+      return {
         editClassificationPermission: classificationPermissions.EditAll,
         editDescriptionPermission:
           !isVersionView &&
@@ -193,20 +211,26 @@ const ClassificationDetails = forwardRef(
         editDisplayNamePermission:
           classificationPermissions.EditAll ||
           classificationPermissions.EditDisplayName,
-      }),
-      [
-        permissions,
-        classificationPermissions,
-        isVersionView,
-        isClassificationDisabled,
-        isSystemClassification,
-      ]
-    );
+        editOwnerPermission:
+          isEditable &&
+          (classificationPermissions.EditAll ||
+            classificationPermissions.EditOwners),
+        editDomainPermission: isEditable && classificationPermissions.EditAll,
+      };
+    }, [
+      permissions,
+      classificationPermissions,
+      isVersionView,
+      isClassificationDisabled,
+      isSystemClassification,
+      isClassificationDeleted,
+    ]);
 
     const headerBadge = useMemo(
       () =>
         isSystemClassification ? (
           <AppBadge
+            className="whitespace-nowrap"
             icon={<LockIcon height={12} />}
             label={capitalize(currentClassification?.provider)}
           />
@@ -286,6 +310,7 @@ const ClassificationDetails = forwardRef(
           handleEditTagClick,
           handleActionDeleteTag,
           isVersionView,
+          handleToggleDisable,
         }),
       [
         isClassificationDisabled,
@@ -295,6 +320,7 @@ const ClassificationDetails = forwardRef(
         handleEditTagClick,
         handleActionDeleteTag,
         isVersionView,
+        handleToggleDisable,
       ]
     );
 
@@ -314,9 +340,42 @@ const ClassificationDetails = forwardRef(
 
     useEffect(() => {
       if (currentClassification?.fullyQualifiedName && !isAddingTag) {
-        fetchClassificationChildren(currentClassification.fullyQualifiedName);
+        const classificationChanged =
+          previousClassificationRef.current !== undefined &&
+          previousClassificationRef.current !==
+            currentClassification.fullyQualifiedName;
+
+        previousClassificationRef.current =
+          currentClassification.fullyQualifiedName;
+
+        if (classificationChanged) {
+          isClassificationChangingRef.current = true;
+          handlePageChange(1, { cursorType: null, cursorValue: undefined });
+          fetchClassificationChildren(currentClassification.fullyQualifiedName);
+
+          return;
+        }
+
+        if (isClassificationChangingRef.current) {
+          isClassificationChangingRef.current = false;
+
+          return;
+        }
+
+        const { cursorType, cursorValue } = pagingCursor ?? {};
+
+        if (cursorType && cursorValue) {
+          fetchClassificationChildren(
+            currentClassification.fullyQualifiedName,
+            {
+              [cursorType]: cursorValue,
+            }
+          );
+        } else {
+          fetchClassificationChildren(currentClassification.fullyQualifiedName);
+        }
       }
-    }, [currentClassification?.fullyQualifiedName, pageSize]);
+    }, [currentClassification?.fullyQualifiedName, pageSize, pagingCursor]);
 
     useImperativeHandle(ref, () => ({
       refreshClassificationTags() {
@@ -339,15 +398,14 @@ const ClassificationDetails = forwardRef(
                       <div data-testid="mutually-exclusive-container">
                         <AppBadge
                           bgColor={theme.primaryColor}
+                          className="whitespace-nowrap"
                           label={t('label.mutually-exclusive')}
                         />
                       </div>
                     )}
                   </div>
                 }
-                className={classNames({
-                  'opacity-60': isClassificationDisabled,
-                })}
+                className="flex-wrap"
                 displayName={displayName}
                 icon={
                   <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
@@ -363,7 +421,6 @@ const ClassificationDetails = forwardRef(
                 {createPermission && (
                   <Tooltip title={addTagButtonToolTip}>
                     <Button
-                      className="h-10"
                       data-testid="add-new-tag-button"
                       disabled={isClassificationDisabled}
                       type="primary"
@@ -403,7 +460,7 @@ const ClassificationDetails = forwardRef(
                       editDisplayNamePermission={
                         editDisplayNamePermission && !isClassificationDisabled
                       }
-                      entityFQN={currentClassification.fullyQualifiedName}
+                      entityFQN={currentClassification?.fullyQualifiedName}
                       entityId={currentClassification.id}
                       entityName={currentClassification.name}
                       entityType={EntityType.CLASSIFICATION}
@@ -418,7 +475,7 @@ const ClassificationDetails = forwardRef(
         )}
 
         <GenericProvider<Classification>
-          data={currentClassification as Classification}
+          data={(currentClassification as Classification) ?? {}}
           isVersionView={isVersionView}
           permissions={classificationPermissions}
           type={EntityType.CLASSIFICATION as CustomizeEntityType}
@@ -431,9 +488,6 @@ const ClassificationDetails = forwardRef(
                 <div className="m-b-sm" data-testid="description-container">
                   <DescriptionV1
                     wrapInCard
-                    className={classNames({
-                      'opacity-60': isClassificationDisabled,
-                    })}
                     description={description}
                     entityName={getEntityName(currentClassification)}
                     entityType={EntityType.CLASSIFICATION}
@@ -445,13 +499,10 @@ const ClassificationDetails = forwardRef(
                 </div>
 
                 <Table
-                  className={classNames({
-                    'opacity-60': isClassificationDisabled,
-                  })}
                   columns={tableColumn}
                   customPaginationProps={{
                     currentPage,
-                    isLoading: isTagsLoading,
+                    isLoading,
                     pageSize,
                     paging,
                     showPagination,
@@ -460,7 +511,7 @@ const ClassificationDetails = forwardRef(
                   }}
                   data-testid="table"
                   dataSource={tags}
-                  loading={isTagsLoading}
+                  loading={isLoading}
                   locale={{
                     emptyText: (
                       <ErrorPlaceHolder
@@ -470,9 +521,6 @@ const ClassificationDetails = forwardRef(
                     ),
                   }}
                   pagination={false}
-                  rowClassName={(record) =>
-                    record.disabled ? 'opacity-60' : ''
-                  }
                   rowKey="id"
                   scroll={{ x: true }}
                   size="small"
@@ -481,8 +529,16 @@ const ClassificationDetails = forwardRef(
             </Col>
             <Col span={6}>
               <div className="d-flex flex-column gap-5">
-                <DomainLabelV2 multiple showDomainHeading />
-                <OwnerLabelV2 dataTestId="classification-owner-name" />
+                <DomainLabelV2
+                  multiple
+                  showDomainHeading
+                  hasPermission={editDomainPermission}
+                />
+                <OwnerLabelV2
+                  dataTestId="classification-owner-name"
+                  hasPermission={editOwnerPermission}
+                />
+                {tagClassBase.getClassificationReviewerWidget()}
               </div>
             </Col>
           </Row>

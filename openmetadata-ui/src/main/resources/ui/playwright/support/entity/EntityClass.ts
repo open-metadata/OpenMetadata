@@ -15,9 +15,9 @@ import { CustomPropertySupportedEntityList } from '../../constant/customProperty
 import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
 import {
   assignDataProduct,
-  assignDomain,
+  assignSingleSelectDomain,
   removeDataProduct,
-  removeDomain,
+  removeSingleSelectDomain,
 } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
@@ -90,6 +90,15 @@ export class EntityClass {
     return this.type;
   }
 
+  public get() {
+    return {};
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+  public set(_data: any) {
+    // handle in parent component
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async visitEntityPage(_: Page) {
     // Override for entity visit
@@ -140,17 +149,17 @@ export class EntityClass {
     dataProduct2: DataProduct['responseData'],
     dataProduct3: DataProduct['responseData']
   ) {
-    await assignDomain(page, domain1);
-    await assignDataProduct(page, domain1, dataProduct1);
-    await assignDataProduct(page, domain1, dataProduct2, 'Edit');
+    await assignSingleSelectDomain(page, domain1);
+    await assignDataProduct(page, domain1, [dataProduct1]);
+    await assignDataProduct(page, domain1, [dataProduct2], 'Edit');
     await removeDataProduct(page, dataProduct1);
     await removeDataProduct(page, dataProduct2);
-    await removeDomain(page, domain1);
+    await removeSingleSelectDomain(page, domain1);
 
-    await assignDomain(page, domain2);
-    await assignDataProduct(page, domain2, dataProduct3);
+    await assignSingleSelectDomain(page, domain2);
+    await assignDataProduct(page, domain2, [dataProduct3]);
     await removeDataProduct(page, dataProduct3);
-    await removeDomain(page, domain2);
+    await removeSingleSelectDomain(page, domain2);
   }
 
   async owner(
@@ -268,7 +277,13 @@ export class EntityClass {
       // eslint-disable-next-line max-len
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
-    await updateDescription(page, description);
+    await updateDescription(
+      page,
+      description,
+      false,
+      'asset-description-container',
+      this.endpoint
+    );
   }
 
   async descriptionUpdateChildren(
@@ -407,7 +422,7 @@ export class EntityClass {
     glossaryTerm2: GlossaryTerm['responseData'],
     entity?: EntityClass
   ) {
-    await assignGlossaryTerm(page, glossaryTerm1);
+    await assignGlossaryTerm(page, glossaryTerm1, 'Add', this.endpoint);
     if (entity) {
       await checkExploreSearchFilter(
         page,
@@ -417,7 +432,7 @@ export class EntityClass {
         entity
       );
     }
-    await assignGlossaryTerm(page, glossaryTerm2, 'Edit');
+    await assignGlossaryTerm(page, glossaryTerm2, 'Edit', this.endpoint);
     await removeGlossaryTerm(page, [glossaryTerm1, glossaryTerm2]);
 
     await page

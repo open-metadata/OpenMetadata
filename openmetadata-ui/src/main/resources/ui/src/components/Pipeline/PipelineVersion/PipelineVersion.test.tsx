@@ -74,7 +74,19 @@ jest.mock('react-router-dom', () => ({
     tab: 'pipeline',
   }),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
+
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
 
 JSON.parse = jest.fn().mockReturnValue([]);
 
@@ -106,7 +118,10 @@ describe('PipelineVersion tests', () => {
   it('Should display Loader if isVersionLoading is true', async () => {
     await act(async () => {
       render(
-        <PipelineVersion {...pipelineVersionMockProps} isVersionLoading />
+        <PipelineVersion {...pipelineVersionMockProps} isVersionLoading />,
+        {
+          wrapper: MemoryRouter,
+        }
       );
     });
 

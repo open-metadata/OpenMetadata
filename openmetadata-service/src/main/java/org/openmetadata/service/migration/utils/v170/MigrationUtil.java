@@ -270,24 +270,23 @@ public class MigrationUtil {
 
   public static void createChart(
       String chartName, Object chartObject, DataInsightCustomChart.ChartType chartType) {
-    DataInsightCustomChart chart =
-        new DataInsightCustomChart()
-            .withId(UUID.randomUUID())
-            .withName(chartName)
-            .withChartDetails(chartObject)
-            .withUpdatedAt(System.currentTimeMillis())
-            .withUpdatedBy("ingestion-bot")
-            .withDeleted(false)
-            .withChartType(chartType)
-            .withIsSystemChart(true);
-    dataInsightSystemChartRepository.prepareInternal(chart, false);
     try {
+      DataInsightCustomChart chart =
+          new DataInsightCustomChart()
+              .withId(UUID.randomUUID())
+              .withName(chartName)
+              .withChartDetails(chartObject)
+              .withUpdatedAt(System.currentTimeMillis())
+              .withUpdatedBy("ingestion-bot")
+              .withDeleted(false)
+              .withChartType(chartType)
+              .withIsSystemChart(true);
+      dataInsightSystemChartRepository.prepareInternal(chart, false);
       dataInsightSystemChartRepository
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
-      LOG.warn(ex.toString());
-      LOG.warn(String.format("Chart %s exists", chart));
+      LOG.warn(String.format("Chart %s exists, Exception Message: {}", chartName, ex.getMessage()));
     }
   }
 
@@ -484,6 +483,7 @@ public class MigrationUtil {
     serviceTypes.remove(ServiceType.METADATA);
     serviceTypes.remove(ServiceType.DRIVE); // Exclude DRIVE as it doesn't exist in v1.7.0
     serviceTypes.remove(ServiceType.SECURITY); // Exclude SECURITY as it doesn't exist in v1.7.0
+    serviceTypes.remove(ServiceType.LLM); // Exclude LLM as it doesn't exist until v1.12.0
 
     for (ServiceType serviceType : serviceTypes) {
       EntityRepository<? extends EntityInterface> repository =

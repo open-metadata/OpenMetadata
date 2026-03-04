@@ -122,7 +122,7 @@ def get_class_name_root(type_: str) -> str:
     )
 
 
-def import_from_module(key: str) -> Type[Any]:
+def import_from_module(key: str, log_traceback: bool = True) -> Type[Any]:
     """
     Dynamically import an object from a module path
     """
@@ -132,7 +132,8 @@ def import_from_module(key: str) -> Type[Any]:
         obj = getattr(importlib.import_module(module_name), obj_name)
         return obj
     except (ModuleNotFoundError, ImportError) as err:
-        logger.debug(traceback.format_exc())
+        if log_traceback:
+            logger.debug(traceback.format_exc())
         raise DynamicImportException(module=module_name, key=obj_name, cause=err)
 
 
@@ -237,31 +238,38 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
     return _connection_fn
 
 
+RULE_LIBRARY_VALIDATOR_MODULE_MAP = {
+    "ColumnRuleLibrarySqlExpressionValidator": "columnRuleLibrarySqlExpressionValidator",
+    "TableRuleLibrarySqlExpressionValidator": "tableRuleLibrarySqlExpressionValidator",
+}
+
+
 def import_test_case_class(
     test_type: str,
     runner_type: str,
     test_definition: str,
+    validator_class: str,
 ) -> Type[BaseTestValidator]:
-    """_summary_
+    """Import and return the test case validator class.
 
     Args:
         test_type (str): column or table
         runner_type (str): sqlalchemy or pandas
         test_definition (str): test definition name
-        test_definition_class (str): test definition class name (same as test_definition)
+        validator_class (str): validator class name
 
     Returns:
-        Callable: test validator object
+        Type[BaseTestValidator]: test validator class
     """
-    test_definition_class = (
-        test_definition[0].upper() + test_definition[1:]
-    )  # change test names to camel case
+    module_name = RULE_LIBRARY_VALIDATOR_MODULE_MAP.get(
+        validator_class, test_definition
+    )
     return import_from_module(
-        "metadata.data_quality.validations.{}.{}.{}.{}Validator".format(  # pylint: disable=consider-using-f-string
+        "metadata.data_quality.validations.{}.{}.{}.{}".format(  # pylint: disable=consider-using-f-string
             test_type.lower(),
             runner_type,
-            test_definition,
-            test_definition_class,
+            module_name,
+            validator_class,
         )
     )
 

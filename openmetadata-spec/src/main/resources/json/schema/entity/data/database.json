@@ -54,6 +54,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -173,8 +177,7 @@
     },
     "entityStatus": {
       "description": "Status of the Database.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "service"],

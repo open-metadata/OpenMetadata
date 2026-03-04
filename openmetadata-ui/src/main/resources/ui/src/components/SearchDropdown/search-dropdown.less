@@ -19,6 +19,7 @@
 @update-btn-hover-bg: #e2e2e2;
 
 .custom-dropdown-render {
+  flex-direction: row-reverse;
   .ant-dropdown-menu {
     box-shadow: none;
     padding: 0px;
@@ -36,14 +37,14 @@
   }
 
   .update-btn {
-    background-color: @trigger-btn-hover-bg;
-    border-color: @trigger-btn-hover-bg;
+    background-color: @primary-color;
+    border-color: @primary-color;
+    color: @white;
   }
 
   .update-btn:hover {
-    background-color: @update-btn-hover-bg;
-    border-color: @update-btn-hover-bg;
-    color: inherit;
+    background-color: @primary-7;
+    color: @white;
   }
 
   mark {
@@ -62,8 +63,14 @@
   .remove-field-icon:hover {
     color: @remove-icon-hover-color;
   }
-}
 
-.filters-label.ant-typography {
-  color: @grey-600;
+  .active {
+    .filters-label.ant-typography {
+      color: @primary-color;
+    }
+  }
+
+  .filters-label.ant-typography {
+    color: @grey-600;
+  }
 }

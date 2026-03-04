@@ -39,11 +39,12 @@ import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
@@ -124,27 +125,29 @@ const MyDataWidgetInternal = ({
       setIsLoading(true);
       try {
         const teamsIds = (currentUser.teams ?? []).map((team) => team.id);
-        const mergedIds = [
-          ...teamsIds.map((id) => `owners.id:${id}`),
-          `owners.id:${currentUser.id}`,
-        ].join(' OR ');
+        const ownerIds = [...teamsIds, currentUser.id];
 
-        const queryFilter = `(${mergedIds})`;
+        const queryFilterObj = getTermQuery(
+          { 'owners.id': ownerIds },
+          'should',
+          1
+        );
+
         const sortField = getSortField(selectedFilter);
         const sortOrder = getSortOrder(selectedFilter);
 
-        const res = await searchData(
-          '',
-          INITIAL_PAGING_VALUE,
-          PAGE_SIZE_MEDIUM,
-          queryFilter,
+        const res = await searchQuery({
+          query: '',
+          pageNumber: INITIAL_PAGING_VALUE,
+          pageSize: PAGE_SIZE_MEDIUM,
+          queryFilter: queryFilterObj,
           sortField,
           sortOrder,
-          SearchIndex.ALL
-        );
+          searchIndex: SearchIndex.ALL,
+        });
 
         // Extract useful details from the Response
-        const ownedAssets = res?.data?.hits?.hits;
+        const ownedAssets = res?.hits?.hits;
         const sourceData = ownedAssets.map((hit) => hit._source);
 
         // Apply client-side sorting as well to ensure consistent results
@@ -269,6 +272,15 @@ const MyDataWidgetInternal = ({
     [data, isLoading]
   );
 
+  const translatedSortOptions = useMemo(
+    () =>
+      MY_DATA_WIDGET_FILTER_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -278,10 +290,9 @@ const MyDataWidgetInternal = ({
         icon={<MyDataIcon height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedFilter}
-        sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.my-data')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => handleFilterChange({ key })}
         onTitleClick={() =>
           navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.MY_DATA))
@@ -298,6 +309,7 @@ const MyDataWidgetInternal = ({
       widgetKey,
       widgetData?.w,
       handleFilterChange,
+      translatedSortOptions,
     ]
   );
 

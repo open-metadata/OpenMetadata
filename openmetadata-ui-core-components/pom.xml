@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.10.0-SNAPSHOT</version>
+    <version>1.12.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -117,18 +117,6 @@
             <configuration>
               <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
               <arguments>install --frozen-lockfile</arguments>
-            </configuration>
-          </execution>
-          <execution>
-            <id>yarn run type-check</id>
-            <goals>
-              <goal>yarn</goal>
-            </goals>
-            <phase>prepare-package</phase>
-            <configuration>
-              <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
-              <skip>${skipTests}</skip>
-              <arguments>run type-check</arguments>
             </configuration>
           </execution>
           <execution>

@@ -5,8 +5,11 @@ import static org.openmetadata.service.governance.workflows.elements.triggers.Pe
 import static org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger.HAS_FINISHED_VARIABLE;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
@@ -17,34 +20,96 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 
+@Slf4j
 public class FetchEntitiesImpl implements JavaDelegate {
-  private Expression entityTypeExpr;
+  // Entity types whose fullyQualifiedName is mapped as "text" (not "keyword")
+  // and require the .keyword subfield for reliable sorting in deep pagination.
+  private static final Set<String> ENTITIES_NEEDING_KEYWORD_SORT =
+      Set.of("testCase", "user", "team");
+
+  private Expression entityTypesExpr;
   private Expression searchFilterExpr;
   private Expression batchSizeExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
-    String entityType = (String) entityTypeExpr.getValue(execution);
+    // For PeriodicBatchEntityTrigger: extract entity type from process definition key
+    // Format: triggerWorkflowId-EntityType (e.g., "workflowTrigger-Table")
+    String processDefinitionKey = execution.getProcessDefinitionId().split(":")[0];
+    String entityTypeToFetch = extractEntityTypeFromProcessKey(processDefinitionKey);
+
+    // If not a batch trigger process, use the configured entity types
+    if (entityTypeToFetch == null) {
+      Object entityTypesValue = entityTypesExpr.getValue(execution);
+      List<String> entityTypes = new ArrayList<>();
+      if (entityTypesValue instanceof List) {
+        entityTypes = (List<String>) entityTypesValue;
+      } else if (entityTypesValue instanceof String) {
+        entityTypeToFetch = (String) entityTypesValue;
+      } else if (entityTypesValue != null) {
+        try {
+          entityTypes = JsonUtils.readOrConvertValue(entityTypesValue, List.class);
+        } catch (IllegalArgumentException e) {
+          try {
+            entityTypeToFetch = JsonUtils.readOrConvertValue(entityTypesValue, String.class);
+          } catch (IllegalArgumentException ex) {
+            LOG.error("Failed to parse entityTypes expression value: {}", entityTypesValue, ex);
+            throw new IllegalArgumentException(
+                "entityTypes must be either a List or String, got: " + entityTypesValue.getClass(),
+                ex);
+          }
+        }
+      }
+      if (entityTypes != null && !entityTypes.isEmpty()) {
+        // For non-batch triggers, only process the first entity type to avoid performance issues
+        entityTypeToFetch = entityTypes.getFirst();
+        if (entityTypes.size() > 1) {
+          LOG.warn(
+              "Multiple entity types {} configured for non-batch process. Only processing: {}",
+              entityTypes,
+              entityTypeToFetch);
+        }
+      }
+    }
+
+    if (entityTypeToFetch == null) {
+      LOG.error("No entity type found for process {}", processDefinitionKey);
+      throw new IllegalStateException("Entity type is required but not found");
+    }
+
     String searchFilter =
         Optional.ofNullable(searchFilterExpr)
             .map(expr -> (String) expr.getValue(execution))
             .orElse(null);
+
+    // Log the filter being used for this entity type
+    if (searchFilter != null && entityTypeToFetch != null) {
+      LOG.debug("Using filter for entity type '{}': {}", entityTypeToFetch, searchFilter);
+    }
+
     int batchSize = Integer.parseInt((String) batchSizeExpr.getValue(execution));
 
-    List<Object> searchAfter =
-        JsonUtils.readOrConvertValues(execution.getVariable("searchAfter"), Object.class);
+    List<String> entityList = new ArrayList<>();
 
-    SearchResultListMapper response =
-        fetchEntities(searchAfter, entityType, searchFilter, batchSize);
+    // Process only the single entity type for this process instance
+    if (entityTypeToFetch != null) {
+      List<Object> searchAfter =
+          JsonUtils.readOrConvertValues(execution.getVariable("searchAfter"), Object.class);
 
-    List<String> entityList =
-        response.getResults().stream()
-            .map(
-                result ->
-                    new MessageParser.EntityLink(
-                            entityType, (String) result.get("fullyQualifiedName"))
-                        .getLinkString())
-            .toList();
+      SearchResultListMapper response =
+          fetchEntities(searchAfter, entityTypeToFetch, searchFilter, batchSize);
+
+      String finalEntityTypeToFetch = entityTypeToFetch;
+      entityList.addAll(
+          response.getResults().stream()
+              .map(
+                  result ->
+                      new MessageParser.EntityLink(
+                              finalEntityTypeToFetch, (String) result.get("fullyQualifiedName"))
+                          .getLinkString())
+              .toList());
+      execution.setVariable("searchAfter", response.getLastDocumentsInBatch());
+    }
 
     int cardinality = entityList.size();
     boolean hasFinished = entityList.isEmpty();
@@ -52,14 +117,38 @@ public class FetchEntitiesImpl implements JavaDelegate {
     execution.setVariable(CARDINALITY_VARIABLE, cardinality);
     execution.setVariable(HAS_FINISHED_VARIABLE, hasFinished);
     execution.setVariable(COLLECTION_VARIABLE, entityList);
-    execution.setVariable("searchAfter", JsonUtils.pojoToJson(response.getLastHitSortValues()));
+  }
+
+  private String extractEntityTypeFromProcessKey(String processKey) {
+    // PeriodicBatchEntityTrigger format: triggerWorkflowId-EntityType
+    if (processKey.contains("-")) {
+      String[] parts = processKey.split("-");
+      if (parts.length >= 2) {
+        return parts[parts.length - 1]; // Return the entity type suffix
+      }
+    }
+    return null;
   }
 
   private SearchResultListMapper fetchEntities(
       List<Object> searchAfterList, String entityType, String searchFilter, int batchSize) {
     SearchRepository searchRepository = Entity.getSearchRepository();
-    SearchSortFilter searchSortFilter =
-        new SearchSortFilter("fullyQualifiedName", null, null, null);
+
+    // Skip entity types that don't have search indices (e.g., dataContract, dataInsightChart,
+    // report)
+    if (!searchRepository.checkIfIndexingIsSupported(entityType)) {
+      LOG.warn(
+          "Entity type '{}' does not have a search index. Skipping fetch for this type.",
+          entityType);
+      return new SearchResultListMapper(List.of(), 0);
+    }
+
+    // Use .keyword suffix for entities with text fields
+    String sortField = "fullyQualifiedName";
+    if (ENTITIES_NEEDING_KEYWORD_SORT.contains(entityType)) {
+      sortField = "fullyQualifiedName.keyword";
+    }
+    SearchSortFilter searchSortFilter = new SearchSortFilter(sortField, null, null, null);
     Object[] searchAfter = searchAfterList.isEmpty() ? null : searchAfterList.toArray();
 
     try {
@@ -72,7 +161,19 @@ public class FetchEntitiesImpl implements JavaDelegate {
           batchSize,
           searchAfter);
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      LOG.error(
+          "Failed to fetch entities of type '{}' with filter: {}", entityType, searchFilter, e);
+      throw new RuntimeException(
+          String.format("Failed to fetch %s entities: %s", entityType, e.getMessage()), e);
+    } catch (Exception e) {
+      LOG.error(
+          "Unexpected error fetching entities of type '{}' with filter: {}",
+          entityType,
+          searchFilter,
+          e);
+      throw new RuntimeException(
+          String.format("Unexpected error fetching %s entities: %s", entityType, e.getMessage()),
+          e);
     }
   }
 }

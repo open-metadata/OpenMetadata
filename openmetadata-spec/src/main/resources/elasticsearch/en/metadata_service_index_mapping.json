@@ -227,6 +227,7 @@
         "properties": {
           "tagFQN": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "text": {
                 "type": "text",
@@ -247,6 +248,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {
@@ -346,10 +355,23 @@
         "null_value": 0
       },
       "votes": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "upVotes": {
+            "type": "integer"
+          },
+          "downVotes": {
+            "type": "integer"
+          }
+        }
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       }
     }
   }

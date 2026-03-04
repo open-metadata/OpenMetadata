@@ -16,6 +16,7 @@ import {
   createIconButtonColorVariant,
   createIconButtonSizeVariant,
 } from '../utils/buttonConstants';
+import { COMPONENT_FONT_SIZES, COMPONENT_LINE_HEIGHTS } from './typography-constants';
 
 export const buttonTheme = (
   colors: any
@@ -72,20 +73,20 @@ export const buttonTheme = (
       },
       sizeSmall: {
         padding: '8px 12px',
-        fontSize: '0.875rem',
-        lineHeight: '1.25rem',
+        fontSize: COMPONENT_FONT_SIZES.BUTTON_SMALL,
+        lineHeight: COMPONENT_LINE_HEIGHTS.BUTTON_SMALL,
         ...buttonConstants.iconStyles.sizeMargins.small,
       },
       sizeMedium: {
         padding: '10px 14px',
-        fontSize: '0.875rem',
-        lineHeight: '1.25rem',
+        fontSize: COMPONENT_FONT_SIZES.BUTTON_MEDIUM,
+        lineHeight: COMPONENT_LINE_HEIGHTS.BUTTON_MEDIUM,
         ...buttonConstants.iconStyles.sizeMargins.medium,
       },
       sizeLarge: {
         padding: '10px 16px',
-        fontSize: '1rem',
-        lineHeight: '1.5rem',
+        fontSize: COMPONENT_FONT_SIZES.BUTTON_LARGE,
+        lineHeight: COMPONENT_LINE_HEIGHTS.BUTTON_LARGE,
         ...buttonConstants.iconStyles.sizeMargins.large,
       },
       contained: {},
@@ -265,8 +266,6 @@ export const buttonTheme = (
           outline: `2px solid ${colors.brand[600]}`,
           outlineOffset: '2px',
         },
-
-        ...createIconButtonColorVariant('secondary', colors),
 
         ...createIconButtonSizeVariant('medium'),
       },

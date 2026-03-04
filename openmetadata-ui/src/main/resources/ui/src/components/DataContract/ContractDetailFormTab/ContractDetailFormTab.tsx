@@ -15,7 +15,9 @@ import { Button, Card, Form, Typography } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
+import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields } from '../../../utils/formUtils';
@@ -25,10 +27,19 @@ export const ContractDetailFormTab: React.FC<{
   initialValues?: Partial<DataContract>;
   onNext: () => void;
   onChange: (formData: Partial<DataContract>) => void;
-  nextLabel?: string;
-}> = ({ initialValues, onNext, nextLabel, onChange }) => {
+  buttonProps: {
+    nextLabel?: string;
+    isNextVisible?: boolean;
+  };
+}> = ({
+  initialValues,
+  onNext,
+  onChange,
+  buttonProps: { nextLabel, isNextVisible = true },
+}) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const { entityRules } = useEntityRules(EntityType.TABLE);
 
   const fields: FieldProp[] = [
     {
@@ -37,6 +48,9 @@ export const ContractDetailFormTab: React.FC<{
       name: 'name',
       type: FieldTypes.TEXT,
       required: true,
+      placeholder: t('label.please-enter-entity-name', {
+        entity: t('label.contract'),
+      }),
       props: {
         'data-testid': 'contract-name',
       },
@@ -50,7 +64,13 @@ export const ContractDetailFormTab: React.FC<{
       props: {
         owner: initialValues?.owners,
         hasPermission: true,
-        multiple: { user: true, team: false },
+        multiple: {
+          user: entityRules.canAddMultipleUserOwners,
+          team: entityRules.canAddMultipleTeamOwner,
+        },
+        placeholder: t('label.please-select-entity', {
+          entity: t('label.owner-plural'),
+        }),
       },
       formItemProps: {
         valuePropName: 'owners',
@@ -102,16 +122,18 @@ export const ContractDetailFormTab: React.FC<{
           </Form>
         </div>
       </Card>
-      <div className="d-flex justify-end  m-t-md">
-        <Button
-          className="contract-next-button"
-          htmlType="submit"
-          type="primary"
-          onClick={onNext}>
-          {nextLabel ?? t('label.next')}
-          <Icon component={RightIcon} />
-        </Button>
-      </div>
+      {isNextVisible && (
+        <div className="d-flex justify-end m-t-md">
+          <Button
+            className="contract-next-button"
+            htmlType="submit"
+            type="primary"
+            onClick={onNext}>
+            {nextLabel ?? t('label.next')}
+            <Icon component={RightIcon} />
+          </Button>
+        </div>
+      )}
     </>
   );
 };

@@ -212,6 +212,14 @@
           }
         }
       },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "tags": {
         "properties": {
           "tagFQN": {
@@ -410,10 +418,23 @@
         "null_value": 0
       },
       "votes": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "upVotes": {
+            "type": "integer"
+          },
+          "downVotes": {
+            "type": "integer"
+          }
+        }
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       }
     }
   }

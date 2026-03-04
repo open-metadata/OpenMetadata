@@ -15,6 +15,7 @@ import { FC } from 'react';
 import ActivityFeedImg from '../assets/img/activity-feed-widget.png';
 import CuratedAssetsImg from '../assets/img/curated-assets.png';
 import DataAssetsImg from '../assets/img/data-assets-widget.png';
+import DataProductsImg from '../assets/img/data-products-widget.png';
 import DomainsImg from '../assets/img/domains-widget.png';
 import FollowingImg from '../assets/img/following-widget.png';
 import KPISmallImg from '../assets/img/kpi-widget.png';
@@ -28,6 +29,7 @@ import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.com
 import FollowingWidget from '../components/MyData/RightSidebar/FollowingWidget';
 import CuratedAssetsWidget from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget';
 import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
+import DataProductsWidget from '../components/MyData/Widgets/DataProductsWidget/DataProductsWidget.component';
 import DomainsWidget from '../components/MyData/Widgets/DomainsWidget/DomainsWidget';
 import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
 import MyTaskWidget from '../components/MyData/Widgets/MyTaskWidget/MyTaskWidget';
@@ -55,6 +57,7 @@ class CustomizeMyDataPageClassBase {
     kpi: 3,
     totalAssets: 3,
     DataAssets: 3,
+    DataProducts: 3,
     curatedAssets: 3,
     myTask: 3,
     domains: 3,
@@ -167,6 +170,9 @@ class CustomizeMyDataPageClassBase {
     if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
       return DataAssetsWidget;
     }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_PRODUCTS)) {
+      return DataProductsWidget;
+    }
     if (widgetKey.startsWith(LandingPageWidgetKeys.MY_DATA)) {
       return MyDataWidget;
     }
@@ -202,6 +208,9 @@ class CustomizeMyDataPageClassBase {
       }
       case LandingPageWidgetKeys.DATA_ASSETS: {
         return DataAssetsImg;
+      }
+      case LandingPageWidgetKeys.DATA_PRODUCTS: {
+        return DataProductsImg;
       }
       case LandingPageWidgetKeys.MY_DATA: {
         return MyDataImg;
@@ -242,24 +251,37 @@ class CustomizeMyDataPageClassBase {
     switch (widgetName) {
       case 'ActivityFeed':
         return this.landingPageWidgetDefaultHeights.activityFeed;
+
       case 'DataAssets':
         return this.landingPageWidgetDefaultHeights.DataAssets;
+
+      case 'DataProducts':
+        return this.landingPageWidgetDefaultHeights.DataProducts;
+
       case 'Announcements':
         return this.landingPageWidgetDefaultHeights.announcements;
+
       case 'Following':
         return this.landingPageWidgetDefaultHeights.following;
+
       case 'MyData':
         return this.landingPageWidgetDefaultHeights.myData;
+
       case 'KPI':
         return this.landingPageWidgetDefaultHeights.kpi;
+
       case 'TotalAssets':
         return this.landingPageWidgetDefaultHeights.totalAssets;
+
       case 'CuratedAssets':
         return this.landingPageWidgetDefaultHeights.curatedAssets;
+
       case 'MyTask':
         return this.landingPageWidgetDefaultHeights.myTask;
+
       case 'Domains':
         return this.landingPageWidgetDefaultHeights.domains;
+
       default:
         return this.defaultWidgetHeight;
     }

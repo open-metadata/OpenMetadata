@@ -69,7 +69,7 @@ class CliDBTBase(TestCase):
         def test_dbt_test_cases(self) -> None:
             test_case_entity_list = self.openmetadata.list_entities(
                 entity=TestDefinition,
-                params={"testPlatform": TestPlatform.DBT.value},
+                params={"testPlatform": TestPlatform.dbt.value},
             )
             self.assertTrue(len(test_case_entity_list.entities) == 26)
 

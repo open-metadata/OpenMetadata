@@ -13,13 +13,15 @@
 import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import { NoOwnerFoundProps } from './NoOwnerFound.interface';
 
 export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
+  showDashPlaceholder,
   isCompactView,
   showLabel = true,
   placeHolder,
@@ -31,6 +33,22 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
   className,
 }) => {
   const { t } = useTranslation();
+
+  const ownerPlaceholder = useMemo(() => {
+    const defaultPlaceholder = showDashPlaceholder
+      ? NO_DATA_PLACEHOLDER
+      : t('label.no-entity', { entity: t('label.owner-plural') });
+
+    if (placeHolder) {
+      if (showLabel) {
+        return defaultPlaceholder;
+      }
+
+      return placeHolder;
+    }
+
+    return defaultPlaceholder;
+  }, [placeHolder, showLabel, showDashPlaceholder]);
 
   return (
     <div
@@ -86,11 +104,7 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
 
       {!isCompactView && (
         <div className="no-owner-text text-sm font-medium">
-          {placeHolder
-            ? showLabel
-              ? t('label.no-entity', { entity: placeHolder })
-              : placeHolder
-            : t('label.no-entity', { entity: t('label.owner-plural') })}
+          {ownerPlaceholder}
         </div>
       )}
     </div>

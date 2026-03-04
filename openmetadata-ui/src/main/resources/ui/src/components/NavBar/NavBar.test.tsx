@@ -161,6 +161,7 @@ jest.mock('../../utils/BrandData/BrandClassBase', () => ({
   default: {
     getBrandName: jest.fn().mockReturnValue('OpenMetadata'),
     getMonogram: jest.fn().mockReturnValue({ src: 'monogram.svg' }),
+    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
   },
 }));
 
@@ -173,6 +174,7 @@ jest.mock('../../utils/EntityUtilClassBase', () => ({
 
 jest.mock('../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('MockedEntityName'),
+  getDomainDisplayName: jest.fn().mockReturnValue('All Domains'),
 }));
 
 jest.mock(

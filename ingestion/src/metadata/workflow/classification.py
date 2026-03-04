@@ -17,7 +17,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificati
     DatabaseServiceAutoClassificationPipeline,
 )
 from metadata.ingestion.api.steps import Processor
-from metadata.pii.processor import PIIProcessor
+from metadata.pii.constants import PII
+from metadata.pii.processor_factory import create_pii_processor
 from metadata.sampler.processor import SamplerProcessor
 from metadata.utils.logger import profiler_logger
 from metadata.workflow.profiler import ProfilerWorkflow
@@ -50,7 +51,9 @@ class AutoClassificationWorkflow(ProfilerWorkflow):
             self.steps = (sampler_processor, sink)
 
     def _get_pii_processor(self) -> Processor:
-        return PIIProcessor.create(self.config.model_dump(), self.metadata)
+        return create_pii_processor(
+            self.metadata, self.config, classification_filter=[PII]
+        )
 
     def _get_sampler_processor(self) -> Processor:
         return SamplerProcessor.create(self.config.model_dump(), self.metadata)

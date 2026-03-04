@@ -44,6 +44,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -68,6 +69,7 @@ MOCK_LOOKER_CONFIG = {
         "sourceConfig": {
             "config": {
                 "type": "DashboardMetadata",
+                "includeOwners": True,
             }
         },
     },
@@ -260,10 +262,13 @@ class LookerUnitTest(TestCase):
         """
         ref = EntityReference(id=uuid.uuid4(), type="user")
 
-        with patch.object(Looker40SDK, "user", return_value=MOCK_USER), patch.object(
-            OpenMetadata,
-            "get_reference_by_email",
-            return_value=ref,
+        with (
+            patch.object(Looker40SDK, "user", return_value=MOCK_USER),
+            patch.object(
+                OpenMetadata,
+                "get_reference_by_email",
+                return_value=ref,
+            ),
         ):
             self.assertEqual(self.looker.get_owner_ref(MOCK_LOOKER_DASHBOARD), ref)
 
@@ -375,6 +380,93 @@ class LookerUnitTest(TestCase):
             "`BQ-project.dataset.sample_data`",
         )
 
+    def test_resolve_lookml_constants(self):
+        """
+        Check that LookML constants (@{...}) in sql_table_name are resolved from manifest,
+        and unresolved constants are stripped as fallback.
+        """
+        self.looker._lookml_constants_map = {
+            "data_prod_dw_main": "my_dataset",
+            "schema_name": "my_schema",
+        }
+
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{data_prod_dw_main}.View_Dim_Countries`"
+            ),
+            "`my_dataset.View_Dim_Countries`",
+        )
+
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{schema_name}.@{data_prod_dw_main}.some_table`"
+            ),
+            "`my_schema.my_dataset.some_table`",
+        )
+
+        # No constants in input — fast path passthrough
+        self.assertEqual(
+            self.looker._resolve_lookml_constants("`dataset.table`"),
+            "`dataset.table`",
+        )
+
+        # Unknown constant is stripped, table name still usable
+        self.assertEqual(
+            self.looker._resolve_lookml_constants("`@{unknown_const}.table`"),
+            "`table`",
+        )
+
+        # Partial resolution: known resolved, unknown stripped
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{data_prod_dw_main}.@{unknown}.table`"
+            ),
+            "`my_dataset.table`",
+        )
+
+        # Empty constants map — constants stripped, table name still usable
+        self.looker._lookml_constants_map = {}
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "`@{data_prod_dw_main}.View_Dim_Countries`"
+            ),
+            "`View_Dim_Countries`",
+        )
+
+    def test_resolve_lookml_constants_no_strip(self):
+        """
+        Check that strip_unresolved=False keeps unknown constants as-is
+        (used for derived_table SQL where stripping would produce invalid SQL).
+        """
+        self.looker._lookml_constants_map = {
+            "dataset": "prod_dataset",
+        }
+
+        # Known constant resolved
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "SELECT * FROM @{dataset}.my_table", strip_unresolved=False
+            ),
+            "SELECT * FROM prod_dataset.my_table",
+        )
+
+        # Unknown constant left as-is
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "SELECT * FROM @{unknown}.my_table", strip_unresolved=False
+            ),
+            "SELECT * FROM @{unknown}.my_table",
+        )
+
+        # Mixed: known resolved, unknown left as-is
+        self.assertEqual(
+            self.looker._resolve_lookml_constants(
+                "SELECT * FROM @{dataset}.@{unknown_schema}.my_table",
+                strip_unresolved=False,
+            ),
+            "SELECT * FROM prod_dataset.@{unknown_schema}.my_table",
+        )
+
     def test_get_dashboard_sources(self):
         """
         Check how we are building the sources
@@ -404,8 +496,9 @@ class LookerUnitTest(TestCase):
         )
 
         # If no from_entity, return none
-        with patch.object(fqn, "build", return_value=None), patch.object(
-            OpenMetadata, "get_by_name", return_value=None
+        with (
+            patch.object(fqn, "build", return_value=None),
+            patch.object(OpenMetadata, "get_by_name", return_value=None),
         ):
             self.assertIsNone(
                 self.looker.build_lineage_request(source, db_service_name, to_entity)
@@ -418,8 +511,9 @@ class LookerUnitTest(TestCase):
             databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
-        with patch.object(fqn, "build", return_value=None), patch.object(
-            OpenMetadata, "get_by_name", return_value=table
+        with (
+            patch.object(fqn, "build", return_value=None),
+            patch.object(OpenMetadata, "get_by_name", return_value=table),
         ):
             original_lineage = self.looker.build_lineage_request(
                 source, db_service_name, to_entity
@@ -558,11 +652,7 @@ class LookerUnitTest(TestCase):
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
             self.assertEqual(
-                len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 1
-            )
-
-            self.assertIsNotNone(
-                list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))[0].left
+                len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 0
             )
 
     def test_derived_view_references(self):
@@ -594,3 +684,88 @@ class LookerUnitTest(TestCase):
 
         self.assertEqual(self.looker._parsed_views, EXPECTED_PARSED_VIEWS)
         self.assertEqual(self.looker._unparsed_views, {})
+
+    def test_include_owners_flag_enabled(self):
+        """
+        Test that when includeOwners is True, owner information is processed
+        """
+        # Mock the source config to have includeOwners = True
+        self.looker.source_config.includeOwners = True
+
+        # Mock a user with email
+        mock_user = User(email="test@example.com")
+
+        # Mock the client.user method to return our mock user
+        with patch.object(self.looker.client, "user", return_value=mock_user):
+            # Mock the metadata.get_reference_by_email method
+            with patch.object(
+                self.looker.metadata, "get_reference_by_email"
+            ) as mock_get_ref:
+                mock_get_ref.return_value = EntityReferenceList(
+                    root=[
+                        EntityReference(id=uuid.uuid4(), name="Test User", type="user")
+                    ]
+                )
+
+                # Test get_owner_ref with includeOwners = True
+                result = self.looker.get_owner_ref(MOCK_LOOKER_DASHBOARD)
+
+                # Should return owner reference
+                self.assertIsNotNone(result)
+                self.assertEqual(len(result.root), 1)
+                self.assertEqual(result.root[0].name, "Test User")
+
+                # Should have called get_reference_by_email
+                mock_get_ref.assert_called_once_with("test@example.com")
+
+    def test_include_owners_flag_disabled(self):
+        """
+        Test that when includeOwners is False, owner information is not processed
+        """
+        # Mock the source config to have includeOwners = False
+        self.looker.source_config.includeOwners = False
+
+        # Test get_owner_ref with includeOwners = False
+        result = self.looker.get_owner_ref(MOCK_LOOKER_DASHBOARD)
+
+        # Should return None when includeOwners is False
+        self.assertIsNone(result)
+
+    def test_include_owners_flag_with_no_user_id(self):
+        """
+        Test that when includeOwners is True but dashboard has no user_id, returns None
+        """
+        # Mock the source config to have includeOwners = True
+        self.looker.source_config.includeOwners = True
+
+        # Create a dashboard with no user_id
+        dashboard_no_user = LookerDashboard(
+            id="no_user_dashboard",
+            title="No User Dashboard",
+            dashboard_elements=[],
+            description="Dashboard without user",
+            user_id=None,  # No user_id
+        )
+
+        # Test get_owner_ref with no user_id
+        result = self.looker.get_owner_ref(dashboard_no_user)
+
+        # Should return None when there's no user_id
+        self.assertIsNone(result)
+
+    def test_include_owners_flag_with_exception(self):
+        """
+        Test that when includeOwners is True but an exception occurs, it's handled gracefully
+        """
+        # Mock the source config to have includeOwners = True
+        self.looker.source_config.includeOwners = True
+
+        # Mock the client.user method to raise an exception
+        with patch.object(
+            self.looker.client, "user", side_effect=Exception("API Error")
+        ):
+            # Test get_owner_ref with exception
+            result = self.looker.get_owner_ref(MOCK_LOOKER_DASHBOARD)
+
+            # Should return None when exception occurs
+            self.assertIsNone(result)

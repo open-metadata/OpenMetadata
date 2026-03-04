@@ -122,6 +122,22 @@ class TestWorkflowParse(TestCase):
         connection = get_connection_class(source_type, get_service_type(source_type))
         self.assertEqual(connection, RestConnection)
 
+        # Test all-uppercase source types (SAS, SSAS)
+        from metadata.generated.schema.entity.services.connections.database.sasConnection import (
+            SASConnection,
+        )
+        from metadata.generated.schema.entity.services.connections.database.ssasConnection import (
+            SSASConnection,
+        )
+
+        source_type = "SAS"
+        connection = get_connection_class(source_type, get_service_type(source_type))
+        self.assertEqual(connection, SASConnection)
+
+        source_type = "SSAS"
+        connection = get_connection_class(source_type, get_service_type(source_type))
+        self.assertEqual(connection, SSASConnection)
+
     def test_get_source_config_class(self):
         """
         Check that we can correctly build the connection module ingredients

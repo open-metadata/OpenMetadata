@@ -23,6 +23,7 @@ public class DomainMapper implements EntityMapper<Domain, CreateDomain> {
             Entity.getEntityReference(
                 getEntityReference(Entity.DOMAIN, create.getParent()), Include.NON_DELETED))
         .withExperts(
-            EntityUtil.populateEntityReferences(getEntityReferences(Entity.USER, experts)));
+            EntityUtil.validateAndPopulateEntityReferences(
+                getEntityReferences(Entity.USER, experts)));
   }
 }

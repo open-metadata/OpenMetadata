@@ -20,4 +20,5 @@ export interface TeamsSelectableProps {
   selectedTeams?: EntityReference[];
   maxValueCount?: number;
   handleDropdownChange?: (visible: boolean) => void;
+  open?: boolean;
 }

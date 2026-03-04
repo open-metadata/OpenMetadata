@@ -271,6 +271,30 @@ public class EmailUtil {
     }
   }
 
+  /**
+   * Send notification email with pre-rendered HTML content.
+   * Used by the new Handlebars notification system.
+   *
+   * @param to Recipient email address
+   * @param subject Email subject
+   * @param htmlContent Pre-rendered HTML content (already processed by HandlebarsNotificationMessageEngine)
+   */
+  public static void sendNotificationEmail(String to, String subject, String htmlContent) {
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      Email email =
+          EmailBuilder.startingBlank()
+              .withSubject(subject)
+              .to(to)
+              .from(getSmtpSettings().getSenderMail())
+              .withHTMLText(htmlContent)
+              .buildEmail();
+
+      sendMail(email, true);
+    } else {
+      LOG.warn(EMAIL_IGNORE_MSG, to);
+    }
+  }
+
   public static void sendInviteMailToAdmin(User user, String password) {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
 
@@ -446,7 +470,7 @@ public class EmailUtil {
             .getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
     OpenMetadataBaseUrlConfiguration urlConfiguration =
         (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();
-    return urlConfiguration.getOpenMetadataUrl();
+    return StringUtils.stripEnd(urlConfiguration.getOpenMetadataUrl(), "/");
   }
 
   static class TemplatePopulatorBuilder {

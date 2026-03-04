@@ -35,10 +35,12 @@ import {
   AZURESQL,
   BIGQUERY,
   BIGTABLE,
+  BURSTIQ,
   CASSANDRA,
   CLICKHOUSE,
   COCKROACH,
   COUCHBASE,
+  CUSTOM_DRIVE_DEFAULT,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
@@ -59,8 +61,10 @@ import {
   FLINK,
   GCS,
   GLUE,
+  GOOGLE_DRIVE,
   GRAFANA,
   GREENPLUM,
+  HEX,
   HIVE,
   IBMDB2,
   ICEBERGE,
@@ -100,28 +104,31 @@ import {
   SAP_HANA,
   SAS,
   SCIKIT,
+  SFTP,
   SIGMA,
   SINGLESTORE,
   SNOWFLAKE,
   SPARK,
   SPLINE,
   SQLITE,
+  STARROCKS,
   SUPERSET,
   SYNAPSE,
   TABLEAU,
   TERADATA,
+  TIMESCALE,
   TOPIC_DEFAULT,
   TRINO,
   UNITYCATALOG,
   VERTICA,
 } from '../constants/Services.constant';
-import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
   ApiServiceTypeSmallCaseType,
   DashboardServiceTypeSmallCaseType,
   DatabaseServiceTypeSmallCaseType,
+  DriveServiceTypeSmallCaseType,
   MessagingServiceTypeSmallCaseType,
   MetadataServiceTypeSmallCaseType,
   MlModelServiceTypeSmallCaseType,
@@ -131,8 +138,6 @@ import {
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
-import { ConfigObject } from '../generated/entity/automations/testServiceConnection';
-import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -143,19 +148,21 @@ import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
-import { ServiceType } from '../generated/entity/services/serviceType';
-import { SearchSourceAlias } from '../interface/search.interface';
-import { ConfigData, ServicesType } from '../interface/service.interface';
+import {
+  ConfigData,
+  ExtraInfoType,
+  ServicesType,
+} from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
+import { getDriveConfig } from './DriveServiceUtils';
 import { getMessagingConfig } from './MessagingServiceUtils';
 import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
 import { getSecurityConfig } from './SecurityServiceUtils';
-import { getTestConnectionName } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
@@ -178,8 +185,15 @@ class ServiceUtilClassBase {
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
-    DriveServiceType.GoogleDrive,
     PipelineServiceType.Snowplow,
+    DriveServiceType.GoogleDrive,
+    DriveServiceType.SharePoint,
+    DatabaseServiceType.ServiceNow,
+    DatabaseServiceType.Dremio,
+    MetadataServiceType.Collibra,
+    PipelineServiceType.Mulesoft,
+    DatabaseServiceType.MicrosoftFabric,
+    PipelineServiceType.MicrosoftFabricPipeline,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -231,6 +245,11 @@ class ServiceUtilClassBase {
     { [k: string]: string },
     SecurityServiceTypeSmallCaseType
   >(SecurityServiceType);
+
+  DriveServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    DriveServiceTypeSmallCaseType
+  >(DriveServiceType);
 
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
@@ -293,7 +312,7 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceExtraInfo(_data?: ServicesType): any {
+  public getServiceExtraInfo(_data?: ServicesType): ExtraInfoType | null {
     return null;
   }
 
@@ -325,6 +344,9 @@ class ServiceUtilClassBase {
       ).sort(customServiceComparator),
       apiServices: this.filterUnsupportedServiceType(
         Object.values(APIServiceType) as string[]
+      ).sort(customServiceComparator),
+      driveServices: this.filterUnsupportedServiceType(
+        Object.values(DriveServiceType) as string[]
       ).sort(customServiceComparator),
       securityServices: this.filterUnsupportedServiceType(
         Object.values(SecurityServiceType) as string[]
@@ -370,6 +392,10 @@ class ServiceUtilClassBase {
 
     if (serviceTypes.securityServices.includes(serviceType)) {
       return EntityType.TABLE; // Security services typically work with tables
+    }
+
+    if (serviceTypes.driveServices.includes(serviceType)) {
+      return EntityType.DIRECTORY;
     }
 
     // Default fallback
@@ -450,6 +476,9 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.Doris:
         return DORIS;
 
+      case this.DatabaseServiceTypeSmallCase.StarRocks:
+        return STARROCKS;
+
       case this.DatabaseServiceTypeSmallCase.Druid:
         return DRUID;
 
@@ -510,6 +539,9 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.Synapse:
         return SYNAPSE;
 
+      case this.DatabaseServiceTypeSmallCase.BurstIQ:
+        return BURSTIQ;
+
       case this.MessagingServiceTypeSmallCase.CustomMessaging:
         return TOPIC_DEFAULT;
 
@@ -533,6 +565,9 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.Tableau:
         return TABLEAU;
+
+      case this.DashboardServiceTypeSmallCase.Hex:
+        return HEX;
 
       case this.DashboardServiceTypeSmallCase.Redash:
         return REDASH;
@@ -660,6 +695,18 @@ class ServiceUtilClassBase {
       case this.DashboardServiceTypeSmallCase.Grafana:
         return GRAFANA;
 
+      case this.DriveServiceTypeSmallCase.CustomDrive:
+        return CUSTOM_DRIVE_DEFAULT;
+
+      case this.DriveServiceTypeSmallCase.GoogleDrive:
+        return GOOGLE_DRIVE;
+
+      case this.DriveServiceTypeSmallCase.Sftp:
+        return SFTP;
+
+      case this.DatabaseServiceTypeSmallCase.Timescale:
+        return TIMESCALE;
+
       default: {
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
@@ -678,6 +725,8 @@ class ServiceUtilClassBase {
           logo = CUSTOM_SEARCH_DEFAULT;
         } else if (serviceTypes.securityServices.includes(type)) {
           logo = DEFAULT_SERVICE;
+        } else if (serviceTypes.driveServices.includes(type)) {
+          logo = CUSTOM_DRIVE_DEFAULT;
         } else {
           logo = DEFAULT_SERVICE;
         }
@@ -687,9 +736,10 @@ class ServiceUtilClassBase {
     }
   }
 
-  public getServiceTypeLogo(
-    searchSource: SearchSuggestions[number] | SearchSourceAlias
-  ): string {
+  public getServiceTypeLogo(searchSource: {
+    serviceType?: string;
+    entityType?: string;
+  }): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
@@ -715,6 +765,7 @@ class ServiceUtilClassBase {
 
     return this.getServiceLogo(type);
   }
+
   public getDataAssetsService(serviceType: string): ExplorePageTabs {
     const database = this.DatabaseServiceTypeSmallCase;
     const messaging = this.MessagingServiceTypeSmallCase;
@@ -810,8 +861,12 @@ class ServiceUtilClassBase {
   public getSecurityServiceConfig(type: SecurityServiceType) {
     return getSecurityConfig(type);
   }
+  public getDriveServiceConfig(type: DriveServiceType) {
+    return getDriveConfig(type);
+  }
 
   public getInsightsTabWidgets(_: ServiceTypes) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const widgets: Record<string, React.ComponentType<any>> = {
       AgentsStatusWidget,
       PlatformInsightsWidget,
@@ -858,6 +913,7 @@ class ServiceUtilClassBase {
   }
 
   public getAgentsTabWidgets() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const widgets: Record<string, React.ComponentType<any>> = {
       MetadataAgentsWidget,
     };

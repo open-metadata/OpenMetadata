@@ -60,7 +60,8 @@ module.exports = {
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
     '\\.(jpg|JPG|gif|GIF|png|PNG|less|LESS|css|CSS)$':
       '<rootDir>/src/test/unit/mocks/file.mock.js',
-    '\\.json': '<rootDir>/src/test/unit/mocks/json.mock.js',
+    // fix vendors.map error
+    '^<rootDir>/src/.*\\.json$': '<rootDir>/src/test/unit/mocks/json.mock.js',
     '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
     'quilljs-markdown': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
     '@azure/msal-browser':
@@ -72,6 +73,8 @@ module.exports = {
       '<rootDir>/node_modules/@melloware/react-logviewer/dist/cjs/index.js',
     'react-antd-column-resize':
       '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.js',
+    '^.*/Lineage/Layout/ELKUtil/ELKUtil$':
+      '<rootDir>/src/test/unit/mocks/elkLayout.mock.js',
   },
   transformIgnorePatterns: [
     'node_modules/(?!(@azure/msal-react|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd/invariant|@react-dnd/asap|@react-dnd/shallowequal|@melloware/react-logviewer|@material/material-color-utilities|@openmetadata/ui-core-components|nanoid|@rjsf/core|@rjsf/utils|@rjsf/validator-ajv8|uuid|elkjs))',

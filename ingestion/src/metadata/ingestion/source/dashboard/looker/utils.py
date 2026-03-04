@@ -36,6 +36,20 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+def _extract_hostname(git_host_url) -> str:
+    """Extract hostname from git host URL by removing protocol prefix"""
+    # Handle both string and AnyUrl/HttpUrl objects from Pydantic
+    url_str = str(git_host_url)
+    # Remove protocol and trailing slash
+    hostname = url_str.replace("https://", "").replace("http://", "").rstrip("/")
+    return hostname
+
+
+def _is_azure_devops_host(hostname: str) -> bool:
+    """Check if the hostname belongs to Azure DevOps"""
+    return "dev.azure.com" in hostname or "visualstudio.com" in hostname
+
+
 def _clone_repo(
     repo_name: str,
     path: str,
@@ -57,12 +71,29 @@ def _clone_repo(
         url = None
         allow_unsafe_protocols = False
         if isinstance(credential, GitHubCredentials):
-            url = f"https://x-oauth-basic:{credential.token.root.get_secret_value()}@github.com/{repo_name}.git"
+            git_host = credential.gitHostURL or "https://github.com"
+            hostname = _extract_hostname(git_host)
+            token = credential.token.root.get_secret_value()
+            if _is_azure_devops_host(hostname):
+                # Azure DevOps URL format:
+                # https://{PAT}@dev.azure.com/{org}/{project}/_git/{repo}
+                # repo_name comes in as "{org}/{project}/{repo}" from __init_repo
+                # We need to split off the last segment as the actual repo name
+                parts = repo_name.rsplit("/", 1)
+                owner_path = parts[0]  # {org}/{project}
+                actual_repo = parts[1] if len(parts) > 1 else repo_name
+                url = f"https://{token}@{hostname}/{owner_path}/_git/{actual_repo}"
+            else:
+                url = f"https://x-oauth-basic:{token}@{hostname}/{repo_name}.git"
         elif isinstance(credential, BitBucketCredentials):
-            url = f"https://x-token-auth:{credential.token.root.get_secret_value()}@bitbucket.org/{repo_name}.git"
+            git_host = credential.gitHostURL or "https://bitbucket.org"
+            hostname = _extract_hostname(git_host)
+            url = f"https://x-token-auth:{credential.token.root.get_secret_value()}@{hostname}/{repo_name}.git"
             allow_unsafe_protocols = True
         elif isinstance(credential, GitlabCredentials):
-            url = f"https://x-token-auth:{credential.token.root.get_secret_value()}@gitlab.com/{repo_name}.git"
+            git_host = credential.gitHostURL or "https://gitlab.com"
+            hostname = _extract_hostname(git_host)
+            url = f"https://x-token-auth:{credential.token.root.get_secret_value()}@{hostname}/{repo_name}.git"
 
         assert url is not None
 

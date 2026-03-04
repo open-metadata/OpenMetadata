@@ -235,7 +235,11 @@ def test_databricks():
         "serviceName": "local_databricks",
         "serviceConnection": {
             "config": {
-                "token": "<databricks token>",
+                "authType": {
+                    "azureClientId": "3df43ed7-5f2f-46bb-9793-384c6374a81d",
+                    "azureClientSecret": "secret-value",
+                    "azureTenantId": "3df43ed7-5g1f-46bb-9793-384c6374a81d",
+                },
                 "hostPort": "localhost:443",
                 "httpPath": "<http path of databricks cluster>",
                 "connectionArguments": {
@@ -667,7 +671,7 @@ def test_redshift():
             "config": {
                 "hostPort": "cluster.name.region.redshift.amazonaws.com:5439",
                 "username": "username",
-                "password": "strong_password",
+                "authType": {"password": "strong_password"},
                 "database": "dev",
                 "type": "Redshift",
             }
@@ -700,7 +704,7 @@ def test_salesforce():
                 "username": "username",
                 "password": "password",
                 "securityToken": "securityToken",
-                "sobjectName": "sobjectName",
+                "sobjectNames": ["sobjectName"],
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},

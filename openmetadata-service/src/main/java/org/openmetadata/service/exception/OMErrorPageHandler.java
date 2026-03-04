@@ -2,17 +2,23 @@ package org.openmetadata.service.exception;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.jetty.server.Dispatcher;
+import org.eclipse.jetty.ee10.servlet.ErrorPageErrorHandler;
+import org.eclipse.jetty.http.HttpField;
+import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.handler.ContextHandler;
-import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
+import org.eclipse.jetty.server.Response;
+import org.eclipse.jetty.util.Callback;
 import org.openmetadata.service.config.OMWebConfiguration;
 
+/**
+ * Custom error page handler that adds security headers to error responses. This is compatible with
+ * Jetty 12.1.x which uses the new Request/Response/Callback API pattern.
+ */
 @Slf4j
 public class OMErrorPageHandler extends ErrorPageErrorHandler {
   private static final String CACHE_CONTROL_HEADER = "Cache-Control";
@@ -24,73 +30,144 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
   }
 
   @Override
-  public void handle(
-      String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
+  protected boolean generateAcceptableResponse(
+      Request request,
+      Response response,
+      Callback callback,
+      String contentType,
+      List<Charset> charsets,
+      int code,
+      String message,
+      Throwable cause)
       throws IOException {
-    this.doError(target, baseRequest, request, response);
+    // Add security headers to the response before generating the error page
+    setSecurityHeaders(this.webConfiguration, response);
+    return super.generateAcceptableResponse(
+        request, response, callback, contentType, charsets, code, message, cause);
   }
 
-  @Deprecated
-  @Override
-  public void doError(
-      String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-      throws IOException {
-    setSecurityHeader(this.webConfiguration, response);
-    String errorPage = ((ErrorPageMapper) this).getErrorPage(request);
-    ContextHandler.Context context = baseRequest.getErrorContext();
-    Dispatcher errorDispatcher =
-        errorPage != null && context != null
-            ? (Dispatcher) context.getRequestDispatcher(errorPage)
-            : null;
-
-    try {
-      if (errorDispatcher != null) {
-        try {
-          errorDispatcher.error(request, response);
-          return;
-        } catch (ServletException ex) {
-          LOG.debug("Error in OMErrorPageHandler", ex);
-          if (response.isCommitted()) {
-            return;
-          }
-        }
-      }
-
-      String message = (String) request.getAttribute("javax.servlet.error.message");
-      if (message == null) {
-        message = baseRequest.getResponse().getReason();
-      }
-
-      this.generateAcceptableResponse(
-          baseRequest, request, response, response.getStatus(), message);
-    } finally {
-      baseRequest.setHandled(true);
-    }
-  }
-
-  public static void setSecurityHeader(
-      OMWebConfiguration webConfiguration, HttpServletResponse response) {
-    // Attach Response Header from OM
+  /**
+   * Sets security headers on the Jetty Response object (new Jetty 12.1 API).
+   *
+   * @param webConfiguration the web configuration containing header settings
+   * @param response the Jetty Response object
+   */
+  public static void setSecurityHeaders(OMWebConfiguration webConfiguration, Response response) {
     // Hsts
-    webConfiguration.getHstsHeaderFactory().build().forEach(response::setHeader);
+    if (webConfiguration.getHstsHeaderFactory() != null) {
+      webConfiguration
+          .getHstsHeaderFactory()
+          .build()
+          .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+    }
 
     // Frame Options
-    webConfiguration.getFrameOptionsHeaderFactory().build().forEach(response::setHeader);
+    if (webConfiguration.getFrameOptionsHeaderFactory() != null) {
+      webConfiguration
+          .getFrameOptionsHeaderFactory()
+          .build()
+          .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+    }
 
-    // Content Option
-    webConfiguration.getContentTypeOptionsHeaderFactory().build().forEach(response::setHeader);
+    // Content Type Options
+    if (webConfiguration.getContentTypeOptionsHeaderFactory() != null) {
+      webConfiguration
+          .getContentTypeOptionsHeaderFactory()
+          .build()
+          .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+    }
 
-    // Xss Protections
-    webConfiguration.getXssProtectionHeaderFactory().build().forEach(response::setHeader);
+    // XSS Protection
+    if (webConfiguration.getXssProtectionHeaderFactory() != null) {
+      webConfiguration
+          .getXssProtectionHeaderFactory()
+          .build()
+          .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+    }
 
     // CSP
-    webConfiguration.getCspHeaderFactory().build().forEach(response::setHeader);
+    if (webConfiguration.getCspHeaderFactory() != null) {
+      webConfiguration
+          .getCspHeaderFactory()
+          .build()
+          .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+    }
 
     // Referrer Policy
-    webConfiguration.getReferrerPolicyHeaderFactory().build().forEach(response::setHeader);
+    if (webConfiguration.getReferrerPolicyHeaderFactory() != null) {
+      webConfiguration
+          .getReferrerPolicyHeaderFactory()
+          .build()
+          .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+    }
 
-    // Policy Permission
-    webConfiguration.getPermissionPolicyHeaderFactory().build().forEach(response::setHeader);
+    // Permission Policy
+    if (webConfiguration.getPermissionPolicyHeaderFactory() != null) {
+      webConfiguration
+          .getPermissionPolicyHeaderFactory()
+          .build()
+          .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+    }
+
+    // Cache-Control
+    if (!nullOrEmpty(webConfiguration.getCacheControl())) {
+      response.getHeaders().put(HttpHeader.CACHE_CONTROL, webConfiguration.getCacheControl());
+    }
+
+    // Pragma
+    if (!nullOrEmpty(webConfiguration.getPragma())) {
+      response.getHeaders().put(HttpHeader.PRAGMA, webConfiguration.getPragma());
+    }
+
+    // Additional Headers
+    webConfiguration
+        .getHeaders()
+        .forEach((name, value) -> response.getHeaders().put(new HttpField(name, value)));
+  }
+
+  /**
+   * Sets security headers on a servlet HttpServletResponse object. This method is kept for
+   * compatibility with other parts of the application that use servlet API.
+   *
+   * @param webConfiguration the web configuration containing header settings
+   * @param response the servlet HttpServletResponse object
+   */
+  public static void setSecurityHeader(
+      OMWebConfiguration webConfiguration, HttpServletResponse response) {
+    // Hsts
+    if (webConfiguration.getHstsHeaderFactory() != null) {
+      webConfiguration.getHstsHeaderFactory().build().forEach(response::setHeader);
+    }
+
+    // Frame Options
+    if (webConfiguration.getFrameOptionsHeaderFactory() != null) {
+      webConfiguration.getFrameOptionsHeaderFactory().build().forEach(response::setHeader);
+    }
+
+    // Content Type Options
+    if (webConfiguration.getContentTypeOptionsHeaderFactory() != null) {
+      webConfiguration.getContentTypeOptionsHeaderFactory().build().forEach(response::setHeader);
+    }
+
+    // XSS Protection
+    if (webConfiguration.getXssProtectionHeaderFactory() != null) {
+      webConfiguration.getXssProtectionHeaderFactory().build().forEach(response::setHeader);
+    }
+
+    // CSP
+    if (webConfiguration.getCspHeaderFactory() != null) {
+      webConfiguration.getCspHeaderFactory().build().forEach(response::setHeader);
+    }
+
+    // Referrer Policy
+    if (webConfiguration.getReferrerPolicyHeaderFactory() != null) {
+      webConfiguration.getReferrerPolicyHeaderFactory().build().forEach(response::setHeader);
+    }
+
+    // Permission Policy
+    if (webConfiguration.getPermissionPolicyHeaderFactory() != null) {
+      webConfiguration.getPermissionPolicyHeaderFactory().build().forEach(response::setHeader);
+    }
 
     // Cache-Control
     if (!nullOrEmpty(webConfiguration.getCacheControl())) {

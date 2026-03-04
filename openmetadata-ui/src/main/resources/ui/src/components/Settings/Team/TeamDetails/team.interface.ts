@@ -26,6 +26,7 @@ export interface TeamHierarchyProps {
     updateChildNode?: boolean
   ) => void;
   isFetchingAllTeamAdvancedDetails: boolean;
+  isSearchLoading: boolean;
   searchTerm?: string;
   showDeletedTeam: boolean;
   onShowDeletedTeamChange: () => void;
@@ -33,6 +34,7 @@ export interface TeamHierarchyProps {
   createTeamPermission: boolean;
   isTeamDeleted: boolean;
   handleTeamSearch: (text: string) => void;
+  isTeamBasicDataLoading: boolean;
 }
 
 export interface MovedTeamProps {
@@ -73,4 +75,11 @@ export interface TeamsHeadingLabelProps {
   currentTeam: Team;
   entityPermissions: OperationPermission;
   updateTeamHandler: (data: Team) => Promise<void>;
+}
+
+export interface TeamTab {
+  name: string;
+  count?: number;
+  key: TeamsPageTab;
+  isLoading?: boolean;
 }

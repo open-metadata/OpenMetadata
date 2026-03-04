@@ -65,11 +65,32 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     const projectIdTaxonomy =
       process.env.PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY ?? '';
 
-    await page.selectOption(
-      '#root\\/credentials\\/gcpConfig__oneof_select',
-      'GCP Credentials Values'
+    await page
+      .getByTestId('select-widget-root/credentials/gcpConfig__oneof_select')
+      .getByRole('combobox')
+      .click({ force: true });
+    await page.click(
+      '.ant-select-dropdown:visible [title="GCP Credentials Values"]'
     );
-    await page.fill('#root\\/credentials\\/gcpConfig\\/projectId', projectId);
+
+    await page
+      .getByTestId(
+        'select-widget-root/credentials/gcpConfig/projectId__oneof_select'
+      )
+      .getByRole('combobox')
+      .click({ force: true });
+    await page.click('.ant-select-dropdown:visible [title="Multiple Project ID"]');
+
+    const projectIds = projectId.split(',');
+    for (const id of projectIds) {
+      await page.fill(
+        '#root\\/credentials\\/gcpConfig\\/projectId',
+        id.trim()
+      );
+      await page
+        .locator('#root\\/credentials\\/gcpConfig\\/projectId')
+        .press('Enter');
+    }
     await checkServiceFieldSectionHighlighting(page, 'projectId');
     await page.fill(
       '#root\\/credentials\\/gcpConfig\\/privateKeyId',

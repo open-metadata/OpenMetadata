@@ -15,6 +15,8 @@ from abc import ABC
 from datetime import datetime
 from typing import Iterable, Optional
 
+from sqlalchemy import event
+
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
@@ -32,6 +34,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 SNOWFLAKE_ABORTED_CODE = "1969"
+SNOWFLAKE_QUERY_BATCH_SIZE = 1000
 
 
 class SnowflakeQueryParserSource(QueryParserSource, ABC):
@@ -51,18 +54,27 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             )
         return cls(config, metadata)
 
-    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+    def get_sql_statement(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        offset: int = 0,
+        limit: int = None,
+    ) -> str:
         """
         returns sql statement to fetch query logs
         """
+        if limit is None:
+            limit = self.config.sourceConfig.config.resultLimit
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
-            result_limit=self.config.sourceConfig.config.resultLimit,
+            result_limit=limit,
             filters=self.get_filters(),
             account_usage=self.service_connection.accountUsageSchema,
             credit_cost=self.service_connection.creditCost
             * self.service_connection.creditCost,
+            offset=offset,
         )
 
     def check_life_cycle_query(
@@ -83,14 +95,19 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
 
     def set_session_query_tag(self) -> None:
         """
-        Method to set query tag for current session
+        Register a pool event on the engine so that every connection
+        checked out from the pool gets the QUERY_TAG set automatically.
+        In SA 2.0, each engine.connect() may return a different pooled
+        connection, so setting the tag on a single connection is not enough.
         """
         if self.service_connection.queryTag:
-            self.engine.execute(
-                SNOWFLAKE_SESSION_TAG_QUERY.format(
-                    query_tag=self.service_connection.queryTag
-                )
-            )
+            query_tag = self.service_connection.queryTag
+
+            @event.listens_for(self.engine, "connect")
+            def _set_query_tag(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute(SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=query_tag))
+                cursor.close()
 
     def get_table_query(self) -> Iterable[TableQuery]:
         self.set_session_query_tag()

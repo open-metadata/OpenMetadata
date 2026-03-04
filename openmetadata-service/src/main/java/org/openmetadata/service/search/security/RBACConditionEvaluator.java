@@ -216,6 +216,7 @@ public class RBACConditionEvaluator {
       }
       case "isOwner" -> isOwner((User) spelContext.lookupVariable("user"), collector);
       case "noOwner" -> noOwner(collector);
+      case "isReviewer" -> isReviewer((User) spelContext.lookupVariable("user"), collector);
       case "hasAnyRole" -> {
         List<String> roles = extractMethodArguments(methodRef);
         hasAnyRole(roles, collector);
@@ -306,15 +307,31 @@ public class RBACConditionEvaluator {
     collector.addMustNot(existsQuery); // Wrap existsQuery in a List
   }
 
-  public void hasAnyRole(List<String> roles, ConditionCollector collector) {
-    User user = (User) spelContext.lookupVariable("user");
-    if (user.getRoles() == null || user.getRoles().isEmpty()) {
-      collector.setMatchNothing(true);
-      return;
+  public void isReviewer(User user, ConditionCollector collector) {
+    List<OMQueryBuilder> reviewerQueries = new ArrayList<>();
+    // Reviewer is the user
+    reviewerQueries.add(queryBuilderFactory.termQuery("reviewers.id", user.getId().toString()));
+
+    // Reviewer could also be any of the user's teams
+    if (user.getTeams() != null) {
+      for (EntityReference team : user.getTeams()) {
+        reviewerQueries.add(queryBuilderFactory.termQuery("reviewers.id", team.getId().toString()));
+      }
     }
 
-    List<String> userRoleNames = user.getRoles().stream().map(EntityReference::getName).toList();
-    boolean hasRole = userRoleNames.stream().anyMatch(roles::contains);
+    OMQueryBuilder reviewerQuery;
+    if (reviewerQueries.size() == 1) {
+      reviewerQuery = reviewerQueries.get(0);
+    } else {
+      reviewerQuery = queryBuilderFactory.boolQuery().should(reviewerQueries);
+    }
+
+    collector.addMust(reviewerQuery);
+  }
+
+  public void hasAnyRole(List<String> roles, ConditionCollector collector) {
+    User user = (User) spelContext.lookupVariable("user");
+    boolean hasRole = roles.stream().anyMatch(role -> SubjectContext.hasRole(user, role));
 
     if (hasRole) {
       collector.addMust(queryBuilderFactory.matchAllQuery());
@@ -343,8 +360,15 @@ public class RBACConditionEvaluator {
       collector.setMatchNothing(true);
       return;
     }
-    List<String> userTeamNames = user.getTeams().stream().map(EntityReference::getName).toList();
-    boolean inTeam = userTeamNames.stream().anyMatch(teamNames::contains);
+    boolean inTeam =
+        teamNames.stream()
+            .anyMatch(
+                teamName ->
+                    user.getTeams().stream()
+                        .anyMatch(
+                            userTeam ->
+                                userTeam.getName().equals(teamName)
+                                    || SubjectContext.isInTeam(teamName, userTeam)));
     if (inTeam) {
       collector.addMust(queryBuilderFactory.matchAllQuery());
     } else {

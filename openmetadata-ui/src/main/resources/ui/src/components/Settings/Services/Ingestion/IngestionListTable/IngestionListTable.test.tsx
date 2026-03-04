@@ -128,6 +128,8 @@ jest.mock('../../../../../utils/EntityUtils', () => ({
 jest.mock('../../../../../utils/date-time/DateTimeUtils', () => ({
   getEpochMillisForPastDays: jest.fn().mockImplementation(() => 1),
   getCurrentMillis: jest.fn().mockImplementation(() => 1),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 describe('Ingestion', () => {

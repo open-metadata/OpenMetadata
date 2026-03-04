@@ -1,10 +1,10 @@
 {
     "name": "Oracle",
     "displayName": "Oracle Test Connection",
-    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas, tables, views, and query history.",
     "steps": [
       {
-        "name": "CheckAccess", 
+        "name": "CheckAccess",
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
         "errorMessage": "Failed to connect to oracle, please validate if the user has relevant permissions, if not, please provide the necessary permissions. For more details, please refer https://docs.open-metadata.org/connectors/database/oracle.",
         "shortCircuit": true,
@@ -23,15 +23,27 @@
         "mandatory": true
       },
       {
-        "name": "GetTables", 
+        "name": "GetTables",
         "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
         "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege to fetch tables.",
         "mandatory": true
       },
       {
         "name": "GetViews",
-        "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.", 
+        "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the views of a random schema.",
         "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
+        "mandatory": false
+      },
+      {
+        "name": "GetMaterializedViews",
+        "description": "Validate that we can access materialized view definitions from DBA_MVIEWS.",
+        "errorMessage": "Failed to fetch materialized views from DBA_MVIEWS. Please ensure the user has SELECT privilege on DBA_MVIEWS. This is required for extracting materialized view metadata.",
+        "mandatory": false
+      },
+      {
+        "name": "GetQueryHistory",
+        "description": "Validate access to query history from gv$sql for usage and lineage extraction.",
+        "errorMessage": "Failed to access query history from gv$sql. Please ensure the user has SELECT privilege on gv$sql or v$sql. This is required for usage tracking and lineage extraction features.",
         "mandatory": false
       }
     ]

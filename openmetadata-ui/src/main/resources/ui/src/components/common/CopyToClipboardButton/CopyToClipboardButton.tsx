@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, PopoverProps, Tooltip } from 'antd';
+import { IconButton, Tooltip, TooltipProps } from '@mui/material';
 import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
@@ -20,7 +20,7 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 interface Props {
   copyText: string;
   copyTimer?: number;
-  position?: PopoverProps['placement'];
+  position?: TooltipProps['placement'];
   onCopy?: () => void;
 }
 
@@ -39,7 +39,6 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
 
   return (
     <Tooltip
-      destroyTooltipOnHide
       placement={position}
       title={
         hasCopied ? (
@@ -52,13 +51,13 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
           </span>
         )
       }>
-      <Button
+      <IconButton
         className="h-8 m-l-md relative flex-center"
         data-testid="copy-secret"
-        icon={<CopyIcon data-testid="copy-icon" width="16" />}
-        type="text"
-        onClick={onCopyToClipBoard}
-      />
+        sx={{ padding: 0 }}
+        onClick={onCopyToClipBoard}>
+        <CopyIcon data-testid="copy-icon" width="16" />
+      </IconButton>
     </Tooltip>
   );
 };

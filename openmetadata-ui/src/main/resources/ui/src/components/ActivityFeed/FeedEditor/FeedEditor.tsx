@@ -59,7 +59,7 @@ Quill.register('modules/markdownOptions', QuillMarkdown);
 Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
 Quill.register('modules/emoji-textarea', TextAreaEmoji, true);
 const Delta = Quill.import('delta');
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const strikethrough = (_node: any, delta: typeof Delta) => {
   // @ts-ignore
   return 'compose' in delta && delta.compose instanceof Function
@@ -224,9 +224,8 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
             toggleMentionList(true);
           },
           onSelect: (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             item: Record<string, any>,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             insertItem: (item: Record<string, any>) => void
           ) => {
             toggleMentionList(true);

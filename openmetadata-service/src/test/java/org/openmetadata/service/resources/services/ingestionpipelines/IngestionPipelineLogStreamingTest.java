@@ -23,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.*;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.logstorage.S3LogStorage;
 import org.testcontainers.containers.GenericContainer;
@@ -65,15 +66,23 @@ public class IngestionPipelineLogStreamingTest extends OpenMetadataApplicationTe
     if (!bucketExists) {
       minioClient.makeBucket(MakeBucketArgs.builder().bucket(TEST_BUCKET).build());
     }
+    // Initialize S3LogStorage with MinIO configuration
+    org.openmetadata.schema.security.credentials.AWSCredentials awsCreds =
+        new org.openmetadata.schema.security.credentials.AWSCredentials()
+            .withAwsAccessKeyId("minioadmin")
+            .withAwsSecretAccessKey("minioadmin")
+            .withAwsRegion("us-east-1")
+            .withEndPointURL(java.net.URI.create(endpoint));
 
     LogStorageConfiguration config = new LogStorageConfiguration();
     config.setType(LogStorageConfiguration.Type.S_3);
     config.setBucketName(TEST_BUCKET);
     config.setPrefix("pipeline-logs/");
-    config.setRegion("us-east-1");
+    config.withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"));
     config.setMaxConcurrentStreams(10);
     config.setStreamTimeoutMinutes(5);
     config.setAsyncBufferSizeMB(5);
+    config.setAwsConfig(awsCreds);
 
     // Create config map as expected by S3LogStorage
     Map<String, Object> configMap = new HashMap<>();
@@ -308,7 +317,8 @@ public class IngestionPipelineLogStreamingTest extends OpenMetadataApplicationTe
     }
 
     long appendTime = System.currentTimeMillis() - startTime;
-    assertTrue(appendTime < 1000, "Async appends should complete quickly");
+    // leave some wiggle room for CI
+    assertTrue(appendTime < 5000, "Async appends should complete quickly");
 
     assertEventually(
         "All logs should eventually be written",
@@ -330,7 +340,7 @@ public class IngestionPipelineLogStreamingTest extends OpenMetadataApplicationTe
     failConfig.setType(LogStorageConfiguration.Type.S_3);
     failConfig.setBucketName(TEST_BUCKET);
     failConfig.setPrefix("pipeline-logs/");
-    failConfig.setRegion("us-east-1");
+    failConfig.withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"));
 
     Map<String, Object> failConfigMap = new HashMap<>();
     failConfigMap.put("config", failConfig);

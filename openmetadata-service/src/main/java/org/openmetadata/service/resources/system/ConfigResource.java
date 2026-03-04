@@ -37,6 +37,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
@@ -90,13 +91,13 @@ public class ConfigResource {
       })
   public AuthenticationConfiguration getAuthConfig() {
     AuthenticationConfiguration responseAuthConfig = new AuthenticationConfiguration();
-    AuthenticationConfiguration yamlConfig =
-        openMetadataApplicationConfig.getAuthenticationConfiguration();
-    if (openMetadataApplicationConfig.getAuthenticationConfiguration() != null) {
+    AuthenticationConfiguration yamlConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    if (SecurityConfigurationManager.getCurrentAuthConfig() != null) {
       responseAuthConfig.setProvider(yamlConfig.getProvider());
       responseAuthConfig.setProviderName(yamlConfig.getProviderName());
       responseAuthConfig.setClientType(yamlConfig.getClientType());
       responseAuthConfig.setEnableSelfSignup(yamlConfig.getEnableSelfSignup());
+      responseAuthConfig.setEnableAutoRedirect(yamlConfig.getEnableAutoRedirect());
       responseAuthConfig.setJwtPrincipalClaims(yamlConfig.getJwtPrincipalClaims());
       responseAuthConfig.setJwtPrincipalClaimsMapping(yamlConfig.getJwtPrincipalClaimsMapping());
       responseAuthConfig.setClientId(yamlConfig.getClientId());
@@ -106,9 +107,7 @@ public class ConfigResource {
           && yamlConfig.getSamlConfiguration() != null) {
         // Remove Saml Fields
         SamlSSOClientConfig ssoClientConfig = new SamlSSOClientConfig();
-        ssoClientConfig.setIdp(
-            new IdentityProviderConfig()
-                .withAuthorityUrl(yamlConfig.getSamlConfiguration().getIdp().getAuthorityUrl()));
+        ssoClientConfig.setIdp(new IdentityProviderConfig());
         responseAuthConfig.setSamlConfiguration(ssoClientConfig);
       } else {
         responseAuthConfig.setSamlConfiguration(null);

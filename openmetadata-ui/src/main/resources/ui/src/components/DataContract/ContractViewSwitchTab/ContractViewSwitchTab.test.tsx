@@ -184,10 +184,10 @@ describe('ContractViewSwitchTab', () => {
       let radioButtons = container.querySelectorAll('input[type="radio"]');
 
       // UI should be checked initially
-      expect(radioButtons[0].closest('.ant-radio-button')).not.toHaveClass(
+      expect(radioButtons[0].closest('.ant-radio-button')).toHaveClass(
         'ant-radio-button-checked'
       );
-      expect(radioButtons[1].closest('.ant-radio-button')).toHaveClass(
+      expect(radioButtons[1].closest('.ant-radio-button')).not.toHaveClass(
         'ant-radio-button-checked'
       );
 
@@ -201,10 +201,10 @@ describe('ContractViewSwitchTab', () => {
       radioButtons = container.querySelectorAll('input[type="radio"]');
 
       // YAML should be checked after rerender
-      expect(radioButtons[0].closest('.ant-radio-button')).toHaveClass(
+      expect(radioButtons[0].closest('.ant-radio-button')).not.toHaveClass(
         'ant-radio-button-checked'
       );
-      expect(radioButtons[1].closest('.ant-radio-button')).not.toHaveClass(
+      expect(radioButtons[1].closest('.ant-radio-button')).toHaveClass(
         'ant-radio-button-checked'
       );
     });

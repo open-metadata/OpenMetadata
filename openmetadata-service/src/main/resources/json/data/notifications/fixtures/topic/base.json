@@ -1,0 +1,46 @@
+{
+  "id": "9f8e7d6c-5b4a-3f2e-1d0c-9b8a7f6e5d4c",
+  "name": "sample_topic",
+  "displayName": "Sample Topic",
+  "fullyQualifiedName": "sample-messaging-service.sample_topic",
+  "description": "Mock topic for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "partitions": 3,
+  "replicationFactor": 1,
+  "maximumMessageSize": 1048576,
+  "cleanupPolicies": ["delete"],
+  "href": "http://localhost:8585/api/v1/topics/9f8e7d6c-5b4a-3f2e-1d0c-9b8a7f6e5d4c",
+  "service": {
+    "id": "8d7c6b5a-4f3e-2d1c-0b9a-8f7e6d5c4b3a",
+    "type": "messagingService",
+    "name": "sample-messaging-service",
+    "fullyQualifiedName": "sample-messaging-service",
+    "deleted": false,
+    "href": "http://localhost:8585/api/v1/services/messagingServices/8d7c6b5a-4f3e-2d1c-0b9a-8f7e6d5c4b3a"
+  },
+  "serviceType": "Kafka",
+  "messageSchema": {
+    "schemaType": "Avro",
+    "schemaText": "{\"type\":\"record\",\"name\":\"SampleEvent\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"timestamp\",\"type\":\"long\"}]}"
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "domains": [
+    {
+      "id": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+      "type": "domain",
+      "name": "Engineering",
+      "fullyQualifiedName": "Engineering"
+    }
+  ],
+  "tags": []
+}

@@ -154,8 +154,7 @@ public final class AlertUtil {
 
     // Test Suite
     if (config.getResources().get(0).equals(TEST_SUITE)) {
-      return event.getEntityType().equals(TEST_SUITE)
-          || event.getEntityType().equals(Entity.TEST_CASE);
+      return event.getEntityType().equals(TEST_SUITE);
     }
 
     // Data Contract
@@ -361,10 +360,10 @@ public final class AlertUtil {
     }
 
     StringBuilder result = new StringBuilder();
-    result.append("'").append(valueList.get(0)).append("'");
+    result.append("'").append(valueList.get(0).replace("'", "''")).append("'");
 
     for (int i = 1; i < valueList.size(); i++) {
-      result.append(",'").append(valueList.get(i)).append("'");
+      result.append(",'").append(valueList.get(i).replace("'", "''")).append("'");
     }
 
     return result.toString();

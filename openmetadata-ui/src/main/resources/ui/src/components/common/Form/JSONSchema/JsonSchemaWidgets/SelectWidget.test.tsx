@@ -56,7 +56,9 @@ describe('Test SelectWidget Component', () => {
   it('Should render select component', async () => {
     render(<SelectWidget {...mockSelectProps} />);
 
-    const selectInput = screen.getByTestId('select-widget');
+    const selectInput = screen.getByTestId(
+      'select-widget-root/searchIndexMappingLanguage'
+    );
     const treeSelectWidget = screen.queryByText('TreeSelectWidget');
 
     expect(selectInput).toBeInTheDocument();
@@ -67,7 +69,7 @@ describe('Test SelectWidget Component', () => {
     render(<SelectWidget {...mockSelectProps} disabled />);
 
     const selectInput = await findByRole(
-      screen.getByTestId('select-widget'),
+      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
       'combobox'
     );
 
@@ -77,7 +79,9 @@ describe('Test SelectWidget Component', () => {
   it('Should call onFocus', async () => {
     render(<SelectWidget {...mockSelectProps} />);
 
-    const selectInput = screen.getByTestId('select-widget');
+    const selectInput = screen.getByTestId(
+      'select-widget-root/searchIndexMappingLanguage'
+    );
 
     fireEvent.focus(selectInput);
 
@@ -87,7 +91,9 @@ describe('Test SelectWidget Component', () => {
   it('Should call onBlur', async () => {
     render(<SelectWidget {...mockSelectProps} />);
 
-    const selectInput = screen.getByTestId('select-widget');
+    const selectInput = screen.getByTestId(
+      'select-widget-root/searchIndexMappingLanguage'
+    );
 
     fireEvent.blur(selectInput);
 
@@ -98,7 +104,7 @@ describe('Test SelectWidget Component', () => {
     render(<SelectWidget {...mockSelectProps} />);
 
     const selectInput = await findByRole(
-      screen.getByTestId('select-widget'),
+      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
       'combobox'
     );
 
@@ -118,10 +124,45 @@ describe('Test SelectWidget Component', () => {
   it('Should render TreeSelectWidget component if uiFieldType is treeSelect', async () => {
     render(<SelectWidget {...mockTreeSelectProps} />);
 
-    const selectWidget = screen.queryByTestId('select-widget');
+    const selectWidget = screen.queryByTestId(
+      'select-widget-root/searchIndexMappingLanguage'
+    );
     const treeSelectWidget = screen.getByText('TreeSelectWidget');
 
     expect(treeSelectWidget).toBeInTheDocument();
     expect(selectWidget).not.toBeInTheDocument();
+  });
+
+  it('Should filter options when searching', async () => {
+    render(<SelectWidget {...mockSelectProps} />);
+
+    const selectInput = await findByRole(
+      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
+      'combobox'
+    );
+
+    // Open dropdown using mouseDown which is more reliable for Ant Design Select
+    await act(async () => {
+      fireEvent.mouseDown(selectInput);
+    });
+
+    // Wait for dropdown to open and show all options
+    await waitFor(() => screen.getByTestId('select-option-EN'));
+
+    expect(screen.getByTestId('select-option-JP')).toBeInTheDocument();
+    expect(screen.getByTestId('select-option-RU')).toBeInTheDocument();
+    expect(screen.getByTestId('select-option-ZH')).toBeInTheDocument();
+
+    // Type to search/filter using fireEvent.change for search input
+    fireEvent.change(selectInput, { target: { value: 'EN' } });
+
+    // After filtering, only EN should be visible
+    await waitFor(() => {
+      expect(screen.getByTestId('select-option-EN')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('select-option-JP')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('select-option-RU')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('select-option-ZH')).not.toBeInTheDocument();
   });
 });

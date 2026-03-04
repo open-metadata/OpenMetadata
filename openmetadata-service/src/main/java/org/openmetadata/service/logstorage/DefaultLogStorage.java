@@ -170,6 +170,15 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   @Override
+  public void closeStream(String pipelineFQN, UUID runId) throws IOException {
+    // Default implementation doesn't manage streams - logs are handled by pipeline service client
+    LOG.debug(
+        "DefaultLogStorage closeStream called for pipeline: {}, runId: {} - no action needed",
+        pipelineFQN,
+        runId);
+  }
+
+  @Override
   public void close() throws IOException {
     // Nothing to close for default implementation
   }

@@ -41,11 +41,18 @@
       "description": "Username to connect to Redshift. This user should have privileges to read all the metadata in Redshift.",
       "type": "string"
     },
-    "password": {
-      "title": "Password",
-      "description": "Password to connect to Redshift.",
-      "type": "string",
-      "format": "password"
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Configuration Type.",
+      "mask":  true,
+      "oneOf": [
+        {
+          "$ref": "./common/basicAuth.json"
+        },
+        {
+          "$ref": "./common/iamAuthConfig.json"
+        }
+      ]
     },
     "hostPort": {
       "title": "Host and Port",
@@ -85,6 +92,11 @@
         "includes": [],
         "excludes": ["^template1$"]
       }
+    },
+    "storedProcedureFilterPattern": {
+      "title": "Default Stored Procedure Filter Pattern",
+      "description": "Regex to only include/exclude stored procedures that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
     },
     "sslMode": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"

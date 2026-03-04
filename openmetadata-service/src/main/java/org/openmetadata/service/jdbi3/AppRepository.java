@@ -2,10 +2,15 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -31,10 +36,12 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
   public static final String APP_BOT_ROLE = "ApplicationBotRole";
+  public static final String APP_BOT_IMPERSONATION_ROLE = "ApplicationBotImpersonationRole";
 
   public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
 
@@ -48,10 +55,11 @@ public class AppRepository extends EntityRepository<App> {
         UPDATE_FIELDS);
     supportsSearch = false;
     quoteFqn = true;
+    fieldFetchers.put("bot", this::fetchAndSetBotUser);
   }
 
   @Override
-  public void setFields(App entity, EntityUtil.Fields fields) {
+  public void setFields(App entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     entity.setPipelines(
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     entity.withBot(getBotUser(entity));
@@ -72,9 +80,30 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  public void prepare(App entity, boolean update) {}
+  public void prepare(App entity, boolean update) {
+    // Encrypt sensitive fields in appConfiguration before saving
+    if (entity.getAppConfiguration() != null && entity.getClassName() != null) {
+      try {
+        org.openmetadata.service.apps.ApplicationHandler handler =
+            org.openmetadata.service.apps.ApplicationHandler.getInstance();
+        if (handler != null) {
+          App encryptedApp =
+              handler.appWithEncryptedAppConfiguration(
+                  entity, Entity.getCollectionDAO(), Entity.getSearchRepository());
+          entity.setAppConfiguration(encryptedApp.getAppConfiguration());
+        }
+      } catch (Exception e) {
+        LOG.debug(
+            "Could not encrypt app configuration for {}: {}", entity.getName(), e.getMessage());
+      }
+    }
+  }
 
   public EntityReference createNewAppBot(App application) {
+    return createNewAppBot(application, false);
+  }
+
+  public EntityReference createNewAppBot(App application, boolean allowImpersonation) {
     String botName = String.format("%sBot", application.getName());
     BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
@@ -83,9 +112,10 @@ public class AppRepository extends EntityRepository<App> {
     try {
       botUser = userRepository.getByName(null, botName, userRepository.getFields("id"));
     } catch (EntityNotFoundException ex) {
-      // Get Bot Role
+      // Get Bot Role - use impersonation role if allowImpersonation is true
+      String roleName = allowImpersonation ? APP_BOT_IMPERSONATION_ROLE : APP_BOT_ROLE;
       EntityReference roleRef =
-          Entity.getEntityReferenceByName(Entity.ROLE, APP_BOT_ROLE, Include.NON_DELETED);
+          Entity.getEntityReferenceByName(Entity.ROLE, roleName, Include.NON_DELETED);
       // Create Bot User
       AuthenticationMechanism authMechanism =
           new AuthenticationMechanism()
@@ -104,6 +134,7 @@ public class AppRepository extends EntityRepository<App> {
 
       // Set User Ownership to the application creator
       user.setOwners(application.getOwners());
+      user.setAllowImpersonation(allowImpersonation);
 
       // Set Auth Mechanism in Bot
       JWTAuthMechanism jwtAuthMechanism = (JWTAuthMechanism) authMechanism.getConfig();
@@ -147,15 +178,70 @@ public class AppRepository extends EntityRepository<App> {
   @Override
   public void storeEntity(App entity, boolean update) {
     List<EntityReference> ownerRefs = entity.getOwners();
+    EntityReference bot = entity.getBot();
     entity.withOwners(null);
+    entity.withBot(null);
     store(entity, update);
     entity.withOwners(ownerRefs);
+    entity.setBot(bot);
+  }
+
+  @Override
+  public void storeEntities(List<App> entities) {
+    List<App> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (App entity : entities) {
+      List<EntityReference> ownerRefs = entity.getOwners();
+      EntityReference bot = entity.getBot();
+      String jsonCopy = gson.toJson(entity.withOwners(null).withBot(null));
+      entitiesToStore.add(gson.fromJson(jsonCopy, App.class));
+      entity.withOwners(ownerRefs);
+      entity.setBot(bot);
+    }
+    storeMany(entitiesToStore);
   }
 
   public EntityReference getBotUser(App application) {
     return application.getBot() != null
         ? application.getBot()
         : getToEntityRef(application.getId(), Relationship.CONTAINS, Entity.BOT, false);
+  }
+
+  public void fetchAndSetBotUser(List<App> apps, EntityUtil.Fields fields) {
+    if (apps == null || apps.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, apps, batchFetchBots(apps), App::setBot);
+  }
+
+  private Map<UUID, EntityReference> batchFetchBots(List<App> apps) {
+    var botsMap = new HashMap<UUID, EntityReference>();
+    if (apps == null || apps.isEmpty()) {
+      return botsMap;
+    }
+
+    // Single batch query to get all bots relationships
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(apps), Relationship.CONTAINS.ordinal(), Entity.BOT);
+
+    // Group bots by ID
+    records.forEach(
+        record -> {
+          var appId = UUID.fromString(record.getFromId());
+          var botRef = getEntityReferenceById(Entity.BOT, UUID.fromString(record.getToId()), ALL);
+          botsMap.put(appId, botRef);
+        });
+
+    return botsMap;
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<App> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(App::getId).toList();
+    deleteFromMany(ids, Entity.APPLICATION, Relationship.CONTAINS, Entity.BOT);
   }
 
   @Override

@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import CopyToClipboardButton from './CopyToClipboardButton';
+import { CopyToClipboardButton } from './CopyToClipboardButton';
 
 const clipboardWriteTextMock = jest.fn();
 const clipboardMock = {
@@ -96,5 +96,14 @@ describe('Test CopyToClipboardButton Component', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('copy-success')).not.toBeInTheDocument();
     });
+  });
+
+  it('Should render MUI IconButton with correct props', () => {
+    render(<CopyToClipboardButton copyText={value} position="top" />);
+
+    const iconButton = screen.getByTestId('copy-secret');
+
+    expect(iconButton).toBeInTheDocument();
+    expect(iconButton).toHaveClass('h-8 m-l-md relative flex-center');
   });
 });

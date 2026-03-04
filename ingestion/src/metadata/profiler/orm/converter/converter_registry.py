@@ -24,6 +24,7 @@ from metadata.profiler.orm.converter.mariadb.converter import MariaDBMapTypes
 from metadata.profiler.orm.converter.mssql.converter import MssqlMapTypes
 from metadata.profiler.orm.converter.redshift.converter import RedshiftMapTypes
 from metadata.profiler.orm.converter.snowflake.converter import SnowflakeMapTypes
+from metadata.profiler.orm.converter.trino import TrinoMapTypes
 
 converter_registry = defaultdict(lambda: CommonMapTypes)
 converter_registry[DatabaseServiceType.BigQuery] = BigqueryMapTypes
@@ -32,3 +33,4 @@ converter_registry[DatabaseServiceType.Redshift] = RedshiftMapTypes
 converter_registry[DatabaseServiceType.Mssql] = MssqlMapTypes
 converter_registry[DatabaseServiceType.AzureSQL] = AzureSqlMapTypes
 converter_registry[DatabaseServiceType.MariaDB] = MariaDBMapTypes
+converter_registry[DatabaseServiceType.Trino] = TrinoMapTypes

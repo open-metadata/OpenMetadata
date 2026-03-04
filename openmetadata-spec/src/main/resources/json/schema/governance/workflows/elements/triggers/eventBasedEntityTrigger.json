@@ -23,12 +23,21 @@
       "type": "object",
       "properties": {
         "entityType": {
-          "description": "Entity Type for which it should be triggered.",
+          "description": "Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes' for multiple types.",
           "type": "string"
+        },
+        "entityTypes": {
+          "description": "Array of Entity Types for which this workflow should be triggered. Supports multiple entity types in one workflow.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
         },
         "events": {
           "title": "Events",
-          "descriptions": "Select the events that should trigger this workflow",
+          "description": "Select the events that should trigger this workflow",
           "type": "array",
           "items": {
             "$ref": "#/definitions/event"
@@ -45,13 +54,36 @@
         },
         "filter": {
           "title": "Filter Condition",
-          "description": "JSON Logic expression to determine if the workflow should be triggered. The expression has access to: entity (current entity), changeDescription (what changed), updatedBy (user who made the change), changedFields (array of field names that changed).",
-          "type": "string"
+          "description": "JSON Logic expression to determine if the workflow should be triggered. Can be a string (applied to all entity types) or an object mapping entity types to their specific filters.",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Single filter applied to all entity types (legacy format)"
+            },
+            {
+              "type": "object",
+              "description": "Entity-specific filters with optional default",
+              "properties": {
+                "default": {
+                  "type": "string",
+                  "description": "Default filter for entity types not explicitly configured"
+                }
+              },
+              "additionalProperties": {
+                "type": "string",
+                "description": "Filter for specific entity type"
+              }
+            }
+          ]
         }
       },
-      "required": [
-        "entityType",
-        "events"
+      "anyOf": [
+        {
+          "required": ["entityType", "events"]
+        },
+        {
+          "required": ["entityTypes", "events"]
+        }
       ],
       "additionalProperties": false
     }

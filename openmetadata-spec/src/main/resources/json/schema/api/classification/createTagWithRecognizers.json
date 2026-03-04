@@ -1,0 +1,62 @@
+{
+  "$id": "https://open-metadata.org/schema/api/classification/createTagWithRecognizers.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTagWithRecognizersRequest",
+  "description": "Create or Update Tag Request with Recognizer Configuration",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.classification.CreateTagWithRecognizers",
+  "properties": {
+    "classification": {
+      "description": "Fully qualified name of the classification that this tag is part of",
+      "type": "string"
+    },
+    "parent": {
+      "description": "Fully qualified name of the parent tag. When null, the tag is at the root of the classification",
+      "type": "string"
+    },
+    "name": {
+      "description": "Name of the tag",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name for the tag",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the tag",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
+    "autoClassificationEnabled": {
+      "description": "Whether automatic classification is enabled for this tag",
+      "type": "boolean",
+      "default": false
+    },
+    "autoClassificationPriority": {
+      "description": "Priority for conflict resolution when multiple tags match",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 50
+    },
+    "recognizers": {
+      "description": "List of recognizers for automatic detection",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/recognizer.json"
+      }
+    },
+    "owners": {
+      "description": "Owners of this tag",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "description": "Reviewers of this tag",
+      "$ref": "../../type/entityReferenceList.json"
+    }
+  },
+  "required": ["classification", "name", "description"],
+  "additionalProperties": false
+}

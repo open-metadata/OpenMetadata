@@ -42,6 +42,7 @@ import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import { getEntityMissingError, getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
@@ -73,6 +74,15 @@ function EditConnectionFormPage() {
   >([]);
   const [activeField, setActiveField] = useState<string>('');
   const [serviceConfig, setServiceConfig] = useState<ServicesType>();
+
+  const translatedSteps = useMemo(
+    () =>
+      STEPS_FOR_EDIT_SERVICE.map((step) => ({
+        ...step,
+        name: translateWithNestedKeys(step.name, step.nameData),
+      })),
+    []
+  );
 
   const handleConfigSave = (updatedData: ConfigData) => {
     const configData = serviceUtilClassBase.getEditConfigData(
@@ -226,7 +236,7 @@ function EditConnectionFormPage() {
         </Space>
         <IngestionStepper
           activeStep={activeServiceStep}
-          steps={STEPS_FOR_EDIT_SERVICE}
+          steps={translatedSteps}
         />
 
         {activeServiceStep === 1 && (

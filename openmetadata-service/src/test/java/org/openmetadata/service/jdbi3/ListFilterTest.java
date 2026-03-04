@@ -40,11 +40,83 @@ class ListFilterTest {
   void getCondition() {
     ListFilter filter = new ListFilter();
     String condition = filter.getCondition("foo");
-    assertEquals("WHERE foo.deleted =FALSE", condition);
+    assertEquals("WHERE foo.deleted = FALSE", condition);
 
     filter = new ListFilter();
     filter.addQueryParam("testCaseStatus", "Failed");
     condition = filter.getCondition("foo");
-    assertEquals("WHERE foo.deleted =FALSE AND status = :testCaseStatus", condition);
+    assertEquals("WHERE foo.deleted = FALSE AND status = :testCaseStatus", condition);
+  }
+
+  @Test
+  void test_getAgentTypeCondition_singleAgentType() {
+    ListFilter filter = new ListFilter();
+
+    filter.addQueryParam("agentType", "CollateAI");
+    String condition = filter.getCondition("app_entity");
+    assertTrue(
+        condition.contains("JSON_EXTRACT(json, '$.agentType') IN (:agentType_0)")
+            || condition.contains("json->>'agentType' IN (:agentType_0)"));
+    assertEquals("CollateAI", filter.getQueryParams().get("agentType_0"));
+  }
+
+  @Test
+  void test_getAgentTypeCondition_multipleAgentTypes() {
+    ListFilter filter = new ListFilter();
+
+    filter.addQueryParam("agentType", "CollateAI,Metadata,CollateAITierAgent");
+    String condition = filter.getCondition("app_entity");
+
+    assertTrue(condition.contains("IN (:agentType_0,:agentType_1,:agentType_2)"));
+    assertFalse(condition.contains(" OR "));
+    assertEquals("CollateAI", filter.getQueryParams().get("agentType_0"));
+    assertEquals("Metadata", filter.getQueryParams().get("agentType_1"));
+    assertEquals("CollateAITierAgent", filter.getQueryParams().get("agentType_2"));
+  }
+
+  @Test
+  void test_getAgentTypeCondition_withWhitespace() {
+    ListFilter filter = new ListFilter();
+
+    filter.addQueryParam("agentType", " CollateAI , Metadata , CollateAITierAgent ");
+    String condition = filter.getCondition("app_entity");
+
+    assertTrue(condition.contains("IN (:agentType_0,:agentType_1,:agentType_2)"));
+    assertFalse(condition.contains(" OR "));
+    assertEquals("CollateAI", filter.getQueryParams().get("agentType_0"));
+    assertEquals("Metadata", filter.getQueryParams().get("agentType_1"));
+    assertEquals("CollateAITierAgent", filter.getQueryParams().get("agentType_2"));
+  }
+
+  @Test
+  void test_getAgentTypeCondition_emptyOrNull() {
+    ListFilter filter = new ListFilter();
+
+    // Test null agent type
+    String condition = filter.getCondition("app_entity");
+    assertFalse(condition.contains("agentType"));
+
+    // Test empty agent type
+    filter.addQueryParam("agentType", "");
+    condition = filter.getCondition("app_entity");
+    assertFalse(condition.contains("agentType"));
+
+    // Test whitespace only
+    filter = new ListFilter();
+    filter.addQueryParam("agentType", "   ");
+    condition = filter.getCondition("app_entity");
+    assertFalse(condition.contains("agentType"));
+  }
+
+  @Test
+  void test_getAgentTypeCondition_singleAgentTypeWithComma() {
+    ListFilter filter = new ListFilter();
+
+    filter.addQueryParam("agentType", "CollateAI,");
+    String condition = filter.getCondition("app_entity");
+
+    assertTrue(condition.contains(":agentType_0"));
+    assertEquals("CollateAI", filter.getQueryParams().get("agentType_0"));
+    assertNull(filter.getQueryParams().get("agentType_1"));
   }
 }

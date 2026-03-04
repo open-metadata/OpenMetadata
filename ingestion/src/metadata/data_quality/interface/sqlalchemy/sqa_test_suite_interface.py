@@ -16,7 +16,6 @@ supporting sqlalchemy abstraction layer
 
 from typing import Union
 
-from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.data_quality.builders.validator_builder import (
@@ -24,6 +23,7 @@ from metadata.data_quality.builders.validator_builder import (
     ValidatorBuilder,
 )
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
+from metadata.data_quality.processor.test_case_runner import TestDefinition
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.testCase import TestCase
@@ -75,11 +75,11 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         )
 
     @property
-    def dataset(self) -> Union[DeclarativeMeta, AliasedClass]:
+    def dataset(self) -> Union[type, AliasedClass]:
         """_summary_
 
         Returns:
-            Union[DeclarativeMeta, AliasedClass]: _description_
+            Union[type, AliasedClass]: _description_
         """
         if not self.sampler:
             raise RuntimeError(
@@ -113,9 +113,19 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
     ) -> ValidatorBuilder:
+        test_definition = self.ometa_client.get_by_name(
+            entity=TestDefinition,
+            fqn=test_case.testDefinition.fullyQualifiedName,
+        )
+        if test_definition is None:
+            raise ValueError(
+                f"Cannot find TestDefinition for test case {test_case.fullyQualifiedName}"
+            )
+
         return self.validator_builder_class(
             runner=self.runner,
             test_case=test_case,
+            test_definition=test_definition,
             entity_type=entity_type,
             source_type=self.source_type,
         )

@@ -1,8 +1,8 @@
 grammar EntityLink;
 
 entitylink
-    : RESERVED_START (separator entity_type separator name_or_fqn)+
-      (separator entity_field (separator name_or_fqn)*)* '>' EOF
+    : RESERVED_START (separator entity_type separator nameOrFqn)+
+      (separator entity_field (separator nameOrFqn)*)* '>' EOF
     ;
 
 
@@ -10,8 +10,10 @@ entity_type
     : ENTITY_TYPE # entityType
     ;
 
-name_or_fqn
-    : NAME_OR_FQN # nameOrFQN
+nameOrFqn
+    : NAME_OR_FQN
+    | ENTITY_TYPE
+    | ENTITY_FIELD
     ;
 
 entity_field

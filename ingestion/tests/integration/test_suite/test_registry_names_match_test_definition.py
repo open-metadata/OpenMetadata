@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.importer import RULE_LIBRARY_VALIDATOR_MODULE_MAP
 
 test_suite_config = {
     "source": {
@@ -74,7 +75,8 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
         ]
         table_tests = [name for _, name, _ in pkgutil.iter_modules(sqa_table.__path__)]
 
-        registry_test_name = set(column_tests + table_tests)
+        rule_library_modules = set(RULE_LIBRARY_VALIDATOR_MODULE_MAP.values())
+        registry_test_name = set(column_tests + table_tests) - rule_library_modules
 
         assert registry_test_name.issubset(test_definition_names)
 
@@ -95,6 +97,7 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
             name for _, name, _ in pkgutil.iter_modules(pandas_table.__path__)
         ]
 
-        registry_test_name = set(column_tests + table_tests)
+        rule_library_modules = set(RULE_LIBRARY_VALIDATOR_MODULE_MAP.values())
+        registry_test_name = set(column_tests + table_tests) - rule_library_modules
 
         assert registry_test_name.issubset(test_definition_names)

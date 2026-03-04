@@ -2,8 +2,10 @@ package org.openmetadata.service.util.email;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import freemarker.core.TemplateClassResolver;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
+import freemarker.template.TemplateExceptionHandler;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.HashSet;
@@ -35,8 +37,19 @@ public class DefaultTemplateProvider implements TemplateProvider {
       throw new IOException("Template content not found for template: " + templateName);
     }
 
-    return new Template(
-        templateName, new StringReader(template), new Configuration(Configuration.VERSION_2_3_31));
+    Configuration cfg = new Configuration(Configuration.VERSION_2_3_31);
+    // Disallow instantiation of arbitrary Java classes via ?new
+    cfg.setNewBuiltinClassResolver(TemplateClassResolver.SAFER_RESOLVER);
+    // Disable access to Java APIs through the ?api builtin
+    cfg.setAPIBuiltinEnabled(false);
+    // Enforce strict FreeMarker behavior (no legacy compatibility quirks)
+    cfg.setClassicCompatible(false);
+    // Rethrow template exceptions instead of rendering stack traces
+    cfg.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
+    // Prevent template exceptions from being written to the output stream
+    cfg.setLogTemplateExceptions(false);
+
+    return new Template(templateName, new StringReader(template), cfg);
   }
 
   @Override

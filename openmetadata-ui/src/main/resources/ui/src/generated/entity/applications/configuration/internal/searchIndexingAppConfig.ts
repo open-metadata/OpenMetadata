@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -48,6 +48,11 @@ export interface SearchIndexingAppConfig {
      */
     maxRetries?: number;
     /**
+     * Number of entities per partition for distributed indexing. Smaller values create more
+     * partitions for better distribution across servers. Range: 1000-50000.
+     */
+    partitionSize?: number;
+    /**
      * Maximum number of events sent in a batch (Default 100).
      */
     payLoadSize?: number;
@@ -68,9 +73,25 @@ export interface SearchIndexingAppConfig {
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
+     * Per-entity-type override for time series max days. Keys are entity type names (e.g.
+     * testCaseResult, queryCostRecord), values are number of days. Entities not listed here use
+     * the default Time Series Max Days value.
+     */
+    timeSeriesEntityDays?: { [key: string]: number };
+    /**
+     * Maximum age in days for time series data during reindexing. Default 0 (index all data).
+     * Set to a positive value like 15 to limit to recent data only.
+     */
+    timeSeriesMaxDays?: number;
+    /**
      * Application Type
      */
     type?: SearchIndexingType;
+    /**
+     * Enable distributed indexing to scale reindexing across multiple servers with fault
+     * tolerance and parallel processing
+     */
+    useDistributedIndexing?: boolean;
 }
 
 /**

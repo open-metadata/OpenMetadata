@@ -59,10 +59,11 @@ mock_doris_config = {
 
 
 class DorisUnitTest(TestCase):
+    @patch("metadata.ingestion.source.database.doris.connection.get_connection")
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
     )
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection, get_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_doris_config)

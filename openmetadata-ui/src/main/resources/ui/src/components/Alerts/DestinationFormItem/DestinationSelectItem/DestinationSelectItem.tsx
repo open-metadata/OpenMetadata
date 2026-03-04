@@ -17,9 +17,11 @@ import {
   Button,
   Col,
   Form,
+  Input,
   Row,
   Select,
   Skeleton,
+  Switch,
   Tabs,
   Typography,
 } from 'antd';
@@ -40,11 +42,11 @@ import {
 import { useFqn } from '../../../../hooks/useFqn';
 import { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import {
-  getConfigHeaderArrayFromObject,
   getDestinationConfigField,
   getDestinationStatusAlertData,
   getFilteredDestinationOptions,
   getSubscriptionTypeOptions,
+  normalizeDestinationConfig,
 } from '../../../../utils/Alerts/AlertsUtil';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
@@ -70,6 +72,8 @@ function DestinationSelectItem({
   const destinationItem =
     Form.useWatch<Destination>(['destinations', id], form) ?? [];
 
+  const notifyDownstream = destinationItem.notifyDownstream ?? false;
+
   const destinationStatusDetails = useMemo(() => {
     const { type, category, config } = destinationItem;
 
@@ -79,15 +83,7 @@ function DestinationSelectItem({
         {
           type: destination.type,
           category: destination.category,
-          config: omitBy(
-            {
-              ...destination.config,
-              headers: getConfigHeaderArrayFromObject(
-                destination?.config?.headers
-              ),
-            },
-            isUndefined
-          ),
+          config: normalizeDestinationConfig(destination.config),
         }
       )
     );
@@ -195,6 +191,14 @@ function DestinationSelectItem({
   );
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+  const handleNotifyDownstreamChange = useCallback(
+    (checked: boolean) => {
+      if (!checked) {
+        form.setFieldValue(['destinations', id, 'downstreamDepth'], undefined);
+      }
+    },
+    [form, id]
+  );
 
   useEffect(() => {
     // Get the current destinations list
@@ -333,6 +337,65 @@ function DestinationSelectItem({
                 )}
               </>
             )}
+            {selectedDestinations && !isEmpty(selectedDestinations[id]) && (
+              <Col span={24}>
+                <Form.Item
+                  label={
+                    <Typography.Text>
+                      {t('label.notify-downstream')}
+                    </Typography.Text>
+                  }
+                  labelAlign="left"
+                  labelCol={{ span: 6 }}
+                  name={[id, 'notifyDownstream']}
+                  valuePropName="checked">
+                  <Switch onChange={handleNotifyDownstreamChange} />
+                </Form.Item>
+              </Col>
+            )}
+            {notifyDownstream && (
+              <Col span={24}>
+                <Form.Item
+                  label={t('label.downstream-depth')}
+                  labelCol={{ span: 24 }}
+                  name={[id, 'downstreamDepth']}
+                  requiredMark={false}
+                  rules={[
+                    {
+                      required: true,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.field'),
+                      }),
+                    },
+                    {
+                      validator: (_, value) => {
+                        if (!isEmpty(value) && value <= 0) {
+                          return Promise.reject(
+                            new Error(
+                              t('message.value-must-be-greater-than', {
+                                field: t('label.downstream-depth'),
+                                minimum: 0,
+                              })
+                            )
+                          );
+                        }
+
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}>
+                  <Input
+                    className="w-full"
+                    data-testid={`destination-downstream-depth-${id}`}
+                    defaultValue={1}
+                    placeholder={t('label.select-field', {
+                      field: t('label.destination'),
+                    })}
+                    type="number"
+                  />
+                </Form.Item>
+              </Col>
+            )}
             {isDestinationStatusLoading &&
               destinationItem.category === SubscriptionCategory.External && (
                 <Col span={24}>
@@ -357,7 +420,11 @@ function DestinationSelectItem({
                           {`${t('label.status')}:`}
                         </Typography.Text>
                         <Typography.Text className="font-medium text-sm m-l-xss">
-                          {`${destinationStatusDetails?.statusCode} ${statusLabel} ${destinationStatusDetails?.reason}`}
+                          {`${
+                            destinationStatusDetails?.statusCode
+                          } ${statusLabel} ${
+                            destinationStatusDetails?.reason ?? ''
+                          }`}
                         </Typography.Text>
                       </>
                     }

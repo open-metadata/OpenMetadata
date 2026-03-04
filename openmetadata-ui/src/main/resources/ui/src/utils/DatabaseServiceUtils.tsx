@@ -26,6 +26,7 @@ import athenaConnection from '../jsons/connectionSchemas/connections/database/at
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
 import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import bigTableConnection from '../jsons/connectionSchemas/connections/database/bigTableConnection.json';
+import burstiqConnection from '../jsons/connectionSchemas/connections/database/burstIQConnection.json';
 import cassandraConnection from '../jsons/connectionSchemas/connections/database/cassandraConnection.json';
 import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
 import cockroachConnection from '../jsons/connectionSchemas/connections/database/cockroachConnection.json';
@@ -61,8 +62,10 @@ import sasConnection from '../jsons/connectionSchemas/connections/database/sasCo
 import singleStoreConnection from '../jsons/connectionSchemas/connections/database/singleStoreConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
+import starrocksConnection from '../jsons/connectionSchemas/connections/database/starrocksConnection.json';
 import synapseConnection from '../jsons/connectionSchemas/connections/database/synapseConnection.json';
 import teradataConnection from '../jsons/connectionSchemas/connections/database/teradataConnection.json';
+import timescaleConnection from '../jsons/connectionSchemas/connections/database/timescaleConnection.json';
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
 import unityCatalogConnection from '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json';
 import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
@@ -126,6 +129,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Doris: {
       schema = dorisConnection;
+
+      break;
+    }
+    case DatabaseServiceType.StarRocks: {
+      schema = starrocksConnection;
 
       break;
     }
@@ -292,6 +300,16 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Teradata: {
       schema = teradataConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Timescale: {
+      schema = timescaleConnection;
+
+      break;
+    }
+    case DatabaseServiceType.BurstIQ: {
+      schema = burstiqConnection;
 
       break;
     }

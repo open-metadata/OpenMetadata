@@ -36,6 +36,8 @@ public class FileIndex implements SearchIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", tags);
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("serviceType", file.getServiceType());
     doc.put("service", getEntityWithDisplayName(file.getService()));
     doc.put("directory", getEntityWithDisplayName(file.getDirectory()));

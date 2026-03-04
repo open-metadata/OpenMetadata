@@ -33,14 +33,17 @@ ROW_COUNT = "rowCount"
 class BaseTableRowCountToEqualValidator(BaseTestValidator):
     """Validator for table row count to equal test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _run_validation(self) -> TestCaseResult:
+        """Execute the specific test validation logic
+
+        This method contains the core validation logic that was previously
+        in the run_validation method.
 
         Returns:
-            TestCaseResult:
+            TestCaseResult: The test case result for the overall validation
         """
         try:
-            res = self._run_results(Metrics.ROW_COUNT)
+            res = self._run_results(Metrics.rowCount)
         except ValueError as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())

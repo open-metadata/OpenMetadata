@@ -32,7 +32,8 @@
         "QlikCloud",
         "Sigma",
         "ThoughtSpot",
-        "Grafana"
+        "Grafana",
+        "Hex"
       ],
       "javaEnums": [
         {
@@ -88,6 +89,9 @@
         },
         {
           "name": "Grafana"
+        },
+        {
+          "name": "Hex"
         }
       ]
     },
@@ -155,6 +159,9 @@
             },
             {
               "$ref": "./connections/dashboard/grafanaConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/hexConnection.json"
             }
           ]
         }
@@ -222,6 +229,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to this dashboard service.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -238,6 +249,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "entityStatus": {
+      "description": "Status of the entity.",
+      "$ref": "../../type/status.json"
     },
     "dataProducts" : {
       "description": "List of data products this entity is part of.",

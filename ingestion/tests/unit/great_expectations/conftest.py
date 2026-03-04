@@ -103,3 +103,15 @@ def fixture_jinja_environment():
     return create_jinja_environment(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
     )
+
+
+@fixture(scope="module")
+def table_config_map_fixture():
+    """Simple config map for testing new expectation_suite_table_config_map feature"""
+    return {
+        "test_suite": {
+            "database_name": "mapped_db",
+            "schema_name": "mapped_schema",
+            "table_name": "mapped_table",
+        }
+    }

@@ -10,16 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Typography } from 'antd';
+import { Button, Popover } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
-import { getEntityName } from '../../../utils/EntityUtils';
-import Fqn from '../../../utils/Fqn';
 import { getVisiblePopupContainer } from '../../../utils/LandingPageWidget/WidgetsUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
@@ -28,36 +25,10 @@ import { EditIconButton } from '../IconButtons/EditIconButton';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
-export const DomainListItemRenderer = (props: EntityReference) => {
-  const isSubDomain = Fqn.split(props.fullyQualifiedName ?? '').length > 1;
-  const fqn = `(${props.fullyQualifiedName ?? ''})`;
-
-  return (
-    <div className="d-flex items-center gap-2">
-      <DomainIcon
-        color={DE_ACTIVE_COLOR}
-        height={20}
-        name="folder"
-        width={20}
-      />
-      <div className="d-flex items-center w-max-400">
-        <Typography.Text ellipsis>{getEntityName(props)}</Typography.Text>
-        {isSubDomain && (
-          <Typography.Text
-            ellipsis
-            className="m-l-xss text-xs"
-            type="secondary">
-            {fqn}
-          </Typography.Text>
-        )}
-      </div>
-    </div>
-  );
-};
-
 const DomainSelectableList = ({
   children,
   disabled,
+  getPopupContainer: getPopupContainerProp,
   hasPermission,
   multiple = false,
   onCancel,
@@ -66,6 +37,8 @@ const DomainSelectableList = ({
   selectedDomain,
   showAllDomains = false,
   wrapInButton = true,
+  overlayClassName,
+  isClearable,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -93,8 +66,19 @@ const DomainSelectableList = ({
     async (domains: EntityReference[]) => {
       if (multiple) {
         await onUpdate(domains);
-      } else {
+        setPopupVisible(false);
+
+        return;
+      }
+
+      // Handle single domain mode
+      if (domains.length > 0) {
         await onUpdate(domains[0]);
+      } else {
+        // Pass undefined for empty selection in single domain mode
+        await onUpdate(
+          undefined as unknown as EntityReference | EntityReference[]
+        );
       }
 
       setPopupVisible(false);
@@ -116,6 +100,7 @@ const DomainSelectableList = ({
             <FocusTrapWithContainer active={popoverProps?.open || false}>
               <DomainSelectablTree
                 initialDomains={initialDomains}
+                isClearable={isClearable}
                 isMultiple={multiple}
                 showAllDomains={showAllDomains}
                 value={selectedDomainsList as string[]}
@@ -126,9 +111,8 @@ const DomainSelectableList = ({
             </FocusTrapWithContainer>
           )
         }
-        getPopupContainer={getVisiblePopupContainer}
         open={popupVisible}
-        overlayClassName="domain-select-popover w-400"
+        overlayClassName={`domain-select-popover w-400 ${overlayClassName}`}
         placement="bottomRight"
         showArrow={false}
         trigger="click"
@@ -137,7 +121,8 @@ const DomainSelectableList = ({
             setPopupVisible(visible);
           }
         }}
-        {...popoverProps}>
+        {...popoverProps}
+        getPopupContainer={getPopupContainerProp ?? getVisiblePopupContainer}>
         {children ??
           (!isVersionView && (
             <EditIconButton
@@ -156,6 +141,7 @@ const DomainSelectableList = ({
     );
   }, [
     children,
+    getPopupContainerProp,
     hasPermission,
     handleCancel,
     handleUpdate,
@@ -164,7 +150,9 @@ const DomainSelectableList = ({
     popoverProps,
     popupVisible,
     selectedDomainsList,
+    selectedDomain,
     isVersionView,
+    isClearable,
   ]);
 
   if (wrapInButton) {

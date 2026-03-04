@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Post, Thread } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
@@ -37,7 +37,7 @@ import ActivityFeedActions from '../Shared/ActivityFeedActions';
 
 interface CommentCardInterface {
   feed: Thread;
-  post: any;
+  post: Post;
   isLastReply: boolean;
   closeFeedEditor: () => void;
 }
@@ -125,13 +125,13 @@ const CommentCard = ({
 
   return (
     <div
-      className={classNames('d-flex justify-start relative reply-card', {
+      className={classNames('d-flex justify-start relative reply-card gap-2', {
         'reply-card-border-bottom': !isLastReply,
       })}
       data-testid="feed-reply-card"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
-      <div className="profile-picture m-r-xs">
+      <div className="profile-picture">
         <UserPopOverCard userName={post.from ?? ''}>
           <div className="d-flex items-center">
             <ProfilePicture key={post.id} name={post.from ?? ''} width="32" />

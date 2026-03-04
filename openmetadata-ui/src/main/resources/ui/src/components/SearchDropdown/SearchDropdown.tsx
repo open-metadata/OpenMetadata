@@ -21,6 +21,7 @@ import {
   Input,
   MenuItemProps,
   MenuProps,
+  Radio,
   Row,
   Space,
   Tooltip,
@@ -53,6 +54,7 @@ import {
 } from './SearchDropdown.interface';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
+  dropdownClassName,
   isSuggestionsLoading,
   label,
   options,
@@ -68,7 +70,10 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   independent = false,
   hideCounts = false,
   hasNullOption = false,
+  showSelectedCounts = false,
   triggerButtonSize = 'small',
+  hideSearchBar = false,
+  singleSelect = false,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -79,9 +84,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     SearchDropdownOption[]
   >([]);
   const [nullOptionSelected, setNullOptionSelected] = useState<boolean>(false);
-  const nullLabelText = t('label.no-entity', {
-    entity: label,
-  });
+
+  const nullLabelText = t('label.no-entity', { entity: label });
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
@@ -89,7 +93,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     const selectedOptionsObj = independent
       ? selectedOptions
       : options.filter((option) =>
-          selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
+          selectedOptions.some((selectedOpt) => option.key === selectedOpt.key)
         );
 
     if (fixedOrderOptions) {
@@ -97,10 +101,11 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         key: item.key,
         label: generateSearchDropdownLabel(
           item,
-          selectedOptionsObj.indexOf(item) !== -1,
+          selectedOptionsObj.includes(item),
           highlight ? searchText : '',
           showProfilePicture,
-          hideCounts
+          hideCounts,
+          singleSelect
         ),
       }));
     } else {
@@ -111,13 +116,14 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           true,
           highlight ? searchText : '',
           showProfilePicture,
-          hideCounts
+          hideCounts,
+          singleSelect
         ) || [];
 
       // Filtering out unselected options
       const unselectedOptions = options.filter(
         (option) =>
-          !selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
+          !selectedOptions.some((selectedOpt) => option.key === selectedOpt.key)
       );
 
       // Labels for unselected options
@@ -127,30 +133,47 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           false,
           highlight ? searchText : '',
           showProfilePicture,
-          hideCounts
+          hideCounts,
+          singleSelect
         ) || [];
 
       return [...selectedOptionKeys, ...otherOptions];
     }
-  }, [options, selectedOptions, fixedOrderOptions, independent]);
+  }, [
+    options,
+    selectedOptions,
+    fixedOrderOptions,
+    independent,
+    searchText,
+    hideCounts,
+    singleSelect,
+    showProfilePicture,
+    highlight,
+  ]);
 
   // handle menu item click
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
     const currentKey = info.key;
-    // Find out if clicked option is present in selected key
-    const selectedKey = selectedOptions.find(
-      (option) => option.key === currentKey
-    );
-
-    // Get the option object for clicked option
     const option = options.find((op) => op.key === currentKey);
 
-    // Get updated options
-    const updatedValues = isUndefined(selectedKey)
-      ? [...selectedOptions, ...(option ? [option] : [])]
-      : selectedOptions.filter((option) => option.key !== currentKey);
-
-    setSelectedOptions(updatedValues);
+    if (singleSelect) {
+      const isAlreadySelected = selectedOptions.some(
+        (opt) => opt.key === currentKey
+      );
+      const updatedValues = !isAlreadySelected && option ? [option] : [];
+      setSelectedOptions(updatedValues);
+      if (!isAlreadySelected && option) {
+        setNullOptionSelected(false);
+      }
+    } else {
+      const isAlreadySelected = selectedOptions.some(
+        (option) => option.key === currentKey
+      );
+      const updatedValues = isAlreadySelected
+        ? selectedOptions.filter((option) => option.key !== currentKey)
+        : [...selectedOptions, ...(option ? [option] : [])];
+      setSelectedOptions(updatedValues);
+    }
   };
 
   // handle clear all
@@ -171,12 +194,23 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     setIsDropDownOpen(false);
   };
 
+  // Handle null option change
+  const handleNullOptionChange = (checked: boolean) => {
+    setNullOptionSelected(checked);
+    if (singleSelect && checked) {
+      setSelectedOptions([]);
+    }
+  };
+
   // Handle update button click
   const handleUpdate = () => {
     // call on change with updated value
     if (nullOptionSelected) {
       onChange(
-        [{ key: NULL_OPTION_KEY, label: nullLabelText }, ...selectedOptions],
+        [
+          { key: NULL_OPTION_KEY, label: nullLabelText },
+          ...(singleSelect ? [] : selectedOptions),
+        ],
         searchKey
       );
     } else {
@@ -186,8 +220,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   };
 
   const showClearAllBtn = useMemo(
-    () => selectedOptions.length > 1,
-    [selectedOptions]
+    () => !singleSelect && selectedOptions.length > 1,
+    [singleSelect, selectedOptions]
   );
 
   useEffect(() => {
@@ -206,7 +240,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   const getDropdownBody = useCallback(
     (menuNode: ReactNode) => {
       const entityLabel = index && tabsInfo[index]?.label;
-      const isDomainKey = searchKey.startsWith('domain');
+      const isDomainKey = searchKey?.startsWith('domain') ?? false;
       if (isSuggestionsLoading) {
         return (
           <Row align="middle" className="p-y-sm" justify="center">
@@ -240,22 +274,24 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     (menuNode: ReactNode) => (
       <Card
         bodyStyle={{ padding: 0 }}
-        className="custom-dropdown-render"
+        className={classNames('custom-dropdown-render', dropdownClassName)}
         data-testid="drop-down-menu">
         <Space className="w-full" direction="vertical" size={0}>
-          <div className="p-t-sm p-x-sm">
-            <Input
-              autoFocus
-              data-testid="search-input"
-              placeholder={`${t('label.search-entity', {
-                entity: label,
-              })}...`}
-              onChange={(e) => {
-                const { value } = e.target;
-                debouncedOnSearch(value);
-              }}
-            />
-          </div>
+          {!hideSearchBar && (
+            <div className="p-t-sm p-x-sm">
+              <Input
+                autoFocus
+                data-testid="search-input"
+                placeholder={`${t('label.search-entity', {
+                  entity: label,
+                })}...`}
+                onChange={(e) => {
+                  const { value } = e.target;
+                  debouncedOnSearch(value);
+                }}
+              />
+            </div>
+          )}
           {showClearAllBtn && (
             <>
               <Divider className="m-t-xs m-b-0" />
@@ -270,19 +306,32 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               </Button>
             </>
           )}
-          <Divider
-            className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
-          />
+          {!hideSearchBar && (
+            <Divider
+              className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
+            />
+          )}
+
           {hasNullOption && (
             <>
               <div className="d-flex items-center m-x-sm m-y-xs gap-2">
-                <Checkbox
-                  checked={nullOptionSelected}
-                  className="d-flex flex-1"
-                  data-testid="no-option-checkbox"
-                  onChange={(e) => setNullOptionSelected(e.target.checked)}>
-                  {nullLabelText}
-                </Checkbox>
+                {singleSelect ? (
+                  <Radio
+                    checked={nullOptionSelected}
+                    className="d-flex flex-1"
+                    data-testid="no-option-radio"
+                    onChange={(e) => handleNullOptionChange(e.target.checked)}>
+                    {nullLabelText}
+                  </Radio>
+                ) : (
+                  <Checkbox
+                    checked={nullOptionSelected}
+                    className="d-flex flex-1"
+                    data-testid="no-option-checkbox"
+                    onChange={(e) => handleNullOptionChange(e.target.checked)}>
+                    {nullLabelText}
+                  </Checkbox>
+                )}
               </div>
 
               <Divider className="m-y-0" />
@@ -312,13 +361,18 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     [
       label,
       debouncedOnSearch,
+      dropdownClassName,
       hasNullOption,
       showClearAllBtn,
       nullOptionSelected,
+      singleSelect,
+      handleNullOptionChange,
+      nullLabelText,
       handleClear,
       getDropdownBody,
       handleUpdate,
       handleDropdownClose,
+      hideSearchBar,
     ]
   );
 
@@ -349,7 +403,11 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           className="quick-filter-dropdown-trigger-btn"
           size={triggerButtonSize}>
           <Space data-testid={`search-dropdown-${label}`} size={4}>
-            <Space size={0}>
+            <Space
+              className={classNames({
+                active: selectedKeys.length > 0,
+              })}
+              size={0}>
               <Typography.Text className="filters-label font-medium">
                 {label}
               </Typography.Text>
@@ -357,7 +415,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                 <span>
                   {': '}
                   <Typography.Text className="text-primary font-medium">
-                    {getSelectedOptionLabelString(selectedKeys)}
+                    {showSelectedCounts
+                      ? `(${selectedKeys.length})`
+                      : getSelectedOptionLabelString(selectedKeys)}
                   </Typography.Text>
                 </span>
               )}

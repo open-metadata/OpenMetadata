@@ -50,6 +50,10 @@
     "dataModelType": {
       "$ref": "../../entity/data/dashboardDataModel.json#/definitions/dataModelType"
     },
+    "sourceUrl": {
+      "description": "Dashboard URL suffix from its service.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
     "sql": {
       "description": "In case the Data Model is based on a SQL query.",
       "$ref": "../../type/basic.json#/definitions/sqlQuery",

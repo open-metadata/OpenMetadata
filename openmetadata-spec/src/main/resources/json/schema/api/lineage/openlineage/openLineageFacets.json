@@ -1,0 +1,391 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/openlineage/openLineageFacets.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageFacets",
+  "description": "OpenLineage facet definitions for datasets, jobs, and runs.",
+  "definitions": {
+    "baseFacet": {
+      "description": "Base facet that all facets extend from.",
+      "type": "object",
+      "properties": {
+        "_producer": {
+          "description": "URI identifying the producer of this metadata.",
+          "type": "string",
+          "format": "uri"
+        },
+        "_schemaURL": {
+          "description": "URI pointing to the schema definition for this facet.",
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "schemaField": {
+      "description": "A field in a dataset schema.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The name of the field.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The type of the field (e.g., STRING, INTEGER, STRUCT).",
+          "type": "string"
+        },
+        "description": {
+          "description": "Optional description of the field.",
+          "type": "string"
+        }
+      },
+      "required": ["name", "type"]
+    },
+    "schemaFacet": {
+      "description": "Schema facet describing the structure of a dataset.",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/definitions/baseFacet" }
+      ],
+      "properties": {
+        "_producer": { "type": "string" },
+        "_schemaURL": { "type": "string" },
+        "fields": {
+          "description": "List of fields in the schema.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/schemaField"
+          }
+        }
+      }
+    },
+    "symlinkIdentifier": {
+      "description": "An alternate identifier for a dataset.",
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "description": "The namespace of the symlink.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the symlink.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The type of symlink (e.g., TABLE).",
+          "type": "string"
+        }
+      },
+      "required": ["namespace", "name", "type"]
+    },
+    "symlinksFacet": {
+      "description": "Symlinks facet providing alternate identifiers for a dataset.",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/definitions/baseFacet" }
+      ],
+      "properties": {
+        "_producer": { "type": "string" },
+        "_schemaURL": { "type": "string" },
+        "identifiers": {
+          "description": "List of alternate identifiers.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/symlinkIdentifier"
+          }
+        }
+      }
+    },
+    "inputField": {
+      "description": "A reference to an input column in column lineage.",
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "description": "The namespace of the input dataset.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the input dataset.",
+          "type": "string"
+        },
+        "field": {
+          "description": "The name of the input field/column.",
+          "type": "string"
+        }
+      },
+      "required": ["namespace", "name", "field"]
+    },
+    "columnLineageField": {
+      "description": "Column lineage information for a single output field.",
+      "type": "object",
+      "properties": {
+        "inputFields": {
+          "description": "List of input fields that contribute to this output field.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/inputField"
+          }
+        },
+        "transformationDescription": {
+          "description": "Human-readable description of the transformation.",
+          "type": "string"
+        },
+        "transformationType": {
+          "description": "Type of transformation (e.g., DIRECT, AGGREGATION).",
+          "type": "string"
+        }
+      },
+      "required": ["inputFields"]
+    },
+    "columnLineageFacet": {
+      "description": "Column lineage facet describing how output columns are derived from input columns.",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/definitions/baseFacet" }
+      ],
+      "properties": {
+        "_producer": { "type": "string" },
+        "_schemaURL": { "type": "string" },
+        "fields": {
+          "description": "Map of output field names to their lineage information.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/columnLineageField"
+          }
+        }
+      },
+      "required": ["fields"]
+    },
+    "parentJobFacet": {
+      "description": "Parent job information in run facets.",
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "description": "The namespace of the parent job.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the parent job.",
+          "type": "string"
+        }
+      },
+      "required": ["namespace", "name"]
+    },
+    "parentRunFacet": {
+      "description": "Parent run facet linking a run to its parent job.",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/definitions/baseFacet" }
+      ],
+      "properties": {
+        "_producer": { "type": "string" },
+        "_schemaURL": { "type": "string" },
+        "run": {
+          "description": "The parent run information.",
+          "type": "object",
+          "properties": {
+            "runId": {
+              "description": "The UUID of the parent run.",
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": ["runId"]
+        },
+        "job": {
+          "description": "The parent job information.",
+          "$ref": "#/definitions/parentJobFacet"
+        }
+      },
+      "required": ["job"]
+    },
+    "sqlJobFacet": {
+      "description": "SQL job facet containing the SQL query.",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/definitions/baseFacet" }
+      ],
+      "properties": {
+        "_producer": { "type": "string" },
+        "_schemaURL": { "type": "string" },
+        "query": {
+          "description": "The SQL query executed by the job.",
+          "type": "string"
+        }
+      },
+      "required": ["query"]
+    },
+    "datasourceFacet": {
+      "description": "Datasource facet providing connection details for the dataset.",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/definitions/baseFacet" }
+      ],
+      "properties": {
+        "_producer": { "type": "string" },
+        "_schemaURL": { "type": "string" },
+        "name": {
+          "description": "The name of the datasource.",
+          "type": "string"
+        },
+        "uri": {
+          "description": "The URI of the datasource (e.g., postgres://host:5432/db).",
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "documentationFacet": {
+      "description": "Documentation facet providing description for the dataset.",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/definitions/baseFacet" }
+      ],
+      "properties": {
+        "_producer": { "type": "string" },
+        "_schemaURL": { "type": "string" },
+        "description": {
+          "description": "The documentation/description of the dataset.",
+          "type": "string"
+        }
+      }
+    },
+    "ownershipFacet": {
+      "description": "Ownership facet providing owner information for the dataset.",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/definitions/baseFacet" }
+      ],
+      "properties": {
+        "_producer": { "type": "string" },
+        "_schemaURL": { "type": "string" },
+        "owners": {
+          "description": "List of owners.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "The name of the owner.",
+                "type": "string"
+              },
+              "type": {
+                "description": "The type of owner (e.g., MAINTAINER, DATAOWNER).",
+                "type": "string"
+              }
+            },
+            "required": ["name"]
+          }
+        }
+      }
+    },
+    "datasetFacets": {
+      "description": "Common facets that can be attached to a dataset.",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "$ref": "#/definitions/schemaFacet"
+        },
+        "symlinks": {
+          "$ref": "#/definitions/symlinksFacet"
+        },
+        "datasource": {
+          "$ref": "#/definitions/datasourceFacet"
+        },
+        "documentation": {
+          "$ref": "#/definitions/documentationFacet"
+        },
+        "ownership": {
+          "$ref": "#/definitions/ownershipFacet"
+        }
+      },
+      "additionalProperties": true
+    },
+    "inputDatasetFacets": {
+      "description": "Facets specific to input datasets.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "outputDatasetFacets": {
+      "description": "Facets specific to output datasets.",
+      "type": "object",
+      "properties": {
+        "columnLineage": {
+          "$ref": "#/definitions/columnLineageFacet"
+        }
+      },
+      "additionalProperties": true
+    },
+    "errorMessageFacet": {
+      "description": "Error message facet for capturing run failures.",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/definitions/baseFacet" }
+      ],
+      "properties": {
+        "_producer": { "type": "string" },
+        "_schemaURL": { "type": "string" },
+        "message": {
+          "description": "The error message.",
+          "type": "string"
+        },
+        "programmingLanguage": {
+          "description": "The programming language of the stack trace.",
+          "type": "string"
+        },
+        "stackTrace": {
+          "description": "The stack trace of the error.",
+          "type": "string"
+        }
+      },
+      "required": ["message"]
+    },
+    "processingEngineFacet": {
+      "description": "Processing engine facet describing the execution environment.",
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/definitions/baseFacet" }
+      ],
+      "properties": {
+        "_producer": { "type": "string" },
+        "_schemaURL": { "type": "string" },
+        "name": {
+          "description": "The name of the processing engine (e.g., Spark, Flink).",
+          "type": "string"
+        },
+        "version": {
+          "description": "The version of the processing engine.",
+          "type": "string"
+        },
+        "openlineageAdapterVersion": {
+          "description": "Version of the OpenLineage adapter.",
+          "type": "string"
+        }
+      }
+    },
+    "runFacets": {
+      "description": "Facets that can be attached to a run.",
+      "type": "object",
+      "properties": {
+        "parent": {
+          "$ref": "#/definitions/parentRunFacet"
+        },
+        "errorMessage": {
+          "$ref": "#/definitions/errorMessageFacet"
+        },
+        "processing_engine": {
+          "$ref": "#/definitions/processingEngineFacet"
+        }
+      },
+      "additionalProperties": true
+    },
+    "jobFacets": {
+      "description": "Facets that can be attached to a job.",
+      "type": "object",
+      "properties": {
+        "sql": {
+          "$ref": "#/definitions/sqlJobFacet"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

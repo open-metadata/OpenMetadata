@@ -40,11 +40,14 @@ class Strategy(Enum):
 class BaseTableCustomSQLQueryValidator(BaseTestValidator):
     """Validator table custom SQL Query test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _run_validation(self) -> TestCaseResult:
+        """Execute the specific test validation logic
+
+        This method contains the core validation logic that was previously
+        in the run_validation method.
 
         Returns:
-            TestCaseResult:
+            TestCaseResult: The test case result for the overall validation
         """
         sql_expression = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
@@ -87,11 +90,13 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
                 [TestResultValue(name=RESULT_ROW_COUNT, value=None)],
             )
         len_rows = rows if isinstance(rows, int) else len(rows)
-        if evaluate_threshold(
+        test_passed = evaluate_threshold(
             threshold,
             operator,
             len_rows,
-        ):
+        )
+
+        if test_passed:
             status = TestCaseStatus.Success
             result_value = len_rows
         else:
@@ -99,17 +104,23 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             result_value = len_rows
 
         if self.test_case.computePassedFailedRowCount:
-            row_count = self.get_row_count()
+            row_count = self._get_total_row_count_if_needed()
+            passed_rows, failed_rows = self._calculate_passed_failed_rows(
+                test_passed, operator, threshold, len_rows, row_count
+            )
         else:
+            passed_rows = None
+            failed_rows = None
             row_count = None
 
         return self.get_test_case_result_object(
             self.execution_date,
             status,
-            f"Found {result_value} row(s). Test query is expected to return {threshold} row.",
+            f"Found {result_value} row(s). Test query is expected to return {operator} {threshold} row(s).",
             [TestResultValue(name=RESULT_ROW_COUNT, value=str(result_value))],
             row_count=row_count,
-            failed_rows=result_value,
+            failed_rows=failed_rows,
+            passed_rows=passed_rows,
         )
 
     @abstractmethod
@@ -132,3 +143,100 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             Tuple[int, int]:
         """
         return self.compute_row_count()
+
+    def _get_total_row_count_if_needed(self) -> int:
+        """Get total row count if computePassedFailedRowCount is enabled"""
+        return self.get_row_count()
+
+    def _calculate_passed_failed_rows(
+        self,
+        test_passed: bool,
+        operator: str,
+        threshold: int,
+        len_rows: int,
+        row_count: int,
+    ) -> tuple[int, int]:
+        """Calculate passed and failed rows based on test result and operator
+
+        Args:
+            test_passed: Whether the test passed
+            operator: Comparison operator (>, >=, <, <=, ==)
+            threshold: Expected threshold value
+            len_rows: Number of rows returned by the test query
+            row_count: Total number of rows in the table (or None)
+
+        Returns:
+            Tuple of (passed_rows, failed_rows)
+        """
+        if test_passed:
+            return self._calculate_passed_rows_success(operator, len_rows, row_count)
+        return self._calculate_passed_rows_failure(
+            operator, threshold, len_rows, row_count
+        )
+
+    def _calculate_passed_rows_success(
+        self, operator: str, len_rows: int, row_count: int
+    ) -> tuple[int, int]:
+        """Calculate passed/failed rows when test passed"""
+        if operator in (">", ">="):
+            passed_rows = len_rows
+            failed_rows = (row_count - len_rows) if row_count else 0
+        elif operator in ("<", "<="):
+            passed_rows = row_count - len_rows
+            failed_rows = len_rows
+        elif operator == "==":
+            passed_rows = len_rows
+            failed_rows = row_count - len_rows
+        else:
+            passed_rows = len_rows
+            failed_rows = 0
+
+        return max(0, passed_rows), max(0, failed_rows)
+
+    def _calculate_passed_rows_failure(
+        self, operator: str, threshold: int, len_rows: int, row_count: int
+    ) -> tuple[int, int]:
+        """Calculate passed/failed rows when test failed"""
+        if operator in (">", ">="):
+            return self._calculate_greater_than_failure(len_rows, row_count)
+        if operator in ("<", "<="):
+            return self._calculate_less_than_failure(len_rows, row_count)
+        if operator == "==":
+            return self._calculate_equal_failure(threshold, len_rows, row_count)
+
+        failed_rows = row_count if row_count else len_rows
+        return 0, max(0, failed_rows)
+
+    def _calculate_greater_than_failure(
+        self, len_rows: int, row_count: int
+    ) -> tuple[int, int]:
+        """Calculate rows for > or >= operator failure (expected more rows)"""
+        passed_rows = len_rows
+        failed_rows = (row_count - len_rows) if row_count else 0
+        return max(0, passed_rows), max(0, failed_rows)
+
+    def _calculate_less_than_failure(
+        self, len_rows: int, row_count: int
+    ) -> tuple[int, int]:
+        """Calculate rows for < or <= operator failure (expected fewer rows)"""
+        failed_rows = len_rows
+        passed_rows = row_count - failed_rows
+
+        return max(0, passed_rows), max(0, failed_rows)
+
+    def _calculate_equal_failure(
+        self, threshold: int, len_rows: int, row_count: int
+    ) -> tuple[int, int]:
+        """Calculate rows for == operator failure (expected exact count)"""
+        if row_count:
+            if len_rows > threshold:
+                failed_rows = len_rows - threshold
+                passed_rows = row_count - failed_rows
+            else:
+                failed_rows = row_count - len_rows
+                passed_rows = len_rows
+        else:
+            failed_rows = abs(len_rows - threshold)
+            passed_rows = 0
+
+        return max(0, passed_rows), max(0, failed_rows)

@@ -15,24 +15,20 @@ import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import { navbarSearchItems, selectOption } from '../../utils/navbar';
 import { sidebarClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 for (const searchItem of navbarSearchItems) {
-  const { label, searchIndex, isScrollRequired } = searchItem;
+  const { label, searchIndex } = searchItem;
 
-  test(`Search Term - ${label}`, async ({ page }) => {
+  test(`Search Term - ${label}`, PLAYWRIGHT_BASIC_TEST_TAG_OBJ, async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.EXPLORE);
     await page.waitForLoadState('networkidle');
 
-    await selectOption(
-      page,
-      page.getByTestId('global-search-selector'),
-      label,
-      isScrollRequired
-    );
+    await selectOption(page, page.getByTestId('global-search-selector'), label);
 
     await expect(page.getByTestId('global-search-selector')).toContainText(
       label

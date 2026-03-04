@@ -68,7 +68,7 @@ def build_auto_classification_workflow_config(
             config={},
         ),
         processor=Processor(
-            type="orm-profiler",
+            type="tag-pii-processor",
             config={},
         ),
         workflowConfig=WorkflowConfig(
@@ -76,6 +76,7 @@ def build_auto_classification_workflow_config(
             openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
         ),
         ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
+        enableStreamableLogs=ingestion_pipeline.enableStreamableLogs,
     )
 
     return workflow_config

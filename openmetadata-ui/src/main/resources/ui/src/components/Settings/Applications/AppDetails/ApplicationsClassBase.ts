@@ -63,7 +63,7 @@ class ApplicationsClassBase {
 
   public importAppScreenshot(screenshotName: string) {
     return import(
-      /* @vite-ignore */ `../../../../assets/img/appScreenshots/${screenshotName}`
+      `../../../../assets/img/appScreenshots/${screenshotName}.png`
     );
   }
 

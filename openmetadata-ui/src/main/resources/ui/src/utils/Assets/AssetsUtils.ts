@@ -14,6 +14,10 @@ import { Operation } from 'fast-json-patch';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { Directory } from '../../generated/entity/data/directory';
+import { File } from '../../generated/entity/data/file';
+import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
+import { Worksheet } from '../../generated/entity/data/worksheet';
 import { ListParams } from '../../interface/API.interface';
 import {
   getApiCollectionByFQN,
@@ -39,6 +43,10 @@ import {
   patchDataModelDetails,
 } from '../../rest/dataModelsAPI';
 import { getDomainByName, patchDomains } from '../../rest/domainAPI';
+import {
+  getDriveAssetByFqn,
+  patchDriveAssetDetails,
+} from '../../rest/driveAPI';
 import {
   getGlossariesByName,
   getGlossaryTermByFQN,
@@ -76,6 +84,7 @@ import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
 import { t } from '../i18next/LocalUtil';
+import { getTermQuery } from '../SearchUtils';
 
 export const getAPIfromSource = (
   source: keyof MapPatchAPIResponse
@@ -128,6 +137,18 @@ export const getAPIfromSource = (
       return patchMetric;
     case EntityType.DOMAIN:
       return patchDomains;
+    case EntityType.DIRECTORY:
+      return (id: string, data: Operation[]) =>
+        patchDriveAssetDetails<Directory>(id, data, EntityType.DIRECTORY);
+    case EntityType.FILE:
+      return (id: string, data: Operation[]) =>
+        patchDriveAssetDetails<File>(id, data, EntityType.FILE);
+    case EntityType.SPREADSHEET:
+      return (id: string, data: Operation[]) =>
+        patchDriveAssetDetails<Spreadsheet>(id, data, EntityType.SPREADSHEET);
+    case EntityType.WORKSHEET:
+      return (id: string, data: Operation[]) =>
+        patchDriveAssetDetails<Worksheet>(id, data, EntityType.WORKSHEET);
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -137,6 +158,7 @@ export const getAPIfromSource = (
     case EntityType.SEARCH_SERVICE:
     case EntityType.API_SERVICE:
     case EntityType.SECURITY_SERVICE:
+    case EntityType.DRIVE_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -196,6 +218,38 @@ export const getEntityAPIfromSource = (
       return getMetricByFqn;
     case EntityType.DOMAIN:
       return getDomainByName;
+    case EntityType.DIRECTORY:
+      return (fqn: string, params?: ListParams) =>
+        getDriveAssetByFqn<Directory>(
+          fqn,
+          EntityType.DIRECTORY,
+          params?.fields,
+          params?.include
+        );
+    case EntityType.FILE:
+      return (fqn: string, params?: ListParams) =>
+        getDriveAssetByFqn<File>(
+          fqn,
+          EntityType.FILE,
+          params?.fields,
+          params?.include
+        );
+    case EntityType.SPREADSHEET:
+      return (fqn: string, params?: ListParams) =>
+        getDriveAssetByFqn<Spreadsheet>(
+          fqn,
+          EntityType.SPREADSHEET,
+          params?.fields,
+          params?.include
+        );
+    case EntityType.WORKSHEET:
+      return (fqn: string, params?: ListParams) =>
+        getDriveAssetByFqn<Worksheet>(
+          fqn,
+          EntityType.WORKSHEET,
+          params?.fields,
+          params?.include
+        );
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -205,6 +259,7 @@ export const getEntityAPIfromSource = (
     case EntityType.SEARCH_SERVICE:
     case EntityType.API_SERVICE:
     case EntityType.SECURITY_SERVICE:
+    case EntityType.DRIVE_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -235,3 +290,18 @@ export function getEntityTypeString(type: string) {
       return t('label.data-product-lowercase');
   }
 }
+
+/**
+ * Creates a query filter to search for entities by their fully qualified names.
+ * Uses a 'should' query with minimum_should_match: 1 to match any of the provided FQNs.
+ *
+ * @param fqns - Array of fully qualified names to filter by
+ * @returns Query filter object or undefined if no FQNs provided
+ */
+export const getEntityFqnQueryFilter = (fqns: string[]) => {
+  if (fqns.length === 0) {
+    return undefined;
+  }
+
+  return getTermQuery({ fullyQualifiedName: fqns }, 'should', 1);
+};

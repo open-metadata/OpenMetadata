@@ -5,7 +5,7 @@
     <parent>
         <artifactId>openmetadata-shaded-deps</artifactId>
         <groupId>org.open-metadata</groupId>
-        <version>1.10.0-SNAPSHOT</version>
+        <version>1.12.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>elasticsearch-deps</artifactId>
@@ -16,14 +16,30 @@
              https://issues.apache.org/jira/browse/MSHADE-206 which makes it so
              the dependency reduced pom is not reflected in a multi-module build
              correctly. -->
+
+        <!-- Elasticsearch Java API Client -->
         <dependency>
-            <groupId>org.elasticsearch.client</groupId>
-            <artifactId>elasticsearch-rest-high-level-client</artifactId>
+            <groupId>co.elastic.clients</groupId>
+            <artifactId>elasticsearch-java</artifactId>
+            <version>9.2.4</version>
             <optional>true</optional>
             <exclusions>
                 <exclusion>
                     <groupId>org.yaml</groupId>
                     <artifactId>snakeyaml</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.parsson</groupId>
+                    <artifactId>parsson</artifactId>
+                </exclusion>
+                <!-- Exclude Jackson 3.x which requires Java 23 - Jackson 2.x is still the default -->
+                <exclusion>
+                    <groupId>tools.jackson.core</groupId>
+                    <artifactId>jackson-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>tools.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -121,6 +137,15 @@
                         <relocation>
                             <pattern>org.apache.lucene</pattern>
                             <shadedPattern>es.org.apache.lucene</shadedPattern>
+                        </relocation>
+                        <!-- New Elasticsearch Java API Client relocations -->
+                        <relocation>
+                            <pattern>co.elastic</pattern>
+                            <shadedPattern>es.co.elastic</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>co.elastic.clients</pattern>
+                            <shadedPattern>es.co.elastic.clients</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>META-INF/versions/9/org/apache/logging/log4j/</pattern>

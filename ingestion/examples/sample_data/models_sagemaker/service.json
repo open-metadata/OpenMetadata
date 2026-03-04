@@ -1,0 +1,17 @@
+{
+  "type": "SageMaker",
+  "serviceName": "sagemaker_svc",
+  "serviceConnection": {
+    "config": {
+      "type": "SageMaker",
+      "awsConfig": {
+        "awsAccessKeyId": "aws_access_key_id",
+        "awsSecretAccessKey": "aws_secret_access_key",
+        "awsRegion": "us-east-1"
+      }
+    }
+  },
+  "sourceConfig": {
+    "config": {}
+  }
+}
