@@ -23,6 +23,7 @@ import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.gson.Gson;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.format.DateTimeFormatter;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
@@ -56,12 +58,15 @@ import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 public class TypeRepository extends EntityRepository<Type> {
   private static final String UPDATE_FIELDS = "customProperties";
   private static final String PATCH_FIELDS = "customProperties";
+  private static final ConcurrentHashMap<UUID, Object> TYPE_PROPERTY_LOCKS =
+      new ConcurrentHashMap<>();
 
   public TypeRepository() {
     super(
@@ -75,7 +80,7 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  public void setFields(Type type, Fields fields) {
+  public void setFields(Type type, Fields fields, RelationIncludes relationIncludes) {
     type.withCustomProperties(
         fields.contains("customProperties")
             ? getCustomProperties(type)
@@ -100,6 +105,28 @@ public class TypeRepository extends EntityRepository<Type> {
     store(type, update);
     type.withCustomProperties(customProperties);
     updateTypeMap(type);
+  }
+
+  public void storeEntities(List<Type> types) {
+    List<Type> typesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Type type : types) {
+      List<CustomProperty> customProperties = type.getCustomProperties();
+
+      type.withCustomProperties(null);
+
+      String jsonCopy = gson.toJson(type);
+      typesToStore.add(gson.fromJson(jsonCopy, Type.class));
+
+      type.withCustomProperties(customProperties);
+    }
+
+    storeMany(typesToStore);
+
+    for (Type type : types) {
+      updateTypeMap(type);
+    }
   }
 
   public void addToRegistry(Type type) {
@@ -138,31 +165,34 @@ public class TypeRepository extends EntityRepository<Type> {
 
   public PutResponse<Type> addCustomProperty(
       UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
-    Type type = find(id, Include.NON_DELETED);
-    property.setPropertyType(
-        Entity.getEntityReferenceById(
-            Entity.TYPE, property.getPropertyType().getId(), NON_DELETED));
-    validateProperty(property);
-    if (type.getCategory().equals(Category.Field)) {
-      throw new IllegalArgumentException(
-          "Only entity types can be extended and field types can't be extended");
-    }
-    setFieldsInternal(type, putFields);
-
-    find(property.getPropertyType().getId(), NON_DELETED); // Validate customProperty type exists
-
-    // If property already exists, then update it. Else add the new property.
-    List<CustomProperty> updatedProperties = new ArrayList<>(List.of(property));
-    for (CustomProperty existing : type.getCustomProperties()) {
-      if (!existing.getName().equals(property.getName())) {
-        updatedProperties.add(existing);
+    Object lock = TYPE_PROPERTY_LOCKS.computeIfAbsent(id, k -> new Object());
+    synchronized (lock) {
+      Type type = find(id, Include.NON_DELETED);
+      property.setPropertyType(
+          Entity.getEntityReferenceById(
+              Entity.TYPE, property.getPropertyType().getId(), NON_DELETED));
+      validateProperty(property);
+      if (type.getCategory().equals(Category.Field)) {
+        throw new IllegalArgumentException(
+            "Only entity types can be extended and field types can't be extended");
       }
-    }
+      setFieldsInternal(type, putFields);
 
-    type.setCustomProperties(updatedProperties);
-    type.setUpdatedBy(updatedBy);
-    type.setUpdatedAt(System.currentTimeMillis());
-    return createOrUpdate(uriInfo, type, updatedBy);
+      find(property.getPropertyType().getId(), NON_DELETED); // Validate customProperty type exists
+
+      // If property already exists, then update it. Else add the new property.
+      List<CustomProperty> updatedProperties = new ArrayList<>(List.of(property));
+      for (CustomProperty existing : type.getCustomProperties()) {
+        if (!existing.getName().equals(property.getName())) {
+          updatedProperties.add(existing);
+        }
+      }
+
+      type.setCustomProperties(updatedProperties);
+      type.setUpdatedBy(updatedBy);
+      type.setUpdatedAt(System.currentTimeMillis());
+      return createOrUpdate(uriInfo, type, updatedBy);
+    }
   }
 
   private List<CustomProperty> getCustomProperties(Type type) {
@@ -202,7 +232,9 @@ public class TypeRepository extends EntityRepository<Type> {
           customProperty.getCustomPropertyConfig(), getDateTimeTokens(), "Invalid dateTime format");
       case "time-cp" -> validateDateFormat(
           customProperty.getCustomPropertyConfig(), getTimeTokens(), "Invalid time format");
-      case "int", "string" -> {}
+        // hyperlink-cp requires no special config validation - URL protocol validation
+        // (http/https only) is enforced in EntityRepository.validateHyperlinkUrl
+      case "int", "string", "hyperlink-cp" -> {}
     }
   }
 

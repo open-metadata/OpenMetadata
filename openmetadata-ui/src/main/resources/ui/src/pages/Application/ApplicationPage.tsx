@@ -26,6 +26,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
@@ -160,17 +161,18 @@ const ApplicationPage = () => {
               ),
               subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
             }}
+            learningPageId={LEARNING_PAGE_IDS.AUTOMATIONS}
           />
         </Col>
         <Col className="d-flex justify-end" span={8}>
           <Space size="middle">
-            <div>
+            <div className="flex-center gap-2">
               <Switch
                 checked={showDisabled}
                 data-testid="show-disabled"
                 onClick={onShowDisabledAppsChange}
               />
-              <span className="m-l-xs">{t('label.disabled')}</span>
+              <span>{t('label.disabled')}</span>
             </div>
             <LimitWrapper resource="app">
               <Button

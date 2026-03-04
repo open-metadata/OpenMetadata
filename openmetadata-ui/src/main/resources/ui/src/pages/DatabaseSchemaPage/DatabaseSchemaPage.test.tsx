@@ -193,6 +193,9 @@ jest.mock('../../rest/databaseAPI', () => ({
 jest.mock('../../utils/EntityUtilClassBase', () => {
   return {
     getManageExtraOptions: jest.fn().mockReturnValue([]),
+    getFqnParts: jest
+      .fn()
+      .mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
   };
 });
 
@@ -203,7 +206,6 @@ const mockParams = {
 
 const API_FIELDS = [
   'owners',
-  'usageSummary',
   'tags',
   'domains',
   'votes',

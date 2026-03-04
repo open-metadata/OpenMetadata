@@ -37,6 +37,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -82,6 +83,7 @@ export type ListTestDefinitionsParams = ListParams & {
   testPlatform?: TestPlatform;
   supportedDataType?: string;
   enabled?: boolean;
+  supportedService?: string;
 };
 
 export type ListTestCaseResultsParams = Omit<
@@ -420,6 +422,18 @@ export const listTestCases = async (params: ListTestCasesParams) => {
     {
       params,
     }
+  );
+
+  return response.data;
+};
+
+export const exportTestCasesInCSV = async (
+  name: string,
+  params?: { recursive?: boolean }
+): Promise<CSVImportAsyncResponse> => {
+  const response = await APIClient.get(
+    `/dataQuality/testCases/name/${getEncodedFqn(name)}/exportAsync`,
+    { params }
   );
 
   return response.data;

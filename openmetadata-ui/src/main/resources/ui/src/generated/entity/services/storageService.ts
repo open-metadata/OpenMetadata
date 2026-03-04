@@ -40,6 +40,10 @@ export interface StorageService {
      */
     domains?: EntityReference[];
     /**
+     * Status of the entity.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Followers of this entity.
      */
     followers?: EntityReference[];
@@ -261,6 +265,12 @@ export interface AWSCredentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -515,6 +525,21 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the entity.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
@@ -546,6 +571,11 @@ export interface TagLabel {
      * used to determine the tag label.
      */
     labelType: LabelType;
+    /**
+     * Additional metadata associated with this tag label, such as recognizer information for
+     * automatically applied tags.
+     */
+    metadata?: TagLabelMetadata;
     /**
      * Name of the tag or glossary term.
      */
@@ -580,6 +610,75 @@ export enum LabelType {
     Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
+}
+
+/**
+ * Additional metadata associated with this tag label, such as recognizer information for
+ * automatically applied tags.
+ *
+ * Additional metadata associated with a tag label, including information about how the tag
+ * was applied.
+ */
+export interface TagLabelMetadata {
+    /**
+     * Metadata about the recognizer that automatically applied this tag
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+}
+
+/**
+ * Metadata about the recognizer that automatically applied this tag
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
 }
 
 /**

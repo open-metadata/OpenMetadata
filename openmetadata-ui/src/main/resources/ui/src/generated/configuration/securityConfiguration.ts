@@ -33,15 +33,15 @@ export interface AuthenticationConfiguration {
     /**
      * Authentication Authority
      */
-    authority: string;
+    authority?: string;
     /**
      * Callback URL
      */
-    callbackUrl: string;
+    callbackUrl?: string;
     /**
      * Client ID
      */
-    clientId: string;
+    clientId?: string;
     /**
      * Client Type
      */
@@ -69,6 +69,13 @@ export interface AuthenticationConfiguration {
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
+    /**
      * LDAP Configuration in case the Provider is LDAP
      */
     ldapConfiguration?: LDAPConfiguration;
@@ -84,7 +91,7 @@ export interface AuthenticationConfiguration {
     /**
      * List of Public Key URLs
      */
-    publicKeyUrls: string[];
+    publicKeyUrls?: string[];
     /**
      * This is used by auth provider provide response as either id_token or code.
      */
@@ -423,8 +430,13 @@ export interface SamlSSOClientConfig {
      */
     debugMode?: boolean;
     idp:        Idp;
-    security?:  Security;
-    sp:         SP;
+    /**
+     * Ordered list of SAML attribute names to check for display name. First available attribute
+     * wins. Defaults to common OIDC/SAML attribute names.
+     */
+    samlDisplayNameAttributes?: string[];
+    security?:                  Security;
+    sp:                         SP;
 }
 
 /**
@@ -537,6 +549,9 @@ export interface SP {
  * Token Validation Algorithm to use.
  */
 export enum TokenValidationAlgorithm {
+    Es256 = "ES256",
+    Es384 = "ES384",
+    Es512 = "ES512",
     Rs256 = "RS256",
     Rs384 = "RS384",
     Rs512 = "RS512",

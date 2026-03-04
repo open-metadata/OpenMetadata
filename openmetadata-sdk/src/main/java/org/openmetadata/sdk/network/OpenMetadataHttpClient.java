@@ -323,7 +323,7 @@ public class OpenMetadataHttpClient implements HttpClient {
     // Throw appropriate exception based on status code
     switch (statusCode) {
       case 400:
-        throw new InvalidRequestException(errorMessage);
+        throw new InvalidRequestException(errorMessage, (String) null, responseBodyString);
       case 401:
         throw new AuthenticationException(errorMessage);
       case 409:

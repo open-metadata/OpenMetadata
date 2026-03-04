@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.DashboardType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -41,6 +42,12 @@ import org.openmetadata.sdk.models.ListResponse;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard> {
+
+  {
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
+  }
 
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
@@ -1102,5 +1109,26 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
     Dashboard found = getEntityByName(dashboard.getFullyQualifiedName());
     assertNotNull(found);
     assertEquals(dashboard.getId(), found.getId());
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateDashboard> createRequests) {
+    return SdkClients.adminClient().dashboards().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateDashboard> createRequests) {
+    return SdkClients.adminClient().dashboards().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateDashboard createInvalidRequestForBulk(TestNamespace ns) {
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("invalid_dashboard"));
+    return request;
   }
 }

@@ -16,10 +16,10 @@ the session.
 This is useful to centralise the running logic
 and manage behavior such as timeouts.
 """
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, Dict, Iterator, Optional, Union
 
 from sqlalchemy import Table, text
-from sqlalchemy.orm import DeclarativeMeta, Query, Session
+from sqlalchemy.orm import Query, Session
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.utils.logger import query_runner_logger
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 logger = query_runner_logger()
 
 
-class PandasRunner(list):
+class PandasRunner:
     """
     Runner for pandas-based data quality tests.
 
@@ -50,8 +50,8 @@ class PandasRunner(list):
 
     def __init__(
         self,
-        dataset: List["DataFrame"],
-        raw_dataset: List["DataFrame"],
+        dataset: Callable[[], Iterator["DataFrame"]],
+        raw_dataset: Callable[[], Iterator["DataFrame"]],
     ):
         """Initialize the PandasRunner.
 
@@ -59,21 +59,41 @@ class PandasRunner(list):
             dataset: The processed dataset (may be partitioned/sampled)
             raw_dataset: The raw dataset (unpartitioned, unsampled)
         """
-        super().__init__(dataset)
+        self._dataset = dataset
         self._raw_dataset = raw_dataset
 
+    def __call__(self) -> Iterator["DataFrame"]:
+        return self._dataset()
+
+    def __iter__(self):
+        return iter(self._dataset())
+
     @property
-    def dataset(self) -> List["DataFrame"]:
+    def dataset(self) -> Iterator["DataFrame"]:
         """Get the processed dataset (may be partitioned/sampled).
 
         Returns the runner itself as a list for API consistency with QueryRunner.
         """
-        return list(self)
+        return self._dataset()
 
     @property
-    def raw_dataset(self) -> List["DataFrame"]:
+    def raw_dataset(self) -> Iterator["DataFrame"]:
         """Get the raw dataset (unpartitioned and unsampled)"""
-        return self._raw_dataset
+        return self._raw_dataset()
+
+    @classmethod
+    def from_dataframe(cls, df: "DataFrame") -> "PandasRunner":
+        """Create a PandasRunner from a single DataFrame.
+
+        Args:
+            df: The DataFrame to wrap
+        Returns:
+            A PandasRunner instance
+        """
+        return cls(
+            dataset=lambda: iter((df,)),
+            raw_dataset=lambda: iter((df,)),
+        )
 
 
 class QueryRunner:
@@ -91,7 +111,7 @@ class QueryRunner:
     def __init__(
         self,
         session: Session,
-        dataset: Union[DeclarativeMeta, AliasedClass],
+        dataset: Union[type, AliasedClass],
         raw_dataset: Table,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
@@ -171,7 +191,7 @@ class QueryRunner:
 
         return query
 
-    def _select_from_dataset(self, dataset: DeclarativeMeta, *entities, **kwargs):
+    def _select_from_dataset(self, dataset: type, *entities, **kwargs):
         """This method will use the sample data
         and the partitioning logic if available otherwise it will use the raw table.
 
@@ -201,8 +221,10 @@ class QueryRunner:
         """
         filter_ = get_query_filter_for_runner(kwargs)
         group_by_ = get_query_group_by_for_runner(kwargs)
-        user_query = self._session.query(self._dataset).from_statement(
+        user_query = (
             text(f"{self.profile_sample_query}")
+            .columns(*self.raw_dataset.__table__.c)
+            .subquery()
         )
 
         query = self._build_query(*entities, **kwargs).select_from(user_query)

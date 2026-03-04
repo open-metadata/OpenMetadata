@@ -282,9 +282,9 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
                     {showProfilePic && entity && (
                       <ProfilePicture
                         displayName={entity.displayName ?? entity.name}
-                        height={16}
+                        height="16"
                         name={entity.name}
-                        width={16}
+                        width="16"
                       />
                     )}
                     {link}
@@ -444,9 +444,9 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
       <div className="item-avatar" data-testid="item-avatar">
         <ProfilePicture
           displayName={userName}
-          height={32}
+          height="32"
           name={log.userName || 'system'}
-          width={32}
+          width="32"
         />
       </div>
       <div className="item-content">
@@ -457,6 +457,21 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             <Typography.Text className="event-type" data-testid="event-type">
               {eventType}
             </Typography.Text>
+            {log.impersonatedBy && (
+              <>
+                <Typography.Text className="event-separator">–</Typography.Text>
+                <Typography.Text
+                  className="impersonated-by"
+                  data-testid="impersonated-by">
+                  {t('label.impersonated-by-with-colon')}
+                </Typography.Text>{' '}
+                <Link
+                  className="user-link"
+                  to={getUserPath(log.impersonatedBy)}>
+                  {log.impersonatedBy}
+                </Link>
+              </>
+            )}
           </Space>
         </div>
         <div className="item-description">
@@ -508,7 +523,7 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
 
   if (isLoading) {
     return (
-      <div className="audit-log-list-container">
+      <div className="audit-log-list-container" data-testid="audit-log-list">
         <div className="audit-log-list-header">
           <Skeleton.Input active size="small" style={{ width: 200 }} />
         </div>
@@ -525,7 +540,7 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
 
   if (logs.length === 0) {
     return (
-      <div className="audit-log-list-container">
+      <div className="audit-log-list-container" data-testid="audit-log-list">
         <div className="audit-log-list-header">
           <Typography.Text className="header-text">
             {t('label.event-plural')}
@@ -540,13 +555,6 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
 
   return (
     <div className="audit-log-list-container" data-testid="audit-log-list">
-      <div
-        className="audit-log-list-header"
-        data-testid="audit-log-list-header">
-        <Typography.Text className="header-text">
-          {t('message.events-matching-search-query')}
-        </Typography.Text>
-      </div>
       <div className="audit-log-list">
         {logs.map((log, index) => (
           <AuditLogListItem

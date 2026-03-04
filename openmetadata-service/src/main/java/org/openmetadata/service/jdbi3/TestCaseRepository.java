@@ -7,7 +7,7 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -23,8 +23,6 @@ import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.gson.Gson;
@@ -49,6 +47,8 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -93,16 +93,15 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -134,7 +133,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public void setFields(TestCase test, Fields fields) {
+  public void setFields(TestCase test, Fields fields, RelationIncludes relationIncludes) {
     test.setTestSuites(
         fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
     test.setTestSuite(
@@ -709,6 +708,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<TestCase> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(TestCase::getId).toList();
+    deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_SUITE);
+    deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_DEFINITION);
+  }
+
+  @Override
   public void storeRelationships(TestCase test) {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
@@ -917,21 +924,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       return new TestCaseRepository.TestCaseFailureResolutionTaskWorkflow(threadContext);
     }
 
-    // Handle description tasks
-    if (EntityUtil.isDescriptionTask(taskType)) {
-      return new DescriptionTaskWorkflow(threadContext);
-    }
-
-    // Handle tag tasks
-    if (EntityUtil.isTagTask(taskType)) {
-      return new TagTaskWorkflow(threadContext);
-    }
-
-    // Handle approval tasks (RequestApproval, etc.)
-    if (EntityUtil.isApprovalTask(taskType)) {
-      return new ApprovalTaskWorkflow(threadContext);
-    }
-
     return super.getTaskWorkflow(threadContext);
   }
 
@@ -1103,53 +1095,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  public static class ApprovalTaskWorkflow extends FeedRepository.TaskWorkflow {
-    ApprovalTaskWorkflow(FeedRepository.ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      TestCase testCase = (TestCase) threadContext.getAboutEntity();
-      checkUpdatedByReviewer(testCase, user);
-
-      UUID taskId = threadContext.getThread().getId();
-      Map<String, Object> variables = new HashMap<>();
-      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put(UPDATED_BY_VARIABLE, user);
-      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      boolean workflowSuccess =
-          workflowHandler.resolveTask(
-              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
-
-      // If workflow failed (corrupted Flowable task), apply the status directly
-      if (!workflowSuccess) {
-        LOG.warn(
-            "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
-        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
-        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
-        EntityFieldUtils.setEntityField(
-            testCase, TEST_CASE, user, FIELD_ENTITY_STATUS, entityStatus, true);
-      }
-
-      return testCase;
-    }
-  }
-
   public class TestUpdater extends EntityUpdater {
     public TestUpdater(TestCase original, TestCase updated, Operation operation) {
       super(original, updated, operation);
-    }
-
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      // adding the reviewer should add the person as assignee to the task
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
     }
 
     @Override
@@ -1342,14 +1290,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  @Override
-  protected void preDelete(TestCase entity, String deletedBy) {
-    // A test case in `IN_REVIEW` state can only be deleted by the reviewers
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkUpdatedByReviewer(entity, deletedBy);
-    }
-  }
-
   private void closeApprovalTask(TestCase entity, String comment) {
     MessageParser.EntityLink about =
         new MessageParser.EntityLink(TEST_CASE, entity.getFullyQualifiedName());
@@ -1433,14 +1373,69 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     List<TestCase> testCases = getTestCasesForExport(name, recursive);
-    return new TestCaseCsv(user).exportCsv(testCases);
+    return new TestCaseCsv(user, null).exportCsv(testCases, callback);
   }
 
   @Override
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
-    return new TestCaseCsv(user).importCsv(csv, dryRun);
+    throw new IllegalArgumentException(
+        "TestCase CSV import requires 'targetEntityType' parameter. "
+            + "Specify 'table' when importing from a table context, or 'testSuite' when importing from a Bundle Suite Context.");
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
+    // if we end up here it means we are importing test cases from the obs page
+    return new TestCaseCsv(user, null).importCsv(csv, dryRun);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType)
+      throws IOException {
+    TestSuite targetBundleSuite =
+        TEST_SUITE.equals(targetEntityType)
+            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.ALL)
+            : null;
+    return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType,
+      CsvImportProgressCallback callback)
+      throws IOException {
+    TestSuite targetBundleSuite =
+        TEST_SUITE.equals(targetEntityType)
+            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.ALL)
+            : null;
+    return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
   }
 
   private List<TestCase> getTestCasesForExport(String name, boolean recursive) {
@@ -1493,9 +1488,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public static class TestCaseCsv extends EntityCsv<TestCase> {
     public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TEST_CASE, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+    private final TestSuite targetBundleSuite;
+    private final List<UUID> importedTestCaseIds = new ArrayList<>();
+    private final Map<String, UUID> importedTestSuiteIds = new HashMap<>();
+    private final EntityRepository<EntityInterface> versioningRepo =
+        (EntityRepository<EntityInterface>) Entity.getEntityRepository(TEST_SUITE);
 
-    TestCaseCsv(String user) {
+    TestCaseCsv(String user, TestSuite targetBundleSuite) {
       super(TEST_CASE, HEADERS, user);
+      this.targetBundleSuite = targetBundleSuite;
     }
 
     @Override
@@ -1571,6 +1572,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               TestSuite testSuite =
                   Entity.getEntityByName(TEST_SUITE, testSuiteFqn, "", Include.NON_DELETED);
               testCase.withTestSuite(testSuite.getEntityReference());
+              importedTestSuiteIds.putIfAbsent(
+                  testSuite.getFullyQualifiedName(), testSuite.getId());
             } catch (EntityNotFoundException e) {
               importFailure(
                   printer, String.format("Test suite '%s' not found", testSuiteFqn), csvRecord);
@@ -1581,6 +1584,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             // No test suite provided - get or create the default basic test suite
             EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
             testCase.withTestSuite(testSuite);
+            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
           }
 
           // Compute and set FQN manually (same logic as setFullyQualifiedName)
@@ -1607,6 +1611,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             // Use createOrUpdateForImport which handles both create and update
             RestUtil.PutResponse<TestCase> response =
                 repository.createOrUpdateForImport(null, testCase, importedBy);
+            if (targetBundleSuite != null) {
+              importedTestCaseIds.add(response.getEntity().getId());
+            }
             if (response.getStatus() == Response.Status.CREATED) {
               importSuccess(printer, csvRecord, ENTITY_CREATED);
             } else {
@@ -1621,6 +1628,55 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.withStatus(ApiStatus.FAILURE);
+        }
+      }
+
+      if (targetBundleSuite != null
+          && !importedTestCaseIds.isEmpty()
+          && !importResult.getDryRun()) {
+        try {
+          TestCaseRepository repository =
+              (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+          repository.addTestCasesToLogicalTestSuite(targetBundleSuite, importedTestCaseIds);
+          LOG.info(
+              "Attached {} test cases to Bundle Suite '{}'",
+              importedTestCaseIds.size(),
+              targetBundleSuite.getFullyQualifiedName());
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to attach test cases to Bundle Suite '{}': {}",
+              targetBundleSuite.getFullyQualifiedName(),
+              e.getMessage());
+          throw new IllegalStateException(
+              String.format(
+                  "%d test cases were imported successfully, but failed to attach them to Bundle suite '%s': %s. "
+                      + "The test cases exist and can be manually added to the Bundle Suite.",
+                  importedTestCaseIds.size(), targetBundleSuite.getName(), e.getMessage()),
+              e);
+        }
+      }
+
+      if (!importResult.getDryRun()
+          && importResult.getStatus() != ApiStatus.ABORTED
+          && importResult.getNumberOfRowsProcessed() > 1) {
+        List<UUID> affectedTestSuiteIds = new ArrayList<>(importedTestSuiteIds.values());
+        for (UUID affectedTestSuiteId : affectedTestSuiteIds) {
+          try {
+            versioningRepo.createChangeEventForBulkOperation(
+                versioningRepo.get(
+                    null,
+                    affectedTestSuiteId,
+                    new Fields(versioningRepo.getAllowedFields(), ""),
+                    NON_DELETED,
+                    false),
+                importResult,
+                importedBy);
+          } catch (Exception e) {
+            LOG.error(
+                "Failed to update version for Test Suite with id '{}': {}",
+                affectedTestSuiteId,
+                e.getMessage());
+          }
         }
       }
     }
@@ -1733,10 +1789,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       if (nullOrEmpty(parameterValues)) {
         return "";
       }
-
-      return parameterValues.stream()
-          .map(pv -> JsonUtils.pojoToJson(pv))
-          .collect(Collectors.joining(";"));
+      return parameterValues.stream().map(JsonUtils::pojoToJson).collect(Collectors.joining(";"));
     }
 
     private List<TestCaseParameterValue> parseParameterValues(String parameterValuesStr) {
@@ -1744,18 +1797,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         return new ArrayList<>();
       }
 
-      String[] parts = parameterValuesStr.split(";");
-      List<TestCaseParameterValue> parameterValues = new ArrayList<>();
+      String normalized = RestUtil.normalizeQuotes(parameterValuesStr.trim());
+      List<String> jsonObjects = RestUtil.extractJsonObjects(normalized);
 
-      for (String part : parts) {
-        if (!nullOrEmpty(part.trim())) {
-          TestCaseParameterValue pv =
-              JsonUtils.readValue(part.trim(), TestCaseParameterValue.class);
-          parameterValues.add(pv);
-        }
-      }
-
-      return parameterValues;
+      return jsonObjects.stream()
+          .map(json -> JsonUtils.readValue(json, TestCaseParameterValue.class))
+          .collect(Collectors.toList());
     }
   }
 }

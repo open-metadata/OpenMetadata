@@ -31,6 +31,7 @@ import {
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
 import { generateFormFields, getField } from '../../../utils/formUtils';
+import { referenceURLValidator } from '../../../utils/GlossaryUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
@@ -435,6 +436,9 @@ const AddGlossaryTermForm = ({
                           required: true,
                           message: t('message.valid-url-endpoint'),
                           type: 'url',
+                        },
+                        {
+                          validator: referenceURLValidator,
                         },
                       ]}>
                       <Input

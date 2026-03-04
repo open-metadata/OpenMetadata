@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -90,20 +91,13 @@ public class LineageFluentAPITest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   void testAddLineageConnection() throws Exception {
     // Arrange
     String sourceTableId = "source-table-id";
     String targetDashboardId = "target-dashboard-id";
     String expectedResult =
         "{\"edge\":{\"from\":\"table:source-table-id\",\"to\":\"dashboard:target-dashboard-id\"}}";
-
-    Map<String, Object> expectedRequest = new HashMap<>();
-    Map<String, Object> edge = new HashMap<>();
-    edge.put("fromEntity", Map.of("type", "table", "id", sourceTableId));
-    edge.put("toEntity", Map.of("type", "dashboard", "id", targetDashboardId));
-    edge.put("description", "Dashboard uses data from this table");
-    edge.put("sqlQuery", "SELECT * FROM source_table");
-    expectedRequest.put("edge", edge);
 
     when(mockLineageAPI.addLineage(any())).thenReturn(expectedResult);
 
@@ -119,10 +113,28 @@ public class LineageFluentAPITest {
     // Assert
     assertNotNull(result);
     assertEquals(expectedResult, result.getRaw());
-    verify(mockLineageAPI).addLineage(any());
+
+    // Capture and verify the request structure
+    ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+    verify(mockLineageAPI).addLineage(captor.capture());
+    Map<String, Object> request = captor.getValue();
+
+    Map<String, Object> edge = (Map<String, Object>) request.get("edge");
+    assertNotNull(edge);
+
+    // description on edge level
+    assertEquals("Dashboard uses data from this table", edge.get("description"));
+    // sqlQuery must NOT be directly on edge
+    assertNull(edge.get("sqlQuery"), "sqlQuery must not be on edge directly");
+
+    // sqlQuery goes inside lineageDetails
+    Map<String, Object> details = (Map<String, Object>) edge.get("lineageDetails");
+    assertNotNull(details, "lineageDetails must be present when sqlQuery is set");
+    assertEquals("SELECT * FROM source_table", details.get("sqlQuery"));
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   void testAddLineageWithColumnMapping() throws Exception {
     // Arrange
     String sourceTableId = "source-table-id";
@@ -142,12 +154,63 @@ public class LineageFluentAPITest {
             .toColumns("cust_id", "date")
             .withPipeline("pipeline", pipelineId)
             .withDescription("ETL transformation")
+            .withSqlQuery("SELECT * FROM source_table")
             .execute();
 
     // Assert
     assertNotNull(result);
     assertEquals(expectedResult, result.getRaw());
-    verify(mockLineageAPI).addLineage(any());
+
+    // Capture and verify the request structure
+    ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+    verify(mockLineageAPI).addLineage(captor.capture());
+    Map<String, Object> request = captor.getValue();
+
+    Map<String, Object> edge = (Map<String, Object>) request.get("edge");
+    assertNotNull(edge);
+
+    // fromEntity and toEntity must be on the edge
+    Map<String, Object> fromEntity = (Map<String, Object>) edge.get("fromEntity");
+    assertEquals("table", fromEntity.get("type"));
+    assertEquals(sourceTableId, fromEntity.get("id"));
+
+    Map<String, Object> toEntity = (Map<String, Object>) edge.get("toEntity");
+    assertEquals("table", toEntity.get("type"));
+    assertEquals(targetTableId, toEntity.get("id"));
+
+    // description stays on edge level
+    assertEquals("ETL transformation", edge.get("description"));
+
+    // fromColumns and toColumns must NOT be directly on edge
+    assertNull(edge.get("fromColumns"), "fromColumns must not be on edge directly");
+    assertNull(edge.get("toColumns"), "toColumns must not be on edge directly");
+
+    // lineageDetails must exist with columnsLineage, pipeline, sqlQuery
+    Map<String, Object> details = (Map<String, Object>) edge.get("lineageDetails");
+    assertNotNull(details, "lineageDetails must be present");
+
+    List<Map<String, Object>> columnsLineage =
+        (List<Map<String, Object>>) details.get("columnsLineage");
+    assertNotNull(columnsLineage);
+    assertEquals(2, columnsLineage.size());
+
+    // Each entry maps all fromColumns to one toColumn
+    Map<String, Object> mapping0 = columnsLineage.get(0);
+    assertEquals(List.of("customer_id", "order_date"), mapping0.get("fromColumns"));
+    assertEquals("cust_id", mapping0.get("toColumn"));
+
+    Map<String, Object> mapping1 = columnsLineage.get(1);
+    assertEquals(List.of("customer_id", "order_date"), mapping1.get("fromColumns"));
+    assertEquals("date", mapping1.get("toColumn"));
+
+    // Pipeline inside lineageDetails
+    Map<String, Object> pipeline = (Map<String, Object>) details.get("pipeline");
+    assertNotNull(pipeline);
+    assertEquals("pipeline", pipeline.get("type"));
+    assertEquals(pipelineId, pipeline.get("id"));
+
+    // sqlQuery inside lineageDetails
+    assertEquals("SELECT * FROM source_table", details.get("sqlQuery"));
   }
 
   @Test
@@ -171,25 +234,19 @@ public class LineageFluentAPITest {
   void testExportLineage() throws Exception {
     // Arrange
     String entityType = "table";
-    String entityId = "table-id";
-    String expectedResult = "{\"export\":\"lineage_graph\"}";
+    String fqn = "service.database.schema.my_table";
+    String expectedCsv = "fromEntity,toEntity\ntable1,table2";
 
-    when(mockLineageAPI.exportLineage(eq(entityType), eq(entityId))).thenReturn(expectedResult);
+    when(mockLineageAPI.exportLineage(eq(fqn), eq(entityType), eq("3"), eq("2")))
+        .thenReturn(expectedCsv);
 
     // Act
-    String result =
-        Lineage.export()
-            .entity(entityType, entityId)
-            .format(Lineage.ExportFormat.DOT)
-            .includeUpstream(true)
-            .includeDownstream(true)
-            .maxDepth(5)
-            .execute();
+    String result = Lineage.export().entity(entityType, fqn).upstream(3).downstream(2).execute();
 
     // Assert
     assertNotNull(result);
-    assertEquals(expectedResult, result);
-    verify(mockLineageAPI).exportLineage(eq(entityType), eq(entityId));
+    assertEquals(expectedCsv, result);
+    verify(mockLineageAPI).exportLineage(eq(fqn), eq(entityType), eq("3"), eq("2"));
   }
 
   @Test

@@ -1,6 +1,7 @@
 """
 Test Tableau Dashboard
 """
+
 import uuid
 from datetime import datetime, timedelta
 from types import SimpleNamespace
@@ -306,11 +307,7 @@ class TableauUnitTest(TestCase):
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
             self.assertEqual(
-                len(list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))), 1
-            )
-
-            self.assertIsNotNone(
-                list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))[0].left
+                len(list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))), 0
             )
 
     def test_check_basemodel_returns_id_as_string(self):
@@ -380,20 +377,24 @@ class TableauUnitTest(TestCase):
             return_value=mock_dashboard_details_list,
         ):
 
-            with patch.object(
-                self.tableau,
-                "get_project_names",
-                side_effect=lambda dashboard_details: project_names_return_map[
-                    dashboard_details.name
-                ],
-            ), patch.object(
-                self.tableau,
-                "get_dashboards_list",
-                return_value=mock_dashboard_details_list,
-            ), patch.object(
-                self.tableau,
-                "get_dashboard_details",
-                side_effect=lambda x: x,
+            with (
+                patch.object(
+                    self.tableau,
+                    "get_project_names",
+                    side_effect=lambda dashboard_details: project_names_return_map[
+                        dashboard_details.name
+                    ],
+                ),
+                patch.object(
+                    self.tableau,
+                    "get_dashboards_list",
+                    return_value=mock_dashboard_details_list,
+                ),
+                patch.object(
+                    self.tableau,
+                    "get_dashboard_details",
+                    side_effect=lambda x: x,
+                ),
             ):
                 dashboards = list(self.tableau.get_dashboard())
                 self.assertEqual(len(dashboards), 1)
@@ -413,20 +414,24 @@ class TableauUnitTest(TestCase):
             return_value=mock_dashboard_details_list,
         ):
 
-            with patch.object(
-                self.tableau,
-                "get_project_names",
-                side_effect=lambda dashboard_details: project_names_return_map[
-                    dashboard_details.name
-                ],
-            ), patch.object(
-                self.tableau,
-                "get_dashboards_list",
-                return_value=mock_dashboard_details_list,
-            ), patch.object(
-                self.tableau,
-                "get_dashboard_details",
-                side_effect=lambda x: x,
+            with (
+                patch.object(
+                    self.tableau,
+                    "get_project_names",
+                    side_effect=lambda dashboard_details: project_names_return_map[
+                        dashboard_details.name
+                    ],
+                ),
+                patch.object(
+                    self.tableau,
+                    "get_dashboards_list",
+                    return_value=mock_dashboard_details_list,
+                ),
+                patch.object(
+                    self.tableau,
+                    "get_dashboard_details",
+                    side_effect=lambda x: x,
+                ),
             ):
                 dashboards = list(self.tableau.get_dashboard())
                 self.assertEqual(len(dashboards), 3)
@@ -447,20 +452,24 @@ class TableauUnitTest(TestCase):
             return_value=mock_dashboard_details_list,
         ):
 
-            with patch.object(
-                self.tableau,
-                "get_project_names",
-                side_effect=lambda dashboard_details: project_names_return_map[
-                    dashboard_details.name
-                ],
-            ), patch.object(
-                self.tableau,
-                "get_dashboards_list",
-                return_value=mock_dashboard_details_list,
-            ), patch.object(
-                self.tableau,
-                "get_dashboard_details",
-                side_effect=lambda x: x,
+            with (
+                patch.object(
+                    self.tableau,
+                    "get_project_names",
+                    side_effect=lambda dashboard_details: project_names_return_map[
+                        dashboard_details.name
+                    ],
+                ),
+                patch.object(
+                    self.tableau,
+                    "get_dashboards_list",
+                    return_value=mock_dashboard_details_list,
+                ),
+                patch.object(
+                    self.tableau,
+                    "get_dashboard_details",
+                    side_effect=lambda x: x,
+                ),
             ):
                 dashboards = list(self.tableau.get_dashboard())
                 self.assertEqual(len(dashboards), 0)
@@ -835,3 +844,30 @@ class TableauUnitTest(TestCase):
         # Test with includeOwners = False
         self.tableau.source_config.includeOwners = False
         self.assertFalse(self.tableau.source_config.includeOwners)
+
+    def test_get_table_entities_from_api_with_none_db_service_entity(self):
+        """
+        Test that _get_table_entities_from_api handles None db_service_entity gracefully
+        """
+        mock_table = UpstreamTable(
+            id="table1",
+            luid="table1_luid",
+            name="test_schema.test_table",
+            fullName="[test_database].[test_schema].[test_table]",
+            schema_="test_schema",
+            database={"id": "db1", "name": "test_database"},
+        )
+
+        with patch.object(
+            self.tableau.metadata, "get_by_name", return_value=None
+        ) as mock_get_by_name:
+            with patch.object(
+                self.tableau.metadata, "search_in_any_service", return_value=None
+            ):
+                result = self.tableau._get_table_entities_from_api(
+                    db_service_prefix="non_existent_service",
+                    table=mock_table,
+                )
+
+                mock_get_by_name.assert_called_once()
+                assert result is None

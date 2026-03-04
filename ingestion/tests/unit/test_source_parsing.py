@@ -671,7 +671,7 @@ def test_redshift():
             "config": {
                 "hostPort": "cluster.name.region.redshift.amazonaws.com:5439",
                 "username": "username",
-                "password": "strong_password",
+                "authType": {"password": "strong_password"},
                 "database": "dev",
                 "type": "Redshift",
             }
@@ -704,7 +704,7 @@ def test_salesforce():
                 "username": "username",
                 "password": "password",
                 "securityToken": "securityToken",
-                "sobjectName": "sobjectName",
+                "sobjectNames": ["sobjectName"],
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},

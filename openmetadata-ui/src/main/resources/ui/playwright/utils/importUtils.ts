@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import {
   BULK_IMPORT_EXPORT_SQL_QUERY,
+  MAX_COLUMN_NAVIGATION_RETRIES,
   RDG_ACTIVE_CELL_SELECTOR,
 } from '../constant/bulkImportExport';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
@@ -33,6 +37,18 @@ import {
 } from './customProperty';
 import { settingClick, SettingOptionsType } from './sidebar';
 
+const IMPORT_GRID_LOAD_MASK_SELECTOR =
+  '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
+
+export const waitForImportGridLoadMaskToDisappear = async (
+  page: Page,
+  timeout = 30000
+) => {
+  await expect(page.locator(IMPORT_GRID_LOAD_MASK_SELECTOR)).toHaveCount(0, {
+    timeout,
+  });
+};
+
 export const createGlossaryTermRowDetails = () => {
   return {
     name: `playwright,glossaryTerm ${uuid()}`,
@@ -49,18 +65,11 @@ export const createGlossaryTermRowDetails = () => {
 export const fillTextInputDetails = async (page: Page, text: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  const isVisible = await page
-    .locator('.ant-layout-content')
-    .getByRole('textbox')
-    .isVisible();
-
-  if (!isVisible) {
-    await page.keyboard.press('Enter', { delay: 100 });
-  }
-
   const textboxLocator = page
     .locator('.ant-layout-content')
     .getByRole('textbox');
+
+  await expect(textboxLocator).toBeVisible();
 
   await textboxLocator.fill(text);
   await textboxLocator.press('Enter', { delay: 100 });
@@ -447,7 +456,7 @@ export const fillGlossaryRowDetails = async (
   propertyListName?: Record<string, string>,
   isBulkEdit?: boolean
 ) => {
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
 
   if (isBulkEdit) {
     await expect(
@@ -457,51 +466,62 @@ export const fillGlossaryRowDetails = async (
     await fillTextInputDetails(page, row.name);
   }
 
-  await page.keyboard.press('ArrowRight');
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.displayName);
 
   // Navigate to next cell and make cell editable
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillDescriptionDetails(page, row.description);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.synonyms);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillGlossaryTermDetails(page, row.relatedTerm);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.references);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTagDetails(page, row.tag);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillOwnerDetails(page, row.reviewers);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillOwnerDetails(page, row.owners);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, '#ccc');
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   const base64Src =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
   await fillTextInputDetails(page, base64Src);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   if (propertyListName) {
     await fillExtensionDetails(page, propertyListName);
@@ -513,30 +533,43 @@ export const validateImportStatus = async (
   status: { passed: string; failed: string; processed: string }
 ) => {
   await page.waitForSelector('[data-testid="processed-row"]');
-  const processedRow = await page.$eval(
-    '[data-testid="processed-row"]',
-    (el) => el.textContent
-  );
-
-  expect(processedRow).toBe(status.processed);
-
-  const passedRow = await page.$eval(
-    '[data-testid="passed-row"]',
-    (el) => el.textContent
-  );
-
-  expect(passedRow).toBe(status.passed);
-
-  const failedRow = await page.$eval(
-    '[data-testid="failed-row"]',
-    (el) => el.textContent
-  );
-
-  expect(failedRow).toBe(status.failed);
+  await expect(page.getByTestId('processed-row')).toHaveText(status.processed);
+  await expect(page.getByTestId('passed-row')).toHaveText(status.passed);
+  await expect(page.getByTestId('failed-row')).toHaveText(status.failed);
 
   await page.waitForSelector('.rdg-header-row', {
     state: 'visible',
   });
+};
+
+export const uploadCSVAndWaitForGrid = async (
+  page: Page,
+  filePath: string,
+  options?: {
+    isContentString?: boolean;
+    tempFileName?: string;
+  }
+): Promise<{ rowCount: number; tempFilePath?: string }> => {
+  await page.waitForSelector('[type="file"]', { state: 'attached' });
+  let actualFilePath = filePath;
+  let tempFilePath: string | undefined;
+
+  if (options?.isContentString) {
+    const tempDir = os.tmpdir();
+    const tempFileName = options?.tempFileName || `temp-${Date.now()}.csv`;
+    tempFilePath = path.join(tempDir, tempFileName);
+    fs.writeFileSync(tempFilePath, filePath);
+    actualFilePath = tempFilePath;
+  }
+
+  await page.setInputFiles('[type="file"]', actualFilePath);
+  await page.waitForSelector('[data-testid="upload-file-widget"]', {
+    state: 'hidden',
+  });
+
+  await page.waitForTimeout(500);
+  const rowCount = await page.locator('.rdg-row').count();
+  return { rowCount, tempFilePath };
 };
 
 export const createDatabaseRowDetails = () => {
@@ -606,7 +639,7 @@ export const createColumnRowDetails = () => {
 export const createColumnRowDetailsWithEncloseDot = () => {
   return {
     ...createColumnRowDetails(),
-    name: `"playwright.column ${uuid()}"`,
+    name: 'playwright.column ${uuid()',
   };
 };
 
@@ -729,16 +762,18 @@ export const fillRowDetails = async (
     }
   }
 
-  await page.keyboard.press('ArrowRight');
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.displayName);
 
-  // Navigate to next cell and make cell editable
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillDescriptionDetails(page, row.description);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillOwnerDetails(page, row.owners);
 
@@ -746,45 +781,53 @@ export const fillRowDetails = async (
     await fillTeamOwnerDetails(page, row.teamOwners);
   }
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTagDetails(page, row.tag);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillGlossaryTermDetails(page, row.glossary);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
   await page.keyboard.press('Enter', { delay: 100 });
 
   await page.click(`[data-testid="radio-btn-${row.tier}"]`);
   await page.click(`[data-testid="update-tier-card"]`);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
-  await page.keyboard.press('Enter', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
-  await page.click(`[data-testid="radio-btn-${row.certification}"]`);
+  const certificationResponse = page.waitForResponse(
+    '/api/v1/tags?parent=Certification*'
+  );
+  await page.keyboard.press('Enter', { delay: 100 });
+  await certificationResponse;
+
+  const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
+  await certRadioBtn.waitFor({ state: 'visible' });
+  await certRadioBtn.click();
   await page.getByTestId('update-certification').click();
 
-  await page.keyboard.press('ArrowRight');
+  await moveToNextColumnWithVerification(page);
 
   if (row.retentionPeriod) {
     await fillTextInputDetails(page, row.retentionPeriod);
 
-    await page
-      .locator(RDG_ACTIVE_CELL_SELECTOR)
-      .press('ArrowRight', { delay: 100 });
+    await moveToNextColumnWithVerification(page);
   }
   if (row.sourceUrl) {
     await fillTextInputDetails(page, row.sourceUrl);
-    await page
-      .locator(RDG_ACTIVE_CELL_SELECTOR)
-      .press('ArrowRight', { delay: 100 });
+
+    await moveToNextColumnWithVerification(page);
   }
 
   await fillDomainDetails(page, row.domains);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
 
   if (customPropertyRecord) {
     await fillCustomPropertyDetails(page, customPropertyRecord);
@@ -810,35 +853,43 @@ export const fillColumnDetails = async (
 ) => {
   await fillTextInputDetails(page, row.name);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.displayName);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillDescriptionDetails(page, row.description);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.dataTypeDisplay);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.dataType);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.arrayDataType);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.dataLength);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTagDetails(page, row.tag);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillGlossaryTermDetails(page, row.glossary);
 };
@@ -948,11 +999,13 @@ export const fillRecursiveEntityTypeFQNDetails = async (
   entityType: string,
   page: Page
 ) => {
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillEntityTypeDetails(page, entityType);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, fullyQualifiedName);
 };
@@ -989,11 +1042,13 @@ export const fillRecursiveColumnDetails = async (
     await fillTextInputDetails(page, row.name);
   }
 
-  await page.keyboard.press('ArrowRight');
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.displayName);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillDescriptionDetails(page, row.description);
 
@@ -1001,30 +1056,36 @@ export const fillRecursiveColumnDetails = async (
 
   await fillTagDetails(page, row.tag);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
   await fillGlossaryTermDetails(page, row.glossary);
 
   await pressKeyXTimes(page, 7, 'ArrowRight');
 
   await fillEntityTypeDetails(page, row.entityType);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.fullyQualifiedName);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.dataTypeDisplay);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.dataType);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.arrayDataType);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.dataLength);
 };
@@ -1056,47 +1117,78 @@ export const firstTimeGridAddRowAction = async (page: Page) => {
   await expect(lastRowFirstCell).toBeFocused();
 };
 
-export const performDeleteOperationOnEntity = async (page: Page) => {
-  await page.keyboard.press('ArrowRight');
+/**
+ * Moves to the next column with verification to prevent flakiness.
+ * Verifies that the column index actually changes after ArrowRight.
+ * If the column index doesn't change, keeps retrying ArrowRight until it changes.
+ */
+const moveToNextColumnWithVerification = async (page: Page): Promise<void> => {
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
 
-  // Description Remove
+  const currentColIndex = await activeCell.getAttribute('aria-colindex');
+
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
+  let newColIndex = await activeCell.getAttribute('aria-colindex');
+  let retries = 0;
+
+  while (currentColIndex === newColIndex && retries < MAX_COLUMN_NAVIGATION_RETRIES) {
+    await page.keyboard.press('ArrowRight', { delay: 100 });
+    newColIndex = await activeCell.getAttribute('aria-colindex');
+    retries++;
+  }
+};
+
+export const performDeleteOperationOnEntity = async (page: Page) => {
+  // Display Name Remove
+  await moveToNextColumnWithVerification(page);
   await page.keyboard.press('Backspace');
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
-  // Owner Remove
-  await page.keyboard.press('ArrowRight', { delay: 100 });
-
+  // Description Remove
+  await moveToNextColumnWithVerification(page);
   await page.keyboard.press('Backspace');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+
+  // Owners Remove
+  await moveToNextColumnWithVerification(page);
+  await page.keyboard.press('Backspace');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   // Tag Remove
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
   await page.keyboard.press('Backspace');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   // Glossary Remove
-  await page.keyboard.press('ArrowRight', { delay: 100 });
-  await page.keyboard.press('Backspace');
+  await moveToNextColumnWithVerification(page);
+  await page.keyboard.press('Delete');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   // Tier Remove
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
   await page.keyboard.press('Delete');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   // Certification Remove
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
   await page.keyboard.press('Delete');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   // Retention Period Remove
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
   await page.keyboard.press('Delete');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   // Source URL Remove
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
   await page.keyboard.press('Delete');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   // Domains Remove
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
   await page.keyboard.press('Delete');
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 };
 
 export const performColumnSelectAndDeleteOperation = async (page: Page) => {
@@ -1143,4 +1235,103 @@ export const performBulkDownload = async (page: Page, fileName: string) => {
 
   // Wait for the download process to complete and save the downloaded file somewhere.
   await download.saveAs('downloads/' + download.suggestedFilename());
+};
+
+/**
+ * Fill test case details in the grid
+ * All fields are optional to allow testing of required field validations
+ * Supports all test case CSV columns
+ * @param row - Test case row details
+ * @param page - Playwright page object
+ */
+export const fillTestCaseDetails = async (
+  row: {
+    name?: string;
+    displayName?: string;
+    description?: string;
+    testDefinition?: string;
+    entityFQN?: string;
+    testSuite?: string;
+    parameterValues?: string;
+    computePassedFailedRowCount?: string;
+    useDynamicAssertion?: string;
+    inspectionQuery?: string;
+    tags?: string;
+    glossary?: {
+      name: string;
+      parent: string;
+    };
+  },
+  page: Page
+) => {
+  // Fill name if provided
+  if (row.name) {
+    await fillTextInputDetails(page, row.name);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill displayName if provided
+  if (row.displayName) {
+    await fillTextInputDetails(page, row.displayName);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill description if provided
+  if (row.description) {
+    await fillDescriptionDetails(page, row.description);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill testDefinition if provided
+  if (row.testDefinition) {
+    await fillTextInputDetails(page, row.testDefinition);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill entityFQN if provided
+  if (row.entityFQN) {
+    await fillTextInputDetails(page, row.entityFQN);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill testSuite if provided
+  if (row.testSuite) {
+    await fillTextInputDetails(page, row.testSuite);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill parameterValues if provided
+  if (row.parameterValues) {
+    await fillTextInputDetails(page, row.parameterValues);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill computePassedFailedRowCount if provided
+  if (row.computePassedFailedRowCount) {
+    await fillTextInputDetails(page, row.computePassedFailedRowCount);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill useDynamicAssertion if provided
+  if (row.useDynamicAssertion) {
+    await fillTextInputDetails(page, row.useDynamicAssertion);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill inspectionQuery if provided
+  if (row.inspectionQuery) {
+    await fillTextInputDetails(page, row.inspectionQuery);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill tags if provided
+  if (row.tags) {
+    await fillTagDetails(page, row.tags);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill glossaryTerms if provided
+  if (row.glossary) {
+    await fillGlossaryTermDetails(page, row.glossary);
+  }
 };

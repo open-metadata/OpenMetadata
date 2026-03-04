@@ -242,8 +242,8 @@ const IncidentManagerPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/IncidentManager/IncidentManagerPage'))
 );
 
-const RulesLibraryPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/RulesLibrary/RulesLibraryPage'))
+const TestLibraryPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/TestLibrary/TestLibraryPage'))
 );
 
 const IncidentManagerDetailPage = withSuspenseFallback(
@@ -286,6 +286,13 @@ const MetricListPage = withSuspenseFallback(
 const AddMetricPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
+  )
+);
+
+const ColumnBulkOperationsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/ColumnBulkOperations/ColumnBulkOperations.component')
   )
 );
 
@@ -597,10 +604,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               ResourceEntity.TEST_DEFINITION,
               permissions
             )}>
-            <RulesLibraryPage />
+            <TestLibraryPage />
           </AdminProtectedRoute>
         }
-        path={ROUTES.RULES_LIBRARY}
+        path={ROUTES.TEST_LIBRARY}
       />
 
       {[
@@ -619,6 +626,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               <IncidentManagerDetailPage />
             </AdminProtectedRoute>
           }
+          key={route}
           path={route}
         />
       ))}
@@ -757,6 +765,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           />
         }
         path={ROUTES.ADD_METRIC}
+      />
+      <Route
+        element={<ColumnBulkOperationsPage />}
+        path={ROUTES.COLUMN_BULK_OPERATIONS}
       />
 
       <Route

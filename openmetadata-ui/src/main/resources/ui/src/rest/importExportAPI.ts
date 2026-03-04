@@ -22,7 +22,33 @@ export interface importEntityInCSVFormatRequestParams {
   data: string;
   dryRun?: boolean;
   recursive?: boolean;
+  targetEntityType?: string;
 }
+
+export const importTestCaseInCSVFormat = async ({
+  name,
+  data,
+  dryRun = true,
+  recursive = false,
+  targetEntityType,
+}: importEntityInCSVFormatRequestParams) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  let url = `/dataQuality/testCases/name/${getEncodedFqn(
+    name
+  )}/importAsync?dryRun=${dryRun}&recursive=${recursive}`;
+
+  if (targetEntityType) {
+    url += `&targetEntityType=${targetEntityType}`;
+  }
+  const res = await APIClient.put<
+    string,
+    AxiosResponse<CSVImportAsyncResponse>
+  >(url, data, configOptions);
+
+  return res.data;
+};
 
 export const importEntityInCSVFormat = async ({
   entityType,

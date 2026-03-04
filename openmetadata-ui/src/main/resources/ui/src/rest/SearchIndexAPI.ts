@@ -55,7 +55,14 @@ export const getSearchIndexDetailsByFQN = async (
 ) => {
   const response = await APIClient.get<SearchIndex>(
     `/searchIndexes/name/${getEncodedFqn(fqn)}`,
-    { params: { ...params, include: params?.include ?? Include.All } }
+    {
+      params: {
+        ...params,
+        include: params?.include ?? Include.All,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
+      },
+    }
   );
 
   return response.data;

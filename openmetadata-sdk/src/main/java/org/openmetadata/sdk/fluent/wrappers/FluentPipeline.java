@@ -1,12 +1,15 @@
 package org.openmetadata.sdk.fluent.wrappers;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.models.ListResponse;
 
 /**
  * Fluent wrapper for Pipeline entity updates.
@@ -179,6 +182,29 @@ public class FluentPipeline {
       modified = true;
     }
     return this;
+  }
+
+  /**
+   * Add a single pipeline status.
+   */
+  public Pipeline addPipelineStatus(PipelineStatus status) {
+    return client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), status);
+  }
+
+  /**
+   * Add multiple pipeline statuses in bulk.
+   */
+  public Pipeline addBulkPipelineStatus(List<PipelineStatus> statuses) {
+    return client.pipelines().addBulkPipelineStatus(pipeline.getFullyQualifiedName(), statuses);
+  }
+
+  /**
+   * List pipeline statuses within a time range.
+   */
+  public ListResponse<PipelineStatus> listPipelineStatuses(Long startTs, Long endTs) {
+    return client
+        .pipelines()
+        .listPipelineStatuses(pipeline.getFullyQualifiedName(), startTs, endTs);
   }
 
   /**

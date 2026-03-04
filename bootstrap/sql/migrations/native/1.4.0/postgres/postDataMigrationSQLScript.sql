@@ -357,6 +357,30 @@ SET json = jsonb_set(
                 'parameterField', 'min',
                 'rule', 'GREATER_THAN_OR_EQUALS'
             )
+        ),
+        jsonb_build_object(
+            'name', 'columnName',
+            'dataType', 'STRING',
+            'required', true,
+            'description', 'Name of the Column to check for new rows inserted.',
+            'displayName', 'Column Name',
+            'optionValues', '[]'::jsonb
+        ),
+        jsonb_build_object(
+            'name', 'rangeType',
+            'dataType', 'STRING',
+            'required', true,
+            'description', 'One of ''HOUR'', ''DAY'', ''MONTH'', ''YEAR'' to specify the range type for checking new rows inserted.',
+            'displayName', 'Range Type',
+            'optionValues', '[]'::jsonb 
+        ),
+        jsonb_build_object(
+            'name', 'rangeInterval',
+            'dataType', 'INT',
+            'required', true,
+            'description', 'Interval Range. E.g. if rangeInterval=1 and rangeType=DAY, we''ll check the numbers of rows inserted where columnName=-1 DAY',
+            'displayName', 'Interval',
+            'optionValues', '[]'::jsonb
         )
     )
 )

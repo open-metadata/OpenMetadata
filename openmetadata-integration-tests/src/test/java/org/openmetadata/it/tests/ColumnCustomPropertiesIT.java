@@ -952,6 +952,78 @@ public class ColumnCustomPropertiesIT {
     }
   }
 
+  @Test
+  void test_tableColumn_getWithExtensionField(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("getExtProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+
+      Table table = createTestTable(ns);
+      String columnFQN = table.getFullyQualifiedName() + ".id";
+
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(propName, "test-extension-value");
+
+      updateColumn(client, columnFQN, "table", extension);
+
+      Table fetchedTable = client.tables().get(table.getId().toString(), "columns,extension");
+
+      assertNotNull(fetchedTable.getColumns());
+      Column fetchedColumn =
+          fetchedTable.getColumns().stream()
+              .filter(col -> col.getName().equals("id"))
+              .findFirst()
+              .orElseThrow();
+
+      assertNotNull(fetchedColumn.getExtension());
+      @SuppressWarnings("unchecked")
+      Map<String, Object> resultExt = (Map<String, Object>) fetchedColumn.getExtension();
+      assertEquals("test-extension-value", resultExt.get(propName));
+
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_dashboardColumn_getWithExtensionField(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("dashGetExtProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(
+          client, DASHBOARD_DATA_MODEL_COLUMN, propName, STRING_TYPE, null);
+
+      DashboardDataModel dataModel = createTestDashboardDataModel(ns);
+      String columnFQN = dataModel.getFullyQualifiedName() + ".metric1";
+
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(propName, "dashboard-extension-value");
+
+      updateColumn(client, columnFQN, "dashboardDataModel", extension);
+
+      DashboardDataModel fetchedDataModel =
+          client.dashboardDataModels().get(dataModel.getId().toString(), "columns,extension");
+
+      assertNotNull(fetchedDataModel.getColumns());
+      Column fetchedColumn =
+          fetchedDataModel.getColumns().stream()
+              .filter(col -> col.getName().equals("metric1"))
+              .findFirst()
+              .orElseThrow();
+
+      assertNotNull(fetchedColumn.getExtension());
+      @SuppressWarnings("unchecked")
+      Map<String, Object> resultExt = (Map<String, Object>) fetchedColumn.getExtension();
+      assertEquals("dashboard-extension-value", resultExt.get(propName));
+
+    } finally {
+      deleteCustomPropertyFromColumnType(client, DASHBOARD_DATA_MODEL_COLUMN, propName);
+    }
+  }
+
   // ========================================================================
   // HELPER METHODS
   // ========================================================================

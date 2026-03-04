@@ -18,7 +18,7 @@ from typing import Iterable, Optional, Tuple, Union
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
 from pyhive.sqlalchemy_hive import _type_map
-from sqlalchemy import exc, types, util
+from sqlalchemy import exc, text, types, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
@@ -190,6 +190,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "# Clustering Information",
             "# Delta Statistics Columns",
             "# Detailed Table Information",
+            "# Delta Uniform Iceberg",
         ):
             break
         # Take out the more detailed type information
@@ -214,11 +215,14 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         }
         if col_type in {"array", "struct", "map"}:
             try:
-                rows = dict(
-                    connection.execute(
-                        f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`"
+                rows = {
+                    r[0]: r[1]
+                    for r in connection.execute(
+                        text(
+                            f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`"
+                        )
                     ).fetchall()
-                )
+                }
                 col_info["system_data_type"] = rows["data_type"]
                 col_info["is_complex"] = True
             except DatabaseError as err:
@@ -234,8 +238,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
     # Equivalent to SHOW DATABASES
     if kw.get("database") and kw.get("is_old_version") is not True:
-        connection.execute(f"USE CATALOG '{kw.get('database')}'")
-    return [row[0] for row in connection.execute("SHOW SCHEMAS")]
+        connection.execute(text(f"USE CATALOG '{kw.get('database')}'"))
+    return [row[0] for row in connection.execute(text("SHOW SCHEMAS"))]
 
 
 def get_schema_names_reflection(self, **kw):
@@ -274,12 +278,14 @@ def get_view_names(
 ):  # pylint: disable=unused-argument
     if kw.get("db_name"):
         connection.execute(
-            f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"
+            text(
+                f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"
+            )
         )
     query = "SHOW VIEWS"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
-    view_in_schema = connection.execute(query)
+    view_in_schema = connection.execute(text(query))
     views = []
     for row in view_in_schema:
         # check number of columns in result
@@ -326,7 +332,7 @@ def get_table_comment(  # pylint: disable=unused-argument
 def get_view_definition(
     self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
 ):
-    schema_name = [row[0] for row in connection.execute("SHOW SCHEMAS")]
+    schema_name = [row[0] for row in connection.execute(text("SHOW SCHEMAS"))]
     if "information_schema" in schema_name:
         return get_view_definition_wrapper(
             self,
@@ -385,7 +391,7 @@ def get_table_ddl(
     """
     schema = schema or self.default_schema_name
     table_name = f"{schema}.{table_name}" if schema else table_name
-    cursor = connection.execute(DATABRICKS_DDL.format(table_name=table_name))
+    cursor = connection.execute(text(DATABRICKS_DDL.format(table_name=table_name)))
     try:
         result = cursor.fetchone()
         if result:
@@ -401,12 +407,14 @@ def get_table_names(
 ):  # pylint: disable=unused-argument
     if kw.get("db_name"):
         connection.execute(
-            f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"
+            text(
+                f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"
+            )
         )
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
-    tables_in_schema = connection.execute(query)
+    tables_in_schema = connection.execute(text(query))
     tables = []
     for row in tables_in_schema:
         # check number of columns in result
@@ -451,7 +459,7 @@ def get_table_type(self, connection, database, schema, table):
             schema=schema,
         )
         for row in rows:
-            row_dict = dict(row)
+            row_dict = row._asdict() if hasattr(row, "_asdict") else row
             if row_dict.get("col_name") == "Type":
                 # get type of table
                 return row_dict.get("data_type")
@@ -496,7 +504,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
     def _init_version(self):
         try:
-            self.connection.execute(DATABRICKS_GET_CATALOGS).fetchone()
+            self.connection.execute(text(DATABRICKS_GET_CATALOGS)).fetchone()
             self.is_older_version = False
         except DatabaseError as soe:
             logger.debug(f"Failed to fetch catalogs due to: {soe}")
@@ -534,13 +542,31 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
     def get_database_names_raw(self) -> Iterable[str]:
         if not self.is_older_version:
-            results = self.connection.execute(DATABRICKS_GET_CATALOGS)
+            results = self.connection.execute(text(DATABRICKS_GET_CATALOGS))
             for res in results:
                 if res:
                     row = list(res)
                     yield row[0]
         else:
             yield DEFAULT_DATABASE
+
+    def get_schema_definition(self, table_type, table_name, schema_name, inspector):
+        """
+        Adding the CREATE VIEW/ MATERIALIZED VIEW statement in views' schema definition
+        """
+        schema_definition = super().get_schema_definition(
+            table_type, table_name, schema_name, inspector
+        )
+
+        if schema_definition and table_type in (
+            TableType.View,
+            TableType.MaterializedView,
+        ):
+            view_type = table_type == TableType.View and "VIEW" or "MATERIALIZED VIEW"
+
+            return f"CREATE {view_type} `{self.context.get().database}`.`{schema_name}`.`{table_name}` AS {schema_definition}"
+
+        return schema_definition
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -608,7 +634,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             return
         try:
             tags = self.connection.execute(
-                DATABRICKS_GET_CATALOGS_TAGS.format(database_name=database_name)
+                text(DATABRICKS_GET_CATALOGS_TAGS.format(database_name=database_name))
             )
 
             for tag in tags:
@@ -623,7 +649,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
         try:
             tags = self.connection.execute(
-                DATABRICKS_GET_SCHEMA_TAGS.format(database_name=database_name)
+                text(DATABRICKS_GET_SCHEMA_TAGS.format(database_name=database_name))
             )
             for tag in tags:
                 self._add_to_tag_cache(
@@ -637,7 +663,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
         try:
             tags = self.connection.execute(
-                DATABRICKS_GET_TABLE_TAGS.format(database_name=database_name)
+                text(DATABRICKS_GET_TABLE_TAGS.format(database_name=database_name))
             )
             for tag in tags:
                 self._add_to_tag_cache(
@@ -651,7 +677,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
         try:
             tags = self.connection.execute(
-                DATABRICKS_GET_COLUMN_TAGS.format(database_name=database_name)
+                text(DATABRICKS_GET_COLUMN_TAGS.format(database_name=database_name))
             )
             for tag in tags:
                 tag_table_id = (tag.catalog_name, tag.schema_name, tag.table_name)
@@ -953,7 +979,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             )
             owner = None
             for row in result:
-                row_dict = dict(row)
+                row_dict = row._asdict() if hasattr(row, "_asdict") else row
                 if row_dict.get("col_name") == "Owner":
                     owner = row_dict.get("data_type")
                     break

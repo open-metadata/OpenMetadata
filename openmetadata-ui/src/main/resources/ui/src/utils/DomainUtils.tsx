@@ -91,6 +91,11 @@ export const withDomainFilter = (
       if (config.params?.index === SearchIndex.TAG) {
         return config;
       }
+
+      const domainFilterField =
+        config.params?.index === SearchIndex.DOMAIN
+          ? 'fullyQualifiedName'
+          : 'domains.fullyQualifiedName';
       let filter: QueryFilterInterface = { query: { bool: {} } };
       if (config.params?.query_filter) {
         try {
@@ -101,33 +106,42 @@ export const withDomainFilter = (
         }
       }
 
-      const mustArray = Array.isArray(filter.query?.bool?.must)
-        ? filter.query.bool.must
-        : filter.query?.bool?.must
-        ? [filter.query.bool.must]
-        : [];
+      let mustArray: QueryFieldInterface[] = [];
+      const existingMust = filter.query?.bool?.must;
+      if (Array.isArray(existingMust)) {
+        mustArray = [...existingMust];
+      } else if (existingMust) {
+        mustArray = [existingMust];
+      }
 
-      filter.query.bool = {
-        ...filter.query?.bool,
-        must: [
-          ...mustArray,
-          {
-            bool: {
-              should: [
-                {
-                  term: {
-                    'domains.fullyQualifiedName': activeDomain,
+      const { bool: existingBool, ...nonBoolClauses } = filter.query ?? {};
+      for (const [key, value] of Object.entries(nonBoolClauses)) {
+        mustArray.push({ [key]: value } as QueryFieldInterface);
+      }
+
+      filter.query = {
+        bool: {
+          ...existingBool,
+          must: [
+            ...mustArray,
+            {
+              bool: {
+                should: [
+                  {
+                    term: {
+                      [domainFilterField]: activeDomain,
+                    },
                   },
-                },
-                {
-                  prefix: {
-                    'domains.fullyQualifiedName': `${activeDomain}.`,
+                  {
+                    prefix: {
+                      [domainFilterField]: `${activeDomain}.`,
+                    },
                   },
-                },
-              ],
-            },
-          } as QueryFieldInterface,
-        ],
+                ],
+              },
+            } as QueryFieldInterface,
+          ],
+        },
       };
 
       config.params = {
@@ -252,15 +266,21 @@ export const getQueryFilterForDomain = (domainFqn: string) => {
   return {
     query: {
       bool: {
-        should: [
+        must: [
           {
-            term: {
-              'domains.fullyQualifiedName': domainFqn,
-            },
-          },
-          {
-            prefix: {
-              'domains.fullyQualifiedName': `${domainFqn}.`,
+            bool: {
+              should: [
+                {
+                  term: {
+                    'domains.fullyQualifiedName': domainFqn,
+                  },
+                },
+                {
+                  prefix: {
+                    'domains.fullyQualifiedName': `${domainFqn}.`,
+                  },
+                },
+              ],
             },
           },
         ],
@@ -289,15 +309,21 @@ export const getQueryFilterForDataProducts = (domainFqn: string) => {
   return {
     query: {
       bool: {
-        should: [
+        must: [
           {
-            term: {
-              'domains.fullyQualifiedName': domainFqn,
-            },
-          },
-          {
-            prefix: {
-              'domains.fullyQualifiedName': `${domainFqn}.`,
+            bool: {
+              should: [
+                {
+                  term: {
+                    'domains.fullyQualifiedName': domainFqn,
+                  },
+                },
+                {
+                  prefix: {
+                    'domains.fullyQualifiedName': `${domainFqn}.`,
+                  },
+                },
+              ],
             },
           },
         ],

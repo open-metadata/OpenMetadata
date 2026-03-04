@@ -36,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.common_pg_mappings import (
     GEOMETRY,
     POINT,
@@ -358,20 +359,70 @@ class PostgresUnitTest(TestCase):
         for i, _ in enumerate(EXPECTED_COLUMN_VALUE):
             self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])
 
-    @patch("sqlalchemy.engine.base.Engine")
-    def test_get_version_info(self, engine):
-        # outdated with a switch to get_server_version_num instead of get_+server_version
-        # engine.execute.return_value = [["15.3 (Debian 15.3-1.pgdg110+1)"]]
-        # self.assertEqual("15.3", get_postgres_version(engine))
+    def test_get_stored_procedures(self):
+        """
+        Test fetching stored procedures with filter
+        """
+        self.postgres_source.source_config.includeStoredProcedures = True
+        self.postgres_source.source_config.storedProcedureFilterPattern = FilterPattern(
+            excludes=["sp_exclude"]
+        )
+        self.postgres_source.context.get().__dict__["database"] = "test_db"
+        self.postgres_source.context.get().__dict__["database_schema"] = "test_schema"
 
-        engine.execute.return_value = [["110016"]]
-        self.assertEqual("110016", get_postgres_version(engine))
+        mock_engine = MagicMock()
+        self.postgres_source.engine = mock_engine
 
-        engine.execute.return_value = [["90624"]]
-        self.assertEqual("90624", get_postgres_version(engine))
+        # Mock rows
+        row1 = MagicMock()
+        row1._mapping = {
+            "procedure_name": "sp_include",
+            "schema_name": "test_schema",
+            "definition": "def1",
+            "language": "SQL",
+            "procedure_type": "PROCEDURE",
+        }
+        row2 = MagicMock()
+        row2._mapping = {
+            "procedure_name": "sp_exclude",
+            "schema_name": "test_schema",
+            "definition": "def2",
+            "language": "SQL",
+            "procedure_type": "PROCEDURE",
+        }
 
-        engine.execute.return_value = [[]]
-        self.assertIsNone(get_postgres_version(engine))
+        # PostgreSQL get_stored_procedures calls _get_stored_procedures_internal twice
+        # once for procedures and once for functions
+        mock_result_proc = MagicMock()
+        mock_result_proc.all.return_value = [row1, row2]
+
+        mock_result_func = MagicMock()
+        mock_result_func.all.return_value = []
+
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = [mock_result_proc, mock_result_func]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.postgres_source.get_stored_procedures())
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_include")
+
+    def test_get_version_info(self):
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        mock_conn.execute.return_value.all.return_value = [["110016"]]
+        self.assertEqual("110016", get_postgres_version(mock_engine))
+
+        mock_conn.execute.return_value.all.return_value = [["90624"]]
+        self.assertEqual("90624", get_postgres_version(mock_engine))
+
+        mock_conn.execute.return_value.all.return_value = [[]]
+        self.assertIsNone(get_postgres_version(mock_engine))
 
     @patch("sqlalchemy.engine.base.Engine")
     @patch(

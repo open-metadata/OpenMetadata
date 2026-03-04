@@ -75,6 +75,11 @@ jwtTokenConfiguration:
   rsaprivateKeyFilePath: "src/test/resources/private_key.der"
   jwtissuer: "open-metadata.org"
   keyId: "test-key"
+eventHandlerConfiguration:
+  eventHandlerClassNames:
+    - "org.openmetadata.service.events.AuditEventHandler"
+    - "org.openmetadata.service.events.ChangeEventHandler"
+
 eventMonitoringConfiguration:
   eventMonitor: "prometheus"
   batchSize: 10
@@ -103,7 +108,7 @@ objectStorage:
 
 # RDF Configuration - will be dynamically configured by TestSuiteBootstrap
 rdf:
-  enabled: true
+  enabled: false
   baseUri: "https://open-metadata.org/"
   storageType: "FUSEKI"
   remoteEndpoint: "http://localhost:3030/openmetadata"

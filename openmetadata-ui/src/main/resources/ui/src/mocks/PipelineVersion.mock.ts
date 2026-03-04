@@ -67,7 +67,7 @@ export const mockPipelineData = {
       name: 'snowflake_task',
       fullyQualifiedName: 'sample_airflow.snowflake_etl.snowflake_task',
       sourceUrl:
-        'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
+        'http://localhost:8080/taskinstance/list/?_flt_3_dag_id=assert_table_exists',
       downstreamTasks: ['assert_table_exists'],
       taskType: 'SnowflakeOperator',
       tags: [],
@@ -78,7 +78,7 @@ export const mockPipelineData = {
       fullyQualifiedName: 'sample_airflow.snowflake_etl.assert_table_exists',
       description: 'Assert if a table exists',
       sourceUrl:
-        'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
+        'http://localhost:8080/taskinstance/list/?_flt_3_dag_id=assert_table_exists',
       downstreamTasks: [],
       taskType: 'HiveOperator',
       tags: [],
@@ -132,10 +132,14 @@ export const EXECUTION_LIST_MOCK = [
       {
         name: 'dim_address_task',
         executionStatus: StatusType.Pending,
+        startTime: 1697265270340,
+        endTime: 1697265270640,
       },
       {
         name: 'assert_table_exists',
         executionStatus: StatusType.Pending,
+        startTime: 1697265270340,
+        endTime: 1697265270540,
       },
     ],
   },
@@ -146,10 +150,14 @@ export const EXECUTION_LIST_MOCK = [
       {
         name: 'dim_address_task',
         executionStatus: StatusType.Failed,
+        startTime: 1697265270200,
+        endTime: 1697265270800,
       },
       {
         name: 'assert_table_exists',
         executionStatus: StatusType.Pending,
+        startTime: 1697265270200,
+        endTime: 1697265270400,
       },
     ],
   },
@@ -160,10 +168,14 @@ export const EXECUTION_LIST_MOCK = [
       {
         name: 'dim_address_task',
         executionStatus: StatusType.Pending,
+        startTime: 1697265269958,
+        endTime: 1697265270258,
       },
       {
         name: 'assert_table_exists',
         executionStatus: StatusType.Successful,
+        startTime: 1697265269958,
+        endTime: 1697265270658,
       },
     ],
   },
@@ -174,10 +186,14 @@ export const EXECUTION_LIST_MOCK = [
       {
         name: 'dim_address_task',
         executionStatus: StatusType.Failed,
+        startTime: 1697265269825,
+        endTime: 1697265270125,
       },
       {
         name: 'assert_table_exists',
         executionStatus: StatusType.Successful,
+        startTime: 1697265269825,
+        endTime: 1697265270425,
       },
     ],
   },
@@ -188,10 +204,14 @@ export const EXECUTION_LIST_MOCK = [
       {
         name: 'dim_address_task',
         executionStatus: StatusType.Successful,
+        startTime: 1697265269683,
+        endTime: 1697265270283,
       },
       {
         name: 'assert_table_exists',
         executionStatus: StatusType.Failed,
+        startTime: 1697265269683,
+        endTime: 1697265270083,
       },
     ],
   },
@@ -202,10 +222,14 @@ export const EXECUTION_LIST_MOCK = [
       {
         name: 'dim_address_task',
         executionStatus: StatusType.Successful,
+        startTime: 1697265269509,
+        endTime: 1697265270209,
       },
       {
         name: 'assert_table_exists',
         executionStatus: StatusType.Successful,
+        startTime: 1697265269509,
+        endTime: 1697265270109,
       },
     ],
   },
@@ -216,10 +240,14 @@ export const EXECUTION_LIST_MOCK = [
       {
         name: 'dim_address_task',
         executionStatus: StatusType.Failed,
+        startTime: 1697265269363,
+        endTime: 1697265269963,
       },
       {
         name: 'assert_table_exists',
         executionStatus: StatusType.Failed,
+        startTime: 1697265269363,
+        endTime: 1697265269763,
       },
     ],
   },

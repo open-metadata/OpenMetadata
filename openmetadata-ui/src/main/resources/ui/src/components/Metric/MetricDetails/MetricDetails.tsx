@@ -75,8 +75,11 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedMetricFqn } = useFqn();
+
   const navigate = useNavigate();
+
+  const { entityFqn: decodedMetricFqn } = useFqn({ type: EntityType.METRIC });
+
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );

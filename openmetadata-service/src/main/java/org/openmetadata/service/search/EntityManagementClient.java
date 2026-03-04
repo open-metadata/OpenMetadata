@@ -319,6 +319,28 @@ public interface EntityManagementClient {
   }
 
   /**
+   * Updates domain entity FQNs in the search index by prefix replacement.
+   * This is used during domain renaming to update all nested domain documents.
+   *
+   * @param oldFqn the old domain FQN prefix to replace
+   * @param newFqn the new domain FQN prefix
+   */
+  default void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    // Default no-op implementation - overridden by search-specific implementations
+  }
+
+  /**
+   * Updates asset domain references in the search index by prefix replacement.
+   * This is used during domain renaming to update domain references in all asset documents.
+   *
+   * @param oldFqn the old domain FQN prefix to replace
+   * @param newFqn the new domain FQN prefix
+   */
+  default void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    // Default no-op implementation - overridden by search-specific implementations
+  }
+
+  /**
    * Reindexes multiple entities across indices.
    * This method takes a list of entity references, fetches the full entity data,
    * rebuilds the search index documents, and performs a bulk update.

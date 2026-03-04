@@ -29,6 +29,12 @@
           "type": "integer",
           "default": 0,
           "minimum": 0
+        },
+        "warningRecords": {
+          "description": "Count of Records with Warnings (e.g., stale references that were skipped)",
+          "type": "integer",
+          "default": 0,
+          "minimum": 0
         }
       }
     },
@@ -44,8 +50,16 @@
           "description": "Stats for the reader step (reading from database)",
           "$ref": "#/definitions/stepStats"
         },
+        "processStats": {
+          "description": "Stats for the process step (building search index documents)",
+          "$ref": "#/definitions/stepStats"
+        },
         "sinkStats": {
           "description": "Stats for the sink step (writing to search index)",
+          "$ref": "#/definitions/stepStats"
+        },
+        "vectorStats": {
+          "description": "Stats for the vector step (generating and indexing vector embeddings)",
           "$ref": "#/definitions/stepStats"
         },
         "entityStats": {
@@ -205,6 +219,35 @@
     "slackChannel": {
       "description": "Slack channel ID or name (required when using bot token, e.g., 'C1234567890' or '#general')",
       "type": "string"
+    },
+    "useDistributedIndexing": {
+      "description": "Enable distributed indexing across multiple servers. When enabled, reindexing work is partitioned and can be processed by multiple servers concurrently with crash recovery support.",
+      "type": "boolean",
+      "default": true
+    },
+    "partitionSize": {
+      "title": "Partition Size",
+      "description": "Number of entities per partition for distributed indexing. Smaller values create more partitions for better distribution across servers. Range: 1000-50000.",
+      "type": "integer",
+      "default": 10000,
+      "minimum": 1000,
+      "maximum": 50000
+    },
+    "timeSeriesMaxDays": {
+      "title": "Time Series Max Days",
+      "description": "Maximum age in days for time series data during reindexing. Only records from the last N days will be indexed. Default 0 (index all data). Set to a positive value like 15 to limit to recent data.",
+      "type": "integer",
+      "default": 0,
+      "minimum": -1
+    },
+    "timeSeriesEntityDays": {
+      "title": "Time Series Entity Days Override",
+      "description": "Per-entity-type override for time series max days. Keys are entity type names, values are number of days. Entities not in this map use timeSeriesMaxDays as default.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<String, Integer>",
+      "additionalProperties": {
+        "type": "integer"
+      }
     }
   },
   "additionalProperties": false

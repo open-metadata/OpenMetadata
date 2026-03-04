@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { TagLabel } from '../generated/entity/data/container';
@@ -20,9 +21,14 @@ import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
 import {
   extractColumnsFromData,
   ExtraTableDropdownOptions,
+  fieldExistsByFQN,
   findColumnByEntityLink,
+  getColumnOptionsFromTableColumn,
   getEntityIcon,
   getExpandAllKeysToDepth,
+  getHighlightedRowClassName,
+  getNestedSectionTitle,
+  getParentKeysToExpand,
   getSafeExpandAllKeys,
   getSchemaDepth,
   getSchemaFieldCount,
@@ -34,9 +40,18 @@ import {
   pruneEmptyChildren,
   shouldCollapseSchema,
   updateColumnInNestedStructure,
+  updateFieldExtension,
 } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
+import { TableDetailPageTabProps } from './TableClassBase';
 import { extractTableColumns } from './TableUtils';
+import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
+
+type ParentFieldObject = {
+  fullyQualifiedName?: string;
+  children?: ParentFieldObject[];
+  name?: string;
+};
 
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
@@ -252,6 +267,205 @@ describe('TableUtils', () => {
       );
 
       expect(result).toEqual(columns);
+    });
+
+    it('should update a deeply nested column (3 levels deep)', () => {
+      const columns: Column[] = [
+        {
+          name: 'level1',
+          dataType: DataType.Struct,
+          fullyQualifiedName: 'table.level1',
+          description: 'level 1 description',
+          children: [
+            {
+              name: 'level2',
+              dataType: DataType.Struct,
+              fullyQualifiedName: 'table.level1.level2',
+              description: 'level 2 description',
+              children: [
+                {
+                  name: 'level3',
+                  dataType: DataType.String,
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  description: 'original deep description',
+                } as Column,
+              ],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.level1.level2.level3';
+      const update = { description: 'updated deep description' };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].description).toBe('level 1 description');
+      expect(result[0].children?.[0].description).toBe('level 2 description');
+      expect(result[0].children?.[0].children?.[0].description).toBe(
+        'updated deep description'
+      );
+    });
+
+    it('should update tags on a nested column', () => {
+      const columns: Column[] = [
+        {
+          name: 'parentColumn',
+          dataType: DataType.Struct,
+          fullyQualifiedName: 'table.parentColumn',
+          tags: [],
+          children: [
+            {
+              name: 'childColumn',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.parentColumn.childColumn',
+              tags: [],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.parentColumn.childColumn';
+      const update = {
+        tags: [
+          {
+            tagFQN: 'PII.Sensitive',
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ] as TagLabel[],
+      };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].children?.[0].tags).toHaveLength(1);
+      expect(result[0].children?.[0].tags?.[0].tagFQN).toBe('PII.Sensitive');
+    });
+
+    it('should update displayName on a nested column', () => {
+      const columns: Column[] = [
+        {
+          name: 'products',
+          dataType: DataType.Array,
+          fullyQualifiedName: 'table.products',
+          children: [
+            {
+              name: 'product_id',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.products.product_id',
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.products.product_id';
+      const update = { displayName: 'Product Identifier' };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].children?.[0].displayName).toBe('Product Identifier');
+    });
+
+    it('should update multiple properties on a nested column at once', () => {
+      const columns: Column[] = [
+        {
+          name: 'parentColumn',
+          dataType: DataType.Struct,
+          fullyQualifiedName: 'table.parentColumn',
+          children: [
+            {
+              name: 'childColumn',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.parentColumn.childColumn',
+              description: 'old description',
+              tags: [],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.parentColumn.childColumn';
+      const update = {
+        description: 'new description',
+        displayName: 'Child Column Display',
+        tags: [
+          {
+            tagFQN: 'Test.Tag',
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ] as TagLabel[],
+      };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].children?.[0].description).toBe('new description');
+      expect(result[0].children?.[0].displayName).toBe('Child Column Display');
+      expect(result[0].children?.[0].tags).toHaveLength(1);
+    });
+
+    it('should not modify other nested columns when updating one', () => {
+      const columns: Column[] = [
+        {
+          name: 'parentColumn',
+          dataType: DataType.Struct,
+          fullyQualifiedName: 'table.parentColumn',
+          children: [
+            {
+              name: 'child1',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.parentColumn.child1',
+              description: 'child 1 description',
+            } as Column,
+            {
+              name: 'child2',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.parentColumn.child2',
+              description: 'child 2 description',
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.parentColumn.child1';
+      const update = { description: 'updated child 1 description' };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].children?.[0].description).toBe(
+        'updated child 1 description'
+      );
+      expect(result[0].children?.[1].description).toBe('child 2 description');
+    });
+
+    it('should preserve the children property when updating a parent column', () => {
+      const columns: Column[] = [
+        {
+          name: 'parentColumn',
+          dataType: DataType.Struct,
+          fullyQualifiedName: 'table.parentColumn',
+          description: 'old parent description',
+          children: [
+            {
+              name: 'childColumn',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.parentColumn.childColumn',
+              description: 'child description',
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.parentColumn';
+      const update = { description: 'new parent description' };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].description).toBe('new parent description');
+      expect(result[0].children).toHaveLength(1);
+      expect(result[0].children?.[0].description).toBe('child description');
     });
   });
 
@@ -595,33 +809,51 @@ describe('TableUtils', () => {
 
   describe('Schema Performance Functions', () => {
     // Mock field structure for testing
-    type MockField = { name?: string; children?: MockField[] };
+    type MockField = {
+      name?: string;
+      fullyQualifiedName?: string;
+      children?: MockField[];
+    };
 
     const mockNestedFields: MockField[] = [
       {
         name: 'level1_field1',
+        fullyQualifiedName: 'level1_field1',
         children: [
           {
             name: 'level2_field1',
-            children: [{ name: 'level3_field1' }, { name: 'level3_field2' }],
+            fullyQualifiedName: 'level2_field1',
+            children: [
+              { name: 'level3_field1', fullyQualifiedName: 'level3_field1' },
+              { name: 'level3_field2', fullyQualifiedName: 'level3_field2' },
+            ],
           },
           {
             name: 'level2_field2',
-            children: [{ name: 'level3_field3' }],
+            fullyQualifiedName: 'level2_field2',
+            children: [
+              { name: 'level3_field3', fullyQualifiedName: 'level3_field3' },
+            ],
           },
         ],
       },
       {
         name: 'level1_field2',
+        fullyQualifiedName: 'level1_field2',
         children: [
           {
             name: 'level2_field3',
-            children: [{ name: 'level3_field4' }, { name: 'level3_field5' }],
+            fullyQualifiedName: 'level2_field3',
+            children: [
+              { name: 'level3_field4', fullyQualifiedName: 'level3_field4' },
+              { name: 'level3_field5', fullyQualifiedName: 'level3_field5' },
+            ],
           },
         ],
       },
       {
         name: 'level1_field3',
+        fullyQualifiedName: 'level1_field3',
       },
     ];
 
@@ -836,7 +1068,7 @@ describe('TableUtils', () => {
     });
   });
 
-  const mockProps = {
+  const mockProps: TableDetailPageTabProps = {
     activeTab: EntityTabs.DBT,
     deleted: false,
     editCustomAttributePermission: true,
@@ -849,6 +1081,7 @@ describe('TableUtils', () => {
       totalCount: 0,
       totalTasksCount: 0,
     },
+    viewCustomPropertiesPermission: true,
     fetchTableDetails: jest.fn(),
     getEntityFeedCount: jest.fn(),
     handleFeedCount: jest.fn(),
@@ -1371,5 +1604,893 @@ describe('TableUtils', () => {
 
       expect(result[0].tags).toEqual([]);
     });
+  });
+
+  describe('fieldExistsByFQN', () => {
+    it('should return true when field exists at root level', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+        { fullyQualifiedName: 'table.column3' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.column2')).toBe(true);
+    });
+
+    it('should return true when field exists in nested children', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [
+            { fullyQualifiedName: 'table.parent.child1' },
+            { fullyQualifiedName: 'table.parent.child2' },
+          ],
+        },
+        { fullyQualifiedName: 'table.other' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.parent.child1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent.child2')).toBe(true);
+    });
+
+    it('should return true when targetFqn starts with item FQN prefix', () => {
+      const items = [
+        { fullyQualifiedName: 'table.parent' },
+        { fullyQualifiedName: 'table.other' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.parent.child')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent.child.grandchild')).toBe(
+        true
+      );
+    });
+
+    it('should return false when field does not exist', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.nonexistent')).toBe(false);
+      expect(fieldExistsByFQN(items, 'other.table.column1')).toBe(false);
+    });
+
+    it('should return false for empty array', () => {
+      expect(fieldExistsByFQN([], 'table.column1')).toBe(false);
+    });
+
+    it('should handle deeply nested structures', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.level1',
+          children: [
+            {
+              fullyQualifiedName: 'table.level1.level2',
+              children: [
+                {
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  children: [
+                    {
+                      fullyQualifiedName: 'table.level1.level2.level3.level4',
+                      children: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.level1.level2.level3.level4')).toBe(
+        true
+      );
+      expect(fieldExistsByFQN(items, 'table.level1.level2.level3')).toBe(true);
+    });
+
+    it('should handle items with undefined fullyQualifiedName', () => {
+      const items = [
+        { fullyQualifiedName: undefined },
+        { fullyQualifiedName: 'table.column1' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.column1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.undefined')).toBe(false);
+    });
+
+    it('should handle items with empty children array', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [],
+        },
+        { fullyQualifiedName: 'table.column1' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.column1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent.child')).toBe(true); // prefix match
+    });
+
+    it('should handle multiple levels of nesting with mixed results', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent1',
+          children: [
+            { fullyQualifiedName: 'table.parent1.child1', children: [] },
+            {
+              fullyQualifiedName: 'table.parent1.child2',
+              children: [
+                {
+                  fullyQualifiedName: 'table.parent1.child2.grandchild',
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          fullyQualifiedName: 'table.parent2',
+          children: [
+            { fullyQualifiedName: 'table.parent2.child1', children: [] },
+          ],
+        },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.parent1.child1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent1.child2.grandchild')).toBe(
+        true
+      );
+      expect(fieldExistsByFQN(items, 'table.parent2.child1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent1.nonexistent')).toBe(true); // prefix match
+      expect(fieldExistsByFQN(items, 'table.nonexistent')).toBe(false);
+    });
+  });
+
+  describe('getParentKeysToExpand', () => {
+    it('should return empty array when field is at root level', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.column1')).toEqual([]);
+      expect(getParentKeysToExpand(items, 'table.column2')).toEqual([]);
+    });
+
+    it('should return parent keys for field in one level of nesting', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
+            { fullyQualifiedName: 'table.parent.child2', children: [] },
+          ],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
+        'table.parent',
+      ]);
+      expect(getParentKeysToExpand(items, 'table.parent.child2')).toEqual([
+        'table.parent',
+      ]);
+    });
+
+    it('should return all parent keys for deeply nested field', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.level1',
+          children: [
+            {
+              fullyQualifiedName: 'table.level1.level2',
+              children: [
+                {
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  children: [
+                    {
+                      fullyQualifiedName: 'table.level1.level2.level3.level4',
+                      children: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      expect(
+        getParentKeysToExpand(items, 'table.level1.level2.level3.level4')
+      ).toEqual([
+        'table.level1',
+        'table.level1.level2',
+        'table.level1.level2.level3',
+      ]);
+    });
+
+    it('should return empty array when field does not exist', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [{ fullyQualifiedName: 'table.parent.child1' }],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.nonexistent')).toEqual([]);
+      expect(getParentKeysToExpand(items, 'table.parent.nonexistent')).toEqual(
+        []
+      );
+    });
+
+    it('should return empty array for empty items array', () => {
+      expect(getParentKeysToExpand([], 'table.column1')).toEqual([]);
+    });
+
+    it('should use name as fallback when fullyQualifiedName is undefined', () => {
+      const items = [
+        {
+          name: 'parent',
+          fullyQualifiedName: undefined,
+          children: [
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
+            { fullyQualifiedName: 'table.parent.child2', children: [] },
+          ],
+        },
+      ];
+
+      expect(
+        getParentKeysToExpand(
+          items as ParentFieldObject[],
+          'table.parent.child1'
+        )
+      ).toEqual(['parent']);
+    });
+
+    it('should use empty string when both fullyQualifiedName and name are undefined', () => {
+      const items = [
+        {
+          name: undefined,
+          fullyQualifiedName: undefined,
+          children: [{ fullyQualifiedName: 'table.child1', children: [] }],
+        },
+      ];
+
+      expect(
+        getParentKeysToExpand(items as ParentFieldObject[], 'table.child1')
+      ).toEqual(['']);
+    });
+
+    it('should handle multiple parents with different children', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent1',
+          children: [
+            { fullyQualifiedName: 'table.parent1.child1', children: [] },
+            { fullyQualifiedName: 'table.parent1.child2', children: [] },
+          ],
+        },
+        {
+          fullyQualifiedName: 'table.parent2',
+          children: [
+            {
+              fullyQualifiedName: 'table.parent2.child1',
+              children: [
+                {
+                  fullyQualifiedName: 'table.parent2.child1.grandchild',
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.parent1.child1')).toEqual([
+        'table.parent1',
+      ]);
+      expect(
+        getParentKeysToExpand(items, 'table.parent2.child1.grandchild')
+      ).toEqual(['table.parent2', 'table.parent2.child1']);
+    });
+
+    it('should handle parent keys parameter correctly', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
+          ],
+        },
+      ];
+
+      const initialParentKeys = ['table.root'];
+
+      expect(
+        getParentKeysToExpand(items, 'table.parent.child1', initialParentKeys)
+      ).toEqual(['table.root', 'table.parent']);
+    });
+
+    it('should return correct path when target is direct child', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
+            {
+              fullyQualifiedName: 'table.parent.child2',
+              children: [
+                {
+                  fullyQualifiedName: 'table.parent.child2.grandchild',
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      // Direct child should return parent
+      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
+        'table.parent',
+      ]);
+
+      // Nested child should return all parents
+      expect(
+        getParentKeysToExpand(items, 'table.parent.child2.grandchild')
+      ).toEqual(['table.parent', 'table.parent.child2']);
+    });
+
+    it('should handle items without children property', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.column1')).toEqual([]);
+    });
+  });
+
+  describe('getHighlightedRowClassName', () => {
+    it('should return "highlighted-row" when highlightedFqn matches record fullyQualifiedName', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('highlighted-row');
+    });
+
+    it('should return empty string when highlightedFqn does not match record fullyQualifiedName', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column2';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when highlightedFqn is undefined', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+
+      const result = getHighlightedRowClassName(record);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when highlightedFqn is empty string', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+
+      const result = getHighlightedRowClassName(record, '');
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when record fullyQualifiedName is undefined', () => {
+      const record = {
+        fullyQualifiedName: undefined,
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when both highlightedFqn and record fullyQualifiedName are undefined', () => {
+      const record = {
+        fullyQualifiedName: undefined,
+      };
+
+      const result = getHighlightedRowClassName(record);
+
+      expect(result).toBe('');
+    });
+
+    it('should work with Column type', () => {
+      const column = {
+        name: 'column1',
+        fullyQualifiedName: 'test.database.schema.table.column1',
+        dataType: 'STRING',
+      } as Column;
+
+      expect(
+        getHighlightedRowClassName(column, 'test.database.schema.table.column1')
+      ).toBe('highlighted-row');
+      expect(
+        getHighlightedRowClassName(column, 'test.database.schema.table.column2')
+      ).toBe('');
+    });
+
+    it('should work with SearchIndexField type', () => {
+      const field = {
+        name: 'field1',
+        fullyQualifiedName: 'test.index.field1',
+        dataType: 'TEXT',
+      };
+
+      expect(getHighlightedRowClassName(field, 'test.index.field1')).toBe(
+        'highlighted-row'
+      );
+      expect(getHighlightedRowClassName(field, 'test.index.field2')).toBe('');
+    });
+
+    it('should handle case-sensitive FQN matching', () => {
+      const record = {
+        fullyQualifiedName: 'Test.Database.Schema.Table.Column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should handle records with additional properties', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+        name: 'column1',
+        description: 'Test column',
+        tags: [],
+      };
+
+      expect(
+        getHighlightedRowClassName(record, 'test.database.schema.table.column1')
+      ).toBe('highlighted-row');
+    });
+  });
+
+  describe('updateFieldExtension', () => {
+    it('should update extension for a field at root level', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+        } as Column,
+        {
+          name: 'column2',
+          fullyQualifiedName: 'table.column2',
+          dataType: DataType.Int,
+        } as Column,
+      ];
+
+      const newExtension = { customProperty: 'value1', anotherProp: 123 };
+      updateFieldExtension('table.column1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+      expect(fields[1].extension).toBeUndefined();
+    });
+
+    it('should update extension for a field in nested children', () => {
+      const fields: Column[] = [
+        {
+          name: 'parentColumn',
+          fullyQualifiedName: 'table.parentColumn',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'nestedColumn',
+              fullyQualifiedName: 'table.parentColumn.nestedColumn',
+              dataType: DataType.String,
+            } as Column,
+            {
+              name: 'anotherNestedColumn',
+              fullyQualifiedName: 'table.parentColumn.anotherNestedColumn',
+              dataType: DataType.Int,
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const newExtension = { nestedProperty: 'nestedValue' };
+      updateFieldExtension(
+        'table.parentColumn.nestedColumn',
+        newExtension,
+        fields
+      );
+
+      expect(fields[0].children?.[0].extension).toEqual(newExtension);
+      expect(fields[0].children?.[1].extension).toBeUndefined();
+      expect(fields[0].extension).toBeUndefined();
+    });
+
+    it('should update extension for a field in deeply nested children', () => {
+      const fields: Column[] = [
+        {
+          name: 'level1',
+          fullyQualifiedName: 'table.level1',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'level2',
+              fullyQualifiedName: 'table.level1.level2',
+              dataType: DataType.Struct,
+              children: [
+                {
+                  name: 'level3',
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  dataType: DataType.String,
+                } as Column,
+              ],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const newExtension = { deepProperty: 'deepValue' };
+      updateFieldExtension('table.level1.level2.level3', newExtension, fields);
+
+      expect(fields[0].children?.[0].children?.[0].extension).toEqual(
+        newExtension
+      );
+    });
+
+    it('should not modify fields when target FQN does not exist', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+          extension: { existing: 'value' },
+        } as Column,
+      ];
+
+      const originalExtension = { ...fields[0].extension };
+      const newExtension = { newProperty: 'newValue' };
+
+      updateFieldExtension('table.nonexistent', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(originalExtension);
+    });
+
+    it('should handle empty array', () => {
+      const fields: Column[] = [];
+      const newExtension = { property: 'value' };
+
+      expect(() => {
+        updateFieldExtension('table.column1', newExtension, fields);
+      }).not.toThrow();
+    });
+
+    it('should handle undefined searchIndexFields', () => {
+      const newExtension = { property: 'value' };
+
+      expect(() => {
+        updateFieldExtension('table.column1', newExtension);
+      }).not.toThrow();
+    });
+
+    it('should replace existing extension with new extension', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+          extension: { oldProperty: 'oldValue' },
+        } as Column,
+      ];
+
+      const newExtension = { newProperty: 'newValue', anotherProp: 456 };
+      updateFieldExtension('table.column1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+      expect(fields[0].extension).not.toHaveProperty('oldProperty');
+    });
+
+    it('should update extension for multiple fields with same FQN pattern', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+        } as Column,
+        {
+          name: 'parentColumn',
+          fullyQualifiedName: 'table.parentColumn',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'column1',
+              fullyQualifiedName: 'table.parentColumn.column1',
+              dataType: DataType.String,
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const newExtension = { property: 'value' };
+      updateFieldExtension('table.column1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+      expect(fields[1].children?.[0].extension).toBeUndefined();
+    });
+
+    it('should work with SearchIndexField type', () => {
+      const fields: TableFieldsInfoCommonEntities[] = [
+        {
+          name: 'field1',
+          fullyQualifiedName: 'index.field1',
+          dataType: DataType.Text,
+        },
+        {
+          name: 'field2',
+          fullyQualifiedName: 'index.field2',
+          dataType: DataType.Geometry,
+        },
+      ];
+
+      const newExtension = { searchProperty: 'searchValue' };
+      updateFieldExtension('index.field1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+      expect(fields[1].extension).toBeUndefined();
+    });
+
+    it('should work with Field type (Topic)', () => {
+      const fields: TableFieldsInfoCommonEntities[] = [
+        {
+          name: 'topicField1',
+          fullyQualifiedName: 'topic.field1',
+          dataType: DataType.String,
+        },
+        {
+          name: 'topicField2',
+          fullyQualifiedName: 'topic.field2',
+          dataType: DataType.Int,
+        },
+      ];
+
+      const newExtension = { topicProperty: 'topicValue' };
+      updateFieldExtension('topic.field1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+      expect(fields[1].extension).toBeUndefined();
+    });
+
+    it('should handle fields with undefined children', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+          children: undefined,
+        } as Column,
+      ];
+
+      const newExtension = { property: 'value' };
+      updateFieldExtension('table.column1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+    });
+
+    it('should handle fields with empty children array', () => {
+      const fields: Column[] = [
+        {
+          name: 'parentColumn',
+          fullyQualifiedName: 'table.parentColumn',
+          dataType: DataType.Struct,
+          children: [],
+        } as Column,
+      ];
+
+      const newExtension = { property: 'value' };
+      updateFieldExtension('table.parentColumn', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+    });
+
+    it('should update extension with complex nested object', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+        } as Column,
+      ];
+
+      const complexExtension = {
+        metadata: {
+          source: 'external',
+          version: 1,
+        },
+        tags: ['tag1', 'tag2'],
+        config: {
+          enabled: true,
+          settings: {
+            timeout: 5000,
+            retries: 3,
+          },
+        },
+      };
+
+      updateFieldExtension('table.column1', complexExtension, fields);
+
+      expect(fields[0].extension).toEqual(complexExtension);
+      expect(fields[0].extension?.metadata?.source).toBe('external');
+      expect(fields[0].extension?.config?.settings?.timeout).toBe(5000);
+    });
+
+    it('should handle multiple nested fields and update only the target', () => {
+      const fields: Column[] = [
+        {
+          name: 'parent1',
+          fullyQualifiedName: 'table.parent1',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'child1',
+              fullyQualifiedName: 'table.parent1.child1',
+              dataType: DataType.String,
+            } as Column,
+            {
+              name: 'child2',
+              fullyQualifiedName: 'table.parent1.child2',
+              dataType: DataType.Int,
+            } as Column,
+          ],
+        } as Column,
+        {
+          name: 'parent2',
+          fullyQualifiedName: 'table.parent2',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'child1',
+              fullyQualifiedName: 'table.parent2.child1',
+              dataType: DataType.String,
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const newExtension = { targetProperty: 'targetValue' };
+      updateFieldExtension('table.parent1.child2', newExtension, fields);
+
+      expect(fields[0].children?.[1].extension).toEqual(newExtension);
+      expect(fields[0].children?.[0].extension).toBeUndefined();
+      expect(fields[1].children?.[0].extension).toBeUndefined();
+      expect(fields[0].extension).toBeUndefined();
+      expect(fields[1].extension).toBeUndefined();
+    });
+
+    it('should handle empty extension object', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+          extension: { existing: 'value' },
+        } as Column,
+      ];
+
+      const emptyExtension = {};
+      updateFieldExtension('table.column1', emptyExtension, fields);
+
+      expect(fields[0].extension).toEqual(emptyExtension);
+    });
+  });
+});
+
+describe('getColumnOptionsFromTableColumn', () => {
+  it('should use fullyQualifiedName when useFullyQualifiedName is true', () => {
+    const columns = [
+      {
+        name: 'column1',
+        fullyQualifiedName: 'table.column1',
+        dataType: 'STRING',
+        children: [],
+      },
+      {
+        name: 'nested',
+        fullyQualifiedName: 'table.nested',
+        dataType: 'STRUCT',
+        children: [
+          {
+            name: 'field1',
+            fullyQualifiedName: 'table.nested.field1',
+            dataType: 'STRING',
+            children: [],
+          },
+        ],
+      },
+    ] as Column[];
+
+    const result = getColumnOptionsFromTableColumn(columns, true);
+
+    expect(result).toEqual([
+      { label: 'column1', value: 'table.column1' },
+      { label: 'nested', value: 'table.nested' },
+      { label: 'field1', value: 'table.nested.field1' },
+    ]);
+  });
+
+  it('should use name when useFullyQualifiedName is false', () => {
+    const columns = [
+      {
+        name: 'column1',
+        fullyQualifiedName: 'table.column1',
+        dataType: 'STRING',
+        children: [],
+      },
+    ] as Column[];
+
+    const result = getColumnOptionsFromTableColumn(columns, false);
+
+    expect(result).toEqual([{ label: 'column1', value: 'column1' }]);
+  });
+
+  it('should use name by default when useFullyQualifiedName is not provided', () => {
+    const columns = [
+      {
+        name: 'column1',
+        fullyQualifiedName: 'table.column1',
+        dataType: 'STRING',
+        children: [],
+      },
+    ] as Column[];
+
+    const result = getColumnOptionsFromTableColumn(columns);
+
+    expect(result).toEqual([{ label: 'column1', value: 'column1' }]);
+  });
+});
+
+describe('getNestedSectionTitle', () => {
+  it('should return schema-field-plural for TOPIC', () => {
+    expect(getNestedSectionTitle(EntityType.TOPIC)).toBe(
+      'label.schema-field-plural'
+    );
+  });
+
+  it('should return schema-field-plural for API_ENDPOINT', () => {
+    expect(getNestedSectionTitle(EntityType.API_ENDPOINT)).toBe(
+      'label.schema-field-plural'
+    );
+  });
+
+  it('should return field-plural for SEARCH_INDEX', () => {
+    expect(getNestedSectionTitle(EntityType.SEARCH_INDEX)).toBe(
+      'label.field-plural'
+    );
+  });
+
+  it.each([
+    EntityType.TABLE,
+    EntityType.DASHBOARD_DATA_MODEL,
+    EntityType.CONTAINER,
+    undefined,
+  ])('should return nested-column-plural for %s', (entityType) => {
+    expect(getNestedSectionTitle(entityType)).toBe(
+      'label.nested-column-plural'
+    );
   });
 });

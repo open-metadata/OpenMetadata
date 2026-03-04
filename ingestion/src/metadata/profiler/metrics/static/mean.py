@@ -39,6 +39,8 @@ from metadata.utils.logger import profiler_logger
 if TYPE_CHECKING:
     import pandas as pd
 
+    from metadata.profiler.processor.runner import PandasRunner
+
 
 logger = profiler_logger()
 
@@ -106,6 +108,8 @@ class Mean(StaticMetric):
     - For a concatenable (str, text...) return the AVG length
     """
 
+    schema_metric_type = MetricType.mean
+
     @classmethod
     def name(cls):
         return MetricType.mean.value
@@ -129,8 +133,10 @@ class Mean(StaticMetric):
         return None
 
     # pylint: disable=import-outside-toplevel
-    def df_fn(self, dfs=None):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """dataframe function"""
+        if dfs is None:
+            return None
         computation = self.get_pandas_computation()
         accumulator = computation.create_accumulator()
         for df in dfs:

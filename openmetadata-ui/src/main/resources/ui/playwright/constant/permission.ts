@@ -170,6 +170,16 @@ export const EDIT_DESCRIPTION_RULE: PolicyRulesType[] = [
   },
 ];
 
+export const VIEW_ONLY_RULE: PolicyRulesType[] = [
+  {
+    name: 'ViewOnly-Rule',
+    description: 'Allow ViewAll for all entities without edit permissions.',
+    resources: ['All'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+  },
+];
+
 export const EDIT_GLOSSARY_TERM_RULE: PolicyRulesType[] = [
   {
     name: 'EditGlossaryTerm-EditRule',
@@ -304,3 +314,28 @@ export const SETTING_PAGE_ENTITY_PERMISSION: Record<
     api: '/api/v1/services/storageServices?*',
   },
 };
+
+export const SERVICE_CREATOR_RULES: PolicyRulesType[] = [
+  {
+    name: 'DatabaseService-Create-Rule',
+    resources: ['databaseService'],
+    operations: ['Create', 'ViewAll'],
+    effect: 'allow',
+  },
+  {
+    name: 'DatabaseService-OwnerAll-Rule',
+    resources: ['databaseService'],
+    operations: ['All'],
+    effect: 'allow',
+    condition: 'isOwner()',
+  },
+];
+
+export const SERVICE_VIEWER_RULES: PolicyRulesType[] = [
+  {
+    name: 'DatabaseService-ViewOnly-Rule',
+    resources: ['databaseService'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+  },
+];

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import { EntityType } from '../enums/entity.enum';
 import { APIEndpoint, Field } from '../generated/entity/data/apiEndpoint';
@@ -25,6 +25,7 @@ import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Worksheet } from '../generated/entity/data/worksheet';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
   ColumnFieldUpdate,
@@ -42,6 +43,8 @@ import {
   normalizeTags,
   pruneEmptyChildren,
   updateFieldDescription,
+  updateFieldDisplayName,
+  updateFieldExtension,
   updateFieldTags,
 } from './TableUtils';
 
@@ -66,7 +69,7 @@ const toEntityTags = (tags: TagLabel[]): EntityTags[] =>
 
     return {
       ...tag,
-      ...(tagWithRemovable.isRemovable === undefined && { isRemovable: true }),
+      ...(isUndefined(tagWithRemovable.isRemovable) && { isRemovable: true }),
     } as EntityTags;
   });
 
@@ -80,10 +83,10 @@ export const updateTopicField = (
 ): { updatedTopic: Topic; updatedColumn: Column | undefined } => {
   const schemaFields = cloneDeep(topic.messageSchema?.schemaFields ?? []);
 
-  if (update.description !== undefined) {
+  if (!isUndefined(update.description)) {
     updateFieldDescription(fqn, update.description, schemaFields);
   }
-  if (update.tags !== undefined) {
+  if (!isUndefined(update.tags)) {
     const normalizedTags = normalizeTags(update.tags);
     updateFieldTags(fqn, toEntityTags(normalizedTags), schemaFields);
   }
@@ -111,10 +114,10 @@ export const updateSearchIndexField = (
 ): { updatedSearchIndex: SearchIndex; updatedColumn: Column | undefined } => {
   const fields = cloneDeep(searchIndex.fields ?? []);
 
-  if (update.description !== undefined) {
+  if (!isUndefined(update.description)) {
     updateFieldDescription(fqn, update.description, fields);
   }
-  if (update.tags !== undefined) {
+  if (!isUndefined(update.tags)) {
     const normalizedTags = normalizeTags(update.tags);
     updateFieldTags(fqn, toEntityTags(normalizedTags), fields);
   }
@@ -144,10 +147,10 @@ export const updateContainerColumn = (
   const dataModel = cloneDeep(container.dataModel);
   const columns = cloneDeep(dataModel.columns ?? []);
 
-  if (update.description !== undefined) {
+  if (!isUndefined(update.description)) {
     updateContainerColumnDescription(columns, fqn, update.description);
   }
-  if (update.tags !== undefined) {
+  if (!isUndefined(update.tags)) {
     const normalizedTags = normalizeTags(update.tags);
     updateContainerColumnTags(columns, fqn, toEntityTags(normalizedTags));
   }
@@ -179,10 +182,10 @@ export const updateMlModelFeature = (
     if (feature.fullyQualifiedName === fqn) {
       return {
         ...feature,
-        ...(update.description !== undefined && {
+        ...(!isUndefined(update.description) && {
           description: update.description,
         }),
-        ...(update.tags !== undefined && {
+        ...(!isUndefined(update.tags) && {
           tags: normalizeTags(update.tags),
         }),
       };
@@ -217,10 +220,10 @@ export const updatePipelineTask = (
     if (task.fullyQualifiedName === fqn) {
       return {
         ...task,
-        ...(update.description !== undefined && {
+        ...(!isUndefined(update.description) && {
           description: update.description,
         }),
-        ...(update.tags !== undefined && {
+        ...(!isUndefined(update.tags) && {
           tags: normalizeTags(update.tags),
         }),
       };
@@ -252,13 +255,21 @@ export const updateTableColumn = (
 ): { updatedTable: Table; updatedColumn: Column | undefined } => {
   const columns = cloneDeep(table.columns ?? []);
 
-  if (update.description !== undefined) {
+  if (!isUndefined(update.description)) {
     updateFieldDescription(fqn, update.description, columns);
   }
 
-  if (update.tags !== undefined) {
+  if (!isUndefined(update.tags)) {
     const normalizedTags = normalizeTags(update.tags);
     updateFieldTags(fqn, toEntityTags(normalizedTags), columns);
+  }
+
+  if (!isUndefined(update.extension)) {
+    updateFieldExtension(fqn, update.extension, columns);
+  }
+
+  if (!isUndefined(update.displayName)) {
+    updateFieldDisplayName(fqn, update.displayName, columns);
   }
 
   const updatedTable: Table = {
@@ -285,13 +296,17 @@ export const updateDataModelColumn = (
 } => {
   const columns = cloneDeep(dataModel.columns ?? []);
 
-  if (update.description !== undefined) {
+  if (!isUndefined(update.description)) {
     updateFieldDescription(fqn, update.description, columns);
   }
 
-  if (update.tags !== undefined) {
+  if (!isUndefined(update.tags)) {
     const normalizedTags = normalizeTags(update.tags);
     updateFieldTags(fqn, toEntityTags(normalizedTags), columns);
+  }
+
+  if (!isUndefined(update.displayName)) {
+    updateFieldDisplayName(fqn, update.displayName, columns);
   }
 
   const updatedDataModel: DashboardDataModel = {
@@ -302,6 +317,36 @@ export const updateDataModelColumn = (
   const updatedColumn = findFieldByFQN<DataModelColumn>(columns, fqn);
 
   return { updatedDataModel, updatedColumn };
+};
+
+/**
+ * Update Worksheet column
+ * Returns the updated worksheet and column (local data modification only)
+ */
+export const updateWorksheetColumn = (
+  worksheet: Worksheet,
+  fqn: string,
+  update: ColumnFieldUpdate
+): { updatedWorksheet: Worksheet; updatedColumn: Column | undefined } => {
+  const columns = cloneDeep(worksheet.columns ?? []);
+
+  if (!isUndefined(update.description)) {
+    updateFieldDescription(fqn, update.description, columns);
+  }
+
+  if (!isUndefined(update.tags)) {
+    const normalizedTags = normalizeTags(update.tags);
+    updateFieldTags(fqn, toEntityTags(normalizedTags), columns);
+  }
+
+  const updatedWorksheet: Worksheet = {
+    ...worksheet,
+    columns: pruneEmptyChildren(columns),
+  };
+
+  const updatedColumn = findFieldByFQN<Column>(columns, fqn);
+
+  return { updatedWorksheet, updatedColumn };
 };
 
 /**
@@ -340,11 +385,11 @@ export const updateApiEndpointField = (
   const schemaFields = cloneDeep(schema.schemaFields ?? []);
 
   // Use recursive utilities to update nested fields
-  if (update.description !== undefined) {
+  if (!isUndefined(update.description)) {
     updateFieldDescription<Field>(fqn, update.description, schemaFields);
   }
 
-  if (update.tags !== undefined) {
+  if (!isUndefined(update.tags)) {
     const normalizedTags = normalizeTags(update.tags);
     updateFieldTags<Field>(fqn, toEntityTags(normalizedTags), schemaFields);
   }
@@ -374,7 +419,8 @@ export type ColumnUpdateEntityType =
   | EntityType.MLMODEL
   | EntityType.PIPELINE
   | EntityType.DASHBOARD_DATA_MODEL
-  | EntityType.API_ENDPOINT;
+  | EntityType.API_ENDPOINT
+  | EntityType.WORKSHEET;
 
 /**
  * Check if entity type supports column updates
@@ -391,6 +437,7 @@ export const supportsColumnUpdates = (
     EntityType.PIPELINE,
     EntityType.DASHBOARD_DATA_MODEL,
     EntityType.API_ENDPOINT,
+    EntityType.WORKSHEET,
   ].includes(entityType);
 };
 
@@ -514,6 +561,20 @@ export const handleColumnFieldUpdate = <T extends EntityDataMapValue>({
 
       return {
         updatedEntity: updatedApiEndpoint as T,
+        updatedColumn,
+      };
+    }
+
+    case EntityType.WORKSHEET: {
+      const worksheet = entityData as EntityDataMap[EntityType.WORKSHEET];
+      const { updatedWorksheet, updatedColumn } = updateWorksheetColumn(
+        worksheet,
+        fqn,
+        update
+      );
+
+      return {
+        updatedEntity: updatedWorksheet as unknown as T,
         updatedColumn,
       };
     }

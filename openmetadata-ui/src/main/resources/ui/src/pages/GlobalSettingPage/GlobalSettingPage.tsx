@@ -20,6 +20,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -82,7 +83,7 @@ const GlobalSettingPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
-      <Row gutter={[0, 20]}>
+      <Row className="m-t-xs" gutter={[0, 20]}>
         <Col span={24}>
           <PageHeader
             data={{
@@ -91,6 +92,8 @@ const GlobalSettingPage = () => {
                 brandName: brandClassBase.getPageTitle(),
               }),
             }}
+            learningPageId={LEARNING_PAGE_IDS.SETTINGS}
+            title={t('label.setting-plural')}
           />
         </Col>
 

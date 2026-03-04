@@ -164,12 +164,32 @@ class Lineage:
     ) -> None:
         """Remove a lineage edge between two entities."""
         client = cast(Any, cls._get_client())
-        client.delete_lineage_edge(
-            from_entity=from_entity,
-            from_entity_type=from_entity_type,
-            to_entity=to_entity,
-            to_entity_type=to_entity_type,
+        edge = EntitiesEdge(
+            fromEntity=EntityReference(
+                id=_ensure_uuid(from_entity),
+                type=from_entity_type,
+                name=None,
+                fullyQualifiedName=None,
+                description=None,
+                displayName=None,
+                deleted=None,
+                inherited=None,
+                href=None,
+            ),
+            toEntity=EntityReference(
+                id=_ensure_uuid(to_entity),
+                type=to_entity_type,
+                name=None,
+                fullyQualifiedName=None,
+                description=None,
+                displayName=None,
+                deleted=None,
+                inherited=None,
+                href=None,
+            ),
+            lineageDetails=None,
         )
+        client.delete_lineage_edge(edge)
 
     @classmethod
     def export_lineage(

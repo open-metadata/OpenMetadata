@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -27,6 +28,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
+import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -79,11 +81,13 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -121,7 +125,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName().equals(TASKS_FIELD)) {
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals(TASKS_FIELD)) {
       TaskType taskType = threadContext.getThread().getTask().getType();
       if (EntityUtil.isDescriptionTask(taskType)) {
         return new TaskDescriptionWorkflow(threadContext);
@@ -172,7 +176,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public void setFields(Pipeline pipeline, Fields fields) {
+  public void setFields(Pipeline pipeline, Fields fields, RelationIncludes relationIncludes) {
     pipeline.setService(getContainer(pipeline.getId()));
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
     getTaskOwners(fields.contains(FIELD_OWNERS), pipeline.getTasks());
@@ -360,7 +364,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // Don't fail the entire operation if ES indexing fails
     }
 
-    // Update ES Indexes and usage of this pipeline index
+    // Update the pipeline's own ES index with latest status
     searchRepository.updateEntityIndex(pipeline);
     searchRepository
         .getSearchClient()
@@ -373,6 +377,57 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         ENTITY_UPDATED);
   }
 
+  public RestUtil.PutResponse<?> addBulkPipelineStatus(
+      String fqn, List<PipelineStatus> pipelineStatuses) {
+    Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
+    pipeline.setService(getContainer(pipeline.getId()));
+
+    if (pipelineStatuses == null || pipelineStatuses.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, pipeline, ENTITY_NO_CHANGE);
+    }
+
+    Set<String> validatedTasks = new HashSet<>();
+    for (PipelineStatus pipelineStatus : pipelineStatuses) {
+      for (Status taskStatus : listOrEmpty(pipelineStatus.getTaskStatus())) {
+        if (validatedTasks.add(taskStatus.getName())) {
+          validateTask(pipeline, taskStatus.getName());
+        }
+      }
+    }
+
+    PipelineStatus latestStatus = null;
+    for (PipelineStatus pipelineStatus : pipelineStatuses) {
+      if (latestStatus == null || pipelineStatus.getTimestamp() > latestStatus.getTimestamp()) {
+        latestStatus = pipelineStatus;
+      }
+    }
+
+    bulkUpsertPipelineStatuses(pipeline.getFullyQualifiedName(), pipelineStatuses);
+
+    searchRepository.bulkIndexPipelineExecutions(pipeline, pipelineStatuses);
+
+    if (RdfUpdater.isEnabled() && latestStatus != null) {
+      storePipelineExecutionInRdf(pipeline, latestStatus);
+    }
+
+    pipeline.setPipelineStatus(latestStatus);
+    ChangeDescription change =
+        addPipelineStatusChangeDescription(pipeline.getVersion(), latestStatus, null);
+    pipeline.setChangeDescription(change);
+    pipeline.setIncrementalChangeDescription(change);
+
+    try {
+      searchRepository.updateEntityIndex(pipeline);
+    } catch (Exception e) {
+      LOG.error("Failed to update pipeline entity index in Elasticsearch", e);
+    }
+
+    return new RestUtil.PutResponse<>(
+        Response.Status.OK,
+        pipeline.withPipelineStatus(latestStatus).withUpdatedAt(System.currentTimeMillis()),
+        ENTITY_UPDATED);
+  }
+
   private ChangeDescription addPipelineStatusChangeDescription(
       Double version, Object newValue, Object oldValue) {
     FieldChange fieldChange =
@@ -380,6 +435,36 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsUpdated().add(fieldChange);
     return change;
+  }
+
+  private void bulkUpsertPipelineStatuses(String fqn, List<PipelineStatus> pipelineStatuses) {
+    String entityFQNHash = FullyQualifiedName.buildHash(fqn);
+    String sql;
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      sql =
+          "INSERT INTO entity_extension_time_series(entityFQNHash, extension, jsonSchema, json) "
+              + "VALUES (:entityFQNHash, :extension, :jsonSchema, :json) "
+              + "ON DUPLICATE KEY UPDATE json = VALUES(json)";
+    } else {
+      sql =
+          "INSERT INTO entity_extension_time_series(entityFQNHash, extension, jsonSchema, json) "
+              + "VALUES (:entityFQNHash, :extension, :jsonSchema, cast(:json as jsonb)) "
+              + "ON CONFLICT (entityFQNHash, extension, timestamp) DO UPDATE SET json = EXCLUDED.json";
+    }
+    Entity.getJdbi()
+        .useHandle(
+            handle -> {
+              var batch = handle.prepareBatch(sql);
+              for (PipelineStatus pipelineStatus : pipelineStatuses) {
+                batch
+                    .bind("entityFQNHash", entityFQNHash)
+                    .bind("extension", PIPELINE_STATUS_EXTENSION)
+                    .bind("jsonSchema", "pipelineStatus")
+                    .bind("json", JsonUtils.pojoToJson(pipelineStatus))
+                    .add();
+              }
+              batch.execute();
+            });
   }
 
   /**
@@ -615,6 +700,27 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
+  public void storeEntities(List<Pipeline> pipelines) {
+    List<Pipeline> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Pipeline pipeline : pipelines) {
+      EntityReference service = pipeline.getService();
+      List<Task> taskWithTagsAndOwners = pipeline.getTasks();
+
+      pipeline.withService(null);
+      pipeline.setTasks(cloneWithoutTagsAndOwners(taskWithTagsAndOwners));
+
+      String jsonCopy = gson.toJson(pipeline);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Pipeline.class));
+
+      pipeline.withService(service).withTasks(taskWithTagsAndOwners);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
   protected void entitySpecificCleanup(Pipeline pipeline) {
     // When a pipeline is removed , the linege needs to be removed
     daoCollection
@@ -623,6 +729,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             pipeline.getId(),
             LineageDetails.Source.PIPELINE_LINEAGE.value(),
             Relationship.UPSTREAM.ordinal());
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Pipeline> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Pipeline::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
   }
 
   @Override
@@ -859,7 +972,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
       recordChange(
           "pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateTasks(Pipeline original, Pipeline updated) {

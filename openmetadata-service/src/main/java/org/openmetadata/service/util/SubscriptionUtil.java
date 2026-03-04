@@ -617,9 +617,28 @@ public class SubscriptionUtil {
   }
 
   public static Client getClient(int connectTimeout, int readTimeout) {
+    // Cap timeouts to prevent runaway webhook destinations from exhausting resources
+    // Minimum 5 seconds to allow reasonable connection establishment
+    // Maximum 30 seconds for connect, 120 seconds for read to prevent indefinite waits
+    int effectiveConnectTimeout = Math.min(Math.max(connectTimeout, 5), 30);
+    int effectiveReadTimeout = Math.min(Math.max(readTimeout, 10), 120);
+
+    if (connectTimeout != effectiveConnectTimeout) {
+      LOG.debug(
+          "Connect timeout {} clamped to {} (valid range: 5-30 seconds)",
+          connectTimeout,
+          effectiveConnectTimeout);
+    }
+    if (readTimeout != effectiveReadTimeout) {
+      LOG.debug(
+          "Read timeout {} clamped to {} (valid range: 10-120 seconds)",
+          readTimeout,
+          effectiveReadTimeout);
+    }
+
     ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-    clientBuilder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
-    clientBuilder.readTimeout(readTimeout, TimeUnit.SECONDS);
+    clientBuilder.connectTimeout(effectiveConnectTimeout, TimeUnit.SECONDS);
+    clientBuilder.readTimeout(effectiveReadTimeout, TimeUnit.SECONDS);
     return clientBuilder.build();
   }
 

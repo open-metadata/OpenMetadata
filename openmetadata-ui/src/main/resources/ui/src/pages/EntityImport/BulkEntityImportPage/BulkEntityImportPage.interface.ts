@@ -19,9 +19,12 @@ export type CSVImportAsyncResponse = {
 
 export type CSVImportAsyncWebsocketResponse = {
   jobId: string;
-  status: 'COMPLETED' | 'FAILED' | 'STARTED';
-  result: CSVImportResult;
-  error: string | null;
+  status: 'COMPLETED' | 'FAILED' | 'STARTED' | 'IN_PROGRESS';
+  result?: CSVImportResult;
+  error?: string | null;
+  progress?: number;
+  total?: number;
+  message?: string;
 };
 
 export type CSVImportAsyncJob = Partial<CSVImportAsyncWebsocketResponse> &

@@ -1,13 +1,8 @@
-import sys
-
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.workflow.metadata import MetadataWorkflow
-
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
 @pytest.fixture(scope="module")
@@ -29,8 +24,10 @@ def prepare_cockroach(cockroach_container):
             ('Jane Smith', 30);
         """,
     ]
-    for stmt in sql:
-        engine.execute(stmt)
+    with engine.connect() as conn:
+        for stmt in sql:
+            conn.execute(text(stmt))
+        conn.commit()
 
 
 @pytest.mark.parametrize(

@@ -59,7 +59,7 @@ const navigateToPersonaNavigation = async (page: Page) => {
   await page.waitForLoadState('networkidle');
 };
 
-test.describe('Settings Navigation Page Tests', () => {
+test.describe.serial('Settings Navigation Page Tests', () => {
   test('should update navigation sidebar', async ({ page }) => {
     // Create and set default persona
     await redirectToHomePage(page);
@@ -166,6 +166,9 @@ test.describe('Settings Navigation Page Tests', () => {
 
     await navigateSwitch.click();
 
+    // Verify save button is enabled to ensure change is registered
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
     // Try to navigate away
     await page
       .getByTestId('left-sidebar')
@@ -173,7 +176,7 @@ test.describe('Settings Navigation Page Tests', () => {
       .click();
 
     // Click "Save changes" to save and navigate
-    const saveResponse = page.waitForResponse('api/v1/docStore');
+    const saveResponse = page.waitForResponse('**/api/v1/docStore/**');
     await page.getByTestId('unsaved-changes-modal-save').click();
     await saveResponse;
     await page.waitForLoadState('networkidle');
@@ -245,7 +248,7 @@ test.describe('Settings Navigation Page Tests', () => {
 
     // Verify reset worked - save button disabled and state reverted
     expect(await domainSwitch.isChecked()).toBeTruthy();
-    await expect(page.getByTestId('save-button')).toBeEnabled();
+    await expect(page.getByTestId('save-button')).not.toBeEnabled();
   });
 
   test('should support drag and drop reordering of navigation items', async ({
@@ -256,37 +259,41 @@ test.describe('Settings Navigation Page Tests', () => {
     await navigateToPersonaNavigation(page);
 
     const treeItems = page.locator('.ant-tree-node-content-wrapper');
-    const firstItem = treeItems.first();
-    const secondItem = treeItems.nth(1);
 
-    const firstItemText = await firstItem.textContent();
+    // Wait for the tree to be fully ready
+    await expect(treeItems.first()).toBeVisible();
 
-    const firstItemBox = await firstItem.boundingBox();
-    const secondItemBox = await secondItem.boundingBox();
+    const homeItem = treeItems.getByTitle('label.home');
+    const exploreItem = treeItems.getByTitle('label.explore');
+
+    const firstItemText = await homeItem.textContent();
+
+    expect(firstItemText).not.toBeNull();
+
+    const firstItemBox = await homeItem.boundingBox();
+    const secondItemBox = await exploreItem.boundingBox();
 
     expect(firstItemBox).not.toBeNull();
     expect(secondItemBox).not.toBeNull();
 
     if (firstItemBox && secondItemBox) {
-      await page.mouse.move(
-        firstItemBox.x + firstItemBox.width / 2,
-        firstItemBox.y + firstItemBox.height / 2
-      );
-      await page.mouse.down();
-      await page.mouse.move(
-        secondItemBox.x + secondItemBox.width / 2,
-        secondItemBox.y + secondItemBox.height / 2 + 10
-      );
-      await page.mouse.up();
+      await homeItem.dragTo(exploreItem, {
+        sourcePosition: {
+          x: firstItemBox.width / 2,
+          y: firstItemBox.height / 2,
+        },
+        targetPosition: {
+          x: secondItemBox.width / 2,
+          y: secondItemBox.height / 2 + 10,
+        },
+      });
+      await expect(treeItems.first()).not.toHaveText(firstItemText as string);
 
-      // Adding wait so that drop action can complete
-      await page.waitForTimeout(500);
+      // Now check if save button is enabled
+      const saveButton = page.getByTestId('save-button');
 
-      await expect(page.getByTestId('save-button')).toBeEnabled();
-
-      const newFirstItemText = await treeItems.first().textContent();
-
-      expect(newFirstItemText).not.toBe(firstItemText);
+      await expect(saveButton).toBeVisible();
+      await expect(saveButton).toBeEnabled();
     }
   });
 
@@ -312,12 +319,25 @@ test.describe('Settings Navigation Page Tests', () => {
 
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
-    const saveResponse = page.waitForResponse('api/v1/docStore');
+    const saveResponse = page.waitForResponse('**/api/v1/docStore/**');
     await page.getByTestId('save-button').click();
     await saveResponse;
 
     await redirectToHomePage(page);
 
+    await page.locator('[data-testid="dropdown-profile"]').click();
+    await page.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+
+    // Verify personas section is visible
+    await expect(page.getByText('Switch Persona')).toBeVisible();
+
+    // Initially should show limited personas (2 by default)
+    const initialPersonaLabels = page
+      .locator('[data-testid="persona-label"]')
+      .locator('input[type="radio"]');
+    await initialPersonaLabels.first().click();
     await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
     await expect(page.getByTestId('app-bar-item-insights')).not.toBeVisible();
 
@@ -325,7 +345,7 @@ test.describe('Settings Navigation Page Tests', () => {
     await exploreSwitch.click();
     await insightsSwitch.click();
 
-    const restoreResponse = page.waitForResponse('api/v1/docStore/*');
+    const restoreResponse = page.waitForResponse('**/api/v1/docStore/**');
     await page.getByTestId('save-button').click();
     await restoreResponse;
   });

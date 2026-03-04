@@ -35,6 +35,7 @@ import {
   AZURESQL,
   BIGQUERY,
   BIGTABLE,
+  BURSTIQ,
   CASSANDRA,
   CLICKHOUSE,
   COCKROACH,
@@ -52,7 +53,6 @@ import {
   DELTALAKE,
   DOMO,
   DORIS,
-  STARROCKS,
   DRUID,
   DYNAMODB,
   ELASTIC_SEARCH,
@@ -104,12 +104,14 @@ import {
   SAP_HANA,
   SAS,
   SCIKIT,
+  SFTP,
   SIGMA,
   SINGLESTORE,
   SNOWFLAKE,
   SPARK,
   SPLINE,
   SQLITE,
+  STARROCKS,
   SUPERSET,
   SYNAPSE,
   TABLEAU,
@@ -120,7 +122,6 @@ import {
   UNITYCATALOG,
   VERTICA,
 } from '../constants/Services.constant';
-import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
@@ -147,7 +148,6 @@ import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
-import { SearchSourceAlias } from '../interface/search.interface';
 import {
   ConfigData,
   ExtraInfoType,
@@ -192,62 +192,64 @@ class ServiceUtilClassBase {
     DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
     PipelineServiceType.Mulesoft,
+    DatabaseServiceType.MicrosoftFabric,
+    PipelineServiceType.MicrosoftFabricPipeline,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
-      { [k: string]: string },
-      DatabaseServiceTypeSmallCaseType
-      >(DatabaseServiceType);
+    { [k: string]: string },
+    DatabaseServiceTypeSmallCaseType
+  >(DatabaseServiceType);
 
   MessagingServiceTypeSmallCase = this.convertEnumToLowerCase<
-      { [k: string]: string },
-      MessagingServiceTypeSmallCaseType
-      >(MessagingServiceType);
+    { [k: string]: string },
+    MessagingServiceTypeSmallCaseType
+  >(MessagingServiceType);
 
   DashboardServiceTypeSmallCase = this.convertEnumToLowerCase<
-      { [k: string]: string },
-      DashboardServiceTypeSmallCaseType
-      >(DashboardServiceType);
+    { [k: string]: string },
+    DashboardServiceTypeSmallCaseType
+  >(DashboardServiceType);
 
   PipelineServiceTypeSmallCase = this.convertEnumToLowerCase<
-      { [k: string]: string },
-      PipelineServiceTypeSmallCaseType
-      >(PipelineServiceType);
+    { [k: string]: string },
+    PipelineServiceTypeSmallCaseType
+  >(PipelineServiceType);
 
   MlModelServiceTypeSmallCase = this.convertEnumToLowerCase<
-      { [k: string]: string },
-      MlModelServiceTypeSmallCaseType
-      >(MlModelServiceType);
+    { [k: string]: string },
+    MlModelServiceTypeSmallCaseType
+  >(MlModelServiceType);
 
   MetadataServiceTypeSmallCase = this.convertEnumToLowerCase<
-      { [k: string]: string },
-      MetadataServiceTypeSmallCaseType
-      >(MetadataServiceType);
+    { [k: string]: string },
+    MetadataServiceTypeSmallCaseType
+  >(MetadataServiceType);
 
   StorageServiceTypeSmallCase = this.convertEnumToLowerCase<
-      { [k: string]: string },
-      StorageServiceTypeSmallCaseType
-      >(StorageServiceType);
+    { [k: string]: string },
+    StorageServiceTypeSmallCaseType
+  >(StorageServiceType);
 
   SearchServiceTypeSmallCase = this.convertEnumToLowerCase<
-      { [k: string]: string },
-      SearchServiceTypeSmallCaseType
-      >(SearchServiceType);
+    { [k: string]: string },
+    SearchServiceTypeSmallCaseType
+  >(SearchServiceType);
 
   ApiServiceTypeSmallCase = this.convertEnumToLowerCase<
-      { [k: string]: string },
-      ApiServiceTypeSmallCaseType
-      >(APIServiceType);
+    { [k: string]: string },
+    ApiServiceTypeSmallCaseType
+  >(APIServiceType);
 
   SecurityServiceTypeSmallCase = this.convertEnumToLowerCase<
-      { [k: string]: string },
-      SecurityServiceTypeSmallCaseType
-      >(SecurityServiceType);
+    { [k: string]: string },
+    SecurityServiceTypeSmallCaseType
+  >(SecurityServiceType);
 
   DriveServiceTypeSmallCase = this.convertEnumToLowerCase<
-      { [k: string]: string },
-      DriveServiceTypeSmallCaseType
-      >(DriveServiceType);
+    { [k: string]: string },
+    DriveServiceTypeSmallCaseType
+  >(DriveServiceType);
 
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
@@ -268,10 +270,10 @@ class ServiceUtilClassBase {
   }
 
   public getAddWorkflowData(
-      connectionType: string,
-      serviceType: ServiceType,
-      serviceName?: string,
-      configData?: ConfigData
+    connectionType: string,
+    serviceType: ServiceType,
+    serviceName?: string,
+    configData?: ConfigData
   ) {
     return {
       name: getTestConnectionName(connectionType),
@@ -317,37 +319,37 @@ class ServiceUtilClassBase {
   public getSupportedServiceFromList() {
     return {
       databaseServices: this.filterUnsupportedServiceType(
-          Object.values(DatabaseServiceType) as string[]
+        Object.values(DatabaseServiceType) as string[]
       ).sort(customServiceComparator),
       messagingServices: this.filterUnsupportedServiceType(
-          Object.values(MessagingServiceType) as string[]
+        Object.values(MessagingServiceType) as string[]
       ).sort(customServiceComparator),
       dashboardServices: this.filterUnsupportedServiceType(
-          Object.values(DashboardServiceType) as string[]
+        Object.values(DashboardServiceType) as string[]
       ).sort(customServiceComparator),
       pipelineServices: this.filterUnsupportedServiceType(
-          Object.values(PipelineServiceType) as string[]
+        Object.values(PipelineServiceType) as string[]
       ).sort(customServiceComparator),
       mlmodelServices: this.filterUnsupportedServiceType(
-          Object.values(MlModelServiceType) as string[]
+        Object.values(MlModelServiceType) as string[]
       ).sort(customServiceComparator),
       metadataServices: this.filterUnsupportedServiceType(
-          Object.values(MetadataServiceType) as string[]
+        Object.values(MetadataServiceType) as string[]
       ).sort(customServiceComparator),
       storageServices: this.filterUnsupportedServiceType(
-          Object.values(StorageServiceType) as string[]
+        Object.values(StorageServiceType) as string[]
       ).sort(customServiceComparator),
       searchServices: this.filterUnsupportedServiceType(
-          Object.values(SearchServiceType) as string[]
+        Object.values(SearchServiceType) as string[]
       ).sort(customServiceComparator),
       apiServices: this.filterUnsupportedServiceType(
-          Object.values(APIServiceType) as string[]
+        Object.values(APIServiceType) as string[]
       ).sort(customServiceComparator),
       driveServices: this.filterUnsupportedServiceType(
-          Object.values(DriveServiceType) as string[]
+        Object.values(DriveServiceType) as string[]
       ).sort(customServiceComparator),
       securityServices: this.filterUnsupportedServiceType(
-          Object.values(SecurityServiceType) as string[]
+        Object.values(SecurityServiceType) as string[]
       ).sort(customServiceComparator),
     };
   }
@@ -537,6 +539,9 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.Synapse:
         return SYNAPSE;
 
+      case this.DatabaseServiceTypeSmallCase.BurstIQ:
+        return BURSTIQ;
+
       case this.MessagingServiceTypeSmallCase.CustomMessaging:
         return TOPIC_DEFAULT;
 
@@ -696,6 +701,9 @@ class ServiceUtilClassBase {
       case this.DriveServiceTypeSmallCase.GoogleDrive:
         return GOOGLE_DRIVE;
 
+      case this.DriveServiceTypeSmallCase.Sftp:
+        return SFTP;
+
       case this.DatabaseServiceTypeSmallCase.Timescale:
         return TIMESCALE;
 
@@ -728,9 +736,10 @@ class ServiceUtilClassBase {
     }
   }
 
-  public getServiceTypeLogo(
-      searchSource: SearchSuggestions[number] | SearchSourceAlias
-  ): string {
+  public getServiceTypeLogo(searchSource: {
+    serviceType?: string;
+    entityType?: string;
+  }): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
@@ -756,6 +765,7 @@ class ServiceUtilClassBase {
 
     return this.getServiceLogo(type);
   }
+
   public getDataAssetsService(serviceType: string): ExplorePageTabs {
     const database = this.DatabaseServiceTypeSmallCase;
     const messaging = this.MessagingServiceTypeSmallCase;
@@ -769,41 +779,41 @@ class ServiceUtilClassBase {
 
     switch (true) {
       case Object.values(database).includes(
-          serviceType as typeof database[keyof typeof database]
+        serviceType as typeof database[keyof typeof database]
       ):
         return ExplorePageTabs.TABLES;
       case Object.values(messaging).includes(
-          serviceType as typeof messaging[keyof typeof messaging]
+        serviceType as typeof messaging[keyof typeof messaging]
       ):
         return ExplorePageTabs.TOPICS;
       case Object.values(dashboard).includes(
-          serviceType as typeof dashboard[keyof typeof dashboard]
+        serviceType as typeof dashboard[keyof typeof dashboard]
       ):
         return ExplorePageTabs.DASHBOARDS;
       case Object.values(mlmodel).includes(
-          serviceType as typeof mlmodel[keyof typeof mlmodel]
+        serviceType as typeof mlmodel[keyof typeof mlmodel]
       ):
         return ExplorePageTabs.MLMODELS;
       case Object.values(pipeline).includes(
-          serviceType as typeof pipeline[keyof typeof pipeline]
+        serviceType as typeof pipeline[keyof typeof pipeline]
       ):
         return ExplorePageTabs.PIPELINES;
       case Object.values(storage).includes(
-          serviceType as typeof storage[keyof typeof storage]
+        serviceType as typeof storage[keyof typeof storage]
       ):
         return ExplorePageTabs.CONTAINERS;
       case Object.values(search).includes(
-          serviceType as typeof search[keyof typeof search]
+        serviceType as typeof search[keyof typeof search]
       ):
         return ExplorePageTabs.SEARCH_INDEX;
 
       case Object.values(api).includes(
-          serviceType as typeof api[keyof typeof api]
+        serviceType as typeof api[keyof typeof api]
       ):
         return ExplorePageTabs.API_ENDPOINT;
 
       case Object.values(security).includes(
-          serviceType as typeof security[keyof typeof security]
+        serviceType as typeof security[keyof typeof security]
       ):
         return ExplorePageTabs.TABLES; // Security services don't have a specific tab, default to tables
 
@@ -879,8 +889,8 @@ class ServiceUtilClassBase {
   }
 
   public getEditConfigData(
-      serviceData?: ServicesType,
-      data?: ConfigData
+    serviceData?: ServicesType,
+    data?: ConfigData
   ): ServicesType {
     if (!serviceData || !data) {
       return serviceData as ServicesType;
@@ -916,13 +926,13 @@ class ServiceUtilClassBase {
    * @returns object with lowercase value
    */
   public convertEnumToLowerCase<T extends { [k: string]: string }, U>(
-      originalEnum: T
+    originalEnum: T
   ): U {
     return Object.fromEntries(
-        Object.entries(originalEnum).map(([key, value]) => [
-          key,
-          value.toLowerCase(),
-        ])
+      Object.entries(originalEnum).map(([key, value]) => [
+        key,
+        value.toLowerCase(),
+      ])
     ) as unknown as U;
   }
 }

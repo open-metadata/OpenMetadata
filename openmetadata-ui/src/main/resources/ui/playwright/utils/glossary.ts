@@ -24,9 +24,9 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { Glossary } from '../support/glossary/Glossary';
 import {
-    GlossaryData,
-    GlossaryTermData,
-    UserTeamRef
+  GlossaryData,
+  GlossaryTermData,
+  UserTeamRef
 } from '../support/glossary/Glossary.interface';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../support/tag/ClassificationClass';
@@ -34,20 +34,20 @@ import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-    clickOutside,
-    closeFirstPopupAlert,
-    descriptionBox,
-    getApiContext,
-    INVALID_NAMES,
-    NAME_MAX_LENGTH_VALIDATION_ERROR,
-    NAME_VALIDATION_ERROR,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  clickOutside,
+  closeFirstPopupAlert,
+  descriptionBox,
+  getApiContext,
+  INVALID_NAMES,
+  NAME_MAX_LENGTH_VALIDATION_ERROR,
+  NAME_VALIDATION_ERROR,
+  redirectToHomePage,
+  toastNotification,
+  uuid
 } from './common';
 import { addMultiOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
-import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
+import { TASK_OPEN_FETCH_LINK, TaskDetails } from './task';
 
 type TaskEntity = {
   entityRef: {
@@ -66,7 +66,7 @@ export const selectActiveGlossary = async (
   glossaryName: string,
   bWaitForResponse = true
 ) => {
-  const menuItem = page.getByRole('menuitem', { name: glossaryName });
+  const menuItem = page.getByRole('menuitem', { name: glossaryName }).first();
   const isSelected = await menuItem.evaluate((element) => {
     return element.classList.contains('ant-menu-item-selected');
   });
@@ -1059,10 +1059,9 @@ export const confirmationDragAndDropGlossary = async (
   await expect(
     page.locator('[data-testid="confirmation-modal"] .ant-modal-body')
   ).toContainText(
-    `Click on Confirm if you’d like to move ${
-      isHeader
-        ? `${dragElement} under ${dropElement} .`
-        : `${dragElement} term under ${dropElement} term.`
+    `Click on Confirm if you’d like to move ${isHeader
+      ? `${dragElement} under ${dropElement} .`
+      : `${dragElement} term under ${dropElement} term.`
     }`
   );
 
@@ -1257,8 +1256,7 @@ export const createDescriptionTaskForGlossary = async (
   const entityName = get(entity, 'responseData.displayName');
 
   expect(await page.locator('#title').inputValue()).toBe(
-    `${
-      addDescription ? 'Update' : 'Request'
+    `${addDescription ? 'Update' : 'Request'
     } description for ${entityType} ${entityName}`
   );
 

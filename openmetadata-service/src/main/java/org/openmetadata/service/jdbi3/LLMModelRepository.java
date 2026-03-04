@@ -15,6 +15,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
+import com.google.gson.Gson;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.LLMModelResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -60,7 +63,7 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
   }
 
   @Override
-  public void setFields(LLMModel llmModel, Fields fields) {
+  public void setFields(LLMModel llmModel, Fields fields, RelationIncludes relationIncludes) {
     llmModel.setService(getContainer(llmModel.getId()));
   }
 
@@ -135,6 +138,20 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
     llmModel.withService(null);
     store(llmModel, update);
     llmModel.withService(service);
+  }
+
+  @Override
+  public void storeEntities(List<LLMModel> entities) {
+    List<LLMModel> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (LLMModel entity : entities) {
+      EntityReference service = entity.getService();
+      entity.withService(null);
+      String jsonCopy = gson.toJson(entity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, LLMModel.class));
+      entity.withService(service);
+    }
+    storeMany(entitiesToStore);
   }
 
   @Override

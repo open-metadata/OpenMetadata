@@ -13,10 +13,46 @@
 import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
 
+import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
+import { waitForAllLoadersToDisappear } from './entity';
+import { EntityClass } from '../support/entity/EntityClass';
+
+export const getEntityFqn = (
+  entityInstance: EntityClass
+): string | undefined => {
+  return (
+    entityInstance as { entityResponseData?: { fullyQualifiedName?: string } }
+  ).entityResponseData?.fullyQualifiedName;
+};
+
 export const openEntitySummaryPanel = async (
   page: Page,
-  entityName: string
+  entityName: string,
+  endpoint?: string,
+  fullyQualifiedName?: string
 ) => {
+  if (
+    endpoint &&
+    ENDPOINT_TO_FILTER_MAP[endpoint] &&
+    ENDPOINT_TO_FILTER_MAP[endpoint] !== 'Search Index'
+  ) {
+    await page.waitForSelector('[data-testid="global-search-selector"]', {
+      state: 'visible',
+    });
+    await page.getByTestId('global-search-selector').click();
+    await page.waitForSelector(
+      '[data-testid="global-search-select-dropdown"]',
+      {
+        state: 'visible',
+      }
+    );
+    await page
+      .getByTestId(
+        `global-search-select-option-${ENDPOINT_TO_FILTER_MAP[endpoint]}`
+      )
+      .click();
+    await page.waitForLoadState('networkidle');
+  }
   const searchResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/api/v1/search/query')
   );
@@ -27,23 +63,52 @@ export const openEntitySummaryPanel = async (
   expect(searchResponse.status()).toBe(200);
 
   await page.getByTestId('searchBox').press('Enter');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
+
+  if (fullyQualifiedName) {
+    const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
+    await cardByFqn.waitFor({ state: 'visible' });
+    return;
+  }
 
   const entityCard = page
     .locator('[data-testid="table-data-card"]')
     .filter({ hasText: entityName })
     .first();
 
-  // Only click if the card is visible (search results may be on explore page)
   const isCardVisible = await entityCard.isVisible().catch(() => false);
   if (isCardVisible) {
     await entityCard.click();
     await page.waitForLoadState('networkidle');
   }
 };
+// ... (lines 48-468 unchanged)
+export async function navigateToExploreAndSelectTable(
+  page: Page,
+  entityName: string,
+  endpoint?: string
+) {
+  await redirectToExplorePage(page);
+
+  await waitForAllLoadersToDisappear(page);
+
+  const permissionsResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/permissions')
+  );
+
+  await openEntitySummaryPanel(page, entityName, endpoint);
+
+  const permissionsResponse = await permissionsResponsePromise;
+  expect(permissionsResponse.status()).toBe(200);
+
+  // Ensure all the component for right panel are rendered
+  const loaders = page.locator(
+    '[data-testid="entity-summary-panel-container"] [data-testid="loader"]'
+  );
+
+  // Wait for the loader elements count to become 0
+  await expect(loaders).toHaveCount(0, { timeout: 30000 });
+}
 
 export const waitForPatchResponse = async (page: Page) => {
   const responsePromise = page.waitForResponse(
@@ -71,15 +136,15 @@ export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   });
 };
 
-export const editTags = async (
-  page: Page,
-  tagName: string) => {
+export const editTags = async (page: Page, tagName: string) => {
   const editIcon = page.locator('[data-testid="edit-icon-tags"]');
   if (await editIcon.isVisible()) {
     await editIcon.click();
   } else {
     // Fallback for ML Model which uses an 'Add' chip
-    await page.locator('[data-testid="entity-tags"] [data-testid="add-tag"]').click();
+    await page
+      .locator('[data-testid="entity-tags"] [data-testid="add-tag"]')
+      .click();
   }
 
   await page
@@ -123,16 +188,21 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await page
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
-  await page.waitForSelector('[data-testid="edit-glossary-terms"], [data-testid="glossary-container"] [data-testid="add-tag"]', {
-    state: 'visible',
-  });
+  await page.waitForSelector(
+    '[data-testid="edit-glossary-terms"], [data-testid="glossary-container"] [data-testid="add-tag"]',
+    {
+      state: 'visible',
+    }
+  );
 
   const editIcon = page.locator('[data-testid="edit-glossary-terms"]');
   if (await editIcon.isVisible()) {
     await editIcon.click();
   } else {
     // Fallback for ML Model which uses an 'Add' chip
-    await page.locator('[data-testid="glossary-container"] [data-testid="add-tag"]').click();
+    await page
+      .locator('[data-testid="glossary-container"] [data-testid="add-tag"]')
+      .click();
   }
 
   await page
@@ -466,22 +536,56 @@ export const removeTierFromPanel = async (page: Page) => {
   await patchPromise;
 };
 
-export async function navigateToExploreAndSelectTable(
-  page: Page,
-  entityName: string
-) {
-  await redirectToExplorePage(page);
+/**
+ * Maps entity types to their corresponding left panel asset type titles
+ */
+function getAssetTypeFromEntityType(entityType: string): string {
+  const entityTypeToAssetType: Record<string, string> = {
+    Table: 'Databases',
+    Database: 'Databases',
+    'Database Schema': 'Databases',
+    'Store Procedure': 'Databases',
+    Dashboard: 'Dashboards',
+    DashboardDataModel: 'Dashboards',
+    Chart: 'Dashboards',
+    Pipeline: 'Pipelines',
+    Topic: 'Topics',
+    MlModel: 'ML Models',
+    Container: 'Containers',
+    SearchIndex: 'Search Indexes',
+    ApiEndpoint: 'APIs',
+    'Api Collection': 'APIs',
+    File: 'Drives',
+    Directory: 'Drives',
+    Spreadsheet: 'Drives',
+    Worksheet: 'Drives',
+    Metric: 'Metrics',
+  };
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-
-  const permissionsResponsePromise = page.waitForResponse((response) =>
-    response.url().includes('/permissions')
-  );
-
-  await openEntitySummaryPanel(page, entityName);
-
-  const permissionsResponse = await permissionsResponsePromise;
-  expect(permissionsResponse.status()).toBe(200);
+  return entityTypeToAssetType[entityType] || 'Databases';
 }
+
+export const editDisplayNameFromPanel = async (
+  page: Page,
+  newDisplayName: string
+) => {
+  const summaryPanel = page.locator('.entity-summary-panel-container');
+  const editButton = summaryPanel.getByTestId('edit-displayName-button');
+
+  await editButton.waitFor({ state: 'visible' });
+  await editButton.click();
+
+  const modal = page.locator('.ant-modal');
+  await modal.waitFor({ state: 'visible' });
+
+  const displayNameInput = modal.locator('#displayName');
+  await displayNameInput.waitFor({ state: 'visible' });
+  await displayNameInput.clear();
+  await displayNameInput.fill(newDisplayName);
+
+  const patchPromise = waitForPatchResponse(page);
+  await modal.getByTestId('save-button').click();
+  await patchPromise;
+
+  await modal.waitFor({ state: 'hidden' });
+};

@@ -1,0 +1,20 @@
+{
+  "name": "Demo_LineageBasics",
+  "displayName": "Lineage Basics",
+  "description": "Discover how Collate streamlines data governance by providing robust tracing of your data lineage. Learn foundational concepts, configure the Lineage Agent, and navigate table and column-level data lineage visibility.",
+  "resourceType": "Storylane",
+  "categories": ["DataGovernance", "Discovery"],
+  "difficulty": "Intro",
+  "source": {
+    "url": "https://collate.storylane.io/demo/vincstg0kjcg",
+    "provider": "Collate"
+  },
+  "estimatedDuration": 300,
+  "contexts": [
+    {"pageId": "table"},
+    {"pageId": "pipeline"},
+    {"pageId": "dashboard"},
+    {"pageId": "glossary"}
+  ],
+  "status": "Active"
+}

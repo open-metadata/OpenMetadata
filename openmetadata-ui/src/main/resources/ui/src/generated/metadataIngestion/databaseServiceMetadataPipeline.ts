@@ -19,6 +19,12 @@ export interface DatabaseServiceMetadataPipeline {
      */
     databaseFilterPattern?: FilterPattern;
     /**
+     * Extract JSON schema from JSON columns by sampling data. This requires SELECT permission
+     * on the tables. If disabled or if SELECT fails, JSON columns will be ingested without
+     * schema information.
+     */
+    extractJsonSchema?: boolean;
+    /**
      * Optional configuration to toggle the DDL Statements ingestion.
      */
     includeDDL?: boolean;
@@ -51,6 +57,11 @@ export interface DatabaseServiceMetadataPipeline {
      */
     incremental?: IncrementalMetadataExtractionConfiguration;
     /**
+     * Number of rows to sample for inferring JSON schema. A larger sample size provides more
+     * accurate schema inference but increases query time.
+     */
+    jsonSchemaSampleSize?: number;
+    /**
      * Optional configuration to soft delete databases in OpenMetadata if the source databases
      * are deleted. Also, if the database is deleted, all the associated entities like schemas,
      * tables, views, stored procedures, lineage, etc., with that database will be deleted
@@ -76,10 +87,6 @@ export interface DatabaseServiceMetadataPipeline {
      * those tables will also be deleted.
      */
     markDeletedTables?: boolean;
-    /**
-     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
-     */
-    overrideLineage?: boolean;
     /**
      * Set the 'Override Metadata' toggle to control whether to override the existing metadata
      * in the OpenMetadata server with the metadata fetched from the source. If the toggle is
@@ -108,6 +115,10 @@ export interface DatabaseServiceMetadataPipeline {
      */
     schemaFilterPattern?: FilterPattern;
     /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    /**
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
@@ -132,6 +143,8 @@ export interface DatabaseServiceMetadataPipeline {
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
  */

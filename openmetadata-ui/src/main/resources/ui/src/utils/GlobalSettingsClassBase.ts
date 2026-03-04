@@ -17,6 +17,7 @@ import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
+import { ReactComponent as ColumnIcon } from '../assets/svg/column-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/dashboard-data-models-colored.svg';
 import { ReactComponent as DataAssetRulesIcon } from '../assets/svg/data-asset-rules.svg';
@@ -31,6 +32,7 @@ import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as FileIcon } from '../assets/svg/file-colored-new.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as HealthIcon } from '../assets/svg/health-check.svg';
+import { ReactComponent as LearningIcon } from '../assets/svg/learning-colored.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/lineage-colored.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored-new.svg';
@@ -652,6 +654,13 @@ class GlobalSettingsClassBase {
             icon: DataAssetRulesIcon,
             isBeta: true,
           },
+          {
+            label: t('label.learning-resources'),
+            description: t('message.learning-resources-management-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LEARNING_RESOURCES}`,
+            icon: LearningIcon,
+          },
         ],
       },
       {
@@ -794,6 +803,13 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SEARCH_INDEXES}`,
             icon: SearchIndexIcon,
+          },
+          {
+            label: t('label.column-plural'),
+            description: t('message.define-custom-property-for-column'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.COLUMN}`,
+            icon: ColumnIcon,
           },
           {
             label: t('label.glossary-term'),

@@ -15,6 +15,7 @@ Teradata source implementation.
 import traceback
 from typing import Iterable, Optional
 
+from sqlalchemy import text
 from teradatasqlalchemy.dialect import TeradataDialect
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
@@ -76,23 +77,32 @@ class TeradataSource(CommonDbSourceService):
     def get_stored_procedures(self) -> Iterable[TeradataStoredProcedure]:
         """List Teradata stored procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
-                TERADATA_GET_STORED_PROCEDURES.format(
-                    schema_name=self.context.get().database_schema,
-                )
-            ).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    text(
+                        TERADATA_GET_STORED_PROCEDURES.format(
+                            schema_name=self.context.get().database_schema,
+                        )
+                    )
+                ).all()
             for row in results:
                 try:
-                    stored_procedure = TeradataStoredProcedure.model_validate(dict(row))
+                    stored_procedure = TeradataStoredProcedure.model_validate(
+                        row._asdict()
+                    )
                     stored_procedure.definition = self.describe_procedure_definition(
                         stored_procedure
                     )
+                    if self.is_stored_procedure_filtered(
+                        stored_procedure.procedure_name
+                    ):
+                        continue
                     yield stored_procedure
                 except Exception as exc:
-                    logger.error()
+                    logger.error(f"Error parsing Stored Procedure row: {row}")
                     self.status.failed(
                         error=StackTraceError(
-                            name=dict(row).get("name", "UNKNOWN"),
+                            name=row._asdict().get("name", "UNKNOWN"),
                             error=f"Error parsing Stored Procedure payload: {exc}",
                             stackTrace=traceback.format_exc(),
                         )
@@ -104,13 +114,16 @@ class TeradataSource(CommonDbSourceService):
         """
         We can only get the SP definition via SHOW PROCEDURE
         """
-        res = self.engine.execute(
-            TERADATA_SHOW_STORED_PROCEDURE.format(
-                schema_name=stored_procedure.database_schema,
-                procedure_name=stored_procedure.procedure_name,
+        with self.engine.connect() as conn:
+            res = conn.execute(
+                text(
+                    TERADATA_SHOW_STORED_PROCEDURE.format(
+                        schema_name=stored_procedure.database_schema,
+                        procedure_name=stored_procedure.procedure_name,
+                    )
+                )
             )
-        )
-        return str(res.first()[0])
+            return str(res.first()[0])
 
     def yield_stored_procedure(
         self, stored_procedure: TeradataStoredProcedure

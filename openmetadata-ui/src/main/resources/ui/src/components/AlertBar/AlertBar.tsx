@@ -22,11 +22,11 @@ import { AlertBarProps } from './AlertBar.interface';
 const AlertBar = ({
   type,
   message,
-  defafultExpand,
+  defaultExpand,
   className: alertClassName,
 }: AlertBarProps): JSX.Element => {
   const { resetAlert, animationClass } = useAlertStore();
-  const [expanded, setExpanded] = useState(defafultExpand);
+  const [expanded, setExpanded] = useState(defaultExpand);
 
   const {
     icon: AlertIcon,

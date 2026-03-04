@@ -38,13 +38,15 @@ export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
   onClose: () => void;
   onColumnFieldUpdate?: (
     fqn: string,
-    update: ColumnFieldUpdate
+    update: ColumnFieldUpdate,
+    skipGlobalError?: boolean
   ) => Promise<T | undefined>;
   deleted?: boolean;
   allColumns?: T[];
   onNavigate?: (column: T, index?: number) => void;
   tableConstraints?: TableConstraint[];
   entityType: EntityType;
+  onColumnsUpdate?: (columns: Column[]) => void;
 }
 
 export interface TestCaseStatusCounts {

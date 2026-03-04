@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../../enums/entity.enum';
-import { CustomProperty } from '../../../../generated/entity/type';
+import { CustomProperty, Type } from '../../../../generated/entity/type';
 import { EntityDetailsObjectInterface } from '../../ExplorePage.interface';
 
 export interface EntityData {
   extension?: Record<string, unknown>;
-  [key: string]: unknown;
 }
 
 export interface EntityDetails {
@@ -35,8 +34,13 @@ export interface EntityTypeDetail {
 export interface CustomPropertiesSectionProps {
   entityData?: EntityData;
   entityDetails?: EntityDetailsObjectInterface;
+  emptyStateMessage?: string;
   viewCustomPropertiesPermission: boolean;
   entityType: EntityType;
-  entityTypeDetail?: EntityTypeDetail;
+  entityTypeDetail?: EntityTypeDetail | Type;
   isEntityDataLoading: boolean;
+  hasEditPermissions: boolean;
+  onExtensionUpdate: (
+    updatedExtension: Record<string, unknown> | undefined
+  ) => Promise<void>;
 }

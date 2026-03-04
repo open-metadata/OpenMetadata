@@ -2,19 +2,82 @@
 
 # Observability
 
-> **4 Components** | **13 Files** | **61 Tests** | **180 Scenarios** 🚀
+> **5 Components** | **19 Files** | **116 Tests** | **258 Scenarios** 🚀
 
 ## Table of Contents
 - [Data Quality](#data-quality)
 - [Incident Manager](#incident-manager)
-- [Alerts & Notifications](#alerts-notifications)
 - [Profiler](#profiler)
+- [Test Library](#test-library)
+- [Alerts & Notifications](#alerts-notifications)
 
 ---
 
 <div id="data-quality"></div>
 
 ## Data Quality
+
+<details open>
+<summary>📄 <b>TestCaseImportExportBasic.spec.ts</b> (24 tests, 30 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts)
+
+### Test Case Bulk Import/Export - Admin User
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Case Bulk Import/Export - Admin User** - should export test cases from Data Quality tab | Test Case Description: Verify that test cases can be exported from the Data Quality tab on the Table details page. The export should trigger a download of a CSV file. |
+| 2 | **Test Case Bulk Import/Export - Admin User** - should navigate to import page from Data Quality tab | Test Case Description: Verify navigation to the Import page from the Data Quality tab on the Table details page. |
+| 3 | **Test Case Bulk Import/Export - Admin User** - should export all test cases from global data quality page | Test Case Description: Verify that all test cases can be exported from the Global Data Quality page. The export should trigger a download of a CSV file. |
+| 4 | **Test Case Bulk Import/Export - Admin User** - should navigate to import page from global data quality page | Test Case Description: Verify navigation to the Import page from the Global Data Quality page. |
+| 5 | **Test Case Bulk Import/Export - Admin User** - should upload and validate CSV file | Test Case Description: Verify that a valid CSV file can be uploaded and validated successfully. 1. Create a temporary valid CSV file 2. Upload the file 3. Validate the grid and import status |
+| | ↳ *Navigate to Import Page* | |
+| | ↳ *Upload CSV and Validate Grid* | |
+| | ↳ *Verify Import Status* | |
+| 6 | **Test Case Bulk Import/Export - Admin User** - should show validation errors for invalid CSV | Test Case Description: Verify that an invalid CSV file triggers appropriate validation errors. 1. Create a temporary invalid CSV file (e.g. missing headers) 2. Upload the file 3. Verify error messages are displayed |
+| | ↳ *Navigate to Import Page* | |
+| | ↳ *Upload Invalid CSV and Verify Errors* | |
+
+### Test Case Import/Export/Edits - Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Case Import/Export/Edits - Permissions** - Data Consumer should see export but not import & edit options | Test Case Description: Verify that Data Consumer role has restricted access. Should only see Export option, but not Import or Bulk Edit. |
+| | ↳ *Verify Table Level Access* | |
+| | ↳ *Verify Global Level Access* | |
+| 2 | **Test Case Import/Export/Edits - Permissions** - Data Consumer can successfully export test cases | Test Case Description: Verify that Data Consumer can successfully export test cases. |
+| 3 | **Test Case Import/Export/Edits - Permissions** - Data Consumer should be blocked from import page | Test Case Description: Verify that Data Consumer is blocked from accessing the Import page directly via URL. |
+| 4 | **Test Case Import/Export/Edits - Permissions** - Data Consumer should be blocked from bulk edit page | Test Case Description: Verify that Data Consumer is blocked from accessing the Bulk Edit page directly via URL. |
+| 5 | **Test Case Import/Export/Edits - Permissions** - Data Steward should see export but not import & edit options | Test Case Description: Verify that Data Steward role has restricted access. Should only see Export option, but not Import or Bulk Edit. |
+| | ↳ *Verify Table Level Access* | |
+| | ↳ *Verify Global Level Access* | |
+| 6 | **Test Case Import/Export/Edits - Permissions** - Data Steward can successfully export test cases | Test Case Description: Verify that Data Steward can successfully export test cases. |
+| 7 | **Test Case Import/Export/Edits - Permissions** - Data Steward should be blocked from import page | Test Case Description: Verify that Data Steward is blocked from accessing the Import page directly via URL. |
+| 8 | **Test Case Import/Export/Edits - Permissions** - Data Steward should be blocked from bulk edit page | Test Case Description: Verify that Data Steward is blocked from accessing the Bulk Edit page directly via URL. |
+| 9 | **Test Case Import/Export/Edits - Permissions** - User with EditAll & ViewAll on TEST_CASE resource should see import, export & edit options | Test Case Description: Verify that a User with specific EditAll and ViewAll permissions on TestCase resource can see all options: Export, Import, and Bulk Edit. |
+| | ↳ *Verify Table Level Access* | |
+| | ↳ *Verify Global Level Access* | |
+| 10 | **Test Case Import/Export/Edits - Permissions** - User with ViewAll on TEST_CASE resource can successfully export test cases | Test Case Description: Verify that a User with ViewAll on TEST_CASE resource can successfully export test cases. |
+| 11 | **Test Case Import/Export/Edits - Permissions** - User with EditAll on TEST_CASE resource should not be blocked from import page | Test Case Description: Verify that a User with EditAll on TEST_CASE resource is ALLOWED to access the Import page. |
+| 12 | **Test Case Import/Export/Edits - Permissions** - User with EditAll on TEST_CASE resource should not be blocked from bulk edit page | Test Case Description: Verify that a User with EditAll on TEST_CASE resource is ALLOWED from the Bulk Edit page. (Bulk Edit requires specific bulk edit permissions or higher level access, not just EditAll on resource) |
+
+### Test Case Bulk Edit - Cancel Redirect
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Case Bulk Edit - Cancel Redirect** - should redirect to Data Quality page when canceling global bulk edit | Test Case Description: Verify that canceling a global bulk edit action redirects the user back to the global Data Quality page. |
+| 2 | **Test Case Bulk Edit - Cancel Redirect** - should redirect to Table Data Quality tab when canceling table-level bulk edit | Test Case Description: Verify that canceling a table-level bulk edit action redirects the user back to the Table's Data Quality tab. |
+
+### Logical Test Suite - Bulk Import/Export/Edit Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Logical Test Suite - Bulk Import/Export/Edit Operations** - should export test cases from Logical Test Suite page | Test Case Description: Verify that test cases can be exported from a Logical Test Suite details page. |
+| 2 | **Logical Test Suite - Bulk Import/Export/Edit Operations** - should navigate to import page from Logical Test Suite page | Test Case Description: Verify navigation to Import page from Logical Test Suite details page. |
+| 3 | **Logical Test Suite - Bulk Import/Export/Edit Operations** - should navigate to bulk edit page from Logical Test Suite page | Test Case Description: Verify navigation to Bulk Edit page from Logical Test Suite details page. |
+| 4 | **Logical Test Suite - Bulk Import/Export/Edit Operations** - should redirect to Test Suite page when canceling bulk edit | Test Case Description: Verify that canceling bulk edit from Logical Test Suite redirects back to Test Suite page. |
+
+</details>
 
 <details open>
 <summary>📄 <b>ColumnLevelTests.spec.ts</b> (16 tests, 48 scenarios)</summary>
@@ -141,6 +204,39 @@
 </details>
 
 <details open>
+<summary>📄 <b>DataQuality.spec.ts</b> (5 tests, 17 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/DataQuality.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/DataQuality.spec.ts)
+
+### Data Quality
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Quality** - Table test case | Table test case  Creates, edits, and deletes a table-level test case with tags and glossary terms. Verifies incident breadcrumb navigation and test case property changes. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Redirect to IncidentPage and verify breadcrumb* | |
+| | ↳ *Delete* | |
+| 2 | **Data Quality** - Column test case | Column test case  Creates, edits, and deletes a column-level test case with tags and glossary terms. Validates parameter changes and property persistence. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Redirect to IncidentPage and verify breadcrumb* | |
+| | ↳ *Delete* | |
+| 3 | **Data Quality** - TestCase with Array params value | TestCase with Array params value |
+| | ↳ *Array params value should be visible while editing the test case* | |
+| | ↳ *Validate patch request for edit test case* | |
+| | ↳ *Update test case display name from Data Quality page* | |
+| 4 | **Data Quality** - TestCase filters | TestCase filters |
+| 5 | **Data Quality** - Pagination functionality in test cases list | Pagination functionality in test cases list |
+| | ↳ *Verify pagination controls are visible* | |
+| | ↳ *Verify first page state* | |
+| | ↳ *Navigate to next page* | |
+| | ↳ *Navigate back to previous page* | |
+| | ↳ *Test page size dropdown* | |
+
+</details>
+
+<details open>
 <summary>📄 <b>AddTestCaseNewFlow.spec.ts</b> (4 tests, 6 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts)
@@ -161,7 +257,26 @@
 </details>
 
 <details open>
-<summary>📄 <b>TestSuiteMultiPipeline.spec.ts</b> (2 tests, 4 scenarios)</summary>
+<summary>📄 <b>TestCaseImportExportE2eFlow.spec.ts</b> (2 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts)
+
+### Test Case Import/Export/Edit - End-to-End Flow with Admin
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Case Import/Export/Edit - End-to-End Flow with Admin** - Admin: Complete export-import-validate flow | Test Case Description: 1. Export test cases to download folder 2. Import CSV with new rows (Complete, Missing Name, Missing Definition, Missing EntityFQN) 3. Validate import status and error messages 4. Update and verify successful creation 5. Verify Bulk Edit capabilities (Display Name, Tags) |
+
+### Test Case Import/Export/Edit - End-to-End Flow with EditAll User on TestCase resource
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Case Import/Export/Edit - End-to-End Flow with EditAll User on TestCase resource** - EditAll User: Complete export-import-validate flow | Test Case Description: 1. Export test cases to download folder 2. Import CSV with new rows (Complete, Missing Name, Missing Definition, Missing EntityFQN) 3. Validate import status and error messages 4. Update and verify successful creation 5. Verify Bulk Edit capabilities (Display Name, Tags) |
+
+</details>
+
+<details open>
+<summary>📄 <b>TestSuiteMultiPipeline.spec.ts</b> (2 tests, 5 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts)
 
@@ -171,6 +286,7 @@
 |---|-----------|-------------|
 | 1 | TestSuite multi pipeline support | Create, update, and delete a TestSuite pipeline from the entity page  Creates a test case, configures and deploys a weekly TestSuite pipeline, updates the schedule, and finally deletes pipelines to validate the empty state and action CTA visibility. |
 | | ↳ *Create a new pipeline* | |
+| | ↳ *Verify test case count column displays correct values* | |
 | | ↳ *Update the pipeline* | |
 | | ↳ *Delete the pipeline* | |
 | 2 | Edit the pipeline's test case | Edit the pipeline's test cases  Creates multiple test cases and a TestSuite pipeline, edits the pipeline to unselect a test case, deploys the change, and verifies the persisted selection on re-open. |
@@ -251,6 +367,29 @@
 ## Incident Manager
 
 <details open>
+<summary>📄 <b>IncidentManagerDateFilter.spec.ts</b> (6 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts)
+
+### Incident Manager Date Filter
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Incident Manager Date Filter** - Date picker shows placeholder when no date is selected | Date picker shows placeholder when no date is selected |
+| 2 | **Incident Manager Date Filter** - Select preset date range | Select preset date range |
+| 3 | **Incident Manager Date Filter** - Clear selected date range | Clear selected date range |
+| 4 | **Incident Manager Date Filter** - Date filter persists on page reload | Date filter persists on page reload |
+
+### Incident Manager Date Filter - Sidebar
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Incident Manager Date Filter - Sidebar** - Date picker shows placeholder by default on Incident Manager page | Date picker shows placeholder by default on Incident Manager page |
+| 2 | **Incident Manager Date Filter - Sidebar** - Select and clear date range on Incident Manager page | Select and clear date range on Incident Manager page |
+
+</details>
+
+<details open>
 <summary>📄 <b>IncidentManager.spec.ts</b> (5 tests, 18 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/IncidentManager.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/IncidentManager.spec.ts)
@@ -280,6 +419,135 @@
 | | ↳ *Verify incident's status on DQ page* | |
 | 4 | **Incident Manager** - Validate Incident Tab in Entity details page | Validate Incident tab in entity page  Verifies incidents list within entity details, lineage incident counts, and navigation back to tab. |
 | 5 | **Incident Manager** - Verify filters in Incident Manager's page | Verify filters in Incident Manager page  Tests Assignee, Status, Test Case, and Date filters and confirms list updates accordingly. |
+
+</details>
+
+
+---
+
+<div id="profiler"></div>
+
+## Profiler
+
+<details open>
+<summary>📄 <b>Profiler.spec.ts</b> (4 tests, 5 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/Profiler.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/Profiler.spec.ts)
+
+### Profiler Role Access Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Profiler Role Access Tests** - Admin role can access profiler and view test case graphs | Admin role profiler access  Verifies that admin users can access profiler data, view table/column profiles, and see test case graphs. |
+| 2 | **Profiler Role Access Tests** - Data consumer role can access profiler and view test case graphs | Data consumer role profiler access  Verifies that data consumer users can access profiler data, view table/column profiles, and see test case graphs. |
+| 3 | **Profiler Role Access Tests** - Data steward role can access profiler and view test case graphs | Data steward role profiler access  Verifies that data steward users can access profiler data, view table/column profiles, and see test case graphs. |
+| 4 | **Profiler Role Access Tests** - Update profiler setting modal | Update profiler setting modal  Tests profiler configuration updates including profile sample, exclude/include columns, partition settings, and validates settings persistence and reset functionality. |
+| | ↳ *Update profiler setting* | |
+| | ↳ *Reset profile sample type* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>ProfilerConfigurationPage.spec.ts</b> (2 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts)
+
+### Profiler Configuration Page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Profiler Configuration Page** - Admin user | Admin user profiler configuration  Validates form validation, profiler config creation, updates, and removal for admin users. Verifies metric selection, data type filtering, and API interactions. |
+| | ↳ *Verify validation* | |
+| | ↳ *Update profiler configuration* | |
+| | ↳ *Remove Configuration* | |
+| 2 | **Profiler Configuration Page** - Non admin user | Non-admin user access restriction  Verifies that non-admin users cannot access profiler configuration preferences. |
+
+</details>
+
+
+---
+
+<div id="test-library"></div>
+
+## Test Library
+
+<details open>
+<summary>📄 <b>TestLibrary.spec.ts</b> (14 tests, 30 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TestLibrary.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TestLibrary.spec.ts)
+
+### Test Library
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Library** - should navigate to Test Library page | Navigate to Test Library page |
+| 2 | **Test Library** - should display test definitions table with columns | Display test definitions table with columns |
+| 3 | **Test Library** - should display system test definitions | Display system test definitions |
+| 4 | **Test Library** - should create, edit, and delete a test definition | Create, edit, and delete a test definition |
+| | ↳ *Create a new test definition* | |
+| | ↳ *Edit Test Definition* | |
+| | ↳ *should enable/disable test definition* | |
+| | ↳ *should delete a test definition* | |
+| 5 | **Test Library** - should validate required fields in create form | Validate required fields in create form |
+| 6 | **Test Library** - should cancel form and close drawer | Cancel form and close drawer |
+| 7 | **Test Library** - should display pagination when test definitions exceed page size | Display pagination when test definitions exceed page size |
+| 8 | **Test Library** - should display test platform badges correctly | Display test platform badges correctly |
+| 9 | **Test Library** - should not show edit and delete buttons for system test definitions | Not show edit and delete buttons for system test definitions |
+| 10 | **Test Library** - should allow enabling/disabling system test definitions | Allow enabling/disabling system test definitions |
+| 11 | **Test Library** - should disable toggle for external test definitions | Disable toggle for external test definitions |
+| 12 | **Test Library** - should handle external test definitions with read-only fields | Handle external test definitions with read-only fields |
+| | ↳ *Create external test definition* | |
+| | ↳ *Verify fields are read-only in edit mode* | |
+| | ↳ *Verify allowed fields can be edited* | |
+| | ↳ *Delete external test definition* | |
+| 13 | **Test Library** - should handle supported services field correctly | Handle supported services field correctly |
+| | ↳ *Create test definition with specific supported services* | |
+| | ↳ *Verify supported services are saved correctly* | |
+| | ↳ *Verify test definition appears when filtering by supported services* | |
+| | ↳ *Edit and change supported services* | |
+| | ↳ *Verify updated supported services are persisted* | |
+| | ↳ *Clear all supported services (should apply to all services)* | |
+| | ↳ *Delete test definition* | |
+| 14 | **Test Library** - should maintain page on edit and reset to first page on delete | Maintain page on edit and reset to first page on delete |
+| | ↳ *Create a test definition starting with "z"* | |
+| | ↳ *Change page size to 25* | |
+| | ↳ *Navigate until we find our test definition or reach last page* | |
+| | ↳ *Edit the test definition and verify we stay on the same page* | |
+| | ↳ *Delete the test definition and verify redirect to first page* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>TestDefinitionPermissions.spec.ts</b> (7 tests, 7 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts)
+
+### Test Definition Permissions - View Only User
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Definition Permissions - View Only User** - should allow viewing test definitions but not create, edit, or delete | Allow viewing test definitions but not create, edit, or delete |
+
+### Test Definition Permissions - Data Consumer
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Definition Permissions - Data Consumer** - should allow viewing test definitions but not create, edit, or delete | Allow viewing test definitions but not create, edit, or delete |
+
+### Test Definition Permissions - Data Steward
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Definition Permissions - Data Steward** - should allow viewing and editing but not creating or deleting test definitions | Allow viewing and editing but not creating or deleting test definitions |
+| 2 | **Test Definition Permissions - Data Steward** - should not be able to edit system test definitions | Not be able to edit system test definitions |
+
+### Test Definition Permissions - API Level Validation
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Definition Permissions - API Level Validation** - should prevent unauthorized users from creating test definitions via API | Prevent unauthorized users from creating test definitions via API |
+| 2 | **Test Definition Permissions - API Level Validation** - should prevent unauthorized users from deleting test definitions via API | Prevent unauthorized users from deleting test definitions via API |
+| 3 | **Test Definition Permissions - API Level Validation** - should prevent all users from modifying system test definition entity type via API | Prevent all users from modifying system test definition entity type via API |
 
 </details>
 
@@ -360,67 +628,6 @@
 | | ↳ *Checks for user without permission* | |
 | | ↳ *Check alert details page and Recent Events tab* | |
 | | ↳ *Delete alert* | |
-
-</details>
-
-
----
-
-<div id="profiler"></div>
-
-## Profiler
-
-<details open>
-<summary>📄 <b>DataQualityAndProfiler.spec.ts</b> (7 tests, 20 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/DataQualityAndProfiler.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataQualityAndProfiler.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Table test case | Table test case  Creates, edits, and deletes a table-level test case with tags and glossary terms. Verifies incident breadcrumb navigation and test case property changes. |
-| | ↳ *Create* | |
-| | ↳ *Edit* | |
-| | ↳ *Redirect to IncidentPage and verify breadcrumb* | |
-| | ↳ *Delete* | |
-| 2 | Column test case | Column test case  Creates, edits, and deletes a column-level test case with tags and glossary terms. Validates parameter changes and property persistence. |
-| | ↳ *Create* | |
-| | ↳ *Edit* | |
-| | ↳ *Redirect to IncidentPage and verify breadcrumb* | |
-| | ↳ *Delete* | |
-| 3 | Profiler matrix and test case graph should visible for admin, data consumer and data steward | Profiler matrix and test case visibility for roles  Validates profiler matrix and test case graph visibility for admin, data consumer, and data steward roles. Verifies table profile data, test case results, and filtering. |
-| 4 | TestCase with Array params value | TestCase with Array params value |
-| | ↳ *Array params value should be visible while editing the test case* | |
-| | ↳ *Validate patch request for edit test case* | |
-| | ↳ *Update test case display name from Data Quality page* | |
-| 5 | Update profiler setting modal | Update profiler setting modal |
-| | ↳ *Update profiler setting* | |
-| | ↳ *Reset profile sample type* | |
-| 6 | TestCase filters | TestCase filters |
-| 7 | Pagination functionality in test cases list | Pagination functionality in test cases list |
-| | ↳ *Verify pagination controls are visible* | |
-| | ↳ *Verify first page state* | |
-| | ↳ *Navigate to next page* | |
-| | ↳ *Navigate back to previous page* | |
-| | ↳ *Test page size dropdown* | |
-
-</details>
-
-<details open>
-<summary>📄 <b>ProfilerConfigurationPage.spec.ts</b> (2 tests, 4 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts)
-
-### Profiler Configuration Page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Profiler Configuration Page** - Admin user | Admin user profiler configuration  Validates form validation, profiler config creation, updates, and removal for admin users. Verifies metric selection, data type filtering, and API interactions. |
-| | ↳ *Verify validation* | |
-| | ↳ *Update profiler configuration* | |
-| | ↳ *Remove Configuration* | |
-| 2 | **Profiler Configuration Page** - Non admin user | Non-admin user access restriction  Verifies that non-admin users cannot access profiler configuration preferences. |
 
 </details>
 

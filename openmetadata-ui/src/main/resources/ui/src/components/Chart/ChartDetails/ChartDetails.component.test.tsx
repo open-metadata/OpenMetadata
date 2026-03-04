@@ -77,6 +77,7 @@ jest.mock('../../../hooks/useCustomPages', () => ({
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({
     fqn: 'test.chart',
+    entityFqn: 'test.chart',
   }),
 }));
 

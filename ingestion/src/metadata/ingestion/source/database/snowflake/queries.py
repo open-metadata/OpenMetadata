@@ -21,6 +21,7 @@ SNOWFLAKE_GET_TABLE_NAMES = """
         CASE
             WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
             WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            WHEN IS_ICEBERG = 'YES' THEN 'ICEBERG TABLE'
             ELSE TABLE_TYPE
         END as TABLE_TYPE
     from information_schema.tables
@@ -38,6 +39,7 @@ from (
         CASE
             WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
             WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            WHEN IS_ICEBERG = 'YES' THEN 'ICEBERG TABLE'
             ELSE TABLE_TYPE
         END as COMPUTED_TABLE_TYPE,
         ROW_NUMBER() over (
@@ -207,6 +209,10 @@ SHOW STREAMS IN SCHEMA "{schema}"
 
 SNOWFLAKE_GET_STREAM = """
 SHOW STREAMS LIKE '{stream_name}' IN SCHEMA "{schema}"
+"""
+
+SNOWFLAKE_GET_STAGES = """
+SHOW STAGES IN SCHEMA "{schema}"
 """
 
 SNOWFLAKE_GET_TRANSIENT_NAMES = """

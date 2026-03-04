@@ -32,6 +32,8 @@ if TYPE_CHECKING:
     import numpy as np
     import pandas as pd
 
+    from metadata.profiler.processor.runner import PandasRunner
+
 
 class MedianAccumulator(NamedTuple):
     """Accumulator holding chunked NumPy arrays for fast median computation."""
@@ -48,6 +50,8 @@ class Median(StaticMetric, PercentilMixin):
 
     - For a quantifiable value, return the usual Median
     """
+
+    schema_metric_type = MetricType.median
 
     @classmethod
     def name(cls):
@@ -66,7 +70,7 @@ class Median(StaticMetric, PercentilMixin):
         """sqlalchemy function
 
         Supports optional dimension_col property for GROUP BY correlation.
-        Set via: add_props(dimension_col=col.name)(Metrics.MEDIAN.value)
+        Set via: add_props(dimension_col=col.name)(Metrics.median.value)
         """
         # Get optional dimension_col property (for dimensionality validation)
         # Expected to be a string column name, not a Column object
@@ -94,8 +98,10 @@ class Median(StaticMetric, PercentilMixin):
         )
         return None
 
-    def df_fn(self, dfs=None):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """Dataframe function"""
+        if dfs is None:
+            return None
         computation = self.get_pandas_computation()
         accumulator = computation.create_accumulator()
         for df in dfs:

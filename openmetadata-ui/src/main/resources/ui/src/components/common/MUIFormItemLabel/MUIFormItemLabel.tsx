@@ -67,7 +67,7 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
               <Box
                 component="span"
                 sx={{
-                  display: 'inline-flex',
+                  display: 'flex',
                   alignItems: 'center',
                   cursor: 'help',
                   lineHeight: 0,

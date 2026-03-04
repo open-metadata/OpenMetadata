@@ -1,7 +1,5 @@
 # Test cases for data quality workflow
-import sys
 from dataclasses import dataclass
-from typing import List
 
 import pytest
 
@@ -34,8 +32,15 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
+# Column-level test cases need the column name in the FQN: {table}.{column}.{test_case}
+# Table-level test cases use: {table}.{test_case}
+_COLUMN_TEST_CASES = {
+    "first_name_includes_tom_and_jerry_wo_enum": "first_name",
+    "first_name_includes_tom_and_jerry": "first_name",
+    "first_name_is_tom_or_jerry": "first_name",
+    "id_no_bounds": "customer_id",
+    "column_values_not_match_regex": "email",
+}
 
 
 @pytest.fixture(scope="module")
@@ -46,12 +51,14 @@ def run_data_quality_workflow(
     metadata: OpenMetadata,
     sink_config,
     workflow_config,
+    patch_passwords_for_db_services,
 ):
     run_workflow(MetadataWorkflow, ingestion_config)
+    test_suite_name = f"MyTestSuite_{db_service.name.root}"
     test_suite_config = OpenMetadataWorkflowConfig(
         source=Source(
             type="postgres",
-            serviceName="MyTestSuite",
+            serviceName=test_suite_name,
             sourceConfig=SourceConfig(
                 config=TestSuitePipeline(
                     type=TestSuiteConfigType.TestSuite,
@@ -213,7 +220,7 @@ def run_data_quality_workflow(
     test_suite_processor.raise_from_status()
     yield
     test_suite: TestSuite = metadata.get_by_name(
-        TestSuite, "MyTestSuite", nullable=True
+        TestSuite, test_suite_name, nullable=True
     )
     if test_suite:
         metadata.delete(TestSuite, test_suite.id, recursive=True, hard_delete=True)
@@ -313,19 +320,16 @@ def test_data_quality(
     expected_status,
     db_service,
 ):
-    test_cases: List[TestCase] = metadata.list_entities(
-        TestCase, fields=["*"], skip_on_failure=True
-    ).entities
-    test_case: TestCase = next(
-        (
-            t
-            for t in test_cases
-            if t.name.root == test_case_name
-            and "dvdrental.public.customer" in t.entityFQN
-        ),
-        None,
+    table_fqn = f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer"
+    col = _COLUMN_TEST_CASES.get(test_case_name)
+    fqn = (
+        f"{table_fqn}.{col}.{test_case_name}"
+        if col
+        else f"{table_fqn}.{test_case_name}"
     )
-    assert test_case is not None
+    test_case: TestCase = metadata.get_by_name(
+        TestCase, fqn, fields=["*"], nullable=False
+    )
     assert_equal_pydantic_objects(
         expected_status.model_copy(
             update={"timestamp": test_case.testCaseResult.timestamp}
@@ -335,12 +339,12 @@ def test_data_quality(
 
 
 @pytest.fixture()
-def get_incompatible_column_type_config(workflow_config, sink_config):
+def get_incompatible_column_type_config(workflow_config, sink_config, db_service):
     def inner(entity_fqn: str, incompatible_test_case: TestCaseDefinition):
         return {
             "source": {
                 "type": "postgres",
-                "serviceName": "MyTestSuite",
+                "serviceName": f"MyTestSuite_{db_service.name.root}",
                 "sourceConfig": {
                     "config": {
                         "type": "TestSuite",

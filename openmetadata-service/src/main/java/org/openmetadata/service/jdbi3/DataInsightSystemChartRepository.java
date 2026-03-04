@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,6 +37,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -637,7 +639,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   }
 
   @Override
-  public void setFields(DataInsightCustomChart entity, EntityUtil.Fields fields) {
+  public void setFields(
+      DataInsightCustomChart entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     /* Nothing to do */
   }
 
@@ -654,6 +657,17 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   @Override
   public void storeEntity(DataInsightCustomChart entity, boolean update) {
     store(entity, update);
+  }
+
+  @Override
+  public void storeEntities(List<DataInsightCustomChart> entities) {
+    List<DataInsightCustomChart> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (DataInsightCustomChart entity : entities) {
+      String jsonCopy = gson.toJson(entity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, DataInsightCustomChart.class));
+    }
+    storeMany(entitiesToStore);
   }
 
   @Override

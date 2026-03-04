@@ -73,7 +73,15 @@ export const getCustomPropertyMomentFormat = (
   return format;
 };
 
-export const getCustomPropertyPageHeaderFromEntity = (entityType: string) => {
+interface PageHeader {
+  header: string;
+  subHeader: string;
+  subHeaderParams?: Record<string, string>;
+}
+
+export const getCustomPropertyPageHeaderFromEntity = (
+  entityType: string
+): PageHeader => {
   switch (entityType) {
     case ENTITY_PATH.tables:
       return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
@@ -140,6 +148,9 @@ export const getCustomPropertyPageHeaderFromEntity = (entityType: string) => {
 
     case ENTITY_PATH.worksheets:
       return PAGE_HEADERS.WORKSHEET_CUSTOM_ATTRIBUTES;
+
+    case ENTITY_PATH.column:
+      return PAGE_HEADERS.COLUMN_CUSTOM_ATTRIBUTES;
 
     default:
       return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;

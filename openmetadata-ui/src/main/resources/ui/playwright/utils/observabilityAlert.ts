@@ -89,9 +89,12 @@ export const addExternalDestination = async ({
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',
   });
-
   // Select external tab
-  await page.click(`[data-testid="tab-label-external"]:visible`);
+  const externalTab = page.locator(
+    `.ant-select-dropdown:visible [data-testid="destination-category-dropdown-${destinationNumber}"] [data-testid="tab-label-external"]`
+  );
+  await expect(externalTab).toBeVisible();
+  await externalTab.click();
 
   // Select destination category option
   await page.click(

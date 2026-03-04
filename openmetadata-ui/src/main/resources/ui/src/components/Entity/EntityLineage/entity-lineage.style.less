@@ -286,6 +286,11 @@
     direction: ltr;
   }
 }
+.lineage-card-table {
+  .ant-card-body {
+    height: auto;
+  }
+}
 
 .full-screen-lineage {
   position: fixed;
@@ -479,4 +484,29 @@
   border: 1px solid @border-color;
   border-radius: 10px;
   overflow: hidden;
+}
+
+.lineage-canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: all;
+  z-index: 0;
+}
+
+.edge-interaction-overlay,
+.pipeline-edge-buttons-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+
+  > * {
+    pointer-events: all;
+  }
 }

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +38,10 @@ import {
 } from '../../../utils/serviceIngestion';
 import { ResponseDataType } from '../Entity.interface';
 
+interface RunnerDetails {
+  name: string;
+  displayName?: string;
+}
 class ServiceBaseClass {
   public category: Services;
   protected serviceName: string;
@@ -49,6 +52,10 @@ class ServiceBaseClass {
   public shouldAddDefaultFilters: boolean;
   protected entityFQN: string | null;
   public serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  public ingestionRunner: RunnerDetails = {
+    name: 'CollateSaaS',
+    displayName: 'Collate SaaS',
+  };
 
   constructor(
     category: Services,
@@ -57,7 +64,8 @@ class ServiceBaseClass {
     entity: string,
     shouldTestConnection = true,
     shouldAddIngestion = true,
-    shouldAddDefaultFilters = false
+    shouldAddDefaultFilters = false,
+    ingestionRunner?: RunnerDetails
   ) {
     this.category = category;
     this.serviceName = name;
@@ -67,6 +75,7 @@ class ServiceBaseClass {
     this.shouldAddIngestion = shouldAddIngestion;
     this.shouldAddDefaultFilters = shouldAddDefaultFilters;
     this.entityFQN = null;
+    this.ingestionRunner = ingestionRunner ?? this.ingestionRunner;
   }
 
   getServiceName() {
@@ -102,6 +111,38 @@ class ServiceBaseClass {
 
     // await airflowStatus;
     await this.fillConnectionDetails(page);
+
+    const runnerSelector = page.getByTestId(
+      'select-widget-root/ingestionRunner'
+    );
+
+    if (await runnerSelector.isVisible()) {
+      await runnerSelector.click();
+      await page.waitForSelector('.ant-select-dropdown:visible', {
+        state: 'visible',
+      });
+
+      // Search for the runner using the search input
+      await runnerSelector.locator('input').fill(this.ingestionRunner.name);
+
+      // Using data-key which relies on `name` which is more reliable data in AUTs
+      // instead of data-testid which depends on the `displayName` which can change
+      await page.waitForSelector(
+        `.ant-select-dropdown:visible [data-key="${this.ingestionRunner.name}"]`,
+        { state: 'visible' }
+      );
+      await page
+        .locator(
+          `.ant-select-dropdown:visible [data-key="${this.ingestionRunner.name}"]`
+        )
+        .click();
+
+      await expect(
+        page.getByTestId('select-widget-root/ingestionRunner')
+      ).toContainText(
+        this.ingestionRunner.displayName ?? this.ingestionRunner.name
+      );
+    }
 
     if (this.shouldTestConnection) {
       await testConnection(page);

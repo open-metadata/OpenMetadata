@@ -20,7 +20,6 @@ from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type, cast
 
 from pydantic import ValidationError
 from sqlalchemy import Column
-from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -89,7 +88,7 @@ class Profiler(Generic[TMetric]):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
         :param profiler_interface: Where to run the queries
-        :param table: DeclarativeMeta containing table info
+        :param table: type containing table info
         :param ignore_cols: List of columns to ignore when computing the profile
         :param profile_sample: % of rows to use for sampling column metrics
         """
@@ -124,7 +123,7 @@ class Profiler(Generic[TMetric]):
         self.data_frame_list = None
 
     @property
-    def table(self) -> DeclarativeMeta:
+    def table(self) -> type:
         return self.profiler_interface.table
 
     @property
@@ -480,15 +479,13 @@ class Profiler(Generic[TMetric]):
         in a Dict in the shape {col_name: Profiler}
         """
 
-        if self.source_config.computeMetrics:
-            logger.debug(
-                f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.root}..."
-            )
-            self.compute_metrics()
+        logger.debug(
+            f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.root}..."
+        )
+        self.compute_metrics()
 
         profile = self.get_profile()
-        if self.source_config.computeMetrics:
-            self._check_profile_and_handle(profile)
+        self._check_profile_and_handle(profile)
 
         table_profile = ProfilerResponse(
             table=self.profiler_interface.table_entity,

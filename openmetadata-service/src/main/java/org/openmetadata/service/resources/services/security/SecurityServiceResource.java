@@ -187,9 +187,18 @@ public class SecurityServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     SecurityService securityService =
-        getInternal(uriInfo, securityContext, id, fieldsParam, include);
+        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
     return decryptOrNullify(securityContext, securityService);
   }
 
@@ -227,9 +236,18 @@ public class SecurityServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     SecurityService securityService =
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, includeRelations);
     return decryptOrNullify(securityContext, securityService);
   }
 
@@ -573,6 +591,7 @@ public class SecurityServiceResource
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Security Service", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -586,7 +605,7 @@ public class SecurityServiceResource
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -608,6 +627,7 @@ public class SecurityServiceResource
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Security Service", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -620,7 +640,7 @@ public class SecurityServiceResource
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @DELETE

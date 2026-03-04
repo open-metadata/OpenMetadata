@@ -27,6 +27,7 @@ import { ReactComponent as TableIcon } from '../assets/svg/customproperties/tabl
 import { ReactComponent as TimeIntervalIcon } from '../assets/svg/customproperties/time-interval.svg';
 import { ReactComponent as TimeIcon } from '../assets/svg/customproperties/time.svg';
 import { ReactComponent as TimestampIcon } from '../assets/svg/customproperties/timestamp.svg';
+import { ReactComponent as HyperlinkIcon } from '../assets/svg/link.svg';
 
 export const PROPERTY_TYPES_WITH_FORMAT = ['date-cp', 'dateTime-cp', 'time-cp'];
 
@@ -179,6 +180,22 @@ export const SUPPORTED_FORMAT_MAP = {
 
 export const TABLE_TYPE_CUSTOM_PROPERTY = 'table-cp';
 
+export const HYPERLINK_TYPE_CUSTOM_PROPERTY = 'hyperlink-cp';
+
+export const SCROLLABLE_WRAPPER_TYPES = [TABLE_TYPE_CUSTOM_PROPERTY];
+
+export const AUTO_HEIGHT_TYPES = [
+  'entityReferenceList',
+  TABLE_TYPE_CUSTOM_PROPERTY,
+  'sqlQuery',
+];
+
+export const NO_OVERFLOW_TOGGLE_TYPES = [
+  ...PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
+  TABLE_TYPE_CUSTOM_PROPERTY,
+  'sqlQuery',
+];
+
 export const CUSTOM_PROPERTIES_ICON_MAP = {
   'date-cp': DateIcon,
   'dateTime-cp': DateTimeIcon,
@@ -187,6 +204,7 @@ export const CUSTOM_PROPERTIES_ICON_MAP = {
   entityReference: EntityReferenceIcon,
   entityReferenceList: EntityReferenceListIcon,
   enum: EnumIcon,
+  'hyperlink-cp': HyperlinkIcon,
   integer: IntegerIcon,
   markdown: MarkDownIcon,
   number: NumberIcon,

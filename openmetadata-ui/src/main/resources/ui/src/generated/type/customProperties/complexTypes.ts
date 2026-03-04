@@ -11,8 +11,24 @@
  *  limitations under the License.
  */
 export interface ComplexTypesObject {
-    "table-cp"?: Table;
+    "hyperlink-cp"?: Hyperlink;
+    "table-cp"?:     Table;
     [property: string]: any;
+}
+
+/**
+ * A hyperlink custom property containing a URL and optional display text. When display text
+ * is provided, it renders as a clickable hyperlink with the text label.
+ */
+export interface Hyperlink {
+    /**
+     * Optional display text for the hyperlink. If not provided, the URL will be displayed.
+     */
+    displayText?: string;
+    /**
+     * The URL that the hyperlink points to.
+     */
+    url: string;
 }
 
 /**

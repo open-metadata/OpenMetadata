@@ -13,7 +13,7 @@ Test Oracle using the topology
 """
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -41,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.oracle.metadata import OracleSource
 from metadata.ingestion.source.database.oracle.models import OracleStoredObject
@@ -61,6 +62,32 @@ mock_oracle_config = {
                 "username": "username",
                 "password": "password",
                 "hostPort": "localhost:1466",
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "oracle"},
+        }
+    },
+}
+
+mock_oracle_config_preserve_case = {
+    "source": {
+        "type": "oracle",
+        "serviceName": "test_preserve",
+        "serviceConnection": {
+            "config": {
+                "type": "Oracle",
+                "oracleConnectionType": {"oracleServiceName": "TESTDB"},
+                "username": "username",
+                "password": "password",
+                "hostPort": "localhost:1466",
+                "preserveIdentifierCase": True,
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -227,5 +254,304 @@ class OracleUnitTest(TestCase):
         return rows in any physical order, causing scrambled code.
         """
         assert "ORDER BY OWNER, NAME, LINE" in ORACLE_GET_STORED_PROCEDURES
-        assert "ORDER BY OWNER, NAME, LINE" in ORACLE_GET_STORED_PACKAGES
-        assert "ORDER BY OWNER, NAME, LINE" in TEST_ORACLE_GET_STORED_PACKAGES
+        assert (
+            """ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE"""
+            in ORACLE_GET_STORED_PACKAGES
+        )
+        assert (
+            """ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE"""
+            in TEST_ORACLE_GET_STORED_PACKAGES
+        )
+
+    def test_get_view_definition_with_view_def_and_view_ddl(self):
+        """
+        Test that view definitions are correctly retrieved for both cases:
+        1. When view_def is present (regular view with text column)
+        2. When view_ddl is present (view definition from DBMS_METADATA.GET_DDL)
+        """
+        from unittest.mock import MagicMock
+
+        from sqlalchemy.dialects.oracle.base import OracleDialect
+
+        from metadata.ingestion.source.database.oracle.utils import (
+            get_all_view_definitions,
+        )
+
+        mock_connection = MagicMock()
+        mock_dialect = OracleDialect()
+
+        class MockViewRowWithViewDef:
+            view_name = "test_view_with_def"
+            schema = "test_schema"
+            view_def = "SELECT * FROM test_table WHERE id > 0"
+            view_ddl = None
+
+        class MockViewRowWithViewDdl:
+            VIEW_NAME = "test_view_with_ddl"
+            SCHEMA = "test_schema"
+            VIEW_DEF = None
+            VIEW_DDL = "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
+
+        mock_result = [MockViewRowWithViewDef(), MockViewRowWithViewDdl()]
+        mock_connection.execute.return_value = mock_result
+        mock_connection.engine.url.database = "test_database"
+
+        get_all_view_definitions(mock_dialect, mock_connection, "dummy_query")
+
+        assert hasattr(mock_dialect, "all_view_definitions")
+        assert (
+            "test_view_with_def",
+            "test_schema",
+        ) in mock_dialect.all_view_definitions
+        assert (
+            "test_view_with_ddl",
+            "test_schema",
+        ) in mock_dialect.all_view_definitions
+
+        expected_view_def_definition = "CREATE OR REPLACE VIEW test_view_with_def AS SELECT * FROM test_table WHERE id > 0"
+        expected_view_ddl_definition = "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
+
+        assert (
+            mock_dialect.all_view_definitions[("test_view_with_def", "test_schema")]
+            == expected_view_def_definition
+        )
+        assert (
+            mock_dialect.all_view_definitions[("test_view_with_ddl", "test_schema")]
+            == expected_view_ddl_definition
+        )
+
+    def test_get_stored_procedures(self):
+        """
+        Test fetching stored procedures with filter
+        """
+        self.oracle.source_config.includeStoredProcedures = True
+        self.oracle.source_config.storedProcedureFilterPattern = FilterPattern(
+            includes=["sp_include"]
+        )
+        self.oracle.context.get().__dict__["database"] = "test_db"
+        self.oracle.context.get().__dict__["database_schema"] = "test_schema"
+
+        mock_engine = MagicMock()
+        self.oracle.engine = mock_engine
+
+        # Row format: owner, name, line, text, procedure_type
+        rows_procedures = [
+            ("owner", "sp_include", 1, "def1", "StoredProcedure"),
+            ("owner", "sp_exclude", 1, "def2", "StoredProcedure"),
+        ]
+
+        rows_packages = []
+
+        mock_result_proc = MagicMock()
+        mock_result_proc.all.return_value = rows_procedures
+
+        mock_result_pkg = MagicMock()
+        mock_result_pkg.all.return_value = rows_packages
+
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = [mock_result_proc, mock_result_pkg]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.oracle.get_stored_procedures())
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_include")
+
+    def test_preserve_case_false_normalize_name_lowercases(self):
+        """preserveIdentifierCase=False (default): dialect.normalize_name lowercases UPPERCASE names."""
+        dialect = self.oracle.engine.dialect
+        assert dialect.normalize_name("EMPLOYEES") == "employees"
+
+    def test_preserve_case_false_stored_procedure_schema_uppercased(self):
+        """preserveIdentifierCase=False: schema is uppercased when building stored procedure query."""
+        self.oracle.context.get().__dict__["database_schema"] = "sample_schema"
+        mock_engine = MagicMock()
+        self.oracle.engine = mock_engine
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        list(
+            self.oracle._get_stored_procedures_internal(
+                "SELECT * WHERE owner = '{schema}'"
+            )
+        )
+
+        executed_query = str(mock_conn.execute.call_args[0][0])
+        assert "SAMPLE_SCHEMA" in executed_query
+        assert "sample_schema" not in executed_query
+
+
+class TestOraclePreserveIdentifierCase:
+    """Test Oracle source behavior when preserveIdentifierCase=True."""
+
+    def setup_method(self):
+        patcher = patch(
+            "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+        )
+        patcher.start()
+        metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(
+                mock_oracle_config_preserve_case["workflowConfig"][
+                    "openMetadataServerConfig"
+                ]
+            )
+        )
+        self.oracle = OracleSource.create(
+            mock_oracle_config_preserve_case["source"],
+            metadata,
+        )
+        self.oracle.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
+        patcher.stop()
+
+    def test_normalize_name_returns_name_as_is(self):
+        """preserveIdentifierCase=True: normalize_name is identity — returns name unchanged."""
+        dialect = self.oracle.engine.dialect
+        assert dialect.normalize_name("EMPLOYEES") == "EMPLOYEES"
+        assert dialect.normalize_name("employees") == "employees"
+        assert dialect.normalize_name("MixedCase") == "MixedCase"
+
+    def test_denormalize_name_returns_name_as_is(self):
+        """preserveIdentifierCase=True: denormalize_name is identity — returns name unchanged."""
+        dialect = self.oracle.engine.dialect
+        assert dialect.denormalize_name("EMPLOYEES") == "EMPLOYEES"
+        assert dialect.denormalize_name("employees") == "employees"
+        assert dialect.denormalize_name("MixedCase") == "MixedCase"
+
+    def test_stored_procedure_schema_not_uppercased(self):
+        """preserveIdentifierCase=True: schema case is preserved when querying stored procedures."""
+        self.oracle.context.get().__dict__["database_schema"] = "sample_Schema"
+        mock_engine = MagicMock()
+        self.oracle.engine = mock_engine
+        mock_result = MagicMock()
+        mock_result.all.return_value = []
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        list(
+            self.oracle._get_stored_procedures_internal(
+                "SELECT * WHERE owner = '{schema}'"
+            )
+        )
+
+        executed_query = str(mock_conn.execute.call_args[0][0])
+        assert "sample_Schema" in executed_query
+        assert "SAMPLE_SCHEMA" not in executed_query
+
+    def test_get_indexes_preserve_case_uppercase_row_keys(self):
+        """get_indexes_preserve_case handles thick-mode UPPERCASE result row keys (e.g. INDEX_NAME)."""
+        import types
+
+        from sqlalchemy.dialects.oracle.base import OracleDialect
+
+        from metadata.ingestion.source.database.oracle.utils import (
+            get_indexes_preserve_case,
+            normalize_name,
+        )
+
+        mock_connection = MagicMock()
+        mock_dialect = OracleDialect()
+        mock_dialect.normalize_name = types.MethodType(normalize_name, mock_dialect)
+        mock_dialect._prepare_reflection_args = MagicMock(
+            return_value=("MyTable", "MySchema", "", None)
+        )
+        mock_dialect.get_pk_constraint = MagicMock(return_value={"name": "PK_MYTABLE"})
+
+        class MockRow:
+            def __init__(self, mapping):
+                self._mapping = mapping
+
+        rows = [
+            MockRow(
+                {
+                    "INDEX_NAME": "IDX_EMPLOYEE_ID",
+                    "COLUMN_NAME": "EmployeeId",
+                    "INDEX_TYPE": "NORMAL",
+                    "UNIQUENESS": "UNIQUE",
+                    "COMPRESSION": "DISABLED",
+                    "PREFIX_LENGTH": None,
+                }
+            ),
+            MockRow(
+                {
+                    "INDEX_NAME": "IDX_EMPLOYEE_ID",
+                    "COLUMN_NAME": "DeptId",
+                    "INDEX_TYPE": "NORMAL",
+                    "UNIQUENESS": "UNIQUE",
+                    "COMPRESSION": "DISABLED",
+                    "PREFIX_LENGTH": None,
+                }
+            ),
+        ]
+        mock_connection.execute.return_value = rows
+
+        result = get_indexes_preserve_case(
+            mock_dialect, mock_connection, "MyTable", schema="MySchema"
+        )
+
+        assert len(result) == 1
+        assert result[0]["name"] == "IDX_EMPLOYEE_ID"
+        assert result[0]["column_names"] == ["EmployeeId", "DeptId"]
+        assert result[0]["unique"] is True
+
+    def test_get_indexes_preserve_case_lowercase_row_keys(self):
+        """get_indexes_preserve_case handles thin-mode lowercase result row keys (e.g. index_name)."""
+        import types
+
+        from sqlalchemy.dialects.oracle.base import OracleDialect
+
+        from metadata.ingestion.source.database.oracle.utils import (
+            get_indexes_preserve_case,
+            normalize_name,
+        )
+
+        mock_connection = MagicMock()
+        mock_dialect = OracleDialect()
+        mock_dialect.normalize_name = types.MethodType(normalize_name, mock_dialect)
+        mock_dialect._prepare_reflection_args = MagicMock(
+            return_value=("MyTable", "MySchema", "", None)
+        )
+        mock_dialect.get_pk_constraint = MagicMock(return_value={"name": "PK_MYTABLE"})
+
+        class MockRow:
+            def __init__(self, mapping):
+                self._mapping = mapping
+
+        rows = [
+            MockRow(
+                {
+                    "index_name": "IDX_DEPARTMENT",
+                    "column_name": "DeptName",
+                    "index_type": "NORMAL",
+                    "uniqueness": "NONUNIQUE",
+                    "compression": "DISABLED",
+                    "prefix_length": None,
+                }
+            ),
+        ]
+        mock_connection.execute.return_value = rows
+
+        result = get_indexes_preserve_case(
+            mock_dialect, mock_connection, "MyTable", schema="MySchema"
+        )
+
+        assert len(result) == 1
+        assert result[0]["name"] == "IDX_DEPARTMENT"
+        assert result[0]["column_names"] == ["DeptName"]
+        assert result[0]["unique"] is False

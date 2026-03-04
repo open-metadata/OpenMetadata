@@ -27,14 +27,18 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.policies.accessControl.Rule.Effect;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.policies.PolicyResource;
 
 /**
  * Integration tests for Policy entity operations.
@@ -58,6 +62,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     supportsPatch = true;
     supportsOwners = true;
     supportsSearchIndex = false; // Policy does not have search index
+    supportsListHistoryByTimestamp = true;
   }
 
   private Rule createBasicRule(String name) {
@@ -66,6 +71,11 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
         .withResources(List.of(ALL_RESOURCES))
         .withOperations(List.of(MetadataOperation.EDIT_DESCRIPTION))
         .withEffect(Effect.ALLOW);
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return PolicyResource.COLLECTION_PATH;
   }
 
   @Override
@@ -343,6 +353,68 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     assertNotNull(response);
     assertNotNull(response.getData());
     assertTrue(response.getData().size() >= 3);
+  }
+
+  /**
+   * Verifies bulk policy listing includes associated roles when requested via fields parameter.
+   * Addresses bug where fetchAndSetRoles used wrong parameter order in findFromBatch call.
+   */
+  @Test
+  void test_bulkGetPoliciesReturnsRolesField(TestNamespace ns) {
+    OpenMetadataClient apiClient = SdkClients.adminClient();
+
+    String uniquePolicyName = ns.prefix("bulk_roles_test_policy");
+    String uniqueRoleName = ns.prefix("bulk_roles_test_role");
+
+    Policy newPolicy =
+        apiClient
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(uniquePolicyName)
+                    .withRules(List.of(createBasicRule("testRule")))
+                    .withDescription("Testing roles in bulk response"));
+
+    Role newRole =
+        apiClient
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(uniqueRoleName)
+                    .withPolicies(List.of(newPolicy.getFullyQualifiedName()))
+                    .withDescription("Role linked to test policy"));
+
+    UUID policyUuid = newPolicy.getId();
+    UUID roleUuid = newRole.getId();
+
+    try {
+      Policy directFetch = apiClient.policies().get(policyUuid.toString(), "roles");
+      List<EntityReference> directRoles = directFetch.getRoles();
+      assertNotNull(directRoles);
+      assertTrue(
+          directRoles.stream().anyMatch(ref -> ref.getId().equals(roleUuid)),
+          "Direct fetch must include the role");
+
+      ListParams queryParams = new ListParams();
+      queryParams.setFields("roles");
+      queryParams.setLimit(200);
+
+      ListResponse<Policy> allPolicies = apiClient.policies().list(queryParams);
+      Policy bulkFetchedPolicy =
+          allPolicies.getData().stream()
+              .filter(pol -> pol.getId().equals(policyUuid))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Policy missing from bulk response"));
+
+      List<EntityReference> bulkRoles = bulkFetchedPolicy.getRoles();
+      assertNotNull(bulkRoles, "Roles field must be present in bulk response");
+      assertTrue(
+          bulkRoles.stream().anyMatch(ref -> ref.getId().equals(roleUuid)),
+          "Bulk response must contain the associated role - this validates the bug fix");
+    } finally {
+      apiClient.roles().delete(roleUuid.toString());
+      apiClient.policies().delete(policyUuid.toString(), java.util.Map.of("hardDelete", "true"));
+    }
   }
 
   @Test

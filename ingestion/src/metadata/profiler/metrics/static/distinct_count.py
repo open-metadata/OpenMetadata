@@ -15,8 +15,12 @@ Distinct Count Metric definition
 # pylint: disable=duplicate-code
 
 import json
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import column, distinct, func
+
+if TYPE_CHECKING:
+    from metadata.profiler.processor.runner import PandasRunner
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
@@ -33,6 +37,8 @@ class DistinctCount(StaticMetric):
     Given a column, count the number of distinct values
     """
 
+    schema_metric_type = MetricType.distinctCount
+
     @classmethod
     def name(cls):
         return MetricType.distinctCount.value
@@ -48,10 +54,12 @@ class DistinctCount(StaticMetric):
         """
         return func.count(distinct(CountFn(column(self.col.name, self.col.type))))
 
-    def df_fn(self, dfs=None):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """
         Distinct Count metric for Datalake
         """
+        if dfs is None:
+            return None
         # pylint: disable=import-outside-toplevel
         from collections import Counter
 

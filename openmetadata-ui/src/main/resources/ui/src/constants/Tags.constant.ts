@@ -14,6 +14,7 @@
 import { NAME_LENGTH_REGEX, TAG_NAME_REGEX } from './regex.constants';
 
 export const DEFAULT_FORM_VALUE = {
+  id: '',
   name: '',
   displayName: '',
   description: '',

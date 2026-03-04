@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
@@ -23,6 +23,7 @@ import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { EntityType } from '../support/entity/EntityDataClass.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
@@ -40,7 +41,6 @@ import {
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
-import { EntityType } from '../support/entity/EntityDataClass.interface';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
@@ -64,6 +64,7 @@ export const visitEntityPage = async (data: {
   // Unified loader handling
   await waitForAllLoadersToDisappear(page);
 
+  // Dismiss welcome screen if visible
   const isWelcomeScreenVisible = await page
     .getByTestId('welcome-screen')
     .isVisible();
@@ -163,11 +164,17 @@ export const addOwnerWithoutValidation = async ({
 }) => {
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
-    const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=&index=user_search_index&*'
-    );
-    await page.getByRole('tab', { name: type }).click();
-    await userListResponse;
+    const usersTab = page.getByRole('tab', { name: type });
+    const isTabAlreadySelected =
+      (await usersTab.getAttribute('aria-selected')) === 'true';
+
+    if (!isTabAlreadySelected) {
+      const userListResponse = page.waitForResponse(
+        '/api/v1/search/query?q=&index=user_search_index&*'
+      );
+      await usersTab.click();
+      await userListResponse;
+    }
   }
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -372,9 +379,15 @@ export const addMultiOwner = async (data: {
       .getByTestId('clear-all-button');
 
     await clearButton.click();
+
+    await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
   }
 
   for (const ownerName of owners) {
+    await expect(
+      page.locator('[data-testid="owner-select-users-search-bar"]')
+    ).toBeVisible();
+
     const searchOwner = page.waitForResponse(
       'api/v1/search/query?q=*&index=user_search_index*'
     );
@@ -576,25 +589,52 @@ export const updateDescription = async (
   page: Page,
   description: string,
   isModal = false,
-  validationContainerTestId = 'asset-description-container'
+  validationContainerTestId = 'asset-description-container',
+  endpoint?: EntityTypeEndpoint
 ) => {
-  const editButton = page.locator('[data-testid="edit-description"]');
-  if (await editButton.isVisible()) {
-    await editButton.click();
-  } else {
-    // Fallback for ML Model which uses 'edit-button'
-    await page.getByTestId('edit-button').click();
-  }
-  await page.locator(descriptionBox).first().click();
-  await page.locator(descriptionBox).first().clear();
-  await page.locator(descriptionBox).first().fill(description);
-  await page.getByTestId('save').click();
+  const editDescriptionButton = page.getByTestId('edit-description');
+  const editButton = page.getByTestId('edit-button');
 
+  try {
+    await expect(editDescriptionButton).toBeVisible();
+    await editDescriptionButton.click();
+  } catch {
+    await expect(editButton).toBeVisible();
+    await editButton.click();
+  }
+
+  // Wait for description box to be visible and ready
+  const descBox = page.locator(descriptionBox).first();
+  await expect(descBox).toBeVisible();
+  await descBox.click();
+  await descBox.clear();
+  await descBox.fill(description);
+
+  // Wait for save button and click
+  const saveButton = page.getByTestId('save');
+  await expect(saveButton).toBeVisible();
+  await expect(saveButton).toBeEnabled();
+
+  // Always wait for the PATCH request, not just when endpoint is provided
+  const patchRequest = endpoint
+    ? page.waitForResponse(`/api/v1/${endpoint}/*`)
+    : page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' && response.status() === 200
+      );
+
+  await saveButton.click();
+  await patchRequest;
   if (isModal) {
     await page.waitForSelector('[role="dialog"].description-markdown-editor', {
       state: 'hidden',
     });
   }
+
+  // CRITICAL: Wait for UI to update after save
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   if (validationContainerTestId) {
     if (isEmpty(description)) {
@@ -618,30 +658,30 @@ export const updateDescriptionForChildren = async (
   rowSelector: string,
   entityEndpoint: string
 ) => {
-  await page
+  const editButton = page
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('description')
-    .getByTestId('edit-button')
-    .click();
+    .first()
+    .getByTestId('edit-button');
 
-  await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+  await expect(editButton).toBeVisible();
+  await editButton.click();
 
-  const descriptionInput = page.locator(descriptionBox).first();
+  // Wait for modal to be visible
+  const modal = page.locator('[role="dialog"]');
+  await expect(modal).toBeVisible();
 
-  await descriptionInput.waitFor({ state: 'visible' });
-  await expect(descriptionInput).toBeEditable();
+  // Wait for editor to be ready
+  const modalEditor = modal.locator(descriptionBox);
+  await expect(modalEditor).toBeVisible();
+  await modalEditor.click();
+  await modalEditor.clear();
+  await modalEditor.fill(description);
 
-  await descriptionInput.click();
-  await descriptionInput.focus();
-  // Needed to add small timeout as this test if unable to clear description field on CI
-  await page.waitForTimeout(500);
-  await descriptionInput.clear();
+  // REMOVED: toHaveText check - rich text editor may have formatting that makes exact match unreliable
+  // The final verification after save is sufficient
 
-  // Type new content directly (this replaces the selection)
-  await descriptionInput.fill(description);
-
-  // Verify final state only - skip intermediate empty assertion for rich text editors
-  await expect(descriptionInput).toHaveText(description);
+  // Wait for API response
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||
@@ -651,11 +691,24 @@ export const updateDescriptionForChildren = async (
   } else {
     updateRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
   }
-  await page.getByTestId('save').click();
-  await updateRequest;
 
-  await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
+  const saveButton = page.getByTestId('save');
+  await expect(saveButton).toBeVisible();
+  await expect(saveButton).toBeEnabled();
+  await saveButton.click();
+  const response = await updateRequest;
+  expect(response.status()).toBe(200);
 
+  // Wait for modal to close
+  await expect(modal).not.toBeVisible();
+
+  // CRITICAL: Wait for UI to update after API response
+  // The modal closing doesn't guarantee the row has updated yet
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  // Verify the description was updated in the UI
   if (isEmpty(description)) {
     await expect(
       page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
@@ -678,17 +731,16 @@ export const assignTag = async (
   parentId = 'KnowledgePanel.Tags',
   tagFqn?: string
 ) => {
-  await page
+  const tagButton = page
     .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .first()
-    .click();
+    .first();
 
-  // Wait for the form to be visible and stable
-  await page.locator('#tagsForm_tags').waitFor({
-    state: 'visible',
-  });
+  await expect(tagButton).toBeVisible();
+  await tagButton.click();
+
+  await expect(page.locator('#tagsForm_tags')).toBeVisible();
 
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
@@ -715,6 +767,11 @@ export const assignTag = async (
   await page.getByTestId('saveAssociatedTag').click();
 
   await patchRequest;
+  await page.waitForSelector(
+    '[data-testid="saveAssociatedTag"] [data-icon="loading"]',
+    { state: 'detached' }
+  );
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
     page
@@ -774,6 +831,12 @@ export const assignTagToChildren = async ({
   await page.getByTestId('saveAssociatedTag').click();
 
   await patchRequest;
+
+  await page.waitForSelector(
+    '[data-testid="saveAssociatedTag"] [data-icon="loading"]',
+    { state: 'detached' }
+  );
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
     page
@@ -885,7 +948,8 @@ type GlossaryTermOption = {
 export const assignGlossaryTerm = async (
   page: Page,
   glossaryTerm: GlossaryTermOption,
-  action: 'Add' | 'Edit' = 'Add'
+  action: 'Add' | 'Edit' = 'Add',
+  entityEndpoint: string
 ) => {
   await page
     .getByTestId('KnowledgePanel.GlossaryTerms')
@@ -895,10 +959,8 @@ export const assignGlossaryTerm = async (
   const searchGlossaryTerm = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
   );
-  // Wait for the form to be visible before proceeding
   await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
 
-  // Fill the input first
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
   await searchGlossaryTerm;
 
@@ -913,11 +975,14 @@ export const assignGlossaryTerm = async (
     page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
   ).toBeEnabled();
 
+  const patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+
   await page
     .getByTestId('custom-drop-down-menu')
     .getByTestId('saveAssociatedTag')
     .click();
 
+  await patchRequest;
   await expect(
     page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
   ).not.toBeVisible();
@@ -1000,23 +1065,47 @@ export const assignGlossaryTermToChildren = async ({
   rowSelector?: string;
   entityEndpoint: string;
 }) => {
-  await page
-    .locator(`[${rowSelector}="${rowId}"]`)
+  // First, wait for the row itself to be visible
+  const rowLocator = page.locator(`[${rowSelector}="${rowId}"]`);
+  await expect(rowLocator).toBeVisible();
+
+  // Scroll the row into view to ensure it's accessible
+  await rowLocator.scrollIntoViewIfNeeded();
+
+  const addButton = rowLocator
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .first()
-    .click();
+    .first();
+
+  await expect(addButton).toBeVisible();
+  await addButton.click();
+
+  // Wait for input field to be visible
+  const glossaryInput = page.locator('#tagsForm_tags');
+  await expect(glossaryInput).toBeVisible();
 
   const searchGlossaryTerm = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
   );
-  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
+  await glossaryInput.fill(glossaryTerm.displayName);
   await searchGlossaryTerm;
-  await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
+  // Wait for loader to disappear after search
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  // Wait for glossary term tag to be visible before clicking
+  const glossaryTermTag = page.getByTestId(
+    `tag-${glossaryTerm.fullyQualifiedName}`
+  );
+  await expect(glossaryTermTag).toBeVisible();
+
+  // CRITICAL: Set up waitForResponse BEFORE the click that triggers it
   const putRequest = page.waitForResponse(
     (response) => response.request().method() === 'PUT'
   );
+  await glossaryTermTag.click();
 
   await page.waitForSelector(
     '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
@@ -1033,14 +1122,20 @@ export const assignGlossaryTermToChildren = async ({
     patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
   }
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-  await page.getByTestId('saveAssociatedTag').click();
+  const saveButton = page.getByTestId('saveAssociatedTag');
+  await expect(saveButton).toBeVisible();
+  await expect(saveButton).toBeEnabled();
+  await saveButton.click();
   await patchRequest;
 
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+  await expect(saveButton).not.toBeVisible();
 
   await putRequest;
+
+  // CRITICAL: Wait for UI to update after API responses
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   await expect(
     page
@@ -1060,6 +1155,8 @@ export const removeGlossaryTerm = async (
       .getByTestId('glossary-container')
       .getByTestId('edit-button')
       .click();
+    //small timeout to avoid popup collide with click
+    await page.waitForTimeout(500);
 
     await page
       .getByTestId('glossary-container')
@@ -1173,7 +1270,8 @@ export const downVote = async (page: Page, endPoint: string) => {
 
 export const followEntity = async (
   page: Page,
-  endpoint: EntityTypeEndpoint
+  endpoint: EntityTypeEndpoint,
+  verificationText = 'Unfollow'
 ) => {
   const followResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers`
@@ -1182,7 +1280,7 @@ export const followEntity = async (
   await followResponse;
 
   await expect(page.getByTestId('entity-follow-button')).toContainText(
-    'Unfollow'
+    verificationText
   );
 };
 
@@ -1540,8 +1638,10 @@ export const updateDisplayNameForEntityChildren = async (
 
   await page.locator('#displayName').fill(displayName.newDisplayName);
 
-  const updateRequest = page.waitForResponse((req) =>
-    ['PUT', 'PATCH'].includes(req.request().method())
+  const updateRequest = page.waitForResponse(
+    (req) =>
+      ['PUT', 'PATCH'].includes(req.request().method()) &&
+      !req.url().includes('api/v1/analytics/web/events/collect')
   );
 
   await page.click('[data-testid="save-button"]');
@@ -2184,4 +2284,145 @@ export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
     default:
       return undefined;
   }
+};
+/**
+ * Test utility for verifying copy link button functionality across different entity types.
+ * Follows Playwright Developer Handbook guidelines for user-centric testing.
+ *
+ * This function tests the copy link feature by:
+ * 1. Clicking the copy button
+ * 2. Reading clipboard content via navigator.clipboard API
+ * 3. Verifying the clipboard URL contains expected values
+ *
+ * Note: This requires the test to run in a secure context (HTTPS or localhost)
+ *
+ * @param page - Playwright Page object
+ * @param buttonTestId - Test ID of the copy button ('copy-column-link-button' or 'copy-field-link-button')
+ * @param containerTestId - Test ID of the container element to wait for
+ * @param expectedUrlPath - Expected URL path segment (e.g., '/table/', '/container/')
+ * @param entityFqn - Fully qualified name of the entity to verify in clipboard
+ */
+export const testCopyLinkButton = async ({
+  page,
+  buttonTestId,
+  containerTestId,
+  expectedUrlPath,
+  entityFqn,
+}: {
+  page: Page;
+  buttonTestId: 'copy-column-link-button' | 'copy-field-link-button';
+  containerTestId: string;
+  expectedUrlPath: string;
+  entityFqn: string;
+}) => {
+  await expect(page.getByTestId(containerTestId)).toBeVisible();
+
+  // Find the first copy button and verify it's visible
+  const copyButton = page.getByTestId(buttonTestId).first();
+  await expect(copyButton).toBeVisible();
+
+  // Click copy button and get clipboard text
+  const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+  // Verify the clipboard text contains expected URL path and entity FQN
+  expect(clipboardText).toContain(expectedUrlPath);
+  expect(clipboardText).toContain(entityFqn);
+};
+
+/**
+ * Clicks a copy button and returns the copied text from clipboard.
+ * Handles clipboard interception internally - works across all environments.
+ *
+ * @param page - Playwright Page object
+ * @param locator - Locator for the copy button to click
+ * @returns The clipboard text content
+ */
+export const copyAndGetClipboardText = async (
+  page: Page,
+  locator: Locator
+): Promise<string> => {
+  // Hover and click the copy button
+  await locator.hover();
+  await locator.click({ force: true });
+
+  // Small delay to allow clipboard write to complete
+  await page.waitForTimeout(300);
+
+  // Read clipboard using paste method (works reliably in all environments)
+  const textareaId = '__clipboard_reader__';
+
+  await page.evaluate((id) => {
+    const textarea = document.createElement('textarea');
+    textarea.id = id;
+    textarea.style.cssText = 'position:fixed;left:-9999px;top:0;';
+    document.body.appendChild(textarea);
+  }, textareaId);
+
+  await page.locator(`#${textareaId}`).focus();
+  await page.keyboard.press('ControlOrMeta+V');
+
+  const clipboardText = await page.locator(`#${textareaId}`).inputValue();
+
+  await page.evaluate((id) => {
+    document.getElementById(id)?.remove();
+  }, textareaId);
+
+  return clipboardText;
+};
+
+/**
+ * Validates the format and structure of a copied link URL.
+ * Ensures URLs are properly formatted, contain all required components, and follow expected patterns.
+ *
+ * @param clipboardText - The text copied to clipboard
+ * @param expectedEntityType - Expected entity type in URL (e.g., 'table', 'topic', 'container')
+ * @param entityFqn - Fully qualified name of the entity
+ * @param options - Optional validation options
+ * @returns Validation result with details
+ */
+export const validateCopiedLinkFormat = ({
+  clipboardText,
+  expectedEntityType,
+  entityFqn,
+  options = {},
+}: {
+  clipboardText: string;
+  expectedEntityType: string;
+  entityFqn: string;
+  options?: {
+    allowedProtocols?: string[]; // Allowed protocols (default: ['http:', 'https:'])
+  };
+}) => {
+  const { allowedProtocols = ['http:', 'https:'] } = options;
+
+  // Parse the URL
+  let url: URL;
+  try {
+    url = new URL(clipboardText);
+  } catch (error) {
+    throw new Error(`Invalid URL format: ${clipboardText}. Error: ${error}`);
+  }
+
+  // Validate protocol
+  expect(allowedProtocols).toContain(url.protocol);
+
+  // Validate hostname exists
+  expect(url.hostname).toBeTruthy();
+
+  // Validate path structure: should contain /{entityType}/{fqn}
+  const pathPattern = new RegExp(`^/${expectedEntityType}/`);
+  expect(url.pathname).toMatch(pathPattern);
+
+  // Validate FQN is in the path
+  expect(url.pathname).toContain(entityFqn);
+
+  // Return parsed URL for additional assertions if needed
+  return {
+    url,
+    protocol: url.protocol,
+    hostname: url.hostname,
+    pathname: url.pathname,
+    fragment: url.hash,
+    isValid: true,
+  };
 };

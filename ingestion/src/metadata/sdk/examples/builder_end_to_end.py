@@ -92,6 +92,7 @@ class DatabaseServiceBuilderPy:
                 schemaFilterPattern=None,
                 tableFilterPattern=None,
                 databaseFilterPattern=None,
+                storedProcedureFilterPattern=None,
                 supportsMetadataExtraction=None,
                 supportsDBTExtraction=None,
                 supportsProfiler=None,

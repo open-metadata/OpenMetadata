@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { topicVersionMockProps } from '../../../mocks/TopicVersion.mock';
 import TopicVersion from './TopicVersion.component';
@@ -62,6 +63,7 @@ jest.mock('react-router-dom', () => ({
     tab: 'topics',
   }),
   useNavigate: jest.fn().mockImplementation(() => mockPush),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
 jest.mock(
@@ -78,7 +80,9 @@ jest.mock(
 describe('TopicVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {
-      render(<TopicVersion {...topicVersionMockProps} />);
+      render(<TopicVersion {...topicVersionMockProps} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const dataAssetsVersionHeader = screen.getByText('DataAssetsVersionHeader');
@@ -100,7 +104,9 @@ describe('TopicVersion tests', () => {
 
   it('Should display Loader if isVersionLoading is true', async () => {
     await act(async () => {
-      render(<TopicVersion {...topicVersionMockProps} isVersionLoading />);
+      render(<TopicVersion {...topicVersionMockProps} isVersionLoading />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const loader = screen.getByText('Loader');

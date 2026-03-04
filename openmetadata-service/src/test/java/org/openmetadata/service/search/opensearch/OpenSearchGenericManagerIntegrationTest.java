@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
@@ -16,27 +15,28 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpHost;
+import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.search.SearchHealthStatus;
-import os.org.opensearch.client.Request;
-import os.org.opensearch.client.Response;
-import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.cluster.PutComponentTemplateRequest;
+import os.org.opensearch.client.opensearch.generic.Bodies;
+import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
+import os.org.opensearch.client.opensearch.generic.Requests;
 import os.org.opensearch.client.opensearch.indices.CreateDataStreamRequest;
 import os.org.opensearch.client.opensearch.indices.PutIndexTemplateRequest;
 import os.org.opensearch.client.opensearch.indices.put_index_template.IndexTemplateMapping;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
-import os.org.opensearch.client.transport.rest_client.RestClientTransport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -44,7 +44,7 @@ class OpenSearchGenericManagerIntegrationTest extends OpenMetadataApplicationTes
 
   private OpenSearchGenericManager genericManager;
   private OpenSearchClient client;
-  private RestClient restClient;
+  private ApacheHttpClient5Transport transport;
   private String testPrefix;
 
   @BeforeEach
@@ -53,36 +53,28 @@ class OpenSearchGenericManagerIntegrationTest extends OpenMetadataApplicationTes
         "test_generic_"
             + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS"));
 
-    // Get Elasticsearch RestClient and convert to OpenSearch RestClient
-    es.org.elasticsearch.client.RestClient esRestClient = getSearchClient();
-    HttpHost[] hosts =
-        esRestClient.getNodes().stream()
-            .map(
-                node ->
-                    new HttpHost(
-                        node.getHost().getHostName(),
-                        node.getHost().getPort(),
-                        node.getHost().getSchemeName()))
-            .toArray(HttpHost[]::new);
+    org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration
+        searchConfig = getSearchConfig();
+    HttpHost host =
+        new HttpHost(searchConfig.getScheme(), searchConfig.getHost(), searchConfig.getPort());
 
-    // Create OpenSearch RestClient with the same connection details
-    restClient = RestClient.builder(hosts).build();
-    RestClientTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+    transport =
+        ApacheHttpClient5TransportBuilder.builder(host).setMapper(new JacksonJsonpMapper()).build();
     client = new OpenSearchClient(transport);
 
-    genericManager = new OpenSearchGenericManager(client, restClient);
+    genericManager = new OpenSearchGenericManager(client, transport);
 
     LOG.info("OpenSearchGenericManager test setup completed with prefix: {}", testPrefix);
   }
 
   private boolean isISMPluginAvailable() {
     try {
-      // Try to access an ISM-specific endpoint to check if plugin is available
-      Request request = new Request("GET", "/_plugins/_ism/policies");
-      Response response = restClient.performRequest(request);
-      return response.getStatusLine().getStatusCode() == 200;
+      OpenSearchGenericClient genericClient = client.generic();
+      var response =
+          genericClient.execute(
+              Requests.builder().method("GET").endpoint("/_plugins/_ism/policies").build());
+      return response.getStatus() == 200;
     } catch (Exception e) {
-      // ISM plugin not available (400, 404, or other error)
       return false;
     }
   }
@@ -106,13 +98,16 @@ class OpenSearchGenericManagerIntegrationTest extends OpenMetadataApplicationTes
           LOG.debug("Failed to clean up data streams", e);
         }
 
-        // Clean up ISM policies using REST API
         String[] ismPoliciesToDelete = {testPrefix + "_policy"};
+        OpenSearchGenericClient genericClient = client.generic();
 
         for (String policy : ismPoliciesToDelete) {
           try {
-            Request request = new Request("DELETE", "/_plugins/_ism/policies/" + policy);
-            restClient.performRequest(request);
+            genericClient.execute(
+                Requests.builder()
+                    .method("DELETE")
+                    .endpoint("/_plugins/_ism/policies/" + policy)
+                    .build());
             LOG.info("Cleaned up test ISM policy: {}", policy);
           } catch (Exception e) {
             LOG.debug("ISM policy {} might not exist for cleanup", policy);
@@ -180,7 +175,7 @@ class OpenSearchGenericManagerIntegrationTest extends OpenMetadataApplicationTes
                         .indexPatterns(testPrefix + "*")
                         .dataStream(ds -> ds)
                         .template(
-                            IndexTemplateMapping.of(m -> m.settings(s -> s.numberOfShards("1"))))));
+                            IndexTemplateMapping.of(m -> m.settings(s -> s.numberOfShards(1))))));
 
     // Create data stream
     client.indices().createDataStream(CreateDataStreamRequest.of(d -> d.name(dataStreamName)));
@@ -215,7 +210,7 @@ class OpenSearchGenericManagerIntegrationTest extends OpenMetadataApplicationTes
                         .indexPatterns(testPrefix + "*")
                         .dataStream(ds -> ds)
                         .template(
-                            IndexTemplateMapping.of(m -> m.settings(s -> s.numberOfShards("1"))))));
+                            IndexTemplateMapping.of(m -> m.settings(s -> s.numberOfShards(1))))));
 
     // Create data stream
     client.indices().createDataStream(CreateDataStreamRequest.of(d -> d.name(dataStreamName)));
@@ -240,12 +235,11 @@ class OpenSearchGenericManagerIntegrationTest extends OpenMetadataApplicationTes
 
   @Test
   void testDeleteISMPolicy_Success() throws Exception {
-    // Skip test if ISM plugin is not available
     assumeTrue(isISMPluginAvailable(), "ISM plugin not available in test environment");
 
     String policyName = testPrefix + "_policy";
+    OpenSearchGenericClient genericClient = client.generic();
 
-    // Create ISM policy using REST API
     String policyJson =
         """
           {
@@ -263,28 +257,30 @@ class OpenSearchGenericManagerIntegrationTest extends OpenMetadataApplicationTes
           }
           """;
 
-    Request putRequest = new Request("PUT", "/_plugins/_ism/policies/" + policyName);
-    putRequest.setJsonEntity(policyJson);
-    restClient.performRequest(putRequest);
+    genericClient.execute(
+        Requests.builder()
+            .method("PUT")
+            .endpoint("/_plugins/_ism/policies/" + policyName)
+            .body(Bodies.json(policyJson))
+            .build());
 
-    // Verify it exists
-    Request getRequest = new Request("GET", "/_plugins/_ism/policies/" + policyName);
-    Response getResponse = restClient.performRequest(getRequest);
-    assertEquals(200, getResponse.getStatusLine().getStatusCode());
+    var getResponse =
+        genericClient.execute(
+            Requests.builder()
+                .method("GET")
+                .endpoint("/_plugins/_ism/policies/" + policyName)
+                .build());
+    assertEquals(200, getResponse.getStatus());
 
-    // Delete the policy
     assertDoesNotThrow(() -> genericManager.deleteILMPolicy(policyName));
 
-    // Verify it's deleted (should return 404)
-    try {
-      Request verifyRequest = new Request("GET", "/_plugins/_ism/policies/" + policyName);
-      restClient.performRequest(verifyRequest);
-      // If we get here, the policy still exists (unexpected)
-      fail("Policy should have been deleted");
-    } catch (OpenSearchException e) {
-      // Expected - policy doesn't exist
-      assertEquals(404, e.status());
-    }
+    var verifyResponse =
+        genericClient.execute(
+            Requests.builder()
+                .method("GET")
+                .endpoint("/_plugins/_ism/policies/" + policyName)
+                .build());
+    assertEquals(404, verifyResponse.getStatus());
   }
 
   @Test
@@ -309,7 +305,7 @@ class OpenSearchGenericManagerIntegrationTest extends OpenMetadataApplicationTes
                     t.name(templateName)
                         .indexPatterns(testPrefix + "*")
                         .template(
-                            IndexTemplateMapping.of(m -> m.settings(s -> s.numberOfShards("1"))))));
+                            IndexTemplateMapping.of(m -> m.settings(s -> s.numberOfShards(1))))));
 
     // Verify it exists
     var getResponse = client.indices().getIndexTemplate(g -> g.name(templateName));
@@ -343,7 +339,7 @@ class OpenSearchGenericManagerIntegrationTest extends OpenMetadataApplicationTes
         .cluster()
         .putComponentTemplate(
             PutComponentTemplateRequest.of(
-                c -> c.name(componentName).template(t -> t.settings(s -> s.numberOfShards("1")))));
+                c -> c.name(componentName).template(t -> t.settings(s -> s.numberOfShards(1)))));
 
     // Verify it exists
     var getResponse = client.cluster().getComponentTemplate(g -> g.name(componentName));
@@ -370,14 +366,13 @@ class OpenSearchGenericManagerIntegrationTest extends OpenMetadataApplicationTes
 
   @Test
   void testDettachIsmPolicyFromIndexes_Success() throws Exception {
-    // Skip test if ISM plugin is not available
     assumeTrue(isISMPluginAvailable(), "ISM plugin not available in test environment");
 
     String indexName1 = testPrefix + "_index1";
     String indexName2 = testPrefix + "_index2";
     String policyName = testPrefix + "_policy";
+    OpenSearchGenericClient genericClient = client.generic();
 
-    // Create ISM policy
     String policyJson =
         """
           {
@@ -395,26 +390,33 @@ class OpenSearchGenericManagerIntegrationTest extends OpenMetadataApplicationTes
           }
           """;
 
-    Request putRequest = new Request("PUT", "/_plugins/_ism/policies/" + policyName);
-    putRequest.setJsonEntity(policyJson);
-    restClient.performRequest(putRequest);
+    genericClient.execute(
+        Requests.builder()
+            .method("PUT")
+            .endpoint("/_plugins/_ism/policies/" + policyName)
+            .body(Bodies.json(policyJson))
+            .build());
 
-    // Create indices
     client.indices().create(c -> c.index(indexName1));
     client.indices().create(c -> c.index(indexName2));
 
-    // Attach ISM policy to indices
     String policyAttachJson =
         String.format("{\"index.plugins.index_state_management.policy_id\": \"%s\"}", policyName);
-    Request putSettings1 = new Request("PUT", "/" + indexName1 + "/_settings");
-    putSettings1.setJsonEntity(policyAttachJson);
-    restClient.performRequest(putSettings1);
 
-    Request putSettings2 = new Request("PUT", "/" + indexName2 + "/_settings");
-    putSettings2.setJsonEntity(policyAttachJson);
-    restClient.performRequest(putSettings2);
+    genericClient.execute(
+        Requests.builder()
+            .method("PUT")
+            .endpoint("/" + indexName1 + "/_settings")
+            .body(Bodies.json(policyAttachJson))
+            .build());
 
-    // Detach ISM policy
+    genericClient.execute(
+        Requests.builder()
+            .method("PUT")
+            .endpoint("/" + indexName2 + "/_settings")
+            .body(Bodies.json(policyAttachJson))
+            .build());
+
     assertDoesNotThrow(() -> genericManager.dettachIlmPolicyFromIndexes(testPrefix + "_index*"));
 
     Thread.sleep(1000);

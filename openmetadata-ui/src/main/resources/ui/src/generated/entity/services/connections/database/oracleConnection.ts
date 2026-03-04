@@ -42,7 +42,21 @@ export interface OracleConnection {
     /**
      * Password to connect to Oracle.
      */
-    password?:                string;
+    password?: string;
+    /**
+     * Controls how Oracle identifier names (tables, columns, schemas) are stored in
+     * OpenMetadata. When disabled (default), Oracle's UPPERCASE unquoted identifiers (e.g.
+     * EMPLOYEES) are not guaranteed to be stored as-is — identifiers with the same letters but
+     * different case (e.g. unquoted EMPLOYEES and quoted 'employees') will collide into the
+     * same name. When enabled, names are stored exactly as Oracle persists them, which solves
+     * same-name collisions between quoted and unquoted identifiers. WARNING: enabling this
+     * after data has already been ingested with the default setting will change the stored
+     * names of all existing tables, columns, schemas, and constraints — breaking attached tags,
+     * descriptions, lineage, data quality tests, and any other metadata associated with those
+     * entities. If you must switch, soft-delete all previously ingested entities before
+     * re-ingesting.
+     */
+    preserveIdentifierCase?:  boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -51,14 +65,18 @@ export interface OracleConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     OracleScheme;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    scheme?: OracleScheme;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDataDiff?:             boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsProfiler?:             boolean;
+    supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -80,6 +98,8 @@ export interface OracleConnection {
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
  */
@@ -185,6 +205,12 @@ export interface AwsCredentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */

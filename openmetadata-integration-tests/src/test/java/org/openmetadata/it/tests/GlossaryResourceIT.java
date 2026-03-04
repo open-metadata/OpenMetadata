@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,12 +29,17 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.glossary.GlossaryResource;
 
 /**
  * Integration tests for Glossary entity operations.
@@ -45,9 +51,13 @@ import org.openmetadata.sdk.models.ListResponse;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(GlossaryResourceIT.class);
 
   {
     supportsImportExport = true;
+    supportsBatchImport = true;
+    supportsRecursiveImport = true; // Glossary supports recursive import with hierarchical terms
   }
 
   private Glossary lastCreatedGlossary;
@@ -60,6 +70,12 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     supportsSoftDelete = true;
     supportsPatch = true;
     supportsOwners = true;
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return GlossaryResource.COLLECTION_PATH;
   }
 
   @Override
@@ -864,6 +880,146 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   }
 
   // ===================================================================
+  // CSV IMPORT VERSIONING TESTS
+  // ===================================================================
+
+  /**
+   * Test: Bulk CSV import of glossary terms increments the glossary version
+   * and creates proper version history with bulk import change description.
+   *
+   * This test validates the implementation that adds versioning support
+   * for bulk import operations for both sync and async endpoints.
+   */
+  @Test
+  void test_bulkImportGlossaryTermsIncrementsVersion(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Step 1: Create a glossary with initial version 0.1
+    CreateGlossary createGlossary = createMinimalRequest(ns);
+    Glossary glossary = createEntity(createGlossary);
+    assertEquals(0.1, glossary.getVersion(), 0.001, "Initial version should be 0.1");
+
+    // Step 2: Prepare CSV content with multiple glossary terms
+    String csvContent = buildGlossaryTermsCsv(glossary.getFullyQualifiedName(), ns);
+
+    // Step 3: Import CSV using SYNC method (now also creates version history!)
+    CsvImportResult importResult = null;
+    try {
+      String result =
+          client.glossaries().importCsv(glossary.getFullyQualifiedName(), csvContent, false);
+      assertNotNull(result, "Import should return result");
+
+      importResult = JsonUtils.readValue(result, CsvImportResult.class);
+      assertNotNull(importResult, "Should parse CsvImportResult from response");
+      assertEquals(ApiStatus.SUCCESS, importResult.getStatus(), "Import should succeed");
+      // numberOfRowsProcessed = header row (1) + 3 data rows = 4
+      assertEquals(
+          4, importResult.getNumberOfRowsProcessed(), "Should process 4 rows (header + 3 data)");
+      assertEquals(
+          4, importResult.getNumberOfRowsPassed(), "All 4 rows should pass (header + 3 data)");
+      assertEquals(0, importResult.getNumberOfRowsFailed(), "No rows should fail");
+      assertFalse(importResult.getDryRun(), "Should not be a dry run");
+    } catch (Exception e) {
+      fail("CSV import failed: " + e.getMessage());
+    }
+
+    // Step 4: Verify version incremented to 0.2
+    Glossary updatedGlossary = client.glossaries().get(glossary.getId().toString());
+    assertEquals(
+        0.2,
+        updatedGlossary.getVersion(),
+        0.001,
+        "Glossary version should increment to 0.2 after bulk import");
+
+    // Step 5: Retrieve version history
+    EntityHistory versionHistory = client.glossaries().getVersionList(glossary.getId());
+    assertNotNull(versionHistory, "Version history should exist");
+    assertNotNull(versionHistory.getVersions(), "Version list should exist");
+    assertTrue(
+        versionHistory.getVersions().size() >= 2, "Should have at least 2 versions (0.1 and 0.2)");
+
+    // Step 6: Get version 0.2 and verify it has change description
+    Glossary version0_2 = client.glossaries().getVersion(glossary.getId().toString(), 0.2);
+    assertNotNull(version0_2, "Version 0.2 should exist");
+    assertNotNull(version0_2.getChangeDescription(), "Version 0.2 should have change description");
+
+    // Step 7: Verify change description contains 'bulkImport' field change
+    boolean hasBulkImportChange =
+        version0_2.getChangeDescription().getFieldsUpdated().stream()
+            .anyMatch(fc -> "bulkImport".equals(fc.getName()));
+    assertTrue(hasBulkImportChange, "Change description should contain 'bulkImport' field change");
+
+    // Step 8: Verify bulkImport field has statistics
+    FieldChange bulkImportField =
+        version0_2.getChangeDescription().getFieldsUpdated().stream()
+            .filter(fc -> "bulkImport".equals(fc.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(bulkImportField, "bulkImport field change should exist");
+    assertNotNull(
+        bulkImportField.getNewValue(),
+        "bulkImport field should contain import statistics (CsvImportResult)");
+
+    // Step 9: Verify glossary terms were actually created
+    try {
+      List<org.openmetadata.schema.entity.data.GlossaryTerm> terms =
+          client
+              .glossaryTerms()
+              .list(
+                  new org.openmetadata.sdk.models.ListParams()
+                      .addFilter("glossary", glossary.getId().toString())
+                      .setLimit(100))
+              .getData();
+
+      assertNotNull(terms, "Glossary terms should be returned");
+      assertEquals(3, terms.size(), "Should have imported 3 glossary terms");
+    } catch (Exception e) {
+      fail("Failed to verify imported glossary terms: " + e.getMessage());
+    }
+  }
+
+  /**
+   * Helper method to create CSV content for glossary terms import.
+   * Returns CSV with header and 3 glossary terms with all required columns.
+   *
+   * CSV Format (14 columns):
+   * parent,name*,displayName,description,synonyms,relatedTerms,references,tags,
+   * reviewers,owner,glossaryStatus,color,iconURL,extension
+   *
+   * Note: parent column is for PARENT GLOSSARY TERM, not glossary.
+   * For top-level terms, leave parent EMPTY.
+   *
+   * @param glossaryFqn Fully qualified name of the parent glossary (not used in CSV)
+   * @param ns Test namespace for unique naming
+   * @return CSV string ready for import
+   */
+  private String buildGlossaryTermsCsv(String glossaryFqn, TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    // CSV header with all 14 columns as expected by GlossaryCsv.addRecord()
+    // Note: 'owner' (singular) NOT 'owners', and 'glossaryStatus' NOT 'status'
+    csv.append(
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n");
+
+    // Add 3 top-level glossary terms with EMPTY parent column
+    // Columns: parent, name, displayName, description, synonyms, relatedTerms, references,
+    //          tags, reviewers, owner, glossaryStatus, color, iconURL, extension
+    csv.append(
+        String.format(
+            ",\"%s\",\"Term 1\",\"First test term for bulk import\",,,,,,,,,,\n",
+            ns.prefix("bulkTerm1")));
+    csv.append(
+        String.format(
+            ",\"%s\",\"Term 2\",\"Second test term for bulk import\",,,,,,,,,,\n",
+            ns.prefix("bulkTerm2")));
+    csv.append(
+        String.format(
+            ",\"%s\",\"Term 3\",\"Third test term for bulk import\",,,,,,,,,,\n",
+            ns.prefix("bulkTerm3")));
+
+    return csv.toString();
+  }
+
+  // ===================================================================
   // VERSION HISTORY SUPPORT
   // ===================================================================
 
@@ -1013,5 +1169,317 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         glossary.getFullyQualifiedName(),
         updatedTerm.getGlossary().getFullyQualifiedName(),
         "Term's glossary reference should have final updated FQN");
+  }
+
+  /**
+   * Test that importing a glossary with unapproved (IN_REVIEW) glossary terms as related terms
+   * fails with appropriate error message.
+   */
+  @Test
+  void test_importCsv_withUnapprovedRelatedTerm_fails(TestNamespace ns)
+      throws InterruptedException, com.fasterxml.jackson.core.JsonProcessingException {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary
+    CreateGlossary createGlossary = createMinimalRequest(ns);
+    Glossary glossary = createEntity(createGlossary);
+
+    // Create an IN_REVIEW glossary term by creating it first, then patching the status
+    // (You cannot create a term with IN_REVIEW status directly)
+    EntityReference reviewerRef = testUser1().getEntityReference();
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createInReviewTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("inReviewTerm"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term in review status")
+            .withReviewers(List.of(reviewerRef));
+    org.openmetadata.schema.entity.data.GlossaryTerm inReviewTerm =
+        client.glossaryTerms().create(createInReviewTerm);
+
+    // Now update the term to set it to IN_REVIEW status
+    inReviewTerm.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
+    inReviewTerm = client.glossaryTerms().update(inReviewTerm.getId(), inReviewTerm);
+
+    // Wait for the term to be updated to IN_REVIEW status
+    final UUID termId = inReviewTerm.getId();
+    org.awaitility.Awaitility.await()
+        .atMost(10, java.util.concurrent.TimeUnit.SECONDS)
+        .pollInterval(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              org.openmetadata.schema.entity.data.GlossaryTerm term =
+                  client.glossaryTerms().get(termId.toString());
+              return term.getEntityStatus() == org.openmetadata.schema.type.EntityStatus.IN_REVIEW;
+            });
+
+    // Create a CSV trying to import a new term with the IN_REVIEW term as a related term
+    String csv =
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n"
+            + ","
+            + ns.prefix("newTerm")
+            + ",New Term,Test Term,,\""
+            + inReviewTerm.getFullyQualifiedName()
+            + "\",,,,,,,,";
+    log.info("TEST: Attempting CSV import for glossary: {}", glossary.getName());
+    String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
+
+    // Verify import failed with appropriate error message
+    assertNotNull(resultCsv);
+    // The result should indicate failure
+    boolean hasStatusMessage = resultCsv.contains("must have APPROVED status");
+    boolean hasInReview = resultCsv.contains("IN_REVIEW") || resultCsv.contains("Reviewed");
+    boolean hasFailure = resultCsv.contains("failure");
+
+    assertTrue(
+        hasFailure,
+        "Import should fail when trying to link an unapproved glossary term. Result: " + resultCsv);
+    assertTrue(
+        hasStatusMessage || hasInReview || resultCsv.contains(inReviewTerm.getFullyQualifiedName()),
+        "Error message should mention the unapproved term and status requirement. Result: "
+            + resultCsv);
+  }
+
+  /**
+   * Test that importing a glossary with APPROVED glossary terms as related terms succeeds.
+   */
+  @Test
+  void test_importCsv_withApprovedRelatedTerm_succeeds(TestNamespace ns)
+      throws com.fasterxml.jackson.core.JsonProcessingException {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary
+    CreateGlossary createGlossary = createMinimalRequest(ns);
+    Glossary glossary = createEntity(createGlossary);
+
+    // Create an APPROVED glossary term
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createApprovedTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("approvedTerm"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term with approved status");
+    org.openmetadata.schema.entity.data.GlossaryTerm approvedTerm =
+        client.glossaryTerms().create(createApprovedTerm);
+
+    // Verify the term is APPROVED
+    org.openmetadata.schema.entity.data.GlossaryTerm fetchedTerm =
+        client.glossaryTerms().get(approvedTerm.getId().toString());
+    assertEquals(org.openmetadata.schema.type.EntityStatus.APPROVED, fetchedTerm.getEntityStatus());
+
+    // Create a CSV importing a new term with the APPROVED term as a related term
+    String csv =
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n"
+            + ","
+            + ns.prefix("newTermWithApproved")
+            + ",New Term With Approved,Test Term,,\""
+            + approvedTerm.getFullyQualifiedName()
+            + "\",,,,,,,,";
+
+    String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
+
+    // Verify import succeeded
+    assertNotNull(resultCsv);
+    // Check the result doesn't contain failure
+    boolean hasFailure = resultCsv.contains("failure");
+    assertFalse(
+        hasFailure,
+        "Import should succeed when linking an APPROVED glossary term. Result: " + resultCsv);
+
+    // If there were no failures, verify the term was created with the related term
+    if (!hasFailure && resultCsv.contains("success")) {
+      // Verify the term was created with the related term
+      org.openmetadata.schema.entity.data.GlossaryTerm createdTerm =
+          client
+              .glossaryTerms()
+              .getByName(
+                  glossary.getFullyQualifiedName() + "." + ns.prefix("newTermWithApproved"),
+                  "relatedTerms");
+
+      assertNotNull(createdTerm.getRelatedTerms());
+      assertEquals(1, createdTerm.getRelatedTerms().size());
+      assertEquals(
+          approvedTerm.getFullyQualifiedName(),
+          createdTerm.getRelatedTerms().getFirst().getFullyQualifiedName());
+    }
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT
+  // ===================================================================
+
+  protected String generateValidCsvData(TestNamespace ns, List<Glossary> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return null;
+    }
+
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n");
+
+    for (Glossary glossary : entities) {
+      // Generate sample glossary terms for this glossary
+      csv.append(escapeCSVValue("")).append(","); // parent - root level
+      csv.append(escapeCSVValue("term_" + ns.shortPrefix())).append(",");
+      csv.append(escapeCSVValue("Sample Term")).append(",");
+      csv.append(escapeCSVValue("Sample description for glossary term")).append(",");
+      csv.append(escapeCSVValue("synonym1,synonym2")).append(",");
+      csv.append(escapeCSVValue("")).append(","); // relatedTerms
+      csv.append(escapeCSVValue("")).append(","); // references
+      csv.append(escapeCSVValue(formatTagsForCsv(null))).append(","); // tags
+      csv.append(escapeCSVValue("")).append(","); // reviewers
+      csv.append(escapeCSVValue(formatOwnersForCsv(glossary.getOwners()))).append(",");
+      csv.append(escapeCSVValue("Approved")).append(","); // glossaryStatus
+      csv.append(escapeCSVValue("#FF5733")).append(","); // color
+      csv.append(escapeCSVValue("")).append(","); // iconURL
+      csv.append(escapeCSVValue(formatExtensionForCsv(null))); // extension
+      csv.append("\n");
+    }
+
+    return csv.toString();
+  }
+
+  protected String generateInvalidCsvData(TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n");
+    // Missing required name field
+    csv.append(",,Term,Description,,,,,,,,,\n");
+    // Invalid glossary status
+    csv.append(",invalid_term,,,,,,,,INVALID_STATUS,,,\n");
+    return csv.toString();
+  }
+
+  protected List<String> getRequiredCsvHeaders() {
+    return List.of("name*");
+  }
+
+  protected List<String> getAllCsvHeaders() {
+    return List.of(
+        "parent",
+        "name*",
+        "displayName",
+        "description",
+        "synonyms",
+        "relatedTerms",
+        "references",
+        "tags",
+        "reviewers",
+        "owner",
+        "glossaryStatus",
+        "color",
+        "iconURL",
+        "extension");
+  }
+
+  private String formatOwnersForCsv(List<org.openmetadata.schema.type.EntityReference> owners) {
+    if (owners == null || owners.isEmpty()) {
+      return "";
+    }
+    return owners.stream()
+        .map(
+            owner -> {
+              String prefix = "user";
+              if ("team".equals(owner.getType())) {
+                prefix = "team";
+              }
+              return prefix + ";" + owner.getName();
+            })
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatTagsForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream()
+        .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatExtensionForCsv(Object extension) {
+    if (extension == null) {
+      return "";
+    }
+    return extension.toString();
+  }
+
+  private String escapeCSVValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  @Override
+  protected void validateCsvDataPersistence(
+      List<Glossary> originalEntities, String csvData, CsvImportResult result) {
+    super.validateCsvDataPersistence(originalEntities, csvData, result);
+
+    if (result.getStatus() != ApiStatus.SUCCESS) {
+      return;
+    }
+
+    if (originalEntities != null) {
+      for (Glossary originalEntity : originalEntities) {
+        Glossary updatedEntity =
+            getEntityByNameWithFields(originalEntity.getName(), "owners,tags,reviewers");
+        assertNotNull(
+            updatedEntity,
+            "Glossary " + originalEntity.getName() + " should exist after CSV import");
+
+        validateGlossaryFieldsAfterImport(originalEntity, updatedEntity);
+      }
+    }
+  }
+
+  private void validateGlossaryFieldsAfterImport(Glossary original, Glossary imported) {
+    assertEquals(original.getName(), imported.getName(), "Glossary name should match");
+
+    if (original.getDisplayName() != null) {
+      assertEquals(
+          original.getDisplayName(),
+          imported.getDisplayName(),
+          "Glossary displayName should be preserved");
+    }
+
+    if (original.getDescription() != null) {
+      assertEquals(
+          original.getDescription(),
+          imported.getDescription(),
+          "Glossary description should be preserved");
+    }
+
+    if (original.getMutuallyExclusive() != null) {
+      assertEquals(
+          original.getMutuallyExclusive(),
+          imported.getMutuallyExclusive(),
+          "Glossary mutuallyExclusive flag should be preserved");
+    }
+
+    if (original.getOwners() != null && !original.getOwners().isEmpty()) {
+      assertNotNull(imported.getOwners(), "Glossary owners should be preserved");
+      assertEquals(
+          original.getOwners().size(),
+          imported.getOwners().size(),
+          "Glossary owner count should match");
+    }
+
+    if (original.getTags() != null && !original.getTags().isEmpty()) {
+      assertNotNull(imported.getTags(), "Glossary tags should be preserved");
+      assertEquals(
+          original.getTags().size(), imported.getTags().size(), "Glossary tag count should match");
+    }
+
+    if (original.getReviewers() != null && !original.getReviewers().isEmpty()) {
+      assertNotNull(imported.getReviewers(), "Glossary reviewers should be preserved");
+      assertEquals(
+          original.getReviewers().size(),
+          imported.getReviewers().size(),
+          "Glossary reviewer count should match");
+    }
   }
 }

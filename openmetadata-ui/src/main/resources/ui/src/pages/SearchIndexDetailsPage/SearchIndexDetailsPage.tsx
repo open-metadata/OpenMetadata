@@ -78,8 +78,11 @@ function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedSearchIndexFQN } = useFqn();
+  const { entityFqn: decodedSearchIndexFQN } = useFqn({
+    type: EntityType.SEARCH_INDEX,
+  });
   const { t } = useTranslation();
+
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';

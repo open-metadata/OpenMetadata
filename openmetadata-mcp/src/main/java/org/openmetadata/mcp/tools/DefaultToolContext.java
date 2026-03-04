@@ -43,6 +43,9 @@ public class DefaultToolContext {
         case "search_metadata":
           result = new SearchMetadataTool().execute(authorizer, securityContext, params);
           break;
+        case "semantic_search":
+          result = new SemanticSearchTool().execute(authorizer, securityContext, params);
+          break;
         case "get_entity_details":
           result = new GetEntityTool().execute(authorizer, securityContext, params);
           break;
@@ -57,6 +60,21 @@ public class DefaultToolContext {
           break;
         case "get_entity_lineage":
           result = new GetLineageTool().execute(authorizer, securityContext, params);
+          break;
+        case "create_lineage":
+          result = new LineageTool().execute(authorizer, securityContext, params);
+          break;
+        case "get_test_definitions":
+          result = new TestDefinitionsTool().execute(authorizer, securityContext, params);
+          break;
+        case "create_test_case":
+          result = new CreateTestCaseTool().execute(authorizer, securityContext, params);
+          break;
+        case "root_cause_analysis":
+          result = new RootCauseAnalysisTool().execute(authorizer, securityContext, params);
+          break;
+        case "create_metric":
+          result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
           break;
         default:
           return McpSchema.CallToolResult.builder()
@@ -87,7 +105,7 @@ public class DefaultToolContext {
           .isError(true)
           .build();
     } catch (Exception ex) {
-      LOG.error("Error executing tool: {}", ex.getMessage());
+      LOG.error("Error executing tool '{}': {}", toolName, ex.getMessage(), ex);
       return McpSchema.CallToolResult.builder()
           .content(
               List.of(

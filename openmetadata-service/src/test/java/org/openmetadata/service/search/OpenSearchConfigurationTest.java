@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
-import es.org.elasticsearch.client.RestClient;
-import org.apache.http.util.EntityUtils;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.Entity;
@@ -86,7 +88,7 @@ public class OpenSearchConfigurationTest extends OpenMetadataApplicationTest {
         "Search type should be OPENSEARCH");
 
     // Verify OpenSearch is accessible via REST client
-    RestClient restClient = getSearchClient();
+    Rest5Client restClient = getSearchClient();
     assertNotNull(restClient, "REST client should not be null");
 
     // Test basic cluster health endpoint
@@ -94,11 +96,9 @@ public class OpenSearchConfigurationTest extends OpenMetadataApplicationTest {
     Response response = restClient.performRequest(request);
 
     assertEquals(
-        200,
-        response.getStatusLine().getStatusCode(),
-        "OpenSearch cluster health endpoint should return 200 OK");
+        200, response.getStatusCode(), "OpenSearch cluster health endpoint should return 200 OK");
 
-    String responseBody = EntityUtils.toString(response.getEntity());
+    String responseBody = readResponseBody(response);
     assertTrue(
         responseBody.contains("cluster_name"), "Response should contain cluster information");
 
@@ -107,6 +107,12 @@ public class OpenSearchConfigurationTest extends OpenMetadataApplicationTest {
         responseBody.contains("\"status\":\"green\"")
             || responseBody.contains("\"status\":\"yellow\""),
         "OpenSearch cluster should be in green or yellow status");
+  }
+
+  private String readResponseBody(Response response) throws IOException {
+    try (InputStream is = response.getEntity().getContent()) {
+      return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+    }
   }
 
   @Test
@@ -124,18 +130,15 @@ public class OpenSearchConfigurationTest extends OpenMetadataApplicationTest {
 
   @Test
   void testOpenSearchVersion() throws Exception {
-    RestClient restClient = getSearchClient();
+    Rest5Client restClient = getSearchClient();
 
     // Get OpenSearch version information
     Request request = new Request("GET", "/");
     Response response = restClient.performRequest(request);
 
-    assertEquals(
-        200,
-        response.getStatusLine().getStatusCode(),
-        "OpenSearch root endpoint should return 200 OK");
+    assertEquals(200, response.getStatusCode(), "OpenSearch root endpoint should return 200 OK");
 
-    String responseBody = EntityUtils.toString(response.getEntity());
+    String responseBody = readResponseBody(response);
     assertTrue(
         responseBody.contains("opensearch"),
         "Response should indicate this is OpenSearch, not Elasticsearch");

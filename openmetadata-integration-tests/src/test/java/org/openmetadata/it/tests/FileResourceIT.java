@@ -3,8 +3,11 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +19,9 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.FileType;
 import org.openmetadata.sdk.fluent.Files;
 
 @Execution(ExecutionMode.CONCURRENT)
@@ -290,5 +296,129 @@ public class FileResourceIT {
         Exception.class,
         () -> Files.getByName(nonExistentFQN),
         "Getting file with non-existent FQN should fail");
+  }
+
+  @Test
+  void test_createFileWithoutColumns(TestNamespace ns) {
+    // This test verifies that files can be created without columns (columns are optional)
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    String fileName = ns.prefix("test_file_no_columns");
+    File createdFile =
+        Files.create()
+            .name(fileName)
+            .withService(driveService.getFullyQualifiedName())
+            .withFileType(FileType.Text)
+            .withMimeType("text/plain")
+            .execute();
+
+    assertNotNull(createdFile);
+    assertNotNull(createdFile.getId());
+    assertEquals(fileName, createdFile.getName());
+    assertEquals(FileType.Text, createdFile.getFileType());
+    // Columns should be null for a file without columns
+    assertNull(createdFile.getColumns());
+  }
+
+  @Test
+  void test_createCsvFileWithColumns(TestNamespace ns) {
+    // This test verifies that CSV files can be created with column definitions
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    String fileName = ns.prefix("test_csv_with_columns");
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("id").withDataType(ColumnDataType.INT),
+            new Column().withName("name").withDataType(ColumnDataType.STRING),
+            new Column().withName("price").withDataType(ColumnDataType.DOUBLE));
+
+    File createdFile =
+        Files.create()
+            .name(fileName)
+            .withService(driveService.getFullyQualifiedName())
+            .withFileType(FileType.CSV)
+            .withMimeType("text/csv")
+            .withColumns(columns)
+            .execute();
+
+    assertNotNull(createdFile);
+    assertNotNull(createdFile.getId());
+    assertEquals(fileName, createdFile.getName());
+    assertEquals(FileType.CSV, createdFile.getFileType());
+    assertNotNull(createdFile.getColumns());
+    assertEquals(3, createdFile.getColumns().size());
+  }
+
+  @Test
+  void test_getFileWithColumnsField(TestNamespace ns) {
+    // This test verifies that columns are returned when explicitly requested
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    String fileName = ns.prefix("test_csv_get_columns");
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("col1").withDataType(ColumnDataType.STRING),
+            new Column().withName("col2").withDataType(ColumnDataType.INT));
+
+    File createdFile =
+        Files.create()
+            .name(fileName)
+            .withService(driveService.getFullyQualifiedName())
+            .withFileType(FileType.CSV)
+            .withColumns(columns)
+            .execute();
+
+    assertNotNull(createdFile);
+
+    // Retrieve with columns field
+    File retrievedFile = Files.getByName(createdFile.getFullyQualifiedName(), "columns");
+    assertNotNull(retrievedFile);
+    assertNotNull(retrievedFile.getColumns());
+    assertEquals(2, retrievedFile.getColumns().size());
+    assertEquals("col1", retrievedFile.getColumns().get(0).getName());
+    assertEquals("col2", retrievedFile.getColumns().get(1).getName());
+  }
+
+  @Test
+  void test_createImageFileWithoutColumns(TestNamespace ns) {
+    // This test verifies that non-structured files like images work without columns
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    String fileName = ns.prefix("test_image_file");
+    File createdFile =
+        Files.create()
+            .name(fileName)
+            .withService(driveService.getFullyQualifiedName())
+            .withFileType(FileType.Image)
+            .withMimeType("image/png")
+            .execute();
+
+    assertNotNull(createdFile);
+    assertNotNull(createdFile.getId());
+    assertEquals(FileType.Image, createdFile.getFileType());
+    assertEquals("image/png", createdFile.getMimeType());
+    // Image files should not have columns
+    assertNull(createdFile.getColumns());
+  }
+
+  @Test
+  void test_createPdfFileWithoutColumns(TestNamespace ns) {
+    // This test verifies that PDF files work without columns
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
+
+    String fileName = ns.prefix("test_pdf_file");
+    File createdFile =
+        Files.create()
+            .name(fileName)
+            .withService(driveService.getFullyQualifiedName())
+            .withFileType(FileType.PDF)
+            .withMimeType("application/pdf")
+            .execute();
+
+    assertNotNull(createdFile);
+    assertNotNull(createdFile.getId());
+    assertEquals(FileType.PDF, createdFile.getFileType());
+    // PDF files should not have columns
+    assertNull(createdFile.getColumns());
   }
 }

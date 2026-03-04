@@ -94,13 +94,13 @@ class ColumnValueStdDevToBeBetweenValidator(
         dimension_results = []
 
         try:
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
-            stddev_impl = Metrics.STDDEV(column).get_pandas_computation()
-            row_count_impl = Metrics.ROW_COUNT().get_pandas_computation()
+            dfs = self.runner
+            stddev_impl = Metrics.stddev(column).get_pandas_computation()
+            row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.STDDEV.name: stddev_impl.create_accumulator(),
+                    Metrics.stddev.name: stddev_impl.create_accumulator(),
                     DIMENSION_TOTAL_COUNT_KEY: row_count_impl.create_accumulator(),
                 }
             )
@@ -113,9 +113,9 @@ class ColumnValueStdDevToBeBetweenValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.STDDEV.name
+                        Metrics.stddev.name
                     ] = stddev_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.STDDEV.name],
+                        dimension_aggregates[dimension_value][Metrics.stddev.name],
                         group_df,
                     )
 
@@ -131,7 +131,7 @@ class ColumnValueStdDevToBeBetweenValidator(
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
                 stddev_value = stddev_impl.aggregate_accumulator(
-                    agg[Metrics.STDDEV.name]
+                    agg[Metrics.stddev.name]
                 )
                 total_rows = row_count_impl.aggregate_accumulator(
                     agg[DIMENSION_TOTAL_COUNT_KEY]
@@ -148,17 +148,17 @@ class ColumnValueStdDevToBeBetweenValidator(
                 # Statistical validator: when stddev fails, ALL rows in dimension fail
                 failed_count = (
                     total_rows
-                    if checker.violates_pandas({Metrics.STDDEV.name: stddev_value})
+                    if checker.violates_pandas({Metrics.stddev.name: stddev_value})
                     else 0
                 )
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.STDDEV.name: stddev_value,
-                        Metrics.COUNT.name: agg[Metrics.STDDEV.name].count_value,
-                        Metrics.SUM.name: agg[Metrics.STDDEV.name].sum_value,
-                        SUM_SQUARES_KEY: agg[Metrics.STDDEV.name].sum_squares_value,
+                        Metrics.stddev.name: stddev_value,
+                        Metrics.valuesCount.name: agg[Metrics.stddev.name].count_value,
+                        Metrics.sum.name: agg[Metrics.stddev.name].sum_value,
+                        SUM_SQUARES_KEY: agg[Metrics.stddev.name].sum_squares_value,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -187,10 +187,10 @@ class ColumnValueStdDevToBeBetweenValidator(
                     result = df_aggregated[metric_column].copy()
                     if others_mask.any():
                         others_sum = df_aggregated.loc[
-                            others_mask, Metrics.SUM.name
+                            others_mask, Metrics.sum.name
                         ].iloc[0]
                         others_count = df_aggregated.loc[
-                            others_mask, Metrics.COUNT.name
+                            others_mask, Metrics.valuesCount.name
                         ].iloc[0]
                         others_sum_squares = df_aggregated.loc[
                             others_mask, SUM_SQUARES_KEY
@@ -213,22 +213,22 @@ class ColumnValueStdDevToBeBetweenValidator(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={
-                        Metrics.SUM.name: "sum",
-                        Metrics.COUNT.name: "sum",
+                        Metrics.sum.name: "sum",
+                        Metrics.valuesCount.name: "sum",
                         SUM_SQUARES_KEY: "sum",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
                     final_metric_calculators={
-                        Metrics.STDDEV.name: calculate_weighted_stddev
+                        Metrics.stddev.name: calculate_weighted_stddev
                     },
                     exclude_from_final=[
-                        Metrics.SUM.name,
-                        Metrics.COUNT.name,
+                        Metrics.sum.name,
+                        Metrics.valuesCount.name,
                         SUM_SQUARES_KEY,
                     ],
                     top_n=DEFAULT_TOP_DIMENSIONS,
-                    violation_metrics=[Metrics.STDDEV.name],
+                    violation_metrics=[Metrics.stddev.name],
                     violation_predicate=checker.violates_pandas,
                 )
 

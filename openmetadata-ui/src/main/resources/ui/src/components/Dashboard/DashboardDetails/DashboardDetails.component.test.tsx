@@ -78,6 +78,7 @@ jest.mock('../../../hooks/useCustomPages', () => ({
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({
     fqn: 'test.dashboard',
+    entityFqn: 'test.dashboard',
   }),
 }));
 

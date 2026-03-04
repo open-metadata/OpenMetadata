@@ -56,7 +56,7 @@ const MlModelPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
-  const { fqn: mlModelFqn } = useFqn();
+  const { entityFqn: mlModelFqn } = useFqn({ type: EntityType.MLMODEL });
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const USERId = currentUser?.id ?? '';
@@ -233,9 +233,11 @@ const MlModelPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateMlModelVotes(id, data);
-      const details = await getMlModelByFQN(mlModelFqn, {
-        fields: defaultFields,
-      });
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      const details = await getMlModelByFQN(mlModelFqn, { fields });
       setMlModelDetail(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

@@ -3,6 +3,8 @@ package org.openmetadata.service.search;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration;
@@ -58,6 +60,7 @@ class AwsCredentialsProviderTest {
   void testDefaultCredentialsProviderWhenNoStaticCredentials() {
     AwsConfiguration awsConfig = new AwsConfiguration();
     awsConfig.setRegion("us-east-1");
+    awsConfig.setEnabled(true);
 
     AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
 
@@ -66,58 +69,68 @@ class AwsCredentialsProviderTest {
   }
 
   @Test
-  void testDefaultCredentialsProviderWithOnlyAccessKey() {
+  void testThrowsExceptionWithOnlyAccessKey() {
     AwsConfiguration awsConfig = new AwsConfiguration();
     awsConfig.setAccessKeyId("AKIAIOSFODNN7EXAMPLE");
 
-    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> AwsCredentialsUtil.buildCredentialsProvider(awsConfig));
 
-    assertNotNull(provider);
-    assertInstanceOf(DefaultCredentialsProvider.class, provider);
+    assertTrue(exception.getMessage().contains("AWS credentials not configured"));
   }
 
   @Test
-  void testDefaultCredentialsProviderWithOnlySecretKey() {
+  void testThrowsExceptionWithOnlySecretKey() {
     AwsConfiguration awsConfig = new AwsConfiguration();
     awsConfig.setSecretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
 
-    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> AwsCredentialsUtil.buildCredentialsProvider(awsConfig));
 
-    assertNotNull(provider);
-    assertInstanceOf(DefaultCredentialsProvider.class, provider);
+    assertTrue(exception.getMessage().contains("AWS credentials not configured"));
   }
 
   @Test
-  void testDefaultCredentialsProviderWithEmptyCredentials() {
+  void testThrowsExceptionWithEmptyCredentials() {
     AwsConfiguration awsConfig = new AwsConfiguration();
     awsConfig.setAccessKeyId("");
     awsConfig.setSecretAccessKey("");
 
-    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> AwsCredentialsUtil.buildCredentialsProvider(awsConfig));
 
-    assertNotNull(provider);
-    assertInstanceOf(DefaultCredentialsProvider.class, provider);
+    assertTrue(exception.getMessage().contains("AWS credentials not configured"));
   }
 
   @Test
-  void testNullAwsConfig() {
+  void testThrowsExceptionWithEmptyAwsConfig() {
     AwsConfiguration awsConfig = new AwsConfiguration();
 
-    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> AwsCredentialsUtil.buildCredentialsProvider(awsConfig));
 
-    assertNotNull(provider);
-    assertInstanceOf(DefaultCredentialsProvider.class, provider);
+    assertTrue(exception.getMessage().contains("AWS credentials not configured"));
   }
 
   @Test
-  void testSessionTokenIgnoredWithoutAccessKeyAndSecret() {
+  void testThrowsExceptionWithOnlySessionToken() {
     AwsConfiguration awsConfig = new AwsConfiguration();
     awsConfig.setSessionToken("FwoGZXIvYXdzEBYaDKTsessiontoken123");
 
-    AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(awsConfig);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> AwsCredentialsUtil.buildCredentialsProvider(awsConfig));
 
-    assertNotNull(provider);
-    assertInstanceOf(DefaultCredentialsProvider.class, provider);
+    assertTrue(exception.getMessage().contains("AWS credentials not configured"));
   }
 
   @Test

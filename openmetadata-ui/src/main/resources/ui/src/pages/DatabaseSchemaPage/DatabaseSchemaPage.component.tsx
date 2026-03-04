@@ -102,7 +102,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { setFilters, filters } = useTableFilters(INITIAL_TABLE_FILTERS);
   const { tab: activeTab = EntityTabs.TABLE } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDatabaseSchemaFQN } = useFqn();
+  const { entityFqn: decodedDatabaseSchemaFQN } = useFqn({
+    type: EntityType.DATABASE_SCHEMA,
+  });
   const navigate = useNavigate();
 
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
@@ -178,6 +180,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission]
   );
 
+  const viewUsagePermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        databaseSchemaPermission,
+        PermissionOperation.ViewUsage
+      ),
+    [databaseSchemaPermission]
+  );
+
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
   }, []);
@@ -198,7 +209,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         {
           fields: [
             TabSpecificField.OWNERS,
-            TabSpecificField.USAGE_SUMMARY,
+            ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
             TabSpecificField.TAGS,
             TabSpecificField.DOMAINS,
             TabSpecificField.VOTES,
@@ -223,7 +234,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } finally {
       setIsSchemaDetailsLoading(false);
     }
-  }, [decodedDatabaseSchemaFQN]);
+  }, [decodedDatabaseSchemaFQN, viewUsagePermission]);
 
   const saveUpdatedDatabaseSchemaData = useCallback(
     (updatedData: DatabaseSchema) => {
@@ -529,7 +540,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         {
           fields: [
             TabSpecificField.OWNERS,
-            TabSpecificField.USAGE_SUMMARY,
+            ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
             TabSpecificField.TAGS,
             TabSpecificField.VOTES,
           ],

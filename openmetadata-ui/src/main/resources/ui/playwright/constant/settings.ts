@@ -43,6 +43,7 @@ export enum GlobalSettingOptions {
   ROLES = 'roles',
   POLICIES = 'policies',
   AUDIT_LOGS = 'audit-logs',
+  LEARNING_RESOURCES = 'learning-resources',
   DATABASES = 'databases',
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchemas',
@@ -102,6 +103,7 @@ export enum GlobalSettingOptions {
   SPREADSHEETS = 'spreadsheets',
   WORKSHEETS = 'worksheets',
   SSO = 'sso',
+  TABLE_COLUMNS = 'column',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -249,6 +251,12 @@ export const SETTINGS_OPTIONS_PATH = {
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_ASSET_RULES}`,
   ],
   [GlobalSettingOptions.SSO]: [GlobalSettingsMenuCategory.SSO],
+
+  // Learning Resources
+  [GlobalSettingOptions.LEARNING_RESOURCES]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LEARNING_RESOURCES}`,
+  ],
 };
 
 export const SETTING_CUSTOM_PROPERTIES_PATH = {
@@ -339,5 +347,9 @@ export const SETTING_CUSTOM_PROPERTIES_PATH = {
   [GlobalSettingOptions.WORKSHEETS]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
+  ],
+  [GlobalSettingOptions.TABLE_COLUMNS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TABLE_COLUMNS}`,
   ],
 };

@@ -448,8 +448,17 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -488,8 +497,17 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -1141,6 +1159,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fully qualified name of the glossary term",
@@ -1156,7 +1175,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("dryRun")
           boolean dryRun)
       throws IOException {
-    return importCsvInternal(securityContext, fqn, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, fqn, csv, dryRun, false);
   }
 
   @PUT
@@ -1182,6 +1201,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                                 org.openmetadata.service.util.CSVImportResponse.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fully qualified name of the glossary term",
@@ -1196,6 +1216,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("dryRun")
           @DefaultValue("true")
           boolean dryRun) {
-    return importCsvInternalAsync(securityContext, fqn, csv, dryRun, false);
+    return importCsvInternalAsync(uriInfo, securityContext, fqn, csv, dryRun, false);
   }
 }

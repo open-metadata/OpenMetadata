@@ -34,6 +34,7 @@
     <module>common</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
+    <module>openmetadata-k8s-operator</module>
     <module>openmetadata-integration-tests</module>
     <module>openmetadata-mcp</module>
     <module>openmetadata-ui-core-components</module>
@@ -143,24 +144,40 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.5.19</logback-core.version>
-    <logback-classic.version>1.5.18</logback-classic.version>
+    <logback-core.version>1.5.25</logback-core.version>
+    <logback-classic.version>1.5.25</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
     <jetty.version>12.1.1</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.17.0</mcp-sdk.version>
+    <mcp-sdk.version>0.17.1</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <flyway.version>9.22.3</flyway.version>
     <angus-mail.version>2.0.4</angus-mail.version>
     <commonmark.version>0.26.0</commonmark.version>
     <flexmark.version>0.64.8</flexmark.version>
-    <owasp-html-sanitizer.version>20240325.1</owasp-html-sanitizer.version>
+    <owasp-html-sanitizer.version>20260101.1</owasp-html-sanitizer.version>
   </properties>
 
   <dependencyManagement>
     <dependencies>
+      <!-- Security: Force newer versions to fix vulnerabilities -->
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.18.0</version>
+      </dependency>
+      <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>okhttp</artifactId>
+        <version>4.12.0</version>
+      </dependency>
+      <dependency>
+        <groupId>io.projectreactor.netty</groupId>
+        <artifactId>reactor-netty-http</artifactId>
+        <version>1.2.14</version>
+      </dependency>
       <dependency>
         <groupId>org.eclipse.angus</groupId>
         <artifactId>angus-mail</artifactId>
@@ -170,12 +187,6 @@
         <groupId>org.antlr</groupId>
         <artifactId>antlr4-runtime</artifactId>
         <version>${antlr.version}</version>
-      </dependency>
-      <!-- Override grpc-netty-shaded globally to fix CVE-2024-1106 -->
-      <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-netty-shaded</artifactId>
-        <version>1.76.0</version>
       </dependency>
       <dependency>
         <groupId>org.glassfish.jersey</groupId>
@@ -635,7 +646,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.125.Final</version>
+        <version>4.1.129.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -993,24 +1004,6 @@
               <include>org.openmetadata.service.EnumBackwardCompatibilityTest</include>
             </includes>
           </configuration>
-        </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-failsafe-plugin</artifactId>
-          <version>${maven-surefire.version}</version>
-          <configuration>
-            <includes>
-              <include>**/*IT</include>
-            </includes>
-          </configuration>
-          <executions>
-            <execution>
-              <goals>
-                <goal>integration-test</goal>
-                <goal>verify</goal>
-              </goals>
-            </execution>
-          </executions>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>

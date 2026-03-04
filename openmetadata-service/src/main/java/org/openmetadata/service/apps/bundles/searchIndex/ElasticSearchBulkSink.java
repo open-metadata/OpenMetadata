@@ -17,6 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
@@ -33,6 +35,8 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchRepository;
@@ -47,6 +51,10 @@ public class ElasticSearchBulkSink implements BulkSink {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
+  private static final int MAX_CONCURRENT_DOC_BUILDS = 8;
+  private static final Semaphore DOC_BUILD_SEMAPHORE = new Semaphore(MAX_CONCURRENT_DOC_BUILDS);
+  private static final ExecutorService DOC_BUILD_EXECUTOR =
+      Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("es-doc-build-", 0).factory());
 
   private final ElasticSearchClient searchClient;
   protected final SearchRepository searchRepository;
@@ -58,9 +66,16 @@ public class ElasticSearchBulkSink implements BulkSink {
   private final AtomicLong totalSuccess = new AtomicLong(0);
   private final AtomicLong totalFailed = new AtomicLong(0);
 
+  // Process stage metrics (document building/transformation)
+  private final AtomicLong processSuccess = new AtomicLong(0);
+  private final AtomicLong processFailed = new AtomicLong(0);
+
   // Configuration
   private volatile int batchSize;
   private volatile int maxConcurrentRequests;
+
+  // Failure callback
+  private volatile FailureCallback failureCallback;
 
   public ElasticSearchBulkSink(
       SearchRepository searchRepository,
@@ -88,18 +103,20 @@ public class ElasticSearchBulkSink implements BulkSink {
         concurrentRequests,
         maxPayloadSizeBytes / (1024 * 1024));
 
+    BulkCircuitBreaker circuitBreaker = new BulkCircuitBreaker(5, 30_000, 10_000);
     return new CustomBulkProcessor(
         searchClient,
         bulkActions,
         maxPayloadSizeBytes,
         concurrentRequests,
-        5000, // 5 seconds flush interval
+        1000, // 1 second flush interval
         100, // 100ms initial backoff
         3, // 3 retries
         totalSubmitted,
         totalSuccess,
         totalFailed,
-        this::updateStats);
+        this::updateStats,
+        circuitBreaker);
   }
 
   @Override
@@ -116,13 +133,26 @@ public class ElasticSearchBulkSink implements BulkSink {
 
     Boolean recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
 
+    // Extract StageStatsTracker from context for stats recording
+    StageStatsTracker tracker = extractTracker(contextData);
+
     // Check if embeddings are enabled for this specific entity type
     boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
 
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
     if (indexMapping == null) {
-      LOG.debug("No index mapping found for entityType '{}'. Skipping indexing.", entityType);
+      LOG.warn(
+          "No index mapping found for entityType '{}'. Skipping {} entities without recording stats.",
+          entityType,
+          entities.size());
       return;
+    }
+
+    if (tracker == null) {
+      LOG.warn(
+          "No StageStatsTracker found in context for entityType '{}'. Stats will not be recorded for {} entities.",
+          entityType,
+          entities.size());
     }
     String indexName =
         (String)
@@ -133,13 +163,46 @@ public class ElasticSearchBulkSink implements BulkSink {
       // Check if these are time series entities
       if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
         List<EntityTimeSeriesInterface> tsEntities = (List<EntityTimeSeriesInterface>) entities;
-        for (EntityTimeSeriesInterface entity : tsEntities) {
-          addTimeSeriesEntity(entity, indexName, entityType);
-        }
+        List<CompletableFuture<Void>> futures =
+            tsEntities.stream()
+                .map(
+                    entity ->
+                        CompletableFuture.runAsync(
+                            () -> {
+                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
+                              try {
+                                addTimeSeriesEntity(entity, indexName, entityType, tracker);
+                              } finally {
+                                DOC_BUILD_SEMAPHORE.release();
+                              }
+                            },
+                            DOC_BUILD_EXECUTOR))
+                .toList();
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
-        for (EntityInterface entity : entityInterfaces) {
-          addEntity(entity, indexName, recreateIndex, embeddingsEnabled);
+
+        // Add entities to search index in parallel
+        List<CompletableFuture<Void>> futures =
+            entityInterfaces.stream()
+                .map(
+                    entity ->
+                        CompletableFuture.runAsync(
+                            () -> {
+                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
+                              try {
+                                addEntity(entity, indexName, recreateIndex, tracker);
+                              } finally {
+                                DOC_BUILD_SEMAPHORE.release();
+                              }
+                            },
+                            DOC_BUILD_EXECUTOR))
+                .toList();
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+
+        // Process vector embeddings in batch (no-op in base class)
+        if (embeddingsEnabled) {
+          addEntitiesToVectorIndexBatch(bulkProcessor, entityInterfaces, recreateIndex);
         }
       }
     } catch (Exception e) {
@@ -158,14 +221,27 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
   }
 
-  private void addEntity(
-      EntityInterface entity, String indexName, boolean recreateIndex, boolean embeddingsEnabled) {
-    try {
+  protected StageStatsTracker extractTracker(Map<String, Object> contextData) {
+    if (contextData != null && contextData.containsKey(STATS_TRACKER_CONTEXT_KEY)) {
+      Object tracker = contextData.get(STATS_TRACKER_CONTEXT_KEY);
+      if (tracker instanceof StageStatsTracker stageTracker) {
+        return stageTracker;
+      }
+    }
+    return null;
+  }
 
+  private static final int BULK_OPERATION_METADATA_OVERHEAD = 50;
+
+  private void addEntity(
+      EntityInterface entity, String indexName, boolean recreateIndex, StageStatsTracker tracker) {
+    try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
       String docId = entity.getId().toString();
+      long estimatedSize =
+          (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
 
       BulkOperation operation;
       if (recreateIndex) {
@@ -184,26 +260,63 @@ public class ElasticSearchBulkSink implements BulkSink {
                                 .id(docId)
                                 .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
       }
-      bulkProcessor.add(operation);
-
-      if (embeddingsEnabled) {
-        addEntityToVectorIndex(bulkProcessor, entity, recreateIndex);
+      if (tracker != null) {
+        tracker.incrementPendingSink();
       }
-
+      bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
+      processSuccess.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.SUCCESS);
+      }
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+      totalFailed.incrementAndGet();
+      processFailed.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.FAILED);
+      }
+      if (failureCallback != null) {
+        String entityTypeName = Entity.getEntityTypeFromObject(entity);
+        failureCallback.onFailure(
+            entityTypeName,
+            entity.getId() != null ? entity.getId().toString() : null,
+            entity.getFullyQualifiedName(),
+            e.getMessage(),
+            IndexingFailureRecorder.FailureStage.PROCESS);
+      }
     } catch (Exception e) {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
+      totalFailed.incrementAndGet();
+      processFailed.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.FAILED);
+      }
+      if (failureCallback != null) {
+        String entityTypeName = Entity.getEntityTypeFromObject(entity);
+        failureCallback.onFailure(
+            entityTypeName,
+            entity.getId() != null ? entity.getId().toString() : null,
+            entity.getFullyQualifiedName(),
+            e.getMessage(),
+            IndexingFailureRecorder.FailureStage.PROCESS);
+      }
     }
   }
 
   private void addTimeSeriesEntity(
-      EntityTimeSeriesInterface entity, String indexName, String entityType) {
+      EntityTimeSeriesInterface entity,
+      String indexName,
+      String entityType,
+      StageStatsTracker tracker) {
     try {
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
       String docId = entity.getId().toString();
+      long estimatedSize =
+          (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
 
       BulkOperation operation =
           BulkOperation.of(
@@ -211,12 +324,47 @@ public class ElasticSearchBulkSink implements BulkSink {
                   op.index(
                       idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
 
-      bulkProcessor.add(operation);
+      if (tracker != null) {
+        tracker.incrementPendingSink();
+      }
+      bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
+      processSuccess.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.SUCCESS);
+      }
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+      totalFailed.incrementAndGet();
+      processFailed.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.FAILED);
+      }
+      if (failureCallback != null) {
+        failureCallback.onFailure(
+            entityType,
+            entity.getId() != null ? entity.getId().toString() : null,
+            null,
+            e.getMessage(),
+            IndexingFailureRecorder.FailureStage.PROCESS);
+      }
     } catch (Exception e) {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
+      totalFailed.incrementAndGet();
+      processFailed.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.FAILED);
+      }
+      if (failureCallback != null) {
+        failureCallback.onFailure(
+            entityType,
+            entity.getId() != null ? entity.getId().toString() : null,
+            null,
+            e.getMessage(),
+            IndexingFailureRecorder.FailureStage.PROCESS);
+      }
     }
   }
 
@@ -234,10 +382,25 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   @Override
   public StepStats getStats() {
+    // Read directly from atomic counters for accurate real-time stats
+    // Use success + failed as total to ensure invariant holds (total = success + failed)
+    // This handles entity build failures which increment failed but not submitted
+    long success = totalSuccess.get();
+    long failed = totalFailed.get();
     return new StepStats()
-        .withTotalRecords(stats.getTotalRecords())
-        .withSuccessRecords(stats.getSuccessRecords())
-        .withFailedRecords(stats.getFailedRecords());
+        .withTotalRecords((int) (success + failed))
+        .withSuccessRecords((int) success)
+        .withFailedRecords((int) failed);
+  }
+
+  @Override
+  public StepStats getProcessStats() {
+    long success = processSuccess.get();
+    long failed = processFailed.get();
+    return new StepStats()
+        .withTotalRecords((int) (success + failed))
+        .withSuccessRecords((int) success)
+        .withFailedRecords((int) failed);
   }
 
   @Override
@@ -251,9 +414,43 @@ public class ElasticSearchBulkSink implements BulkSink {
       if (!terminated) {
         LOG.warn("Bulk processor did not terminate within timeout");
       }
+
+      // Final stats update to ensure all processed records are reflected
+      updateStats();
+
+      LOG.info(
+          "Sink closed - final stats: submitted={}, success={}, failed={}",
+          totalSubmitted.get(),
+          totalSuccess.get(),
+          totalFailed.get());
+
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while closing bulk processor", e);
       Thread.currentThread().interrupt();
+    }
+  }
+
+  @Override
+  public int getActiveBulkRequestCount() {
+    return bulkProcessor.activeBulkRequests.get();
+  }
+
+  @Override
+  public boolean flushAndAwait(int timeoutSeconds) {
+    try {
+      boolean completed = bulkProcessor.flushAndWait(timeoutSeconds, TimeUnit.SECONDS);
+      if (completed) {
+        LOG.debug(
+            "Flush complete - stats: submitted={}, success={}, failed={}",
+            totalSubmitted.get(),
+            totalSuccess.get(),
+            totalFailed.get());
+      }
+      return completed;
+    } catch (InterruptedException e) {
+      LOG.warn("Interrupted while waiting for flush to complete", e);
+      Thread.currentThread().interrupt();
+      return false;
     }
   }
 
@@ -269,6 +466,14 @@ public class ElasticSearchBulkSink implements BulkSink {
    */
   public int getConcurrentRequests() {
     return maxConcurrentRequests;
+  }
+
+  @Override
+  public void setFailureCallback(FailureCallback callback) {
+    this.failureCallback = callback;
+    if (bulkProcessor != null) {
+      bulkProcessor.setFailureCallback(callback);
+    }
   }
 
   /**
@@ -291,20 +496,26 @@ public class ElasticSearchBulkSink implements BulkSink {
    * Checks if vector embeddings are enabled for a specific entity type.
    * This combines SearchRepository capability check with job configuration.
    */
-  protected boolean isVectorEmbeddingEnabledForEntity(String entityType) {
+  boolean isVectorEmbeddingEnabledForEntity(String entityType) {
     return false;
   }
 
-  /**
-   * Adds entity to vector_search_index for embedding search.
-   * This method will only be called when embeddings are enabled for the entity type.
-   */
-  protected void addEntityToVectorIndex(
-      CustomBulkProcessor bulkProcessor, EntityInterface entity, boolean recreateIndex) {}
+  void addEntitiesToVectorIndexBatch(
+      CustomBulkProcessor bulkProcessor, List<EntityInterface> entities, boolean recreateIndex) {
+    // TODO: Implement Elasticsearch vector embedding support
+  }
 
   public static class CustomBulkProcessor {
     private final ElasticsearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();
+
+    /** Maps docId to entityType for failure reporting */
+    private final ConcurrentHashMap<String, String> docIdToEntityType = new ConcurrentHashMap<>();
+
+    /** Maps docId to StageStatsTracker for sink stats recording */
+    private final ConcurrentHashMap<String, StageStatsTracker> docIdToTracker =
+        new ConcurrentHashMap<>();
+
     private long currentBufferSize = 0;
     private final Lock lock = new ReentrantLock();
     private final int bulkActions;
@@ -320,6 +531,8 @@ public class ElasticSearchBulkSink implements BulkSink {
     private final long initialBackoffMillis;
     private final int maxRetries;
     private volatile boolean closed = false;
+    private volatile FailureCallback failureCallback;
+    private final BulkCircuitBreaker circuitBreaker;
 
     CustomBulkProcessor(
         ElasticSearchClient client,
@@ -332,7 +545,8 @@ public class ElasticSearchBulkSink implements BulkSink {
         AtomicLong totalSubmitted,
         AtomicLong totalSuccess,
         AtomicLong totalFailed,
-        Runnable statsUpdater) {
+        Runnable statsUpdater,
+        BulkCircuitBreaker circuitBreaker) {
       this.asyncClient = new ElasticsearchAsyncClient(client.getNewClient()._transport());
       this.bulkActions = bulkActions;
       this.maxPayloadSizeBytes = maxPayloadSizeBytes;
@@ -343,20 +557,48 @@ public class ElasticSearchBulkSink implements BulkSink {
       this.totalSuccess = totalSuccess;
       this.totalFailed = totalFailed;
       this.statsUpdater = statsUpdater;
+      this.circuitBreaker = circuitBreaker;
       this.scheduler = Executors.newScheduledThreadPool(1);
 
       scheduler.scheduleAtFixedRate(
           this::flushIfNeeded, flushIntervalMillis, flushIntervalMillis, TimeUnit.MILLISECONDS);
     }
 
+    void setFailureCallback(FailureCallback callback) {
+      this.failureCallback = callback;
+    }
+
     void add(BulkOperation operation) {
+      add(operation, null, null, null);
+    }
+
+    void add(BulkOperation operation, String docId, String entityType, StageStatsTracker tracker) {
+      add(operation, docId, entityType, tracker, -1);
+    }
+
+    void add(
+        BulkOperation operation,
+        String docId,
+        String entityType,
+        StageStatsTracker tracker,
+        long estimatedSizeBytes) {
       lock.lock();
       try {
         if (closed) {
           throw new IllegalStateException("Bulk processor is closed");
         }
 
-        long operationSize = estimateOperationSize(operation);
+        if (docId != null) {
+          if (entityType != null) {
+            docIdToEntityType.put(docId, entityType);
+          }
+          if (tracker != null) {
+            docIdToTracker.put(docId, tracker);
+          }
+        }
+
+        long operationSize =
+            estimatedSizeBytes > 0 ? estimatedSizeBytes : estimateOperationSize(operation);
         buffer.add(operation);
         currentBufferSize += operationSize;
 
@@ -390,6 +632,33 @@ public class ElasticSearchBulkSink implements BulkSink {
       } finally {
         lock.unlock();
       }
+    }
+
+    /**
+     * Flush pending requests and wait for all active bulk requests to complete. Unlike awaitClose,
+     * this does not close the processor - it can continue to be used after this call.
+     *
+     * @param timeout Maximum time to wait
+     * @param unit Time unit for timeout
+     * @return true if all requests completed within timeout
+     */
+    boolean flushAndWait(long timeout, TimeUnit unit) throws InterruptedException {
+      flush();
+
+      long timeoutMillis = unit.toMillis(timeout);
+      long startTime = System.currentTimeMillis();
+
+      // Wait for all active bulk requests to complete
+      while (activeBulkRequests.get() > 0) {
+        long elapsed = System.currentTimeMillis() - startTime;
+        if (elapsed >= timeoutMillis) {
+          LOG.warn(
+              "Timeout waiting for {} active bulk requests to complete", activeBulkRequests.get());
+          return false;
+        }
+        Thread.sleep(100);
+      }
+      return true;
     }
 
     private void flushIfNeeded() {
@@ -433,28 +702,64 @@ public class ElasticSearchBulkSink implements BulkSink {
 
     private void executeBulkWithRetry(
         List<BulkOperation> operations, long executionId, int numberOfActions, int attemptNumber) {
+      if (!circuitBreaker.allowRequest()) {
+        LOG.warn(
+            "Circuit breaker OPEN - fail-fast for bulk request {} with {} actions",
+            executionId,
+            numberOfActions);
+        totalFailed.addAndGet(numberOfActions);
+        statsUpdater.run();
+        activeBulkRequests.decrementAndGet();
+        concurrentRequestSemaphore.release();
+        return;
+      }
+
       CompletableFuture<BulkResponse> future =
           asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
 
       future.whenComplete(
           (response, error) -> {
+            boolean retryScheduled = false;
             try {
               if (error != null) {
-                handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, error);
+                circuitBreaker.recordFailure();
+                retryScheduled =
+                    handleBulkFailure(
+                        operations, executionId, numberOfActions, attemptNumber, error);
               } else if (response.errors()) {
+                circuitBreaker.recordSuccess();
                 handlePartialFailure(response, executionId, numberOfActions);
               } else {
+                circuitBreaker.recordSuccess();
                 totalSuccess.addAndGet(numberOfActions);
                 LOG.debug(
                     "Bulk request {} completed successfully with {} actions",
                     executionId,
                     numberOfActions);
                 statsUpdater.run();
+                // Record SINK success and clean up tracking maps
+                int missingTrackers = 0;
+                for (BulkOperation op : operations) {
+                  String docId = getDocId(op);
+                  if (docId != null) {
+                    docIdToEntityType.remove(docId);
+                    StageStatsTracker tracker = docIdToTracker.remove(docId);
+                    if (tracker != null) {
+                      tracker.recordSink(StatsResult.SUCCESS);
+                    } else {
+                      missingTrackers++;
+                    }
+                  }
+                }
+                if (missingTrackers > 0) {
+                  LOG.warn(
+                      "Bulk request {} had {} operations without tracker - sink stats not recorded",
+                      executionId,
+                      missingTrackers);
+                }
               }
             } finally {
-              if (error != null && shouldRetry(attemptNumber, error)) {
-                // Don't release resources yet, we're retrying
-              } else {
+              if (!retryScheduled) {
                 activeBulkRequests.decrementAndGet();
                 concurrentRequestSemaphore.release();
               }
@@ -462,13 +767,14 @@ public class ElasticSearchBulkSink implements BulkSink {
           });
     }
 
-    private void handleBulkFailure(
+    private boolean handleBulkFailure(
         List<BulkOperation> operations,
         long executionId,
         int numberOfActions,
         int attemptNumber,
         Throwable error) {
-      if (shouldRetry(attemptNumber, error)) {
+      if (shouldRetry(attemptNumber, error)
+          && circuitBreaker.getState() != BulkCircuitBreaker.State.OPEN) {
         long backoffTime = calculateBackoff(attemptNumber);
         LOG.warn(
             "Bulk request {} failed (attempt {}), retrying in {}ms: {}",
@@ -481,6 +787,7 @@ public class ElasticSearchBulkSink implements BulkSink {
             () -> executeBulkWithRetry(operations, executionId, numberOfActions, attemptNumber + 1),
             backoffTime,
             TimeUnit.MILLISECONDS);
+        return true;
       } else {
         totalFailed.addAndGet(numberOfActions);
         LOG.error(
@@ -489,7 +796,31 @@ public class ElasticSearchBulkSink implements BulkSink {
             attemptNumber + 1,
             numberOfActions,
             error);
+
+        // Report failures via callback and tracker
+        for (BulkOperation op : operations) {
+          String docId = getDocId(op);
+          if (docId != null) {
+            String entityType = docIdToEntityType.remove(docId);
+            if (entityType == null) {
+              entityType = extractEntityTypeFromIndex(getIndex(op));
+            }
+            StageStatsTracker tracker = docIdToTracker.remove(docId);
+            if (tracker != null) {
+              tracker.recordSink(StatsResult.FAILED);
+            }
+            if (failureCallback != null) {
+              failureCallback.onFailure(
+                  entityType,
+                  docId,
+                  null,
+                  error.getMessage(),
+                  IndexingFailureRecorder.FailureStage.SINK);
+            }
+          }
+        }
         statsUpdater.run();
+        return false;
       }
     }
 
@@ -497,16 +828,37 @@ public class ElasticSearchBulkSink implements BulkSink {
         BulkResponse response, long executionId, int numberOfActions) {
       int failures = 0;
       for (BulkResponseItem item : response.items()) {
+        String docId = item.id();
+        StageStatsTracker tracker = docId != null ? docIdToTracker.remove(docId) : null;
         if (item.error() != null) {
           failures++;
           String failureMessage = item.error().reason();
           if (failureMessage != null && failureMessage.contains("document_missing_exception")) {
             LOG.warn(
                 "Document missing error for {}: {} - This may occur during concurrent reindexing",
-                item.id(),
+                docId,
                 failureMessage);
           } else {
-            LOG.warn("Failed to index document {}: {}", item.id(), failureMessage);
+            LOG.warn("Failed to index document {}: {}", docId, failureMessage);
+          }
+          String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
+          if (entityType == null) {
+            entityType = extractEntityTypeFromIndex(item.index());
+          }
+          if (tracker != null) {
+            tracker.recordSink(StatsResult.FAILED);
+          }
+          if (failureCallback != null) {
+            failureCallback.onFailure(
+                entityType, docId, null, failureMessage, IndexingFailureRecorder.FailureStage.SINK);
+          }
+        } else {
+          // Clean up on success
+          if (docId != null) {
+            docIdToEntityType.remove(docId);
+          }
+          if (tracker != null) {
+            tracker.recordSink(StatsResult.SUCCESS);
           }
         }
       }
@@ -522,6 +874,34 @@ public class ElasticSearchBulkSink implements BulkSink {
       statsUpdater.run();
     }
 
+    private String getDocId(BulkOperation op) {
+      if (op.isIndex()) return op.index().id();
+      if (op.isUpdate()) return op.update().id();
+      if (op.isDelete()) return op.delete().id();
+      return null;
+    }
+
+    private String getIndex(BulkOperation op) {
+      if (op.isIndex()) return op.index().index();
+      if (op.isUpdate()) return op.update().index();
+      if (op.isDelete()) return op.delete().index();
+      return null;
+    }
+
+    private String extractEntityTypeFromIndex(String indexName) {
+      if (indexName == null || indexName.isEmpty()) {
+        return "unknown";
+      }
+      // Index names may be like "table_search_index" or "mlmodel_search_index_rebuild_123456"
+      // Remove "_search_index" suffix and any rebuild timestamp
+      String searchIndexSuffix = "_search_index";
+      int searchIndexPos = indexName.indexOf(searchIndexSuffix);
+      if (searchIndexPos > 0) {
+        return indexName.substring(0, searchIndexPos);
+      }
+      return indexName;
+    }
+
     private boolean shouldRetry(int attemptNumber, Throwable error) {
       if (attemptNumber >= maxRetries) {
         return false;
@@ -530,11 +910,27 @@ public class ElasticSearchBulkSink implements BulkSink {
       if (errorMessage == null) {
         return true;
       }
-      return errorMessage.contains("rejected_execution_exception")
-          || errorMessage.contains("EsRejectedExecutionException")
-          || errorMessage.contains("RemoteTransportException")
-          || errorMessage.contains("ConnectException")
-          || errorMessage.contains("timeout");
+      String lowerCaseMessage = errorMessage.toLowerCase();
+      return lowerCaseMessage.contains("rejected_execution_exception")
+          || lowerCaseMessage.contains("esrejectedexecutionexception")
+          || lowerCaseMessage.contains("remotetransportexception")
+          || lowerCaseMessage.contains("connectexception")
+          || lowerCaseMessage.contains("timeout")
+          || lowerCaseMessage.contains("request entity too large")
+          || lowerCaseMessage.contains("content too long")
+          || lowerCaseMessage.contains("413")
+          || lowerCaseMessage.contains("circuit_breaking_exception")
+          || lowerCaseMessage.contains("too_many_requests");
+    }
+
+    boolean isPayloadTooLargeError(Throwable error) {
+      if (error == null || error.getMessage() == null) {
+        return false;
+      }
+      String lowerCaseMessage = error.getMessage().toLowerCase();
+      return lowerCaseMessage.contains("request entity too large")
+          || lowerCaseMessage.contains("content too long")
+          || lowerCaseMessage.contains("413");
     }
 
     private long calculateBackoff(int attemptNumber) {

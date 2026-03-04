@@ -60,9 +60,9 @@ import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.zjsonpatch.JsonDiff;
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.text.ParseException;
@@ -83,7 +83,6 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.client.HttpResponseException;
-import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -1836,6 +1835,41 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         entities.getData().stream()
             .noneMatch(
                 tcrs -> tcrs.getTestCaseReference().getId().equals(testCases.get(0).getId())));
+  }
+
+  @Test
+  void test_listTestCaseFailureStatusWithoutTimeRange(TestInfo test)
+      throws IOException, ParseException {
+    // Test that incidents can be fetched without specifying startTs and endTs
+    // This ensures all open incidents are shown regardless of time range
+    List<TestCase> testCases = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      TestCase testCaseEntity =
+          createEntity(createRequest(getEntityName(test) + i), ADMIN_AUTH_HEADERS);
+      testCases.add(testCaseEntity);
+      // Adding failed test case, which will create a NEW incident
+      postTestCaseResult(
+          testCaseEntity.getFullyQualifiedName(),
+          new CreateTestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+          ADMIN_AUTH_HEADERS);
+    }
+
+    // Get incidents without specifying startTs and endTs
+    ResultList<TestCaseResolutionStatus> entities =
+        getTestCaseFailureStatus(1000, null, false, null, null, null);
+
+    // Verify that the created incidents are present in the results
+    assertTrue(
+        entities.getData().stream()
+            .anyMatch(
+                tcrs -> tcrs.getTestCaseReference().getId().equals(testCases.get(0).getId())));
+    assertTrue(
+        entities.getData().stream()
+            .anyMatch(
+                tcrs -> tcrs.getTestCaseReference().getId().equals(testCases.get(1).getId())));
   }
 
   @Test
@@ -3995,7 +4029,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private void verifyTestCaseResultInIndex(TestCaseResult dbTestCaseResult) throws IOException {
     // Try to search entity with INCOMPLETE description
-    RestClient searchClient = getSearchClient();
+    Rest5Client searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(Entity.TEST_CASE_RESULT);
     Response response;
     Request request =
@@ -4007,13 +4041,18 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         String.format(
             "{\"size\": 10,\"query\":{\"bool\":{\"must\":[{\"term\":{\"_id\":\"%s\"}}]}}}",
             dbTestCaseResult.getId().toString());
-    request.setJsonEntity(query);
+    request.setEntity(
+        new org.apache.hc.core5.http.io.entity.StringEntity(
+            query, org.apache.hc.core5.http.ContentType.APPLICATION_JSON));
     try {
       response = searchClient.performRequest(request);
     } finally {
       searchClient.close();
     }
-    String jsonString = EntityUtils.toString(response.getEntity());
+    String jsonString =
+        new String(
+            response.getEntity().getContent().readAllBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
     LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
@@ -4168,14 +4207,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         latest != null ? target.queryParam("latest", latest) : target.queryParam("latest", false);
     target = testCaseFqn != null ? target.queryParam("entityFQNHash", testCaseFqn) : target;
 
-    target =
-        startTs != null
-            ? target.queryParam("startTs", startTs)
-            : target.queryParam("startTs", System.currentTimeMillis() - 100000);
-    target =
-        endTs != null
-            ? target.queryParam("endTs", endTs)
-            : target.queryParam("endTs", System.currentTimeMillis() + 100000);
+    // Only add timestamps if they are explicitly provided
+    target = startTs != null ? target.queryParam("startTs", startTs) : target;
+    target = endTs != null ? target.queryParam("endTs", endTs) : target;
 
     return TestUtils.get(
         target,
