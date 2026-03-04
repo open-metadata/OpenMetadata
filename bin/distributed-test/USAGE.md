@@ -116,6 +116,7 @@ Any `--entity-type NUM` flag overrides the preset for that entity type:
 | `--mixed` | - | Run mixed read/write workload (Phase 9) |
 | `--mixed-duration SECS` | 60 | Duration of mixed workload in seconds |
 | `--read-ratio PCT` | 80 | Read percentage in mixed workload (0-100) |
+| `--realistic` | - | Run Phase 4 entity creation concurrently across entity types using a shared worker pool |
 
 ### Entity Creation Order
 
@@ -160,6 +161,29 @@ Databases and schemas scale automatically with table count:
 HTTP requests retry up to 3 times with exponential backoff (1s, 2s, 4s) on:
 - 5xx server errors
 - Connection errors / timeouts
+
+### Realistic Concurrent Workload (`--realistic`)
+
+By default, `--workers N` creates N concurrent workers **per entity type**, but entity types run
+sequentially (all tables first, then all dashboards, etc.). With `--realistic`, all Phase 4 entity
+types are created concurrently through a **single shared worker pool**, simulating real-world traffic
+where tables, dashboards, topics, and pipelines all hit the server at the same time.
+
+This exposes contention patterns not visible in sequential mode:
+- Cross-entity DB lock contention
+- Shared thread pool pressure
+- Connection pool exhaustion under mixed workloads
+
+```bash
+# Realistic mode: all entity types hit the server concurrently
+./perf-test.sh --scale 10k --realistic --server http://localhost:8585
+
+# Compare with sequential mode (default)
+./perf-test.sh --scale 10k --server http://localhost:8585
+```
+
+The report includes a `realistic_combined` entry showing combined RPS and latency distribution
+across all entity types, in addition to individual per-entity-type metrics.
 
 ### Performance Tips
 

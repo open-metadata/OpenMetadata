@@ -52,6 +52,7 @@ ONLY_READS=""
 MIXED_MODE=""
 MIXED_DURATION=60
 READ_RATIO=80
+REALISTIC_MODE=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -276,6 +277,7 @@ while [[ $# -gt 0 ]]; do
         --mixed) MIXED_MODE="true"; shift ;;
         --mixed-duration) MIXED_DURATION="$2"; shift 2 ;;
         --read-ratio) READ_RATIO="$2"; shift 2 ;;
+        --realistic) REALISTIC_MODE="true"; shift ;;
         --databases) shift 2 ;;  # ignored, auto-calculated now
         --terms-per-glossary) shift 2 ;;  # ignored, use --glossary-terms
         --tags-per-classification) shift 2 ;;  # ignored, use --tags
@@ -340,6 +342,7 @@ Read & mixed workload benchmarking:
   --mixed                       Run mixed read/write workload (Phase 9)
   --mixed-duration SECS         Duration of mixed workload in seconds (default: 60)
   --read-ratio PCT              Read percentage in mixed workload (default: 80)
+  --realistic                   Run Phase 4 with all entity types concurrently in a shared worker pool
 
 Other:
   --server URL                  Target server URL (default: https://mohitcorp.getcollate.io)
@@ -378,6 +381,9 @@ Examples:
 
   # Mixed read/write workload for 2 minutes, 80% reads
   ./perf-test.sh --scale 10k --mixed --mixed-duration 120 --read-ratio 80
+
+  # Realistic concurrent workload (all entity types hit server simultaneously)
+  ./perf-test.sh --scale 10k --realistic --server http://localhost:8585
 HELPEOF
             exit 0
             ;;
@@ -424,6 +430,9 @@ if [ -n "$ONLY_READS" ]; then
 fi
 if [ -n "$MIXED_MODE" ]; then
     echo "Mixed:  enabled (${MIXED_DURATION}s, ${READ_RATIO}% reads)"
+fi
+if [ -n "$REALISTIC_MODE" ]; then
+    echo "Mode:   realistic (concurrent cross-entity workload)"
 fi
 echo ""
 echo "Entity counts:"
@@ -521,6 +530,7 @@ ONLY_READS = "${ONLY_READS}" == "true"
 MIXED_MODE = "${MIXED_MODE}" == "true"
 MIXED_DURATION = ${MIXED_DURATION}
 READ_RATIO = ${READ_RATIO}
+REALISTIC_MODE = "${REALISTIC_MODE}" == "true"
 
 # Auto-calculate database/schema counts
 NUM_DATABASES = max(1, NUM_TABLES // 50000)
@@ -1317,6 +1327,122 @@ def run_mixed_workload(duration_s, read_ratio_pct, workers, table_ids, schema_fq
     return read_bench, write_bench
 
 
+# ── Realistic concurrent workload runner ─────────────────────────────────
+def run_realistic_phase(entity_configs, workers):
+    """Run all entity types concurrently through a single shared worker pool.
+
+    entity_configs: list of {"name": str, "count": int, "payload_fn": fn, "collect_fn": fn|None}
+    workers: shared thread pool size
+    """
+    entity_configs = [c for c in entity_configs if c["count"] > 0]
+    if not entity_configs:
+        return
+
+    total_items = sum(c["count"] for c in entity_configs)
+    print(f"\nREALISTIC CONCURRENT WORKLOAD: {len(entity_configs)} entity types, "
+          f"{total_items} total items, {workers} shared workers")
+    sys.stdout.flush()
+
+    per_entity_bench = {}
+    combined_bench = BenchmarkCollector("realistic_combined", total_items)
+    for cfg in entity_configs:
+        per_entity_bench[cfg["name"]] = BenchmarkCollector(cfg["name"], cfg["count"])
+
+    work_queue = []
+    for cfg in entity_configs:
+        for idx in range(cfg["count"]):
+            work_queue.append((cfg["name"], idx, cfg["payload_fn"], cfg["collect_fn"]))
+
+    random.shuffle(work_queue)
+
+    counter_lock = threading.Lock()
+    completed_count = [0]
+    combined_bench.start_time = time.time()
+    for b in per_entity_bench.values():
+        b.start_time = combined_bench.start_time
+
+    sample_running = True
+    log_interval = max(1, total_items // 20)
+
+    def _sampler():
+        while sample_running:
+            with counter_lock:
+                total = completed_count[0]
+            combined_bench.window_counts.append((time.time(), total))
+            time.sleep(1)
+
+    sampler_thread = threading.Thread(target=_sampler, daemon=True)
+    sampler_thread.start()
+
+    def _work(item):
+        entity_name, idx, payload_fn, collect_fn = item
+        t0 = time.time()
+        payload = payload_fn(idx)
+        if payload is None:
+            return
+        url = payload.pop("__url__", None)
+        method = payload.pop("__method__", "PUT")
+        if url is None:
+            return
+        status, resp = make_request(url, data=payload, method=method, headers=headers)
+        latency = time.time() - t0
+        ok = status in [200, 201]
+        eb = per_entity_bench[entity_name]
+        if ok:
+            eb.record_success(latency)
+            combined_bench.record_success(latency)
+        else:
+            eb.record_failure(latency, status, resp)
+            combined_bench.record_failure(latency, status, resp)
+        with counter_lock:
+            completed_count[0] += 1
+            total = completed_count[0]
+            if total % log_interval == 0 or total == len(work_queue):
+                elapsed = time.time() - combined_bench.start_time
+                rate = total / elapsed if elapsed > 0 else 0
+                per_type_str = ", ".join(
+                    f"{n}={b.created}" for n, b in per_entity_bench.items() if b.created > 0
+                )
+                print(f"  realistic: {total}/{len(work_queue)} ({rate:.1f}/sec) [{per_type_str}]")
+                sys.stdout.flush()
+        if ok and collect_fn and isinstance(resp, dict):
+            collect_fn(idx, resp)
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(_work, item) for item in work_queue]
+        for f in as_completed(futures):
+            try:
+                f.result()
+            except Exception:
+                pass
+
+    sample_running = False
+    now = time.time()
+    combined_bench.end_time = now
+    for b in per_entity_bench.values():
+        b.end_time = now
+
+    for name, b in per_entity_bench.items():
+        stats[name] = b.created
+        benchmarks[name] = b
+
+    benchmarks["realistic_combined"] = combined_bench
+    stats["realistic_combined"] = combined_bench.created
+
+    elapsed = now - combined_bench.start_time
+    p50 = combined_bench.percentile(50) * 1000
+    p95 = combined_bench.percentile(95) * 1000
+    print(f"Realistic workload done: {combined_bench.created} created, "
+          f"{combined_bench.failed} failed ({elapsed:.1f}s, p50={p50:.0f}ms, p95={p95:.0f}ms)")
+    for name, b in per_entity_bench.items():
+        if b.created > 0 or b.failed > 0:
+            bp50 = b.percentile(50) * 1000
+            bp95 = b.percentile(95) * 1000
+            print(f"  {name}: {b.created} created, {b.failed} failed "
+                  f"(p50={bp50:.0f}ms, p95={bp95:.0f}ms)")
+    sys.stdout.flush()
+
+
 # ── Ramp tester ──────────────────────────────────────────────────────────────
 class RampTester:
     def __init__(self, server_url, req_headers, max_workers, batch_size=100):
@@ -1834,7 +1960,11 @@ if RAMP_MODE and not ONLY_READS:
 phase_start = time.time()
 print("\n" + "=" * 60)
 print("PHASE 4: Core entities")
+if REALISTIC_MODE:
+    print("  (realistic mode: all entity types run concurrently)")
 print("=" * 60)
+
+_phase4_entity_configs = []
 
 # ── Tables ───────────────────────────────────────────────────────────────────
 if should_run("tables") and schema_fqns and NUM_TABLES > 0:
@@ -1857,7 +1987,9 @@ if should_run("tables") and schema_fqns and NUM_TABLES > 0:
             if len(collected_table_ids) < MAX_COLLECT:
                 collected_table_ids.append((resp["id"], resp.get("fullyQualifiedName", "")))
 
-    create_entity_batch("tables", NUM_TABLES, table_payload, collect_fn=collect_table)
+    _phase4_entity_configs.append({"name": "tables", "count": NUM_TABLES, "payload_fn": table_payload, "collect_fn": collect_table})
+    if not REALISTIC_MODE:
+        create_entity_batch("tables", NUM_TABLES, table_payload, collect_fn=collect_table)
 
 # ── Dashboards ───────────────────────────────────────────────────────────────
 if should_run("dashboards") and dashboard_service_fqn and NUM_DASHBOARDS > 0:
@@ -1875,8 +2007,10 @@ if should_run("dashboards") and dashboard_service_fqn and NUM_DASHBOARDS > 0:
             if len(collected_dashboard_ids) < MAX_COLLECT:
                 collected_dashboard_ids.append((resp["id"], resp.get("fullyQualifiedName", "")))
 
-    create_entity_batch("dashboards", NUM_DASHBOARDS, dashboard_payload,
-                        collect_fn=collect_dashboard)
+    _phase4_entity_configs.append({"name": "dashboards", "count": NUM_DASHBOARDS, "payload_fn": dashboard_payload, "collect_fn": collect_dashboard})
+    if not REALISTIC_MODE:
+        create_entity_batch("dashboards", NUM_DASHBOARDS, dashboard_payload,
+                            collect_fn=collect_dashboard)
 
 # ── Charts ───────────────────────────────────────────────────────────────────
 if should_run("charts") and dashboard_service_fqn and NUM_CHARTS > 0:
@@ -1892,7 +2026,9 @@ if should_run("charts") and dashboard_service_fqn and NUM_CHARTS > 0:
             "description": f"Test chart {idx}",
         }
 
-    create_entity_batch("charts", NUM_CHARTS, chart_payload)
+    _phase4_entity_configs.append({"name": "charts", "count": NUM_CHARTS, "payload_fn": chart_payload, "collect_fn": None})
+    if not REALISTIC_MODE:
+        create_entity_batch("charts", NUM_CHARTS, chart_payload)
 
 # ── Topics ───────────────────────────────────────────────────────────────────
 if should_run("topics") and messaging_service_fqn and NUM_TOPICS > 0:
@@ -1906,7 +2042,9 @@ if should_run("topics") and messaging_service_fqn and NUM_TOPICS > 0:
             "description": f"Test topic {idx}",
         }
 
-    create_entity_batch("topics", NUM_TOPICS, topic_payload)
+    _phase4_entity_configs.append({"name": "topics", "count": NUM_TOPICS, "payload_fn": topic_payload, "collect_fn": None})
+    if not REALISTIC_MODE:
+        create_entity_batch("topics", NUM_TOPICS, topic_payload)
 
 # ── Pipelines ────────────────────────────────────────────────────────────────
 if should_run("pipelines") and pipeline_service_fqn and NUM_PIPELINES > 0:
@@ -1924,8 +2062,10 @@ if should_run("pipelines") and pipeline_service_fqn and NUM_PIPELINES > 0:
             if len(collected_pipeline_ids) < MAX_COLLECT:
                 collected_pipeline_ids.append((resp["id"], resp.get("fullyQualifiedName", "")))
 
-    create_entity_batch("pipelines", NUM_PIPELINES, pipeline_payload,
-                        collect_fn=collect_pipeline)
+    _phase4_entity_configs.append({"name": "pipelines", "count": NUM_PIPELINES, "payload_fn": pipeline_payload, "collect_fn": collect_pipeline})
+    if not REALISTIC_MODE:
+        create_entity_batch("pipelines", NUM_PIPELINES, pipeline_payload,
+                            collect_fn=collect_pipeline)
 
 # ── Stored Procedures ────────────────────────────────────────────────────────
 if should_run("storedProcedures") and db_service_fqn and schema_fqns and NUM_STORED_PROCEDURES > 0:
@@ -1942,7 +2082,9 @@ if should_run("storedProcedures") and db_service_fqn and schema_fqns and NUM_STO
             "description": f"Test stored procedure {idx}",
         }
 
-    create_entity_batch("storedProcedures", NUM_STORED_PROCEDURES, stored_proc_payload)
+    _phase4_entity_configs.append({"name": "storedProcedures", "count": NUM_STORED_PROCEDURES, "payload_fn": stored_proc_payload, "collect_fn": None})
+    if not REALISTIC_MODE:
+        create_entity_batch("storedProcedures", NUM_STORED_PROCEDURES, stored_proc_payload)
 
 # ── ML Models ────────────────────────────────────────────────────────────────
 if should_run("mlmodels") and mlmodel_service_fqn and NUM_MLMODELS > 0:
@@ -1959,7 +2101,9 @@ if should_run("mlmodels") and mlmodel_service_fqn and NUM_MLMODELS > 0:
             "description": f"Test ML model {idx}",
         }
 
-    create_entity_batch("mlmodels", NUM_MLMODELS, mlmodel_payload)
+    _phase4_entity_configs.append({"name": "mlmodels", "count": NUM_MLMODELS, "payload_fn": mlmodel_payload, "collect_fn": None})
+    if not REALISTIC_MODE:
+        create_entity_batch("mlmodels", NUM_MLMODELS, mlmodel_payload)
 
 # ── Containers ───────────────────────────────────────────────────────────────
 if should_run("containers") and storage_service_fqn and NUM_CONTAINERS > 0:
@@ -1972,7 +2116,9 @@ if should_run("containers") and storage_service_fqn and NUM_CONTAINERS > 0:
             "description": f"Test container {idx}",
         }
 
-    create_entity_batch("containers", NUM_CONTAINERS, container_payload)
+    _phase4_entity_configs.append({"name": "containers", "count": NUM_CONTAINERS, "payload_fn": container_payload, "collect_fn": None})
+    if not REALISTIC_MODE:
+        create_entity_batch("containers", NUM_CONTAINERS, container_payload)
 
 # ── Search Indexes ───────────────────────────────────────────────────────────
 if should_run("searchIndexes") and search_service_fqn and NUM_SEARCH_INDEXES > 0:
@@ -1990,7 +2136,9 @@ if should_run("searchIndexes") and search_service_fqn and NUM_SEARCH_INDEXES > 0
             ],
         }
 
-    create_entity_batch("searchIndexes", NUM_SEARCH_INDEXES, search_idx_payload)
+    _phase4_entity_configs.append({"name": "searchIndexes", "count": NUM_SEARCH_INDEXES, "payload_fn": search_idx_payload, "collect_fn": None})
+    if not REALISTIC_MODE:
+        create_entity_batch("searchIndexes", NUM_SEARCH_INDEXES, search_idx_payload)
 
 # ── Queries ──────────────────────────────────────────────────────────────────
 if should_run("queries") and NUM_QUERIES > 0 and db_service_fqn:
@@ -2003,7 +2151,9 @@ if should_run("queries") and NUM_QUERIES > 0 and db_service_fqn:
             "description": f"Test query {idx}",
         }
 
-    create_entity_batch("queries", NUM_QUERIES, query_payload)
+    _phase4_entity_configs.append({"name": "queries", "count": NUM_QUERIES, "payload_fn": query_payload, "collect_fn": None})
+    if not REALISTIC_MODE:
+        create_entity_batch("queries", NUM_QUERIES, query_payload)
 
 # ── Dashboard Data Models ────────────────────────────────────────────────────
 if should_run("dashboardDataModels") and dashboard_service_fqn and NUM_DASHBOARD_DATA_MODELS > 0:
@@ -2023,7 +2173,9 @@ if should_run("dashboardDataModels") and dashboard_service_fqn and NUM_DASHBOARD
             ],
         }
 
-    create_entity_batch("dashboardDataModels", NUM_DASHBOARD_DATA_MODELS, data_model_payload)
+    _phase4_entity_configs.append({"name": "dashboardDataModels", "count": NUM_DASHBOARD_DATA_MODELS, "payload_fn": data_model_payload, "collect_fn": None})
+    if not REALISTIC_MODE:
+        create_entity_batch("dashboardDataModels", NUM_DASHBOARD_DATA_MODELS, data_model_payload)
 
 # ── API Endpoints ────────────────────────────────────────────────────────────
 if should_run("apiEndpoints") and api_service_fqn and api_collection_fqns and NUM_API_ENDPOINTS > 0:
@@ -2041,7 +2193,9 @@ if should_run("apiEndpoints") and api_service_fqn and api_collection_fqns and NU
             "description": f"Test API endpoint {idx}",
         }
 
-    create_entity_batch("apiEndpoints", NUM_API_ENDPOINTS, api_endpoint_payload)
+    _phase4_entity_configs.append({"name": "apiEndpoints", "count": NUM_API_ENDPOINTS, "payload_fn": api_endpoint_payload, "collect_fn": None})
+    if not REALISTIC_MODE:
+        create_entity_batch("apiEndpoints", NUM_API_ENDPOINTS, api_endpoint_payload)
 
 # ── Data Products ────────────────────────────────────────────────────────────
 if should_run("dataProducts") and NUM_DATA_PRODUCTS > 0 and domain_fqns:
@@ -2054,7 +2208,12 @@ if should_run("dataProducts") and NUM_DATA_PRODUCTS > 0 and domain_fqns:
             "description": f"Test data product {idx}",
         }
 
-    create_entity_batch("dataProducts", NUM_DATA_PRODUCTS, data_product_payload)
+    _phase4_entity_configs.append({"name": "dataProducts", "count": NUM_DATA_PRODUCTS, "payload_fn": data_product_payload, "collect_fn": None})
+    if not REALISTIC_MODE:
+        create_entity_batch("dataProducts", NUM_DATA_PRODUCTS, data_product_payload)
+
+if REALISTIC_MODE and _phase4_entity_configs:
+    run_realistic_phase(_phase4_entity_configs, NUM_WORKERS)
 
 phase_timings["phase_4_core_entities"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
 
@@ -2445,7 +2604,7 @@ health_monitor.stop()
 introspector.scrape_after()
 introspector.collect_diagnostics("after")
 overall_elapsed = time.time() - overall_start
-total_created = sum(stats.values())
+total_created = sum(v for k, v in stats.items() if k != "realistic_combined")
 
 
 # ── Cluster sizing analysis ──────────────────────────────────────────────────
@@ -2815,6 +2974,7 @@ report = {
         "workers": NUM_WORKERS,
         "scale": SCALE_APPLIED,
         "only_entities": list(ONLY_ENTITIES) if ONLY_ENTITIES else None,
+        "realistic_mode": REALISTIC_MODE,
         "script_version": "3.0",
     },
     "server_info": introspector.report_section(),
@@ -2825,10 +2985,10 @@ report = {
         "total_entities_created": total_created,
         "total_wall_clock_s": round(overall_elapsed, 2),
         "overall_throughput_rps": round(total_created / overall_elapsed, 2) if overall_elapsed > 0 else 0,
-        "total_errors": sum(b.failed for b in benchmarks.values()),
+        "total_errors": sum(b.failed for k, b in benchmarks.items() if k != "realistic_combined"),
         "overall_error_rate_pct": round(
-            sum(b.failed for b in benchmarks.values()) /
-            max(1, sum(len(b.latencies) for b in benchmarks.values())) * 100, 2
+            sum(b.failed for k, b in benchmarks.items() if k != "realistic_combined") /
+            max(1, sum(len(b.latencies) for k, b in benchmarks.items() if k != "realistic_combined")) * 100, 2
         ),
     },
 }
@@ -2874,9 +3034,15 @@ def print_summary_table(report):
     print("\u2500" * 70)
 
     write_entries = {k: v for k, v in report["entities"].items()
-                     if not k.startswith("read_") and not k.startswith("mixed_")}
+                     if not k.startswith("read_") and not k.startswith("mixed_")
+                     and k != "realistic_combined"}
     read_entries = {k: v for k, v in report["entities"].items() if k.startswith("read_")}
     mixed_entries = {k: v for k, v in report["entities"].items() if k.startswith("mixed_")}
+    realistic_combined = report["entities"].get("realistic_combined")
+
+    if realistic_combined:
+        print("  [REALISTIC CONCURRENT WORKLOAD - shared worker pool]")
+        print("")
 
     for name, data in write_entries.items():
         count = data["created"]
@@ -2887,6 +3053,18 @@ def print_summary_table(report):
         err_pct = data["error_rate_pct"]
         err_str = f"{err_pct:.1f}%" if err_pct > 0 else "0.0%"
         print(f"{name:<22} {count:>7} {rps:>8.1f} {p50:>7.0f} {p95:>7.0f} {p99:>7.0f} {err_str:>7}")
+
+    if realistic_combined:
+        print("\u2500" * 70)
+        rc = realistic_combined
+        rc_count = rc["created"]
+        rc_rps = rc["throughput_rps"]
+        rc_p50 = rc["latency_ms"]["p50"]
+        rc_p95 = rc["latency_ms"]["p95"]
+        rc_p99 = rc["latency_ms"]["p99"]
+        rc_err = rc["error_rate_pct"]
+        rc_err_str = f"{rc_err:.1f}%" if rc_err > 0 else "0.0%"
+        print(f"{'realistic_combined':<22} {rc_count:>7} {rc_rps:>8.1f} {rc_p50:>7.0f} {rc_p95:>7.0f} {rc_p99:>7.0f} {rc_err_str:>7}")
 
     print("\u2500" * 70)
     overall = report["overall"]
