@@ -20,8 +20,11 @@ import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MessagingConnection;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 /**
  * Integration tests for MessagingService entity operations.
@@ -262,5 +265,197 @@ public class MessagingServiceResourceIT
     ListResponse<MessagingService> response = listEntities(params);
     assertNotNull(response);
     assertTrue(response.getData().size() >= 3);
+  }
+
+  // ===================================================================
+  // CONNECTION MASKING TESTS (Issue #19596)
+  // ===================================================================
+
+  private MessagingService createKafkaServiceWithCredentials(TestNamespace ns, String nameSuffix) {
+    KafkaConnection conn =
+        new KafkaConnection()
+            .withBootstrapServers("localhost:9092")
+            .withSchemaRegistryURL(URI.create("http://localhost:8081"))
+            .withSaslUsername("kafka_user")
+            .withSaslPassword("super_secret_password")
+            .withBasicAuthUserInfo("registry_user:registry_secret");
+
+    CreateMessagingService request =
+        new CreateMessagingService()
+            .withName(ns.prefix(nameSuffix))
+            .withServiceType(MessagingServiceType.Kafka)
+            .withConnection(new MessagingConnection().withConfig(conn))
+            .withDescription("Kafka service with credentials for masking test");
+
+    return SdkClients.adminClient().messagingServices().create(request);
+  }
+
+  private KafkaConnection extractKafkaConnection(MessagingService service) {
+    assertNotNull(service.getConnection(), "Service connection should not be null");
+    return JsonUtils.convertValue(service.getConnection().getConfig(), KafkaConnection.class);
+  }
+
+  /**
+   * Validates that password fields on a KafkaConnection are properly masked.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/19596">Issue #19596</a>
+   */
+  private void assertPasswordsMasked(KafkaConnection conn, String context) {
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        conn.getSaslPassword(),
+        context + ": saslPassword should be masked");
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        conn.getBasicAuthUserInfo(),
+        context + ": basicAuthUserInfo should be masked");
+  }
+
+  private void assertPasswordsNotMasked(KafkaConnection conn, String context) {
+    assertEquals(
+        "super_secret_password",
+        conn.getSaslPassword(),
+        context + ": saslPassword should be unmasked");
+    assertEquals(
+        "registry_user:registry_secret",
+        conn.getBasicAuthUserInfo(),
+        context + ": basicAuthUserInfo should be unmasked");
+  }
+
+  /**
+   * Test: Admin user should see masked passwords when fetching messaging service by ID.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/19596">Issue #19596</a>
+   */
+  @Test
+  void test_adminGetMessagingService_passwordsMasked(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "admin_mask_byid");
+
+    MessagingService fetched =
+        SdkClients.adminClient().messagingServices().get(service.getId().toString());
+
+    KafkaConnection conn = extractKafkaConnection(fetched);
+    assertEquals("localhost:9092", conn.getBootstrapServers());
+    assertEquals("kafka_user", conn.getSaslUsername());
+    assertPasswordsMasked(conn, "Admin GET by ID");
+  }
+
+  /**
+   * Test: Admin user should see masked passwords when fetching messaging service by name.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/19596">Issue #19596</a>
+   */
+  @Test
+  void test_adminGetByNameMessagingService_passwordsMasked(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "admin_mask_byname");
+
+    MessagingService fetched =
+        SdkClients.adminClient().messagingServices().getByName(service.getFullyQualifiedName());
+
+    KafkaConnection conn = extractKafkaConnection(fetched);
+    assertPasswordsMasked(conn, "Admin GET by name");
+  }
+
+  /**
+   * Test: Regular (non-bot, non-admin) user should see masked passwords when fetching messaging
+   * service via API.
+   *
+   * <p>This is the core scenario from Issue #19596: a non-privileged user should NOT see
+   * credentials when fetching service details via the API endpoint
+   * /v1/services/messagingServices/name/{name}.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/19596">Issue #19596</a>
+   */
+  @Test
+  void test_regularUserGetMessagingService_passwordsMasked(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "user_mask_byid");
+    OpenMetadataClient userClient = SdkClients.testUserClient();
+
+    MessagingService fetched = userClient.messagingServices().get(service.getId().toString());
+
+    KafkaConnection conn = extractKafkaConnection(fetched);
+    assertEquals("localhost:9092", conn.getBootstrapServers());
+    assertEquals("kafka_user", conn.getSaslUsername());
+    assertPasswordsMasked(conn, "Regular user GET by ID");
+  }
+
+  /**
+   * Test: Regular user should see masked passwords when fetching by name.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/19596">Issue #19596</a>
+   */
+  @Test
+  void test_regularUserGetByNameMessagingService_passwordsMasked(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "user_mask_byname");
+    OpenMetadataClient userClient = SdkClients.testUserClient();
+
+    MessagingService fetched =
+        userClient.messagingServices().getByName(service.getFullyQualifiedName());
+
+    KafkaConnection conn = extractKafkaConnection(fetched);
+    assertPasswordsMasked(conn, "Regular user GET by name");
+  }
+
+  /**
+   * Test: Bot/ingestion user should see unmasked passwords for operational use.
+   *
+   * <p>Bot accounts need access to actual credentials for running ingestion pipelines.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/19596">Issue #19596</a>
+   */
+  @Test
+  void test_botGetMessagingService_passwordsNotMasked(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "bot_nomask_byid");
+    OpenMetadataClient botClient = SdkClients.ingestionBotClient();
+
+    MessagingService fetched = botClient.messagingServices().get(service.getId().toString());
+
+    KafkaConnection conn = extractKafkaConnection(fetched);
+    assertEquals("localhost:9092", conn.getBootstrapServers());
+    assertEquals("kafka_user", conn.getSaslUsername());
+    assertPasswordsNotMasked(conn, "Bot GET by ID");
+  }
+
+  /**
+   * Test: Bot user should see unmasked passwords when fetching by name.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/19596">Issue #19596</a>
+   */
+  @Test
+  void test_botGetByNameMessagingService_passwordsNotMasked(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "bot_nomask_byname");
+    OpenMetadataClient botClient = SdkClients.ingestionBotClient();
+
+    MessagingService fetched =
+        botClient.messagingServices().getByName(service.getFullyQualifiedName());
+
+    KafkaConnection conn = extractKafkaConnection(fetched);
+    assertPasswordsNotMasked(conn, "Bot GET by name");
+  }
+
+  /**
+   * Test: Non-bot users listing messaging services should see masked passwords.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/19596">Issue #19596</a>
+   */
+  @Test
+  void test_regularUserListMessagingServices_passwordsMasked(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "user_list_mask");
+    OpenMetadataClient userClient = SdkClients.testUserClient();
+
+    ListResponse<MessagingService> response =
+        userClient.messagingServices().list(new ListParams().withLimit(1000));
+
+    MessagingService found =
+        response.getData().stream()
+            .filter(s -> s.getId().equals(service.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(found, "Service should appear in list results");
+
+    if (found.getConnection() != null && found.getConnection().getConfig() != null) {
+      KafkaConnection conn = extractKafkaConnection(found);
+      assertPasswordsMasked(conn, "Regular user LIST");
+    }
   }
 }

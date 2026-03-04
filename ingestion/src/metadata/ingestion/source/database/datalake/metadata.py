@@ -248,7 +248,12 @@ class DatalakeSource(DatabaseServiceSource):
         except ReadException:
             metadata_entry = None
         if self.source_config.includeTables:
-            for key_name in self.client.get_table_names(bucket_name, prefix):
+            skip_cold_storage = (
+                getattr(self.service_connection, "skipColdStorage", False) or False
+            )
+            for key_name in self.client.get_table_names(
+                bucket_name, prefix, skip_cold_storage=skip_cold_storage
+            ):
                 table_name = self.standardize_table_name(bucket_name, key_name)
 
                 if self.filter_dl_table(table_name):

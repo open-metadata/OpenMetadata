@@ -36,12 +36,12 @@ def valid_metric(value: str, metrics: Inject[Type[MetricRegistry]] = None):
         raise DependencyNotFoundError(
             "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
         )
-    if not metrics.get(value.upper()):
+    if not metrics.get(value):
         raise ValueError(
             f"Metric name {value} is not a proper metric name from the Registry"
         )
 
-    return value.upper()
+    return value
 
 
 ValidMetric = Annotated[str, BeforeValidator(valid_metric)]

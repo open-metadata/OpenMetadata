@@ -72,6 +72,21 @@ public class PaginatedEntityTimeSeriesSource
     this.endTs = endTs;
   }
 
+  public PaginatedEntityTimeSeriesSource(
+      String entityType,
+      int batchSize,
+      List<String> fields,
+      int knownTotal,
+      Long startTs,
+      Long endTs) {
+    this.entityType = entityType;
+    this.batchSize = batchSize;
+    this.fields = fields;
+    this.stats.withTotalRecords(knownTotal).withSuccessRecords(0).withFailedRecords(0);
+    this.startTs = startTs;
+    this.endTs = endTs;
+  }
+
   @Override
   public ResultList<? extends EntityTimeSeriesInterface> readNext(Map<String, Object> contextData)
       throws SearchIndexException {

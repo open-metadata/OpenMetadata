@@ -28,6 +28,8 @@ class NullRatio(ComposedMetric):
     compute the null ratio
     """
 
+    schema_metric_type = MetricType.nullProportion
+
     @classmethod
     def name(cls):
         return MetricType.nullProportion.value
