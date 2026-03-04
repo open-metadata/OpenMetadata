@@ -600,7 +600,7 @@ public class SearchIndexExecutor implements AutoCloseable {
       syncSinkStatsFromBulkSink();
 
       int dataSize = entities != null && entities.getData() != null ? entities.getData().size() : 0;
-      int readerErrors = listOrEmpty(entities.getErrors()).size();
+      int readerErrors = entities != null ? listOrEmpty(entities.getErrors()).size() : 0;
       StepStats failedStats = createFailedStats(indexingError, dataSize + readerErrors);
       updateStats(entityType, failedStats);
     }
@@ -615,7 +615,7 @@ public class SearchIndexExecutor implements AutoCloseable {
 
       int failedCount =
           entities != null && entities.getData() != null ? entities.getData().size() : 0;
-      int readerErrors = listOrEmpty(entities.getErrors()).size();
+      int readerErrors = entities != null ? listOrEmpty(entities.getErrors()).size() : 0;
       StepStats failedStats =
           new StepStats().withSuccessRecords(0).withFailedRecords(failedCount + readerErrors);
       updateStats(entityType, failedStats);
