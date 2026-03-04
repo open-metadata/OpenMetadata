@@ -168,6 +168,43 @@ HTTP requests retry up to 3 times with exponential backoff (1s, 2s, 4s) on:
 - At `xlarge` scale, expect the script to run for several hours depending on server capacity
 - Monitor server logs for 429/503 errors and reduce workers if needed
 
+### Multi-Scale Benchmarking
+
+Run benchmarks across multiple asset counts to compare performance at different scales:
+
+```bash
+# Benchmark at 10k, 50k, 100k, and 200k entities
+for scale in 10k 50k 100k 200k; do
+  ./scripts/perf-test.sh --scale "$scale" --server http://localhost:8585 \
+    --output "/tmp/bench-${scale}.json" --workers 20 2>&1 | tee "/tmp/bench-${scale}.log"
+done
+```
+
+With read and mixed workload benchmarks included:
+
+```bash
+for scale in 10k 50k 100k; do
+  ./scripts/perf-test.sh --scale "$scale" --server http://localhost:8585 \
+    --mixed --mixed-duration 30 \
+    --output "/tmp/bench-${scale}.json" 2>&1 | tee "/tmp/bench-${scale}.log"
+done
+```
+
+Compare results across scales:
+
+```bash
+for f in /tmp/bench-*.json; do
+  echo "=== $(basename $f) ==="
+  python3 -c "
+import json
+r = json.load(open('$f'))
+o = r['overall']
+print(f\"  Entities: {o['total_entities_created']:,}  RPS: {o['overall_throughput_rps']:.1f}\"
+      f\"  Errors: {o['overall_error_rate_pct']:.1f}%  Time: {o['total_wall_clock_s']:.0f}s\")
+"
+done
+```
+
 ## Verification After Loading
 
 ```bash
