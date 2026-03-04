@@ -19,7 +19,7 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import TEXT, Column, Integer, String, inspect
+from sqlalchemy import TEXT, Column, Integer, String, func, inspect
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm.session import Session
@@ -53,6 +53,7 @@ from metadata.profiler.metrics.core import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.processor.default import get_default_metrics
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
@@ -64,6 +65,16 @@ class User(declarative_base()):
     nickname = Column(String(256))
     comments = Column(TEXT)
     age = Column(Integer)
+
+
+class MixedCaseTable(declarative_base()):
+    """Mimics ometa_to_sqa_orm output: name keeps original case, key is lowercased."""
+
+    __tablename__ = "mixed_case_test"
+    reservationid = Column(
+        "reservationId", Integer, primary_key=True, key="reservationid"
+    )
+    username = Column("userName", String(256), key="username")
 
 
 @pytest.fixture
@@ -100,7 +111,8 @@ def sqa_profiler_interface(table_entity, sqlite_conn):
         interface = SQAProfilerInterface(
             sqlite_conn, None, table_entity, None, sampler, 5, 43200
         )
-    return interface
+    yield interface
+    interface.close()
 
 
 def test_init_interface(sqa_profiler_interface):
@@ -419,3 +431,42 @@ def test_compute_metrics_in_thread_other_exception(sqa_profiler_interface):
     assert column is None
     assert metric_type is None
     assert mock_fn.call_count == 1  # Called only once before breaking
+
+
+def test_compute_query_metrics_mixed_case_column(sqa_profiler_interface):
+    """When ORM columns have a lowercase .key differing from their original-case
+    .name (as produced by build_orm_col for Snowflake/BigQuery), _compute_query_metrics
+    must look up columns via .key — since SQLAlchemy's .c[] is keyed by .key, not .name."""
+    column = list(MixedCaseTable.__table__.c)[0]
+    assert column.name != column.key  # precondition: mixed case
+
+    mock_instance = Mock()
+    mock_instance.query.return_value = func.count(column).label("testMetric")
+    mock_instance.metric_type = int
+    mock_metric_class = Mock(return_value=mock_instance)
+    mock_metric_class.name.return_value = "testMetric"
+
+    interface = Mock(spec=SQAProfilerInterface)
+    interface.session = sqa_profiler_interface.session
+
+    MixedCaseTable.__table__.create(
+        bind=sqa_profiler_interface.session.get_bind(), checkfirst=True
+    )
+
+    runner = QueryRunner(
+        session=sqa_profiler_interface.session,
+        dataset=MixedCaseTable,
+        raw_dataset=MixedCaseTable,
+        partition_details=None,
+        profile_sample_query=None,
+    )
+
+    result = SQAProfilerInterface._compute_query_metrics(
+        interface,
+        metric=mock_metric_class,
+        runner=runner,
+        column=column,
+        session=sqa_profiler_interface.session,
+        sample=MixedCaseTable,
+    )
+    assert result is not None

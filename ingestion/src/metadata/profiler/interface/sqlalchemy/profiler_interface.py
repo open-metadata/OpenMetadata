@@ -267,9 +267,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             if isinstance(metric_query, Label):
                 # hotfix to handle transition of unique count implementation
                 sample_column = (
-                    sample.__table__.c[column.name]
+                    sample.__table__.c[column.key]
                     if hasattr(sample, "__table__")
-                    else sample.c[column.name]
+                    else sample.c[column.key]
                 )
                 subquery = (
                     self.session.query(Count(sample_column).fn().label(column.name))
