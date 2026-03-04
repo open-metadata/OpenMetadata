@@ -73,6 +73,9 @@ public class DefaultToolContext {
         case "root_cause_analysis":
           result = new RootCauseAnalysisTool().execute(authorizer, securityContext, params);
           break;
+        case "create_metric":
+          result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
+          break;
         default:
           return McpSchema.CallToolResult.builder()
               .content(
@@ -102,7 +105,7 @@ public class DefaultToolContext {
           .isError(true)
           .build();
     } catch (Exception ex) {
-      LOG.error("Error executing tool: {}", ex.getMessage());
+      LOG.error("Error executing tool '{}': {}", toolName, ex.getMessage(), ex);
       return McpSchema.CallToolResult.builder()
           .content(
               List.of(

@@ -184,22 +184,31 @@ public class IncidentPaginationIT {
   @Test
   public void testFilteredTotalCountIsExact() throws Exception {
     String targetFqn = testCases.get(0).getFullyQualifiedName();
-    ListParams params =
-        new ListParams()
-            .withLimit(PAGE_SIZE)
-            .withOffset(0)
-            .withLatest(true)
-            .addFilter("testCaseFQN", targetFqn);
 
-    ListResponse<TestCaseResolutionStatus> response =
-        client.testCaseResolutionStatuses().searchList(params);
+    await("Wait for filtered incident to be searchable by testCaseFQN")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              ListParams params =
+                  new ListParams()
+                      .withLimit(PAGE_SIZE)
+                      .withOffset(0)
+                      .withLatest(true)
+                      .addFilter("testCaseFQN", targetFqn);
 
-    assertNotNull(response);
-    assertEquals(1, response.getData().size(), "Filter should return exactly 1 incident");
-    assertEquals(
-        1,
-        response.getPaging().getTotal(),
-        "Total count must reflect only the filtered group, not all groups");
+              ListResponse<TestCaseResolutionStatus> response =
+                  client.testCaseResolutionStatuses().searchList(params);
+
+              assertNotNull(response);
+              assertEquals(1, response.getData().size(), "Filter should return exactly 1 incident");
+              assertEquals(
+                  1,
+                  response.getPaging().getTotal(),
+                  "Total count must reflect only the filtered group, not all groups");
+            });
   }
 
   private Table createTestTable() throws Exception {

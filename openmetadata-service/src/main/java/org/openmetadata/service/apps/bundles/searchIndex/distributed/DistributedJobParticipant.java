@@ -63,6 +63,8 @@ public class DistributedJobParticipant implements Managed {
    */
   @Getter private UUID currentJobId;
 
+  private volatile Thread participantThread;
+
   public DistributedJobParticipant(
       CollectionDAO collectionDAO,
       SearchRepository searchRepository,
@@ -116,6 +118,18 @@ public class DistributedJobParticipant implements Managed {
   @Override
   public void stop() {
     if (running.compareAndSet(true, false)) {
+      Thread thread = participantThread;
+      if (thread != null) {
+        thread.interrupt();
+        try {
+          thread.join(10_000);
+          if (thread.isAlive()) {
+            LOG.warn("Participant thread did not terminate within 10s after interrupt");
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
       notifier.stop();
       LOG.info("Stopped distributed job participant on server {}", serverId);
     }
@@ -190,22 +204,22 @@ public class DistributedJobParticipant implements Managed {
       pollingNotifier.setParticipating(true);
     }
 
-    Thread.ofVirtual()
-        .name("job-participant-" + job.getId().toString().substring(0, 8))
-        .start(
-            () -> {
-              try {
-                processJobPartitions(job);
-              } finally {
-                participating.set(false);
-                currentJobId = null;
-
-                // Reset polling notifier to idle interval
-                if (notifier instanceof PollingJobNotifier pollingNotifier) {
-                  pollingNotifier.setParticipating(false);
-                }
-              }
-            });
+    participantThread =
+        Thread.ofVirtual()
+            .name("job-participant-" + job.getId().toString().substring(0, 8))
+            .start(
+                () -> {
+                  try {
+                    processJobPartitions(job);
+                  } finally {
+                    currentJobId = null;
+                    if (notifier instanceof PollingJobNotifier pollingNotifier) {
+                      pollingNotifier.setParticipating(false);
+                    }
+                    participating.set(false);
+                    participantThread = null;
+                  }
+                });
   }
 
   /** Process partitions for a job. */
@@ -255,9 +269,13 @@ public class DistributedJobParticipant implements Managed {
       // Set up failure callback on bulk sink to record sink failures
       final IndexingFailureRecorder recorder = failureRecorder;
       bulkSink.setFailureCallback(
-          (entityType, entityId, entityFqn, errorMessage) -> {
+          (entityType, entityId, entityFqn, errorMessage, stage) -> {
             if (recorder != null) {
-              recorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+              if (stage == IndexingFailureRecorder.FailureStage.PROCESS) {
+                recorder.recordProcessFailure(entityType, entityId, entityFqn, errorMessage);
+              } else {
+                recorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+              }
             }
           });
 

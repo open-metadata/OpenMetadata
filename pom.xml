@@ -157,11 +157,27 @@
     <angus-mail.version>2.0.4</angus-mail.version>
     <commonmark.version>0.26.0</commonmark.version>
     <flexmark.version>0.64.8</flexmark.version>
-    <owasp-html-sanitizer.version>20240325.1</owasp-html-sanitizer.version>
+    <owasp-html-sanitizer.version>20260101.1</owasp-html-sanitizer.version>
   </properties>
 
   <dependencyManagement>
     <dependencies>
+      <!-- Security: Force newer versions to fix vulnerabilities -->
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.18.0</version>
+      </dependency>
+      <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>okhttp</artifactId>
+        <version>4.12.0</version>
+      </dependency>
+      <dependency>
+        <groupId>io.projectreactor.netty</groupId>
+        <artifactId>reactor-netty-http</artifactId>
+        <version>1.2.14</version>
+      </dependency>
       <dependency>
         <groupId>org.eclipse.angus</groupId>
         <artifactId>angus-mail</artifactId>
@@ -635,7 +651,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.125.Final</version>
+        <version>4.1.129.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>

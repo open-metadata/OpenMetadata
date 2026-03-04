@@ -78,6 +78,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
+import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -151,7 +152,7 @@ public final class TestUtils {
               new RedshiftConnection()
                   .withHostPort("localhost:5002")
                   .withUsername("test")
-                  .withPassword("test"));
+                  .withAuthType(new basicAuth().withPassword("test")));
 
   public static final URI PIPELINE_URL = getUri("http://localhost:8080");
   public static final DatabaseConnection MYSQL_DATABASE_CONNECTION =
@@ -209,7 +210,9 @@ public final class TestUtils {
       new ApiConnection()
           .withConfig(
               new RestConnection()
-                  .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json")));
+                  .withOpenAPISchemaConnection(
+                      new OpenAPISchemaURL()
+                          .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json"))));
 
   public static final LLMConnection OPENAI_CONNECTION =
       new LLMConnection()

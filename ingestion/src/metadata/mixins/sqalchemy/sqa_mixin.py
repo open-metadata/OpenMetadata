@@ -17,8 +17,7 @@ supporting sqlalchemy abstraction layer
 
 from typing import List, Optional
 
-from sqlalchemy import Column, MetaData, inspect
-from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy import Column, MetaData, inspect, text
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
@@ -94,16 +93,16 @@ class SQAInterfaceMixin(Root):
             self.service_connection_config,
             (UnityCatalogConnection, DatabricksConnection),
         ):
-            session.get_bind().execute(
-                "USE CATALOG %(catalog)s;",
+            session.execute(
+                text("USE CATALOG :catalog"),
                 {"catalog": self.service_connection_config.catalog},
             ).first()
 
         if isinstance(
             self.service_connection_config, (MysqlConnection, MariaDBConnection)
         ):
-            session.get_bind().execute(
-                f"USE {self.table_entity.databaseSchema.name};",
+            session.execute(
+                text(f"USE {self.table_entity.databaseSchema.name}"),
             )
 
     def close(self):
@@ -120,7 +119,7 @@ class SQAInterfaceMixin(Root):
 
     def build_table_orm(
         self, table: Table, service_conn_config: BaseModel, ometa_client: OpenMetadata
-    ) -> Optional[DeclarativeMeta]:
+    ) -> Optional[type]:
         """Build the ORM table if needed for the sampler and profiler interfaces"""
         if service_conn_config.type.value not in NON_SQA_DATABASE_CONNECTIONS:
             orm_obj = ometa_to_sqa_orm(table, ometa_client, MetaData())

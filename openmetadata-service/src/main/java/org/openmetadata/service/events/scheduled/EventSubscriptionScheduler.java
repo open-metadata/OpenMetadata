@@ -50,6 +50,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -102,8 +103,33 @@ public class EventSubscriptionScheduler {
     Properties properties = new Properties();
     properties.put("org.quartz.scheduler.instanceName", SCHEDULER_NAME);
     properties.put("org.quartz.scheduler.instanceId", "AUTO");
+    properties.put("org.quartz.scheduler.skipUpdateCheck", "true");
+    properties.put("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
     properties.put("org.quartz.threadPool.threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
-    properties.put("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore");
+    properties.put("org.quartz.threadPool.threadPriority", "5");
+    properties.put("org.quartz.jobStore.misfireThreshold", "60000");
+    properties.put("org.quartz.jobStore.class", "org.quartz.impl.jdbcjobstore.JobStoreTX");
+    properties.put("org.quartz.jobStore.useProperties", "true");
+    properties.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
+    properties.put("org.quartz.jobStore.isClustered", "true");
+    properties.put("org.quartz.jobStore.dataSource", "myDS");
+    properties.put("org.quartz.dataSource.myDS.maxConnections", "5");
+    properties.put("org.quartz.dataSource.myDS.validationQuery", "select 1");
+    properties.put(
+        "org.quartz.dataSource.myDS.driver", config.getDataSourceFactory().getDriverClass());
+    properties.put("org.quartz.dataSource.myDS.URL", config.getDataSourceFactory().getUrl());
+    properties.put("org.quartz.dataSource.myDS.user", config.getDataSourceFactory().getUser());
+    properties.put(
+        "org.quartz.dataSource.myDS.password", config.getDataSourceFactory().getPassword());
+    if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
+      properties.put(
+          "org.quartz.jobStore.driverDelegateClass",
+          "org.quartz.impl.jdbcjobstore.StdJDBCDelegate");
+    } else {
+      properties.put(
+          "org.quartz.jobStore.driverDelegateClass",
+          "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate");
+    }
 
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(properties);
@@ -211,9 +237,9 @@ public class EventSubscriptionScheduler {
   private JobDetail jobBuilder(
       AbstractEventConsumer publisher, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put(ALERT_INFO_KEY, eventSubscription);
+    dataMap.put(ALERT_INFO_KEY, JsonUtils.pojoToJson(eventSubscription));
     EventSubscriptionOffset startingOffset = getStartingOffset(eventSubscription.getId());
-    dataMap.put(ALERT_OFFSET_KEY, startingOffset);
+    dataMap.put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(startingOffset));
     JobBuilder jobBuilder =
         JobBuilder.newJob(publisher.getClass())
             .withIdentity(jobIdentity, ALERT_JOB_GROUP)

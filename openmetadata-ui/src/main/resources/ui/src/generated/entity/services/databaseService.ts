@@ -42,6 +42,10 @@ export interface DatabaseService {
      */
     domains?: EntityReference[];
     /**
+     * Status of the entity.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Followers of this entity.
      */
     followers?: EntityReference[];
@@ -563,8 +567,6 @@ export interface ConfigObject {
      *
      * Password to connect to Presto.
      *
-     * Password to connect to Redshift.
-     *
      * Password to connect to Salesforce.
      *
      * Password to connect to SingleStore.
@@ -735,6 +737,8 @@ export interface ConfigObject {
      *
      * Choose Auth Config Type.
      *
+     * Choose Auth Configuration Type.
+     *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
@@ -849,6 +853,20 @@ export interface ConfigObject {
      * Connect with oracle by either passing service name or database schema name.
      */
     oracleConnectionType?: OracleConnectionType;
+    /**
+     * Controls how Oracle identifier names (tables, columns, schemas) are stored in
+     * OpenMetadata. When disabled (default), Oracle's UPPERCASE unquoted identifiers (e.g.
+     * EMPLOYEES) are not guaranteed to be stored as-is — identifiers with the same letters but
+     * different case (e.g. unquoted EMPLOYEES and quoted 'employees') will collide into the
+     * same name. When enabled, names are stored exactly as Oracle persists them, which solves
+     * same-name collisions between quoted and unquoted identifiers. WARNING: enabling this
+     * after data has already been ingested with the default setting will change the stored
+     * names of all existing tables, columns, schemas, and constraints — breaking attached tags,
+     * descriptions, lineage, data quality tests, and any other metadata associated with those
+     * entities. If you must switch, soft-delete all previously ingested entities before
+     * re-ingesting.
+     */
+    preserveIdentifierCase?: boolean;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      *
@@ -1175,6 +1193,8 @@ export enum AuthMechanismEnum {
  * IAM Auth Database Connection Config
  *
  * Azure Database Connection Config
+ *
+ * Choose Auth Configuration Type.
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  *
@@ -2490,6 +2510,21 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the entity.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
