@@ -561,14 +561,7 @@ public class SearchRepository {
       try {
         ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
         String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
-        String columnId =
-            java.util
-                .UUID
-                .nameUUIDFromBytes(
-                    column
-                        .getFullyQualifiedName()
-                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
-                .toString();
+        String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
         docs.add(Collections.singletonMap(columnId, doc));
       } catch (Exception e) {
         LOG.error(
@@ -809,14 +802,7 @@ public class SearchRepository {
         try {
           ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
           String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
-          String columnId =
-              java.util
-                  .UUID
-                  .nameUUIDFromBytes(
-                      column
-                          .getFullyQualifiedName()
-                          .getBytes(java.nio.charset.StandardCharsets.UTF_8))
-                  .toString();
+          String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
           allColumnDocs.add(Collections.singletonMap(columnId, doc));
         } catch (Exception e) {
           LOG.error(

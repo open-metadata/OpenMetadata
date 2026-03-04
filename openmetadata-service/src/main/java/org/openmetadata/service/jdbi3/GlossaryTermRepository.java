@@ -633,11 +633,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       throw new IllegalArgumentException("Column FQN is required");
     }
 
-    // Extract table FQN from column FQN (format: service.database.schema.table.column)
-    String tableFqn = FullyQualifiedName.getParentFQN(columnFqn);
-    if (tableFqn == null) {
-      throw new IllegalArgumentException("Cannot extract table FQN from column FQN: " + columnFqn);
-    }
+    // Extract table FQN from column FQN (format: service.database.schema.table.column[.nested...])
+    String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
 
     // Get the table with columns
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
@@ -838,7 +835,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
-        removeTagFromColumn(ref, term, success, result);
+        try {
+          removeTagFromColumn(ref, term, success, result);
+        } catch (Exception ex) {
+          LOG.error("Error removing glossary tag from column: {}", ref.getFullyQualifiedName(), ex);
+          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+        }
         continue;
       }
 
@@ -873,11 +875,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       throw new IllegalArgumentException("Column FQN is required");
     }
 
-    // Extract table FQN from column FQN
-    String tableFqn = FullyQualifiedName.getParentFQN(columnFqn);
-    if (tableFqn == null) {
-      throw new IllegalArgumentException("Cannot extract table FQN from column FQN: " + columnFqn);
-    }
+    // Extract table FQN from column FQN (format: service.database.schema.table.column[.nested...])
+    String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
 
     // Get the table
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);

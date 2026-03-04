@@ -112,6 +112,10 @@ public class OpenSearchBulkSink implements BulkSink {
   private final AtomicLong vectorFailed = new AtomicLong(0);
   private VectorBulkProcessor vectorBulkProcessor;
 
+  // Column indexing metrics
+  private final AtomicLong columnIndexed = new AtomicLong(0);
+  private final AtomicLong columnFailed = new AtomicLong(0);
+
   public OpenSearchBulkSink(
       SearchRepository searchRepository,
       int batchSize,
@@ -239,8 +243,7 @@ public class OpenSearchBulkSink implements BulkSink {
                                     entity, indexName, recreateIndex, reindexContext, tracker);
                                 // Index columns separately when processing table entities
                                 if (Entity.TABLE.equals(entityType)) {
-                                  indexTableColumns(
-                                      entityInterfaces, recreateIndex, reindexContext);
+                                  indexTableColumns(entity, recreateIndex, reindexContext);
                                 }
                               } finally {
                                 DOC_BUILD_SEMAPHORE.release();
@@ -425,7 +428,11 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   private void indexTableColumns(
-      List<EntityInterface> entities, boolean recreateIndex, ReindexContext reindexContext) {
+      EntityInterface entity, boolean recreateIndex, ReindexContext reindexContext) {
+    if (!(entity instanceof Table table)) {
+      return;
+    }
+
     IndexMapping columnIndexMapping = searchRepository.getIndexMapping(Entity.TABLE_COLUMN);
     if (columnIndexMapping == null) {
       LOG.debug("No index mapping found for tableColumn. Skipping column indexing.");
@@ -441,48 +448,44 @@ public class OpenSearchBulkSink implements BulkSink {
       columnIndexName = columnIndexMapping.getIndexName(searchRepository.getClusterAlias());
     }
 
-    for (EntityInterface entity : entities) {
-      if (entity instanceof Table table) {
-        List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
-        for (Column column : flattenedColumns) {
-          try {
-            ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
-            Object searchIndexDoc = columnIndex.buildSearchIndexDoc();
-            String json = JsonUtils.pojoToJson(searchIndexDoc);
-            String docId = columnIndex.buildSearchIndexDoc().get("id").toString();
+    List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+    for (Column column : flattenedColumns) {
+      try {
+        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+        Map<String, Object> searchIndexDoc = columnIndex.buildSearchIndexDoc();
+        String json = JsonUtils.pojoToJson(searchIndexDoc);
+        String docId = searchIndexDoc.get("id").toString();
 
-            BulkOperation operation;
-            if (recreateIndex) {
-              operation =
-                  BulkOperation.of(
-                      op ->
-                          op.index(
-                              idx ->
-                                  idx.index(columnIndexName)
-                                      .id(docId)
-                                      .document(OsUtils.toJsonData(json))));
-            } else {
-              operation =
-                  BulkOperation.of(
-                      op ->
-                          op.update(
-                              upd ->
-                                  upd.index(columnIndexName)
-                                      .id(docId)
-                                      .document(OsUtils.toJsonData(json))
-                                      .docAsUpsert(true)));
-            }
-            bulkProcessor.add(operation);
-            columnIndexed.incrementAndGet();
-          } catch (Exception e) {
-            columnFailed.incrementAndGet();
-            LOG.error(
-                "Failed to index column {} for table {}",
-                column.getFullyQualifiedName(),
-                table.getFullyQualifiedName(),
-                e);
-          }
+        BulkOperation operation;
+        if (recreateIndex) {
+          operation =
+              BulkOperation.of(
+                  op ->
+                      op.index(
+                          idx ->
+                              idx.index(columnIndexName)
+                                  .id(docId)
+                                  .document(OsUtils.toJsonData(json))));
+        } else {
+          operation =
+              BulkOperation.of(
+                  op ->
+                      op.update(
+                          upd ->
+                              upd.index(columnIndexName)
+                                  .id(docId)
+                                  .document(OsUtils.toJsonData(json))
+                                  .docAsUpsert(true)));
         }
+        bulkProcessor.add(operation);
+        columnIndexed.incrementAndGet();
+      } catch (Exception e) {
+        columnFailed.incrementAndGet();
+        LOG.error(
+            "Failed to index column {} for table {}",
+            column.getFullyQualifiedName(),
+            table.getFullyQualifiedName(),
+            e);
       }
     }
   }

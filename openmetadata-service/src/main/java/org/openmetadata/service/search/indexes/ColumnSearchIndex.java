@@ -109,6 +109,14 @@ public class ColumnSearchIndex implements SearchIndex {
       doc.put("glossaryTags", parseTags.getGlossaryTags());
     }
 
+    // Inherit tier from parent table if column doesn't have its own tier
+    if (doc.get("tier") == null && parentTable.getTags() != null) {
+      ParseTags tableParseTags = new ParseTags(parentTable.getTags());
+      if (tableParseTags.getTierTag() != null) {
+        doc.put("tier", tableParseTags.getTierTag());
+      }
+    }
+
     if (column.getExtension() != null) {
       doc.put("extension", column.getExtension());
       doc.put(
@@ -119,7 +127,7 @@ public class ColumnSearchIndex implements SearchIndex {
     return doc;
   }
 
-  private String generateColumnId(String columnFQN) {
+  public static String generateColumnId(String columnFQN) {
     return UUID.nameUUIDFromBytes(columnFQN.getBytes(StandardCharsets.UTF_8)).toString();
   }
 
