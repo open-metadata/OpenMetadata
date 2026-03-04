@@ -52,6 +52,7 @@ class RunIngestionPipelineImplTest {
   @BeforeEach
   void setUp() {
     RunIngestionPipelineImpl.pollingIntervalMillis = 100L;
+    RunIngestionPipelineImpl.runRetryIntervalMillis = 0L;
 
     // Mock Entity static methods
     mockedEntity = mockStatic(Entity.class);
@@ -77,6 +78,7 @@ class RunIngestionPipelineImplTest {
   @AfterEach
   void tearDown() {
     RunIngestionPipelineImpl.pollingIntervalMillis = 30 * 1_000L;
+    RunIngestionPipelineImpl.runRetryIntervalMillis = 15 * 1_000L;
     if (mockedEntity != null) {
       mockedEntity.close();
     }
@@ -143,9 +145,8 @@ class RunIngestionPipelineImplTest {
             RuntimeException.class,
             () -> runIngestionPipelineImpl.execute(testPipeline.getId(), false, 60));
 
-    // Verify correct exception message - check for the actual message from our implementation
     assertTrue(
-        exception.getMessage().contains("Failed to run pipeline after 3 attempts"),
+        exception.getMessage().contains("Failed to run pipeline after retries"),
         "Actual exception message: " + exception.getMessage());
 
     // Verify 3 attempts were made

@@ -28,6 +28,7 @@ public class RunIngestionPipelineImpl {
   public static final String WAIT_FOR_PIPELINE_COMPLETION = "waitForPipelineCompletion";
 
   static long pollingIntervalMillis = 30 * 1_000L;
+  static long runRetryIntervalMillis = 15 * 1_000L;
 
   private final PipelineServiceClientInterface pipelineServiceClient;
 
@@ -83,30 +84,25 @@ public class RunIngestionPipelineImpl {
   }
 
   private void runIngestionPipeline(IngestionPipeline ingestionPipeline) {
-    int maxRetries = 3;
-    long backoffMillis = 15 * 1000L;
+    RetryConfig retryConfig =
+        RetryConfig.custom()
+            .maxAttempts(3)
+            .waitDuration(Duration.ofMillis(runRetryIntervalMillis))
+            .retryOnException(ex -> ex instanceof IngestionPipelineDeploymentException)
+            .build();
 
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        pipelineServiceClient.runPipeline(
-            ingestionPipeline,
-            Entity.getEntity(
-                ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
-        return;
-      } catch (IngestionPipelineDeploymentException ex) {
-        if (attempt == maxRetries) {
-          throw new RuntimeException("Failed to run pipeline after " + attempt + " attempts", ex);
-        }
+    Retry retry = Retry.of("runIngestionPipeline", retryConfig);
 
-        try {
-          Thread.sleep(backoffMillis);
-        } catch (InterruptedException ie) {
-          Thread.currentThread().interrupt();
-          throw new RuntimeException("Interrupted while waiting to retry pipeline run", ie);
-        }
-
-        backoffMillis *= 2;
-      }
+    try {
+      retry.executeRunnable(
+          () ->
+              pipelineServiceClient.runPipeline(
+                  ingestionPipeline,
+                  Entity.getEntity(
+                      ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED)));
+    } catch (Exception ex) {
+      throw new RuntimeException(
+          "Failed to run pipeline after retries: " + ex.getMessage(), ex);
     }
   }
 
