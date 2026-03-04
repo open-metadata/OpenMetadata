@@ -190,8 +190,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   };
 
   useEffect(() => {
-    fetchEntityTypeDetail();
-  }, []);
+    if (hasViewPermission.customProperties) {
+      fetchEntityTypeDetail();
+    }
+  }, [hasViewPermission.customProperties]);
 
   useEffect(() => {
     if (localToast.open) {
@@ -255,10 +257,14 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   }, [fetchColumnDetails]);
 
   useEffect(() => {
-    if (isOpen && entityType === EntityType.TABLE) {
+    if (
+      isOpen &&
+      entityType === EntityType.TABLE &&
+      (permissions.ViewTests || permissions.ViewAll)
+    ) {
       fetchTestCases();
     }
-  }, [isOpen, activeColumn, fetchTestCases]);
+  }, [isOpen, fetchTestCases, permissions.ViewTests, permissions.ViewAll]);
 
   // Flatten all columns including nested children for accurate counting and navigation
   const flattenedColumns = useMemo(
@@ -957,7 +963,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           <DataQualityTab
             isColumnDetailPanel
             entityFQN={activeColumn.fullyQualifiedName || ''}
-            entityType={entityType}
+            hasViewTests={permissions.ViewTests || permissions.ViewAll}
           />
         );
       case EntityRightPanelTab.LINEAGE:

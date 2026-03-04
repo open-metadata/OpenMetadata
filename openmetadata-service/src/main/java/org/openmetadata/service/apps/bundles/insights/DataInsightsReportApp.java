@@ -122,8 +122,10 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       throws SearchIndexException {
     PaginatedEntitiesSource teamReader =
         new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
-    while (!teamReader.isDone().get()) {
-      ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
+    String keysetCursor = null;
+    while (true) {
+      ResultList<Team> resultList = (ResultList<Team>) teamReader.readNextKeyset(keysetCursor);
+      keysetCursor = resultList.getPaging().getAfter();
       for (Team team : resultList.getData()) {
         Set<String> emails = new HashSet<>();
         String email = team.getEmail();
@@ -167,6 +169,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
               team.getName(),
               ex.getMessage());
         }
+      }
+      if (keysetCursor == null) {
+        break;
       }
     }
   }

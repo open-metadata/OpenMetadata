@@ -17,6 +17,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -67,6 +68,21 @@ public class PaginatedEntityTimeSeriesSource
         .withTotalRecords(getEntityTimeSeriesRepository().getTimeSeriesDao().listCount(getFilter()))
         .withSuccessRecords(0)
         .withFailedRecords(0);
+    this.startTs = startTs;
+    this.endTs = endTs;
+  }
+
+  public PaginatedEntityTimeSeriesSource(
+      String entityType,
+      int batchSize,
+      List<String> fields,
+      int knownTotal,
+      Long startTs,
+      Long endTs) {
+    this.entityType = entityType;
+    this.batchSize = batchSize;
+    this.fields = fields;
+    this.stats.withTotalRecords(knownTotal).withSuccessRecords(0).withFailedRecords(0);
     this.startTs = startTs;
     this.endTs = endTs;
   }
@@ -176,6 +192,70 @@ public class PaginatedEntityTimeSeriesSource
       throw new SearchIndexException(indexingError);
     }
     return result;
+  }
+
+  public ResultList<? extends EntityTimeSeriesInterface> readNextKeyset(String keysetCursor)
+      throws SearchIndexException {
+    LOG.debug("[PaginatedEntityTimeSeriesSource] Fetching keyset batch of size: {}", batchSize);
+    try {
+      EntityTimeSeriesDAO.TimeSeriesCursor cursor =
+          EntityTimeSeriesDAO.TimeSeriesCursor.parse(keysetCursor);
+      EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> repository =
+          getEntityTimeSeriesRepository();
+      int cachedTotal = stats.getTotalRecords() != null ? stats.getTotalRecords() : 0;
+      ResultList<? extends EntityTimeSeriesInterface> result =
+          repository.listAfterKeyset(
+              getFilter(),
+              batchSize,
+              startTs,
+              endTs,
+              cursor.afterTs(),
+              cursor.afterFQNHash(),
+              cachedTotal,
+              true);
+
+      LOG.debug(
+          "[PaginatedEntityTimeSeriesSource] Keyset batch stats — Submitted: {} Success: {} Failed: {}",
+          batchSize,
+          result.getData().size(),
+          result.getErrors() != null ? result.getErrors().size() : 0);
+      return result;
+    } catch (Exception e) {
+      LOG.error(
+          "Error reading keyset batch for entityType: {} with cursor: {}",
+          entityType,
+          keysetCursor,
+          e);
+      IndexingError indexingError =
+          new IndexingError()
+              .withErrorSource(READER)
+              .withSuccessCount(0)
+              .withMessage(
+                  String.format(
+                      "Failed to read keyset batch for entityType: %s. Error: %s",
+                      entityType, e.getMessage()))
+              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
+      throw new SearchIndexException(indexingError);
+    }
+  }
+
+  public List<String> findBoundaryCursors(int numReaders, int totalRecords) {
+    List<String> cursors = new ArrayList<>();
+    if (numReaders <= 1 || totalRecords <= 0) {
+      return cursors;
+    }
+    EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> repository =
+        getEntityTimeSeriesRepository();
+    ListFilter filter = getFilter();
+    int recordsPerReader = totalRecords / numReaders;
+    for (int i = 1; i < numReaders; i++) {
+      int offset = i * recordsPerReader;
+      String cursor = repository.getCursorAtOffset(filter, offset);
+      if (cursor != null) {
+        cursors.add(cursor);
+      }
+    }
+    return cursors;
   }
 
   @Override

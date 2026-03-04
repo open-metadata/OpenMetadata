@@ -18,6 +18,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
 from sqlalchemy.types import String
@@ -509,7 +510,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 database_name=database,
                 schema_name=schema_name,
             )
-            results = self.engine.execute(query).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(text(query)).all()
             for row in results:
                 self._table_ddl_cache[row.table_name] = row.ddl
         except Exception as exc:
@@ -1116,14 +1118,18 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     def get_stored_procedures(self) -> Iterable[BigQueryStoredProcedure]:
         """List BigQuery Stored Procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
-                BIGQUERY_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                )
-            ).all()
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    text(
+                        BIGQUERY_GET_STORED_PROCEDURES.format(
+                            database_name=self.context.get().database,
+                            schema_name=self.context.get().database_schema,
+                        )
+                    )
+                ).all()
             for row in results:
-                stored_procedure = BigQueryStoredProcedure.model_validate(dict(row))
+                row_dict = row._asdict() if hasattr(row, "_asdict") else row
+                stored_procedure = BigQueryStoredProcedure.model_validate(row_dict)
                 if self.is_stored_procedure_filtered(stored_procedure.name):
                     continue
                 yield stored_procedure
