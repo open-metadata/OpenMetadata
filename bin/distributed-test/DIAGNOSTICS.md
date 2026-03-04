@@ -19,6 +19,7 @@ curl -H "Authorization: Bearer $TOKEN" \
   "jvm": { ... },
   "jetty": { ... },
   "database": { ... },
+  "database_queries": { ... },
   "bulk_executor": { ... },
   "request_latency": { ... }
 }
@@ -60,6 +61,24 @@ Each section is explained below.
 | `pool_usage_pct` | **Key metric.** If >80%, connection contention is likely. Requests wait for a free connection. |
 | `pool_pending` | Threads waiting for a DB connection. If >0 during load, the pool is undersized. |
 | `pool_idle` | Spare connections. If 0 during load, the pool is fully utilized. |
+| `connection_acquire_avg_ms` | Average time to acquire a connection from the pool. High values (>50ms) indicate pool contention. |
+| `connection_acquire_max_ms` | Maximum connection acquire time observed. |
+| `connection_acquire_count` | Total number of connection acquire operations. |
+
+### Database Queries (Per-Type Profiling)
+
+Breaks down DB query timing by operation type (select, insert, update, delete):
+
+| Field | What It Tells You |
+|-------|-------------------|
+| `total_operations` | Sum of all DB operations across all types. |
+| `{type}.count` | Number of queries of this type. |
+| `{type}.mean_ms` | Average query duration. |
+| `{type}.max_ms` | Maximum query duration. Spikes indicate lock contention or full table scans. |
+| `{type}.p95_ms` | 95th percentile query duration. If >100ms, investigate slow queries. |
+| `{type}.total_ms` | Total cumulative time spent in queries of this type. |
+
+**Reading the profile:** If `select.p95_ms` is 200ms while `insert.p95_ms` is only 20ms, read queries are the bottleneck. This often indicates missing indexes or N+1 query patterns.
 
 ### Bulk Executor
 
@@ -172,6 +191,8 @@ The load test applies these rules automatically and surfaces them in findings:
 | `search_pct > 30%` for any endpoint | Search indexing consuming latency | `export ELASTICSEARCH_MAX_CONN_TOTAL=50` |
 | `bulk_executor.queue_usage_pct > 70%` | Near bulk rejection threshold | `export BULK_OPERATION_QUEUE_SIZE=2000` |
 | `jvm.heap_usage_pct > 85%` after load | Memory pressure / GC tail latency | Increase JVM heap (`-Xmx`) |
+| `database_queries.{type}.p95_ms > 100ms` | Slow DB queries of that type | Add indexes, optimize queries |
+| `connection_acquire_avg_ms > 50ms` | Connection pool contention | `export DB_CONNECTION_POOL_MAX_SIZE=150` |
 
 ---
 
@@ -243,6 +264,29 @@ export OPENMETADATA_HEAP_OPTS="-Xmx4g -Xms4g"
 ```bash
 export BULK_OPERATION_QUEUE_SIZE=2000
 export BULK_OPERATION_MAX_THREADS=20
+```
+
+### Scenario 5: Slow DB Queries
+
+**Symptoms:** High p95 latency, `database_queries.select.p95_ms` >100ms, `db_pct` >60%.
+
+```
+  DB Query Profile (total operations: 125,000):
+    Type         Count       Mean        Max
+    select      80,000     12.3ms    450.0ms
+    insert      40,000     25.1ms    890.0ms
+  Connection acquire avg: 85.2ms
+```
+
+**What's happening:** Individual DB queries are slow (p95 >100ms) and connection acquire time is elevated, indicating both query performance issues and pool contention.
+
+**Fix:**
+```bash
+# Increase pool size to reduce acquire contention
+export DB_CONNECTION_POOL_MAX_SIZE=150
+# Reduce connection timeout to fail fast
+export DB_CONNECTION_TIMEOUT=10000
+# Consider adding database indexes for slow SELECT queries
 ```
 
 ---

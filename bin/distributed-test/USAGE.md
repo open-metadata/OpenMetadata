@@ -111,10 +111,15 @@ Any `--entity-type NUM` flag overrides the preset for that entity type:
 | `--workers NUM` | 20 | Concurrent HTTP workers |
 | `--quick` | - | Quick mode preset (~10K entities) |
 | `--scale PRESET` | - | Scale preset (small/medium/large/xlarge) |
+| `--skip-reads` | - | Skip read benchmarking phase (Phase 8) |
+| `--only-reads` | - | Skip write phases; discover existing entities and run reads only |
+| `--mixed` | - | Run mixed read/write workload (Phase 9) |
+| `--mixed-duration SECS` | 60 | Duration of mixed workload in seconds |
+| `--read-ratio PCT` | 80 | Read percentage in mixed workload (0-100) |
 
 ### Entity Creation Order
 
-The script creates entities in dependency order across 7 phases:
+The script creates entities in dependency order across up to 9 phases:
 
 ```
 Phase 1  Metadata         domains, classifications, tags, glossaries, terms, users, teams
@@ -127,7 +132,14 @@ Phase 5  Data Quality     testSuites, testCases
 Phase 6  Lineage          table->table (60%), table->dashboard (25%), pipeline->table (15%)
 Phase 7  Time-Series      testCaseResults, entityReportData, webAnalyticViews,
                           webAnalyticActivity, rawCostAnalysis, aggCostAnalysis
+Phase 8  Read Benchmarks  entity fetch, paginated list, search queries, lineage traversal
+Phase 9  Mixed Workload   concurrent reads + writes for configurable duration (--mixed)
 ```
+
+Phases 8 and 9 are optional:
+- Phase 8 runs automatically unless `--skip-reads` is passed
+- Phase 9 only runs when `--mixed` is passed
+- `--only-reads` skips phases 1-7, discovers existing entities, and runs Phase 8
 
 ### Entity Linking
 

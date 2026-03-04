@@ -18,6 +18,8 @@ import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
+import io.micrometer.core.instrument.distribution.ValueAtPercentile;
 import io.micrometer.core.instrument.search.Search;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -75,6 +77,7 @@ public class DiagnosticsResource {
     diagnostics.put("jetty", collectJettyMetrics());
     diagnostics.put("database", collectDatabaseMetrics());
     diagnostics.put("bulk_executor", collectBulkExecutorMetrics());
+    diagnostics.put("database_queries", collectDatabaseQueryMetrics());
     diagnostics.put("request_latency", collectRequestLatencyMetrics());
     return Response.ok(diagnostics).build();
   }
@@ -166,7 +169,57 @@ public class DiagnosticsResource {
     double timeoutMs = gaugeValue(registry, "hikaricp.connections.timeout");
     db.put("connection_timeout_ms", timeoutMs > 0 ? (long) timeoutMs : 30000L);
 
+    Timer acquireTimer = registry.find("hikaricp.connections.acquire").timer();
+    if (acquireTimer != null && acquireTimer.count() > 0) {
+      db.put(
+          "connection_acquire_avg_ms",
+          Math.round(acquireTimer.mean(TimeUnit.MILLISECONDS) * 10.0) / 10.0);
+      db.put(
+          "connection_acquire_max_ms",
+          Math.round(acquireTimer.max(TimeUnit.MILLISECONDS) * 10.0) / 10.0);
+      db.put("connection_acquire_count", acquireTimer.count());
+    }
+
     return db;
+  }
+
+  private Map<String, Object> collectDatabaseQueryMetrics() {
+    Map<String, Object> queries = new LinkedHashMap<>();
+    MeterRegistry registry = Metrics.globalRegistry;
+    long totalOperations = 0;
+
+    for (String queryType : new String[] {"select", "insert", "update", "delete"}) {
+      Search search = registry.find("db.query.duration").tag("type", queryType);
+      for (Meter meter : search.meters()) {
+        if (!(meter instanceof Timer timer) || timer.count() == 0) {
+          continue;
+        }
+        long count = timer.count();
+        totalOperations += count;
+        double meanMs = timer.mean(TimeUnit.MILLISECONDS);
+        double maxMs = timer.max(TimeUnit.MILLISECONDS);
+        double totalMs = timer.totalTime(TimeUnit.MILLISECONDS);
+
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("count", count);
+        entry.put("mean_ms", Math.round(meanMs * 10.0) / 10.0);
+        entry.put("max_ms", Math.round(maxMs * 10.0) / 10.0);
+        entry.put("total_ms", Math.round(totalMs * 10.0) / 10.0);
+
+        HistogramSnapshot snapshot = timer.takeSnapshot();
+        ValueAtPercentile[] percentiles = snapshot.percentileValues();
+        for (ValueAtPercentile vap : percentiles) {
+          if (Math.abs(vap.percentile() - 0.95) < 0.001) {
+            entry.put("p95_ms", Math.round(vap.value(TimeUnit.MILLISECONDS) * 10.0) / 10.0);
+          }
+        }
+
+        queries.put(queryType, entry);
+      }
+    }
+
+    queries.put("total_operations", totalOperations);
+    return queries;
   }
 
   private Map<String, Object> collectBulkExecutorMetrics() {

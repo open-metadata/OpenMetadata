@@ -47,6 +47,11 @@ AUTH_TOKEN=""
 RAMP_MODE=""
 RAMP_BATCH=100
 ADMIN_PORT=""
+SKIP_READS=""
+ONLY_READS=""
+MIXED_MODE=""
+MIXED_DURATION=60
+READ_RATIO=80
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -266,6 +271,11 @@ while [[ $# -gt 0 ]]; do
         --ramp) RAMP_MODE="true"; shift ;;
         --ramp-batch) RAMP_BATCH="$2"; shift 2 ;;
         --admin-port) ADMIN_PORT="$2"; shift 2 ;;
+        --skip-reads) SKIP_READS="true"; shift ;;
+        --only-reads) ONLY_READS="true"; shift ;;
+        --mixed) MIXED_MODE="true"; shift ;;
+        --mixed-duration) MIXED_DURATION="$2"; shift 2 ;;
+        --read-ratio) READ_RATIO="$2"; shift 2 ;;
         --databases) shift 2 ;;  # ignored, auto-calculated now
         --terms-per-glossary) shift 2 ;;  # ignored, use --glossary-terms
         --tags-per-classification) shift 2 ;;  # ignored, use --tags
@@ -324,6 +334,13 @@ Benchmarking & filtering:
   --ramp-batch NUM              Entities per ramp level (default: 100)
   --admin-port PORT             Admin port for Prometheus metrics scraping
 
+Read & mixed workload benchmarking:
+  --skip-reads                  Skip read benchmarking phase (Phase 8)
+  --only-reads                  Skip write phases; discover existing entities and run reads only
+  --mixed                       Run mixed read/write workload (Phase 9)
+  --mixed-duration SECS         Duration of mixed workload in seconds (default: 60)
+  --read-ratio PCT              Read percentage in mixed workload (default: 80)
+
 Other:
   --server URL                  Target server URL (default: https://mohitcorp.getcollate.io)
   --workers NUM                 Concurrent workers (default: 20)
@@ -352,6 +369,15 @@ Examples:
 
   # Full benchmark with Prometheus metrics from admin port
   ./perf-test.sh --quick --workers 10 --admin-port 8586 --output /tmp/bench.json
+
+  # Read benchmarks after write load
+  ./perf-test.sh --scale 10k --server http://localhost:8585 --output /tmp/bench.json
+
+  # Read-only benchmark (discover existing entities)
+  ./perf-test.sh --only-reads --server http://localhost:8585
+
+  # Mixed read/write workload for 2 minutes, 80% reads
+  ./perf-test.sh --scale 10k --mixed --mixed-duration 120 --read-ratio 80
 HELPEOF
             exit 0
             ;;
@@ -389,6 +415,15 @@ if [ -n "$RAMP_MODE" ]; then
 fi
 if [ -n "$ADMIN_PORT" ]; then
     echo "Admin:  port $ADMIN_PORT (Prometheus metrics)"
+fi
+if [ -n "$SKIP_READS" ]; then
+    echo "Reads:  skipped"
+fi
+if [ -n "$ONLY_READS" ]; then
+    echo "Mode:   read-only (discover existing entities)"
+fi
+if [ -n "$MIXED_MODE" ]; then
+    echo "Mixed:  enabled (${MIXED_DURATION}s, ${READ_RATIO}% reads)"
 fi
 echo ""
 echo "Entity counts:"
@@ -481,6 +516,11 @@ SCALE_APPLIED = "${SCALE_APPLIED}" or "default"
 RAMP_MODE = "${RAMP_MODE}" == "true"
 RAMP_BATCH = ${RAMP_BATCH}
 ADMIN_PORT_RAW = "${ADMIN_PORT}"
+SKIP_READS = "${SKIP_READS}" == "true"
+ONLY_READS = "${ONLY_READS}" == "true"
+MIXED_MODE = "${MIXED_MODE}" == "true"
+MIXED_DURATION = ${MIXED_DURATION}
+READ_RATIO = ${READ_RATIO}
 
 # Auto-calculate database/schema counts
 NUM_DATABASES = max(1, NUM_TABLES // 50000)
@@ -534,11 +574,15 @@ else:
     _infra_needed = set()
 
 def should_run(entity_name):
+    if ONLY_READS:
+        return False
     if not ONLY_ENTITIES:
         return True
     return entity_name in ONLY_ENTITIES or entity_name in _resolved
 
 def _need_infra(tag):
+    if ONLY_READS:
+        return False
     if not ONLY_ENTITIES:
         return True
     return tag in _infra_needed
@@ -1111,6 +1155,168 @@ def create_entity_batch(entity_name, count, payload_fn, workers=None, collect_fn
     return bench.created, bench
 
 
+# ── Generic batch reader (with benchmarking) ─────────────────────────────────
+def read_entity_batch(entity_name, items, url_fn, workers=None, log_interval=None):
+    count = len(items)
+    if count <= 0:
+        return 0, None
+    if workers is None:
+        workers = NUM_WORKERS
+    if log_interval is None:
+        log_interval = max(1, count // 20)
+
+    bench = BenchmarkCollector(entity_name, count)
+    bench.start_time = time.time()
+
+    print(f"\nReading {count} {entity_name}...")
+    sys.stdout.flush()
+
+    counter_lock = threading.Lock()
+    sample_running = True
+
+    def _sampler():
+        while sample_running:
+            with counter_lock:
+                total = bench.created + bench.failed
+            bench.window_counts.append((time.time(), total))
+            time.sleep(1)
+
+    sampler_thread = threading.Thread(target=_sampler, daemon=True)
+    sampler_thread.start()
+
+    def _work(idx):
+        t0 = time.time()
+        url = url_fn(idx)
+        if url is None:
+            return
+        status, resp = make_request(url, method="GET", headers=headers)
+        latency = time.time() - t0
+        ok = status == 200
+        if ok:
+            bench.record_success(latency)
+        else:
+            bench.record_failure(latency, status, resp)
+        with counter_lock:
+            total = bench.created + bench.failed
+            if total % log_interval == 0 or total == count:
+                elapsed = time.time() - bench.start_time
+                rate = total / elapsed if elapsed > 0 else 0
+                print(f"  {entity_name}: {total}/{count} ({rate:.1f}/sec) - OK: {bench.created}, Fail: {bench.failed}")
+                sys.stdout.flush()
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(_work, i) for i in range(count)]
+        for f in as_completed(futures):
+            try:
+                f.result()
+            except Exception:
+                pass
+
+    sample_running = False
+    bench.end_time = time.time()
+    benchmarks[f"read_{entity_name}"] = bench
+    elapsed = time.time() - bench.start_time
+    p50 = bench.percentile(50) * 1000
+    p95 = bench.percentile(95) * 1000
+    print(f"read_{entity_name} done: {bench.created} OK, {bench.failed} failed "
+          f"({elapsed:.1f}s, p50={p50:.0f}ms, p95={p95:.0f}ms)")
+    sys.stdout.flush()
+    return bench.created, bench
+
+
+# ── Mixed workload runner ────────────────────────────────────────────────────
+def run_mixed_workload(duration_s, read_ratio_pct, workers, table_ids, schema_fqns_list):
+    read_bench = BenchmarkCollector("mixed_reads", 0)
+    write_bench = BenchmarkCollector("mixed_writes", 0)
+    read_bench.start_time = time.time()
+    write_bench.start_time = time.time()
+
+    stop_event = threading.Event()
+    ops_counter = [0]
+    ops_lock = threading.Lock()
+
+    search_terms = ["table", "test", "data", "pipeline", "report", "analytics", "cost", "model"]
+
+    def _worker():
+        while not stop_event.is_set():
+            is_read = random.randint(1, 100) <= read_ratio_pct
+            t0 = time.time()
+            if is_read and table_ids:
+                op_type = random.choice(["get_by_id", "list", "search"])
+                if op_type == "get_by_id":
+                    tid, _ = random.choice(table_ids)
+                    url = f"{SERVER_URL}/api/v1/tables/{tid}"
+                    status, resp = make_request(url, method="GET", headers=headers)
+                elif op_type == "list":
+                    offset = random.randint(0, max(1, len(table_ids) - 10))
+                    url = f"{SERVER_URL}/api/v1/tables?limit=10&offset={offset}"
+                    status, resp = make_request(url, method="GET", headers=headers)
+                else:
+                    term = random.choice(search_terms)
+                    url = f"{SERVER_URL}/api/v1/search/query?q={term}&index=table_search_index&from=0&size=10"
+                    status, resp = make_request(url, method="GET", headers=headers)
+                latency = time.time() - t0
+                if status == 200:
+                    read_bench.record_success(latency)
+                else:
+                    read_bench.record_failure(latency, status, resp)
+            elif schema_fqns_list:
+                with ops_lock:
+                    idx = ops_counter[0]
+                    ops_counter[0] += 1
+                sfqn = schema_fqns_list[idx % len(schema_fqns_list)]
+                payload = {
+                    "name": f"mixed_table_{idx:07d}",
+                    "databaseSchema": sfqn,
+                    "columns": [
+                        {"name": "id", "dataType": "BIGINT"},
+                        {"name": "name", "dataType": "VARCHAR", "dataLength": 255},
+                    ],
+                }
+                url = f"{SERVER_URL}/api/v1/tables"
+                status, resp = make_request(url, data=payload, method="PUT", headers=headers)
+                latency = time.time() - t0
+                if status in [200, 201]:
+                    write_bench.record_success(latency)
+                else:
+                    write_bench.record_failure(latency, status, resp)
+
+    print(f"\nMixed workload: {workers} workers, {duration_s}s, {read_ratio_pct}% reads")
+    sys.stdout.flush()
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(_worker) for _ in range(workers)]
+        start = time.time()
+        last_log = start
+        while time.time() - start < duration_s:
+            time.sleep(1)
+            now = time.time()
+            if now - last_log >= 10:
+                last_log = now
+                elapsed = now - start
+                r_total = read_bench.created + read_bench.failed
+                w_total = write_bench.created + write_bench.failed
+                combined_rps = (r_total + w_total) / elapsed if elapsed > 0 else 0
+                print(f"  Mixed [{elapsed:.0f}s]: reads={r_total}, writes={w_total}, "
+                      f"combined={combined_rps:.1f} rps")
+                sys.stdout.flush()
+        stop_event.set()
+        for f in futures:
+            try:
+                f.result(timeout=10)
+            except Exception:
+                pass
+
+    read_bench.end_time = time.time()
+    write_bench.end_time = time.time()
+    r_total = read_bench.created + read_bench.failed
+    w_total = write_bench.created + write_bench.failed
+    elapsed = read_bench.end_time - read_bench.start_time
+    print(f"Mixed workload done: {r_total} reads, {w_total} writes in {elapsed:.1f}s")
+    sys.stdout.flush()
+    return read_bench, write_bench
+
+
 # ── Ramp tester ──────────────────────────────────────────────────────────────
 class RampTester:
     def __init__(self, server_url, req_headers, max_workers, batch_size=100):
@@ -1302,6 +1508,10 @@ def create_service(endpoint, data):
     print(f"  Failed to create service: {status} - {resp}")
     return None
 
+
+if ONLY_READS:
+    print("\n--only-reads mode: skipping write phases 1-7")
+    schema_fqns = []
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PHASE 1: Metadata (no dependencies)
@@ -1593,7 +1803,7 @@ phase_timings["phase_3_infrastructure"] = {"wall_clock_s": round(time.time() - p
 # RAMP TEST (if enabled)
 # ══════════════════════════════════════════════════════════════════════════════
 ramp_result = None
-if RAMP_MODE:
+if RAMP_MODE and not ONLY_READS:
     ramp_tester = RampTester(SERVER_URL, dict(headers), max_workers=NUM_WORKERS,
                              batch_size=RAMP_BATCH)
     ramp_entity_type = "tables"
@@ -2155,6 +2365,80 @@ if should_run("aggCostAnalysis") and NUM_AGG_COST_ANALYSIS > 0:
 phase_timings["phase_7_time_series"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
 
 # ══════════════════════════════════════════════════════════════════════════════
+# PHASE 8: Read benchmarks (unless --skip-reads)
+# ══════════════════════════════════════════════════════════════════════════════
+if ONLY_READS and not collected_table_ids:
+    print("\n--only-reads: discovering existing tables...")
+    status, resp = make_request(f"{SERVER_URL}/api/v1/tables?limit=100&fields=id", method="GET", headers=headers)
+    if status == 200 and isinstance(resp, dict):
+        for item in resp.get("data", []):
+            collected_table_ids.append((item["id"], item.get("fullyQualifiedName", "")))
+    print(f"  Discovered {len(collected_table_ids)} tables")
+    sys.stdout.flush()
+
+if not SKIP_READS and collected_table_ids:
+    phase_start = time.time()
+    print("\n" + "=" * 60)
+    print("PHASE 8: Read benchmarks")
+    print("=" * 60)
+
+    read_sample = collected_table_ids[:1000]
+
+    # 8a: Entity fetch by ID
+    read_entity_batch(
+        "entity_fetch", read_sample,
+        lambda idx: f"{SERVER_URL}/api/v1/tables/{read_sample[idx][0]}",
+    )
+
+    # 8b: Paginated list
+    list_count = min(200, len(read_sample))
+    list_items = list(range(list_count))
+    read_entity_batch(
+        "paginated_list", list_items,
+        lambda idx: f"{SERVER_URL}/api/v1/tables?limit=10&offset={idx * 10}",
+    )
+
+    # 8c: Search queries
+    search_terms = ["table", "test", "data", "pipeline", "report", "analytics", "cost", "model"]
+    search_count = min(200, len(read_sample))
+    search_items = list(range(search_count))
+    read_entity_batch(
+        "search_queries", search_items,
+        lambda idx: f"{SERVER_URL}/api/v1/search/query?q={search_terms[idx % len(search_terms)]}&index=table_search_index&from=0&size=10",
+    )
+
+    # 8d: Lineage traversal (if lineage was created)
+    if should_run("lineageEdges") and NUM_LINEAGE_EDGES > 0:
+        lineage_sample = read_sample[:min(100, len(read_sample))]
+        read_entity_batch(
+            "lineage_traversal", lineage_sample,
+            lambda idx: f"{SERVER_URL}/api/v1/lineage/getLineage?fqn={lineage_sample[idx][1]}&type=table",
+        )
+
+    phase_timings["phase_8_reads"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PHASE 9: Mixed workload (if --mixed)
+# ══════════════════════════════════════════════════════════════════════════════
+mixed_read_bench = None
+mixed_write_bench = None
+if MIXED_MODE and collected_table_ids:
+    phase_start = time.time()
+    print("\n" + "=" * 60)
+    print("PHASE 9: Mixed workload")
+    print("=" * 60)
+
+    mixed_schema_fqns = schema_fqns if schema_fqns else None
+    mixed_read_bench, mixed_write_bench = run_mixed_workload(
+        MIXED_DURATION, READ_RATIO, NUM_WORKERS,
+        collected_table_ids, mixed_schema_fqns,
+    )
+    benchmarks["mixed_reads"] = mixed_read_bench
+    benchmarks["mixed_writes"] = mixed_write_bench
+
+    phase_timings["phase_9_mixed"] = {"wall_clock_s": round(time.time() - phase_start, 2)}
+
+# ══════════════════════════════════════════════════════════════════════════════
 # STOP HEALTH MONITOR & BUILD REPORT
 # ══════════════════════════════════════════════════════════════════════════════
 health_monitor.stop()
@@ -2285,12 +2569,19 @@ def generate_cluster_sizing(report, ramp_data=None):
         db_pool_rec = 150
     if max_p95 > 5000:
         db_pool_rec = 200
+    si_data = report.get("server_info", {})
+    diag_after_db = si_data.get("diagnostics_after", {}).get("database", {})
+    measured_acquire_ms = diag_after_db.get("connection_acquire_avg_ms", 0)
+    if measured_acquire_ms > 0:
+        acquire_note = f"Measured connection acquire time: {measured_acquire_ms:.1f}ms avg."
+    else:
+        acquire_note = "Connection wait time may add 50-200ms."
     recommendations["db_pool"] = {
         "analysis": (
             f"{measured_workers} concurrent writers with 100 max DB connections. "
             f"Each PUT does multiple DB round-trips. "
             f"At {measured_workers} concurrent, pool utilization ~{min(99, measured_workers * 100 // 100)}%. "
-            f"Connection wait time may add 50-200ms."
+            f"{acquire_note}"
         ),
         "current_env": "DB_CONNECTION_POOL_MAX_SIZE=100",
         "recommended_env": f"DB_CONNECTION_POOL_MAX_SIZE={db_pool_rec}",
@@ -2483,6 +2774,30 @@ def _build_server_side_analysis(report, findings, recommendations, config_summar
         analysis["bottlenecks"].append(bottleneck)
         findings.append(bottleneck)
 
+    db_queries = diag_after.get("database_queries", {})
+    if db_queries:
+        analysis["database_queries"] = db_queries
+        for qtype in ["select", "insert", "update", "delete"]:
+            qdata = db_queries.get(qtype, {})
+            p95 = qdata.get("p95_ms", 0)
+            if p95 > 100:
+                bottleneck = (f"Slow DB {qtype} queries: p95={p95:.1f}ms "
+                              f"(count={qdata.get('count', 0)}, mean={qdata.get('mean_ms', 0):.1f}ms)")
+                analysis["bottlenecks"].append(bottleneck)
+                findings.append(bottleneck)
+
+    conn_acquire_avg = db.get("connection_acquire_avg_ms", 0)
+    conn_acquire_max = db.get("connection_acquire_max_ms", 0)
+    if conn_acquire_avg > 0:
+        analysis["connection_acquire_avg_ms"] = conn_acquire_avg
+        analysis["connection_acquire_max_ms"] = conn_acquire_max
+        analysis["connection_acquire_count"] = db.get("connection_acquire_count", 0)
+        if conn_acquire_avg > 50:
+            bottleneck = (f"Connection pool contention: avg acquire time {conn_acquire_avg:.1f}ms "
+                          f"(max {conn_acquire_max:.1f}ms)")
+            analysis["bottlenecks"].append(bottleneck)
+            findings.append(bottleneck)
+
     return analysis
 
 
@@ -2558,7 +2873,12 @@ def print_summary_table(report):
     print(header)
     print("\u2500" * 70)
 
-    for name, data in report["entities"].items():
+    write_entries = {k: v for k, v in report["entities"].items()
+                     if not k.startswith("read_") and not k.startswith("mixed_")}
+    read_entries = {k: v for k, v in report["entities"].items() if k.startswith("read_")}
+    mixed_entries = {k: v for k, v in report["entities"].items() if k.startswith("mixed_")}
+
+    for name, data in write_entries.items():
         count = data["created"]
         rps = data["throughput_rps"]
         p50 = data["latency_ms"]["p50"]
@@ -2576,6 +2896,39 @@ def print_summary_table(report):
     err_str = f"{overall_err:.1f}%" if overall_err > 0 else "0.0%"
     print(f"{'Overall':<22} {total:>7} {overall_rps:>8.1f} {'':>7} {'':>7} {'':>7} {err_str:>7}")
     print("")
+
+    if read_entries:
+        print("READ BENCHMARKS:")
+        print(f"{'Endpoint':<22} {'Count':>7} {'Rate/s':>8} {'p50ms':>7} {'p95ms':>7} {'p99ms':>7} {'Errors':>7}")
+        print("\u2500" * 70)
+        for name, data in read_entries.items():
+            display_name = name.replace("read_", "")
+            count = data["created"]
+            rps = data["throughput_rps"]
+            p50 = data["latency_ms"]["p50"]
+            p95 = data["latency_ms"]["p95"]
+            p99 = data["latency_ms"]["p99"]
+            err_pct = data["error_rate_pct"]
+            err_str = f"{err_pct:.1f}%" if err_pct > 0 else "0.0%"
+            print(f"{display_name:<22} {count:>7} {rps:>8.1f} {p50:>7.0f} {p95:>7.0f} {p99:>7.0f} {err_str:>7}")
+        print("")
+
+    if mixed_entries:
+        print("MIXED WORKLOAD:")
+        mr = mixed_entries.get("mixed_reads", {})
+        mw = mixed_entries.get("mixed_writes", {})
+        r_count = mr.get("total_requests", 0)
+        w_count = mw.get("total_requests", 0)
+        combined = r_count + w_count
+        r_rps = mr.get("throughput_rps", 0)
+        w_rps = mw.get("throughput_rps", 0)
+        print(f"  Total operations: {combined} (reads={r_count}, writes={w_count})")
+        print(f"  Combined RPS: {r_rps + w_rps:.1f} (reads={r_rps:.1f}, writes={w_rps:.1f})")
+        if mr.get("latency_ms"):
+            print(f"  Read  p50={mr['latency_ms']['p50']:.0f}ms  p95={mr['latency_ms']['p95']:.0f}ms")
+        if mw.get("latency_ms"):
+            print(f"  Write p50={mw['latency_ms']['p50']:.0f}ms  p95={mw['latency_ms']['p95']:.0f}ms")
+        print("")
 
     has_error_breakdowns = False
     for name, data in report["entities"].items():
@@ -2650,21 +3003,47 @@ def print_summary_table(report):
         print(f"  Jetty: {jetty_d.get('threads_busy', '?')}/{jetty_d.get('threads_max', '?')} "
               f"threads busy ({snap.get('jetty_utilization_pct', 0)}%), "
               f"queue depth: {snap.get('jetty_queue_size', 0)}")
+        conn_acquire = db_d.get("connection_acquire_avg_ms", 0)
+        conn_acquire_str = f", acquire avg {conn_acquire:.1f}ms" if conn_acquire > 0 else ""
         print(f"  DB Pool: {db_d.get('pool_active', '?')}/{db_d.get('pool_max', '?')} "
               f"active ({snap.get('db_pool_usage_pct', 0)}%), "
-              f"{snap.get('db_pool_pending', 0)} pending connections")
+              f"{snap.get('db_pool_pending', 0)} pending connections{conn_acquire_str}")
         print(f"  Bulk Executor: queue {bulk_d.get('queue_depth', 0)}/"
               f"{bulk_d.get('queue_capacity', '?')} "
               f"({snap.get('bulk_queue_usage_pct', 0)}%)")
 
+        db_queries = ssa.get("database_queries", {})
+        total_db_ops = db_queries.get("total_operations", 0)
+        if total_db_ops > 0:
+            print("")
+            print(f"  DB Query Profile (total operations: {total_db_ops:,}):")
+            print(f"    {'Type':<12} {'Count':>10} {'Mean':>10} {'Max':>10}")
+            for qtype in ["select", "insert", "update", "delete"]:
+                qdata = db_queries.get(qtype, {})
+                if qdata:
+                    qcount = qdata.get("count", 0)
+                    qmean = qdata.get("mean_ms", 0)
+                    qmax = qdata.get("max_ms", 0)
+                    print(f"    {qtype:<12} {qcount:>10,} {qmean:>9.1f}ms {qmax:>9.1f}ms")
+
         breakdown = ssa.get("latency_breakdown", {})
         put_entries = {k: v for k, v in breakdown.items() if k.startswith("PUT")}
+        get_entries = {k: v for k, v in breakdown.items() if k.startswith("GET")}
         if put_entries:
             print("")
             print("  Latency Breakdown (PUT endpoints):")
             print(f"    {'Endpoint':<30} {'Total':>8} {'DB%':>6} {'Search%':>9} {'Internal%':>11}")
             for ep, bd in sorted(put_entries.items()):
                 ep_short = ep.replace("PUT ", "")[:28]
+                print(f"    {ep_short:<30} {bd['avg_total_ms']:>7.0f}ms "
+                      f"{bd['db_pct']:>5.1f}% {bd['search_pct']:>8.1f}% "
+                      f"{bd['internal_pct']:>10.1f}%")
+        if get_entries:
+            print("")
+            print("  Latency Breakdown (GET endpoints):")
+            print(f"    {'Endpoint':<30} {'Total':>8} {'DB%':>6} {'Search%':>9} {'Internal%':>11}")
+            for ep, bd in sorted(get_entries.items()):
+                ep_short = ep.replace("GET ", "")[:28]
                 print(f"    {ep_short:<30} {bd['avg_total_ms']:>7.0f}ms "
                       f"{bd['db_pct']:>5.1f}% {bd['search_pct']:>8.1f}% "
                       f"{bd['internal_pct']:>10.1f}%")

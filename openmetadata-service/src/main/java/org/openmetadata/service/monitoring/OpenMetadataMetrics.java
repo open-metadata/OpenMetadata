@@ -177,6 +177,7 @@ public class OpenMetadataMetrics {
         Timer.builder("db.query.duration")
             .tag("type", queryType)
             .tag("success", String.valueOf(success))
+            .publishPercentiles(0.95)
             .register(meterRegistry));
 
     if (!success) {
@@ -187,6 +188,7 @@ public class OpenMetadataMetrics {
   public void recordDatabaseQuery(String queryType, long durationMs) {
     Timer.builder("db.query.duration")
         .tag("type", queryType)
+        .publishPercentiles(0.95)
         .register(meterRegistry)
         .record(Duration.ofMillis(durationMs));
   }
