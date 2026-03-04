@@ -47,9 +47,6 @@ export const clickEditTestCaseButton = async (
   const testDefinitionResponse = page.waitForResponse(
     '/api/v1/dataQuality/testDefinitions/*'
   );
-  const testDefinitionResponse = page.waitForResponse(
-    '/api/v1/dataQuality/testDefinitions/*'
-  );
   await page.getByTestId(`action-dropdown-${testCaseName}`).click();
   await page.getByTestId(`edit-${testCaseName}`).click();
   await testCaseDoc;
