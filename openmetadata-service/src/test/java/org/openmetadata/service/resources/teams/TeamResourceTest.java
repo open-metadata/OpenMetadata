@@ -84,6 +84,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -91,6 +92,7 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.policies.accessControl.Rule.Effect;
@@ -118,6 +120,7 @@ import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.teams.TeamResource.TeamHierarchyList;
 import org.openmetadata.service.resources.teams.TeamResource.TeamList;
@@ -1050,6 +1053,104 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Create a children team without domain and ensure it inherits domain from the parent
     createTeam = createRequest("team1").withParents(listOf(team.getId()));
     assertSingleDomainInheritance(createTeam, DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void test_inheritDomainFromDeepHierarchy(TestInfo test) throws IOException {
+    // Test domain inheritance through deep team hierarchy: Division -> Department -> Group
+    // This tests the batch loading fix for N+1 query performance issue
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+
+    // Create a domain at the top level
+    CreateDomain createDomain = domainResourceTest.createRequest(test);
+    Domain topDomain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    // Create Division with domain
+    CreateTeam createDivision =
+        createRequest(test)
+            .withName("division_" + test.getDisplayName())
+            .withTeamType(DIVISION)
+            .withDomains(List.of(topDomain.getFullyQualifiedName()));
+    Team division = createEntity(createDivision, ADMIN_AUTH_HEADERS);
+
+    // Create Department under Division (no direct domain)
+    CreateTeam createDept =
+        createRequest(test, 1)
+            .withName("dept_" + test.getDisplayName())
+            .withTeamType(DEPARTMENT)
+            .withParents(listOf(division.getId()));
+    Team department = createEntity(createDept, ADMIN_AUTH_HEADERS);
+
+    // Verify Department inherited domain from Division
+    Team fetchedDept = getEntity(department.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedDept.getDomains());
+    assertEquals(1, fetchedDept.getDomains().size());
+    assertEquals(topDomain.getId(), fetchedDept.getDomains().get(0).getId());
+    assertTrue(fetchedDept.getDomains().get(0).getInherited());
+
+    // Create Group under Department (no direct domain)
+    CreateTeam createGroup =
+        createRequest(test, 2)
+            .withName("group_" + test.getDisplayName())
+            .withTeamType(GROUP)
+            .withParents(listOf(department.getId()));
+    Team group = createEntity(createGroup, ADMIN_AUTH_HEADERS);
+
+    // Verify Group inherited domain from Division (grandparent)
+    Team fetchedGroup = getEntity(group.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedGroup.getDomains());
+    assertEquals(1, fetchedGroup.getDomains().size());
+    assertEquals(topDomain.getId(), fetchedGroup.getDomains().get(0).getId());
+    assertTrue(fetchedGroup.getDomains().get(0).getInherited());
+  }
+
+  @Test
+  void test_inheritDomainFromMultipleParents(TestInfo test) throws IOException {
+    // Test team with multiple parents, each with different domains
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+
+    // Create two domains
+    CreateDomain createDomain1 = domainResourceTest.createRequest(test);
+    Domain domain1 = domainResourceTest.createEntity(createDomain1, ADMIN_AUTH_HEADERS);
+
+    CreateDomain createDomain2 = domainResourceTest.createRequest(test, 1);
+    Domain domain2 = domainResourceTest.createEntity(createDomain2, ADMIN_AUTH_HEADERS);
+
+    // Create two parent departments with different domains
+    CreateTeam createDept1 =
+        createRequest(test)
+            .withName("dept1_" + test.getDisplayName())
+            .withTeamType(DEPARTMENT)
+            .withDomains(List.of(domain1.getFullyQualifiedName()));
+    Team dept1 = createEntity(createDept1, ADMIN_AUTH_HEADERS);
+
+    CreateTeam createDept2 =
+        createRequest(test, 1)
+            .withName("dept2_" + test.getDisplayName())
+            .withTeamType(DEPARTMENT)
+            .withDomains(List.of(domain2.getFullyQualifiedName()));
+    Team dept2 = createEntity(createDept2, ADMIN_AUTH_HEADERS);
+
+    // Create group with both departments as parents
+    CreateTeam createGroup =
+        createRequest(test, 2)
+            .withName("group_multi_parent_" + test.getDisplayName())
+            .withTeamType(GROUP)
+            .withParents(listOf(dept1.getId(), dept2.getId()));
+    Team group = createEntity(createGroup, ADMIN_AUTH_HEADERS);
+
+    // Verify Group inherited both domains from both parents
+    Team fetchedGroup = getEntity(group.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedGroup.getDomains());
+    assertEquals(2, fetchedGroup.getDomains().size());
+
+    Set<UUID> domainIds =
+        fetchedGroup.getDomains().stream().map(EntityReference::getId).collect(Collectors.toSet());
+    assertTrue(domainIds.contains(domain1.getId()));
+    assertTrue(domainIds.contains(domain2.getId()));
+
+    // All domains should be marked as inherited
+    assertTrue(fetchedGroup.getDomains().stream().allMatch(EntityReference::getInherited));
   }
 
   public Team assertSingleDomainInheritance(

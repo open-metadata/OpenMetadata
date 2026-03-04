@@ -131,6 +131,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -7473,6 +7474,192 @@ public abstract class EntityRepository<T extends EntityInterface> {
         });
 
     return childrenMap;
+  }
+
+  /**
+   * Batch load all ancestor team IDs for a list of team IDs. This traverses the team hierarchy
+   * upward level by level using batch queries.
+   *
+   * @param teamIds Initial set of team IDs
+   * @param include Include parameter for soft-deleted entities
+   * @return Set of all team IDs including the input teams and all their ancestors
+   */
+  public static Set<UUID> batchLoadAncestorTeamIds(Set<UUID> teamIds, Include include) {
+    Set<UUID> allTeamIds = new HashSet<>(teamIds);
+    Set<UUID> currentLevel = new HashSet<>(teamIds);
+
+    CollectionDAO dao = Entity.getCollectionDAO();
+
+    // Organization is an implicit parent for teams with no explicit parents,
+    // but its PARENT_OF relationships are not stored in the database.
+    // We need to include it so roles/policies from Organization are inherited.
+    UUID organizationId = getOrganizationId();
+
+    while (!currentLevel.isEmpty()) {
+      List<String> currentIds = currentLevel.stream().map(UUID::toString).toList();
+
+      List<CollectionDAO.EntityRelationshipObject> parentRecords =
+          dao.relationshipDAO()
+              .findFromBatch(currentIds, Relationship.PARENT_OF.ordinal(), TEAM, TEAM, include);
+
+      // Build set of teams that have at least one explicit parent
+      Set<UUID> teamsWithParents = new HashSet<>();
+      Set<UUID> newParents = new HashSet<>();
+      for (CollectionDAO.EntityRelationshipObject rec : parentRecords) {
+        UUID childId = UUID.fromString(rec.getToId());
+        UUID parentId = UUID.fromString(rec.getFromId());
+        teamsWithParents.add(childId);
+        if (!allTeamIds.contains(parentId)) {
+          newParents.add(parentId);
+          allTeamIds.add(parentId);
+        }
+      }
+
+      // For teams without explicit parents, add Organization as implicit parent
+      if (organizationId != null) {
+        for (UUID teamId : currentLevel) {
+          if (!teamsWithParents.contains(teamId)
+              && !teamId.equals(organizationId)
+              && !allTeamIds.contains(organizationId)) {
+            newParents.add(organizationId);
+            allTeamIds.add(organizationId);
+          }
+        }
+      }
+
+      currentLevel = newParents;
+    }
+
+    return allTeamIds;
+  }
+
+  private static UUID getOrganizationId() {
+    try {
+      EntityReference orgRef =
+          Entity.getEntityReferenceByName(TEAM, Entity.ORGANIZATION_NAME, NON_DELETED);
+      return orgRef.getId();
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  /**
+   * Batch load domains for a list of team references including their entire ancestor hierarchy.
+   * This is used to properly inherit domains from parent teams.
+   *
+   * @param teamRefs List of team references (the teams a user belongs to or parent teams)
+   * @param include Include parameter for soft-deleted entities
+   * @return Set of all domain references from the teams and their ancestors
+   */
+  public static Set<EntityReference> batchLoadDomainsWithHierarchy(
+      List<EntityReference> teamRefs, Include include) {
+    Set<EntityReference> allDomains = new TreeSet<>(EntityUtil.compareEntityReferenceById);
+
+    if (teamRefs == null || teamRefs.isEmpty()) {
+      return allDomains;
+    }
+
+    // Step 1: Collect all team IDs including ancestors
+    Set<UUID> initialTeamIds =
+        teamRefs.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    Set<UUID> allTeamIds = batchLoadAncestorTeamIds(initialTeamIds, include);
+
+    if (allTeamIds.isEmpty()) {
+      return allDomains;
+    }
+
+    // Step 2: Batch load domains for all teams (including ancestors)
+    List<String> teamIdStrings = allTeamIds.stream().map(UUID::toString).toList();
+
+    CollectionDAO dao = Entity.getCollectionDAO();
+    List<CollectionDAO.EntityRelationshipObject> domainRecords =
+        dao.relationshipDAO()
+            .findFromBatch(teamIdStrings, Relationship.HAS.ordinal(), DOMAIN, include);
+
+    if (domainRecords.isEmpty()) {
+      return allDomains;
+    }
+
+    // Step 3: Batch fetch all domain entity references
+    List<UUID> domainIds =
+        domainRecords.stream().map(rec -> UUID.fromString(rec.getFromId())).distinct().toList();
+
+    List<EntityReference> domainRefs = Entity.getEntityReferencesByIds(DOMAIN, domainIds, include);
+    allDomains.addAll(domainRefs);
+
+    return allDomains;
+  }
+
+  /**
+   * Batch load all roles for a set of team IDs using a single query. Returns a map from team ID to
+   * list of role EntityReferences.
+   */
+  public static Map<UUID, List<EntityReference>> batchLoadTeamRoles(
+      Set<UUID> teamIds, Include include) {
+    Map<UUID, List<EntityReference>> teamToRoles = new HashMap<>();
+    if (teamIds == null || teamIds.isEmpty()) {
+      return teamToRoles;
+    }
+    List<String> teamIdStrings = teamIds.stream().map(UUID::toString).toList();
+    CollectionDAO dao = Entity.getCollectionDAO();
+    List<CollectionDAO.EntityRelationshipObject> roleRecords =
+        dao.relationshipDAO()
+            .findToBatch(teamIdStrings, Relationship.HAS.ordinal(), TEAM, Entity.ROLE);
+    for (CollectionDAO.EntityRelationshipObject rec : roleRecords) {
+      UUID teamId = UUID.fromString(rec.getFromId());
+      UUID roleId = UUID.fromString(rec.getToId());
+      EntityReference roleRef = Entity.getEntityReferenceById(Entity.ROLE, roleId, include);
+      teamToRoles.computeIfAbsent(teamId, k -> new ArrayList<>()).add(roleRef);
+    }
+    return teamToRoles;
+  }
+
+  /**
+   * Batch load all direct policies for a set of team IDs using a single query. Returns a map from
+   * team ID to list of policy EntityReferences.
+   */
+  public static Map<UUID, List<EntityReference>> batchLoadTeamPolicies(
+      Set<UUID> teamIds, Include include) {
+    Map<UUID, List<EntityReference>> teamToPolicies = new HashMap<>();
+    if (teamIds == null || teamIds.isEmpty()) {
+      return teamToPolicies;
+    }
+    List<String> teamIdStrings = teamIds.stream().map(UUID::toString).toList();
+    CollectionDAO dao = Entity.getCollectionDAO();
+    List<CollectionDAO.EntityRelationshipObject> policyRecords =
+        dao.relationshipDAO()
+            .findToBatch(teamIdStrings, Relationship.HAS.ordinal(), TEAM, Entity.POLICY);
+    for (CollectionDAO.EntityRelationshipObject rec : policyRecords) {
+      UUID teamId = UUID.fromString(rec.getFromId());
+      UUID policyId = UUID.fromString(rec.getToId());
+      EntityReference policyRef = Entity.getEntityReferenceById(Entity.POLICY, policyId, include);
+      teamToPolicies.computeIfAbsent(teamId, k -> new ArrayList<>()).add(policyRef);
+    }
+    return teamToPolicies;
+  }
+
+  /**
+   * Batch load all policies for a set of role IDs using a single query. Returns a map from role ID
+   * to list of policy EntityReferences.
+   */
+  public static Map<UUID, List<EntityReference>> batchLoadRolePolicies(
+      Set<UUID> roleIds, Include include) {
+    Map<UUID, List<EntityReference>> roleToPolicies = new HashMap<>();
+    if (roleIds == null || roleIds.isEmpty()) {
+      return roleToPolicies;
+    }
+    List<String> roleIdStrings = roleIds.stream().map(UUID::toString).toList();
+    CollectionDAO dao = Entity.getCollectionDAO();
+    List<CollectionDAO.EntityRelationshipObject> policyRecords =
+        dao.relationshipDAO()
+            .findToBatch(roleIdStrings, Relationship.HAS.ordinal(), Entity.ROLE, Entity.POLICY);
+    for (CollectionDAO.EntityRelationshipObject rec : policyRecords) {
+      UUID roleId = UUID.fromString(rec.getFromId());
+      UUID policyId = UUID.fromString(rec.getToId());
+      EntityReference policyRef = Entity.getEntityReferenceById(Entity.POLICY, policyId, include);
+      roleToPolicies.computeIfAbsent(roleId, k -> new ArrayList<>()).add(policyRef);
+    }
+    return roleToPolicies;
   }
 
   List<String> entityListToStrings(List<T> entities) {

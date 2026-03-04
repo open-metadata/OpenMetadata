@@ -17,12 +17,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.UUID;
@@ -37,6 +35,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Subject context used for Access Control Policies */
@@ -178,58 +177,37 @@ public record SubjectContext(User user, String impersonatedBy) {
 
   /** Return true if the team is part of the hierarchy of parentTeam */
   public static boolean isInTeam(String parentTeam, EntityReference team) {
-    Deque<EntityReference> stack = new ArrayDeque<>();
-    Set<UUID> visitedTeams = new HashSet<>();
-    stack.push(team); // Start with team and see if the parent matches
-    while (!stack.isEmpty()) {
-      try {
-        EntityReference currentTeamRef = stack.pop();
-        // Skip if we've already visited this team to prevent circular dependencies
-        if (visitedTeams.contains(currentTeamRef.getId())) {
-          LOG.warn(
-              "Circular dependency detected in team hierarchy for team: {}. Skipping to prevent infinite loop.",
-              currentTeamRef.getName());
-          continue;
-        }
-        visitedTeams.add(currentTeamRef.getId());
-        Team parent = Entity.getEntity(Entity.TEAM, currentTeamRef.getId(), "parents", NON_DELETED);
-        if (parent.getName().equals(parentTeam)) {
+    Set<UUID> startIds = Set.of(team.getId());
+    Set<UUID> allAncestorIds = EntityRepository.batchLoadAncestorTeamIds(startIds, NON_DELETED);
+    // allAncestorIds includes the start team and all ancestors
+    // Check if any of them match the parentTeam name
+    try {
+      List<EntityReference> allTeamRefs =
+          Entity.getEntityReferencesByIds(
+              Entity.TEAM, new ArrayList<>(allAncestorIds), NON_DELETED);
+      for (EntityReference ref : allTeamRefs) {
+        if (ref.getName().equals(parentTeam)) {
           return true;
         }
-        listOrEmpty(parent.getParents())
-            .forEach(stack::push); // Continue to go up the chain of parents
-      } catch (Exception ex) {
-        // Ignore and return false
       }
+    } catch (Exception ex) {
+      LOG.warn("Failed to check team hierarchy for team: {}", team.getName(), ex);
     }
     return false;
   }
 
   public static List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
-    return getRolesForTeams(teams, new HashSet<>());
-  }
-
-  private static List<EntityReference> getRolesForTeams(
-      List<EntityReference> teams, Set<UUID> visitedTeams) {
-    List<EntityReference> roles = new ArrayList<>();
-    for (EntityReference teamRef : listOrEmpty(teams)) {
-      // Skip if we've already visited this team to prevent circular dependencies
-      if (visitedTeams.contains(teamRef.getId())) {
-        LOG.warn(
-            "Circular dependency detected in team hierarchy for team: {}. Skipping to prevent StackOverflowError.",
-            teamRef.getName());
-        continue;
-      }
-      try {
-        visitedTeams.add(teamRef.getId());
-        Team team = Entity.getEntity(Entity.TEAM, teamRef.getId(), TEAM_FIELDS, NON_DELETED);
-        roles.addAll(team.getDefaultRoles());
-        roles.addAll(getRolesForTeams(team.getParents(), visitedTeams));
-      } catch (Exception ex) {
-        // Ignore and continue
-      }
+    if (nullOrEmpty(teams)) {
+      return new ArrayList<>();
     }
-    return roles.stream().distinct().collect(Collectors.toList());
+    Set<UUID> teamIds = teams.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    Set<UUID> allTeamIds = EntityRepository.batchLoadAncestorTeamIds(teamIds, NON_DELETED);
+    Map<UUID, List<EntityReference>> teamToRoles =
+        EntityRepository.batchLoadTeamRoles(allTeamIds, NON_DELETED);
+    return teamToRoles.values().stream()
+        .flatMap(List::stream)
+        .distinct()
+        .collect(Collectors.toList());
   }
 
   public List<EntityReference> getUserDomains() {
@@ -272,36 +250,11 @@ public record SubjectContext(User user, String impersonatedBy) {
 
   /** Return true if the given user has any roles the list of roles */
   public static boolean hasRole(User user, String role) {
-    Deque<EntityReference> stack = new ArrayDeque<>();
-    Set<UUID> visitedTeams = new HashSet<>();
-    // If user has one of the roles directly assigned then return true
     if (hasRole(user.getRoles(), role)) {
       return true;
     }
-    listOrEmpty(user.getTeams()).forEach(stack::push); // Continue to go up the chain of parents
-    while (!stack.isEmpty()) {
-      try {
-        EntityReference currentTeamRef = stack.pop();
-        // Skip if we've already visited this team to prevent circular dependencies
-        if (visitedTeams.contains(currentTeamRef.getId())) {
-          LOG.warn(
-              "Circular dependency detected in team hierarchy for team: {}. Skipping to prevent infinite loop.",
-              currentTeamRef.getName());
-          continue;
-        }
-        visitedTeams.add(currentTeamRef.getId());
-        Team parent =
-            Entity.getEntity(Entity.TEAM, currentTeamRef.getId(), TEAM_FIELDS, NON_DELETED);
-        if (hasRole(parent.getDefaultRoles(), role)) {
-          return true;
-        }
-        listOrEmpty(parent.getParents())
-            .forEach(stack::push); // Continue to go up the chain of parents
-      } catch (Exception ex) {
-        // Ignore the exception and return false
-      }
-    }
-    return false;
+    List<EntityReference> inheritedRoles = getRolesForTeams(user.getTeams());
+    return hasRole(inheritedRoles, role);
   }
 
   private static boolean hasRole(List<EntityReference> userRoles, String expectedRole) {
