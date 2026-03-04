@@ -242,16 +242,15 @@ class TestOMetaDataContractAPI:
         """
         created_contract = metadata.create_or_update(data=data_contract_request)
 
-        # Assuming the backend associates this contract with the test_table
         res = metadata.get_data_contract_by_entity_id(
             entity_id=test_table.id, entity_type="table"
         )
 
-        # In a real environment with data contract attached,
-        # res would be DataContract.
-        # Since this is an integration test, we just check our wrapper
-        # doesn't crash when calling the endpoint.
-        assert res is None or isinstance(res, DataContract)
+        # The contract was created with entity=EntityReference(id=test_table.id),
+        # so the backend must return it when queried by that entity ID.
+        assert res is not None
+        assert isinstance(res, DataContract)
+        assert res.id == created_contract.id
 
         metadata.delete(
             entity=DataContract, entity_id=created_contract.id, hard_delete=True
