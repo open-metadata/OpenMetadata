@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/events/authentication/webhookBearerAuth.json",
+  "title": "BearerAuth",
+  "description": "Bearer token authentication for webhook endpoints.",
+  "type": "object",
+  "properties": {
+    "secretKey": {
+      "description": "Secret key used for computing HMAC SHA256 signature of webhook payload, sent in the X-OM-Signature header.",
+      "type": "string"
+    }
+  },
+  "required": ["secretKey"],
+  "additionalProperties": false
+}

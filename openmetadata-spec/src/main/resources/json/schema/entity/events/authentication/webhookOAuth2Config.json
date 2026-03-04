@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/events/webhookOAuth2Config.json",
+  "title": "WebhookOAuth2Config",
+  "description": "OAuth2 Client Credentials configuration for webhook authentication.",
+  "type": "object",
+  "properties": {
+    "tokenUrl": {
+      "description": "Token endpoint URL to obtain access tokens.",
+      "type": "string",
+      "format": "uri"
+    },
+    "clientId": {
+      "description": "OAuth2 client identifier.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "description": "OAuth2 client secret. Stored encrypted via Fernet.",
+      "type": "string"
+    },
+    "scope": {
+      "description": "Optional OAuth2 scopes to request (space-separated).",
+      "type": "string"
+    }
+  },
+  "required": ["tokenUrl", "clientId", "clientSecret"],
+  "additionalProperties": false
+}
