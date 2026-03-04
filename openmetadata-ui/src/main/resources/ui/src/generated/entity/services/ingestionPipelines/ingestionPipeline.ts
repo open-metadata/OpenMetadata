@@ -1185,7 +1185,11 @@ export interface Pipeline {
      * level metrics.
      */
     computeTableMetrics?: boolean;
-    processingEngine?:    ProcessingEngine;
+    /**
+     * List of metrics to compute. If empty, then all metrics will be computed
+     */
+    metrics?:          MetricType[];
+    processingEngine?: ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
@@ -1208,10 +1212,11 @@ export interface Pipeline {
      */
     timeoutSeconds?: number;
     /**
-     * Use system tables to extract metrics. Metrics that cannot be gathered from system tables
-     * will use the default methods. Using system tables can be faster but requires gathering
-     * statistics before running (for example using the ANALYZE procedure). More information can
-     * be found in the documentation: https://docs.openmetadata.org/latest/profler
+     * Use system tables to extract table metrics. Metrics that cannot be gathered from system
+     * tables will use the default methods. Using system tables can be faster but requires
+     * gathering statistics before running (for example using the ANALYZE procedure). More
+     * information can be found in the documentation:
+     * https://docs.openmetadata.org/latest/profler
      */
     useStatistics?: boolean;
     /**
@@ -1231,6 +1236,16 @@ export interface Pipeline {
      * information
      */
     enableAutoClassification?: boolean;
+    /**
+     * Maximum character length for text fields in sample data and NLP processing. Cell values
+     * exceeding this limit will be truncated during sampling and before NLP analysis to prevent
+     * memory issues. The default of 1000 characters balances accuracy and performance for most
+     * use cases. Increase this value if you need to preserve longer text content for
+     * classification analysis or if your sensitive data patterns appear in longer text fields,
+     * but be aware that larger values consume more memory (~1KB per character across all
+     * sampled rows) and significantly increase NLP processing time.
+     */
+    maxCellLength?: number;
     /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */
@@ -3000,6 +3015,48 @@ export interface LineageInformation {
      */
     storageServiceNames?: string[];
     [property: string]: any;
+}
+
+/**
+ * This schema defines all possible metric types in OpenMetadata.
+ */
+export enum MetricType {
+    CardinalityDistribution = "cardinalityDistribution",
+    ColumnCount = "columnCount",
+    ColumnNames = "columnNames",
+    CountInSet = "countInSet",
+    DistinctCount = "distinctCount",
+    DistinctProportion = "distinctProportion",
+    DuplicateCount = "duplicateCount",
+    FirstQuartile = "firstQuartile",
+    Histogram = "histogram",
+    ILikeCount = "iLikeCount",
+    ILikeRatio = "iLikeRatio",
+    InterQuartileRange = "interQuartileRange",
+    LikeCount = "likeCount",
+    LikeRatio = "likeRatio",
+    Max = "max",
+    MaxLength = "maxLength",
+    Mean = "mean",
+    Median = "median",
+    Min = "min",
+    MinLength = "minLength",
+    NonParametricSkew = "nonParametricSkew",
+    NotLikeCount = "notLikeCount",
+    NotRegexCount = "notRegexCount",
+    NullCount = "nullCount",
+    NullMissingCount = "nullMissingCount",
+    NullProportion = "nullProportion",
+    RegexCount = "regexCount",
+    RowCount = "rowCount",
+    Stddev = "stddev",
+    Sum = "sum",
+    System = "system",
+    ThirdQuartile = "thirdQuartile",
+    UniqueCount = "uniqueCount",
+    UniqueProportion = "uniqueProportion",
+    ValueRank = "valueRank",
+    ValuesCount = "valuesCount",
 }
 
 /**
