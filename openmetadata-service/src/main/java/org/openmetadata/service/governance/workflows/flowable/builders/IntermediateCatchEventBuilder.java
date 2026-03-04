@@ -2,6 +2,7 @@ package org.openmetadata.service.governance.workflows.flowable.builders;
 
 import org.flowable.bpmn.model.IntermediateCatchEvent;
 import org.flowable.bpmn.model.MessageEventDefinition;
+import org.openmetadata.common.utils.CommonUtil;
 
 public class IntermediateCatchEventBuilder
     extends FlowableElementBuilder<IntermediateCatchEventBuilder> {
@@ -15,7 +16,7 @@ public class IntermediateCatchEventBuilder
 
   @Override
   public IntermediateCatchEvent build() {
-    if (messageExpression == null) {
+    if (CommonUtil.nullOrEmpty(messageExpression)) {
       throw new IllegalStateException(
           "IntermediateCatchEvent requires a messageExpression to be set");
     }

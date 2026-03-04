@@ -35,4 +35,12 @@ class IntermediateCatchEventBuilderTest {
     IllegalStateException exception = assertThrows(IllegalStateException.class, builder::build);
     assertTrue(exception.getMessage().contains("messageExpression"));
   }
+
+  @Test
+  void testBuildThrowsWhenMessageExpressionIsEmpty() {
+    IntermediateCatchEventBuilder builder =
+        new IntermediateCatchEventBuilder().id("waitForStatus").messageExpression("");
+
+    assertThrows(IllegalStateException.class, builder::build);
+  }
 }
