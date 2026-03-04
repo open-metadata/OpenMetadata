@@ -1012,7 +1012,10 @@ class PowerbiSource(DashboardServiceSource):
         return None
 
     def _parse_bigquery_source(
-        self, source_expression: str, datamodel_entity: DashboardDataModel
+        self,
+        source_expression: str,
+        datamodel_entity: DashboardDataModel,
+        table: PowerBiTable,
     ) -> Optional[List[dict]]:
         """
         Parse BigQuery source from Power Query M expressions.
@@ -1049,7 +1052,7 @@ class PowerbiSource(DashboardServiceSource):
                             )
                             # Recursively parse the referenced expression
                             return self._parse_bigquery_source(
-                                dexpression.expression, datamodel_entity
+                                dexpression.expression, datamodel_entity, table
                             )
 
             # Check if this is a direct BigQuery connection
@@ -1057,7 +1060,9 @@ class PowerbiSource(DashboardServiceSource):
                 return None
 
             logger.debug(f"Found GoogleBigQuery.Database in expression")
-
+            logger.debug(
+                f"Parsing BigQuery source expression for powerbi table ({table.name}):: {source_expression}"
+            )
             # Extract project, dataset (schema), and table from BigQuery M expression
             # Pattern: [Name="project"][Data][Name="dataset",Kind="Schema"][Data][Name="table",Kind="Table"]
 
@@ -1345,7 +1350,7 @@ class PowerbiSource(DashboardServiceSource):
 
             # parse bigquery source
             table_info_list = self._parse_bigquery_source(
-                source_expression, datamodel_entity
+                source_expression, datamodel_entity, table
             )
             if isinstance(table_info_list, List):
                 return table_info_list
