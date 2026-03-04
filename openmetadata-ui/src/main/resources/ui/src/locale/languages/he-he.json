@@ -1104,6 +1104,7 @@
     "max": "מרבי",
     "max-aggregate-size": "גודל אג'רגט מקסימום",
     "max-analyzed-offset": "הזזה אנליזה מקסימום",
+    "max-cell-length": "אורך תא מקסימלי",
     "max-hierarchy-depth": "עומק היררכיה מקסימלי",
     "max-latency": "מקסימום קצה זמן",
     "max-login-fail-attempt-plural": "מספר מרבי של ניסיונות כניסה נכשלים",
