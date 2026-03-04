@@ -51,11 +51,11 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
 
         Returns:
             dict: Mapping of Metrics enum names to Metrics enum values
-                  e.g., {"COUNT": Metrics.COUNT, "UNIQUE_COUNT": Metrics.UNIQUE_COUNT}
+                  e.g., {"COUNT": Metrics.valuesCount, "UNIQUE_COUNT": Metrics.uniqueCount}
         """
         return {
-            Metrics.COUNT.name: Metrics.COUNT,
-            Metrics.UNIQUE_COUNT.name: Metrics.UNIQUE_COUNT,
+            Metrics.valuesCount.name: Metrics.valuesCount,
+            Metrics.uniqueCount.name: Metrics.uniqueCount,
         }
 
     def _evaluate_test_condition(
@@ -77,8 +77,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
                 - failed_rows: int - number of duplicate values
                 - total_rows: int - total row count
         """
-        count = metric_values[Metrics.COUNT.name]
-        unique_count = metric_values[Metrics.UNIQUE_COUNT.name]
+        count = metric_values[Metrics.valuesCount.name]
+        unique_count = metric_values[Metrics.uniqueCount.name]
 
         return {
             "matched": count == unique_count,
@@ -103,8 +103,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
-        count = metric_values[Metrics.COUNT.name]
-        unique_count = metric_values[Metrics.UNIQUE_COUNT.name]
+        count = metric_values[Metrics.valuesCount.name]
+        unique_count = metric_values[Metrics.uniqueCount.name]
 
         if dimension_info:
             return (
@@ -128,10 +128,10 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         """
         return [
             TestResultValue(
-                name=VALUE_COUNT, value=str(metric_values[Metrics.COUNT.name])
+                name=VALUE_COUNT, value=str(metric_values[Metrics.valuesCount.name])
             ),
             TestResultValue(
-                name=UNIQUE_COUNT, value=str(metric_values[Metrics.UNIQUE_COUNT.name])
+                name=UNIQUE_COUNT, value=str(metric_values[Metrics.uniqueCount.name])
             ),
         ]
 
@@ -148,12 +148,12 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
 
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
-            count = self._run_results(Metrics.COUNT, column)
-            unique_count = self._get_unique_count(Metrics.UNIQUE_COUNT, column)
+            count = self._run_results(Metrics.valuesCount, column)
+            unique_count = self._get_unique_count(Metrics.uniqueCount, column)
 
             metric_values = {
-                Metrics.COUNT.name: count,
-                Metrics.UNIQUE_COUNT.name: unique_count,
+                Metrics.valuesCount.name: count,
+                Metrics.uniqueCount.name: unique_count,
             }
 
         except (ValueError, RuntimeError) as exc:
@@ -223,12 +223,12 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         returning results for each distinct value of that dimension.
 
         For the uniqueness test, metrics_to_compute will be:
-        {"COUNT": Metrics.COUNT, "UNIQUE_COUNT": Metrics.UNIQUE_COUNT}
+        {"COUNT": Metrics.valuesCount, "UNIQUE_COUNT": Metrics.uniqueCount}
 
         For other tests, it could be:
-        {"MIN": Metrics.MIN, "MAX": Metrics.MAX}
-        {"COUNT_IN_SET": Metrics.COUNT_IN_SET}
-        {"NULL_MISSING_COUNT": Metrics.NULL_MISSING_COUNT}
+        {"MIN": Metrics.min, "MAX": Metrics.max}
+        {"COUNT_IN_SET": Metrics.countInSet}
+        {"NULL_MISSING_COUNT": Metrics.nullMissingCount}
 
         Args:
             column: The column being validated (same as used in _run_validation)

@@ -56,10 +56,10 @@ class TableRowInsertedCountToBeBetweenValidator(
         )
 
         row = self.runner.dispatch_query_select_first(
-            Metrics.ROW_COUNT.value().fn(),
+            Metrics.rowCount().fn(),
             query_filter_={
                 "filters": [(column_name, "ge", date_or_datetime_fn)],
                 "or_filter": False,
             },
         )  # type: ignore
-        return dict(row._mapping).get(Metrics.ROW_COUNT.name)
+        return dict(row._mapping).get(Metrics.rowCount.name)

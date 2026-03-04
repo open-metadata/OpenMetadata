@@ -50,6 +50,8 @@ class Histogram(HybridMetric):
     - For a concatenable (str, text...) return the AVG length
     """
 
+    schema_metric_type = MetricType.histogram
+
     @classmethod
     def name(cls):
         return MetricType.histogram.value
