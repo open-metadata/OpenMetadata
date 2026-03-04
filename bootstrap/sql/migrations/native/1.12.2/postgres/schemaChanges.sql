@@ -13,3 +13,8 @@ CREATE INDEX IF NOT EXISTS idx_test_case_resolution_status_ts_keyset
 
 CREATE INDEX IF NOT EXISTS idx_query_cost_ts_keyset
   ON query_cost_time_series(timestamp, entityFQNHash);
+
+-- Index for listLastTestCaseResultsForTestSuite / listLastTestCaseResult performance.
+-- Supports "latest row per entityFQNHash" in data_quality_data_time_series.
+CREATE INDEX IF NOT EXISTS idx_entity_timestamp_desc
+  ON data_quality_data_time_series(entityFQNHash, timestamp DESC);
