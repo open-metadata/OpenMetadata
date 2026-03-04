@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
@@ -19,6 +20,7 @@ import {
 } from '@untitledui/icons';
 import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -786,29 +788,25 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 key={breadcrumb.fullyQualifiedName}>
                 <div className="tw:inline-flex tw:items-center tw:gap-0.5">
                   <Typography.Text
-                    style={{
-                      fontSize: 12,
-                      color: isLastItem ? '#344054' : '#98a2b3',
-                      fontWeight: isLastItem ? 500 : 400,
-                      cursor: isLastItem ? 'default' : 'pointer',
-                    }}
+                    className={classNames('tw:text-xs', {
+                      'tw:cursor-default tw:font-medium tw:text-gray-700':
+                        isLastItem,
+                      'tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
+                        !isLastItem,
+                    })}
                     onClick={
                       isLastItem
                         ? undefined
                         : () => handleBreadcrumbClick(breadcrumb)
-                    }
-                    onMouseEnter={(e) => {
-                      if (!isLastItem) {
-                        e.currentTarget.style.textDecoration = 'underline';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.textDecoration = 'none';
-                    }}>
+                    }>
                     {getEntityName(breadcrumb)}
                   </Typography.Text>
                   {index < breadcrumbPath.length - 1 && (
-                    <ChevronRight color="#98a2b3" height={16} width={16} />
+                    <ChevronRight
+                      className="tw:text-gray-400"
+                      height={16}
+                      width={16}
+                    />
                   )}
                 </div>
               </div>
@@ -819,13 +817,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         <div className="d-flex items-center justify-between w-full">
           <div className="d-flex items-center w-full">
             <div className="tw:mr-2 tw:flex tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
-              <ColumnIcon
-                style={{
-                  width: 20,
-                  height: 20,
-                  color: '#344054',
-                }}
-              />
+              <ColumnIcon className="tw:h-5 tw:w-5 tw:text-gray-700" />
             </div>
             <div className="d-flex flex-column w-full overflow-hidden">
               <div className="d-flex items-center gap-2 w-full">
@@ -851,6 +843,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                     entityType === EntityType.DASHBOARD_DATA_MODEL) && (
                     <EditIconButton
                       newLook
+                      className="tw:ml-2"
                       data-testid="edit-displayName-button"
                       disabled={false}
                       icon={
@@ -861,7 +854,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                         />
                       }
                       size="small"
-                      style={{ marginLeft: 8 }}
                       title={t('label.edit-entity', {
                         entity: t('label.display-name'),
                       })}
@@ -883,12 +875,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </div>
           </div>
           <div>
-            <button
-              className="tw:flex tw:h-8 tw:w-8 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:border-0 tw:bg-transparent tw:p-1 hover:tw:bg-primary_hover"
+            <Button
+              color="secondary"
               data-testid="close-button"
-              onClick={onClose}>
-              <XClose color="#667085" height={16} width={16} />
-            </button>
+              iconLeading={XClose}
+              size="sm"
+              onClick={onClose}
+            />
           </div>
         </div>
         <div className="d-flex items-center gap-2">
@@ -947,26 +940,23 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     return null;
   }
 
-  const navBtnCls =
-    'tw:flex tw:h-8 tw:w-8 tw:cursor-pointer tw:items-center tw:justify-center' +
-    ' tw:rounded-md tw:border-0 tw:bg-white tw:p-1 hover:tw:bg-primary_hover' +
-    ' disabled:tw:cursor-not-allowed disabled:tw:opacity-40';
-
   const navFooter = (
     <div className="d-flex justify-between items-center w-full navigation-container">
       <div className="d-flex items-center gap-1 m-t-sm">
-        <button
-          className={navBtnCls}
-          disabled={isPreviousDisabled}
-          onClick={handlePreviousColumn}>
-          <ChevronUp color="#667085" height={16} width={16} />
-        </button>
-        <button
-          className={navBtnCls}
-          disabled={isNextDisabled}
-          onClick={handleNextColumn}>
-          <ChevronDown color="#667085" height={16} width={16} />
-        </button>
+        <Button
+          color="secondary"
+          iconLeading={ChevronUp}
+          isDisabled={isPreviousDisabled}
+          size="sm"
+          onClick={handlePreviousColumn}
+        />
+        <Button
+          color="secondary"
+          iconLeading={ChevronDown}
+          isDisabled={isNextDisabled}
+          size="sm"
+          onClick={handleNextColumn}
+        />
         {isColumnInList && flattenedColumns.length > 0 && (
           <Typography.Text className="pagination-header-text text-medium">
             {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}

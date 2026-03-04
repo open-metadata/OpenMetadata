@@ -29,10 +29,9 @@ const NestedColumnItem: React.FC<{
 
   return (
     <div key={column.fullyQualifiedName}>
-      <button
-        className="tw:group tw:flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:py-1 tw:text-left"
-        style={{ paddingLeft: `${depth * 8}px` }}
-        onClick={() => onColumnClick(column)}>
+      <p
+        className="tw:group tw:flex tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:py-1 tw:text-left"
+        style={{ paddingLeft: `${depth * 8}px` }}>
         <ColumnIcon
           className="tw:text-brand-700"
           style={{
@@ -43,10 +42,10 @@ const NestedColumnItem: React.FC<{
         />
         <Typography.Link
           className="nested-column-name tw:text-sm tw:font-normal group-hover:tw:underline"
-          style={{ fontSize: 14, fontWeight: 400 }}>
+          onClick={() => onColumnClick(column)}>
           {getEntityName(column)}
         </Typography.Link>
-      </button>
+      </p>
       {hasChildren && (
         <div className="tw:pl-2">
           {column.children?.map((child) => (

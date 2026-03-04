@@ -20,8 +20,14 @@ import {
 } from '@untitledui/icons';
 import { VariantType } from 'notistack';
 import React from 'react';
-import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
-import { GRAY_700, GREEN_6 } from '../../../../constants/Color.constants';
+
+const VARIANT_COLOR_CLASS: Record<VariantType, string> = {
+  success: 'tw:text-success-primary',
+  error: 'tw:text-error-primary',
+  warning: 'tw:text-warning-primary',
+  info: 'tw:text-primary',
+  default: 'tw:text-gray-700',
+};
 
 interface NotificationMessageProps {
   message: string | React.ReactNode;
@@ -52,21 +58,6 @@ const NotificationMessage: React.FC<NotificationMessageProps> = ({
     }
   };
 
-  const getIconColor = () => {
-    switch (variant) {
-      case 'success':
-        return GREEN_6;
-      case 'error':
-        return DEFAULT_THEME.errorColor;
-      case 'warning':
-        return DEFAULT_THEME.warningColor;
-      case 'info':
-        return DEFAULT_THEME.primaryColor;
-      default:
-        return GRAY_700;
-    }
-  };
-
   const icon = getIcon();
   if (!icon) {
     return <>{message}</>;
@@ -75,12 +66,9 @@ const NotificationMessage: React.FC<NotificationMessageProps> = ({
   return (
     <div className="tw:flex tw:items-center">
       <div
-        className="tw:flex tw:items-center tw:justify-center tw:shrink-0 tw:my-0 tw:mr-4.75 tw:ml-1.25"
+        className={`tw:flex tw:items-center tw:justify-center tw:shrink-0 tw:my-0 tw:mr-4.75 tw:ml-1.25 ${VARIANT_COLOR_CLASS[variant]}`}
         data-testid="alert-icon"
-        style={{
-          ...(iconRingVariants.notification as React.CSSProperties),
-          color: getIconColor(),
-        }}>
+        style={iconRingVariants.notification as React.CSSProperties}>
         {icon}
       </div>
       <div className="tw:flex-1">{message}</div>

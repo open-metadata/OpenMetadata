@@ -12,7 +12,6 @@
  */
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@untitledui/icons';
-import classNames from 'classnames';
 import { find } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { Column } from '../../../../generated/entity/data/container';
@@ -38,11 +37,6 @@ const ColumnPickerMenu: FC<ColumnPickerMenuProps> = ({
     );
   }, [activeColumnFqn, columns]);
 
-  const handleOptionClick = (key: string) => {
-    handleChange(key);
-    setIsMenuOpen(false);
-  };
-
   return (
     <div data-testid="column-picker-menu">
       <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
@@ -54,46 +48,28 @@ const ColumnPickerMenu: FC<ColumnPickerMenuProps> = ({
           {getEntityName(selectedItem)}
         </Button>
         <Dropdown.Popover className="tw:max-h-87 tw:min-w-50 tw:w-max">
-          <div className="tw:py-1">
-            {columns.map((column) => {
-              const isSelected = column.fullyQualifiedName === activeColumnFqn;
-
-              const itemClassName = classNames(
-                'tw:block tw:w-full tw:cursor-pointer tw:px-4 tw:py-2',
-                'tw:text-left tw:text-sm tw:font-normal tw:outline-hidden',
-                'tw:transition tw:duration-100 tw:ease-linear',
-                {
-                  'tw:bg-brand-solid tw:text-white tw:font-semibold tw:hover:bg-brand-solid_hover':
-                    isSelected,
-                  'tw:text-secondary tw:hover:bg-primary_hover tw:hover:text-secondary_hover':
-                    !isSelected,
-                }
-              );
-
-              return (
-                <button
-                  className={itemClassName}
-                  data-testid={`column-picker-menu-item-${column.fullyQualifiedName}`}
-                  key={column.fullyQualifiedName}
-                  onClick={() =>
-                    handleOptionClick(column.fullyQualifiedName || '')
-                  }>
-                  <span className="tw:flex tw:items-center tw:gap-1">
-                    <span className="tw:text-sm tw:text-inherit">
-                      {getEntityName(column)}
-                    </span>
-                    <span
-                      className={classNames('tw:text-xs', {
-                        'tw:opacity-90': isSelected,
-                        'tw:text-tertiary': !isSelected,
-                      })}>
-                      {`(${column.dataType})`}
-                    </span>
+          <Dropdown.Menu
+            selectedKeys={[activeColumnFqn]}
+            selectionMode="single"
+            onAction={(key) => {
+              handleChange(key as string);
+              setIsMenuOpen(false);
+            }}>
+            {columns.map((column) => (
+              <Dropdown.Item
+                className="tw:[&[data-selected]>div]:bg-brand-solid! tw:[&[data-selected]>div]:hover:bg-brand-solid_hover! tw:[&[data-selected]>div>span]:text-white!"
+                data-testid={`column-picker-menu-item-${column.fullyQualifiedName}`}
+                id={column.fullyQualifiedName || ''}
+                key={column.fullyQualifiedName}>
+                <>
+                  <span>{getEntityName(column)}</span>{' '}
+                  <span className="tw:text-xs tw:font-normal">
+                    {`(${column.dataType})`}
                   </span>
-                </button>
-              );
-            })}
-          </div>
+                </>
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
         </Dropdown.Popover>
       </Dropdown.Root>
     </div>
