@@ -1,7 +1,9 @@
 package org.openmetadata.service.search.indexes;
 
 import java.util.Map;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 
 public class GlossaryTermIndex implements SearchIndex {
@@ -20,6 +22,21 @@ public class GlossaryTermIndex implements SearchIndex {
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(glossaryTerm, Entity.GLOSSARY_TERM);
     doc.putAll(commonAttributes);
+
+    if (doc.containsKey("glossary") && glossaryTerm.getGlossary() != null) {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> glossaryMap = (Map<String, Object>) doc.get("glossary");
+      Glossary glossary =
+          Entity.getEntity(
+              Entity.GLOSSARY,
+              glossaryTerm.getGlossary().getId(),
+              "mutuallyExclusive",
+              Include.NON_DELETED);
+      if (glossary != null && glossary.getMutuallyExclusive() != null) {
+        glossaryMap.put("mutuallyExclusive", glossary.getMutuallyExclusive());
+      }
+    }
+
     return doc;
   }
 
