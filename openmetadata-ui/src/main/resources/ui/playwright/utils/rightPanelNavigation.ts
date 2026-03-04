@@ -87,7 +87,7 @@ export async function navigateToDomainDataProductsAndOpenPanel(
 
     return (
       url.includes('/api/v1/search/query') &&
-      url.includes('index=data_product_search_index')
+      url.includes('index=dataProduct')
     );
   });
 

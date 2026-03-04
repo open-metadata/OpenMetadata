@@ -125,7 +125,7 @@ export const assignIncident = async (data: {
     await page.click('[data-testid="assignee-search-input"]');
 
     const searchUserResponse = page.waitForResponse(
-      'api/v1/search/query?q=*&index=user_search_index*'
+      'api/v1/search/query?q=*&index=user*'
     );
     await page.fill(
       '[data-testid="assignee-search-input"] input',

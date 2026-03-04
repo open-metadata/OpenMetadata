@@ -118,7 +118,7 @@ export const editLineage = async (page: Page) => {
   await editLineageClick(page);
 
   await expect(
-    page.getByTestId('table_search_index-draggable-icon')
+    page.getByTestId('table-draggable-icon')
   ).toBeVisible();
 };
 

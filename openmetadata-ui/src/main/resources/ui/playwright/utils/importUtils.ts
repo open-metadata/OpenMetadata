@@ -105,7 +105,7 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const userListResponse = page.waitForResponse(
-    '/api/v1/search/query?q=&index=user_search_index&*'
+    '/api/v1/search/query?q=&index=user&*'
   );
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;
@@ -121,7 +121,7 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 
   for (const owner of owners) {
     const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=user_search_index*'
+      'api/v1/search/query?q=*&index=user*'
     );
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
@@ -174,7 +174,7 @@ export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
 
   for (const owner of owners) {
     const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=team_search_index*'
+      'api/v1/search/query?q=*&index=team*'
     );
     await page.locator('[data-testid="owner-select-teams-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-teams-search-bar"]', owner);
@@ -236,7 +236,7 @@ export const fillGlossaryTermDetails = async (
 
   await page.click('[data-testid="tag-selector"]');
   const searchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=**&index=glossary_term_search_index&**`
+    `/api/v1/search/query?q=**&index=glossaryTerm&**`
   );
   await page.locator('[data-testid="tag-selector"] input').fill(glossary.name);
   await searchResponse;
