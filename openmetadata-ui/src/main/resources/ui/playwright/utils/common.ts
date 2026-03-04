@@ -803,7 +803,7 @@ export const testPaginationNavigation = async (
     // Explicitly using selector, as in some cases table cell contains markdown
     // and markdown can further have tables
     const initialRowCount = await page
-      .locator('tbody > tr[id]:visible')
+      .locator('tbody > tr:is([data-row-key], [id]):visible')
       .count();
     if (validateRowCount) {
       expect(initialRowCount).toBeLessThanOrEqual(15);
@@ -828,7 +828,7 @@ export const testPaginationNavigation = async (
     await expect(pageSizeDropdown).toHaveText('25 / Page');
 
     const newRowCount = await page
-      .locator('tbody > tr[id]:visible')
+      .locator('tbody > tr:is([data-row-key], [id]):visible')
       .count();
     if (validateRowCount) {
       expect(newRowCount).toBeLessThanOrEqual(25);
