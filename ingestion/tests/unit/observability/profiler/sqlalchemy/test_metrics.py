@@ -1219,5 +1219,6 @@ class MetricsTest(TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
+        cls.sqa_profiler_interface.close()
         os.remove(cls.db_path)
         return super().tearDownClass()
