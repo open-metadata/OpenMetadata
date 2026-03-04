@@ -23,7 +23,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
@@ -47,6 +47,8 @@ from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
+
+from ..conftest import _safe_delete
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -78,7 +80,9 @@ ingestion_config = {
     },
 }
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class User(Base):
@@ -137,7 +141,10 @@ def create_data(engine, session):
         User.__table__.create(bind=engine)
         NewUser.__table__.create(bind=engine)
     except:
-        logger.warning("Table Already exists")
+        logger.warning("Table Already exists, clearing existing data")
+        session.query(User).delete()
+        session.query(NewUser).delete()
+        session.commit()
 
     data = [
         User(
@@ -204,16 +211,15 @@ def ingest(service_name, create_data, metadata, engine, session):
 
     yield
 
-    service_id = str(
-        metadata.get_by_name(entity=DatabaseService, fqn=service_name).id.root
-    )
-
-    metadata.delete(
-        entity=DatabaseService,
-        entity_id=service_id,
-        recursive=True,
-        hard_delete=True,
-    )
+    service_entity = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
+    if service_entity:
+        _safe_delete(
+            metadata,
+            entity=DatabaseService,
+            entity_id=service_entity.id,
+            recursive=True,
+            hard_delete=True,
+        )
 
     User.__table__.drop(bind=engine)
     NewUser.__table__.drop(bind=engine)
@@ -249,7 +255,7 @@ def test_profiler_workflow(ingest, metadata, service_name):
             "profiler": {
                 "name": "my_profiler",
                 "timeout_seconds": 60,
-                "metrics": ["row_count", "min", "max", "COUNT", "null_count"],
+                "metrics": ["rowCount", "min", "max", "nullCount"],
             },
             "tableConfig": [
                 {
@@ -592,12 +598,12 @@ def test_workflow_values_partition(ingest, metadata, service_name):
 def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service_name):
     """Test custom profiler config return expected sample and metric computation"""
     profiler_metrics = [
-        "MIN",
-        "MAX",
-        "MEAN",
-        "MEDIAN",
+        "min",
+        "max",
+        "mean",
+        "median",
     ]
-    id_metrics = ["MIN", "MAX"]
+    id_metrics = ["min", "max"]
     non_metric_values = ["name", "timestamp"]
 
     workflow_config = deepcopy(ingestion_config)
@@ -651,7 +657,7 @@ def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service
 
     id_metric_ln = 0
     for metric_name, metric in latest_id_profile:
-        if metric_name.upper() in id_metrics:
+        if metric_name in id_metrics:
             assert metric is not None
             id_metric_ln += 1
         else:
@@ -670,7 +676,7 @@ def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service
 
     age_metric_ln = 0
     for metric_name, metric in latest_age_profile:
-        if metric_name.upper() in profiler_metrics:
+        if metric_name in profiler_metrics:
             assert metric is not None
             age_metric_ln += 1
         else:

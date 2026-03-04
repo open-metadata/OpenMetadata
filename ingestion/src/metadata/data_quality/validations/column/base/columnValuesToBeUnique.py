@@ -51,11 +51,11 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
 
         Returns:
             dict: Mapping of Metrics enum names to Metrics enum values
-                  e.g., {"COUNT": Metrics.COUNT, "UNIQUE_COUNT": Metrics.UNIQUE_COUNT}
+                  e.g., {"COUNT": Metrics.valuesCount, "UNIQUE_COUNT": Metrics.uniqueCount}
         """
         return {
-            Metrics.COUNT.name: Metrics.COUNT,
-            Metrics.UNIQUE_COUNT.name: Metrics.UNIQUE_COUNT,
+            Metrics.valuesCount.name: Metrics.valuesCount,
+            Metrics.uniqueCount.name: Metrics.uniqueCount,
         }
 
     def _evaluate_test_condition(
@@ -77,8 +77,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
                 - failed_rows: int - number of duplicate values
                 - total_rows: int - total row count
         """
-        count = metric_values[Metrics.COUNT.name]
-        unique_count = metric_values[Metrics.UNIQUE_COUNT.name]
+        count = metric_values[Metrics.valuesCount.name]
+        unique_count = metric_values[Metrics.uniqueCount.name]
 
         return {
             "matched": count == unique_count,
@@ -103,8 +103,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
-        count = metric_values[Metrics.COUNT.name]
-        unique_count = metric_values[Metrics.UNIQUE_COUNT.name]
+        count = metric_values[Metrics.valuesCount.name]
+        unique_count = metric_values[Metrics.uniqueCount.name]
 
         if dimension_info:
             return (
@@ -128,10 +128,10 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         """
         return [
             TestResultValue(
-                name=VALUE_COUNT, value=str(metric_values[Metrics.COUNT.name])
+                name=VALUE_COUNT, value=str(metric_values[Metrics.valuesCount.name])
             ),
             TestResultValue(
-                name=UNIQUE_COUNT, value=str(metric_values[Metrics.UNIQUE_COUNT.name])
+                name=UNIQUE_COUNT, value=str(metric_values[Metrics.uniqueCount.name])
             ),
         ]
 
@@ -147,13 +147,13 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
-            count = self._run_results(Metrics.COUNT, column)
-            unique_count = self._get_unique_count(Metrics.UNIQUE_COUNT, column)
+            column: Union[SQALikeColumn, Column] = self.get_column()
+            count = self._run_results(Metrics.valuesCount, column)
+            unique_count = self._get_unique_count(Metrics.uniqueCount, column)
 
             metric_values = {
-                Metrics.COUNT.name: count,
-                Metrics.UNIQUE_COUNT.name: unique_count,
+                Metrics.valuesCount.name: count,
+                Metrics.uniqueCount.name: unique_count,
             }
 
         except (ValueError, RuntimeError) as exc:
@@ -184,66 +184,6 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             row_count=count,
             passed_rows=evaluation["passed_rows"],
         )
-
-    def _run_dimensional_validation(self) -> List[DimensionResult]:
-        """Execute dimensional validation for column values to be unique
-
-        The new approach runs separate queries for each dimension column instead of
-        combining them with GROUP BY. For example, if dimensionColumns = ["country", "age"],
-        this method will:
-        1. Run one query: GROUP BY country -> {"Spain": result1, "Argentina": result2}
-        2. Run another query: GROUP BY age -> {"10": result3, "12": result4}
-
-        Returns:
-            List[DimensionResult]: List of dimension-specific test results
-        """
-        try:
-            dimension_columns = self.test_case.dimensionColumns or []
-            if not dimension_columns:
-                return []
-
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
-
-            test_params = self._get_test_parameters()
-            metrics_to_compute = self._get_metrics_to_compute(test_params)
-
-            dimension_results = []
-            for dimension_column in dimension_columns:
-                try:
-                    dimension_col = self._get_column_name(dimension_column)
-
-                    single_dimension_results = self._execute_dimensional_validation(
-                        column, dimension_col, metrics_to_compute, test_params
-                    )
-
-                    dimension_results.extend(single_dimension_results)
-
-                except Exception as exc:
-                    logger.warning(
-                        f"Error executing dimensional query for column {dimension_column}: {exc}"
-                    )
-                    continue
-
-            return dimension_results
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional validation: {exc}")
-            return []
-
-    @abstractmethod
-    def _get_column_name(self, column_name: Optional[str] = None):
-        """Get the column object for the given column name
-
-        If column_name is None, returns the main column being validated.
-        If column_name is provided, returns the column object for that specific column.
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            Column object (Column, SQALikeColumn, etc.)
-        """
-        raise NotImplementedError
 
     @abstractmethod
     def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
@@ -283,12 +223,12 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         returning results for each distinct value of that dimension.
 
         For the uniqueness test, metrics_to_compute will be:
-        {"COUNT": Metrics.COUNT, "UNIQUE_COUNT": Metrics.UNIQUE_COUNT}
+        {"COUNT": Metrics.valuesCount, "UNIQUE_COUNT": Metrics.uniqueCount}
 
         For other tests, it could be:
-        {"MIN": Metrics.MIN, "MAX": Metrics.MAX}
-        {"COUNT_IN_SET": Metrics.COUNT_IN_SET}
-        {"NULL_MISSING_COUNT": Metrics.NULL_MISSING_COUNT}
+        {"MIN": Metrics.min, "MAX": Metrics.max}
+        {"COUNT_IN_SET": Metrics.countInSet}
+        {"NULL_MISSING_COUNT": Metrics.nullMissingCount}
 
         Args:
             column: The column being validated (same as used in _run_validation)

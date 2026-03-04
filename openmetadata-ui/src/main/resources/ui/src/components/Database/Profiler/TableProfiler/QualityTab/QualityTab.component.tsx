@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid, Stack, Tab, Tabs, useTheme } from '@mui/material';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { Form, Select, Space } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as YellowCalendarIcon } from '../../../../../assets/svg/ic-dq-aborted-widget.svg';
-import { ReactComponent as RedCircleIcon } from '../../../../../assets/svg/ic-dq-failed-widget.svg';
-import { ReactComponent as SuccessTicketIcon } from '../../../../../assets/svg/ic-dq-success-widget.svg';
-import { ReactComponent as AddItemIcon } from '../../../../../assets/svg/ic-dq-total-test-widget.svg';
+import { ReactComponent as AbortedTestIcon } from '../../../../../assets/svg/data-observability/aborted-test.svg';
+import { ReactComponent as FailedTestIcon } from '../../../../../assets/svg/data-observability/failed-test.svg';
+import { ReactComponent as SuccessTestIcon } from '../../../../../assets/svg/data-observability/success-test.svg';
+import { ReactComponent as TotalTestIcon } from '../../../../../assets/svg/data-observability/total-test.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import {
   DEFAULT_SORT_ORDER,
@@ -29,6 +30,8 @@ import {
 } from '../../../../../constants/profiler.constant';
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { TestCaseType } from '../../../../../enums/TestSuite.enum';
@@ -42,14 +45,20 @@ import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  getPrioritizedEditPermission,
+} from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
+import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
+import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import DataQualityTab from '../../DataQualityTab/DataQualityTab';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
@@ -66,7 +75,7 @@ export const QualityTab = () => {
     testCaseSummary,
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
-  const theme = useTheme();
+  const { permissions: globalPermissions } = usePermissionProvider();
 
   const {
     currentPage,
@@ -103,6 +112,8 @@ export const QualityTab = () => {
     };
   }, [location.search]);
 
+  const { showModal } = useEntityExportModalProvider();
+
   const { qualityTab = EntityTabs.TEST_CASES } = searchData;
 
   const isTestCaseTab = useMemo(
@@ -128,25 +139,25 @@ export const QualityTab = () => {
         title: t('label.test-plural-type', { type: t('label.total') }),
         key: 'total-tests',
         value: tests.total,
-        icon: AddItemIcon,
+        icon: TotalTestIcon,
       },
       {
         title: t('label.test-plural-type', { type: t('label.successful') }),
         key: 'successful-tests',
         value: tests.success,
-        icon: SuccessTicketIcon,
+        icon: SuccessTestIcon,
       },
       {
         title: t('label.test-plural-type', { type: t('label.failed') }),
         key: 'failed-tests',
         value: tests.failed,
-        icon: RedCircleIcon,
+        icon: FailedTestIcon,
       },
       {
         title: t('label.test-plural-type', { type: t('label.aborted') }),
         key: 'aborted-tests',
         value: tests.aborted,
-        icon: YellowCalendarIcon,
+        icon: AbortedTestIcon,
       },
     ];
   }, [testCaseSummary]);
@@ -160,7 +171,7 @@ export const QualityTab = () => {
         limit: 0,
       });
       setIngestionPipelineCount(ingestionPipelinePaging.total);
-    } catch (error) {
+    } catch {
       // do nothing for count error
     }
   };
@@ -231,6 +242,34 @@ export const QualityTab = () => {
     }
   };
 
+  const extraDropdownContent: ItemType[] = useMemo(() => {
+    const bulkImportExportTestCasePermission = {
+      ViewAll:
+        checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+      EditAll:
+        checkPermission(
+          Operation.EditAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+    };
+
+    return table?.fullyQualifiedName
+      ? ExtraTestCaseDropdownOptions(
+          table.fullyQualifiedName,
+          bulkImportExportTestCasePermission,
+          table?.deleted ?? false,
+          navigate,
+          showModal,
+          EntityType.TABLE
+        )
+      : [];
+  }, [globalPermissions, table, navigate, showModal]);
+
   const handleTestCaseTypeChange = (value: TestCaseType) => {
     if (value !== selectedTestType) {
       setSelectedTestType(value);
@@ -298,11 +337,14 @@ export const QualityTab = () => {
     handlePageSizeChange,
   ]);
 
-  const handleTabChange = (_: React.SyntheticEvent, tab: string) => {
+  const handleTabChange = (tab: string | number) => {
     navigate(
       {
         pathname: location.pathname,
-        search: QueryString.stringify({ ...searchData, qualityTab: tab }),
+        search: QueryString.stringify({
+          ...searchData,
+          qualityTab: String(tab),
+        }),
       },
       { state: undefined, replace: true }
     );
@@ -320,131 +362,104 @@ export const QualityTab = () => {
   }
 
   return (
-    <Stack className="quality-tab-container" spacing="30px">
-      <Grid container spacing={5}>
+    <div className="quality-tab-container tw:flex tw:flex-col tw:gap-[30px]">
+      <div className="tw:grid tw:grid-cols-4 tw:gap-6">
         {totalTestCaseSummary?.map((summary) => (
-          <Grid key={summary.title} size="grow">
-            <SummaryCardV1
-              icon={summary.icon}
-              isLoading={false}
-              title={summary.title}
-              value={summary.value}
-            />
-          </Grid>
+          <SummaryCardV1
+            icon={summary.icon}
+            isLoading={false}
+            key={summary.title}
+            title={summary.title}
+            value={summary.value}
+          />
         ))}
-      </Grid>
+      </div>
 
-      <Box
-        sx={{
-          border: `1px solid ${theme.palette.grey['200']}`,
-          borderRadius: '10px',
-        }}>
-        <Box
-          alignItems="center"
-          display="flex"
-          justifyContent="space-between"
-          p={4}>
-          <Box display="flex" gap={5} width="100%">
-            <Tabs
-              sx={{
-                width: 'max-content',
-                minHeight: 'unset',
-                display: 'inline-flex',
-                '.MuiTab-root': {
-                  color: theme.palette.grey['700'],
-                  transition:
-                    'background-color 0.2s ease-in, color 0.2s ease-in',
-                  borderRadius: '8px',
-                },
-                '.Mui-selected, .MuiTab-root:hover': {
-                  backgroundColor: `${theme.palette.grey['50']}`,
-                  color: `${theme.palette.grey['800']}`,
-                },
-                'MuiTabs-root': {
-                  minHeight: 'unset',
-                },
-                '.MuiTabs-indicator': {
-                  display: 'none',
-                },
-                '.MuiTabs-scroller': {
-                  padding: '0px',
-                  height: 'unset',
-                  borderRadius: '8px',
-                },
-                '.MuiTab-root:not(:first-of-type)': {
-                  marginLeft: '0px',
-                  borderLeft: `1px solid ${theme.palette.grey['200']}`,
-                  borderTopLeftRadius: 0,
-                  borderBottomLeftRadius: 0,
-                },
-              }}
-              value={qualityTab}
-              onChange={handleTabChange}>
-              {tabs.map(({ label, key }) => (
-                <Tab key={key} label={label} value={key} />
-              ))}
-            </Tabs>
+      <div className="tw:border tw:border-secondary tw:rounded-[10px]">
+        <Tabs selectedKey={qualityTab} onSelectionChange={handleTabChange}>
+          <div className="tw:flex tw:items-center tw:justify-between tw:p-4">
+            <div className="tw:flex tw:gap-5 tw:w-full">
+              <Tabs.List size="sm" type="button-border">
+                {tabs.map(({ label, key }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+
+              {isTestCaseTab && (
+                <div className="tw:w-[400px]">
+                  <Searchbar
+                    removeMargin
+                    placeholder={t('label.search-entity', {
+                      entity: t('label.test-case-lowercase'),
+                    })}
+                    searchValue={searchValue}
+                    onSearch={handleSearchTestCase}
+                  />
+                </div>
+              )}
+            </div>
 
             {isTestCaseTab && (
-              <Box width={400}>
-                <Searchbar
-                  removeMargin
-                  placeholder={t('label.search-entity', {
-                    entity: t('label.test-case-lowercase'),
-                  })}
-                  searchValue={searchValue}
-                  onSearch={handleSearchTestCase}
-                />
-              </Box>
+              <Form className="new-form-style" layout="inline">
+                <Space align="center" className="w-full justify-end" size={20}>
+                  <Form.Item className="m-0 w-52" label={t('label.type')}>
+                    <Select
+                      options={TEST_CASE_TYPE_OPTION}
+                      value={selectedTestType}
+                      onChange={handleTestCaseTypeChange}
+                    />
+                  </Form.Item>
+                  <Form.Item className="m-0 w-52" label={t('label.status')}>
+                    <Select
+                      options={TEST_CASE_STATUS_OPTION}
+                      value={selectedTestCaseStatus}
+                      onChange={handleTestCaseStatusChange}
+                    />
+                  </Form.Item>
+                  <ManageButton
+                    canDelete={false}
+                    deleted={table?.deleted ?? false}
+                    displayName={t('label.manage-entity', {
+                      entity: t('label.test-case-plural'),
+                    })}
+                    entityId={table?.id}
+                    entityName={getEntityName(table)}
+                    entityType={EntityType.TEST_CASE}
+                    extraDropdownContent={extraDropdownContent}
+                    isRecursiveDelete={false}
+                  />
+                </Space>
+              </Form>
             )}
-          </Box>
+          </div>
 
-          {isTestCaseTab && (
-            <Form className="new-form-style" layout="inline">
-              <Space align="center" className="w-full justify-end" size={20}>
-                <Form.Item className="m-0 w-40" label={t('label.type')}>
-                  <Select
-                    options={TEST_CASE_TYPE_OPTION}
-                    value={selectedTestType}
-                    onChange={handleTestCaseTypeChange}
-                  />
-                </Form.Item>
-                <Form.Item className="m-0 w-40" label={t('label.status')}>
-                  <Select
-                    options={TEST_CASE_STATUS_OPTION}
-                    value={selectedTestCaseStatus}
-                    onChange={handleTestCaseStatusChange}
-                  />
-                </Form.Item>
-              </Space>
-            </Form>
-          )}
-        </Box>
+          <Tabs.Panel id={EntityTabs.TEST_CASES}>
+            <DataQualityTab
+              removeTableBorder
+              afterDeleteAction={async (...params) => {
+                await fetchAllTests(...params);
+                params?.length &&
+                  (await getResourceLimit('dataQuality', true, true));
+              }}
+              breadcrumbData={tableBreadcrumb}
+              fetchTestCases={handleSortTestCase}
+              isEditAllowed={editTest}
+              isLoading={isTestsLoading}
+              pagingData={pagingData}
+              showTableColumn={false}
+              testCases={allTestCases}
+              onTestCaseResultUpdate={onTestCaseUpdate}
+              onTestUpdate={onTestCaseUpdate}
+            />
+          </Tabs.Panel>
 
-        {isTestCaseTab && (
-          <DataQualityTab
-            removeTableBorder
-            afterDeleteAction={async (...params) => {
-              await fetchAllTests(...params); // Update current count when Create / Delete operation performed
-              params?.length &&
-                (await getResourceLimit('dataQuality', true, true));
-            }}
-            breadcrumbData={tableBreadcrumb}
-            fetchTestCases={handleSortTestCase}
-            isEditAllowed={editTest}
-            isLoading={isTestsLoading}
-            pagingData={pagingData}
-            showTableColumn={false}
-            testCases={allTestCases}
-            onTestCaseResultUpdate={onTestCaseUpdate}
-            onTestUpdate={onTestCaseUpdate}
-          />
-        )}
-
-        {qualityTab === EntityTabs.PIPELINE && (
-          <TestSuitePipelineTab testSuite={testSuite} />
-        )}
-      </Box>
-    </Stack>
+          <Tabs.Panel id={EntityTabs.PIPELINE}>
+            <TestSuitePipelineTab testSuite={testSuite} />
+          </Tabs.Panel>
+        </Tabs>
+      </div>
+    </div>
   );
 };

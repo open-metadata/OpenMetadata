@@ -48,11 +48,13 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.qlikcloud.models import QlikDataFile
 from metadata.ingestion.source.dashboard.qliksense.client import QlikSenseClient
 from metadata.ingestion.source.dashboard.qliksense.models import (
     QlikDashboard,
     QlikTable,
 )
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.fqn import build_es_fqn_search_string
@@ -220,7 +222,7 @@ class QliksenseSource(DashboardServiceSource):
                 parsed_fields = {
                     "dataTypeDisplay": "Qlik Field",
                     "dataType": DataType.UNKNOWN,
-                    "name": field.id,
+                    "name": truncate_column_name(str(field.id)),
                     "displayName": field.name if field.name else field.id,
                 }
                 datasource_columns.append(Column(**parsed_fields))
@@ -234,9 +236,17 @@ class QliksenseSource(DashboardServiceSource):
             self.data_models = self.client.get_dashboard_models()
             for data_model in self.data_models or []:
                 try:
-                    data_model_name = (
-                        data_model.tableName if data_model.tableName else data_model.id
-                    )
+                    if isinstance(data_model, QlikDataFile):
+                        data_model_name = data_model.name
+                        data_model_columns = []
+                    elif isinstance(data_model, QlikTable):
+                        data_model_name = (
+                            data_model.tableName
+                            if data_model.tableName
+                            else data_model.id
+                        )
+                        data_model_columns = self.get_column_info(data_model)
+
                     if filter_by_datamodel(
                         self.source_config.dataModelFilterPattern, data_model_name
                     ):
@@ -250,7 +260,7 @@ class QliksenseSource(DashboardServiceSource):
                         ),
                         dataModelType=DataModelType.QlikDataModel.value,
                         serviceType=self.service_connection.type.value,
-                        columns=self.get_column_info(data_model),
+                        columns=data_model_columns,
                     )
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)

@@ -9,6 +9,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to generate inline text diff with add/remove markers.
@@ -300,5 +302,18 @@ public class TextDiffHelper implements HandlebarsHelper {
    */
   private static String renderTokenVerbatim(Token t) {
     return t.text;
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("textDiff")
+        .withDescription("Generate inline text diff with add/remove markers")
+        .withCursorOffset(12)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{textDiff }}")
+                    .withExample("{{textDiff entity.oldDescription entity.newDescription}}")));
   }
 }

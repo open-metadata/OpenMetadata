@@ -65,6 +65,7 @@ from metadata.ingestion.source.dashboard.quicksight.models import (
     DataSourceRespS3,
     DescribeDataSourceResponse,
 )
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
@@ -291,7 +292,9 @@ class QuicksightSource(DashboardServiceSource):
                     if db_service_entity
                     else Dialect.ANSI
                 ),
+                parser_type=self.get_query_parser_type(),
             )
+            query_hash = lineage_parser.query_hash
             lineage_details = LineageDetails(
                 source=LineageSource.DashboardLineage, sqlQuery=sql_query
             )
@@ -302,7 +305,7 @@ class QuicksightSource(DashboardServiceSource):
                     and prefix_database_name.lower() != str(db_name).lower()
                 ):
                     logger.debug(
-                        f"Database {db_name} does not match prefix {prefix_database_name}"
+                        f"[{query_hash}] Database {db_name} does not match prefix {prefix_database_name}"
                     )
                     continue
                 for table in lineage_parser.source_tables:
@@ -317,7 +320,7 @@ class QuicksightSource(DashboardServiceSource):
                         and prefix_schema_name.lower() != database_schema_name.lower()
                     ):
                         logger.debug(
-                            f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                            f"[{query_hash}] Schema {database_schema_name} does not match prefix {prefix_schema_name}"
                         )
                         continue
 
@@ -327,7 +330,7 @@ class QuicksightSource(DashboardServiceSource):
                         and prefix_table_name.lower() != table.lower()
                     ):
                         logger.debug(
-                            f"Table {table} does not match prefix {prefix_table_name}"
+                            f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}"
                         )
                         continue
 
@@ -574,9 +577,10 @@ class QuicksightSource(DashboardServiceSource):
                 col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                     field.get("Type")
                 )
+                field_name = str(field.get("Name"))
                 parsed_fields = {
-                    "name": field.get("Name"),
-                    "displayName": field.get("Name"),
+                    "name": truncate_column_name(field_name),
+                    "displayName": field_name,
                     "dataType": col_parse.get("dataType"),
                 }
                 datasource_columns.append(Column(**parsed_fields))

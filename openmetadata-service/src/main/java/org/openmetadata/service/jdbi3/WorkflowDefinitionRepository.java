@@ -22,6 +22,7 @@ import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
@@ -60,7 +61,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   @Override
-  protected void setFields(WorkflowDefinition entity, EntityUtil.Fields fields) {
+  protected void setFields(
+      WorkflowDefinition entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     if (WorkflowHandler.isInitialized()) {
       entity.withDeployed(WorkflowHandler.getInstance().isDeployed(entity));
     } else {
@@ -178,12 +180,12 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateNodeIds(workflowDefinition);
     // 2. Comprehensive graph structure validations (cycles, connectivity, edges, start/end nodes)
     validateWorkflowGraphStructure(workflowDefinition);
-    // 3. Business rule validations
-    validateUserTasksForReviewerSupport(workflowDefinition);
-    // 4. Namespace configuration validations
+    // 3. Namespace configuration validations
     validateUpdatedByNamespace(workflowDefinition);
-    // 5. Node input/output validations
+    // 4. Node input/output validations
     validateNodeInputOutputMapping(workflowDefinition);
+    // 5. Conditional task validations
+    validateConditionalTasks(workflowDefinition);
   }
 
   /**
@@ -358,10 +360,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     return false;
   }
 
-  /**
-   * Suspends a workflow by pausing all active instances in Flowable engine.
-   * @param workflow The workflow definition to suspend
-   */
   public void suspendWorkflow(WorkflowDefinition workflow) {
     String workflowName = workflow.getName();
 
@@ -369,7 +367,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       // Suspend all active process instances for this workflow
       WorkflowHandler.getInstance().suspendWorkflow(workflowName);
 
-      // Log the suspension
+      workflow.setSuspended(true);
+      dao.update(workflow);
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -384,16 +383,15 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     }
   }
 
-  /**
-   * Resumes a suspended workflow by activating all paused instances in Flowable engine.
-   * @param workflow The workflow definition to resume
-   */
   public void resumeWorkflow(WorkflowDefinition workflow) {
     String workflowName = workflow.getName();
 
     try {
       // Resume all suspended process instances for this workflow
       WorkflowHandler.getInstance().resumeWorkflow(workflowName);
+
+      workflow.setSuspended(false);
+      dao.update(workflow);
 
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);
@@ -454,32 +452,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
                   "Workflow '%s' has an edge to non-existent node: '%s'",
                   workflowName, edge.getTo()));
         }
-      }
-    }
-  }
-
-  /**
-   * Validates user tasks are only used with entities that support reviewers.
-   */
-  private void validateUserTasksForReviewerSupport(WorkflowDefinition workflowDefinition) {
-    // Check if workflow has any user approval or change review tasks
-    boolean hasUserApprovalTasks = false;
-    List<String> userTaskTypes = List.of(USER_APPROVAL_TASK);
-
-    if (workflowDefinition.getNodes() != null) {
-      for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
-        if (userTaskTypes.contains(node.getSubType())) {
-          hasUserApprovalTasks = true;
-          break;
-        }
-      }
-    }
-
-    // If workflow has user approval tasks, validate entity types support reviewers
-    if (hasUserApprovalTasks) {
-      List<String> entityTypes = getEntityTypesFromWorkflow(workflowDefinition);
-      if (!entityTypes.isEmpty()) {
-        validateEntityTypesSupportsReviewers(entityTypes, workflowDefinition.getName());
       }
     }
   }
@@ -687,67 +659,62 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     return false;
   }
 
-  /**
-   * Extracts entity types from workflow trigger configuration.
-   * Migration has already converted single entityType to entityTypes array.
-   */
-  private List<String> getEntityTypesFromWorkflow(WorkflowDefinition workflowDefinition) {
-    List<String> entityTypes = new ArrayList<>();
-
-    if (workflowDefinition.getTrigger() != null
-        && workflowDefinition.getTrigger().getConfig() != null) {
-
-      // Convert config to Map for field access
-      Map<String, Object> configMap = JsonUtils.getMap(workflowDefinition.getTrigger().getConfig());
-
-      // Check for multiple entityTypes (both eventBasedEntity and periodicBatchEntity triggers)
-      @SuppressWarnings("unchecked")
-      List<String> multipleEntityTypes = (List<String>) configMap.get("entityTypes");
-      if (multipleEntityTypes != null) {
-        entityTypes.addAll(multipleEntityTypes);
-      }
+  private void validateConditionalTasks(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getNodes() == null || workflowDefinition.getEdges() == null) {
+      return;
     }
 
-    return entityTypes;
+    String workflowName = workflowDefinition.getName();
+
+    // Build outgoing edges map for each node
+    Map<String, List<EdgeDefinition>> outgoingEdgesMap = new java.util.HashMap<>();
+    for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+      outgoingEdgesMap.computeIfAbsent(edge.getFrom(), k -> new ArrayList<>()).add(edge);
+    }
+
+    // Check each conditional task node
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      if (isConditionalTask(node)) {
+        List<EdgeDefinition> outgoingEdges = outgoingEdgesMap.get(node.getName());
+
+        if (outgoingEdges == null || outgoingEdges.isEmpty()) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s': Conditional task '%s' must have outgoing sequence flows for both TRUE and FALSE conditions",
+                  workflowName, node.getNodeDisplayName()));
+        }
+
+        // Check if we have both TRUE and FALSE conditions
+        boolean hasTrueCondition = false;
+        boolean hasFalseCondition = false;
+
+        for (EdgeDefinition edge : outgoingEdges) {
+          String condition = edge.getCondition();
+          if (condition != null) {
+            if ("true".equals(condition.trim())) {
+              hasTrueCondition = true;
+            } else if ("false".equals(condition.trim())) {
+              hasFalseCondition = true;
+            }
+          }
+        }
+
+        if (!hasTrueCondition || !hasFalseCondition) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s': Conditional task '%s' must have both TRUE and FALSE outgoing sequence flows. "
+                      + "Add sequence flows with conditions for both outcomes to prevent workflow execution errors.",
+                  workflowName, node.getNodeDisplayName()));
+        }
+      }
+    }
   }
 
   /**
-   * Validates that the entity types support reviewers.
+   * Checks if a node is a conditional task that requires TRUE/FALSE outputs.
    */
-  private void validateEntityTypesSupportsReviewers(List<String> entityTypes, String workflowName) {
-    for (String entityType : entityTypes) {
-      try {
-        // Get the repository for the entity type to check if it supports reviewers
-        EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-        boolean supportsReviewers = entityRepository.isSupportsReviewers();
-
-        LOG.debug("Entity type '{}' supports reviewers: {}", entityType, supportsReviewers);
-
-        if (!supportsReviewers) {
-          String errorMsg =
-              String.format(
-                  "Workflow '%s' contains user approval tasks but entity type '%s' does not support reviewers. "
-                      + "User approval tasks can only be used with entities that have reviewer support.",
-                  workflowName, entityType);
-          LOG.error(errorMsg);
-          throw BadRequestException.of(errorMsg);
-        }
-
-        LOG.debug(
-            "Workflow '{}' validated: Entity type '{}' supports reviewers for user approval tasks",
-            workflowName,
-            entityType);
-      } catch (BadRequestException e) {
-        LOG.error("Validation failed: {}", e.getMessage());
-        throw e; // Re-throw validation exceptions
-      } catch (Exception e) {
-        // If we can't determine the entity type repository, log a warning but allow the workflow
-        LOG.warn(
-            "Could not verify reviewer support for entity type '{}' in workflow '{}': {}",
-            entityType,
-            workflowName,
-            e.getMessage());
-      }
-    }
+  private boolean isConditionalTask(WorkflowNodeDefinitionInterface node) {
+    String nodeType = node.getSubType();
+    return "checkEntityAttributesTask".equals(nodeType) || "userApprovalTask".equals(nodeType);
   }
 }

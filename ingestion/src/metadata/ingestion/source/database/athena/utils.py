@@ -15,7 +15,7 @@ from copy import deepcopy
 from typing import Dict, List, Optional
 
 from pyathena.sqlalchemy.util import _HashableDict
-from sqlalchemy import types
+from sqlalchemy import text, types
 from sqlalchemy.engine import reflection
 
 from metadata.ingestion.source import sqa_types
@@ -201,7 +201,13 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         except Exception as e:
             # If we can't get Glue metadata, fall back to the original method
             # This ensures backward compatibility
-            logger.warning(f"Error getting Glue metadata for table {table_name}: {e}")
+            logger.warning(
+                "Unable to fetch metadata for table '%s' from AWS Glue. "
+                "Falling back to standard column detection. "
+                "Error: %s",
+                table_name,
+                e,
+            )
 
     # For non-Iceberg tables or if Glue access fails, use the original method
     columns += [
@@ -228,7 +234,7 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     Gets the view definition
     """
     full_view_name = f'"{view_name}"' if not schema else f'"{schema}"."{view_name}"'
-    res = connection.execute(f"SHOW CREATE VIEW {full_view_name}").fetchall()
+    res = connection.execute(text(f"SHOW CREATE VIEW {full_view_name}")).fetchall()
     if res:
         return "\n".join(i[0] for i in res)
     return None

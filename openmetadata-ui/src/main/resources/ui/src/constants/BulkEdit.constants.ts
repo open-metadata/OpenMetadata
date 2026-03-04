@@ -10,16 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import i18n from '../utils/i18next/LocalUtil';
 import { VALIDATION_STEP } from './BulkImport.constant';
 
 export const ENTITY_BULK_EDIT_STEPS = [
   {
-    name: i18n.t('label.preview-and-edit'),
+    name: 'label.preview-and-edit',
     step: VALIDATION_STEP.EDIT_VALIDATE,
   },
   {
-    name: i18n.t('label.update'),
+    name: 'label.update',
     step: VALIDATION_STEP.UPDATE,
   },
 ];

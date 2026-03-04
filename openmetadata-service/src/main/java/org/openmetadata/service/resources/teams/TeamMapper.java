@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.teams;
 
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 
@@ -21,12 +22,18 @@ public class TeamMapper implements EntityMapper<Team, CreateTeam> {
     return copy(new Team(), create, user)
         .withProfile(create.getProfile())
         .withIsJoinable(create.getIsJoinable())
-        .withUsers(EntityUtil.toEntityReferences(create.getUsers(), Entity.USER))
-        .withDefaultRoles(EntityUtil.toEntityReferences(create.getDefaultRoles(), Entity.ROLE))
+        .withUsers(EntityUtil.validateToEntityReferences(create.getUsers(), Entity.USER))
+        .withDefaultRoles(
+            EntityUtil.validateToEntityReferences(create.getDefaultRoles(), Entity.ROLE))
         .withTeamType(create.getTeamType())
-        .withParents(EntityUtil.toEntityReferences(create.getParents(), Entity.TEAM))
-        .withChildren(EntityUtil.toEntityReferences(create.getChildren(), Entity.TEAM))
-        .withPolicies(EntityUtil.toEntityReferences(create.getPolicies(), Entity.POLICY))
+        .withParents(EntityUtil.validateToEntityReferences(create.getParents(), Entity.TEAM))
+        .withChildren(EntityUtil.validateToEntityReferences(create.getChildren(), Entity.TEAM))
+        .withPolicies(EntityUtil.validateToEntityReferences(create.getPolicies(), Entity.POLICY))
+        .withDefaultPersona(
+            create.getDefaultPersona() != null
+                ? Entity.getEntityReferenceById(
+                    Entity.PERSONA, create.getDefaultPersona(), NON_DELETED)
+                : null)
         .withEmail(create.getEmail())
         .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()));
   }

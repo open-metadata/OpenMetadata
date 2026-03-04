@@ -12,11 +12,15 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { EntityType } from '../../../enums/entity.enum';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  DataContract,
+  TermsOfUse,
+} from '../../../generated/entity/data/dataContract';
 import { useFqn } from '../../../hooks/useFqn';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -26,14 +30,29 @@ export const ContractTermsOfService: React.FC<{
   onNext: () => void;
   onChange: (data: Partial<DataContract>) => void;
   onPrev: () => void;
-  nextLabel?: string;
-  prevLabel?: string;
-}> = ({ initialValues, onNext, onChange, onPrev, nextLabel, prevLabel }) => {
+  buttonProps: {
+    nextLabel?: string;
+    prevLabel?: string;
+    isNextVisible?: boolean;
+  };
+}> = ({ initialValues, onNext, onChange, onPrev, buttonProps }) => {
   const { fqn } = useFqn();
   const { t } = useTranslation();
 
+  // Extract content from termsOfUse object
+  const termsOfUseContent = useMemo(() => {
+    const termsOfUse = initialValues?.termsOfUse;
+    if (!termsOfUse) {
+      return undefined;
+    }
+    const content = termsOfUse.content;
+
+    return !content || content === '<p></p>' ? undefined : content;
+  }, [initialValues?.termsOfUse]);
+
   const handleContentOnChange = (value: string) => {
-    onChange({ termsOfUse: value });
+    const termsOfUse: TermsOfUse = { content: value };
+    onChange({ termsOfUse });
   };
 
   return (
@@ -56,11 +75,7 @@ export const ContractTermsOfService: React.FC<{
               entityType={EntityType.TABLE}>
               <BlockEditor
                 editable
-                content={
-                  initialValues?.termsOfUse === '<p></p>'
-                    ? undefined
-                    : initialValues?.termsOfUse
-                }
+                content={termsOfUseContent}
                 showInlineAlert={false}
                 onChange={handleContentOnChange}
               />
@@ -74,13 +89,13 @@ export const ContractTermsOfService: React.FC<{
           icon={<LeftOutlined height={22} width={20} />}
           type="default"
           onClick={onPrev}>
-          {prevLabel ?? t('label.previous')}
+          {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
         <Button
           className="contract-next-button"
           type="primary"
           onClick={onNext}>
-          {nextLabel ?? t('label.next')}
+          {buttonProps.nextLabel ?? t('label.next')}
           <Icon component={RightIcon} />
         </Button>
       </div>

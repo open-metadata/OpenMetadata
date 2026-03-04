@@ -28,7 +28,6 @@ import {
   getAllTracedEdges,
   getColumnFunctionValue,
   getColumnLineageData,
-  getColumnSourceTargetHandles,
   getConnectedNodesEdges,
   getEntityChildrenAndLabel,
   getLineageDetailsObject,
@@ -221,17 +220,17 @@ describe('Test EntityLineageUtils utility', () => {
       {
         id: '1',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '1' } },
+        data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
       },
       {
         id: '2',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '2' } },
+        data: { node: { fullyQualifiedName: '2' }, nodeDepth: 2 },
       },
       {
         id: '3',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '3' } },
+        data: { node: { fullyQualifiedName: '3' }, nodeDepth: 3 },
       },
     ];
     const edges = [
@@ -308,19 +307,20 @@ describe('Test EntityLineageUtils utility', () => {
     const selectedNode = {
       id: '1',
       position: { x: 0, y: 0 },
-      data: { node: { fullyQualifiedName: '1' } },
+      data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
     };
     const nodes = [
       {
         id: '1',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '1' } },
+        data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
       },
       {
         id: '2',
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '2' },
+          nodeDepth: 0, // nodeDepth 0 indicates root node
           isRootNode: true, // This should be filtered out
         },
       },
@@ -329,6 +329,7 @@ describe('Test EntityLineageUtils utility', () => {
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '3' },
+          nodeDepth: 1,
           isRootNode: false, // This should be included
         },
       },
@@ -337,6 +338,7 @@ describe('Test EntityLineageUtils utility', () => {
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '4' },
+          nodeDepth: 1,
           // No isRootNode property - should be included
         },
       },
@@ -376,19 +378,20 @@ describe('Test EntityLineageUtils utility', () => {
     const selectedNode = {
       id: '1',
       position: { x: 0, y: 0 },
-      data: { node: { fullyQualifiedName: '1' } },
+      data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
     };
     const nodes = [
       {
         id: '1',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '1' } },
+        data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
       },
       {
         id: '2',
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '2' },
+          nodeDepth: 1,
           isRootNode: undefined, // Should be treated as falsy and included
         },
       },
@@ -397,6 +400,7 @@ describe('Test EntityLineageUtils utility', () => {
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '3' },
+          nodeDepth: 1,
           isRootNode: null, // Should be treated as falsy and included
         },
       },
@@ -477,47 +481,6 @@ describe('Test EntityLineageUtils utility', () => {
         toColumn: 'shopId',
       },
     ]);
-  });
-
-  // generate test for getColumnSourceTargetHandles
-  describe('getColumnSourceTargetHandles', () => {
-    it('should handle various states of source and target handles correctly', () => {
-      // Test with both handles defined
-      const obj1 = {
-        sourceHandle: 'c291cmNlSGFuZGxl',
-        targetHandle: 'dGFyZ2V0SGFuZGxl',
-      };
-      const result1 = getColumnSourceTargetHandles(obj1);
-
-      expect(result1).toEqual({
-        sourceHandle: 'sourceHandle',
-        targetHandle: 'targetHandle',
-      });
-
-      // Test with null source handle
-      const obj2 = {
-        sourceHandle: null,
-        targetHandle: 'dGFyZ2V0SGFuZGxl',
-      };
-      const result2 = getColumnSourceTargetHandles(obj2);
-
-      expect(result2).toEqual({
-        sourceHandle: null,
-        targetHandle: 'targetHandle',
-      });
-
-      // Test with null target handle
-      const obj3 = {
-        sourceHandle: 'c291cmNlSGFuZGxl',
-        targetHandle: null,
-      };
-      const result3 = getColumnSourceTargetHandles(obj3);
-
-      expect(result3).toEqual({
-        sourceHandle: 'sourceHandle',
-        targetHandle: null,
-      });
-    });
   });
 
   describe('createNewEdge', () => {
@@ -662,8 +625,7 @@ describe('Test EntityLineageUtils utility', () => {
       expect(result).toEqual({
         children: [],
         childrenHeading: '',
-        childrenHeight: 0,
-        childrenFlatten: [],
+        childrenCount: 0,
       });
     });
 
@@ -676,12 +638,30 @@ describe('Test EntityLineageUtils utility', () => {
       expect(result).toEqual({
         children: [],
         childrenHeading: '',
-        childrenHeight: 0,
-        childrenFlatten: [],
+        childrenCount: 0,
       });
     });
 
-    it('should calculate properties for a node with no children', () => {
+    it('should return columns for TABLE entity with columns', () => {
+      const columns = [
+        { name: 'col1', dataType: 'string' },
+        { name: 'col2', dataType: 'int' },
+      ];
+      const node = {
+        entityType: EntityType.TABLE,
+        columns,
+        flattenColumns: columns,
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: columns,
+        childrenHeading: 'label.column-plural',
+        childrenCount: 2,
+      });
+    });
+
+    it('should return empty columns for TABLE entity with no columns', () => {
       const node = {
         entityType: EntityType.TABLE,
         columns: [],
@@ -691,27 +671,280 @@ describe('Test EntityLineageUtils utility', () => {
       expect(result).toEqual({
         children: [],
         childrenHeading: 'label.column-plural',
-        childrenHeight: 0,
-        childrenFlatten: [],
+        childrenCount: 0,
       });
     });
 
-    it('should calculate properties for a node with nested children', () => {
+    it('should return flattenChildren for TABLE entity when available', () => {
+      const columns = [{ name: 'col1' }];
+      const flattenChildren = [{ name: 'col1' }, { name: 'col1.nested' }];
+      const node = {
+        entityType: EntityType.TABLE,
+        columns,
+        flattenChildren,
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: flattenChildren,
+        childrenHeading: 'label.column-plural',
+        childrenCount: 1,
+      });
+    });
+
+    it('should return charts for DASHBOARD entity', () => {
+      const charts = [
+        { id: 'chart1', name: 'Chart 1' },
+        { id: 'chart2', name: 'Chart 2' },
+      ];
+      const node = {
+        entityType: EntityType.DASHBOARD,
+        charts,
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: charts,
+        childrenHeading: 'label.chart-plural',
+        childrenCount: 2,
+      });
+    });
+
+    it('should return empty charts for DASHBOARD entity with no charts', () => {
+      const node = {
+        entityType: EntityType.DASHBOARD,
+        charts: [],
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: [],
+        childrenHeading: 'label.chart-plural',
+        childrenCount: 0,
+      });
+    });
+
+    it('should return mlFeatures for MLMODEL entity', () => {
+      const mlFeatures = [
+        { name: 'feature1', dataType: 'numerical' },
+        { name: 'feature2', dataType: 'categorical' },
+      ];
+      const node = {
+        entityType: EntityType.MLMODEL,
+        mlFeatures,
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: mlFeatures,
+        childrenHeading: 'label.feature-plural',
+        childrenCount: 2,
+      });
+    });
+
+    it('should return empty mlFeatures for MLMODEL entity with no features', () => {
+      const node = {
+        entityType: EntityType.MLMODEL,
+        mlFeatures: [],
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: [],
+        childrenHeading: 'label.feature-plural',
+        childrenCount: 0,
+      });
+    });
+
+    it('should return columns for DASHBOARD_DATA_MODEL entity', () => {
+      const columns = [
+        { name: 'col1', dataType: 'string' },
+        { name: 'col2', dataType: 'int' },
+      ];
+      const node = {
+        entityType: EntityType.DASHBOARD_DATA_MODEL,
+        columns,
+        flattenColumns: columns,
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: columns,
+        childrenHeading: 'label.column-plural',
+        childrenCount: 2,
+      });
+    });
+
+    it('should return dataModel columns for CONTAINER entity', () => {
+      const columns = [
+        { name: 'col1', dataType: 'string' },
+        { name: 'col2', dataType: 'int' },
+      ];
       const node = {
         entityType: EntityType.CONTAINER,
         dataModel: {
-          columns: [
-            {
-              children: [{}, { children: [{}] }],
-            },
-          ],
+          columns,
         },
       };
       const result = getEntityChildrenAndLabel(node as any);
 
-      expect(result.childrenHeight).toBeGreaterThan(0);
-      expect(result.childrenFlatten.length).toBeGreaterThan(0);
-      expect(result.childrenHeading).toEqual('label.column-plural');
+      expect(result).toEqual({
+        children: columns,
+        childrenHeading: 'label.column-plural',
+        childrenCount: 2,
+      });
+    });
+
+    it('should return empty columns for CONTAINER entity without dataModel', () => {
+      const node = {
+        entityType: EntityType.CONTAINER,
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: [],
+        childrenHeading: 'label.column-plural',
+        childrenCount: 0,
+      });
+    });
+
+    it('should return schemaFields for TOPIC entity', () => {
+      const schemaFields = [
+        { name: 'field1', dataType: 'string' },
+        { name: 'field2', dataType: 'int' },
+      ];
+      const node = {
+        entityType: EntityType.TOPIC,
+        messageSchema: {
+          schemaFields,
+        },
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: schemaFields,
+        childrenHeading: 'label.field-plural',
+        childrenCount: 2,
+      });
+    });
+
+    it('should return empty fields for TOPIC entity without messageSchema', () => {
+      const node = {
+        entityType: EntityType.TOPIC,
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: [],
+        childrenHeading: 'label.field-plural',
+        childrenCount: 0,
+      });
+    });
+
+    it('should return responseSchema fields for API_ENDPOINT entity', () => {
+      const schemaFields = [
+        { name: 'field1', dataType: 'string' },
+        { name: 'field2', dataType: 'int' },
+      ];
+      const node = {
+        entityType: EntityType.API_ENDPOINT,
+        responseSchema: {
+          schemaFields,
+        },
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: schemaFields,
+        childrenHeading: 'label.field-plural',
+        childrenCount: 2,
+      });
+    });
+
+    it('should return requestSchema fields when responseSchema is not available for API_ENDPOINT', () => {
+      const schemaFields = [
+        { name: 'field1', dataType: 'string' },
+        { name: 'field2', dataType: 'int' },
+      ];
+      const node = {
+        entityType: EntityType.API_ENDPOINT,
+        requestSchema: {
+          schemaFields,
+        },
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: schemaFields,
+        childrenHeading: 'label.field-plural',
+        childrenCount: 2,
+      });
+    });
+
+    it('should prefer responseSchema over requestSchema for API_ENDPOINT', () => {
+      const responseFields = [{ name: 'response1' }];
+      const requestFields = [{ name: 'request1' }, { name: 'request2' }];
+      const node = {
+        entityType: EntityType.API_ENDPOINT,
+        responseSchema: {
+          schemaFields: responseFields,
+        },
+        requestSchema: {
+          schemaFields: requestFields,
+        },
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: responseFields,
+        childrenHeading: 'label.field-plural',
+        childrenCount: 1,
+      });
+    });
+
+    it('should return empty fields for API_ENDPOINT without schemas', () => {
+      const node = {
+        entityType: EntityType.API_ENDPOINT,
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: [],
+        childrenHeading: 'label.field-plural',
+        childrenCount: 0,
+      });
+    });
+
+    it('should return fields for SEARCH_INDEX entity', () => {
+      const fields = [
+        { name: 'field1', dataType: 'text' },
+        { name: 'field2', dataType: 'keyword' },
+      ];
+      const node = {
+        entityType: EntityType.SEARCH_INDEX,
+        fields,
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: fields,
+        childrenHeading: 'label.field-plural',
+        childrenCount: 2,
+      });
+    });
+
+    it('should return empty fields for SEARCH_INDEX entity with no fields', () => {
+      const node = {
+        entityType: EntityType.SEARCH_INDEX,
+        fields: [],
+      };
+      const result = getEntityChildrenAndLabel(node as any);
+
+      expect(result).toEqual({
+        children: [],
+        childrenHeading: 'label.field-plural',
+        childrenCount: 0,
+      });
     });
   });
 
@@ -1066,11 +1299,16 @@ describe('parseLineageData', () => {
         fullyQualifiedName: 'test.database.table1',
         entityType: EntityType.TABLE,
         type: EntityType.TABLE,
+        columns: [
+          { name: 'col1', dataType: 'string' },
+          { name: 'col2', dataType: 'int' },
+        ],
       },
       paging: {
         entityUpstreamCount: 2,
         entityDownstreamCount: 3,
       },
+      nodeDepth: 0,
     },
     node2: {
       entity: {
@@ -1079,11 +1317,16 @@ describe('parseLineageData', () => {
         fullyQualifiedName: 'test.database.table2',
         entityType: EntityType.TABLE,
         type: EntityType.TABLE,
+        columns: [
+          { name: 'col3', dataType: 'string' },
+          { name: 'col4', dataType: 'int' },
+        ],
       },
       paging: {
         entityUpstreamCount: 1,
         entityDownstreamCount: 1,
       },
+      nodeDepth: 1,
     },
   };
 
@@ -1245,8 +1488,15 @@ describe('parseLineageData', () => {
         ...mockLineageData,
         nodes: {
           node1: {
-            entity: mockNodeData.node1.entity,
-            paging: {}, // Empty paging instead of missing
+            entity: {
+              ...mockNodeData.node1.entity,
+              columns: [
+                { name: 'col1', dataType: 'string' },
+                { name: 'col2', dataType: 'int' },
+              ],
+            },
+            paging: {},
+            nodeDepth: 0,
           },
         },
       };
@@ -1291,6 +1541,30 @@ describe('parseLineageData', () => {
         ...mockLineageData,
         nodes: {
           ...mockNodeData,
+          source: {
+            entity: {
+              id: 'source',
+              name: 'SourceTable',
+              fullyQualifiedName: 'source.table',
+              entityType: EntityType.TABLE,
+              type: EntityType.TABLE,
+              columns: [],
+            },
+            paging: {},
+            nodeDepth: -1,
+          },
+          target: {
+            entity: {
+              id: 'target',
+              name: 'TargetTable',
+              fullyQualifiedName: 'target.table',
+              entityType: EntityType.TABLE,
+              type: EntityType.TABLE,
+              columns: [],
+            },
+            paging: {},
+            nodeDepth: 1,
+          },
           pipeline1: {
             entity: {
               id: 'pipeline1',
@@ -1300,6 +1574,7 @@ describe('parseLineageData', () => {
               type: EntityType.PIPELINE,
             },
             paging: {},
+            nodeDepth: 0,
           },
         },
         downstreamEdges: {
@@ -1425,9 +1700,10 @@ describe('parseLineageData', () => {
               name: 'Incomplete Node',
               entityType: EntityType.TABLE,
               type: EntityType.TABLE,
-              // Missing fullyQualifiedName
+              columns: [],
             },
             paging: {},
+            nodeDepth: 0,
           },
         },
       };

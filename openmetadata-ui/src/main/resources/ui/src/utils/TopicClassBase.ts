@@ -82,6 +82,7 @@ class TopicClassBase {
       EntityTabs.SAMPLE_DATA,
       EntityTabs.CONFIG,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

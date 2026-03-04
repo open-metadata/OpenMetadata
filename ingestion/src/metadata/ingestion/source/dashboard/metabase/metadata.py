@@ -102,6 +102,7 @@ class MetabaseSource(DashboardServiceSource):
     def prepare(self):
         self.collections = self.client.get_collections_list()
         self.charts_dict = self.client.get_charts_dict()
+        logger.debug(f"Total chart IDs fetched: {list(self.charts_dict.keys())}")
         return super().prepare()
 
     def get_dashboards_list(self) -> Optional[List[MetabaseDashboard]]:
@@ -280,6 +281,14 @@ class MetabaseSource(DashboardServiceSource):
                         service=self.context.get().dashboard_service,
                     )
                 )
+            except KeyError as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name="Chart",
+                        error=f"Chart with ID {chart_id} not found in charts_dict for dashboard [{dashboard_details.id}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(
                     left=StackTraceError(
@@ -305,11 +314,19 @@ class MetabaseSource(DashboardServiceSource):
         )
         for chart_id in chart_ids:
             try:
-                chart_details = self.charts_dict[chart_id]
+                chart_details: MetabaseChart = self.charts_dict.get(chart_id)
+                if not chart_details:
+                    continue
+
                 if (
                     chart_details.dataset_query is None
                     or chart_details.dataset_query.type is None
                 ):
+                    logger.debug(
+                        f"Skipping lineage for Chart(name={chart_details.name}, id={chart_details.id}) "
+                        f"because dataset_query or dataset_query.type is None. "
+                        f"dataset_query = {chart_details.dataset_query}"
+                    )
                     continue
                 if chart_details.dataset_query.type == "native":
                     yield from self._yield_lineage_from_query(
@@ -381,7 +398,9 @@ class MetabaseSource(DashboardServiceSource):
                 if db_service
                 else Dialect.ANSI
             ),
+            parser_type=self.get_query_parser_type(),
         )
+        query_hash = lineage_parser.query_hash
 
         if (
             prefix_database_name
@@ -389,7 +408,7 @@ class MetabaseSource(DashboardServiceSource):
             and prefix_database_name.lower() != database_name.lower()
         ):
             logger.debug(
-                f"Database {database_name} does not match prefix {prefix_database_name}"
+                f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}"
             )
             return
 

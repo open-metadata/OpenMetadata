@@ -182,9 +182,6 @@ const OnlineUsersPage = () => {
   const columns: ColumnsType<User> = useMemo(() => {
     const baseColumns = commonUserDetailColumns(isDataLoading);
 
-    // Filter out the 'name' column - we only need username
-    const filteredColumns = baseColumns.filter((col) => col.key !== 'name');
-
     // Add Last Activity Time column
     const lastActivityColumn = {
       title: t('label.last-activity'),
@@ -240,9 +237,9 @@ const OnlineUsersPage = () => {
 
     // Insert the last activity column after the username column
     return [
-      ...filteredColumns.slice(0, 1),
+      ...baseColumns.slice(0, 2),
       lastActivityColumn,
-      ...filteredColumns.slice(1),
+      ...baseColumns.slice(2),
     ];
   }, [isDataLoading, t]);
 
@@ -258,7 +255,12 @@ const OnlineUsersPage = () => {
         </Col>
 
         <Col span={24}>
-          <PageHeader data={PAGE_HEADERS.ONLINE_USERS} />
+          <PageHeader
+            data={{
+              header: t(PAGE_HEADERS.ONLINE_USERS.header),
+              subHeader: t(PAGE_HEADERS.ONLINE_USERS.subHeader),
+            }}
+          />
         </Col>
 
         <Col span={24}>

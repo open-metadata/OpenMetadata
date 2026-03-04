@@ -32,9 +32,9 @@ class MetricRegistry(Enum):
     Used for our profiler registries of metrics.
 
     Instead of:
-    - StaticMetrics.MIN.value(col)
+    - Metrics.min.value(col)
     We can use:
-    - StaticMetrics.MIN(col)
+    - Metrics.min(col)
     """
 
     def __init__(self, metric):
@@ -49,7 +49,7 @@ class MetricRegistry(Enum):
         """
         Allow to __init__ the mapped class directly
 
-        We run this as Metrics.MIN(col)
+        We run this as Metrics.min(col)
         """
         return self.value(*args, **kwargs)
 
@@ -64,7 +64,7 @@ class MetricRegistry(Enum):
         name is a classmethod on Metrics, so
         we do not need to __init__ here.
 
-        We run this as Metrics.MIN.name
+        We run this as Metrics.min.name
         """
         return self.value.name()
 
@@ -102,7 +102,7 @@ class TypeRegistry(Enum):
     def __init__(self, _type):
         if not issubclass(_type, TypeDecorator):
             raise TypeError(
-                "Only Metrics can be part of the Metric Registry,"
+                "Only TypeDecorator can be part of the Type Registry,"
                 + f" but found {type(_type)} instead."
             )
         self._type = _type

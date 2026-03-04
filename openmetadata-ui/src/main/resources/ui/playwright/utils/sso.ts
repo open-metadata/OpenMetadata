@@ -52,10 +52,9 @@ export const navigateToSSOConfiguration = async (page: Page) => {
   // Use existing settingClick function to navigate to SSO settings
   await settingClick(page, GlobalSettingOptions.SSO);
 
-  // Wait for either provider selector or SSO configuration form to load
-  await page.waitForSelector(
-    '.provider-selector-container, [data-testid="sso-configuration-form-card"]'
-  );
+  // Wait for the SSO settings URL — covers all states:
+  // provider selector (no config), overview (existing config), or form card
+  await page.waitForURL(/settings\/sso/);
 };
 
 /**
@@ -384,6 +383,10 @@ export const verifyProviderFields = async (
       'sso-configuration-form-array-field-template-botPrincipals',
     'Auth Reassign Roles':
       'sso-configuration-form-array-field-template-authReassignRoles',
+    'Allowed Email Registration Domains':
+      'sso-configuration-form-array-field-template-allowedEmailRegistrationDomains',
+    'Allowed Domains':
+      'sso-configuration-form-array-field-template-allowedDomains',
   };
 
   // Verify visible fields

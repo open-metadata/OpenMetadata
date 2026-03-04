@@ -11,15 +11,21 @@
  *  limitations under the License.
  */
 import { CloseCircleOutlined } from '@ant-design/icons';
-import { KeyboardArrowDown } from '@mui/icons-material';
-import { Box, Button, Divider, Menu, MenuItem, useTheme } from '@mui/material';
-import { isUndefined, pick } from 'lodash';
-import { DateTime } from 'luxon';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { Close, KeyboardArrowDown } from '@mui/icons-material';
 import {
-  DEFAULT_SELECTED_RANGE,
-  PROFILER_FILTER_RANGE,
-} from '../../../constants/profiler.constant';
+  Box,
+  Button,
+  Divider,
+  IconButton,
+  Menu,
+  MenuItem,
+  useTheme,
+} from '@mui/material';
+import { isUndefined } from 'lodash';
+import { DateTime } from 'luxon';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import {
   getCurrentDayEndGMTinMillis,
   getDayAgoStartGMTinMillis,
@@ -28,6 +34,7 @@ import {
   getDaysCount,
   getTimestampLabel,
 } from '../../../utils/DatePickerMenuUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import MyDatePicker from '../DatePicker/DatePicker';
 import { MuiDatePickerMenuProps } from './MuiDatePickerMenu.interface';
 
@@ -44,12 +51,30 @@ const MuiDatePickerMenu = ({
   handleSelectedTimeRange,
   options,
   allowCustomRange = true,
+  allowClear = false,
+  onClear,
   size = 'medium',
 }: MuiDatePickerMenuProps) => {
   const theme = useTheme();
 
+  const { t } = useTranslation();
+
+  const translatedProfileFilterRange = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => [
+        key,
+        {
+          ...value,
+          title: translateWithNestedKeys(value.title, value.titleData),
+        },
+      ])
+    );
+  }, [t]);
   const { menuOptions, defaultOptions } = useMemo(() => {
-    const defaultOpts = pick(DEFAULT_SELECTED_RANGE, ['title', 'key']);
+    const defaultOpts = {
+      key: '',
+      title: t('label.select-entity', { entity: t('label.date') }),
+    };
 
     if (defaultDateRange?.key) {
       defaultOpts.key = defaultDateRange.key;
@@ -61,17 +86,18 @@ const MuiDatePickerMenu = ({
       ) {
         defaultOpts.title = options[defaultDateRange.key].title;
       } else if (
-        !isUndefined(PROFILER_FILTER_RANGE[defaultDateRange.key]?.title)
+        !isUndefined(translatedProfileFilterRange[defaultDateRange.key]?.title)
       ) {
-        defaultOpts.title = PROFILER_FILTER_RANGE[defaultDateRange.key].title;
+        defaultOpts.title =
+          translatedProfileFilterRange[defaultDateRange.key].title;
       }
     }
 
     return {
-      menuOptions: options ?? PROFILER_FILTER_RANGE,
+      menuOptions: options ?? translatedProfileFilterRange,
       defaultOptions: defaultOpts,
     };
-  }, [options]);
+  }, [options, defaultDateRange?.key, t]);
 
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
     defaultOptions.title
@@ -80,6 +106,21 @@ const MuiDatePickerMenu = ({
     defaultOptions.key
   );
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [customDateValue, setCustomDateValue] = useState<
+    [DateTime | null, DateTime | null] | null
+  >(null);
+
+  useEffect(() => {
+    if (
+      defaultDateRange?.key === 'customRange' &&
+      defaultDateRange.startTs &&
+      defaultDateRange.endTs
+    ) {
+      const startDate = DateTime.fromMillis(defaultDateRange.startTs);
+      const endDate = DateTime.fromMillis(defaultDateRange.endTs);
+      setCustomDateValue([startDate, endDate]);
+    }
+  }, [defaultDateRange]);
 
   const menuItemStyles = useMemo(
     () => ({
@@ -119,6 +160,19 @@ const MuiDatePickerMenu = ({
     setAnchorEl(null);
   }, []);
 
+  const handleClear = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setSelectedTimeRange(
+        t('label.select-entity', { entity: t('label.date') })
+      );
+      setSelectedTimeRangeKey('');
+      setCustomDateValue(null);
+      onClear?.();
+    },
+    [onClear, t]
+  );
+
   const handlePresetRangeClick = useCallback(
     (key: string) => {
       const filterRange = menuOptions[key];
@@ -130,6 +184,7 @@ const MuiDatePickerMenu = ({
       const startTs = getDayAgoStartGMTinMillis(selectedNumberOfDays);
       const endTs = getCurrentDayEndGMTinMillis();
 
+      setCustomDateValue(null);
       setSelectedTimeRange(filterRange.title);
       setSelectedTimeRangeKey(key);
       setAnchorEl(null);
@@ -148,19 +203,18 @@ const MuiDatePickerMenu = ({
       values: [start: DateTime | null, end: DateTime | null] | null,
       dateStrings: [string, string]
     ) => {
-      if (!values) {
+      if (!values || !values[0] || !values[1]) {
         return;
       }
 
-      const startTs = values[0]?.startOf('day').valueOf() ?? 0;
-      const endTs = values[1]?.endOf('day').valueOf() ?? 0;
+      const startTs = values[0].startOf('day').valueOf();
+      const endTs = values[1].endOf('day').valueOf();
       const daysCount = getDaysCount(dateStrings[0], dateStrings[1]);
-      const selectedRangeLabel = getTimestampLabel(
-        dateStrings[0],
-        dateStrings[1],
-        showSelectedCustomRange
-      );
+      const selectedRangeLabel = showSelectedCustomRange
+        ? `${dateStrings[0]} -> ${dateStrings[1]}`
+        : getTimestampLabel(dateStrings[0], dateStrings[1], false);
 
+      setCustomDateValue(values);
       setSelectedTimeRange(selectedRangeLabel);
       setSelectedTimeRangeKey('customRange');
       setAnchorEl(null);
@@ -183,13 +237,28 @@ const MuiDatePickerMenu = ({
     <>
       <Button
         data-testid="mui-date-picker-menu"
-        endIcon={<KeyboardArrowDown />}
+        endIcon={
+          <>
+            {allowClear && selectedTimeRangeKey && (
+              <IconButton
+                data-testid="clear-date-picker"
+                size="small"
+                sx={{ p: 0.25, ml: -0.5 }}
+                onClick={handleClear}>
+                <Close sx={{ fontSize: 16 }} />
+              </IconButton>
+            )}
+            <KeyboardArrowDown />
+          </>
+        }
         size={size}
         sx={{
           height: BUTTON_HEIGHTS[size],
           textTransform: 'none',
-          color: theme.palette.grey[900],
-          fontWeight: 600,
+          color: selectedTimeRangeKey
+            ? theme.palette.grey[900]
+            : theme.palette.grey[400],
+          fontWeight: selectedTimeRangeKey ? 600 : 400,
           fontSize: theme.typography.pxToRem(12),
           boxShadow: 'none',
           border: `1px solid ${theme.palette.grey[200]}`,
@@ -240,13 +309,13 @@ const MuiDatePickerMenu = ({
               sx={customRangeMenuItemStyles}>
               <Box sx={{ width: '100%' }}>
                 <MyDatePicker.RangePicker
-                  allowClear
                   bordered={false}
                   clearIcon={<CloseCircleOutlined />}
                   format={(value) => value.toUTC().toFormat('yyyy-MM-dd')}
                   placement="bottomRight"
                   style={{ width: '100%', padding: '8px 16px' }}
                   suffixIcon={null}
+                  value={customDateValue}
                   onChange={handleCustomDateChange}
                 />
               </Box>

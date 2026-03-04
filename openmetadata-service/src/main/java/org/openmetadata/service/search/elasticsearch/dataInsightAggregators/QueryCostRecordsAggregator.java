@@ -11,8 +11,6 @@ import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.util.NamedValue;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonValue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,31 +22,9 @@ import org.openmetadata.schema.entity.data.QueryDetails;
 import org.openmetadata.schema.entity.data.QueryGroup;
 import org.openmetadata.schema.entity.data.QueryHolder;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 
 public class QueryCostRecordsAggregator {
-
-  private static Map<String, Object> jsonObjectToMap(JsonObject jsonObject) {
-    Map<String, Object> map = new HashMap<>();
-    for (String key : jsonObject.keySet()) {
-      JsonValue value = jsonObject.get(key);
-      if (value.getValueType() == JsonValue.ValueType.OBJECT) {
-        map.put(key, jsonObjectToMap(value.asJsonObject()));
-      } else if (value.getValueType() == JsonValue.ValueType.ARRAY) {
-        map.put(key, value.asJsonArray());
-      } else if (value.getValueType() == JsonValue.ValueType.STRING) {
-        map.put(key, jsonObject.getString(key));
-      } else if (value.getValueType() == JsonValue.ValueType.NUMBER) {
-        map.put(key, jsonObject.getJsonNumber(key).numberValue());
-      } else if (value.getValueType() == JsonValue.ValueType.TRUE) {
-        map.put(key, Boolean.TRUE);
-      } else if (value.getValueType() == JsonValue.ValueType.FALSE) {
-        map.put(key, Boolean.FALSE);
-      } else if (value.getValueType() == JsonValue.ValueType.NULL) {
-        map.put(key, null);
-      }
-    }
-    return map;
-  }
 
   public static SearchRequest getQueryCostRecords(String serviceName) {
     Map<String, Aggregation> aggregations = new HashMap<>();
@@ -80,11 +56,13 @@ public class QueryCostRecordsAggregator {
                                             "total_count", "total_count")))
                             .script(
                                 s ->
-                                    s.inline(
-                                        i ->
-                                            i.lang("painless")
-                                                .source(
-                                                    "params.total_duration / params.total_count"))))));
+                                    s.source(
+                                            ss ->
+                                                ss.scriptString(
+                                                    "params.total_duration / params.total_count"))
+                                        .lang(
+                                            es.co.elastic.clients.elasticsearch._types
+                                                .ScriptLanguage.Painless)))));
 
     // Top hits for query details
     queryGroupsSubAggs.put(
@@ -175,7 +153,8 @@ public class QueryCostRecordsAggregator {
 
       var totalCountAgg = bucket.aggregations().get("total_count");
       if (totalCountAgg != null && totalCountAgg.isSum()) {
-        totalCount = (long) totalCountAgg.sum().value();
+        Double countValue = totalCountAgg.sum().value();
+        totalCount = countValue != null ? countValue.longValue() : 0L;
       }
 
       var totalDurationAgg = bucket.aggregations().get("total_duration");
@@ -199,7 +178,7 @@ public class QueryCostRecordsAggregator {
         if (!hits.isEmpty()) {
           Hit<JsonData> hit = hits.get(0);
           if (hit.source() != null) {
-            Map<String, Object> detailsMap = jsonObjectToMap(hit.source().toJson().asJsonObject());
+            Map<String, Object> detailsMap = EsUtils.jsonDataToMap(hit.source());
 
             if (detailsMap.containsKey("query")) {
               QueryHolder query = new QueryHolder();
@@ -246,15 +225,17 @@ public class QueryCostRecordsAggregator {
 
     var overallTotalsAgg = response.aggregations().get("overall_totals");
     if (overallTotalsAgg != null && overallTotalsAgg.isStats()) {
-      totalCostSum = overallTotalsAgg.stats().sum();
-      minCost = overallTotalsAgg.stats().min();
-      maxCost = overallTotalsAgg.stats().max();
-      avgCost = overallTotalsAgg.stats().avg();
+      var stats = overallTotalsAgg.stats();
+      totalCostSum = stats.sum();
+      minCost = stats.min() != null ? stats.min() : 0;
+      maxCost = stats.max() != null ? stats.max() : 0;
+      avgCost = stats.avg() != null ? stats.avg() : 0;
     }
 
     var totalExecutionCountAgg = response.aggregations().get("total_execution_count");
     if (totalExecutionCountAgg != null && totalExecutionCountAgg.isSum()) {
-      totalExecutionCountValue = (int) totalExecutionCountAgg.sum().value();
+      Double countValue = totalExecutionCountAgg.sum().value();
+      totalExecutionCountValue = countValue != null ? countValue.intValue() : 0;
     }
 
     OverallStats overallStats =

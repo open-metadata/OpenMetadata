@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -36,6 +36,10 @@ export interface MetadataService {
      * it belongs to.
      */
     domains?: EntityReference[];
+    /**
+     * Status of the entity.
+     */
+    entityStatus?: EntityStatus;
     /**
      * Followers of this entity.
      */
@@ -189,6 +193,8 @@ export interface MetadataConnection {
  * Alation Connection Config
  *
  * Alation Sink Connection Config
+ *
+ * Collibra Connection Config
  */
 export interface Connection {
     /**
@@ -208,6 +214,8 @@ export interface Connection {
      * Host and port of the Atlas service.
      *
      * Host and port of the Alation service.
+     *
+     * Host and port of the Collibra service.
      */
     hostPort?: string;
     /**
@@ -218,6 +226,8 @@ export interface Connection {
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
+     *
+     * Password to connect to the Collibra.
      */
     password?: string;
     /**
@@ -238,6 +248,9 @@ export interface Connection {
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
      * metadata in Atlas.
+     *
+     * Username to connect to the Collibra. This user should have privileges to read all the
+     * metadata in Collibra.
      */
     username?: string;
     /**
@@ -436,6 +449,20 @@ export interface Connection {
      */
     projectName?:     string;
     datasourceLinks?: { [key: string]: string };
+    /**
+     * Regex to only include/exclude domains that match the pattern.
+     */
+    domainFilterPattern?: FilterPattern;
+    /**
+     * Enable enrichment of existing OpenMetadata assets with Collibra metadata (descriptions,
+     * tags, owners). When enabled, the connector will match Collibra assets to OpenMetadata
+     * entities and apply metadata without creating new assets.
+     */
+    enableEnrichment?: boolean;
+    /**
+     * Regex to only include/exclude glossaries that match the pattern.
+     */
+    glossaryFilterPattern?: FilterPattern;
 }
 
 /**
@@ -517,7 +544,14 @@ export interface AlationDatabaseConnection {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -530,16 +564,20 @@ export interface AlationDatabaseConnection {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  Config;
-    sslMode?:                    SSLMode;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    sslConfig?: Config;
+    sslMode?:   SSLMode;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
+    supportsDataDiff?:             boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsProfiler?:             boolean;
+    supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -628,6 +666,12 @@ export interface AWSCredentials {
      */
     awsSessionToken?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * EndPoint URL for the AWS
      */
     endPointURL?: string;
@@ -675,6 +719,12 @@ export interface AzureCredentials {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
+ *
+ * Regex to only include/exclude domains that match the pattern.
+ *
+ * Regex to only include/exclude glossaries that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -755,6 +805,12 @@ export interface AwsCredentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -905,6 +961,8 @@ export interface OpenMetadataJWTClientConfig {
  *
  * Service type.
  *
+ * Collibra service type
+ *
  * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
  *
  * Type of database service such as Amundsen, Atlas...
@@ -914,6 +972,7 @@ export enum MetadataServiceType {
     AlationSink = "AlationSink",
     Amundsen = "Amundsen",
     Atlas = "Atlas",
+    Collibra = "Collibra",
     MetadataES = "MetadataES",
     OpenMetadata = "OpenMetadata",
 }
@@ -989,6 +1048,21 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the entity.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
  * deleted and can only be disabled. Some apps such as AutoPilot create entities with
@@ -1004,6 +1078,14 @@ export enum ProviderType {
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -1024,6 +1106,11 @@ export interface TagLabel {
      * used to determine the tag label.
      */
     labelType: LabelType;
+    /**
+     * Additional metadata associated with this tag label, such as recognizer information for
+     * automatically applied tags.
+     */
+    metadata?: TagLabelMetadata;
     /**
      * Name of the tag or glossary term.
      */
@@ -1058,6 +1145,75 @@ export enum LabelType {
     Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
+}
+
+/**
+ * Additional metadata associated with this tag label, such as recognizer information for
+ * automatically applied tags.
+ *
+ * Additional metadata associated with a tag label, including information about how the tag
+ * was applied.
+ */
+export interface TagLabelMetadata {
+    /**
+     * Metadata about the recognizer that automatically applied this tag
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+}
+
+/**
+ * Metadata about the recognizer that automatically applied this tag
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
 }
 
 /**

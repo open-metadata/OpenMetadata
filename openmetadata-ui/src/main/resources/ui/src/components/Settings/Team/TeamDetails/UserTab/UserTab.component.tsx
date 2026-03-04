@@ -84,6 +84,7 @@ export const UserTab = ({
     handlePageSizeChange,
     handlePagingChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const usersList = useMemo(() => {
@@ -163,10 +164,14 @@ export const UserTab = ({
       handlePageChange(currentPage);
       searchUsers(searchText, currentPage);
     } else if (cursorType) {
-      handlePageChange(currentPage);
       getCurrentTeamUsers(currentTeam.name, {
         [cursorType]: paging[cursorType],
       });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
   };
 
@@ -185,9 +190,16 @@ export const UserTab = ({
   };
 
   useEffect(() => {
-    getCurrentTeamUsers(currentTeam.name);
-    handlePageChange(INITIAL_PAGING_VALUE);
-  }, [currentTeam, pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      getCurrentTeamUsers(currentTeam.name, {
+        [cursorType]: cursorValue,
+      });
+    } else {
+      getCurrentTeamUsers(currentTeam.name);
+    }
+  }, [currentTeam, pageSize, pagingCursor]);
 
   const isTeamDeleted = useMemo(
     () => currentTeam.deleted ?? false,
@@ -233,7 +245,7 @@ export const UserTab = ({
     return tabColumns.filter((column) =>
       column.key === 'actions' ? !isTeamDeleted : true
     );
-  }, [handleRemoveClick, editUserPermission, isTeamDeleted]);
+  }, [handleRemoveClick, editUserPermission, isTeamDeleted, t]);
 
   const sortedUser = useMemo(() => orderBy(users, ['name'], 'asc'), [users]);
 
@@ -295,7 +307,7 @@ export const UserTab = ({
     }
 
     return option;
-  }, [handleUserExportClick, handleImportClick, permission]);
+  }, [handleUserExportClick, handleImportClick, permission, t]);
 
   const handleRemoveUser = () => {
     if (deletingUser?.id) {
@@ -313,7 +325,7 @@ export const UserTab = ({
     return permission.EditAll
       ? t('label.add-new-entity', { entity: t('label.user') })
       : t('message.no-permission-for-action');
-  }, [permission, isTeamDeleted]);
+  }, [permission, isTeamDeleted, t]);
 
   if (isEmpty(users) && !searchText && !isLoading) {
     return isGroupType ? (

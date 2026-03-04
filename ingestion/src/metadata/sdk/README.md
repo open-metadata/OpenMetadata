@@ -10,6 +10,24 @@ The SDK is part of the openmetadata-ingestion package:
 pip install openmetadata-ingestion
 ```
 
+### Data Quality SDK Installation
+
+For running data quality tests, additional dependencies may be required:
+
+**DataFrame Validation:**
+```bash
+pip install 'openmetadata-ingestion[pandas]'
+```
+
+**Table-Based Testing:**
+```bash
+# Install the database extra matching your table's service type
+pip install 'openmetadata-ingestion[mysql]'        # For MySQL
+pip install 'openmetadata-ingestion[postgres]'     # For PostgreSQL
+pip install 'openmetadata-ingestion[snowflake]'    # For Snowflake
+pip install 'openmetadata-ingestion[clickhouse]'   # For ClickHouse
+```
+
 ## Quick Start
 
 ### Configure the SDK

@@ -14,12 +14,15 @@ Table Column Count Metric definition
 """
 # pylint: disable=duplicate-code
 
+from typing import TYPE_CHECKING, Optional
 
 import sqlalchemy
 from sqlalchemy import inspect, literal
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.sql.functions import FunctionElement
+
+if TYPE_CHECKING:
+    from metadata.profiler.processor.runner import PandasRunner
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
@@ -54,10 +57,12 @@ class ColumnNames(StaticMetric):
 
     This Metric needs to be initialised passing the Table
     information:
-    add_props(table=table)(Metrics.COLUMN_NAMES.value)
+    add_props(table=table)(Metrics.columnNames.value)
     """
 
-    table: DeclarativeMeta
+    schema_metric_type = MetricType.columnNames
+
+    table: type
 
     @classmethod
     def name(cls):
@@ -78,11 +83,14 @@ class ColumnNames(StaticMetric):
     def fn(self):
         if not hasattr(self, "table"):
             raise AttributeError(
-                "Column Count requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
+                "Column Count requires a table to be set: add_props(table=...)(Metrics.columnCount)"
             )
 
         col_names = ",".join(inspect(self.table).c.keys())
         return ColunNameFn(literal(col_names, type_=sqlalchemy.types.String))
 
-    def df_fn(self, dfs=None):
-        return dfs[0].columns.values.tolist()
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
+        if dfs is None:
+            return None
+
+        return next(dfs()).columns.values.tolist()

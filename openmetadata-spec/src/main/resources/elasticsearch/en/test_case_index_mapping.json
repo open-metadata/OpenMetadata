@@ -8,8 +8,10 @@
           "max_gram": 20,
           "token_chars": [
             "letter",
-            "digit"
-          ]
+            "digit",
+            "custom"
+          ],
+          "custom_token_chars": "_"
         }
       },
       "normalizer": {
@@ -135,7 +137,16 @@
         "null_value": 0
       },
       "votes": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "upVotes": {
+            "type": "integer"
+          },
+          "downVotes": {
+            "type": "integer"
+          }
+        }
       },
       "entityLink": {
         "type": "keyword",

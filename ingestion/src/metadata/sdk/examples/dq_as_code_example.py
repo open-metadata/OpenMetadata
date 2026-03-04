@@ -3,6 +3,15 @@ Example: Data Quality as Code with OpenMetadata SDK
 
 This example demonstrates how to run data quality tests programmatically
 using the simplified DQ as Code API.
+
+Installation:
+    For MySQL tables:
+        pip install 'openmetadata-ingestion[mysql]'
+
+    For other databases, replace [mysql] with your database type:
+        pip install 'openmetadata-ingestion[postgres]'
+        pip install 'openmetadata-ingestion[snowflake]'
+        pip install 'openmetadata-ingestion[clickhouse]'
 """
 
 # pyright: reportUnusedCallResult=false

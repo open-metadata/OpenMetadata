@@ -68,6 +68,57 @@ public final class Domains {
     return getClient().domains().create(request);
   }
 
+  // ==================== Direct Access Methods ====================
+
+  public static Domain get(String id) {
+    return getClient().domains().get(id);
+  }
+
+  public static Domain get(String id, String fields) {
+    return getClient().domains().get(id, fields);
+  }
+
+  public static Domain get(String id, String fields, String include) {
+    return getClient().domains().get(id, fields, include);
+  }
+
+  public static Domain getByName(String fqn) {
+    return getClient().domains().getByName(fqn);
+  }
+
+  public static Domain getByName(String fqn, String fields) {
+    return getClient().domains().getByName(fqn, fields);
+  }
+
+  public static Domain update(String id, Domain entity) {
+    return getClient().domains().update(id, entity);
+  }
+
+  public static void delete(String id) {
+    getClient().domains().delete(id);
+  }
+
+  public static void delete(String id, java.util.Map<String, String> params) {
+    getClient().domains().delete(id, params);
+  }
+
+  public static void restore(String id) {
+    getClient().domains().restore(id);
+  }
+
+  public static org.openmetadata.sdk.models.ListResponse<Domain> list(
+      org.openmetadata.sdk.models.ListParams params) {
+    return getClient().domains().list(params);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(java.util.UUID id) {
+    return getClient().domains().getVersionList(id);
+  }
+
+  public static Domain getVersion(String id, Double version) {
+    return getClient().domains().getVersion(id, version);
+  }
+
   // ==================== Finding/Retrieval ====================
 
   public static DomainFinder find(String id) {

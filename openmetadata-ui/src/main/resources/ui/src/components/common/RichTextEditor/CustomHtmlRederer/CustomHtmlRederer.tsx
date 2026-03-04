@@ -114,7 +114,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
     const { fenceLength, info } = node as CodeBlockMdNode;
     const infoWords = info ? info.split(/\s+/) : [];
     const preClasses = ['relative', 'code-block'];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const codeAttrs: Record<string, any> = {};
 
     const codeText = node.literal ?? '';

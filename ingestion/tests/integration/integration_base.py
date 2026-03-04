@@ -14,10 +14,11 @@ OpenMetadata base class for tests
 import uuid
 from datetime import datetime
 from textwrap import dedent
-from typing import Any, List, Optional, Type
+from typing import TYPE_CHECKING, Any, List, Optional, Type
 
-from airflow import DAG
-from airflow.operators.bash import BashOperator
+if TYPE_CHECKING:
+    from airflow import DAG
+    from airflow.operators.bash import BashOperator
 
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -35,8 +36,17 @@ from metadata.generated.schema.api.services.createDashboardService import (
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.api.services.createMessagingService import (
+    CreateMessagingServiceRequest,
+)
+from metadata.generated.schema.api.services.createMlModelService import (
+    CreateMlModelServiceRequest,
+)
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
+)
+from metadata.generated.schema.api.services.createStorageService import (
+    CreateStorageServiceRequest,
 )
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -66,9 +76,18 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
+    KafkaConnection,
+)
+from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
+    MlflowConnection,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.customPipelineConnection import (
     CustomPipelineConnection,
     CustomPipelineType,
+)
+from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
+    S3Connection,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
@@ -80,12 +99,28 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.messagingService import (
+    MessagingConnection,
+    MessagingService,
+    MessagingServiceType,
+)
+from metadata.generated.schema.entity.services.mlmodelService import (
+    MlModelConnection,
+    MlModelService,
+    MlModelServiceType,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
     PipelineServiceType,
 )
+from metadata.generated.schema.entity.services.storageService import (
+    StorageConnection,
+    StorageService,
+    StorageServiceType,
+)
 from metadata.generated.schema.entity.teams.team import TeamType
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import (
     TestCaseParameterDefinition,
@@ -246,6 +281,45 @@ def _(name: EntityName) -> C:
     )
 
 
+@create_service_registry.add(MessagingService)
+def _(name: EntityName) -> C:
+    """Prepare a Create service request"""
+    return CreateMessagingServiceRequest(
+        name=name,
+        serviceType=MessagingServiceType.Kafka,
+        connection=MessagingConnection(
+            config=KafkaConnection(bootstrapServers="localhost:9092")
+        ),
+    )
+
+
+@create_service_registry.add(StorageService)
+def _(name: EntityName) -> C:
+    """Prepare a Create service request"""
+    return CreateStorageServiceRequest(
+        name=name,
+        serviceType=StorageServiceType.S3,
+        connection=StorageConnection(
+            config=S3Connection(awsConfig=AWSCredentials(awsRegion="us-east-2"))
+        ),
+    )
+
+
+@create_service_registry.add(MlModelService)
+def _(name: EntityName) -> C:
+    """Prepare a Create service request"""
+    return CreateMlModelServiceRequest(
+        name=name,
+        serviceType=MlModelServiceType.Mlflow,
+        connection=MlModelConnection(
+            config=MlflowConnection(
+                trackingUri="http://localhost:1234",
+                registryUri="http://localhost:4321",
+            )
+        ),
+    )
+
+
 create_entity_registry = class_register()
 
 
@@ -391,8 +465,11 @@ def get_create_test_case(
     )
 
 
-def get_test_dag(name: str) -> DAG:
+def get_test_dag(name: str) -> "DAG":
     """Get a DAG with the tasks created in the CreatePipelineRequest"""
+    from airflow import DAG
+    from airflow.operators.bash import BashOperator
+
     with DAG(name, start_date=datetime(2021, 1, 1)) as dag:
         tasks = [
             BashOperator(

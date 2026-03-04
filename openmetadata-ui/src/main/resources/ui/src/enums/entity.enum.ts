@@ -13,6 +13,7 @@
 
 export enum EntityType {
   TABLE = 'table',
+  TABLE_COLUMN = 'tableColumn',
   TOPIC = 'topic',
   CLASSIFICATION = 'classification',
   DASHBOARD = 'dashboard',
@@ -85,6 +86,7 @@ export enum EntityType {
   FILE = 'file',
   SPREADSHEET = 'spreadsheet',
   WORKSHEET = 'worksheet',
+  NOTIFICATION_TEMPLATE = 'notificationTemplate',
 }
 
 export enum EntityLineageDirection {
@@ -154,7 +156,6 @@ export enum TabSpecificField {
   STATE = 'state',
   SUMMARY = 'summary',
   TABLE_CONSTRAINTS = 'tableConstraints',
-  TABLE_PROFILE = 'profile',
   TABLE_QUERIES = 'tableQueries',
   TAGS = 'tags',
   TARGET_DEFINITION = 'targetDefinition',
@@ -173,6 +174,7 @@ export enum TabSpecificField {
   USER_COUNT = 'userCount',
   VIEW_DEFINITION = 'viewDefinition',
   VOTES = 'votes',
+  CERTIFICATION = 'certification',
   DIRECTORY_TYPE = 'directoryType',
   NUMBER_OF_FILES = 'numberOfFiles',
   NUMBER_OF_SUB_DIRECTORIES = 'numberOfSubDirectories',
@@ -237,6 +239,7 @@ export enum EntityTabs {
   TERMS = 'terms',
   GLOSSARY_TERMS = 'glossary_terms',
   ASSETS = 'assets',
+  INPUT_OUTPUT_PORTS = 'input_output_ports',
   EXPRESSION = 'expression',
   INSIGHTS = 'insights',
   DASHBOARD = 'dashboard',

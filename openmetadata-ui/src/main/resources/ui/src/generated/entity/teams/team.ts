@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -31,6 +31,10 @@ export interface Team {
      * Total count of Children teams.
      */
     childrenCount?: number;
+    /**
+     * Default persona for all users in this team. Only applicable to Group type teams.
+     */
+    defaultPersona?: EntityReference;
     /**
      * Default roles of a team. These roles will be inherited by all the users that are part of
      * this team.
@@ -222,6 +226,8 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Default persona for all users in this team. Only applicable to Group type teams.
  */
 export interface EntityReference {
     /**

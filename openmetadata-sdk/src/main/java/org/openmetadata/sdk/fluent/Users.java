@@ -2,6 +2,9 @@ package org.openmetadata.sdk.fluent;
 
 import java.util.*;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.GenerateTokenRequest;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.collections.UserCollection;
@@ -67,6 +70,83 @@ public final class Users {
 
   public static User create(CreateUser request) {
     return getClient().users().create(request);
+  }
+
+  // ==================== Direct Access Methods ====================
+
+  public static User get(String id) {
+    return getClient().users().get(id);
+  }
+
+  public static User get(String id, String fields) {
+    return getClient().users().get(id, fields);
+  }
+
+  public static User get(String id, String fields, String include) {
+    return getClient().users().get(id, fields, include);
+  }
+
+  public static User getByName(String fqn) {
+    return getClient().users().getByName(fqn);
+  }
+
+  public static User getByName(String fqn, String fields) {
+    return getClient().users().getByName(fqn, fields);
+  }
+
+  public static User update(String id, User entity) {
+    return getClient().users().update(id, entity);
+  }
+
+  public static void delete(String id) {
+    getClient().users().delete(id);
+  }
+
+  public static void delete(String id, java.util.Map<String, String> params) {
+    getClient().users().delete(id, params);
+  }
+
+  public static void restore(String id) {
+    getClient().users().restore(id);
+  }
+
+  public static org.openmetadata.sdk.models.ListResponse<User> list(
+      org.openmetadata.sdk.models.ListParams params) {
+    return getClient().users().list(params);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(java.util.UUID id) {
+    return getClient().users().getVersionList(id);
+  }
+
+  public static User getVersion(String id, Double version) {
+    return getClient().users().getVersion(id, version);
+  }
+
+  // ==================== Token Generation ====================
+
+  /**
+   * Generate a JWT token for a user.
+   *
+   * <p>For bot users, the caller must have EDIT permission on the bot. For regular users, only the
+   * user themselves can generate their own token.
+   *
+   * @param userId the user ID
+   * @param expiry the token expiry
+   * @return the JWT auth mechanism with the generated token
+   */
+  public static JWTAuthMechanism generateToken(UUID userId, JWTTokenExpiry expiry) {
+    return getClient().users().generateToken(userId, expiry);
+  }
+
+  /**
+   * Generate a JWT token for a user using the GenerateTokenRequest.
+   *
+   * @param request the generate token request containing user ID and expiry
+   * @return the JWT auth mechanism with the generated token
+   */
+  public static JWTAuthMechanism generateToken(GenerateTokenRequest request) {
+    return getClient().users().generateToken(request);
   }
 
   // ==================== Finding/Retrieval ====================

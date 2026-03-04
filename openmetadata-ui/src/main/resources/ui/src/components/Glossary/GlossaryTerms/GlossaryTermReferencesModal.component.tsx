@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
+import { referenceURLValidator } from '../../../utils/GlossaryUtils';
 
 interface GlossaryTermReferencesModalProps {
   references: TermReference[];
@@ -40,8 +41,6 @@ const GlossaryTermReferencesModal = ({
       setSaving(true);
       await form.validateFields();
       await onSave(obj.references);
-    } catch (_) {
-      // Nothing here
     } finally {
       setSaving(false);
     }
@@ -120,6 +119,9 @@ const GlossaryTermReferencesModal = ({
                           type: 'url',
                           message: t('message.endpoint-should-be-valid'),
                         },
+                        {
+                          validator: referenceURLValidator,
+                        },
                       ]}>
                       <Input placeholder={t('label.endpoint')} />
                     </Form.Item>
@@ -127,6 +129,7 @@ const GlossaryTermReferencesModal = ({
 
                   <Col span={1}>
                     <Button
+                      data-testid="delete-ref-btn"
                       icon={
                         <Icon
                           className="align-middle"

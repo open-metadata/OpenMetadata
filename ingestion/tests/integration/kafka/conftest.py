@@ -1,4 +1,5 @@
 import os.path
+import uuid
 from textwrap import dedent
 
 import pytest
@@ -101,11 +102,9 @@ def kafka_container(docker_network):
 
 
 @pytest.fixture(scope="module")
-def create_service_request(
-    kafka_container, schema_registry_container, tmp_path_factory
-):
+def create_service_request(kafka_container, schema_registry_container):
     return CreateMessagingServiceRequest(
-        name="docker_test_" + tmp_path_factory.mktemp("kafka").name,
+        name=f"docker_test_kafka_{uuid.uuid4().hex[:8]}",
         serviceType=MessagingServiceType.Kafka,
         connection=MessagingConnection(
             config=KafkaConnection(

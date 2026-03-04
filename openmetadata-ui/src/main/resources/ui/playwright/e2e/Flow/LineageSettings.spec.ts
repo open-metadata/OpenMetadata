@@ -23,22 +23,31 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, toastNotification } from '../../utils/common';
+import {
+  clickOutside,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  addPipelineBetweenNodes,
+  applyPipelineFromModal,
+  connectEdgeBetweenNodesViaAPI,
+  editLineage,
+  editLineageClick,
   fillLineageConfigForm,
   performCollapse,
   performExpand,
   performZoomOut,
   verifyColumnLayerActive,
+  verifyExpandHandleHover,
   verifyNodePresent,
+  verifyPipelineDataInDrawer,
   visitLineageTab,
 } from '../../utils/lineage';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-test.describe('Lineage Settings Tests', () => {
+test.describe.serial('Lineage Settings Tests', () => {
   const table = new TableClass();
   const topic = new TopicClass();
   const dashboard = new DashboardClass();
@@ -61,6 +70,42 @@ test.describe('Lineage Settings Tests', () => {
       metric.create(apiContext),
       pipeline.create(apiContext),
     ]);
+
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: table.entityResponseData.id, type: 'table' },
+      { id: topic.entityResponseData.id, type: 'topic' }
+    );
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: topic.entityResponseData.id, type: 'topic' },
+      { id: dashboard.entityResponseData.id, type: 'dashboard' }
+    );
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: dashboard.entityResponseData.id, type: 'dashboard' },
+      { id: mlModel.entityResponseData.id, type: 'mlmodel' }
+    );
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: mlModel.entityResponseData.id, type: 'mlmodel' },
+      { id: searchIndex.entityResponseData.id, type: 'searchIndex' }
+    );
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: searchIndex.entityResponseData.id, type: 'searchIndex' },
+      { id: container.entityResponseData.id, type: 'container' }
+    );
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: container.entityResponseData.id, type: 'container' },
+      { id: metric.entityResponseData.id, type: 'metric' }
+    );
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: metric.entityResponseData.id, type: 'metric' },
+      { id: pipeline.entityResponseData.id, type: 'pipeline' }
+    );
 
     await afterAction();
   });
@@ -88,14 +133,6 @@ test.describe('Lineage Settings Tests', () => {
 
   test('Verify global lineage config', async ({ page }) => {
     test.slow(true);
-
-    await addPipelineBetweenNodes(page, table, topic);
-    await addPipelineBetweenNodes(page, topic, dashboard);
-    await addPipelineBetweenNodes(page, dashboard, mlModel);
-    await addPipelineBetweenNodes(page, mlModel, searchIndex);
-    await addPipelineBetweenNodes(page, searchIndex, container);
-    await addPipelineBetweenNodes(page, container, metric);
-    await addPipelineBetweenNodes(page, metric, pipeline);
 
     await test.step(
       'Lineage config should throw error if upstream depth is less than 0',
@@ -136,6 +173,7 @@ test.describe('Lineage Settings Tests', () => {
 
         await topic.visitEntityPage(page);
         await visitLineageTab(page);
+        await performZoomOut(page);
         await verifyNodePresent(page, table);
         await verifyNodePresent(page, dashboard);
         const mlModelFqn = get(
@@ -164,7 +202,7 @@ test.describe('Lineage Settings Tests', () => {
 
         await dashboard.visitEntityPage(page);
         await visitLineageTab(page);
-
+        await performZoomOut(page);
         await verifyNodePresent(page, dashboard);
         await verifyNodePresent(page, mlModel);
         await verifyNodePresent(page, topic);
@@ -201,12 +239,16 @@ test.describe('Lineage Settings Tests', () => {
         await performZoomOut(page);
         await verifyNodePresent(page, topic);
         await verifyNodePresent(page, mlModel);
+
+        await verifyExpandHandleHover(page, mlModel, false);
+        await clickOutside(page);
+        await verifyExpandHandleHover(page, topic, true);
+
         await performExpand(page, mlModel, false, searchIndex);
         await performExpand(page, searchIndex, false, container);
         await performExpand(page, container, false, metric);
         await performExpand(page, topic, true, table);
 
-        // perform collapse
         await performCollapse(page, mlModel, false, [
           searchIndex,
           container,
@@ -228,6 +270,7 @@ test.describe('Lineage Settings Tests', () => {
 
         await dashboard.visitEntityPage(page);
         await visitLineageTab(page);
+        await performZoomOut(page);
 
         await verifyNodePresent(page, table);
         await verifyNodePresent(page, dashboard);
@@ -242,13 +285,12 @@ test.describe('Lineage Settings Tests', () => {
     page,
     dataStewardPage,
   }) => {
-    test.slow();
-
     // Update setting to show pipeline as Edge
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.SETTINGS);
     await page.getByTestId('preferences').click();
     await page.getByTestId('preferences.lineageConfig').click();
+
     await page.getByTestId('field-pipeline-view-mode').click();
 
     await page.getByTitle('Edge').filter({ visible: true }).click();
@@ -260,25 +302,32 @@ test.describe('Lineage Settings Tests', () => {
 
     await redirectToHomePage(dataStewardPage);
 
-    await addPipelineBetweenNodes(
+    await table.visitEntityPage(dataStewardPage);
+    await visitLineageTab(dataStewardPage);
+    await editLineage(dataStewardPage);
+
+    // Select pipeline from Modal
+    await applyPipelineFromModal(dataStewardPage, table, topic, pipeline);
+    await editLineageClick(dataStewardPage);
+    await verifyPipelineDataInDrawer(
       dataStewardPage,
       table,
       topic,
       pipeline,
       true
     );
+
     await pipeline.visitEntityPage(dataStewardPage);
-    await dataStewardPage.getByRole('tab', { name: 'Lineage' }).click();
-    await dataStewardPage.waitForLoadState('networkidle');
-    await waitForAllLoadersToDisappear(dataStewardPage);
-    await dataStewardPage.getByTestId('fit-screen').click();
+    await visitLineageTab(dataStewardPage);
+
+    await performZoomOut(dataStewardPage, 5);
 
     // Pipeline should be shown as Edge and not as Node
     await expect(
       dataStewardPage.getByTestId(
         `pipeline-label-${table.entityResponseData.fullyQualifiedName}-${topic.entityResponseData.fullyQualifiedName}`
       )
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
 
     // update pipeline view mode to Node
     await page.getByTestId('field-pipeline-view-mode').click();
@@ -290,7 +339,6 @@ test.describe('Lineage Settings Tests', () => {
     await dataStewardPage.reload();
     await dataStewardPage.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(dataStewardPage);
-    await dataStewardPage.getByTestId('fit-screen').click();
 
     // Pipeline should be shown as Node and not as Edge
     await expect(

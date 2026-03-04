@@ -3,9 +3,8 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import es.org.elasticsearch.action.bulk.BulkRequest;
-import es.org.elasticsearch.action.update.UpdateRequest;
-import es.org.elasticsearch.xcontent.XContentType;
+import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,7 +23,7 @@ import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j
 public class ElasticSearchEntitiesProcessor
-    implements Processor<BulkRequest, ResultList<? extends EntityInterface>> {
+    implements Processor<List<BulkOperation>, ResultList<? extends EntityInterface>> {
   private final StepStats stats = new StepStats();
 
   public ElasticSearchEntitiesProcessor(int total) {
@@ -32,7 +31,7 @@ public class ElasticSearchEntitiesProcessor
   }
 
   @Override
-  public BulkRequest process(
+  public List<BulkOperation> process(
       ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
       throws SearchIndexException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
@@ -45,9 +44,9 @@ public class ElasticSearchEntitiesProcessor
         "[EsEntitiesProcessor] Processing a Batch of Size: {}, EntityType: {} ",
         input.getData().size(),
         entityType);
-    BulkRequest requests;
+    List<BulkOperation> operations;
     try {
-      requests = buildBulkRequests(entityType, input.getData());
+      operations = buildBulkOperations(entityType, input.getData());
       LOG.debug(
           "[EsEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
           input.getData().size(),
@@ -62,38 +61,40 @@ public class ElasticSearchEntitiesProcessor
               .withFailedCount(input.getData().size())
               .withSuccessCount(0)
               .withMessage(
-                  "Entities Processor Encountered Failure. Converting requests to Es Request.")
+                  "Entities Processor Encountered Failure. Converting requests to BulkOperation.")
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug("[EsEntitiesProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
       updateStats(0, input.getData().size());
       throw new SearchIndexException(error);
     }
-    return requests;
+    return operations;
   }
 
-  private static BulkRequest buildBulkRequests(
+  private static List<BulkOperation> buildBulkOperations(
       String entityType, List<? extends EntityInterface> entities) {
-    BulkRequest bulkRequests = new BulkRequest();
+    List<BulkOperation> operations = new ArrayList<>();
     for (EntityInterface entity : entities) {
-      UpdateRequest request = getUpdateRequest(entityType, entity);
-      bulkRequests.add(request);
+      BulkOperation operation = getUpdateOperation(entityType, entity);
+      operations.add(operation);
     }
-    return bulkRequests;
+    return operations;
   }
 
-  public static UpdateRequest getUpdateRequest(String entityType, EntityInterface entity) {
+  public static BulkOperation getUpdateOperation(String entityType, EntityInterface entity) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
-    UpdateRequest updateRequest =
-        new UpdateRequest(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()),
-            entity.getId().toString());
-    updateRequest.doc(
+    String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+    String doc =
         JsonUtils.pojoToJson(
             Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity))
-                .buildSearchIndexDoc()),
-        XContentType.JSON);
-    updateRequest.docAsUpsert(true);
-    return updateRequest;
+                .buildSearchIndexDoc());
+
+    return BulkOperation.of(
+        b ->
+            b.update(
+                u ->
+                    u.index(indexName)
+                        .id(entity.getId().toString())
+                        .action(a -> a.docAsUpsert(true).doc(EsUtils.toJsonData(doc)))));
   }
 
   @Override

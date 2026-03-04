@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
-import jakarta.json.JsonObject;
-import jakarta.json.JsonValue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +11,7 @@ import org.openmetadata.schema.entity.data.QueryDetails;
 import org.openmetadata.schema.entity.data.QueryGroup;
 import org.openmetadata.schema.entity.data.QueryHolder;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.opensearch.OsUtils;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.SortOrder;
@@ -25,37 +24,6 @@ import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.search.Hit;
 
 public class QueryCostRecordsAggregator {
-
-  private static Map<String, Object> jsonObjectToMap(JsonObject jsonObject) {
-    Map<String, Object> map = new HashMap<>();
-    for (String key : jsonObject.keySet()) {
-      JsonValue value = jsonObject.get(key);
-      switch (value.getValueType()) {
-        case OBJECT:
-          map.put(key, jsonObjectToMap(value.asJsonObject()));
-          break;
-        case ARRAY:
-          map.put(key, value.asJsonArray());
-          break;
-        case STRING:
-          map.put(key, jsonObject.getString(key));
-          break;
-        case NUMBER:
-          map.put(key, jsonObject.getJsonNumber(key).numberValue());
-          break;
-        case TRUE:
-          map.put(key, Boolean.TRUE);
-          break;
-        case FALSE:
-          map.put(key, Boolean.FALSE);
-          break;
-        case NULL:
-          map.put(key, null);
-          break;
-      }
-    }
-    return map;
-  }
 
   public static SearchRequest getQueryCostRecords(String serviceName) {
     Map<String, Aggregation> aggregations = new HashMap<>();
@@ -85,7 +53,12 @@ public class QueryCostRecordsAggregator {
                                 s ->
                                     s.inline(
                                         i ->
-                                            i.lang("painless")
+                                            i.lang(
+                                                    l ->
+                                                        l.builtin(
+                                                            os.org.opensearch.client.opensearch
+                                                                ._types.BuiltinScriptLanguage
+                                                                .Painless))
                                                 .source(
                                                     "params.total_duration / params.total_count"))))));
 
@@ -170,7 +143,8 @@ public class QueryCostRecordsAggregator {
       }
       var totalCountAgg = bucket.aggregations().get("total_count");
       if (totalCountAgg != null && totalCountAgg.isSum()) {
-        totalCount = (long) totalCountAgg.sum().value();
+        Double countValue = totalCountAgg.sum().value();
+        totalCount = countValue != null ? countValue.longValue() : 0L;
       }
       var totalDurationAgg = bucket.aggregations().get("total_duration");
       if (totalDurationAgg != null && totalDurationAgg.isSum()) {
@@ -192,7 +166,7 @@ public class QueryCostRecordsAggregator {
         if (!hits.isEmpty()) {
           Hit<JsonData> hit = hits.get(0);
           if (hit.source() != null) {
-            Map<String, Object> detailsMap = jsonObjectToMap(hit.source().toJson().asJsonObject());
+            Map<String, Object> detailsMap = OsUtils.jsonDataToMap(hit.source());
             if (detailsMap.containsKey("query")) {
               QueryHolder queryHolder = new QueryHolder();
               @SuppressWarnings("unchecked")
@@ -231,14 +205,16 @@ public class QueryCostRecordsAggregator {
 
     var overallTotalsAgg = response.aggregations().get("overall_totals");
     if (overallTotalsAgg != null && overallTotalsAgg.isStats()) {
-      totalCostSum = overallTotalsAgg.stats().sum();
-      minCost = overallTotalsAgg.stats().min();
-      maxCost = overallTotalsAgg.stats().max();
-      avgCost = overallTotalsAgg.stats().avg();
+      var stats = overallTotalsAgg.stats();
+      totalCostSum = stats.sum();
+      minCost = stats.min() != null ? stats.min() : 0;
+      maxCost = stats.max() != null ? stats.max() : 0;
+      avgCost = stats.avg() != null ? stats.avg() : 0;
     }
     var totalExecCountAgg = response.aggregations().get("total_execution_count");
     if (totalExecCountAgg != null && totalExecCountAgg.isSum()) {
-      totalExecCount = (int) totalExecCountAgg.sum().value();
+      Double countValue = totalExecCountAgg.sum().value();
+      totalExecCount = countValue != null ? countValue.intValue() : 0;
     }
 
     OverallStats overallStats =

@@ -42,8 +42,8 @@
     },
     {
       "name": "GetQueries",
-      "description": "Check if we can access the pg_catalog.svv_table_info & pg_catalog.stl_query tables to get query logs, These queries are analyzed in the usage & lineage workflow.",
-      "errorMessage": "Failed to fetch queries, please validate if user has select privilege for tables pg_catalog.svv_table_info & pg_catalog.stl_query to get query logs.",
+      "description": "Check if we can access the `SVV_TABLE_INFO`, `STL_QUERY`, `STL_QUERYTEXT`, `STL_SCAN` and `SVL_STORED_PROC_CALL` (Provisioned Cluster) OR `SYS_QUERY_HISTORY`, `SYS_QUERY_TEXT`, `SYS_QUERY_DETAIL` and `SYS_PROCEDURE_CALL` (Serverless Cluster) to get query logs, These queries are analyzed in the usage & lineage workflow.",
+      "errorMessage": "Failed to fetch queries, please validate if user has select privilege for tables `SVV_TABLE_INFO`, `STL_QUERY`, `STL_QUERYTEXT`, `STL_SCAN` and `SVL_STORED_PROC_CALL` (Provisioned Cluster) OR `SYS_QUERY_HISTORY`, `SYS_QUERY_TEXT`, `SYS_QUERY_DETAIL` and `SYS_PROCEDURE_CALL` (Serverless Cluster) to get query logs.",
       "mandatory": false
     }
   ]

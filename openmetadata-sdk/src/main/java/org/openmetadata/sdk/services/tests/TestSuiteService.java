@@ -9,7 +9,7 @@ import org.openmetadata.sdk.services.EntityServiceBase;
 public class TestSuiteService extends EntityServiceBase<org.openmetadata.schema.tests.TestSuite> {
 
   public TestSuiteService(HttpClient httpClient) {
-    super(httpClient, "/v1/testSuites");
+    super(httpClient, "/v1/dataQuality/testSuites");
   }
 
   @Override

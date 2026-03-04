@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
@@ -307,6 +308,7 @@ public class FormatterUtil {
                 ? null
                 : entityInterface.getDomains().stream().map(EntityReference::getId).toList())
         .withUserName(updateBy)
+        .withImpersonatedBy(entityInterface.getImpersonatedBy())
         .withTimestamp(entityInterface.getUpdatedAt())
         .withChangeDescription(entityInterface.getChangeDescription())
         .withCurrentVersion(entityInterface.getVersion());
@@ -331,6 +333,13 @@ public class FormatterUtil {
           (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
       testCaseRepository.setInheritedFields(
           testCase, new EntityUtil.Fields(testCaseRepository.getAllowedFields()));
+      // Load failedRowsSample
+      try {
+        TableData failedRowsSample = testCaseRepository.getSampleData(testCase, false);
+        testCase.setFailedRowsSample(failedRowsSample);
+      } catch (Exception e) {
+        LOG.info("Failed to load failedRowsSample: {}", e.getMessage());
+      }
       ChangeEvent changeEvent =
           getChangeEvent(
               updateBy,
@@ -388,13 +397,22 @@ public class FormatterUtil {
 
   private static ChangeEvent getChangeEventForThread(
       String updateBy, EventType eventType, String entityType, Thread thread) {
-    return new ChangeEvent()
-        .withId(UUID.randomUUID())
-        .withEventType(eventType)
-        .withEntityId(thread.getId())
-        .withDomains(thread.getDomains())
-        .withEntityType(entityType)
-        .withUserName(updateBy)
-        .withTimestamp(thread.getUpdatedAt());
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(eventType)
+            .withEntityId(thread.getId())
+            .withDomains(thread.getDomains())
+            .withEntityType(entityType)
+            .withUserName(updateBy)
+            .withImpersonatedBy(thread.getImpersonatedBy())
+            .withTimestamp(thread.getUpdatedAt());
+
+    // Include changeDescription if present
+    if (thread.getChangeDescription() != null) {
+      changeEvent.withChangeDescription(thread.getChangeDescription());
+    }
+
+    return changeEvent;
   }
 }

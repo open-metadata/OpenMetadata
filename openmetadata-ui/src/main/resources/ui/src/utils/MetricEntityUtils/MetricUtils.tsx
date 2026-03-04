@@ -91,7 +91,7 @@ export const getMetricDetailsPageTabs = ({
   activeTab,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   getEntityFeedCount,
   fetchMetricDetails,
   metricDetails,
@@ -184,7 +184,7 @@ export const getMetricDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.METRIC>
           entityType={EntityType.METRIC}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

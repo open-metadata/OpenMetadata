@@ -33,6 +33,18 @@ Salesforce Security Token is required to access the metadata through APIs. You c
 $$
 
 $$section
+### Consumer Key $(id="consumerKey")
+
+Salesforce Consumer Key for OAuth 2.0 authentication. This is obtained from your Salesforce Connected App configuration.
+$$
+
+$$section
+### Consumer Secret $(id="consumerSecret")
+
+Salesforce Consumer Secret for OAuth 2.0 authentication. This is obtained from your Salesforce Connected App configuration.
+$$
+
+$$section
 ### Organization ID $(id="organizationId")
 
 Salesforce Organization ID is the unique identifier for your Salesforce identity. You can check out <a href="https://help.salesforce.com/s/articleView?id=000385215&type=1" target="_blank">this doc</a> on how to get the your Salesforce Organization ID.
@@ -43,9 +55,11 @@ Salesforce Organization ID is the unique identifier for your Salesforce identity
 $$
 
 $$section
-### Object Name $(id="sobjectName")
+### Object Names $(id="sobjectNames")
 
-Specify the Salesforce Object Name in case you want to ingest a specific object. If left blank, we will ingest all the Objects.
+Specify a list of Salesforce Object Names to ingest. Use this when you want to ingest metadata from specific objects (e.g., Contact, Account, Lead, Opportunity).
+
+If specified, only these objects will be ingested. Leave empty to ingest all objects (which can then be filtered using Table Filter Pattern).
 $$
 
 $$section

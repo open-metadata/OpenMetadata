@@ -13,6 +13,11 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
+import {
+  Column,
+  DataType,
+  Table,
+} from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { fullUuid, uuid } from '../../utils/common';
@@ -27,124 +32,35 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class TableClass extends EntityClass {
-  service = {
-    name: `pw-database-service-${uuid()}`,
-    serviceType: 'Mysql',
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Mysql',
-        scheme: 'mysql+pymysql',
-        username: 'username',
-        authType: {
-          password: 'password',
-        },
-        hostPort: 'mysql:3306',
-        supportsMetadataExtraction: true,
-        supportsDBTExtraction: true,
-        supportsProfiler: true,
-        supportsQueryComment: true,
-      },
-    },
+        type: string;
+        scheme: string;
+        username: string;
+        authType: { password: string };
+        hostPort: string;
+        supportsMetadataExtraction: boolean;
+        supportsDBTExtraction: boolean;
+        supportsProfiler: boolean;
+        supportsQueryComment: boolean;
+      };
+    };
   };
-  database = {
-    name: `pw-database-${uuid()}`,
-    service: this.service.name,
-  };
-  schema = {
-    name: `pw-database-schema-${uuid()}`,
-    database: `${this.service.name}.${this.database.name}`,
-  };
-  columnsName = [
-    `user_id${uuid()}`,
-    `shop_id${uuid()}`,
-    `name${uuid()}`,
-    `first_name${uuid()}`,
-    `last_name${uuid()}`,
-    `address${uuid()}`,
-    `mail${uuid()}`,
-    `email${uuid()}`,
-  ];
-  entityLinkColumnsName = [
-    this.columnsName[0],
-    this.columnsName[1],
-    this.columnsName[2],
-    `${this.columnsName[2]}.${this.columnsName[3]}`,
-    `${this.columnsName[2]}.${this.columnsName[4]}`,
-    `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
-    `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
-    this.columnsName[7],
-  ];
-
-  children = [
-    {
-      name: this.columnsName[0],
-      dataType: 'NUMERIC',
-      dataTypeDisplay: 'numeric',
-      description:
-        'Unique identifier for the user of your Shopify POS or your Shopify admin.',
-    },
-    {
-      name: this.columnsName[1],
-      dataType: 'NUMERIC',
-      dataTypeDisplay: 'numeric',
-      description:
-        'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
-    },
-    {
-      name: this.columnsName[2],
-      dataType: 'VARCHAR',
-      dataLength: 100,
-      dataTypeDisplay: 'varchar',
-      description: 'Name of the staff member.',
-      children: [
-        {
-          name: this.columnsName[3],
-          dataType: 'STRUCT',
-          dataLength: 100,
-          dataTypeDisplay:
-            'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
-          description: 'First name of the staff member.',
-        },
-        {
-          name: this.columnsName[4],
-          dataType: 'ARRAY',
-          dataLength: 100,
-          dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
-          children: [
-            {
-              name: this.columnsName[5],
-              dataType: 'STRUCT',
-              dataLength: 100,
-              dataTypeDisplay:
-                'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
-              description: 'First name of the staff member.',
-            },
-            {
-              name: this.columnsName[6],
-              dataType: 'ARRAY',
-              dataLength: 100,
-              dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
-            },
-          ],
-        },
-      ],
-    },
-    {
-      name: this.columnsName[7],
-      dataType: 'VARCHAR',
-      dataLength: 100,
-      dataTypeDisplay: 'varchar',
-      description: 'Email address of the staff member.',
-    },
-  ];
-
-  entity = {
-    name: `pw-table-${fullUuid()}`,
-    displayName: `pw table ${fullUuid()}`,
-    description: 'description',
-    columns: this.children,
-    tableType: 'SecureView',
-    databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
+  database: { name: string; service: string };
+  schema: { name: string; database: string };
+  columnsName: string[];
+  entityLinkColumnsName: string[];
+  children: Column[];
+  entity: {
+    name: string;
+    displayName: string;
+    description: string;
+    columns: Column[];
+    tableType: string;
+    databaseSchema: string;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -152,23 +68,164 @@ export class TableClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   schemaResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
-  entityResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
+  entityResponseData: Table = {} as Table;
   testSuiteResponseData: ResponseDataType = {} as ResponseDataType;
   testSuitePipelineResponseData: ResponseDataType[] = [];
   testCasesResponseData: ResponseDataType[] = [];
   queryResponseData: ResponseDataType[] = [];
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
-  constructor(name?: string, tableType?: string) {
+  constructor(
+    name?: string,
+    tableType?: string,
+    service?: Record<string, unknown>
+  ) {
     super(EntityTypeEndpoint.Table);
-    this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
-    this.entity.tableType = tableType ?? this.entity.tableType;
-    this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0].name}`;
+
+    const serviceName = name ?? `pw-database-service-${uuid()}`;
+    const databaseName = `pw-database-${uuid()}`;
+    const schemaName = `pw-database-schema-${uuid()}`;
+
+    this.service = {
+      name: serviceName,
+      serviceType: 'Mysql',
+      connection: {
+        config: {
+          type: 'Mysql',
+          scheme: 'mysql+pymysql',
+          username: 'username',
+          authType: {
+            password: 'password',
+          },
+          hostPort: 'mysql:3306',
+          supportsMetadataExtraction: true,
+          supportsDBTExtraction: true,
+          supportsProfiler: true,
+          supportsQueryComment: true,
+        },
+      },
+      ...service,
+    };
+
+    this.database = {
+      name: databaseName,
+      service: this.service.name,
+    };
+
+    this.schema = {
+      name: schemaName,
+      database: `${this.service.name}.${this.database.name}`,
+    };
+
+    this.columnsName = [
+      `user_id${uuid()}`,
+      `shop_id${uuid()}`,
+      `name${uuid()}`,
+      `first_name${uuid()}`,
+      `last_name${uuid()}`,
+      `address${uuid()}`,
+      `mail${uuid()}`,
+      `email${uuid()}`,
+      `created_at${uuid()}`,
+    ];
+
+    this.entityLinkColumnsName = [
+      this.columnsName[0],
+      this.columnsName[1],
+      this.columnsName[2],
+      `${this.columnsName[2]}.${this.columnsName[3]}`,
+      `${this.columnsName[2]}.${this.columnsName[4]}`,
+      `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
+      `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
+      this.columnsName[7],
+      this.columnsName[8],
+    ];
+
+    this.children = [
+      {
+        name: this.columnsName[0],
+        dataType: DataType.Numeric,
+        dataTypeDisplay: 'numeric',
+        description:
+          'Unique identifier for the user of your Shopify POS or your Shopify admin.',
+      },
+      {
+        name: this.columnsName[1],
+        dataType: DataType.Int,
+        dataTypeDisplay: 'int',
+        description:
+          'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+      },
+      {
+        name: this.columnsName[2],
+        dataType: DataType.Varchar,
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'Name of the staff member.',
+        children: [
+          {
+            name: this.columnsName[3],
+            dataType: DataType.Struct,
+            dataLength: 100,
+            dataTypeDisplay:
+              'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
+            description: 'First name of the staff member.',
+          },
+          {
+            name: this.columnsName[4],
+            dataType: DataType.Array,
+            dataLength: 100,
+            dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
+            children: [
+              {
+                name: this.columnsName[5],
+                dataType: DataType.Struct,
+                dataLength: 100,
+                dataTypeDisplay:
+                  'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
+                description: 'First name of the staff member.',
+              },
+              {
+                name: this.columnsName[6],
+                dataType: DataType.Array,
+                dataLength: 100,
+                dataTypeDisplay:
+                  'array<struct<type:string,provider:array<int>>>',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        name: this.columnsName[7],
+        dataType: DataType.Varchar,
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'Email address of the staff member.',
+      },
+      {
+        name: this.columnsName[8],
+        dataType: DataType.Timestamp,
+        dataLength: 100,
+        dataTypeDisplay: 'timestamp',
+        description: 'entity created time',
+      },
+    ];
+
+    this.entity = {
+      name: `pw-table-${fullUuid()}`,
+      displayName: `pw table ${fullUuid()}`,
+      description: 'description',
+      columns: this.children,
+      tableType: tableType ?? 'SecureView',
+      databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
+    };
+
+    this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0]['name']}`;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -204,6 +261,9 @@ export class TableClass extends EntityClass {
     this.schemaResponseData = schema;
     this.entityResponseData = entity;
 
+    this.childrenSelectorId =
+      this.entityResponseData.columns?.[0].fullyQualifiedName ?? '';
+
     return {
       service,
       database,
@@ -217,7 +277,7 @@ export class TableClass extends EntityClass {
       name: string;
       displayName: string;
       description?: string;
-      columns?: any[];
+      columns?: Column[];
       databaseSchema?: string;
     },
     apiContext: APIRequestContext
@@ -246,11 +306,26 @@ export class TableClass extends EntityClass {
     };
   }
 
+  set(entityData: {
+    entity: Table;
+    service: ResponseDataType;
+    database: ResponseDataWithServiceType;
+    schema: ResponseDataWithServiceType;
+  }) {
+    this.serviceResponseData = entityData.service;
+    this.databaseResponseData = entityData.database;
+    this.schemaResponseData = entityData.schema;
+    this.entityResponseData = entityData.entity;
+  }
+
   async visitEntityPage(page: Page, searchTerm?: string) {
     await visitEntityPage({
       page,
-      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      searchTerm:
+        searchTerm ?? this.entityResponseData.fullyQualifiedName ?? '',
+      dataTestId: `${
+        this.entityResponseData.service?.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 
@@ -259,10 +334,10 @@ export class TableClass extends EntityClass {
       data: {
         query:
           queryText ??
-          `select * from ${this.entityResponseData?.['fullyQualifiedName']}`,
-        queryUsedIn: [{ id: this.entityResponseData?.['id'], type: 'table' }],
+          `select * from ${this.entityResponseData?.fullyQualifiedName}`,
+        queryUsedIn: [{ id: this.entityResponseData?.id, type: 'table' }],
         queryDate: Date.now(),
-        service: this.serviceResponseData?.['name'],
+        service: this.serviceResponseData?.name,
       },
     });
 
@@ -285,7 +360,7 @@ export class TableClass extends EntityClass {
       .post('/api/v1/dataQuality/testSuites/basic', {
         data: {
           name: `pw-test-suite-${uuid()}`,
-          basicEntityReference: this.entityResponseData?.['fullyQualifiedName'],
+          basicEntityReference: this.entityResponseData?.fullyQualifiedName,
           description: 'Playwright test suite for table',
           ...testSuite,
         },
@@ -316,14 +391,14 @@ export class TableClass extends EntityClass {
           loggerLevel: 'INFO',
           pipelineType: 'TestSuite',
           service: {
-            id: this.testSuiteResponseData?.['id'],
+            id: this.testSuiteResponseData?.id,
             type: 'testSuite',
           },
           sourceConfig: {
             config: {
               type: 'TestSuite',
               entityFullyQualifiedName:
-                this.entityResponseData?.['fullyQualifiedName'],
+                this.entityResponseData?.fullyQualifiedName,
               testCases,
             },
           },
@@ -340,15 +415,15 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testCaseData?: TestCaseData
   ) {
-    if (isEmpty(this.testSuiteResponseData)) {
-      await this.createTestSuiteAndPipelines(apiContext);
+    if (isEmpty(this.entityResponseData)) {
+      await this.create(apiContext);
     }
 
     const testCase = await apiContext
       .post('/api/v1/dataQuality/testCases', {
         data: {
           name: `pw%test$case#${uuid()}`,
-          entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
+          entityLink: `<#E::table::${this.entityResponseData?.fullyQualifiedName}>`,
           testDefinition: 'tableRowCountToBeBetween',
           parameterValues: [
             { name: 'minValue', value: 12 },
@@ -358,6 +433,10 @@ export class TableClass extends EntityClass {
         },
       })
       .then((res) => res.json());
+
+    if (isEmpty(this.testSuiteResponseData)) {
+      this.testSuiteResponseData = testCase?.testSuite;
+    }
 
     this.testCasesResponseData.push(testCase);
 
@@ -387,7 +466,7 @@ export class TableClass extends EntityClass {
     patchData: Operation[];
   }) {
     const response = await apiContext.patch(
-      `/api/v1/tables/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      `/api/v1/tables/name/${this.entityResponseData?.fullyQualifiedName}`,
       {
         data: patchData,
         headers: {
@@ -405,7 +484,7 @@ export class TableClass extends EntityClass {
 
   async followTable(apiContext: APIRequestContext, userId: string) {
     await apiContext.put(
-      `/api/v1/tables/${this.entityResponseData?.['id']}/followers`,
+      `/api/v1/tables/${this.entityResponseData?.id}/followers`,
       {
         data: userId,
         headers: {
@@ -418,7 +497,7 @@ export class TableClass extends EntityClass {
   async delete(apiContext: APIRequestContext, hardDelete = true) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
+        this.serviceResponseData?.fullyQualifiedName ?? ''
       )}?recursive=true&hardDelete=${hardDelete}`
     );
 
@@ -430,7 +509,7 @@ export class TableClass extends EntityClass {
 
   async deleteTable(apiContext: APIRequestContext, hardDelete = true) {
     const tableResponse = await apiContext.delete(
-      `/api/v1/tables/${this.entityResponseData?.['id']}?recursive=true&hardDelete=${hardDelete}`
+      `/api/v1/tables/${this.entityResponseData?.id}?recursive=true&hardDelete=${hardDelete}`
     );
 
     return tableResponse;
@@ -438,7 +517,7 @@ export class TableClass extends EntityClass {
 
   async restore(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.put('/api/v1/tables/restore', {
-      data: { id: this.entityResponseData?.['id'] },
+      data: { id: this.entityResponseData?.id },
     });
 
     return {

@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Grid, Stack, Typography, useTheme } from '@mui/material';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, isUndefined, round } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import {
@@ -39,6 +39,7 @@ import {
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
 import {
+  calculatePercentage,
   formatNumberWithComma,
   getTableFQNFromColumnFQN,
 } from '../../../../../utils/CommonUtils';
@@ -61,9 +62,7 @@ import { useTableProfiler } from '../TableProfilerProvider';
 
 const ColumnProfileTable = () => {
   const location = useCustomLocation();
-  const theme = useTheme();
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { fqn } = useFqn();
   const { subTab: activeTab } = useParams<{ subTab: ProfilerTabPath }>();
   const tableFqn = useMemo(() => getTableFQNFromColumnFQN(fqn), [fqn]);
@@ -108,21 +107,6 @@ const ColumnProfileTable = () => {
 
   const { activeColumnFqn } = searchData;
 
-  const updateActiveColumnFqn = (key: string) => {
-    navigate({
-      pathname: getEntityDetailsPath(
-        EntityType.TABLE,
-        tableFqn,
-        EntityTabs.PROFILER,
-        activeTab
-      ),
-      search: Qs.stringify({
-        ...searchData,
-        activeColumnFqn: key,
-      }),
-    });
-  };
-
   const tableColumn: ColumnsType<ModifiedColumn> = useMemo(() => {
     return [
       {
@@ -133,20 +117,30 @@ const ColumnProfileTable = () => {
         fixed: 'left',
         render: (_, record) => {
           return (
-            <Typography
-              className="break-word p-0"
-              sx={{
-                color: theme.palette.primary.main,
-                fontSize: theme.typography.pxToRem(14),
-                fontWeight: theme.typography.fontWeightMedium,
-                cursor: 'pointer',
-                '&:hover': { textDecoration: 'underline' },
-              }}
-              onClick={() =>
-                updateActiveColumnFqn(record.fullyQualifiedName || '')
-              }>
-              {getEntityName(record)}
-            </Typography>
+            <div
+              className="d-inline-flex flex-column hover-icon-group"
+              style={{ maxWidth: '75%' }}>
+              <div className="d-inline-flex items-start gap-1 flex-column">
+                <div className="d-inline-flex items-baseline">
+                  <Link
+                    className="break-word p-0 d-block text-link-color tw:font-medium hover:tw:underline"
+                    to={{
+                      pathname: getEntityDetailsPath(
+                        EntityType.TABLE,
+                        tableFqn,
+                        EntityTabs.PROFILER,
+                        activeTab
+                      ),
+                      search: Qs.stringify({
+                        ...searchData,
+                        activeColumnFqn: record.fullyQualifiedName || '',
+                      }),
+                    }}>
+                    {getEntityName(record)}
+                  </Link>
+                </div>
+              </div>
+            </div>
           );
         },
         sorter: (col1, col2) => col1.name.localeCompare(col2.name),
@@ -158,11 +152,7 @@ const ColumnProfileTable = () => {
         width: 200,
         render: (dataTypeDisplay: string) => {
           return (
-            <Typography
-              className="break-word"
-              sx={{
-                fontSize: theme.typography.pxToRem(14),
-              }}>
+            <Typography as="span" className="break-word">
               {dataTypeDisplay || 'N/A'}
             </Typography>
           );
@@ -175,8 +165,9 @@ const ColumnProfileTable = () => {
         key: 'nullProportion',
         width: 200,
         render: (profile: ColumnProfile) => {
-          return profile?.nullProportion
-            ? `${round(profile?.nullProportion, 2) * 100}%`
+          return profile?.nullProportion !== undefined &&
+            profile?.nullProportion !== null
+            ? calculatePercentage(profile.nullProportion, 1, 2, true)
             : '--';
         },
         sorter: (col1, col2) =>
@@ -189,8 +180,9 @@ const ColumnProfileTable = () => {
         key: 'uniqueProportion',
         width: 200,
         render: (profile: ColumnProfile) =>
-          profile?.uniqueProportion
-            ? `${round(profile?.uniqueProportion, 2) * 100}%`
+          profile?.uniqueProportion !== undefined &&
+          profile?.uniqueProportion !== null
+            ? calculatePercentage(profile.uniqueProportion, 1, 2, true)
             : '--',
         sorter: (col1, col2) =>
           (col1.profile?.uniqueProportion || 0) -
@@ -202,8 +194,9 @@ const ColumnProfileTable = () => {
         key: 'distinctProportion',
         width: 200,
         render: (profile: ColumnProfile) =>
-          profile?.distinctProportion
-            ? `${round(profile?.distinctProportion, 2) * 100}%`
+          profile?.distinctProportion !== undefined &&
+          profile?.distinctProportion !== null
+            ? calculatePercentage(profile.distinctProportion, 1, 2, true)
             : '--',
         sorter: (col1, col2) =>
           (col1.profile?.distinctProportion || 0) -
@@ -215,8 +208,8 @@ const ColumnProfileTable = () => {
         key: 'valuesCount',
         width: 200,
         render: (profile: ColumnProfile) =>
-          profile?.valuesCount
-            ? formatNumberWithComma(profile?.valuesCount)
+          profile?.valuesCount !== undefined && profile?.valuesCount !== null
+            ? formatNumberWithComma(profile.valuesCount)
             : '--',
         sorter: (col1, col2) =>
           (col1.profile?.valuesCount || 0) - (col2.profile?.valuesCount || 0),
@@ -225,7 +218,7 @@ const ColumnProfileTable = () => {
         title: t('label.success'),
         dataIndex: 'success',
         key: 'success',
-        width: 100,
+        width: 110,
         render: (_, record) => {
           const testCounts =
             testCaseSummary?.[
@@ -245,9 +238,9 @@ const ColumnProfileTable = () => {
                 EntityTabs.PROFILER,
                 ProfilerTabPath.DATA_QUALITY
               )}>
-              <Typography sx={{ color: theme.palette.success.main }}>
+              <span className="tw:text-success-primary">
                 {testCounts?.success}
-              </Typography>
+              </span>
             </Link>
           );
         },
@@ -276,9 +269,9 @@ const ColumnProfileTable = () => {
                 EntityTabs.PROFILER,
                 ProfilerTabPath.DATA_QUALITY
               )}>
-              <Typography sx={{ color: theme.palette.error.main }}>
+              <span className="tw:text-error-primary">
                 {testCounts?.failed}
-              </Typography>
+              </span>
             </Link>
           );
         },
@@ -307,15 +300,15 @@ const ColumnProfileTable = () => {
                 EntityTabs.PROFILER,
                 ProfilerTabPath.DATA_QUALITY
               )}>
-              <Typography sx={{ color: theme.palette.warning.main }}>
+              <span className="tw:text-warning-primary">
                 {testCounts?.aborted}
-              </Typography>
+              </span>
             </Link>
           );
         },
       },
     ];
-  }, [testCaseSummary]);
+  }, [testCaseSummary, searchData, tableFqn, activeTab]);
 
   const handleSearchAction = (searchText: string) => {
     setSearchText(searchText);
@@ -405,22 +398,23 @@ const ColumnProfileTable = () => {
   }
 
   return (
-    <Stack data-testid="column-profile-table-container" spacing="30px">
+    <div
+      className="tw:flex tw:flex-col tw:gap-7.5"
+      data-testid="column-profile-table-container">
       {!isLoading && !isProfilingEnabled && <NoProfilerBanner />}
 
-      <Grid container spacing={5}>
+      <div className="tw:grid tw:grid-cols-5 tw:gap-6">
         {overallSummary?.map((summary) => (
-          <Grid key={summary.title} size="grow">
-            <SummaryCardV1
-              extra={summary.extra}
-              icon={summary.icon}
-              isLoading={isLoading}
-              title={summary.title}
-              value={summary.value}
-            />
-          </Grid>
+          <SummaryCardV1
+            extra={summary.extra}
+            icon={summary.icon}
+            isLoading={isLoading}
+            key={summary.title}
+            title={summary.title}
+            value={summary.value}
+          />
         ))}
-      </Grid>
+      </div>
 
       {isEmpty(activeColumnFqn) ? (
         <Table
@@ -433,8 +427,8 @@ const ColumnProfileTable = () => {
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
-          rowKey="name"
-          scroll={{ x: true }}
+          rowKey="fullyQualifiedName"
+          scroll={{ x: true, y: 500 }}
           searchProps={searchProps}
         />
       ) : (
@@ -443,7 +437,7 @@ const ColumnProfileTable = () => {
           tableDetails={tableDetailsWithColumns}
         />
       )}
-    </Stack>
+    </div>
   );
 };
 

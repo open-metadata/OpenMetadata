@@ -84,7 +84,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
   const [message, setMessage] = useState<string>(
-    TEST_CONNECTION_INITIAL_MESSAGE
+    t(TEST_CONNECTION_INITIAL_MESSAGE)
   );
 
   const [errorMessage, setErrorMessage] = useState<{
@@ -194,7 +194,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
     if (isTestConnectionSuccess) {
       setTestStatus(StatusType.Successful);
-      setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
+      setMessage(t(TEST_CONNECTION_SUCCESS_MESSAGE));
     } else {
       const isMandatoryStepsFailing = steps.some(
         (step) => step.mandatory && !step.passed
@@ -202,8 +202,8 @@ const TestConnection: FC<TestConnectionProps> = ({
       setTestStatus(isMandatoryStepsFailing ? StatusType.Failed : 'Warning');
       setMessage(
         isMandatoryStepsFailing
-          ? TEST_CONNECTION_FAILURE_MESSAGE
-          : TEST_CONNECTION_WARNING_MESSAGE
+          ? t(TEST_CONNECTION_FAILURE_MESSAGE)
+          : t(TEST_CONNECTION_WARNING_MESSAGE)
       );
     }
   };
@@ -269,7 +269,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   // handlers
   const testConnection = async () => {
     setIsTestingConnection(true);
-    setMessage(TEST_CONNECTION_TESTING_MESSAGE);
+    setMessage(t(TEST_CONNECTION_TESTING_MESSAGE));
     handleResetState();
 
     const updatedFormData = formatFormDataForSubmit(getData());
@@ -320,7 +320,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
       if (status !== 200) {
         setTestStatus(StatusType.Failed);
-        setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
+        setMessage(t(TEST_CONNECTION_FAILURE_MESSAGE));
         setIsTestingConnection(false);
 
         // delete the workflow if workflow is not triggered successfully
@@ -367,7 +367,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       clearInterval(intervalObject.intervalId);
       setIsTestingConnection(false);
-      setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
+      setMessage(t(TEST_CONNECTION_FAILURE_MESSAGE));
       setTestStatus(StatusType.Failed);
       if ((error as AxiosError)?.status === 500) {
         setErrorMessage({

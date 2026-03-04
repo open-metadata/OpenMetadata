@@ -1,4 +1,3 @@
-/* eslint-disable no-case-declarations */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { PlusOutlined } from '@ant-design/icons';
 import {
+  Alert,
   Button,
   Checkbox,
   Col,
@@ -41,13 +39,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
-import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -56,12 +54,13 @@ import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
 import {
   getDataProductByName,
+  getDataProductOutputPorts,
   removeAssetsFromDataProduct,
+  removePortsFromDataProduct,
 } from '../../../../rest/dataProductAPI';
 import {
   getDomainByName,
@@ -75,7 +74,6 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
-import { Transi18next } from '../../../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -85,6 +83,7 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../../utils/ExploreUtils';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
@@ -92,6 +91,7 @@ import {
 } from '../../../../utils/StringsUtils';
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -127,10 +127,11 @@ const AssetsTabs = forwardRef(
       noDataPlaceholder,
       entityFqn,
       assetCount,
+      preloadedData,
+      skipSearch = false,
     }: AssetsTabsProps,
     ref
   ) => {
-    const { theme } = useApplicationStore();
     const [assetRemoving, setAssetRemoving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
@@ -148,13 +149,14 @@ const AssetsTabs = forwardRef(
       handlePageChange,
       handlePageSizeChange,
       handlePagingChange,
-      showPagination,
     } = usePaging();
 
     const isRemovable = useMemo(
       () =>
         [
           AssetsOfEntity.DATA_PRODUCT,
+          AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
+          AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT,
           AssetsOfEntity.DOMAIN,
           AssetsOfEntity.GLOSSARY,
           AssetsOfEntity.TAG,
@@ -181,6 +183,12 @@ const AssetsTabs = forwardRef(
     >([]);
     const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
     const [searchValue, setSearchValue] = useState('');
+    const [outputPortsFqns, setOutputPortsFqns] = useState<Set<string>>(
+      new Set()
+    );
+    const [confirmationBodyText, setConfirmationBodyText] =
+      useState<ReactNode>('');
+    const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
     const entityTypeString = getEntityTypeString(type);
 
@@ -191,7 +199,7 @@ const AssetsTabs = forwardRef(
     const filterMenu: ItemType[] = useMemo(() => {
       return filters.map((filter) => ({
         key: filter.key,
-        label: filter.label,
+        label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
         onClick: handleMenuClick,
       }));
     }, [filters]);
@@ -200,18 +208,32 @@ const AssetsTabs = forwardRef(
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return getTermQuery(
-            { 'domains.fullyQualifiedName': entityFqn ?? '' },
-            'must',
-            undefined,
-            {
-              mustNotTerms: { entityType: 'dataProduct' },
-            }
+          return (
+            queryFilter ??
+            getTermQuery(
+              { 'domains.fullyQualifiedName': entityFqn ?? '' },
+              'must',
+              undefined,
+              {
+                mustNotTerms: { entityType: 'dataProduct' },
+              }
+            )
           );
         case AssetsOfEntity.DATA_PRODUCT:
           return getTermQuery({
             'dataProducts.fullyQualifiedName': entityFqn ?? '',
           });
+
+        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
+          // Use the provided queryFilter (which filters by specific port FQNs)
+          // Fall back to default data product query if no filter provided
+          return (
+            queryFilter ??
+            getTermQuery({
+              'dataProducts.fullyQualifiedName': entityFqn ?? '',
+            })
+          );
 
         case AssetsOfEntity.TEAM:
         case AssetsOfEntity.MY_DATA:
@@ -227,7 +249,7 @@ const AssetsTabs = forwardRef(
         default:
           return getTagAssetsQueryFilter(encodedFqn);
       }
-    }, [type, entityFqn]);
+    }, [type, entityFqn, queryFilter]);
 
     const fetchAssets = useCallback(
       async ({
@@ -239,6 +261,19 @@ const AssetsTabs = forwardRef(
         page?: number;
         queryFilter?: QueryFilterInterface;
       }) => {
+        if (skipSearch && preloadedData) {
+          setData(preloadedData);
+          handlePagingChange({ total: assetCount ?? preloadedData.length });
+          setIsLoading(false);
+          if (preloadedData[0]) {
+            setSelectedCard(preloadedData[0]._source);
+          } else {
+            setSelectedCard(undefined);
+          }
+
+          return;
+        }
+
         try {
           setIsLoading(true);
 
@@ -247,7 +282,7 @@ const AssetsTabs = forwardRef(
           const finalQueryFilter = queryFilter
             ? getCombinedQueryFilterObject(
                 queryParam as unknown as QueryFilterInterface,
-                queryFilter as QueryFilterInterface
+                queryFilter
               )
             : queryParam;
 
@@ -265,14 +300,26 @@ const AssetsTabs = forwardRef(
           if (assetCount === undefined) {
             setTotalAssetCount(res.hits.total.value ?? 0);
           }
-          hits[0] && setSelectedCard(hits[0]._source);
+          if (hits[0]) {
+            setSelectedCard(hits[0]._source);
+          } else {
+            setSelectedCard(undefined);
+          }
         } catch {
           // Nothing here
         } finally {
           setIsLoading(false);
         }
       },
-      [currentPage, pageSize, searchValue, queryParam, assetCount]
+      [
+        currentPage,
+        pageSize,
+        searchValue,
+        queryParam,
+        assetCount,
+        skipSearch,
+        preloadedData,
+      ]
     );
 
     const hideNotification = () => {
@@ -281,19 +328,14 @@ const AssetsTabs = forwardRef(
 
     const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
       const latestOpenKey = keys.find(
-        (key) => openKeys.indexOf(key as EntityType) === -1
+        (key) => !openKeys.includes(key as EntityType)
       );
-      if (ASSET_MENU_KEYS.indexOf(latestOpenKey as EntityType) === -1) {
-        setOpenKeys(keys as EntityType[]);
-      } else {
+      if (ASSET_MENU_KEYS.includes(latestOpenKey as EntityType)) {
         setOpenKeys(latestOpenKey ? [latestOpenKey as EntityType] : []);
+      } else {
+        setOpenKeys(keys as EntityType[]);
       }
     };
-
-    const onExploreCardDelete = useCallback((source: SourceType) => {
-      setAssetToDelete(source);
-      setShowDeleteModal(true);
-    }, []);
 
     const handleAssetButtonVisibleChange = (newVisible: boolean) =>
       setVisible(newVisible);
@@ -307,6 +349,8 @@ const AssetsTabs = forwardRef(
 
           break;
         case AssetsOfEntity.DATA_PRODUCT:
+        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
           data = await getDataProductByName(fqn, {
             fields: [TabSpecificField.DOMAINS, TabSpecificField.ASSETS],
           });
@@ -327,6 +371,105 @@ const AssetsTabs = forwardRef(
 
       setActiveEntity(data);
     }, [type, entityFqn]);
+
+    const fetchOutputPorts = useCallback(async () => {
+      // Clear stale state first to prevent false positives when switching data products
+      setOutputPortsFqns(new Set());
+
+      if (type !== AssetsOfEntity.DATA_PRODUCT || !entityFqn) {
+        return;
+      }
+      try {
+        const response = await getDataProductOutputPorts(entityFqn, {
+          limit: 1000,
+        });
+        const fqnSet = new Set<string>();
+        response.data.forEach((port) => {
+          if (port.fullyQualifiedName) {
+            fqnSet.add(port.fullyQualifiedName as string);
+          }
+        });
+        setOutputPortsFqns(fqnSet);
+      } catch {
+        // Silently fail - warning will just not show (state already cleared)
+      }
+    }, [type, entityFqn]);
+
+    const getAssetsInOutputPorts = useCallback(
+      (assets: SourceType[]): SourceType[] => {
+        if (
+          type !== AssetsOfEntity.DATA_PRODUCT ||
+          outputPortsFqns.size === 0
+        ) {
+          return [];
+        }
+
+        return assets.filter(
+          (asset) =>
+            asset.fullyQualifiedName &&
+            outputPortsFqns.has(asset.fullyQualifiedName)
+        );
+      },
+      [type, outputPortsFqns]
+    );
+
+    const getRemovalWarningContent = useCallback(
+      (assetsToRemove: SourceType[]): ReactNode => {
+        const assetsInOutputPorts = getAssetsInOutputPorts(assetsToRemove);
+
+        const baseMessage =
+          assetsToRemove.length === 1
+            ? t('message.are-you-sure-action-property', {
+                propertyName: getEntityName(assetsToRemove[0]),
+                action: t('label.remove-lowercase'),
+              })
+            : t('message.are-you-sure-action-property', {
+                propertyName: `${assetsToRemove.length} ${t(
+                  'label.asset-plural-lowercase'
+                )}`,
+                action: t('label.remove-lowercase'),
+              });
+
+        if (assetsInOutputPorts.length === 0) {
+          return baseMessage;
+        }
+
+        return (
+          <>
+            <Typography.Text>{baseMessage}</Typography.Text>
+            <Alert
+              showIcon
+              className="m-t-sm"
+              description={
+                assetsInOutputPorts.length > 1 || assetsToRemove.length > 1 ? (
+                  <ul className="m-b-0 p-l-md">
+                    {assetsInOutputPorts.map((asset) => (
+                      <li key={asset.id}>{getEntityName(asset)}</li>
+                    ))}
+                  </ul>
+                ) : undefined
+              }
+              message={
+                assetsInOutputPorts.length === 1 && assetsToRemove.length === 1
+                  ? t('message.remove-asset-will-also-remove-from-output-ports')
+                  : t('message.remove-asset-output-port-warning')
+              }
+              type="warning"
+            />
+          </>
+        );
+      },
+      [getAssetsInOutputPorts, t]
+    );
+
+    const onExploreCardDelete = useCallback(
+      (source: SourceType) => {
+        setAssetToDelete(source);
+        setConfirmationBodyText(getRemovalWarningContent([source]));
+        setShowDeleteModal(true);
+      },
+      [getRemovalWarningContent]
+    );
 
     const items: ItemType[] = [
       {
@@ -390,6 +533,16 @@ const AssetsTabs = forwardRef(
 
               break;
 
+            case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+            case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
+              await removePortsFromDataProduct(
+                activeEntity.fullyQualifiedName ?? '',
+                entities,
+                type
+              );
+
+              break;
+
             case AssetsOfEntity.GLOSSARY:
               await removeAssetsFromGlossaryTerm(
                 activeEntity as GlossaryTerm,
@@ -411,7 +564,6 @@ const AssetsTabs = forwardRef(
 
               break;
             default:
-              // Handle other entity types here
               break;
           }
 
@@ -428,9 +580,12 @@ const AssetsTabs = forwardRef(
           setAssetRemoving(false);
           hideNotification();
           setSelectedItems(new Map()); // Reset selected items
+          if (type === AssetsOfEntity.DATA_PRODUCT) {
+            fetchOutputPorts();
+          }
         }
       },
-      [type, activeEntity, entityFqn]
+      [type, activeEntity, entityFqn, fetchOutputPorts]
     );
 
     const deleteSelectedItems = useCallback(() => {
@@ -438,6 +593,30 @@ const AssetsTabs = forwardRef(
         onAssetRemove(Array.from(selectedItems.values()));
       }
     }, [selectedItems]);
+
+    const handleBulkDeleteClick = useCallback(() => {
+      const assetsToDelete = Array.from(
+        selectedItems.values()
+      ) as unknown as SourceType[];
+      const assetsInOutputPorts = getAssetsInOutputPorts(assetsToDelete);
+
+      if (assetsInOutputPorts.length > 0) {
+        setConfirmationBodyText(getRemovalWarningContent(assetsToDelete));
+        setShowBulkDeleteModal(true);
+      } else {
+        deleteSelectedItems();
+      }
+    }, [
+      selectedItems,
+      getAssetsInOutputPorts,
+      getRemovalWarningContent,
+      deleteSelectedItems,
+    ]);
+
+    const confirmBulkDelete = useCallback(() => {
+      setShowBulkDeleteModal(false);
+      deleteSelectedItems();
+    }, [deleteSelectedItems]);
 
     useEffect(() => {
       return () => {
@@ -452,6 +631,10 @@ const AssetsTabs = forwardRef(
       }
     }, [entityFqn]);
 
+    useEffect(() => {
+      fetchOutputPorts();
+    }, [fetchOutputPorts]);
+
     const assetErrorPlaceHolder = useMemo(() => {
       if (isObject(noDataPlaceholder) || searchValue) {
         return (
@@ -464,6 +647,13 @@ const AssetsTabs = forwardRef(
                 width={140}
               />
             }>
+            {searchValue && type !== AssetsOfEntity.MY_DATA && (
+              <div className="gap-4">
+                <Typography.Paragraph>
+                  {t('label.no-matching-data-asset')}
+                </Typography.Paragraph>
+              </div>
+            )}
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
                 <Typography.Paragraph>
@@ -475,61 +665,18 @@ const AssetsTabs = forwardRef(
         );
       } else {
         return (
-          <ErrorPlaceHolderNew
-            className="p-lg"
-            icon={
-              <AddPlaceHolderIcon
-                className="text-grey-14"
-                height={140}
-                width={140}
-              />
-            }
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph>
-              {noDataPlaceholder ??
-                t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                  entity: t('label.asset'),
-                })}
-            </Typography.Paragraph>
-            <Typography.Paragraph>
-              <Transi18next
-                i18nKey="message.refer-to-our-doc"
-                renderElement={
-                  <a
-                    href={GLOSSARIES_DOCS}
-                    rel="noreferrer"
-                    style={{ color: theme.primaryColor }}
-                    target="_blank"
-                  />
-                }
-                values={{
-                  doc: t('label.doc-plural-lowercase'),
-                }}
-              />
-            </Typography.Paragraph>
-
-            {permissions.Create && (
-              <Tooltip
-                placement="top"
-                title={
-                  isEntityDeleted
-                    ? t(
-                        'message.this-action-is-not-allowed-for-deleted-entities'
-                      )
-                    : t('label.add')
-                }>
-                <Button
-                  ghost
-                  data-testid="add-placeholder-button"
-                  disabled={isEntityDeleted}
-                  icon={<PlusOutlined />}
-                  type="primary"
-                  onClick={onAddAsset}>
-                  {t('label.add')}
-                </Button>
-              </Tooltip>
-            )}
-          </ErrorPlaceHolderNew>
+          <ErrorPlaceHolder
+            buttonId="data-assets-add-button"
+            buttonTitle={t('label.add-entity', { entity: t('label.asset') })}
+            className="border-none"
+            heading={t('message.no-data-message', {
+              entity: t('label.data-asset-lowercase-plural'),
+            })}
+            icon={<FolderEmptyIcon />}
+            permission={permissions.Create}
+            type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+            onClick={onAddAsset}
+          />
         );
       }
     }, [
@@ -617,19 +764,17 @@ const AssetsTabs = forwardRef(
                 }
               />
             ))}
-            {showPagination && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                isLoading={isLoading}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                  handlePageChange(currentPage)
-                }
-                onShowSizeChange={handlePageSizeChange}
-              />
-            )}
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              isLoading={isLoading}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                handlePageChange(currentPage)
+              }
+              onShowSizeChange={handlePageSizeChange}
+            />
           </div>
         ) : (
           <div className="h-full">{assetErrorPlaceHolder}</div>
@@ -646,7 +791,6 @@ const AssetsTabs = forwardRef(
         selectedItems,
         setSelectedCard,
         handlePageChange,
-        showPagination,
         handlePageSizeChange,
         handleCheckboxChange,
       ]
@@ -657,12 +801,12 @@ const AssetsTabs = forwardRef(
         const selectedItemMap = new Map(prevItems ?? []);
 
         if (selectAll) {
-          data.forEach(({ _source }) => {
+          for (const { _source } of data) {
             const id = _source.id;
             if (id) {
               selectedItemMap.set(id, _source);
             }
-          });
+          }
         } else {
           // Clear selection
           selectedItemMap.clear();
@@ -777,12 +921,13 @@ const AssetsTabs = forwardRef(
 
         // If current page is already 1 it won't trigger fetchAssets from useEffect
         // Hence need to manually trigger it for this case
-        currentPage === 1 &&
+        if (currentPage === 1) {
           fetchAssets({
             index: [SearchIndex.ALL],
             page: 1,
             queryFilter: quickFilterQuery,
           });
+        }
       },
       closeSummaryPanel() {
         setSelectedCard(undefined);
@@ -820,9 +965,9 @@ const AssetsTabs = forwardRef(
               'h-full': totalAssetCount === 0,
             })}
             gutter={[0, 20]}>
-            {totalAssetCount > 0 && (
+            {(type === AssetsOfEntity.MY_DATA || totalAssetCount > 0) && (
               <>
-                <Col className="d-flex items-center gap-3" span={24}>
+                <Col className="d-flex gap-3" span={24}>
                   <Dropdown
                     menu={{
                       items: filterMenu,
@@ -831,6 +976,7 @@ const AssetsTabs = forwardRef(
                     trigger={['click']}>
                     <Button
                       className={classNames('feed-filter-icon')}
+                      data-testid="asset-filter-button"
                       icon={<FilterIcon height={16} />}
                     />
                   </Dropdown>
@@ -888,10 +1034,7 @@ const AssetsTabs = forwardRef(
           </Row>
 
           <ConfirmationModal
-            bodyText={t('message.are-you-sure-action-property', {
-              propertyName: getEntityName(assetToDelete),
-              action: t('label.remove-lowercase'),
-            })}
+            bodyText={confirmationBodyText}
             cancelText={t('label.cancel')}
             confirmText={t('label.delete')}
             header={t('label.remove-entity', {
@@ -903,6 +1046,21 @@ const AssetsTabs = forwardRef(
             onConfirm={() =>
               onAssetRemove(assetToDelete ? [assetToDelete] : [])
             }
+          />
+
+          <ConfirmationModal
+            bodyText={confirmationBodyText}
+            cancelText={t('label.cancel')}
+            confirmText={t('label.delete')}
+            header={t('label.remove-entity', {
+              entity: `${selectedItems.size} ${t(
+                'label.asset-plural-lowercase'
+              )}?`,
+            })}
+            isLoading={assetRemoving}
+            visible={showBulkDeleteModal}
+            onCancel={() => setShowBulkDeleteModal(false)}
+            onConfirm={confirmBulkDelete}
           />
         </div>
         {!isLoading && permissions?.EditAll && totalAssetCount > 0 && (
@@ -919,7 +1077,7 @@ const AssetsTabs = forwardRef(
                 data-testid="delete-all-button"
                 loading={assetRemoving}
                 type="primary"
-                onClick={deleteSelectedItems}>
+                onClick={handleBulkDeleteClick}>
                 {t('label.delete')}
               </Button>
             </div>

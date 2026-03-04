@@ -35,64 +35,70 @@ export const DATATYPES_HAVING_SUBFIELDS = [
 export const entityData = [
   {
     type: SearchIndex.TABLE,
-    label: t('label.table-plural'),
+    label: 'label.table-plural',
   },
   {
     type: SearchIndex.DASHBOARD,
-    label: t('label.dashboard-plural'),
+    label: 'label.dashboard-plural',
+  },
+  {
+    type: SearchIndex.STORED_PROCEDURE,
+    label: 'label.stored-procedure-plural',
   },
   {
     type: SearchIndex.TOPIC,
-    label: t('label.topic-plural'),
+    label: 'label.topic-plural',
   },
   {
     type: SearchIndex.MLMODEL,
-    label: t('label.ml-model-plural'),
+    label: 'label.ml-model-plural',
   },
   {
     type: SearchIndex.CONTAINER,
-    label: t('label.container-plural'),
+    label: 'label.container-plural',
   },
   {
     type: SearchIndex.PIPELINE,
-    label: t('label.pipeline-plural'),
+    label: 'label.pipeline-plural',
   },
   {
     type: SearchIndex.SEARCH_INDEX,
-    label: t('label.search-index-plural'),
+    label: 'label.search-index-plural',
   },
   {
     type: SearchIndex.DASHBOARD_DATA_MODEL,
-    label: t('label.data-model-plural'),
+    label: 'label.data-model-plural',
   },
   {
     type: SearchIndex.API_ENDPOINT_INDEX,
-    label: t('label.api-endpoint-plural'),
+    label: 'label.api-endpoint-plural',
   },
   {
     type: SearchIndex.METRIC_SEARCH_INDEX,
-    label: t('label.metric-plural'),
+    label: 'label.metric-plural',
   },
   {
     type: SearchIndex.DIRECTORY_SEARCH_INDEX,
-    label: t('label.directory-plural'),
+    label: 'label.directory-plural',
   },
   {
     type: SearchIndex.FILE_SEARCH_INDEX,
-    label: t('label.file-plural'),
+    label: 'label.file-plural',
   },
   {
     type: SearchIndex.SPREADSHEET_SEARCH_INDEX,
-    label: t('label.spreadsheet-plural'),
+    label: 'label.spreadsheet-plural',
   },
   {
     type: SearchIndex.WORKSHEET_SEARCH_INDEX,
-    label: t('label.worksheet-plural'),
+    label: 'label.worksheet-plural',
   },
 ];
 
 export const NODE_WIDTH = 400;
-export const NODE_HEIGHT = 90;
+export const NODE_HEIGHT = 66;
+export const NODE_HEIGHT_WITH_CHILDREN = 109;
+export const COLUMN_NODE_HEIGHT = 32.85;
 
 export const ELEMENT_DELETE_STATE = {
   loading: false,
@@ -183,8 +189,8 @@ export const IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS = [
   'nodeDepth',
   'toEntity',
   'fromEntity',
-  'column.toColumn',
-  'column.fromColumns',
+  'toColumn',
+  'fromColumn',
 ];
 
 export const IMPACT_ANALYSIS_STATIC_COLUMNS = ['name', 'column'];

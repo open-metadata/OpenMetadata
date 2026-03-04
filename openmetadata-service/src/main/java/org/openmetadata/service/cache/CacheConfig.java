@@ -40,11 +40,15 @@ public class CacheConfig {
     public int connectTimeoutMs = 2000;
 
     // AWS ElastiCache IAM authentication
-    public boolean useIamAuth = false;
-    public String awsRegion;
-    public boolean awsUseInstanceProfile = true;
-    public String awsAccessKey;
-    public String awsSecretKey;
+    public AwsConfig aws = new AwsConfig();
+  }
+
+  public static class AwsConfig {
+    public boolean enabled = false;
+    public String region;
+    public boolean useInstanceProfile = true;
+    public String accessKeyId;
+    public String secretAccessKey;
     public int tokenRefreshIntervalSeconds = 900; // 15 minutes
   }
 }

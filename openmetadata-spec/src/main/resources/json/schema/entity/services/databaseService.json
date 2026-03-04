@@ -54,6 +54,7 @@
         "Couchbase",
         "Greenplum",
         "Doris",
+        "StarRocks",
         "UnityCatalog",
         "SAS",
         "Iceberg",
@@ -64,7 +65,10 @@
         "Cockroach",
         "SSAS",
         "Epic",
-        "ServiceNow"
+        "ServiceNow",
+        "Dremio",
+        "MicrosoftFabric",
+        "BurstIQ"
       ],
       "javaEnums": [
         {
@@ -185,6 +189,9 @@
           "name": "Doris"
         },
         {
+          "name": "StarRocks"
+        },
+        {
           "name": "UnityCatalog"
         },
         {
@@ -216,6 +223,15 @@
         },
         {
           "name": "ServiceNow"
+        },
+        {
+          "name": "Dremio"
+        },
+        {
+          "name": "MicrosoftFabric"
+        },
+        {
+          "name": "BurstIQ"
         }
       ]
     },
@@ -341,6 +357,9 @@
               "$ref": "./connections/database/dorisConnection.json"
             },
             {
+              "$ref": "./connections/database/starrocksConnection.json"
+            },
+            {
               "$ref": "./connections/database/unityCatalogConnection.json"
             },
             {
@@ -372,6 +391,15 @@
             },
             {
               "$ref": "./connections/database/serviceNowConnection.json"
+            },
+            {
+              "$ref": "./connections/database/dremioConnection.json"
+            },
+            {
+              "$ref": "./connections/database/microsoftFabricConnection.json"
+            },
+            {
+              "$ref": "./connections/database/burstIQConnection.json"
             }
           ]
         }
@@ -463,6 +491,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "entityStatus": {
+      "description": "Status of the entity.",
+      "$ref": "../../type/status.json"
     },
     "dataProducts" : {
       "description": "List of data products this entity is part of.",

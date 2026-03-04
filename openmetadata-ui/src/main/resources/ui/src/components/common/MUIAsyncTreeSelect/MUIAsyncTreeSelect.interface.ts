@@ -25,6 +25,7 @@ export interface MUIAsyncTreeSelectProps<T = unknown> {
   fullWidth?: boolean;
   size?: 'small' | 'medium';
   autoFocus?: boolean;
+  'data-testid'?: string;
 
   // Tree data props
   fetchData: TreeDataFetcher<T>;

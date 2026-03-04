@@ -1,0 +1,28 @@
+{
+  "id": "3e2d1c0b-9a8f-7e6d-5c4b-3a2f1e0d9c8b",
+  "name": "sample-metadata-service",
+  "displayName": "Sample Metadata Service",
+  "fullyQualifiedName": "sample-metadata-service",
+  "description": "Mock metadata service for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/services/metadataServices/3e2d1c0b-9a8f-7e6d-5c4b-3a2f1e0d9c8b",
+  "serviceType": "Amundsen",
+  "connection": {
+    "config": {
+      "type": "Amundsen",
+      "hostPort": "http://localhost:5000"
+    }
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "tags": []
+}

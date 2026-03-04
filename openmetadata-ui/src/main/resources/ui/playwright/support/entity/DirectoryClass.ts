@@ -58,6 +58,7 @@ export class DirectoryClass extends EntityClass {
   entity = {
     name: this.directoryName,
     displayName: this.directoryName,
+    description: 'description',
     service: this.service.name,
   };
 
@@ -88,6 +89,7 @@ export class DirectoryClass extends EntityClass {
       {
         data: {
           name: this.directoryName,
+          description: this.entity.description,
           service: this.serviceResponseData.fullyQualifiedName,
         },
       }
@@ -124,18 +126,28 @@ export class DirectoryClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+  }
+
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entityResponseData.name}`,
+      dataTestId: `${
+        this.entityResponseData.service.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 

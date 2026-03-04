@@ -77,10 +77,10 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 ## <span data-id="useNonce">OIDC Use Nonce</span>
 
 - **Definition:** Security feature to prevent replay attacks in OIDC flows.
-- **Default:** true
-- **Example:** true
+- **Default:** false
+- **Example:** false
 - **Why it matters:** Enhances security by ensuring each authentication request is unique.
-- **Note:** Generally should be left enabled for security
+- **Note:** Can be enabled for additional security if your provider supports it
 
 ## <span data-id="preferredJwsAlgorithm">OIDC Preferred JWS Algorithm</span>
 
@@ -117,11 +117,9 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 ## <span data-id="clientAuthenticationMethod">OIDC Client Authentication Method</span>
 
 - **Definition:** Method used to authenticate the client with AWS Cognito.
-- **Default:** client_secret_basic
-- **Options:** client_secret_basic | client_secret_post
-- **Example:** client_secret_basic
-- **Why it matters:** Must match your Cognito app client configuration.
-- **Note:** Cognito supports basic and post methods for confidential clients
+- **Default:** client_secret_post (automatically configured)
+- **Why it matters:** OpenMetadata uses `client_secret_post` which is supported by AWS Cognito.
+- **Note:** This field is hidden and automatically configured. Cognito supports both `client_secret_post` and `client_secret_basic`.
 
 ## <span data-id="tokenValidity">OIDC Token Validity</span>
 
@@ -144,13 +142,6 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 - **Example:** us-east-1_ABC123DEF
 - **Why it matters:** Identifies your specific Cognito User Pool.
 - **Note:** Your User Pool ID from AWS Console
-
-## <span data-id="serverUrl">OIDC Server URL</span>
-
-- **Definition:** Base URL for AWS Cognito authentication server.
-- **Example:** https://cognito-idp.us-east-1.amazonaws.com
-- **Why it matters:** Specifies the Cognito endpoint to use.
-- **Note:** Format: https://cognito-idp.{region}.amazonaws.com
 
 ## <span data-id="maxAge">OIDC Max Age</span>
 
@@ -187,7 +178,14 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 
 ## <span data-id="jwtPrincipalClaims">JWT Principal Claims</span>
 
+> ⚠️ **CRITICAL WARNING**: Incorrect claims will **lock out ALL users including admins**!
+> - These claims MUST exist in JWT tokens from AWS Cognito
+> - Order matters: first matching claim is used for user identification
+> - **Default values (email, cognito:username, sub) work for most Cognito configurations**
+> - Only change if you have custom claim requirements
+
 - **Definition:** JWT claims used to identify the user principal.
+- **Default:** ["email", "cognito:username", "sub"] (recommended)
 - **Example:** ["cognito:username", "email", "sub"]
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common Cognito claims: cognito:username, email, sub, preferred_username
@@ -195,9 +193,13 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 ## <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
 
 - **Definition:** Maps JWT claims to OpenMetadata user attributes.
-- **Example:** ["email:email", "name:name", "firstName:given_name"]
+- **Example:** ["email:email", "username:cognito:username"]
 - **Why it matters:** Controls how user information from AWS Cognito maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
 
 ## <span data-id="tokenValidationAlgorithm">Token Validation Algorithm</span>
 

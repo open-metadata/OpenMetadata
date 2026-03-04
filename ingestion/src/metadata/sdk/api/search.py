@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from functools import partial
 from typing import (
     Any,
@@ -49,6 +50,21 @@ def _encode_params(params: Mapping[str, Any]) -> str:
 RestReturn = Union[JsonDict, Response, None]
 
 
+def _build_query_filter(filters: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Convert a user-friendly dict of filters into the query_filter format.
+
+    If the dict already contains a ``query_filter`` key, return as-is for
+    backward compatibility.  Otherwise, build a bool/must/term query filter
+    JSON string from the key-value pairs.
+    """
+    if "query_filter" in filters:
+        return dict(filters)
+
+    must_clauses = [{"term": {k: v}} for k, v in filters.items()]
+    query_filter = json.dumps({"query": {"bool": {"must": must_clauses}}})
+    return {"query_filter": query_filter}
+
+
 @runtime_checkable
 class RestClientProtocol(Protocol):
     """Structural protocol describing the REST client behaviour we use."""
@@ -60,7 +76,7 @@ class RestClientProtocol(Protocol):
         self,
         path: str,
         data: Mapping[str, Any] | None = None,
-        json: JsonDict | None = None,
+        json: JsonDict | None = None,  # pylint: disable=redefined-outer-name
     ) -> RestReturn:
         ...
 
@@ -134,9 +150,27 @@ class Search:
         sort_field: Optional[str] = None,
         sort_order: Optional[str] = None,
         filters: Optional[Mapping[str, Any]] = None,
+        include_aggregations: bool = True,
     ) -> JsonDict:
-        """Perform a search query."""
+        """Perform a search query.
+
+        Args:
+            query: Search query text
+            index: Index to search in
+            from_: Starting offset for pagination
+            size: Number of results to return
+            sort_field: Field to sort by
+            sort_order: Sort order (asc/desc)
+            filters: Additional filters
+            include_aggregations: Include aggregations in response. Defaults to True.
+
+        Returns:
+            Search results as JSON dict
+        """
         client = cls._get_client()
+        resolved_filters: Mapping[str, Any] = (
+            _build_query_filter(filters) if filters else {}
+        )
         params: JsonDict = {
             "query_string": query,
             "index": index,
@@ -145,8 +179,8 @@ class Search:
             "sort_field": sort_field,
             "sort_order": sort_order,
         }
-        if filters:
-            params.update(filters)
+        if resolved_filters:
+            params.update(resolved_filters)
 
         search_fn_raw = getattr(client, "es_search_from_es", None)
         if callable(search_fn_raw):
@@ -160,9 +194,10 @@ class Search:
             "index": index,
             "sort_field": sort_field,
             "sort_order": sort_order,
+            "include_aggregations": str(include_aggregations).lower(),
         }
-        if filters:
-            http_params.update(filters)
+        if resolved_filters:
+            http_params.update(resolved_filters)
         return _http_get(client, "/search/query", http_params)
 
     @classmethod
@@ -226,7 +261,8 @@ class Search:
         if callable(search_fn_raw):
             search_callback: SearchCallback = cast(SearchCallback, search_fn_raw)
             return search_callback(body=search_request)  # pylint: disable=not-callable
-        return _http_post(client, "/search/query", search_request)
+        params = {"query_filter": json.dumps(search_request)}
+        return _http_get(client, "/search/query", params)
 
     @classmethod
     def reindex(cls, entity_type: str) -> JsonDict:
@@ -262,10 +298,19 @@ class Search:
         sort_field: Optional[str] = None,
         sort_order: Optional[str] = None,
         filters: Optional[Mapping[str, Any]] = None,
+        include_aggregations: bool = True,
     ) -> JsonDict:
         """Async variant of :meth:`search`."""
         return await _run_async(
-            cls.search, query, index, from_, size, sort_field, sort_order, filters
+            cls.search,
+            query,
+            index,
+            from_,
+            size,
+            sort_field,
+            sort_order,
+            filters,
+            include_aggregations,
         )
 
     @classmethod
@@ -315,6 +360,7 @@ class SearchBuilder:
         self._sort_field: Optional[str] = None
         self._sort_order: Optional[str] = None
         self._filters: JsonDict = {}
+        self._include_aggregations: bool = True
 
     def query(self, query: str) -> "SearchBuilder":
         """Set search query."""
@@ -351,6 +397,11 @@ class SearchBuilder:
         self._filters[key] = value
         return self
 
+    def include_aggregations(self, include: bool = True) -> "SearchBuilder":
+        """Set whether to include aggregations. Defaults to True."""
+        self._include_aggregations = include
+        return self
+
     def execute(self) -> JsonDict:
         """Execute the search."""
         if not self._query:
@@ -364,6 +415,7 @@ class SearchBuilder:
             sort_field=self._sort_field,
             sort_order=self._sort_order,
             filters=self._filters,
+            include_aggregations=self._include_aggregations,
         )
 
     async def execute_async(self) -> JsonDict:
@@ -379,4 +431,5 @@ class SearchBuilder:
             sort_field=self._sort_field,
             sort_order=self._sort_order,
             filters=self._filters,
+            include_aggregations=self._include_aggregations,
         )

@@ -215,8 +215,7 @@
     },
     "entityStatus": {
       "description": "Status of the StoredProcedure.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

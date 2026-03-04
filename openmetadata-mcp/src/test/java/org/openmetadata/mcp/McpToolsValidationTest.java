@@ -496,6 +496,13 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
                 assertThat(r.has("name")).isTrue();
                 assertThat(r.has("fullyQualifiedName")).isTrue();
                 assertThat(r.has("entityType")).isTrue();
+
+                // Always validate deleted field is present
+                assertThat(r.has("deleted"))
+                    .withFailMessage(
+                        "Missing 'deleted' field in search result for: " + r.get("name"))
+                    .isTrue();
+
                 matchingEntities.add(r.get("name").asText());
               });
 
@@ -622,5 +629,330 @@ public class McpToolsValidationTest extends OpenMetadataApplicationTest {
     assertThat(lineageData.has("upstreamEdges")).isTrue();
     assertThat(lineageData.has("downstreamEdges")).isTrue();
     System.out.println("✓ Lineage response contains proper lineage graph structure");
+  }
+
+  @Test
+  @Order(8)
+  void testCreateLineage() throws Exception {
+    System.out.println("Testing create_lineage tool...");
+
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("mcp_lineage_target_table")
+            .withDescription("Target table for lineage test")
+            .withDatabaseSchema(testSchema.getFullyQualifiedName())
+            .withColumns(testTable.getColumns());
+    Table targetTable =
+        TestUtils.post(getResource("tables"), createTable2, Table.class, 201, ADMIN_AUTH_HEADERS);
+
+    Map<String, Object> toolCall =
+        McpTestUtils.createLineageToolCall(
+            "table", testTable.getId().toString(), "table", targetTable.getId().toString());
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("result")).isTrue();
+    assertThat(response.get("result").asText()).contains("successfully");
+
+    Map<String, Object> getLineageCall =
+        McpTestUtils.createGetLineageToolCall("table", testTable.getFullyQualifiedName(), 1, 1);
+    JsonNode lineageResult = executeToolCall(getLineageCall);
+    validateLineageResponse(lineageResult, testTable.getFullyQualifiedName());
+
+    System.out.println("✓ create_lineage tool working correctly");
+  }
+
+  @Test
+  @Order(9)
+  void testCreateLineageMissingParams() throws Exception {
+    System.out.println("Testing create_lineage tool with missing params...");
+
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
+    Map<String, Object> toolCall = McpTestUtils.createToolCallRequest("create_lineage", arguments);
+
+    JsonNode result = executeToolCall(toolCall);
+    assertThat(result.has("content")).isTrue();
+    assertThat(result.has("isError")).isTrue();
+    assertThat(result.get("isError").asBoolean()).isTrue();
+
+    System.out.println("✓ create_lineage correctly rejects missing params");
+  }
+
+  @Test
+  @Order(10)
+  void testGetTestDefinitions() throws Exception {
+    System.out.println("Testing get_test_definitions tool...");
+
+    Map<String, Object> toolCall = McpTestUtils.createGetTestDefinitionsToolCall("TABLE");
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("data")).isTrue();
+    assertThat(response.get("data").isArray()).isTrue();
+    assertThat(response.get("data").size()).isGreaterThan(0);
+
+    System.out.println("✓ get_test_definitions tool working correctly for TABLE");
+  }
+
+  @Test
+  @Order(11)
+  void testGetTestDefinitionsForColumn() throws Exception {
+    System.out.println("Testing get_test_definitions tool for COLUMN...");
+
+    Map<String, Object> toolCall = McpTestUtils.createGetTestDefinitionsToolCall("COLUMN");
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("data")).isTrue();
+    assertThat(response.get("data").isArray()).isTrue();
+
+    System.out.println("✓ get_test_definitions tool working correctly for COLUMN");
+  }
+
+  @Test
+  @Order(12)
+  void testCreateTestCase() throws Exception {
+    System.out.println("Testing create_test_case tool...");
+
+    String testCaseName = "mcp_test_case_" + System.currentTimeMillis();
+    List<Map<String, String>> parameterValues =
+        List.of(
+            Map.of("name", "minValue", "value", "0"), Map.of("name", "maxValue", "value", "100"));
+
+    Map<String, Object> toolCall =
+        McpTestUtils.createTestCaseToolCall(
+            testCaseName,
+            testTable.getFullyQualifiedName(),
+            "tableRowCountToBeBetween",
+            parameterValues);
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("name")).isTrue();
+    assertThat(response.get("name").asText()).isEqualTo(testCaseName);
+
+    System.out.println("✓ create_test_case tool working correctly");
+  }
+
+  @Test
+  @Order(13)
+  void testCreateTestCaseMissingDefinition() throws Exception {
+    System.out.println("Testing create_test_case tool with missing definition...");
+
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("name", "some_test");
+    arguments.put("fqn", testTable.getFullyQualifiedName());
+    arguments.put("parameterValues", List.of());
+    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
+    Map<String, Object> toolCall =
+        McpTestUtils.createToolCallRequest("create_test_case", arguments);
+
+    JsonNode result = executeToolCall(toolCall);
+    assertThat(result.has("isError")).isTrue();
+    assertThat(result.get("isError").asBoolean()).isTrue();
+
+    System.out.println("✓ create_test_case correctly rejects missing definition");
+  }
+
+  @Test
+  @Order(14)
+  void testRootCauseAnalysis() throws Exception {
+    System.out.println("Testing root_cause_analysis tool...");
+
+    Map<String, Object> toolCall =
+        McpTestUtils.createRootCauseAnalysisToolCall(
+            testTable.getFullyQualifiedName(), "table", 3, 3);
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("status")).isTrue();
+    assertThat(response.has("upstreamAnalysis")).isTrue();
+    assertThat(response.has("downstreamAnalysis")).isTrue();
+
+    System.out.println("✓ root_cause_analysis tool working correctly");
+  }
+
+  @Test
+  @Order(15)
+  void testRootCauseAnalysisDepthClamping() throws Exception {
+    System.out.println("Testing root_cause_analysis depth clamping...");
+
+    Map<String, Object> toolCall =
+        McpTestUtils.createRootCauseAnalysisToolCall(
+            testTable.getFullyQualifiedName(), "table", 50, 50);
+    JsonNode result = executeToolCall(toolCall);
+
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+    assertThat(response.has("upstreamDepth")).isTrue();
+    assertThat(response.get("upstreamDepth").asInt()).isEqualTo(10);
+    assertThat(response.has("downstreamDepth")).isTrue();
+    assertThat(response.get("downstreamDepth").asInt()).isEqualTo(10);
+
+    System.out.println("✓ root_cause_analysis depth clamping working correctly");
+  }
+
+  @Test
+  @Order(16)
+  void testSearchMetadataIncludesDeletedField() throws Exception {
+    System.out.println("Testing deleted field presence in search responses...");
+
+    // Create a dedicated table for deletion testing to avoid interfering with other tests
+    String deletionTestTableName = "mcp_deletion_test_table_" + System.currentTimeMillis();
+    CreateTable createDeletionTestTable =
+        new CreateTable()
+            .withName(deletionTestTableName)
+            .withDescription("Test table for deletion testing")
+            .withDatabaseSchema(testSchema.getFullyQualifiedName())
+            .withColumns(testTable.getColumns());
+
+    Table deletionTestTable =
+        TestUtils.post(
+            getResource("tables"), createDeletionTestTable, Table.class, 201, ADMIN_AUTH_HEADERS);
+
+    System.out.println("✓ Created dedicated deletion test table: " + deletionTestTableName);
+
+    // Step 1: Verify active table has deleted field set to false
+    Map<String, Object> searchActive =
+        McpTestUtils.createSearchMetadataToolCall(deletionTestTableName, 5, Entity.TABLE);
+    JsonNode activeResult = executeToolCall(searchActive);
+    validateDeletedFieldPresence(activeResult, false);
+    System.out.println("✓ Active table has deleted=false");
+
+    // Step 2: Soft-delete the dedicated test table (following TableResourceTest pattern)
+    UUID tableId = deletionTestTable.getId();
+    TestUtils.delete(getResource("tables/" + tableId), Table.class, ADMIN_AUTH_HEADERS);
+    System.out.println("✓ Soft-deleted dedicated test table");
+
+    // Step 3: Search with includeDeleted=true should return deleted table with deleted=true
+    Map<String, Object> searchWithDeleted =
+        createSearchToolCallWithDeletedParam(deletionTestTableName, 5, Entity.TABLE, true);
+    JsonNode deletedResult = executeToolCall(searchWithDeleted);
+    validateDeletedFieldPresence(deletedResult, true);
+    System.out.println("✓ Deleted table has deleted=true when includeDeleted=true");
+
+    // Step 4: Search without includeDeleted should exclude deleted entities
+    Map<String, Object> searchDefault =
+        McpTestUtils.createSearchMetadataToolCall(deletionTestTableName, 5, Entity.TABLE);
+    JsonNode defaultResult = executeToolCall(searchDefault);
+    validateNoDeletedEntities(defaultResult);
+    System.out.println("✓ Default search excludes deleted entities");
+
+    System.out.println("✓ deleted field correctly included in all search responses");
+  }
+
+  // Helper: Create search call with includeDeleted parameter
+  private Map<String, Object> createSearchToolCallWithDeletedParam(
+      String query, int limit, String entityType, boolean includeDeleted) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("query", query);
+    arguments.put("limit", limit);
+    arguments.put("entityType", entityType);
+    arguments.put("includeDeleted", includeDeleted);
+    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
+
+    return McpTestUtils.createToolCallRequest("search_metadata", arguments);
+  }
+
+  // Validate deleted field is present and has expected value
+  private void validateDeletedFieldPresence(JsonNode result, boolean expectedDeleted)
+      throws Exception {
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+
+    if (content.size() > 0) {
+      JsonNode firstResult = content.get(0);
+      JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+      JsonNode results = response.get("results");
+
+      assertThat(results).isNotNull();
+      assertThat(results.size()).isGreaterThan(0);
+
+      results.forEach(
+          entity -> {
+            // Critical assertion: deleted field must always be present
+            assertThat(entity.has("deleted"))
+                .withFailMessage(
+                    "Missing 'deleted' field for entity: %s (entityType: %s)",
+                    entity.has("name") ? entity.get("name").asText() : "unknown",
+                    entity.has("entityType") ? entity.get("entityType").asText() : "unknown")
+                .isTrue();
+
+            assertThat(entity.get("deleted").asBoolean())
+                .withFailMessage(
+                    "Expected deleted=%s but got deleted=%s for entity: %s",
+                    expectedDeleted, entity.get("deleted").asBoolean(), entity.get("name").asText())
+                .isEqualTo(expectedDeleted);
+          });
+    }
+  }
+
+  // Validate that no deleted entities are returned in default search
+  private void validateNoDeletedEntities(JsonNode result) throws Exception {
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+
+    if (content.size() > 0) {
+      JsonNode firstResult = content.get(0);
+      JsonNode response = objectMapper.readTree(firstResult.get("text").asText());
+      JsonNode results = response.get("results");
+
+      if (results != null && results.size() > 0) {
+        results.forEach(
+            entity -> {
+              // If deleted field exists, it should be false
+              if (entity.has("deleted")) {
+                assertThat(entity.get("deleted").asBoolean())
+                    .withFailMessage(
+                        "Found soft-deleted entity in default search: %s",
+                        entity.get("name").asText())
+                    .isFalse();
+              }
+            });
+      }
+    }
   }
 }

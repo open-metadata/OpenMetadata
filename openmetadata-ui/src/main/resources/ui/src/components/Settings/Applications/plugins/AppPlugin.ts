@@ -14,6 +14,7 @@ import { FC } from 'react';
 import { RouteProps } from 'react-router-dom';
 import { App } from '../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import { LeftSidebarItem } from '../../../MyData/LeftSidebar/LeftSidebar.interface';
 
 export interface LeftSidebarItemExample extends LeftSidebarItem {
@@ -104,4 +105,34 @@ export interface AppPlugin {
    *          or null if the default installation interface should be used.
    */
   getAppInstallComponent?(app: AppMarketPlaceDefinition): FC | null;
+
+  /**
+   * Optional method that allows plugins to contribute UI elements to extension points
+   * throughout the application.
+   *
+   * This is the generic extension mechanism that allows plugins to add tabs, actions,
+   * widgets, or any other UI element at named extension points. This method is called
+   * once during plugin initialization.
+   *
+   * @param registry - The ExtensionPointRegistry to contribute to
+   *
+   * @example
+   * ```typescript
+   * contributeExtensions(registry: ExtensionPointRegistry): void {
+   *   // Add a tab to service details page for database services only
+   *   registry.contribute({
+   *     extensionPointId: 'service-details.tabs',
+   *     pluginName: this.name,
+   *     priority: 10,
+   *     data: {
+   *       key: 'query-runner',
+   *       label: 'Query Runner',
+   *       component: QueryRunnerTab,
+   *       condition: (ctx) => ctx.serviceCategory === 'DATABASE_SERVICES'
+   *     }
+   *   });
+   * }
+   * ```
+   */
+  contributeExtensions?(registry: ExtensionPointRegistry): void;
 }

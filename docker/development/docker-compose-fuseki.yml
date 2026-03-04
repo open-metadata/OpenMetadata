@@ -19,19 +19,9 @@ services:
           memory: 4G
         reservations:
           memory: 2G
-    networks:
-      - app_net
     # Create the database directory before starting Fuseki
     entrypoint: /bin/sh -c "mkdir -p /fuseki/databases/openmetadata && exec /docker-entrypoint.sh /jena-fuseki/fuseki-server --update --loc=/fuseki/databases/openmetadata /openmetadata"
 
 volumes:
   fuseki-data:
     driver: local
-
-networks:
-  app_net:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.16.240.0/24

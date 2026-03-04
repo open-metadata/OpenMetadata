@@ -15,7 +15,7 @@ Test MariaDB using the topology
 
 import types
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -25,6 +25,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import EntityName, Markdown
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.mariadb.metadata import MariadbSource
 from metadata.ingestion.source.database.mariadb.models import MariaDBStoredProcedure
@@ -88,7 +89,7 @@ class MariaDBUnitTest(TestCase):
         self.mariadb_source._connection_map = {}
 
     def test_get_stored_procedures(self):
-        """Test getting both stored procedures and functions"""
+        """Test getting both stored procedures and functions with filter"""
         mock_proc_row = Mock()
         mock_proc_row._mapping = {
             "procedure_name": "test_procedure",
@@ -109,19 +110,56 @@ class MariaDBUnitTest(TestCase):
             "description": "Test function",
         }
 
-        with patch.object(self.mariadb_source, "engine") as mock_engine:
-            mock_results = [Mock(), Mock()]
-            mock_results[0].all.return_value = [mock_proc_row]
-            mock_results[1].all.return_value = [mock_func_row]
-            mock_engine.execute.side_effect = mock_results
+        mock_exclude_row = Mock()
+        mock_exclude_row._mapping = {
+            "procedure_name": "exclude_procedure",
+            "schema_name": "test_schema",
+            "definition": "RETURN 1",
+            "language": "SQL",
+            "procedure_type": "PROCEDURE",
+            "description": "Test exclude",
+        }
 
-            procedures = list(self.mariadb_source.get_stored_procedures())
+        # Configure filter
+        self.mariadb_source.source_config.includeStoredProcedures = True
+        self.mariadb_source.source_config.storedProcedureFilterPattern = FilterPattern(
+            excludes=["exclude_procedure"]
+        )
 
-            self.assertEqual(len(procedures), 2)
-            self.assertEqual(procedures[0].name, "test_procedure")
-            self.assertEqual(procedures[0].procedure_type, "PROCEDURE")
-            self.assertEqual(procedures[1].name, "test_function")
-            self.assertEqual(procedures[1].procedure_type, "FUNCTION")
+        mock_engine = MagicMock()
+        self.mariadb_source.engine = mock_engine
+
+        # Each call to engine.connect() returns a context manager for a connection.
+        # MariaDB get_stored_procedures calls _get_stored_procedures_internal twice.
+        mock_result_proc = MagicMock()
+        mock_result_proc.all.return_value = [mock_proc_row, mock_exclude_row]
+
+        mock_result_func = MagicMock()
+        mock_result_func.all.return_value = [mock_func_row]
+
+        mock_conn_proc = MagicMock()
+        mock_conn_proc.execute.return_value = mock_result_proc
+
+        mock_conn_func = MagicMock()
+        mock_conn_func.execute.return_value = mock_result_func
+
+        ctx_proc = MagicMock()
+        ctx_proc.__enter__ = MagicMock(return_value=mock_conn_proc)
+        ctx_proc.__exit__ = MagicMock(return_value=False)
+
+        ctx_func = MagicMock()
+        ctx_func.__enter__ = MagicMock(return_value=mock_conn_func)
+        ctx_func.__exit__ = MagicMock(return_value=False)
+
+        mock_engine.connect.side_effect = [ctx_proc, ctx_func]
+
+        procedures = list(self.mariadb_source.get_stored_procedures())
+
+        self.assertEqual(len(procedures), 2)
+        self.assertEqual(procedures[0].name, "test_procedure")
+        self.assertEqual(procedures[0].procedure_type, "PROCEDURE")
+        self.assertEqual(procedures[1].name, "test_function")
+        self.assertEqual(procedures[1].procedure_type, "FUNCTION")
 
     def test_yield_stored_procedure(self):
         """Test yielding stored procedure requests"""

@@ -65,7 +65,7 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
 }));
 
 jest.mock('../../../utils/CustomProperty.utils', () => ({
-  getCustomPropertyMomentFormat: jest.fn().mockReturnValue('DD-MM-YYYY'),
+  getCustomPropertyLuxonFormat: jest.fn().mockReturnValue('dd-MM-yyyy'),
 }));
 
 jest.mock('../../../utils/SearchClassBase', () => ({
@@ -434,7 +434,7 @@ describe('Test PropertyValue Component', () => {
       await screen.findByTestId('entityReference-value')
     ).toBeInTheDocument();
     expect(
-      await screen.findByTestId('entityReference-value-name')
+      await screen.findByTestId('entityReference-value')
     ).toHaveTextContent('entityReferenceName');
 
     await act(async () => {

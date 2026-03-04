@@ -13,10 +13,10 @@
 export const COMMON_RESIZABLE_PANEL_CONFIG = {
   LEFT_PANEL: {
     minWidth: 800,
-    flex: 0.85,
+    flex: 0.67,
   },
   RIGHT_PANEL: {
-    minWidth: 320,
-    flex: 0.15,
+    minWidth: 400,
+    flex: 0.33,
   },
 };

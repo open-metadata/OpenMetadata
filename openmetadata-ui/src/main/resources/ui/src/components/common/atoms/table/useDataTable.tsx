@@ -49,7 +49,7 @@ export const useDataTable = <T extends { id: string }>(
 
   const dataTable = useMemo(
     () => (
-      <Table>
+      <Table data-testid="table-view-container">
         <TableHead>
           <TableRow>
             {enableSelection && (
@@ -101,9 +101,7 @@ export const useDataTable = <T extends { id: string }>(
                     isSelected={listing.isSelected(entity.id)}
                     key={entity.id}
                     onEntityClick={
-                      listing.actionHandlers.onEntityClick ||
-                      // eslint-disable-next-line @typescript-eslint/no-empty-function
-                      (() => {})
+                      listing.actionHandlers.onEntityClick || (() => {})
                     }
                     onSelect={listing.handleSelect}
                   />
@@ -119,9 +117,7 @@ export const useDataTable = <T extends { id: string }>(
                   isSelected: listing.isSelected(entity.id),
                   onSelect: listing.handleSelect,
                   onEntityClick:
-                    listing.actionHandlers.onEntityClick ||
-                    // eslint-disable-next-line @typescript-eslint/no-empty-function
-                    (() => {}),
+                    listing.actionHandlers.onEntityClick || (() => {}),
                   enableSelection,
                 });
 

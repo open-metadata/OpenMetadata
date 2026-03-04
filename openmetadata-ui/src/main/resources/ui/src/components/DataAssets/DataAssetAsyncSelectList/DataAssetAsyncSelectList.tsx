@@ -43,6 +43,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   searchIndex = SearchIndex.ALL,
   value: selectedValue,
   filterFqns = [],
+  queryFilter,
   ...props
 }) => {
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -66,7 +67,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         pageSize: PAGE_SIZE,
         searchIndex: searchIndex,
         // Filter out bots from user search
-        queryFilter: {
+        queryFilter: queryFilter ?? {
           query: { bool: { must_not: [{ match: { isBot: true } }] } },
         },
       });
@@ -99,7 +100,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         },
       };
     },
-    [searchIndex]
+    [searchIndex, queryFilter]
   );
 
   const loadOptions = useCallback(

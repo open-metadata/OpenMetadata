@@ -14,6 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
 import {
   mockedGlossaryTerms,
   MOCK_ASSETS_DATA,
@@ -84,15 +85,25 @@ const mockProps = {
   } as OperationPermission,
   glossaryTerm: {
     ...mockedGlossaryTerms[0],
-    children: mockedGlossaryTerms[0].children?.map((child: any) => ({
-      id: child.id,
-      name: child.name,
-      displayName: child.displayName,
-      description: child.description,
-      fullyQualifiedName: child.fullyQualifiedName,
-      type: 'glossaryTerm', // Required field for EntityReference
-      deleted: child.deleted || false,
-    })),
+    children: mockedGlossaryTerms[0].children?.map(
+      (child: {
+        id: string;
+        name: string;
+        displayName: string;
+        description: string;
+        fullyQualifiedName: string;
+        deleted?: boolean;
+      }) =>
+        ({
+          id: child.id,
+          name: child.name,
+          displayName: child.displayName,
+          description: child.description,
+          fullyQualifiedName: child.fullyQualifiedName,
+          type: 'glossaryTerm', // Required field for EntityReference
+          deleted: child.deleted || false,
+        } as EntityReference)
+    ),
   },
   termsLoading: false,
   handleGlossaryTermUpdate: jest.fn(),
@@ -121,10 +132,6 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => {
     _esModule: true,
   };
 });
-
-jest.mock('../../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue([{}]),
-}));
 
 describe('Test Glossary-term component', () => {
   it('Should render overview tab when activeTab is undefined', async () => {

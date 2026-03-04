@@ -19,6 +19,7 @@ from urllib.parse import quote_plus
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from pydantic import BaseModel, SecretStr
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
@@ -53,6 +54,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_TEST_GET_VIEWS,
 )
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.credentials import normalize_pem_string
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
@@ -71,7 +73,8 @@ def _init_database(engine_wrapper: SnowflakeEngineWrapper):
     """
     if not engine_wrapper.service_connection.database:
         if not engine_wrapper.database_name:
-            databases = engine_wrapper.engine.execute(SNOWFLAKE_GET_DATABASES)
+            with engine_wrapper.engine.connect() as conn:
+                databases = conn.execute(text(SNOWFLAKE_GET_DATABASES)).all()
             for database in databases:
                 if filter_by_database(
                     engine_wrapper.service_connection.databaseFilterPattern,
@@ -92,10 +95,11 @@ def execute_inspector_func(engine_wrapper: SnowflakeEngineWrapper, func_name: st
     the function with name `func_name` and executes it
     """
     _init_database(engine_wrapper)
-    engine_wrapper.engine.execute(f'USE DATABASE "{engine_wrapper.database_name}"')
-    inspector = inspect(engine_wrapper.engine)
-    inspector_fn = getattr(inspector, func_name)
-    inspector_fn()
+    with engine_wrapper.engine.connect() as conn:
+        conn.execute(text(f'USE DATABASE "{engine_wrapper.database_name}"'))
+        inspector = inspect(conn)
+        inspector_fn = getattr(inspector, func_name)
+        inspector_fn()
 
 
 def test_table_query(engine_wrapper: SnowflakeEngineWrapper, statement: str):
@@ -173,8 +177,16 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
                 logger.warning(
                     "Snowflake Private Key Passphrase not found, replacing it with empty string"
                 )
+
+            encrypted_private_key = normalize_pem_string(
+                connection.privateKey.get_secret_value()
+            )
+
             p_key = serialization.load_pem_private_key(
-                bytes(connection.privateKey.get_secret_value(), "utf-8"),
+                bytes(
+                    encrypted_private_key,
+                    "utf-8",
+                ),
                 password=snowflake_private_key_passphrase.encode() or None,
                 backend=default_backend(),
             )

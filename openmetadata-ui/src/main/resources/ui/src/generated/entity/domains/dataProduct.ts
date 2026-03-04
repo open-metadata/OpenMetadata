@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,7 +19,8 @@ export interface DataProduct {
     /**
      * Data assets collection that is part of this data product.
      */
-    assets?: EntityReference[];
+    assets?:        EntityReference[];
+    certification?: AssetCertification;
     /**
      * Change that lead to this version of the entity.
      */
@@ -77,10 +78,6 @@ export interface DataProduct {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
-     * Input ports for consuming data into this data product
-     */
-    inputPorts?: DataProductPort[];
-    /**
      * Current lifecycle stage of the data product
      */
     lifecycleStage?: LifecycleStage;
@@ -88,10 +85,6 @@ export interface DataProduct {
      * A unique name of the Data Product
      */
     name: string;
-    /**
-     * Output ports for exposing data from this data product
-     */
-    outputPorts?: DataProductPort[];
     /**
      * Owners of this Data Product.
      */
@@ -126,6 +119,10 @@ export interface DataProduct {
      * Metadata version of the entity.
      */
     version?: number;
+    /**
+     * Votes on the entity.
+     */
+    votes?: Votes;
 }
 
 /**
@@ -140,8 +137,6 @@ export interface DataProduct {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Reference to the data asset exposed through this port
  */
 export interface EntityReference {
     /**
@@ -184,6 +179,217 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Defines the Asset Certification schema.
+ */
+export interface AssetCertification {
+    /**
+     * The date when the certification was applied.
+     */
+    appliedDate: number;
+    /**
+     * The date when the certification expires.
+     */
+    expiryDate: number;
+    tagLabel:   TagLabel;
+}
+
+/**
+ * This schema defines the type for labeling an entity with a Tag.
+ */
+export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
+     * Description for the tag label.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType: LabelType;
+    /**
+     * Additional metadata associated with this tag label, such as recognizer information for
+     * automatically applied tags.
+     */
+    metadata?: TagLabelMetadata;
+    /**
+     * Name of the tag or glossary term.
+     */
+    name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state:  State;
+    style?: Style;
+    tagFQN: string;
+}
+
+/**
+ * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+ * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+ * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+ * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+ * used to determine the tag label.
+ */
+export enum LabelType {
+    Automated = "Automated",
+    Derived = "Derived",
+    Generated = "Generated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
+ * Additional metadata associated with this tag label, such as recognizer information for
+ * automatically applied tags.
+ *
+ * Additional metadata associated with a tag label, including information about how the tag
+ * was applied.
+ */
+export interface TagLabelMetadata {
+    /**
+     * Metadata about the recognizer that automatically applied this tag
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+}
+
+/**
+ * Metadata about the recognizer that automatically applied this tag
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
+}
+
+/**
+ * Label is from Tags or Glossary.
+ */
+export enum TagSource {
+    Classification = "Classification",
+    Glossary = "Glossary",
+}
+
+/**
+ * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+ * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+ */
+export enum State {
+    Confirmed = "Confirmed",
+    Suggested = "Suggested",
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -267,76 +473,6 @@ export enum EntityStatus {
 }
 
 /**
- * Port definition for data product input/output
- */
-export interface DataProductPort {
-    /**
-     * Reference to the data asset exposed through this port
-     */
-    dataAsset?: EntityReference;
-    /**
-     * Description of the port
-     */
-    description?: string;
-    /**
-     * Display name of the port
-     */
-    displayName?: string;
-    /**
-     * Endpoint URL or connection string
-     */
-    endpoint?: string;
-    format?:   PortFormat;
-    /**
-     * Name of the port
-     */
-    name:      string;
-    portType:  PortType;
-    protocol?: PortProtocol;
-}
-
-/**
- * Data format supported by the port
- */
-export enum PortFormat {
-    Avro = "AVRO",
-    CSV = "CSV",
-    Custom = "CUSTOM",
-    Delta = "DELTA",
-    Iceberg = "ICEBERG",
-    JSON = "JSON",
-    Orc = "ORC",
-    Parquet = "PARQUET",
-    Protobuf = "PROTOBUF",
-    XML = "XML",
-}
-
-/**
- * Type of the data product port
- */
-export enum PortType {
-    Input = "INPUT",
-    Output = "OUTPUT",
-}
-
-/**
- * Protocol used by the port for data access
- */
-export enum PortProtocol {
-    AzureBlob = "AZURE_BLOB",
-    Custom = "CUSTOM",
-    File = "FILE",
-    Gcs = "GCS",
-    Graphql = "GRAPHQL",
-    Grpc = "GRPC",
-    JDBC = "JDBC",
-    Kafka = "KAFKA",
-    REST = "REST",
-    S3 = "S3",
-    Webhook = "WEBHOOK",
-}
-
-/**
  * Current lifecycle stage of the data product
  *
  * Lifecycle stage of the data product
@@ -390,115 +526,25 @@ export enum Tier {
 }
 
 /**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * Cover image configuration for the entity.
-     */
-    coverImage?: CoverImage;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
-}
-
-/**
- * Cover image configuration for the entity.
+ * Votes on the entity.
  *
- * Cover image configuration for an entity. This is used to display a banner or header image
- * for entities like Domain, Glossary, Data Product, etc.
+ * This schema defines the Votes for a Data Asset.
  */
-export interface CoverImage {
+export interface Votes {
     /**
-     * Position of the cover image in CSS background-position format. Supports keywords (top,
-     * center, bottom) or pixel values (e.g., '20px 30px').
+     * List of all the Users who downVoted
      */
-    position?: string;
+    downVoters?: EntityReference[];
     /**
-     * URL of the cover image.
+     * Total down-votes the entity has
      */
-    url?: string;
-}
-
-/**
- * This schema defines the type for labeling an entity with a Tag.
- */
-export interface TagLabel {
+    downVotes?: number;
     /**
-     * Description for the tag label.
+     * List of all the Users who upVoted
      */
-    description?: string;
+    upVoters?: EntityReference[];
     /**
-     * Display Name that identifies this tag.
+     * Total up-votes the entity has
      */
-    displayName?: string;
-    /**
-     * Link to the tag resource.
-     */
-    href?: string;
-    /**
-     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
-     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
-     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
-     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
-     * used to determine the tag label.
-     */
-    labelType: LabelType;
-    /**
-     * Name of the tag or glossary term.
-     */
-    name?: string;
-    /**
-     * An explanation of why this tag was proposed, specially for autoclassification tags
-     */
-    reason?: string;
-    /**
-     * Label is from Tags or Glossary.
-     */
-    source: TagSource;
-    /**
-     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
-     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
-     */
-    state:  State;
-    style?: Style;
-    tagFQN: string;
-}
-
-/**
- * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
- * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
- * relationship (see Classification.json for more details). 'Propagated` indicates a tag
- * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
- * used to determine the tag label.
- */
-export enum LabelType {
-    Automated = "Automated",
-    Derived = "Derived",
-    Generated = "Generated",
-    Manual = "Manual",
-    Propagated = "Propagated",
-}
-
-/**
- * Label is from Tags or Glossary.
- */
-export enum TagSource {
-    Classification = "Classification",
-    Glossary = "Glossary",
-}
-
-/**
- * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
- * entity must confirm the suggested labels before it is marked as 'Confirmed'.
- */
-export enum State {
-    Confirmed = "Confirmed",
-    Suggested = "Suggested",
+    upVotes?: number;
 }

@@ -25,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 import org.openmetadata.service.util.email.EmailUtil;
 
 /**
@@ -346,5 +348,18 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
 
   private static String str(Object o) {
     return o == null ? "" : o.toString();
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("buildEntityUrl")
+        .withDescription("Build UI URL for entity reference")
+        .withCursorOffset(17)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{buildEntityUrl }}")
+                    .withExample("{{buildEntityUrl entity}}")));
   }
 }

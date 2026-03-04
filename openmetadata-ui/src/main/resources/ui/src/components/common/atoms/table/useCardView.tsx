@@ -80,6 +80,7 @@ export const useCardView = <T extends { id: string }>({
         </Box>
       ) : (
         <Box
+          data-testid="card-view-container"
           sx={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)', // Strict 3 columns
@@ -88,6 +89,7 @@ export const useCardView = <T extends { id: string }>({
           }}>
           {listing.entities.map((entity) => (
             <Card
+              data-testid="entity-card"
               elevation={0}
               key={entity.id}
               sx={{

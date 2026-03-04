@@ -15,9 +15,12 @@ package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Handlebars helper that parses OpenMetadata EntityLink format and extracts components.
@@ -124,5 +127,19 @@ public class ParseEntityLinkHelper implements HandlebarsHelper {
     }
 
     return result;
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("parseEntityLink")
+        .withDescription("Parse entity link into components")
+        .withCursorOffset(18)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{parseEntityLink }}")
+                    .withExample(
+                        "{{#with (parseEntityLink about) as |link|}}{{link.entityType}}{{/with}}")));
   }
 }

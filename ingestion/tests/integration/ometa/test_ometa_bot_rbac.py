@@ -34,42 +34,54 @@ def get_bot_ometa(metadata, bot: str) -> OpenMetadata:
     return int_admin_ometa(jwt=automator_bot_auth.config.JWTToken.get_secret_value())
 
 
-def test_bots_rbac_pagination(metadata, service, tables):
-    """Bots can paginate properly"""
-    query_filter = (
-        '{"query":{"bool":{"must":[{"bool":{"should":[{"term":'
-        f'{{"service.displayName.keyword":"{service.name.root}"}}}}]}}}}]}}}}}}'
-    )
+class TestOMetaBotRbac:
+    """
+    Bot RBAC integration tests.
+    Tests that bots can paginate and access data properly.
 
-    settings = Settings(
-        config_type=SettingType.searchSettings,
-        config_value=SearchSettings(
-            globalSettings=GlobalSettings(enableAccessControl=True)
-        ),
-    )
-    # Ensure search is enabled
-    metadata.client.put("/system/settings", data=settings.model_dump_json())
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    - service: DatabaseService (module scope)
+    - tables: list of Table entities (module scope)
+    """
 
-    for bot in BOTS:
-        bot_ometa = get_bot_ometa(metadata, bot)
-        # First, check the bot can indeed see that data
-        for table in tables:
-            allowed_table = bot_ometa.get_by_name(
-                entity=Table, fqn=table.fullyQualifiedName
-            )
-            assert allowed_table
-            assert (
-                allowed_table.fullyQualifiedName.root == table.fullyQualifiedName.root
-            )
-
-        # Then, make sure that the admin can search those tables
-        admin_assets = list(
-            metadata.paginate_es(entity=Table, query_filter=query_filter, size=2)
+    def test_bots_rbac_pagination(self, metadata, database_service, tables):
+        """Bots can paginate properly"""
+        query_filter = (
+            '{"query":{"bool":{"must":[{"bool":{"should":[{"term":'
+            f'{{"service.displayName.keyword":"{database_service.name.root}"}}}}]}}}}]}}}}}}'
         )
-        assert len(admin_assets) == 10
 
-        # Finally, the bot should also be able to paginate these assets
-        assets = list(
-            bot_ometa.paginate_es(entity=Table, query_filter=query_filter, size=2)
+        settings = Settings(
+            config_type=SettingType.searchSettings,
+            config_value=SearchSettings(
+                globalSettings=GlobalSettings(enableAccessControl=True)
+            ),
         )
-        assert len(assets) == 10, f"Pagination validation for bot [{bot}]"
+        # Ensure search is enabled
+        metadata.client.put("/system/settings", data=settings.model_dump_json())
+
+        for bot in BOTS:
+            bot_ometa = get_bot_ometa(metadata, bot)
+            # First, check the bot can indeed see that data
+            for table in tables:
+                allowed_table = bot_ometa.get_by_name(
+                    entity=Table, fqn=table.fullyQualifiedName
+                )
+                assert allowed_table
+                assert (
+                    allowed_table.fullyQualifiedName.root
+                    == table.fullyQualifiedName.root
+                )
+
+            # Then, make sure that the admin can search those tables
+            admin_assets = list(
+                metadata.paginate_es(entity=Table, query_filter=query_filter, size=2)
+            )
+            assert len(admin_assets) == 10
+
+            # Finally, the bot should also be able to paginate these assets
+            assets = list(
+                bot_ometa.paginate_es(entity=Table, query_filter=query_filter, size=2)
+            )
+            assert len(assets) == 10, f"Pagination validation for bot [{bot}]"

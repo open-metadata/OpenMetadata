@@ -1,0 +1,33 @@
+{
+  "id": "0b9a8f7e-6d5c-4b3a-2f1e-0d9c8b7a6f5e",
+  "name": "sample_test_suite",
+  "displayName": "Sample Test Suite",
+  "fullyQualifiedName": "sample_test_suite",
+  "description": "Mock test suite for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/dataQuality/testSuites/0b9a8f7e-6d5c-4b3a-2f1e-0d9c8b7a6f5e",
+  "executableEntityReference": {
+    "id": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+    "type": "table",
+    "name": "sample_table",
+    "fullyQualifiedName": "sample-service.sample-db.public.sample_table",
+    "deleted": false
+  },
+  "summary": {
+    "success": 8,
+    "failed": 2,
+    "aborted": 0,
+    "total": 10
+  },
+  "tests": [
+    {
+      "id": "1c0b9a8f-7e6d-5c4b-3a2f-1e0d9c8b7a6f",
+      "type": "testCase",
+      "name": "sample_test_case",
+      "fullyQualifiedName": "sample_test_suite.sample_test_case"
+    }
+  ]
+}

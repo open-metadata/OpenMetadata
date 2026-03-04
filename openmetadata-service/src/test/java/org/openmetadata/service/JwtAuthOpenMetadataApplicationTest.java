@@ -16,8 +16,8 @@ package org.openmetadata.service;
 import static java.lang.String.format;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import es.org.elasticsearch.client.RestClient;
-import es.org.elasticsearch.client.RestClientBuilder;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
 import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
@@ -29,6 +29,9 @@ import io.dropwizard.jersey.validation.Validators;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import io.minio.BucketExistsArgs;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioClient;
 import jakarta.validation.Validator;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -39,18 +42,13 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.eclipse.jetty.client.HttpClient;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.core5.http.HttpHost;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
-import org.glassfish.jersey.jetty.connector.JettyClientProperties;
-import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
-import org.glassfish.jersey.jetty.connector.JettyHttpClientSupplier;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -81,6 +79,7 @@ import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.util.JdkHttpClientConnector;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
@@ -106,6 +105,9 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
   public static final ElasticSearchConfiguration.SearchType ELASTIC_SEARCH_TYPE =
       ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
+  public static final String MINIO_ACCESS_KEY = "minioadmin";
+  public static final String MINIO_SECRET_KEY = "minioadmin";
+  public static final String MINIO_BUCKET = "pipeline-logs-test";
 
   protected static final WebhookCallbackResource webhookCallbackResource =
       new WebhookCallbackResource();
@@ -117,6 +119,7 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
   private static GenericContainer<?> REDIS_CONTAINER;
   private static GenericContainer<?> RDF_CONTAINER;
+  private static GenericContainer<?> MINIO_CONTAINER;
 
   protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
@@ -124,7 +127,7 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
       "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
   private static final String ELASTIC_SEARCH_CONTAINER_IMAGE =
-      "docker.elastic.co/elasticsearch/elasticsearch:8.11.4";
+      "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
 
   private static String HOST;
   private static String PORT;
@@ -237,6 +240,9 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
     // RDF configuration (if enabled by system properties)
     setupRdfIfEnabled();
 
+    // MinIO configuration (if enabled by system properties)
+    setupMinioIfEnabled();
+
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
     APP = getApp(configOverridesArray);
     // Run System Migrations
@@ -338,16 +344,13 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
   }
 
   private static void createClient() {
-    HttpClient httpClient = new HttpClient();
-    httpClient.setIdleTimeout(0);
+    // Use custom JDK HttpClient connector - supports PATCH, handles empty PUT bodies, no Jetty deps
     ClientConfig config = new ClientConfig();
-    config.connectorProvider(new JettyConnectorProvider());
-    config.register(new JettyHttpClientSupplier(httpClient));
+    config.connectorProvider(new JdkHttpClientConnector.Provider());
     config.register(new JacksonFeature(APP.getObjectMapper()));
-    config.property(ClientProperties.CONNECT_TIMEOUT, 0);
-    config.property(ClientProperties.READ_TIMEOUT, 0);
-    config.property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
-    config.property(JettyClientProperties.SYNC_LISTENER_RESPONSE_MAX_SIZE, 10 * 1024 * 1024);
+    // Set reasonable timeouts to prevent indefinite hangs
+    config.property(ClientProperties.CONNECT_TIMEOUT, 30_000); // 30 seconds
+    config.property(ClientProperties.READ_TIMEOUT, 120_000); // 2 minutes
     client = ClientBuilder.newClient(config);
   }
 
@@ -381,6 +384,16 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
       }
     }
 
+    // Stop MinIO container if it was started
+    if (MINIO_CONTAINER != null) {
+      try {
+        MINIO_CONTAINER.stop();
+        LOG.info("MinIO container stopped successfully");
+      } catch (Exception e) {
+        LOG.error("Error stopping MinIO container", e);
+      }
+    }
+
     if (client != null) {
       client.close();
     }
@@ -395,13 +408,18 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
     searchRepository.createIndexes();
   }
 
-  public static RestClient getSearchClient() {
-    CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+  public static Rest5Client getSearchClient() {
+    BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     credentialsProvider.setCredentials(
-        AuthScope.ANY, new UsernamePasswordCredentials(ELASTIC_USER, "password"));
+        new AuthScope(null, -1),
+        new UsernamePasswordCredentials(ELASTIC_USER, "password".toCharArray()));
 
-    RestClientBuilder builder =
-        RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress()))
+    String hostAddress = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress();
+    String[] parts = hostAddress.split(":");
+    HttpHost httpHost = new HttpHost("http", parts[0], Integer.parseInt(parts[1]));
+
+    Rest5ClientBuilder builder =
+        Rest5Client.builder(httpHost)
             .setHttpClientConfigCallback(
                 httpClientBuilder ->
                     httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
@@ -579,5 +597,101 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(ELASTIC_SEARCH_TYPE);
     return esConfig;
+  }
+
+  private static void setupMinioIfEnabled() {
+    String enableMinio = System.getProperty("enableMinio");
+    String minioContainerImage = System.getProperty("minioContainerImage");
+
+    if ("true".equals(enableMinio)) {
+      LOG.info("MinIO log storage enabled for tests");
+
+      if (CommonUtil.nullOrEmpty(minioContainerImage)) {
+        minioContainerImage = "minio/minio:latest";
+      }
+
+      LOG.info("Starting MinIO container with image: {}", minioContainerImage);
+
+      MINIO_CONTAINER =
+          new GenericContainer<>(DockerImageName.parse(minioContainerImage))
+              .withExposedPorts(9000)
+              .withEnv("MINIO_ROOT_USER", "minioadmin")
+              .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
+              .withCommand("server", "/data")
+              .withReuse(false)
+              .withStartupTimeout(Duration.ofMinutes(2))
+              .waitingFor(Wait.forHttp("/minio/health/live").forPort(9000));
+
+      MINIO_CONTAINER.start();
+
+      String minioHost = MINIO_CONTAINER.getHost();
+      Integer minioPort = MINIO_CONTAINER.getFirstMappedPort();
+      String minioEndpoint = String.format("http://%s:%d", minioHost, minioPort);
+
+      MinioClient minioClient =
+          MinioClient.builder()
+              .endpoint(minioEndpoint)
+              .credentials(MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
+              .build();
+
+      try {
+        if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket(MINIO_BUCKET).build())) {
+          minioClient.makeBucket(MakeBucketArgs.builder().bucket(MINIO_BUCKET).build());
+          LOG.info("Created MinIO bucket: {}", MINIO_BUCKET);
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to create MinIO bucket", e);
+        throw new RuntimeException("MinIO setup failed", e);
+      }
+
+      LOG.info("MinIO container started at {}", minioEndpoint);
+
+      // Add MinIO configuration overrides
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.type", "s3"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.enabled", "true"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.bucketName",
+              "pipeline-logs-test"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.prefix", "test-logs"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.enableServerSideEncryption",
+              "false"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.maxConcurrentStreams",
+              "10"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.awsConfig.awsAccessKeyId",
+              "minioadmin"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.awsConfig.awsSecretAccessKey",
+              "minioadmin"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.awsConfig.awsRegion",
+              "us-east-1"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.awsConfig.endPointURL",
+              minioEndpoint));
+    }
+  }
+
+  public static String getMinioEndpointForTests() {
+    if (MINIO_CONTAINER != null && MINIO_CONTAINER.isRunning()) {
+      return String.format(
+          "http://%s:%d", MINIO_CONTAINER.getHost(), MINIO_CONTAINER.getFirstMappedPort());
+    }
+    return null;
   }
 }

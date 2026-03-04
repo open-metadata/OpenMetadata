@@ -15,18 +15,19 @@ import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.analytics.WebAnalyticEventResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEvent> {
-  public static final String COLLECTION_PATH = "/v1/analytics/web/events";
   private static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION =
       "webAnalyticEvent.webAnalyticEventData";
 
   public WebAnalyticEventRepository() {
     super(
-        COLLECTION_PATH,
+        WebAnalyticEventResource.COLLECTION_PATH,
         WEB_ANALYTIC_EVENT,
         WebAnalyticEvent.class,
         Entity.getCollectionDAO().webAnalyticEventDAO(),
@@ -35,7 +36,8 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   @Override
-  public void setFields(WebAnalyticEvent entity, EntityUtil.Fields fields) {
+  public void setFields(
+      WebAnalyticEvent entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     /* Nothing to do */
   }
 
@@ -133,6 +135,40 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     }
   }
 
+  @SuppressWarnings("unchecked")
+  public ResultList<WebAnalyticEventData> listWebAnalyticEventDataWithKeyset(
+      String eventType,
+      int limitParam,
+      long startTs,
+      long endTs,
+      long afterTs,
+      String afterFQNHash,
+      int cachedTotal,
+      boolean skipErrors) {
+    CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDao =
+        daoCollection.entityExtensionTimeSeriesDao();
+    ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(eventType));
+
+    if (limitParam <= 0) {
+      return getWebAnalyticEventDataResultList(new ArrayList<>(), null, null, cachedTotal);
+    }
+
+    List<EntityTimeSeriesDAO.TimeSeriesRow> rows =
+        timeSeriesDao.listAfterKeysetWithRange(
+            filter, limitParam + 1, startTs, endTs, afterTs, afterFQNHash);
+    EntityTimeSeriesDAO.KeysetPage page = EntityTimeSeriesDAO.KeysetPage.from(rows, limitParam);
+    Map<String, List<?>> entityListMap = getEntityList(page.jsons(), skipErrors);
+    List<WebAnalyticEventData> webAnalyticEventData =
+        (List<WebAnalyticEventData>) entityListMap.get("entityList");
+    List<EntityError> errors = null;
+    if (skipErrors) {
+      errors = (List<EntityError>) entityListMap.get("errors");
+    }
+    return getWebAnalyticEventDataResultList(
+        webAnalyticEventData, null, page.afterCursor(), cachedTotal, errors);
+  }
+
   private ResultList<WebAnalyticEventData> getWebAnalyticEventDataResultList(
       List<WebAnalyticEventData> entities,
       String beforeCursor,
@@ -167,7 +203,8 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   private int getOffset(String offset) {
-    return offset != null ? Integer.parseInt(RestUtil.decodeCursor(offset)) : 0;
+    String decoded = RestUtil.decodeCursor(offset);
+    return offset != null && decoded != null ? Integer.parseInt(decoded) : 0;
   }
 
   private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {

@@ -1,12 +1,15 @@
 package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,5 +90,18 @@ public class ResolveDomainHelper implements HandlebarsHelper {
       LOG.debug("Could not resolve domain ID {}: {}", domainId, e.getMessage());
       return domainId;
     }
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("resolveDomain")
+        .withDescription("Resolve domain UUID to domain name")
+        .withCursorOffset(17)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{resolveDomain }}")
+                    .withExample("{{resolveDomain entity.domain.id}}")));
   }
 }

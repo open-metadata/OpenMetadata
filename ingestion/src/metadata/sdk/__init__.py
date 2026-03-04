@@ -29,6 +29,7 @@ from metadata.sdk.entities import (
     Pipelines,
     Queries,
     SearchIndexes,
+    StorageServices,
     StoredProcedures,
     Tables,
     Tags,
@@ -41,6 +42,31 @@ from metadata.sdk.entities import (
 from metadata.sdk.entities.base import BaseEntity
 
 _global_client: Optional[OpenMetadata] = None
+
+
+def to_entity_reference(entity: Any) -> dict[str, Any]:
+    """Convert any entity to an EntityReference dict.
+
+    This is useful when setting owners, domains, or other reference fields
+    that expect EntityReference objects rather than full entities.
+
+    Args:
+        entity: The entity to convert (must have id, type, and name attributes)
+
+    Returns:
+        A dict with id, type, name, and optionally fullyQualifiedName
+
+    Example:
+        >>> from metadata.sdk import configure, to_entity_reference, Teams, Users
+        >>> configure(host="http://localhost:8585/api", jwt_token="token")
+        >>> team = Teams.retrieve_by_name("engineering")
+        >>> user = Users.retrieve_by_name("john.doe")
+        >>> database.owners = [
+        ...     to_entity_reference(team),
+        ...     to_entity_reference(user)
+        ... ]
+    """
+    return BaseEntity.to_entity_reference(entity)
 
 
 def configure(
@@ -158,6 +184,7 @@ mlmodels = MLModels  # pylint: disable=invalid-name
 pipelines = Pipelines  # pylint: disable=invalid-name
 queries = Queries  # pylint: disable=invalid-name
 search_indexes = SearchIndexes  # pylint: disable=invalid-name
+storage_services = StorageServices  # pylint: disable=invalid-name
 stored_procedures = StoredProcedures  # pylint: disable=invalid-name
 tables = Tables  # pylint: disable=invalid-name
 tags = Tags  # pylint: disable=invalid-name
@@ -173,6 +200,7 @@ __all__ = [
     "configure",
     "reset",
     "client",
+    "to_entity_reference",
     "BaseEntity",
     "base_entity",
     "APICollections",
@@ -217,6 +245,8 @@ __all__ = [
     "queries",
     "SearchIndexes",
     "search_indexes",
+    "StorageServices",
+    "storage_services",
     "StoredProcedures",
     "stored_procedures",
     "Tables",

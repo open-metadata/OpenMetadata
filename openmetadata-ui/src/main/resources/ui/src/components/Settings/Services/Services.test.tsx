@@ -186,6 +186,7 @@ jest.mock('../../../utils/TableColumn.util', () => ({
       render: () => <div>OwnerLabel</div>,
     },
   ]),
+  descriptionTableObject: jest.fn().mockImplementation(() => []),
 }));
 
 jest.mock('../../common/ListView/ListView.component', () => ({

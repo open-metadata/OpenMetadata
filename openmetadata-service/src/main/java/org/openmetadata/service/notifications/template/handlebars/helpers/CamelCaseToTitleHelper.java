@@ -1,7 +1,10 @@
 package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
+import java.util.List;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to convert camelCase text to Title Case. Usage: {{camelCaseToTitle value}}
@@ -65,5 +68,18 @@ public class CamelCaseToTitleHelper implements HandlebarsHelper {
     }
 
     return result.toString();
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("camelCaseToTitle")
+        .withDescription("Convert camelCase to Title Case")
+        .withCursorOffset(19)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{camelCaseToTitle }}")
+                    .withExample("{{camelCaseToTitle \"entityType\"}}")));
   }
 }

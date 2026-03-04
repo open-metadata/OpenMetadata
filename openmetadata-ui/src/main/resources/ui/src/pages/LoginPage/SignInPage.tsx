@@ -13,10 +13,17 @@
 
 import { Button, Form, Input, Typography } from 'antd';
 import classNames from 'classnames';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import IconAuth0 from '../../assets/img/icon-auth0.png';
+import IconAuth0 from '../../assets/img/icon-auth0.svg';
 import IconCognito from '../../assets/img/icon-aws-cognito.png';
 import IconAzure from '../../assets/img/icon-azure.png';
 import IconGoogle from '../../assets/img/icon-google.png';
@@ -39,6 +46,7 @@ import './login.style.less';
 const SignInPage = () => {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
+  const hasTriggeredAutoRedirect = useRef(false);
 
   const navigate = useNavigate();
   const { authConfig, isAuthenticated } = useApplicationStore();
@@ -60,9 +68,22 @@ const SignInPage = () => {
 
   const { handleLogin } = useBasicAuth();
 
-  const handleSignIn = () => {
+  const handleSignIn = useCallback(() => {
     onLoginHandler && onLoginHandler();
-  };
+  }, [onLoginHandler]);
+
+  const shouldAutoRedirect =
+    authConfig?.enableAutoRedirect &&
+    !isAuthProviderBasic &&
+    !isAuthenticated &&
+    Boolean(onLoginHandler);
+
+  useLayoutEffect(() => {
+    if (shouldAutoRedirect && !hasTriggeredAutoRedirect.current) {
+      hasTriggeredAutoRedirect.current = true;
+      handleSignIn();
+    }
+  }, [shouldAutoRedirect, handleSignIn]);
 
   const signInButton = useMemo(() => {
     let ssoBrandLogo;
@@ -140,7 +161,15 @@ const SignInPage = () => {
     }
   }, [isAuthenticated]);
 
+  if (!authConfig) {
+    return <Loader fullScreen />;
+  }
+
   if (isAuthenticated) {
+    return <Loader fullScreen />;
+  }
+
+  if (shouldAutoRedirect) {
     return <Loader fullScreen />;
   }
 
@@ -180,7 +209,7 @@ const SignInPage = () => {
           {alert && (
             <div className="login-alert">
               <AlertBar
-                defafultExpand
+                defaultExpand
                 message={alert?.message}
                 type={alert?.type}
               />

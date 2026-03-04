@@ -1,0 +1,28 @@
+{
+  "id": "8d7c6b5a-4f3e-2d1c-0b9a-8f7e6d5c4b3a",
+  "name": "sample-messaging-service",
+  "displayName": "Sample Messaging Service",
+  "fullyQualifiedName": "sample-messaging-service",
+  "description": "Mock messaging service for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/services/messagingServices/8d7c6b5a-4f3e-2d1c-0b9a-8f7e6d5c4b3a",
+  "serviceType": "Kafka",
+  "connection": {
+    "config": {
+      "type": "Kafka",
+      "bootstrapServers": "localhost:9092"
+    }
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "tags": []
+}

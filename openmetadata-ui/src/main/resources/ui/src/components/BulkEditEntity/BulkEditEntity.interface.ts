@@ -12,6 +12,7 @@
  */
 import { Column, CopyEvent, PasteEvent } from 'react-data-grid';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
+import { EntityType } from '../../enums/entity.enum';
 import { CSVImportResult } from '../../generated/type/csvImportResult';
 import { CSVImportJobType } from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -28,6 +29,7 @@ export interface BulkEditEntityProps {
     columns: Column<Record<string, string>>[];
     dataSource: Record<string, string>[];
   };
+  sourceEntityType?: EntityType;
   handleBack: () => void;
   handleValidate: () => Promise<void>;
   onCSVReadComplete: (results: { data: string[][] }) => void;

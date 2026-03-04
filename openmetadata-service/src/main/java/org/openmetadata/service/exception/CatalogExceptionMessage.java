@@ -114,6 +114,10 @@ public final class CatalogExceptionMessage {
     return entityNotFound(entityType, id.toString());
   }
 
+  public static String entityNameAlreadyExists(String entityType, String name) {
+    return String.format("%s with name '%s' already exists.", entityType, name);
+  }
+
   public static String readOnlyAttribute(String entityType, String attribute) {
     return String.format("%s attribute %s can't be modified", entityType, attribute);
   }
@@ -201,6 +205,16 @@ public final class CatalogExceptionMessage {
 
   public static String notReviewer(String name) {
     return String.format("User '%s' is not a reviewer", name);
+  }
+
+  public static String notTaskAssignee(String name) {
+    return String.format("User '%s' is not an assignee of the pending approval task", name);
+  }
+
+  public static String pendingApprovalTaskExists(String entityFqn) {
+    return String.format(
+        "Entity '%s' has a pending approval task. Only the task assignee can perform this operation.",
+        entityFqn);
   }
 
   public static String permissionDenied(

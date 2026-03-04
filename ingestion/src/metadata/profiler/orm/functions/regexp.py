@@ -38,3 +38,12 @@ def _(element, compiler, **kw):
     compiled_column = compiler.process(column, **kw)
     compiled_pattern = compiler.process(pattern, **kw)
     return f"REGEXP_LIKE({compiled_column}, {compiled_pattern})"
+
+
+@compiles(RegexpMatchFn, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Clickhouse function for regexp_match"""
+    column, pattern = element.clauses
+    compiled_column = compiler.process(column, **kw)
+    compiled_pattern = compiler.process(pattern, **kw)
+    return f"match({compiled_column}, {compiled_pattern})"

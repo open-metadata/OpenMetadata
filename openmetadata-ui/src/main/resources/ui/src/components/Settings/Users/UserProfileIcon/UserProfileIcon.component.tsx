@@ -134,9 +134,23 @@ export const UserProfileIcon = () => {
         : currentUser?.roles,
       teams: currentUser?.teams,
       inheritedRoles: currentUser?.inheritedRoles,
-      personas: currentUser?.personas,
+      personas: (() => {
+        const directPersonas = currentUser?.personas ?? [];
+        const inheritedPersonas = currentUser?.inheritedPersonas ?? [];
+        const allPersonas = [...directPersonas, ...inheritedPersonas];
+        
+        if (currentUser?.defaultPersona) {
+          allPersonas.push(currentUser.defaultPersona);
+        }
+        
+        // Deduplicate by id
+        const uniquePersonasMap = new Map();
+        allPersonas.forEach((p) => uniquePersonasMap.set(p.id, p));
+        
+        return Array.from(uniquePersonasMap.values());
+      })(),
     };
-  }, [currentUser, currentUser?.personas]);
+  }, [currentUser, currentUser?.personas, currentUser?.inheritedPersonas]);
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => {
@@ -147,11 +161,7 @@ export const UserProfileIcon = () => {
           className="w-full d-flex items-center persona-label cursor-pointer d-flex justify-between"
           data-testid="persona-label"
           onClick={() => handleSelectedPersonaChange(item)}>
-          <div
-            className="d-flex items-center default-persona-container"
-            style={{
-              flex: isDefaultPersona ? 2 : 'auto',
-            }}>
+          <div className="d-flex items-center default-persona-container">
             <Typography.Text ellipsis={{ tooltip: true }}>
               {getEntityName(item)}
             </Typography.Text>
@@ -165,13 +175,11 @@ export const UserProfileIcon = () => {
             )}
           </div>
 
-          <div className="flex-1">
-            <Radio checked={selectedPersona?.id === item.id} />
-          </div>
+          <Radio checked={selectedPersona?.id === item.id} />
         </div>
       );
     },
-    [handleSelectedPersonaChange, selectedPersona, defaultPersona]
+    [handleSelectedPersonaChange, selectedPersona, defaultPersona, t]
   );
 
   const teamLabelRenderer = useCallback(
@@ -203,7 +211,7 @@ export const UserProfileIcon = () => {
           {count} {t('label.more')}
         </Link>
       ),
-    [currentUser]
+    [currentUser, t]
   );
 
   const handleCloseDropdown = useCallback(() => {
@@ -383,6 +391,9 @@ export const UserProfileIcon = () => {
       roles,
       personas,
       showAllPersona,
+      sortedPersonas,
+      inheritedRoles,
+      t,
     ]
   );
 

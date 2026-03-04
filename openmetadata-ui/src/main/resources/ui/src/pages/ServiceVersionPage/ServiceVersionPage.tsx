@@ -25,7 +25,6 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -33,10 +32,11 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Directory } from '../../generated/entity/data/directory';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
-import { Paging } from '../../generated/type/paging';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
@@ -61,7 +61,10 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
 } from '../../utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import {
   getServiceDetailsPath,
   getServiceVersionPath,
@@ -77,15 +80,21 @@ import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 function ServiceVersionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { serviceCategory, version } = useRequiredParams<{
     serviceCategory: ServiceTypes;
     version: string;
   }>();
 
   const { fqn: decodedServiceFQN } = useFqn();
-  const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+  const {
+    paging,
+    pageSize,
+    pagingCursor,
+    handlePagingChange,
+    currentPage,
+    handlePageChange,
+  } = usePaging();
   const [data, setData] = useState<Array<ServicePageData>>([]);
   const [servicePermissions, setServicePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -170,16 +179,22 @@ function ServiceVersionPage() {
 
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
+      const databaseUsagePermission = getPrioritizedViewPermission(
+        permissions.database,
+        PermissionOperation.ViewUsage
+      );
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}, ${TabSpecificField.USAGE_SUMMARY}`,
+        databaseUsagePermission
+          ? `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY}`
+          : `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging
       );
 
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange, permissions.database]
   );
 
   const fetchTopics = useCallback(
@@ -190,22 +205,28 @@ function ServiceVersionPage() {
         paging
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
+      const dashboardUsagePermission = getPrioritizedViewPermission(
+        permissions.dashboard,
+        PermissionOperation.ViewUsage
+      );
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS}`,
+        dashboardUsagePermission
+          ? `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS}`
+          : `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange, permissions.dashboard]
   );
 
   const fetchPipeLines = useCallback(
@@ -216,9 +237,9 @@ function ServiceVersionPage() {
         paging
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchMlModal = useCallback(
@@ -229,9 +250,9 @@ function ServiceVersionPage() {
         paging
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchContainers = useCallback(
@@ -245,9 +266,9 @@ function ServiceVersionPage() {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchSearchIndexes = useCallback(
@@ -261,9 +282,9 @@ function ServiceVersionPage() {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchCollections = useCallback(
@@ -275,9 +296,9 @@ function ServiceVersionPage() {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const fetchDirectories = useCallback(
@@ -289,9 +310,9 @@ function ServiceVersionPage() {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
-    [decodedServiceFQN]
+    [decodedServiceFQN, handlePagingChange]
   );
 
   const getOtherDetails = useCallback(
@@ -349,7 +370,6 @@ function ServiceVersionPage() {
         }
       } catch {
         setData([]);
-        setPaging(pagingObject);
       } finally {
         setIsOtherDataLoading(false);
       }
@@ -415,16 +435,24 @@ function ServiceVersionPage() {
         getOtherDetails({
           [cursorType]: paging[cursorType],
         });
-        setCurrentPage(currentPage);
+        handlePageChange(
+          currentPage,
+          {
+            cursorType,
+            cursorValue: paging[cursorType],
+          },
+          pageSize
+        );
       }
     },
-    [paging, getOtherDetails]
+    [paging, getOtherDetails, handlePageChange]
   );
 
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs =
-      serviceCategory !== ServiceCategory.METADATA_SERVICES
-        ? [
+      serviceCategory === ServiceCategory.METADATA_SERVICES
+        ? []
+        : [
             {
               name: getCountLabel(serviceCategory),
               key: getCountLabel(serviceCategory).toLowerCase(),
@@ -443,8 +471,7 @@ function ServiceVersionPage() {
                 />
               ),
             },
-          ]
-        : [];
+          ];
 
     return tabs.map((tab) => ({
       label: <TabsLabel count={tab.count} id={tab.key} name={tab.name} />,
@@ -547,9 +574,17 @@ function ServiceVersionPage() {
 
   useEffect(() => {
     if (!isEmpty(currentVersionData)) {
-      getOtherDetails();
+      const { cursorType, cursorValue } = pagingCursor ?? {};
+
+      if (cursorType && cursorValue) {
+        getOtherDetails({
+          [cursorType]: cursorValue,
+        });
+      } else {
+        getOtherDetails();
+      }
     }
-  }, [currentVersionData]);
+  }, [currentVersionData, pagingCursor]);
 
   return (
     <PageLayoutV1

@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpHost;
+import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,8 @@ import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch.core.IndexRequest;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
-import os.org.opensearch.client.transport.rest_client.RestClientTransport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -88,21 +89,15 @@ class OpenSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetadata
 
   private OpenSearchClient createOpenSearchClient() {
     try {
-      es.org.elasticsearch.client.RestClient esRestClient = getSearchClient();
-      HttpHost[] hosts =
-          esRestClient.getNodes().stream()
-              .map(
-                  node ->
-                      new HttpHost(
-                          node.getHost().getHostName(),
-                          node.getHost().getPort(),
-                          node.getHost().getSchemeName()))
-              .toArray(HttpHost[]::new);
+      org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration
+          searchConfig = getSearchConfig();
+      HttpHost host =
+          new HttpHost(searchConfig.getScheme(), searchConfig.getHost(), searchConfig.getPort());
 
-      os.org.opensearch.client.RestClient osRestClient =
-          os.org.opensearch.client.RestClient.builder(hosts).build();
-      RestClientTransport transport =
-          new RestClientTransport(osRestClient, new JacksonJsonpMapper());
+      ApacheHttpClient5Transport transport =
+          ApacheHttpClient5TransportBuilder.builder(host)
+              .setMapper(new JacksonJsonpMapper())
+              .build();
       return new OpenSearchClient(transport);
     } catch (Exception e) {
       LOG.error("Failed to create OpenSearch client", e);
@@ -118,7 +113,8 @@ class OpenSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetadata
           testIndexPrefix + "_chart_test",
           testIndexPrefix + "_fields_test",
           testIndexPrefix + "_list_result_test",
-          testIndexPrefix + "_query_cost_test"
+          testIndexPrefix + "_query_cost_test",
+          testIndexPrefix + "_query_filter_test"
         };
 
         for (String indexName : indicesToDelete) {
@@ -556,6 +552,30 @@ class OpenSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetadata
   }
 
   @Test
+  void testGetQueryCostRecords_WithNonExistentService_ReturnsEmptyStats() throws Exception {
+    String nonExistentService = "NonExistentService_" + System.currentTimeMillis();
+
+    assertDoesNotThrow(
+        () -> {
+          QueryCostSearchResult result = aggregatorManager.getQueryCostRecords(nonExistentService);
+          assertNotNull(result, "Query cost result should not be null for non-existent service");
+          assertNotNull(result.getQueryGroups(), "Query groups should not be null");
+          assertTrue(
+              result.getQueryGroups().isEmpty(),
+              "Query groups should be empty for non-existent service");
+          assertNotNull(
+              result.getOverallStats(), "Overall stats should not be null for empty results");
+          assertEquals(
+              0.0, result.getOverallStats().getMinCost(), "Min cost should be 0 for empty results");
+          assertEquals(
+              0.0, result.getOverallStats().getMaxCost(), "Max cost should be 0 for empty results");
+          assertEquals(
+              0.0, result.getOverallStats().getAvgCost(), "Avg cost should be 0 for empty results");
+        },
+        "Getting query cost records for non-existent service should not throw NPE");
+  }
+
+  @Test
   void testBuildDIChart_AggregatedUnusedAssetsCount() throws Exception {
     String clusterAlias = Entity.getSearchRepository().getClusterAlias();
     String diIndexName =
@@ -582,6 +602,150 @@ class OpenSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetadata
     } catch (Exception e) {
       LOG.debug("Failed to cleanup DI index", e);
     }
+  }
+
+  @Test
+  void testListDataInsightChartResult_WithQueryFilterHavingWrapper() throws Exception {
+    String indexName = testIndexPrefix + "_query_filter_test";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createDataInsightTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    indexTestDocument(actualIndexName, String.format(TEST_DATA_INSIGHT_DOC, now));
+
+    long startTs = now - 86400000L;
+
+    String queryFilterWithWrapper =
+        """
+        {
+          "query": {
+            "term": {
+              "data.entityType": "table"
+            }
+          }
+        }
+        """;
+
+    Response response =
+        aggregatorManager.listDataInsightChartResult(
+            startTs,
+            now,
+            null,
+            null,
+            DataInsightChartResult.DataInsightChartType.DAILY_ACTIVE_USERS,
+            10,
+            0,
+            queryFilterWithWrapper,
+            indexName);
+
+    assertNotNull(response, "Response should not be null");
+    assertEquals(200, response.getStatus(), "Response status should be OK with query wrapper");
+  }
+
+  @Test
+  void testListDataInsightChartResult_WithQueryFilterWithoutWrapper() throws Exception {
+    String indexName = testIndexPrefix + "_query_filter_test";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createDataInsightTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    indexTestDocument(actualIndexName, String.format(TEST_DATA_INSIGHT_DOC, now));
+
+    long startTs = now - 86400000L;
+
+    String queryFilterWithoutWrapper =
+        """
+        {
+          "term": {
+            "data.entityType": "table"
+          }
+        }
+        """;
+
+    Response response =
+        aggregatorManager.listDataInsightChartResult(
+            startTs,
+            now,
+            null,
+            null,
+            DataInsightChartResult.DataInsightChartType.DAILY_ACTIVE_USERS,
+            10,
+            0,
+            queryFilterWithoutWrapper,
+            indexName);
+
+    assertNotNull(response, "Response should not be null");
+    assertEquals(200, response.getStatus(), "Response status should be OK without query wrapper");
+  }
+
+  @Test
+  void testListDataInsightChartResult_WithComplexBoolQuery() throws Exception {
+    String indexName = testIndexPrefix + "_query_filter_test";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createDataInsightTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    indexTestDocument(actualIndexName, String.format(TEST_DATA_INSIGHT_DOC, now));
+
+    long startTs = now - 86400000L;
+
+    String complexBoolQuery =
+        """
+        {
+          "query": {
+            "bool": {
+              "must": [
+                {"term": {"data.entityType": "table"}},
+                {"term": {"data.team": "TestTeam"}}
+              ]
+            }
+          }
+        }
+        """;
+
+    Response response =
+        aggregatorManager.listDataInsightChartResult(
+            startTs,
+            now,
+            null,
+            null,
+            DataInsightChartResult.DataInsightChartType.DAILY_ACTIVE_USERS,
+            10,
+            0,
+            complexBoolQuery,
+            indexName);
+
+    assertNotNull(response, "Response should not be null");
+    assertEquals(200, response.getStatus(), "Response status should be OK with complex bool query");
+  }
+
+  @Test
+  void testListDataInsightChartResult_WithQueryStringFilter() throws Exception {
+    String indexName = testIndexPrefix + "_query_filter_test";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createDataInsightTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    indexTestDocument(actualIndexName, String.format(TEST_DATA_INSIGHT_DOC, now));
+
+    long startTs = now - 86400000L;
+
+    String queryString = "data.entityType:table";
+
+    Response response =
+        aggregatorManager.listDataInsightChartResult(
+            startTs,
+            now,
+            null,
+            null,
+            DataInsightChartResult.DataInsightChartType.DAILY_ACTIVE_USERS,
+            10,
+            0,
+            queryString,
+            indexName);
+
+    assertNotNull(response, "Response should not be null");
+    assertEquals(200, response.getStatus(), "Response status should be OK with query string");
   }
 
   private void createDataInsightFieldsTestIndex(String indexName) {

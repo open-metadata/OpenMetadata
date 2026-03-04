@@ -18,21 +18,24 @@ import static org.openmetadata.service.exception.OMErrorPageHandler.setSecurityH
 import io.dropwizard.servlets.assets.AssetServlet;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponseWrapper;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.resources.system.IndexResource;
 
+@Slf4j
 public class OpenMetadataAssetServlet extends AssetServlet {
   private final OMWebConfiguration webConfiguration;
   private final String basePath;
-
-  // List of frontend paths that should be whitelisted and serve the index file
-  private static final List<String> WHITELISTED_PATHS = Arrays.asList("/docs", "/signin");
+  private final String resourcePath;
 
   public OpenMetadataAssetServlet(
       String basePath,
@@ -41,6 +44,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       @Nullable String indexFile,
       OMWebConfiguration webConf) {
     super(resourcePath, uriPath, indexFile, "text/html", StandardCharsets.UTF_8);
+    this.resourcePath = resourcePath;
     this.webConfiguration = webConf;
     this.basePath = basePath;
   }
@@ -53,19 +57,53 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     String requestUri = req.getRequestURI();
 
     if (requestUri.endsWith("/")) {
-      IndexResource index = new IndexResource();
-      // Write the dynamic config.js content to the response
+      // Serve index.html for directory requests
       resp.setContentType("text/html");
       resp.getWriter().write(IndexResource.getIndexFile(this.basePath));
       return;
     }
 
+    String acceptEncoding = req.getHeader("Accept-Encoding");
+
+    // 1. Check for Brotli (br)
+    if (supportsEncoding(acceptEncoding, "br")) {
+      try {
+        String fullResourcePath = getPathToCheck(req, requestUri, ".br");
+        if (fullResourcePath != null) {
+          URL url = this.getClass().getResource(fullResourcePath);
+          if (url != null) {
+            serveCompressed(req, resp, requestUri, "br", "br");
+            return;
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to serve Brotli compressed asset for {}: {}", requestUri, e.getMessage());
+      }
+    }
+
+    // 2. Check for Gzip
+    if (supportsEncoding(acceptEncoding, "gzip")) {
+      try {
+        String fullResourcePath = getPathToCheck(req, requestUri, ".gz");
+        if (fullResourcePath != null) {
+          URL url = this.getClass().getResource(fullResourcePath);
+
+          if (url != null) {
+            serveCompressed(req, resp, requestUri, "gzip", "gz");
+            return;
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to serve Gzip compressed asset for {}: {}", requestUri, e.getMessage());
+      }
+    }
+
     super.doGet(req, resp);
 
-    // Check if response is 404 and the path should be whitelisted
+    // For SPA routing: serve index.html for 404s that don't look like static asset requests
     if (!resp.isCommitted() && (resp.getStatus() == 404)) {
-      if (isWhitelistedPath(requestUri)) {
-        // Serve index file for whitelisted paths instead of 404
+      if (isSpaRoute(requestUri)) {
+        // Serve index file for SPA routes instead of 404
         resp.setStatus(200);
         resp.setContentType("text/html");
         resp.getWriter().write(IndexResource.getIndexFile(this.basePath));
@@ -76,16 +114,130 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   }
 
   /**
-   * Check if the given URI path should be whitelisted
-   * @param requestUri The request URI to check
-   * @return true if the path should be whitelisted, false otherwise
+   * Check if the Accept-Encoding header supports the given encoding with non-zero quality value.
+   * Handles q-values properly (e.g., "br;q=0" means encoding is explicitly disabled).
    */
-  private boolean isWhitelistedPath(String requestUri) {
-    for (String whitelistedPath : WHITELISTED_PATHS) {
-      if (requestUri.startsWith(whitelistedPath)) {
-        return true;
+  private boolean supportsEncoding(String acceptEncoding, String encoding) {
+    if (acceptEncoding == null || acceptEncoding.isEmpty()) {
+      return false;
+    }
+
+    // Split by comma to handle multiple encodings
+    String[] encodings = acceptEncoding.toLowerCase().split(",");
+    for (String enc : encodings) {
+      enc = enc.trim();
+
+      // Check if this encoding matches
+      if (enc.startsWith(encoding)) {
+        // Check for q=0 which explicitly disables the encoding
+        return !enc.contains("q=0");
       }
     }
     return false;
+  }
+
+  private String getPathToCheck(HttpServletRequest req, String requestUri, String extension) {
+    String pathToCheck = requestUri;
+    String contextPath = req.getContextPath();
+    if (contextPath != null && requestUri.startsWith(contextPath)) {
+      pathToCheck = requestUri.substring(contextPath.length());
+    }
+
+    // Reject path traversal attempts early
+    if (pathToCheck.contains("..")) {
+      LOG.warn("Path traversal attempt detected in request: {}", requestUri);
+      return null;
+    }
+
+    String fullPath =
+        this.resourcePath + (pathToCheck.startsWith("/") ? "" : "/") + pathToCheck + extension;
+
+    // Validate against path traversal attacks
+    try {
+      Path normalizedPath = Paths.get(fullPath).normalize();
+      Path baseResourcePath = Paths.get(this.resourcePath).normalize();
+
+      // Check path is within resource directory
+      if (!normalizedPath.startsWith(baseResourcePath)) {
+        LOG.warn("Path traversal attempt detected: {} escaped resource directory", requestUri);
+        return null;
+      }
+
+      // Additional check: normalized path should not go backwards
+      if (normalizedPath.toString().contains("..")) {
+        LOG.warn("Path contains .. after normalization: {}", requestUri);
+        return null;
+      }
+    } catch (Exception e) {
+      LOG.debug("Path validation failed for {}: {}", requestUri, e.getMessage());
+      return null;
+    }
+
+    return fullPath;
+  }
+
+  private void serveCompressed(
+      HttpServletRequest req,
+      HttpServletResponse resp,
+      String requestUri,
+      String contentEncoding,
+      String extension)
+      throws ServletException, IOException {
+    resp.setHeader("Content-Encoding", contentEncoding);
+    String mimeType = req.getServletContext().getMimeType(requestUri);
+
+    HttpServletRequestWrapper compressedReq =
+        new HttpServletRequestWrapper(req) {
+          @Override
+          public String getPathInfo() {
+            String pathInfo = super.getPathInfo();
+            return pathInfo != null ? pathInfo + "." + extension : null;
+          }
+
+          @Override
+          public String getRequestURI() {
+            return super.getRequestURI() + "." + extension;
+          }
+        };
+
+    HttpServletResponseWrapper compressedResp =
+        new HttpServletResponseWrapper(resp) {
+          @Override
+          public void setContentType(String type) {
+            if (mimeType != null) {
+              super.setContentType(mimeType);
+            } else {
+              super.setContentType(type);
+            }
+          }
+        };
+
+    super.doGet(compressedReq, compressedResp);
+  }
+
+  /**
+   * Check if the request URI looks like an SPA route (not a static asset)
+   * Static assets typically have file extensions, SPA routes don't
+   * @param requestUri The request URI to check
+   * @return true if this should be treated as an SPA route, false if it's a static asset
+   */
+  private boolean isSpaRoute(String requestUri) {
+    // Remove base path if present
+    String pathToCheck = requestUri;
+    String normalizedBasePath =
+        basePath.endsWith("/") ? basePath.substring(0, basePath.length() - 1) : basePath;
+
+    if (!"/".equals(normalizedBasePath)
+        && !normalizedBasePath.isEmpty()
+        && requestUri.startsWith(normalizedBasePath)) {
+      pathToCheck = requestUri.substring(normalizedBasePath.length());
+    }
+
+    // If path has a file extension, it's likely a static asset
+    // Don't serve index.html for these
+    String fileName = pathToCheck.substring(pathToCheck.lastIndexOf('/') + 1);
+    return !fileName.contains("."); // Has extension, likely a static asset
+
+    // No file extension, treat as SPA route
   }
 }

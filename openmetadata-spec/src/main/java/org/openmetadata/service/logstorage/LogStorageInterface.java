@@ -112,6 +112,14 @@ public interface LogStorageInterface {
   String getStorageType();
 
   /**
+   * Close and finalize the log stream for a specific pipeline run.
+   * This ensures any buffered data is written and the stream is properly closed.
+   * @param pipelineFQN Fully qualified name of the pipeline
+   * @param runId Unique run identifier
+   */
+  void closeStream(String pipelineFQN, UUID runId) throws IOException;
+
+  /**
    * Clean up resources
    */
   void close() throws IOException;

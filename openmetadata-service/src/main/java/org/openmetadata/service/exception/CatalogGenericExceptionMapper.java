@@ -25,6 +25,7 @@ import io.dropwizard.jersey.errors.ErrorMessage;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import java.sql.SQLIntegrityConstraintViolationException;
@@ -32,6 +33,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.sdk.exception.WebServiceException;
+import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.AuthorizationException;
 import org.postgresql.util.PSQLException;
@@ -43,7 +45,9 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
   @Override
   public Response toResponse(Throwable ex) {
     LOG.debug(ex.getMessage());
-    if (ex instanceof ProcessingException
+    if (ex instanceof RuleValidationException) {
+      return getRuleViolationResponse(ex);
+    } else if (ex instanceof ProcessingException
         || ex instanceof IllegalArgumentException
         || ex instanceof BadRequestException) {
       return getResponse(Response.status(Response.Status.BAD_REQUEST).build(), ex);
@@ -74,6 +78,17 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       }
 
       return getResponse(response, ex);
+    } else if (ex instanceof WebApplicationException webApplicationException) {
+      final Response response = webApplicationException.getResponse();
+      Family family = response.getStatusInfo().getFamily();
+      if (family.equals(Response.Status.Family.REDIRECTION)) {
+        return response;
+      }
+      if (family.equals(Family.SERVER_ERROR)) {
+        throwException(ex);
+      }
+
+      return getResponse(response, ex);
     }
 
     LOG.info("exception ", ex);
@@ -93,6 +108,17 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
         .type(APPLICATION_JSON_TYPE)
         .entity(new ErrorMessage(status.getStatusCode(), message))
         .header("WWW-Authenticate", "om-auth")
+        .build();
+  }
+
+  private Response getRuleViolationResponse(Throwable ex) {
+    return Response.status(Response.Status.BAD_REQUEST)
+        .type(APPLICATION_JSON_TYPE)
+        .entity(
+            new WebServiceException.ErrorMessage(
+                Response.Status.BAD_REQUEST.getStatusCode(),
+                "RULE_VIOLATION",
+                ex.getLocalizedMessage()))
         .build();
   }
 

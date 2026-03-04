@@ -162,7 +162,7 @@ jest.mock('../../../rest/userAPI', () => {
 
 describe('PersonaDetailsPage', () => {
   it('Component should render', async () => {
-    render(<PersonaDetailsPage />), { wrapper: MemoryRouter };
+    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 

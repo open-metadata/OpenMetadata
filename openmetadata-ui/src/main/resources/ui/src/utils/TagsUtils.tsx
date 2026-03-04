@@ -12,13 +12,14 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Tag as AntdTag, Tooltip, Typography } from 'antd';
+import { Space, Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
 import { isString, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
+import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -37,6 +38,7 @@ import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import {
   AssetCertification,
   Column,
+  EntityReference,
   TagSource,
 } from '../generated/entity/data/table';
 import { Operation } from '../generated/entity/policies/policy';
@@ -604,18 +606,6 @@ export const getTagAssetsQueryFilter = (fqn: string) => {
   return getTermQuery({ [fieldName]: fqn });
 };
 
-export const getTagImageSrc = (iconURL: string) => {
-  if (!iconURL) {
-    return '';
-  }
-
-  if (iconURL.startsWith('http') || iconURL.startsWith('data:image')) {
-    return iconURL;
-  }
-
-  return `${window.location.origin}/${iconURL}`;
-};
-
 /**
  * Check if a tag is a glossary tag
  */
@@ -651,4 +641,13 @@ export const getTagRedirectLink = (
   return (tagType ?? tag.source) === TagSource.Glossary
     ? getGlossaryPath(tag.tagFQN)
     : getClassificationTagPath(tag.tagFQN);
+};
+
+export const TagListItemRenderer = (props: EntityReference) => {
+  return (
+    <Space>
+      <ClassificationIcon className="d-block'" height={22} width={16} />
+      <Typography.Text>{getEntityName(props)}</Typography.Text>
+    </Space>
+  );
 };

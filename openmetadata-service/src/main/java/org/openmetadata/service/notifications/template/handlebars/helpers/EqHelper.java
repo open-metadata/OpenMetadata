@@ -1,8 +1,11 @@
 package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
+import java.util.List;
 import java.util.Objects;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to check if two values are equal.
@@ -29,5 +32,18 @@ public class EqHelper implements HandlebarsHelper {
           // Compare the context with the first parameter
           return Objects.equals(context, firstParam);
         });
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("eq")
+        .withDescription("Check if two values are equal")
+        .withCursorOffset(5)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{eq }}")
+                    .withExample("{{#if (eq status \"Success\")}}Test passed{{/if}}")));
   }
 }

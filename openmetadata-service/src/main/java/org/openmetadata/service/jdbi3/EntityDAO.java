@@ -21,6 +21,7 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -111,6 +112,23 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("id") String id,
       @Bind("json") String json);
+
+  @Transaction
+  @ConnectionAwareSqlBatch(
+      value =
+          "UPDATE <table> SET json = :json, <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlBatch(
+      value =
+          "UPDATE <table> SET json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
+      connectionType = POSTGRES)
+  @BatchChunkSize(100)
+  void updateMany(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") List<String> nameHashColumnValue,
+      @BindUUID("id") List<UUID> ids,
+      @Bind("json") List<String> json);
 
   /**
    * Update entity with optimistic locking using version check.
@@ -402,7 +420,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumnName,
       @Bind("limit") int limit);
 
-  @SqlQuery("SELECT json FROM <table> <cond> ORDER BY id LIMIT :limit OFFSET :offset")
+  @SqlQuery("SELECT json FROM <table> <cond> ORDER BY name, id LIMIT :limit OFFSET :offset")
   List<String> listAfter(
       @Define("table") String table,
       @BindMap Map<String, ?> params,
@@ -442,6 +460,18 @@ public interface EntityDAO<T extends EntityInterface> {
         getTableName(),
         getNameHashColumn(),
         fqns,
+        entities.stream().map(JsonUtils::pojoToJson).toList());
+  }
+
+  /** Batch update entities. Don't override */
+  default void updateMany(List<EntityInterface> entities) {
+    List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+    List<UUID> ids = entities.stream().map(EntityInterface::getId).toList();
+    updateMany(
+        getTableName(),
+        getNameHashColumn(),
+        fqns,
+        ids,
         entities.stream().map(JsonUtils::pojoToJson).toList());
   }
 
@@ -494,13 +524,28 @@ public interface EntityDAO<T extends EntityInterface> {
     if (CollectionUtils.isEmpty(ids)) {
       return List.of();
     }
-    return findByIds(
-            getTableName(),
-            ids.stream().map(UUID::toString).distinct().toList(),
-            getCondition(include))
-        .stream()
-        .map(pair -> jsonToEntity(pair.json, pair.id))
-        .toList();
+
+    List<String> distinctIds = ids.stream().map(UUID::toString).distinct().toList();
+    int maxChunkSize = 30000;
+
+    if (distinctIds.size() <= maxChunkSize) {
+      return findByIds(getTableName(), distinctIds, getCondition(include)).stream()
+          .map(pair -> jsonToEntity(pair.json, pair.id))
+          .toList();
+    }
+
+    List<T> allEntities = new ArrayList<>();
+    for (int i = 0; i < distinctIds.size(); i += maxChunkSize) {
+      int end = Math.min(i + maxChunkSize, distinctIds.size());
+      List<String> chunk = distinctIds.subList(i, end);
+      List<T> chunkEntities =
+          findByIds(getTableName(), chunk, getCondition(include)).stream()
+              .map(pair -> jsonToEntity(pair.json, pair.id))
+              .toList();
+      allEntities.addAll(chunkEntities);
+    }
+
+    return allEntities;
   }
 
   default T findEntityByName(String fqn) {
@@ -524,10 +569,28 @@ public interface EntityDAO<T extends EntityInterface> {
     if (CollectionUtils.isEmpty(entityFQNs)) {
       return List.of();
     }
+
     List<String> names = entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
-    return findByNames(getTableName(), getNameHashColumn(), names, getCondition(include)).stream()
-        .map(pair -> jsonToEntity(pair.json, pair.nameColumnHash))
-        .toList();
+    int maxChunkSize = 30000;
+
+    if (names.size() <= maxChunkSize) {
+      return findByNames(getTableName(), getNameHashColumn(), names, getCondition(include)).stream()
+          .map(pair -> jsonToEntity(pair.json, pair.nameColumnHash))
+          .toList();
+    }
+
+    List<T> allEntities = new ArrayList<>();
+    for (int i = 0; i < names.size(); i += maxChunkSize) {
+      int end = Math.min(i + maxChunkSize, names.size());
+      List<String> chunk = names.subList(i, end);
+      List<T> chunkEntities =
+          findByNames(getTableName(), getNameHashColumn(), chunk, getCondition(include)).stream()
+              .map(pair -> jsonToEntity(pair.json, pair.nameColumnHash))
+              .toList();
+      allEntities.addAll(chunkEntities);
+    }
+
+    return allEntities;
   }
 
   default T jsonToEntity(String json, Object identity) {

@@ -11,99 +11,67 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { DATA_ASSETS_SORT } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { selectSortOrder, verifyEntitiesAreSorted } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
-const creationConfig: EntityDataClassCreationConfig = {
-  all: true,
-  table: true,
-  entityDetails: true,
-  topic: true,
-  dashboard: true,
-  mlModel: true,
-  pipeline: true,
-  dashboardDataModel: true,
-  apiCollection: true,
-  searchIndex: true,
-  container: true,
-  storedProcedure: true,
-  apiEndpoint: true,
-  database: true,
-  databaseSchema: true,
-  metric: true,
-};
+test.describe(
+  'Explore Sort Order Filter',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    DATA_ASSETS_SORT.forEach(({ name, filter }) => {
+      test(`${name}`, async ({ browser }) => {
+        test.slow(true);
 
-test.describe('Explore Sort Order Filter', () => {
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+        const { page, afterAction } = await performAdminLogin(browser);
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
-    await afterAction();
-  });
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.EXPLORE);
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
+        await page.waitForLoadState('networkidle');
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await EntityDataClass.postRequisitesForTests(apiContext);
-    await afterAction();
-  });
+        await page.getByTestId('search-dropdown-Data Assets').click();
+        await page.waitForSelector(
+          '[data-testid="drop-down-menu"] [data-testid="loader"]',
+          {
+            state: 'detached',
+          }
+        );
 
-  DATA_ASSETS_SORT.forEach(({ name, filter }) => {
-    test(`${name}`, async ({ browser }) => {
-      test.slow(true);
+        const dataAssetDropdownRequest = page.waitForResponse(
+          '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+        );
+        await page
+          .getByTestId('drop-down-menu')
+          .getByTestId('search-input')
+          .fill(filter.toLowerCase());
+        await dataAssetDropdownRequest;
+        await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
+        await page.waitForSelector(
+          `[data-testid="${filter.toLowerCase()}-checkbox"]`,
+          {
+            state: 'visible',
+          }
+        );
 
-      const { page, afterAction } = await performAdminLogin(browser);
+        await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
+        await page.getByTestId('update-btn').click();
 
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.EXPLORE);
+        await selectSortOrder(page, 'Name');
+        await verifyEntitiesAreSorted(page);
 
-      await page.waitForLoadState('networkidle');
+        const clearFilters = page.getByTestId('clear-filters');
 
-      await page.getByTestId('search-dropdown-Data Assets').click();
-      await page.waitForSelector(
-        '[data-testid="drop-down-menu"] [data-testid="loader"]',
-        {
-          state: 'detached',
-        }
-      );
+        expect(clearFilters).toBeVisible();
 
-      const dataAssetDropdownRequest = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-      );
-      await page
-        .getByTestId('drop-down-menu')
-        .getByTestId('search-input')
-        .fill(filter.toLowerCase());
-      await dataAssetDropdownRequest;
-      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
-      await page.waitForSelector(
-        `[data-testid="${filter.toLowerCase()}-checkbox"]`,
-        {
-          state: 'visible',
-        }
-      );
+        await clearFilters.click();
 
-      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
-      await page.getByTestId('update-btn').click();
-
-      await selectSortOrder(page, 'Name');
-      await verifyEntitiesAreSorted(page);
-
-      const clearFilters = page.getByTestId('clear-filters');
-
-      expect(clearFilters).toBeVisible();
-
-      await clearFilters.click();
-
-      await afterAction();
+        await afterAction();
+      });
     });
-  });
-});
+  }
+);

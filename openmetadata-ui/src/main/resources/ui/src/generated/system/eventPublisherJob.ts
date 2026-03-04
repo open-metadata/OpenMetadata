@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -64,6 +64,11 @@ export interface EventPublisherJob {
      */
     name?: string;
     /**
+     * Number of entities per partition for distributed indexing. Smaller values create more
+     * partitions for better distribution across servers. Range: 1000-50000.
+     */
+    partitionSize?: number;
+    /**
      * Payload size in bytes depending on config.
      */
     payLoadSize?: number;
@@ -96,8 +101,25 @@ export interface EventPublisherJob {
     /**
      * This schema publisher run job status.
      */
-    status?:    Status;
-    timestamp?: number;
+    status?: Status;
+    /**
+     * Per-entity-type override for time series max days. Keys are entity type names, values are
+     * number of days. Entities not in this map use timeSeriesMaxDays as default.
+     */
+    timeSeriesEntityDays?: { [key: string]: number };
+    /**
+     * Maximum age in days for time series data during reindexing. Only records from the last N
+     * days will be indexed. Default 0 (index all data). Set to a positive value like 15 to
+     * limit to recent data.
+     */
+    timeSeriesMaxDays?: number;
+    timestamp?:         number;
+    /**
+     * Enable distributed indexing across multiple servers. When enabled, reindexing work is
+     * partitioned and can be processed by multiple servers concurrently with crash recovery
+     * support.
+     */
+    useDistributedIndexing?: boolean;
 }
 
 /**
@@ -155,12 +177,36 @@ export interface Stats {
      * Stats for the job
      */
     jobStats?: StepStats;
+    /**
+     * Stats for the process step (building search index documents)
+     */
+    processStats?: StepStats;
+    /**
+     * Stats for the reader step (reading from database)
+     */
+    readerStats?: StepStats;
+    /**
+     * Stats for the sink step (writing to search index)
+     */
+    sinkStats?: StepStats;
+    /**
+     * Stats for the vector step (generating and indexing vector embeddings)
+     */
+    vectorStats?: StepStats;
 }
 
 /**
  * Stats for Different Steps Reader, Processor, Writer.
  *
  * Stats for the job
+ *
+ * Stats for the process step (building search index documents)
+ *
+ * Stats for the reader step (reading from database)
+ *
+ * Stats for the sink step (writing to search index)
+ *
+ * Stats for the vector step (generating and indexing vector embeddings)
  */
 export interface StepStats {
     /**
@@ -175,6 +221,10 @@ export interface StepStats {
      * Count of Total Failed Records
      */
     totalRecords?: number;
+    /**
+     * Count of Records with Warnings (e.g., stale references that were skipped)
+     */
+    warningRecords?: number;
 }
 
 /**

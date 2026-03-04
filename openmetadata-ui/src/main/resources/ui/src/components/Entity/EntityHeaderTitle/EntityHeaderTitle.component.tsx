@@ -39,6 +39,7 @@ const EntityHeaderTitle = ({
   deleted = false,
   serviceName,
   badge,
+  suffix,
   isDisabled,
   className,
   showName = true,
@@ -51,11 +52,14 @@ const EntityHeaderTitle = ({
   nameClassName = '',
   displayNameClassName = '',
   isCustomizedView = false,
+  entityUrl,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
   const [copyTooltip, setCopyTooltip] = useState<string>();
-  const { onCopyToClipBoard } = useClipboard(window.location.href);
+  const { onCopyToClipBoard } = useClipboard(
+    entityUrl ?? globalThis.location.href
+  );
 
   const handleShareButtonClick = async () => {
     await onCopyToClipBoard();
@@ -143,6 +147,7 @@ const EntityHeaderTitle = ({
               </Typography.Text>
             </Tooltip>
             {badges}
+            {suffix}
           </div>
         ) : null}
 
@@ -180,6 +185,7 @@ const EntityHeaderTitle = ({
               onClick={handleShareButtonClick}
             />
           </Tooltip>
+          {(isEmpty(displayName) || !showName) && suffix}
           {!excludeEntityService &&
             !deleted &&
             !isCustomizedView &&

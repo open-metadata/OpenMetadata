@@ -1,0 +1,82 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/openlineage/openLineageResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageResponse",
+  "description": "Response from OpenLineage event processing.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.lineage.openlineage.OpenLineageResponse",
+  "definitions": {
+    "failedEvent": {
+      "description": "Information about a failed event in batch processing.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.lineage.openlineage.FailedEvent",
+      "properties": {
+        "index": {
+          "description": "Index of the failed event in the batch.",
+          "type": "integer"
+        },
+        "reason": {
+          "description": "Reason for the failure.",
+          "type": "string"
+        },
+        "retriable": {
+          "description": "Whether the event can be retried.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["index", "reason"]
+    },
+    "processingSummary": {
+      "description": "Summary of batch processing results.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.lineage.openlineage.ProcessingSummary",
+      "properties": {
+        "received": {
+          "description": "Total number of events received.",
+          "type": "integer"
+        },
+        "successful": {
+          "description": "Number of events processed successfully.",
+          "type": "integer"
+        },
+        "failed": {
+          "description": "Number of events that failed processing.",
+          "type": "integer"
+        },
+        "skipped": {
+          "description": "Number of events skipped (e.g., non-COMPLETE events).",
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "properties": {
+    "status": {
+      "description": "Overall status of the request.",
+      "type": "string",
+      "enum": ["success", "partial_success", "failure"]
+    },
+    "message": {
+      "description": "Human-readable message about the processing result.",
+      "type": "string"
+    },
+    "summary": {
+      "description": "Summary of batch processing (for batch requests).",
+      "$ref": "#/definitions/processingSummary"
+    },
+    "failedEvents": {
+      "description": "Details about failed events (for batch requests).",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/failedEvent"
+      }
+    },
+    "lineageEdgesCreated": {
+      "description": "Number of lineage edges created.",
+      "type": "integer"
+    }
+  },
+  "required": ["status"],
+  "additionalProperties": false
+}

@@ -15,6 +15,11 @@ import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContractTabMode } from '../../../constants/DataContract.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
@@ -22,6 +27,7 @@ import {
   getContractByEntityId,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../common/Loader/Loader';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -31,24 +37,65 @@ import './contract-tab.less';
 
 export const ContractTab = () => {
   const { data: entityData } = useGenericContext();
+  const { getEntityPermission, getResourcePermission } =
+    usePermissionProvider();
   const { t } = useTranslation();
   const [tabMode, setTabMode] = useState<DataContractTabMode>(
     DataContractTabMode.VIEW
   );
   const [contract, setContract] = useState<DataContract>();
+  const [contractPermissions, setContractPermissions] =
+    useState<OperationPermission>();
+  const [dataContractResourcePermissions, setDataContractResourcePermissions] =
+    useState<OperationPermission>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const { id } = entityData ?? {};
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const { id, name: entityName } = entityData ?? {};
+
+  const hasEditPermission = contract
+    ? Boolean(contractPermissions?.EditAll)
+    : Boolean(dataContractResourcePermissions?.Create);
+
+  const fetchContractPermissions = async (contractId: string) => {
+    try {
+      const permissions = await getEntityPermission(
+        ResourceEntity.DATA_CONTRACT,
+        contractId
+      );
+      setContractPermissions(permissions);
+    } catch {
+      setContractPermissions(undefined);
+    }
+  };
+
+  const fetchDataContractResourcePermissions = async () => {
+    try {
+      const permissions = await getResourcePermission(
+        ResourceEntity.DATA_CONTRACT
+      );
+      setDataContractResourcePermissions(permissions);
+    } catch {
+      setDataContractResourcePermissions(undefined);
+    }
+  };
 
   const fetchContract = async () => {
     try {
       setIsLoading(true);
-      const contract = await getContractByEntityId(id, EntityType.TABLE, [
+      const fetchedContract = await getContractByEntityId(id, entityType, [
         TabSpecificField.OWNERS,
       ]);
-      setContract(contract);
+      setContract(fetchedContract);
+      if (fetchedContract?.id) {
+        await fetchContractPermissions(fetchedContract.id);
+      } else {
+        await fetchDataContractResourcePermissions();
+      }
     } catch {
       setContract(undefined);
+      setContractPermissions(undefined);
+      await fetchDataContractResourcePermissions();
     } finally {
       setIsLoading(false);
     }
@@ -84,26 +131,23 @@ export const ContractTab = () => {
     fetchContract();
   }, [id]);
 
+  // Check if the contract is inherited from a Data Product
+  // If so, editing should create a NEW contract for this asset, not modify the parent's
+  const isInheritedContract = Boolean(contract?.inherited);
+
   const content = useMemo(() => {
     switch (tabMode) {
       case DataContractTabMode.ADD:
-        return (
-          <AddDataContract
-            contract={contract}
-            onCancel={() => {
-              setTabMode(DataContractTabMode.VIEW);
-            }}
-            onSave={() => {
-              fetchContract();
-              setTabMode(DataContractTabMode.VIEW);
-            }}
-          />
-        );
-
       case DataContractTabMode.EDIT:
         return (
           <AddDataContract
-            contract={contract}
+            // Don't pass the inherited contract - we want to CREATE a new one for this asset
+            // Only pass the contract if it's a direct (non-inherited) contract being edited
+            contract={
+              tabMode === DataContractTabMode.EDIT && !isInheritedContract
+                ? contract
+                : undefined
+            }
             onCancel={() => {
               setTabMode(DataContractTabMode.VIEW);
             }}
@@ -118,16 +162,25 @@ export const ContractTab = () => {
         return (
           <ContractDetail
             contract={contract}
+            entityId={id ?? ''}
+            entityName={entityName}
+            entityType={entityType}
+            hasEditPermission={hasEditPermission}
+            onContractUpdated={fetchContract}
             onDelete={handleDelete}
             onEdit={() => {
+              // If contract is inherited, use ADD mode to create a new contract for this asset
+              // Only use EDIT mode for direct (non-inherited) contracts
               setTabMode(
-                contract ? DataContractTabMode.EDIT : DataContractTabMode.ADD
+                contract && !isInheritedContract
+                  ? DataContractTabMode.EDIT
+                  : DataContractTabMode.ADD
               );
             }}
           />
         );
     }
-  }, [tabMode, contract]);
+  }, [tabMode, contract, entityName, isInheritedContract, hasEditPermission]);
 
   return isLoading ? (
     <Loader />

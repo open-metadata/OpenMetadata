@@ -11,6 +11,8 @@
 """
 Module containing the logic to retrieve all logs from the tasks of a last DAG run
 """
+import inspect
+import json
 import os
 from functools import lru_cache, partial
 from io import StringIO
@@ -44,11 +46,39 @@ def get_log_file_info(log_file_path: str, mtime: int) -> Tuple[int, int]:
     return file_size, total_chunks
 
 
-def read_log_chunk_from_file(file_path: str, chunk_index: int) -> Optional[str]:
+def format_json_log_line(line: str) -> str:
+    """
+    Convert Airflow 3.x JSON log format to readable text format.
+    If the line is not valid JSON, return it as-is.
+
+    :param line: Log line (potentially JSON)
+    :return: Formatted log line
+    """
+    try:
+        log_entry = json.loads(line)
+        timestamp = log_entry.get("timestamp", "")
+        level = log_entry.get("level", "INFO").upper()
+        event = log_entry.get("event", "")
+        logger_name = log_entry.get("filename", "")
+        line_no = log_entry.get("lineno", "")
+
+        # Format similar to traditional logs: [timestamp] LEVEL - logger - message
+        return f"[{timestamp}] {level} - {logger_name}:{line_no} - {event}\n"
+    except (json.JSONDecodeError, KeyError, AttributeError):
+        # Not JSON or malformed, return as-is
+        return line if line.endswith("\n") else line + "\n"
+
+
+def read_log_chunk_from_file(
+    file_path: str, chunk_index: int, format_json: bool = True
+) -> Optional[str]:
     """
     Read a specific chunk from a log file without loading entire file.
+    Optionally formats JSON logs to readable text.
+
     :param file_path: Path to the log file
     :param chunk_index: 0-based chunk index to read
+    :param format_json: If True, convert JSON log lines to readable format
     :return: Log chunk content or None if error
     """
     try:
@@ -56,6 +86,17 @@ def read_log_chunk_from_file(file_path: str, chunk_index: int) -> Optional[str]:
         with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             f.seek(offset)
             chunk = f.read(CHUNK_SIZE)
+
+        # Format JSON logs if requested
+        if format_json and chunk:
+            lines = chunk.splitlines(keepends=True)
+            formatted_lines = [
+                format_json_log_line(line.rstrip("\n"))
+                for line in lines
+                if line.strip()
+            ]
+            return "".join(formatted_lines)
+
         return chunk
     except Exception as exc:
         logger.warning(f"Failed to read log chunk from {file_path}: {exc}")
@@ -77,7 +118,14 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
     if not dag_model:
         return ApiResponse.not_found(f"DAG {dag_id} not found.")
 
-    last_dag_run = dag_model.get_last_dagrun(include_externally_triggered=True)
+    # Airflow 3.x renamed include_externally_triggered to include_manually_triggered
+    # Check the function signature to use the correct parameter
+    get_last_dagrun_sig = inspect.signature(dag_model.get_last_dagrun)
+    if "include_manually_triggered" in get_last_dagrun_sig.parameters:
+        last_dag_run = dag_model.get_last_dagrun(include_manually_triggered=True)
+    else:
+        # Airflow 2.x
+        last_dag_run = dag_model.get_last_dagrun(include_externally_triggered=True)
 
     if not last_dag_run:
         return ApiResponse.not_found(f"No DAG run found for {dag_id}.")
@@ -98,7 +146,10 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
     if not target_task_instance:
         return ApiResponse.bad_request(f"Task {task_id} not found in DAG {dag_id}.")
 
-    try_number = target_task_instance._try_number  # pylint: disable=protected-access
+    # Airflow 3.x uses public try_number, Airflow 2.x uses private _try_number
+    try_number = getattr(target_task_instance, "try_number", None) or getattr(
+        target_task_instance, "_try_number", 1
+    )
 
     task_log_reader = TaskLogReader()
     if not task_log_reader.supports_read:
@@ -182,6 +233,8 @@ def _last_dag_logs_fallback(
 ) -> Response:
     """
     Fallback to reading entire log file into memory (old behavior).
+    Formats JSON logs to readable text.
+
     :param dag_id: DAG to look for
     :param task_id: Task to fetch logs from
     :param after: log stream cursor
@@ -205,10 +258,18 @@ def _last_dag_logs_fallback(
             f"Can't fetch logs for DAG {dag_id} and Task {task_id}."
         )
 
+    # Format JSON logs if present
+    lines = raw_logs_str.splitlines(keepends=True)
+    formatted_lines = [
+        format_json_log_line(line.rstrip("\n")) for line in lines if line.strip()
+    ]
+    formatted_logs_str = "".join(formatted_lines)
+
     # Split the string in chunks of size without
     # having to know the full length beforehand
     log_chunks = [
-        chunk for chunk in iter(partial(StringIO(raw_logs_str).read, CHUNK_SIZE), "")
+        chunk
+        for chunk in iter(partial(StringIO(formatted_logs_str).read, CHUNK_SIZE), "")
     ]
 
     total = len(log_chunks)

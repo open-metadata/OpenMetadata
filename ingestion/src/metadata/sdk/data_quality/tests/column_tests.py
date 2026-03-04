@@ -29,7 +29,7 @@ class ColumnValuesToBeInSet(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValuesToBeInSet(column="status", allowed_values=["active", "inactive", "pending"])
         >>> test = ColumnValuesToBeInSet(column="country_code", allowed_values=["US", "UK", "CA"])
     """
@@ -68,7 +68,7 @@ class ColumnValuesToBeNotInSet(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValuesToBeNotInSet(column="email", forbidden_values=["test@test.com", "admin@admin.com"])
         >>> test = ColumnValuesToBeNotInSet(column="status", forbidden_values=["deleted", "archived"])
     """
@@ -106,7 +106,7 @@ class ColumnValuesToBeNotNull(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValuesToBeNotNull(column="user_id")
         >>> test = ColumnValuesToBeNotNull(column="email")
     """
@@ -140,7 +140,7 @@ class ColumnValuesToBeUnique(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValuesToBeUnique(column="user_id")
         >>> test = ColumnValuesToBeUnique(column="email")
     """
@@ -175,7 +175,7 @@ class ColumnValuesToMatchRegex(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValuesToMatchRegex(column="email", regex=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")
         >>> test = ColumnValuesToMatchRegex(column="phone", regex=r"^\\+?1?\\d{9,15}$")
     """
@@ -212,7 +212,7 @@ class ColumnValuesToNotMatchRegex(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValuesToNotMatchRegex(column="email", regex=r".*@test\\.com$")
         >>> test = ColumnValuesToNotMatchRegex(column="name", regex=r"^test.*")
     """
@@ -252,7 +252,7 @@ class ColumnValuesToBeBetween(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValuesToBeBetween(column="age", min_value=0, max_value=120)
         >>> test = ColumnValuesToBeBetween(column="price", min_value=0.01, max_value=9999.99)
     """
@@ -298,7 +298,7 @@ class ColumnValueMaxToBeBetween(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValueMaxToBeBetween(column="temperature", min_value=-50, max_value=50)
         >>> test = ColumnValueMaxToBeBetween(column="score", min_value=90, max_value=100)
     """
@@ -347,7 +347,7 @@ class ColumnValueMinToBeBetween(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValueMinToBeBetween(column="temperature", min_value=-50, max_value=0)
         >>> test = ColumnValueMinToBeBetween(column="age", min_value=0, max_value=18)
     """
@@ -396,7 +396,7 @@ class ColumnValueMeanToBeBetween(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValueMeanToBeBetween(column="rating", min_value=3.0, max_value=4.5)
         >>> test = ColumnValueMeanToBeBetween(column="response_time_ms", min_value=100, max_value=500)
     """
@@ -449,7 +449,7 @@ class ColumnValueMedianToBeBetween(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValueMedianToBeBetween(column="salary", min_value=50000, max_value=75000)
         >>> test = ColumnValueMedianToBeBetween(column="age", min_value=25, max_value=45)
     """
@@ -502,7 +502,7 @@ class ColumnValueStdDevToBeBetween(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValueStdDevToBeBetween(column="response_time", min_value=0, max_value=100)
         >>> test = ColumnValueStdDevToBeBetween(column="score", min_value=5, max_value=15)
     """
@@ -555,7 +555,7 @@ class ColumnValuesSumToBeBetween(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValuesSumToBeBetween(column="revenue", min_value=1000000, max_value=5000000)
         >>> test = ColumnValuesSumToBeBetween(column="quantity", min_value=100, max_value=1000)
     """
@@ -604,7 +604,7 @@ class ColumnValuesMissingCount(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValuesMissingCount(column="optional_field", missing_count_value=100)
         >>> test = ColumnValuesMissingCount(column="status", missing_value_match=["N/A", "Unknown"])
     """
@@ -654,7 +654,7 @@ class ColumnValueLengthsToBeBetween(ColumnTest):
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
+    Examples:
         >>> test = ColumnValueLengthsToBeBetween(column="username", min_length=3, max_length=20)
         >>> test = ColumnValueLengthsToBeBetween(column="description", min_length=10, max_length=500)
     """
@@ -690,29 +690,38 @@ class ColumnValueLengthsToBeBetween(ColumnTest):
 
 
 class ColumnValuesToBeAtExpectedLocation(ColumnTest):
-    """Validates that a specific value appears at an expected row position.
+    """Validates that lat/long values in a column are at the expected location.
 
-    This test checks for an exact value at a particular row index, useful for validating
-    sorted data, header rows, or expected entries at known positions.
+    This test checks if the latitude/longitude values match the expected location
+    defined by a reference column (city or postal code) within a given radius.
 
     Args:
         column: Name of the column to validate
-        expected_value: The exact value expected at the specified location
-        row_index: Zero-based row position to check (default: 0)
+        location_reference_type: Type of location reference - "CITY" or "POSTAL_CODE"
+        longitude_column_name: Name of the longitude column in the table
+        latitude_column_name: Name of the latitude column in the table
+        radius: Radius in meters from the expected location
         name: Custom test case name
         display_name: Custom display name for UI
         description: Custom test description
 
-    Example:
-        >>> test = ColumnValuesToBeAtExpectedLocation(column="id", expected_value="1", row_index=0)
-        >>> test = ColumnValuesToBeAtExpectedLocation(column="rank", expected_value="first", row_index=0)
+    Examples:
+        >>> test = ColumnValuesToBeAtExpectedLocation(
+        ...     column="city",
+        ...     location_reference_type="CITY",
+        ...     longitude_column_name="lon",
+        ...     latitude_column_name="lat",
+        ...     radius=5000.0,
+        ... )
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         column: str,
-        expected_value: str,
-        row_index: int = 0,
+        location_reference_type: str,
+        longitude_column_name: str,
+        latitude_column_name: str,
+        radius: float,
         name: Optional[str] = None,
         display_name: Optional[str] = None,
         description: Optional[str] = None,
@@ -720,14 +729,24 @@ class ColumnValuesToBeAtExpectedLocation(ColumnTest):
         super().__init__(
             test_definition_name="columnValuesToBeAtExpectedLocation",
             column=column,
-            name=name or f"{column}_value_at_location",
-            display_name=display_name or f"Column '{column}' Value At Location",
+            name=name or f"{column}_at_expected_location",
+            display_name=display_name or f"Column '{column}' At Expected Location",
             description=description
-            or f"Validates that column '{column}' has value '{expected_value}' at row {row_index}",
+            or f"Validates that lat/long values in column '{column}' are within {radius}m of expected location",
         )
         self.parameters.append(
-            TestCaseParameterValue(name="expectedValue", value=expected_value)
+            TestCaseParameterValue(
+                name="locationReferenceType", value=location_reference_type
+            )
         )
         self.parameters.append(
-            TestCaseParameterValue(name="rowIndex", value=str(row_index))
+            TestCaseParameterValue(
+                name="longitudeColumnName", value=longitude_column_name
+            )
         )
+        self.parameters.append(
+            TestCaseParameterValue(
+                name="latitudeColumnName", value=latitude_column_name
+            )
+        )
+        self.parameters.append(TestCaseParameterValue(name="radius", value=str(radius)))

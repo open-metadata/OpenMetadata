@@ -59,6 +59,20 @@
     }
   ],
   "provider": "system",
-  "dataQualityDimension": "Consistency"
+  "enabled": true,
+  "dataQualityDimension": "Consistency",
+  "supportedServices": [
+    "Snowflake",
+    "BigQuery",
+    "Athena",
+    "Redshift",
+    "Postgres",
+    "MySQL",
+    "Mssql",
+    "Oracle",
+    "Trino",
+    "SapHana"
+  ],
+  "validatorClass": "TableDiffValidator"
 }
   

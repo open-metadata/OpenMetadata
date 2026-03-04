@@ -12,8 +12,12 @@ public class TestDefinitionMapper implements EntityMapper<TestDefinition, Create
         .withEntityType(create.getEntityType())
         .withTestPlatforms(create.getTestPlatforms())
         .withSupportedDataTypes(create.getSupportedDataTypes())
+        .withSupportedServices(create.getSupportedServices())
         .withDisplayName(create.getDisplayName())
         .withParameterDefinition(create.getParameterDefinition())
-        .withName(create.getName());
+        .withName(create.getName())
+        .withSqlExpression(create.getSqlExpression())
+        .withValidatorClass(create.getValidatorClass())
+        .withDataQualityDimension(create.getDataQualityDimension());
   }
 }

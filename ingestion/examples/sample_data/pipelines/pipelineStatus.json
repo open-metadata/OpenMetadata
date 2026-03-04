@@ -3,21 +3,9 @@
     "pipeline": "sample_airflow.dim_address_etl",
     "pipelineStatus": [
       {
-        "timestamp": 1649582444000,
-        "executionStatus": "Failed",
-        "taskStatus": [
-          {
-            "executionStatus": "Failed",
-            "name": "dim_address_task"
-          },
-          {
-            "executionStatus": "Failed",
-            "name": "assert_table_exists"
-          }
-        ]
-      },
-      {
-        "timestamp": 164966958900,
+        "executionId": "run_2024_001_a1b2c3",
+        "timestamp": 1732608000000,
+        "endTime": 1732608600000,
         "executionStatus": "Successful",
         "taskStatus": [
           {
@@ -31,7 +19,9 @@
         ]
       },
       {
-        "timestamp": 164966939400,
+        "executionId": "run_2024_002_d4e5f6",
+        "timestamp": 1732521600000,
+        "endTime": 1732529400000,
         "executionStatus": "Failed",
         "taskStatus": [
           {
@@ -45,7 +35,41 @@
         ]
       },
       {
-        "timestamp": 164966917400,
+        "executionId": "run_2024_003_g7h8i9",
+        "timestamp": 1732435200000,
+        "endTime": 1732449600000,
+        "executionStatus": "Successful",
+        "taskStatus": [
+          {
+            "executionStatus": "Successful",
+            "name": "dim_address_task"
+          },
+          {
+            "executionStatus": "Successful",
+            "name": "assert_table_exists"
+          }
+        ]
+      },
+      {
+        "executionId": "run_2024_004_j0k1l2",
+        "timestamp": 1732348800000,
+        "endTime": 1732348800000,
+        "executionStatus": "Skipped",
+        "taskStatus": [
+          {
+            "executionStatus": "Skipped",
+            "name": "dim_address_task"
+          },
+          {
+            "executionStatus": "Skipped",
+            "name": "assert_table_exists"
+          }
+        ]
+      },
+      {
+        "executionId": "run_2024_005_m3n4o5",
+        "timestamp": 1732262400000,
+        "endTime": 1732263300000,
         "executionStatus": "Failed",
         "taskStatus": [
           {
@@ -53,17 +77,19 @@
             "name": "dim_address_task"
           },
           {
-            "executionStatus": "Successful",
+            "executionStatus": "Pending",
             "name": "assert_table_exists"
           }
         ]
       },
       {
-        "timestamp": 164966927400,
-        "executionStatus": "Pending",
+        "executionId": "run_2024_006_p6q7r8",
+        "timestamp": 1732176000000,
+        "endTime": 1732192200000,
+        "executionStatus": "Successful",
         "taskStatus": [
           {
-            "executionStatus": "Pending",
+            "executionStatus": "Successful",
             "name": "dim_address_task"
           },
           {
@@ -73,30 +99,108 @@
         ]
       },
       {
-        "timestamp": 164966937400,
+        "executionId": "run_2024_007_s9t0u1",
+        "timestamp": 1732089600000,
         "executionStatus": "Pending",
+        "taskStatus": [
+          {
+            "executionStatus": "Pending",
+            "name": "dim_address_task"
+          },
+          {
+            "executionStatus": "Pending",
+            "name": "assert_table_exists"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_dbtcloud.dbt_staging_shopify",
+    "pipelineStatus": [
+      {
+        "executionId": "dbt_run_101_abc",
+        "timestamp": 1732608000000,
+        "endTime": 1732615200000,
+        "executionStatus": "Successful",
+        "taskStatus": [
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_run_staging"
+          },
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_test_staging"
+          }
+        ]
+      },
+      {
+        "executionId": "dbt_run_102_def",
+        "timestamp": 1732521600000,
+        "endTime": 1732522500000,
+        "executionStatus": "Failed",
+        "taskStatus": [
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_run_staging"
+          },
+          {
+            "executionStatus": "Failed",
+            "name": "dbt_test_staging"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_dbtcloud.dbt_transform_orders",
+    "pipelineStatus": [
+      {
+        "executionId": "orders_run_201",
+        "timestamp": 1732608000000,
+        "endTime": 1732611600000,
+        "executionStatus": "Successful",
+        "taskStatus": [
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_run_orders"
+          },
+          {
+            "executionStatus": "Successful",
+            "name": "dbt_test_orders"
+          }
+        ]
+      },
+      {
+        "executionId": "orders_run_202",
+        "timestamp": 1732521600000,
+        "endTime": 1732537800000,
+        "executionStatus": "Failed",
         "taskStatus": [
           {
             "executionStatus": "Failed",
-            "name": "dim_address_task"
+            "name": "dbt_run_orders"
           },
           {
-            "executionStatus": "Pending",
-            "name": "assert_table_exists"
+            "executionStatus": "Skipped",
+            "name": "dbt_test_orders"
           }
         ]
-      },
+      }
+    ]
+  },
+  {
+    "pipeline": "sample_dbtcloud.dbt_analytics_customers",
+    "pipelineStatus": [
       {
-        "timestamp": 164966947400,
-        "executionStatus": "Pending",
+        "executionId": "analytics_run_301",
+        "timestamp": 1732608000000,
+        "endTime": 1732610400000,
+        "executionStatus": "Successful",
         "taskStatus": [
           {
-            "executionStatus": "Pending",
-            "name": "dim_address_task"
-          },
-          {
-            "executionStatus": "Pending",
-            "name": "assert_table_exists"
+            "executionStatus": "Successful",
+            "name": "dbt_build_analytics"
           }
         ]
       }

@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
+from sqlalchemy.sql.elements import Label
 
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
@@ -49,6 +50,7 @@ from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import HybridMetric, MetricTypes
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
@@ -152,7 +154,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     and metric not in {Sum, StdDev, Mean}
                 ]
             )
-            return dict(row)
+            return row._asdict()
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -186,7 +188,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             )
             row = table_metric_computer.compute()
             if row:
-                return dict(row)
+                return row._asdict()
             return None
 
         except Exception as exc:
@@ -223,7 +225,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     if not metric.is_window_metric()
                 ],
             )
-            return dict(row)
+            return row._asdict()
         except (ProgrammingError, DBAPIError) as exc:
             return self._programming_error_static_metric(
                 runner, column, exc, session, metrics
@@ -256,15 +258,32 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         try:
             col_metric = metric(column)
             metric_query = col_metric.query(sample=sample, session=session)
-            if not metric_query:
+            if metric_query is None:
                 return None
             if col_metric.metric_type == dict:
                 results = runner.select_all_from_query(metric_query)
-                data = {k: [result[k] for result in results] for k in dict(results[0])}
+                data = {
+                    k: [result[k] for result in results] for k in results[0]._asdict()
+                }
                 return {metric.name(): data}
+            if isinstance(metric_query, Label):
+                # hotfix to handle transition of unique count implementation
+                sample_column = (
+                    sample.__table__.c[column.name]
+                    if hasattr(sample, "__table__")
+                    else sample.c[column.name]
+                )
+                subquery = (
+                    self.session.query(Count(sample_column).fn().label(column.name))
+                    .select_from(sample)
+                    .group_by(sample_column)
+                    .subquery()
+                )
+
+                metric_query = self.session.query(metric_query).select_from(subquery)
 
             row = runner.select_first_from_query(metric_query)
-            return dict(row)
+            return row._asdict()
         except ResourceClosedError as exc:
             # if the query returns no results, we will get a ResourceClosedError from Druid
             if (
@@ -305,7 +324,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 *[metric(column).fn() for metric in metrics],
             )
             if row:
-                return dict(row)
+                return row._asdict()
         except ProgrammingError as exc:
             logger.info(
                 f"Skipping metrics for {runner.table_name}.{column.name} due to {exc}"
@@ -429,10 +448,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     if metric_func.column is not None:
                         column = metric_func.column.name
                         self.status.scanned(
-                            f"{metric_func.table.__tablename__}.{column}"
+                            f"{metric_func.table.__tablename__}.{column}__{metric_func.metric_type.value}"
                         )
                     else:
-                        self.status.scanned(metric_func.table.__tablename__)
+                        self.status.scanned(
+                            f"{metric_func.table.__tablename__}__{metric_func.metric_type.value}"
+                        )
                         column = None
 
                     return row, column, metric_func.metric_type.value

@@ -5,9 +5,9 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.sdk.resources.BaseResource;
+import org.openmetadata.sdk.services.EntityServiceBase;
 
-public class TopicService extends BaseResource<Topic> {
+public class TopicService extends EntityServiceBase<Topic> {
   public TopicService(HttpClient httpClient) {
     super(httpClient, "/v1/topics");
   }
@@ -18,9 +18,7 @@ public class TopicService extends BaseResource<Topic> {
   }
 
   // Create using CreateTopic request
-  public org.openmetadata.schema.entity.data.Topic create(CreateTopic request)
-      throws OpenMetadataException {
-    return httpClient.execute(
-        HttpMethod.POST, basePath, request, org.openmetadata.schema.entity.data.Topic.class);
+  public Topic create(CreateTopic request) throws OpenMetadataException {
+    return httpClient.execute(HttpMethod.POST, basePath, request, Topic.class);
   }
 }

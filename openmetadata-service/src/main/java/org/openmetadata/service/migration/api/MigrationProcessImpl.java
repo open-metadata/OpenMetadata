@@ -50,7 +50,7 @@ public class MigrationProcessImpl implements MigrationProcess {
   }
 
   public void initializeWorkflowHandler() {
-    WorkflowHandler.initialize(openMetadataApplicationConfig);
+    WorkflowHandler.initialize(openMetadataApplicationConfig, true);
   }
 
   public PipelineServiceClientInterface getPipelineServiceClient() {
@@ -120,7 +120,7 @@ public class MigrationProcessImpl implements MigrationProcess {
         try {
           String previouslyRanSql = null;
           try {
-            previouslyRanSql = migrationDAO.getSqlQuery(hash(sql), version);
+            previouslyRanSql = migrationDAO.getSqlQuery(version, hash(sql));
           } catch (Exception dbException) {
             // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
             previouslyRanSql = null;

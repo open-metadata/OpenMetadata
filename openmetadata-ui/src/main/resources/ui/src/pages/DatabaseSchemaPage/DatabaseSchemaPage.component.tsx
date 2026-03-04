@@ -102,7 +102,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { setFilters, filters } = useTableFilters(INITIAL_TABLE_FILTERS);
   const { tab: activeTab = EntityTabs.TABLE } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDatabaseSchemaFQN } = useFqn();
+  const { entityFqn: decodedDatabaseSchemaFQN } = useFqn({
+    type: EntityType.DATABASE_SCHEMA,
+  });
   const navigate = useNavigate();
 
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
@@ -178,6 +180,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [databaseSchemaPermission]
   );
 
+  const viewUsagePermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        databaseSchemaPermission,
+        PermissionOperation.ViewUsage
+      ),
+    [databaseSchemaPermission]
+  );
+
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
   }, []);
@@ -198,7 +209,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         {
           fields: [
             TabSpecificField.OWNERS,
-            TabSpecificField.USAGE_SUMMARY,
+            ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
             TabSpecificField.TAGS,
             TabSpecificField.DOMAINS,
             TabSpecificField.VOTES,
@@ -223,7 +234,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } finally {
       setIsSchemaDetailsLoading(false);
     }
-  }, [decodedDatabaseSchemaFQN]);
+  }, [decodedDatabaseSchemaFQN, viewUsagePermission]);
 
   const saveUpdatedDatabaseSchemaData = useCallback(
     (updatedData: DatabaseSchema) => {
@@ -431,7 +442,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     fetchTableCount();
   }, [filters.showDeletedTables]);
 
-  const { editCustomAttributePermission, viewAllPermission } = useMemo(
+  const {
+    editCustomAttributePermission,
+    viewAllPermission,
+    viewCustomPropertiesPermission,
+  } = useMemo(
     () => ({
       editCustomAttributePermission:
         getPrioritizedEditPermission(
@@ -439,8 +454,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           PermissionOperation.EditCustomFields
         ) && !databaseSchema.deleted,
       viewAllPermission: databaseSchemaPermission.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        databaseSchemaPermission,
+        PermissionOperation.ViewCustomFields
+      ),
     }),
-
     [databaseSchemaPermission, databaseSchema]
   );
 
@@ -483,6 +501,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       activeTab,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       databaseSchemaPermission,
       storedProcedureCount,
       getEntityFeedCount,
@@ -504,6 +523,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     editCustomAttributePermission,
     tableCount,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     storedProcedureCount,
     databaseSchemaPermission,
     handleExtensionUpdate,
@@ -520,7 +540,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         {
           fields: [
             TabSpecificField.OWNERS,
-            TabSpecificField.USAGE_SUMMARY,
+            ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
             TabSpecificField.TAGS,
             TabSpecificField.VOTES,
           ],
@@ -634,10 +654,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(databaseSchema),
-      })}>
+    <PageLayoutV1 pageTitle={getEntityName(databaseSchema)}>
       {isEmpty(databaseSchema) && !isSchemaDetailsLoading ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(

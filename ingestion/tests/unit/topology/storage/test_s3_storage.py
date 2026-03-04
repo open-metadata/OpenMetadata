@@ -110,6 +110,14 @@ MOCK_S3_OBJECT_FILE_PATHS = {
         {"Key": "transactions/transactions_2.csv", "Size": 55},
     ]
 }
+MOCK_S3_OBJECT_FILE_PATHS_WITH_SUCCESS = {
+    "Contents": [
+        {"Key": "transactions/", "Size": 0},
+        {"Key": "transactions/transactions_1.csv", "Size": 69},
+        {"Key": "transactions/transactions_2.csv", "Size": 55},
+        {"Key": "transactions/_SUCCESS", "Size": 0},
+    ]
+}
 
 
 def _get_str_value(data):
@@ -299,17 +307,19 @@ class StorageUnitTest(TestCase):
     #  Most of the parsing support are covered in test_datalake unit tests related to the Data lake implementation
     def test_extract_column_definitions(self):
         with patch(
-            "metadata.ingestion.source.storage.storage_service.fetch_dataframe",
+            "metadata.ingestion.source.storage.storage_service.fetch_dataframe_first_chunk",
             return_value=(
-                [
-                    pd.DataFrame.from_dict(
-                        [
-                            {"transaction_id": 1, "transaction_value": 100},
-                            {"transaction_id": 2, "transaction_value": 200},
-                            {"transaction_id": 3, "transaction_value": 300},
-                        ]
-                    )
-                ],
+                iter(
+                    [
+                        pd.DataFrame.from_dict(
+                            [
+                                {"transaction_id": 1, "transaction_value": 100},
+                                {"transaction_id": 2, "transaction_value": 200},
+                                {"transaction_id": 3, "transaction_value": 300},
+                            ]
+                        )
+                    ]
+                ),
                 None,
             ),
         ):
@@ -405,6 +415,35 @@ class StorageUnitTest(TestCase):
                 isPartitioned=False,
             ),
         )
+        self.assertTrue(
+            candidate
+            in [
+                "transactions/transactions_1.csv",
+                "transactions/transactions_2.csv",
+                "transactions/",
+            ]
+        )
+
+    def test_get_sample_file_path_filters_success_files(self):
+        """Test that _SUCCESS files are filtered out when selecting sample files"""
+        self.object_store_source._get_sample_file_prefix = (
+            lambda metadata_entry: "/transactions"
+        )
+        self.object_store_source.s3_client.list_objects_v2 = (
+            lambda Bucket, Prefix: MOCK_S3_OBJECT_FILE_PATHS_WITH_SUCCESS
+        )
+
+        candidate = self.object_store_source._get_sample_file_path(
+            bucket_name="test_bucket",
+            metadata_entry=MetadataEntry(
+                dataPath="/transactions",
+                structureFormat="csv",
+                isPartitioned=False,
+            ),
+        )
+        # _SUCCESS file should not be in the candidates
+        self.assertIsNotNone(candidate)
+        self.assertNotIn("_SUCCESS", candidate)
         self.assertTrue(
             candidate
             in [

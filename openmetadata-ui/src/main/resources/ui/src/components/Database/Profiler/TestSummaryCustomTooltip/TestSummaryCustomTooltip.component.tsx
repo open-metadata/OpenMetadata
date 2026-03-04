@@ -10,113 +10,268 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
-import { entries, isNumber, omit, startCase } from 'lodash';
-import { Fragment } from 'react';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Divider } from 'antd';
+import entries from 'lodash/entries';
+import isNumber from 'lodash/isNumber';
+import isUndefined from 'lodash/isUndefined';
+import omit from 'lodash/omit';
+import startCase from 'lodash/startCase';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { TooltipProps } from 'recharts';
+import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
 import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
+import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import {
-  convertMillisecondsToHumanReadableFormat,
-  formatDateTimeLong,
+  convertSecondsToHumanReadableFormat,
+  formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import './test-summary-custom-tooltip.less';
 
-const TestSummaryCustomTooltip = (
-  props: TooltipProps<string | number, string>
-) => {
-  const { t } = useTranslation();
-  const { active, payload = [] } = props;
-  const data = payload.length
-    ? entries(omit(payload[0].payload, ['name', 'incidentId', 'boundArea']))
-    : [];
+const OMITTED_TOOLTIP_PAYLOAD_KEYS = [
+  'name',
+  'status',
+  'incidentId',
+  'task',
+  'testCaseFqn',
+  'passedRows',
+  'failedRows',
+  'boundArea',
+] as const;
 
-  if (!active || payload.length === 0) {
+function isThread(value: unknown): value is Thread {
+  return typeof value === 'object' && value !== null && 'task' in value;
+}
+
+interface TestSummaryCustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: Record<string, unknown> }>;
+  testCaseFqn?: string;
+}
+
+const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
+  const { t } = useTranslation();
+  const { active, payload = [], testCaseFqn: testCaseFqnProp } = props;
+
+  const state = useMemo(() => {
+    if (payload.length === 0) {
+      return null;
+    }
+
+    const payloadData = payload[0].payload;
+    const timestamp = payloadData.name as number;
+    const status = payloadData.status as TestCaseStatus;
+    const passedRows = payloadData.passedRows as number | undefined;
+    const failedRows = payloadData.failedRows as number | undefined;
+    const totalRows = (passedRows ?? 0) + (failedRows ?? 0);
+    const formattedDateTime = formatDateTime(timestamp);
+    let statusColor: string | undefined;
+    if (status === TestCaseStatus.Failed) {
+      statusColor = RED_3;
+    } else if (status === TestCaseStatus.Success) {
+      statusColor = GREEN_3;
+    }
+    const data = entries(omit(payloadData, [...OMITTED_TOOLTIP_PAYLOAD_KEYS]));
+
+    return {
+      payloadData,
+      timestamp,
+      status,
+      passedRows,
+      failedRows,
+      incidentId: payloadData.incidentId as string | undefined,
+      task: payloadData.task as Thread | undefined,
+      totalRows,
+      formattedDateTime,
+      statusColor,
+      data,
+    };
+  }, [payload]);
+
+  const tooltipRender = useCallback(
+    ([key, value]: [key: string, value: string | number | Thread]) => {
+      if (isThread(value)) {
+        return null;
+      }
+
+      const tooltipValue = isNumber(value)
+        ? formatNumberWithComma(value)
+        : value;
+
+      return (
+        <li
+          className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
+          key={`item-${key}`}>
+          <Typography as="span" className="flex items-center text-grey-muted">
+            {startCase(key)}
+          </Typography>
+          <Typography as="span" className="font-medium" data-testid={key}>
+            {key === TABLE_FRESHNESS_KEY && isNumber(value)
+              ? convertSecondsToHumanReadableFormat(
+                  value,
+                  undefined,
+                  `${t('label.late-by')} `
+                )
+              : tooltipValue}
+          </Typography>
+        </li>
+      );
+    },
+    [t]
+  );
+
+  if (!active || !state) {
     return null;
   }
 
-  const isThread = (value: unknown): value is Thread => {
-    return typeof value === 'object' && value !== null && 'task' in value;
-  };
-
-  const tooltipRender = ([key, value]: [
-    key: string,
-    value: string | number | Thread
-  ]) => {
-    if (isThread(value)) {
-      return value?.task ? (
-        <Fragment key={`item-${key}`}>
-          <li
-            className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-            key="item-incident">
-            <span className="flex items-center text-grey-muted">
-              {t('label.incident')}
-            </span>
-            <span className="font-medium" data-testid={key}>
-              <Link
-                className="font-medium cursor-pointer"
-                data-testid="table-name"
-                to={getTaskDetailPath(value)}>
-                {`#${value.task.id}`}
-              </Link>
-            </span>
-          </li>
-          <li
-            className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-            key="item-assignee">
-            <span className="flex items-center text-grey-muted">
-              {t('label.assignee')}
-            </span>
-            <span className="font-medium cursor-pointer" data-testid={key}>
-              <OwnerLabel owners={value.task.assignees} />
-            </span>
-          </li>
-        </Fragment>
-      ) : null;
-    }
-
-    const tooltipValue = isNumber(value) ? formatNumberWithComma(value) : value;
-
-    return (
-      <li
-        className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-        key={`item-${key}`}>
-        <span className="flex items-center text-grey-muted">
-          {startCase(key)}
-        </span>
-        <span className="font-medium" data-testid={key}>
-          {key === TABLE_FRESHNESS_KEY && isNumber(value)
-            ? // freshness will always be in seconds, so we need to convert it to milliseconds
-              convertMillisecondsToHumanReadableFormat(
-                value * 1000,
-                undefined,
-                false,
-                // negative value will be shown as late by
-                `${t('label.late-by')} `
-              )
-            : tooltipValue}
-        </span>
-      </li>
-    );
-  };
+  const {
+    status,
+    passedRows,
+    failedRows,
+    incidentId,
+    task,
+    totalRows,
+    formattedDateTime,
+    statusColor,
+    data,
+  } = state;
 
   return (
-    <Card
-      title={
-        <Typography.Title level={5}>
-          {formatDateTimeLong(payload[0].payload.name)}
-        </Typography.Title>
-      }>
-      <ul
-        className="test-summary-tooltip-container"
-        data-testid="test-summary-tooltip-container">
-        {data.map(tooltipRender)}
-      </ul>
+    <Card>
+      <div className="test-summary-tooltip-container">
+        {/* Date and time at the top */}
+        <div className="tooltip-date-time">{formattedDateTime}</div>
+
+        {/* Dotted separator */}
+        <Divider className="tooltip-separator" />
+
+        {/* Other values */}
+        <ul data-testid="test-summary-tooltip-container">
+          {/* Status */}
+          <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+            <Typography as="span" className="flex items-center text-grey-muted">
+              {t('label.status')}
+            </Typography>
+            <Typography
+              as="span"
+              className="font-medium"
+              data-testid="status"
+              style={{ color: statusColor }}>
+              {status}
+            </Typography>
+          </li>
+          {/* Incident (from task) */}
+          {task?.task && (
+            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+              <Typography
+                as="span"
+                className="flex items-center text-grey-muted">
+                {t('label.incident')}
+              </Typography>
+              <Typography
+                as="span"
+                className="font-medium"
+                data-testid="incident">
+                <Link
+                  className="tooltip-incident-link font-medium cursor-pointer"
+                  to={getTaskDetailPath(task)}>
+                  {`#${task.task.id}`}
+                </Link>
+              </Typography>
+            </li>
+          )}
+          {/* Incident ID (if task not present) - show as link when testCaseFqn available */}
+          {incidentId && !task?.task && (
+            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+              <Typography
+                as="span"
+                className="flex items-center text-grey-muted">
+                {t('label.incident')}
+              </Typography>
+              <Typography
+                as="span"
+                className="font-medium"
+                data-testid="incident">
+                {testCaseFqnProp ? (
+                  <Link
+                    className="tooltip-incident-link font-medium cursor-pointer"
+                    to={getTestCaseDetailPagePath(
+                      testCaseFqnProp,
+                      TestCasePageTabs.ISSUES
+                    )}>
+                    {`#${incidentId}`}
+                  </Link>
+                ) : (
+                  `#${incidentId}`
+                )}
+              </Typography>
+            </li>
+          )}
+          {/* Rows Passed */}
+          {!isUndefined(passedRows) && totalRows > 0 && (
+            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+              <Typography
+                as="span"
+                className="flex items-center text-grey-muted">
+                {t('label.passed-rows')}
+              </Typography>
+              <Typography
+                as="span"
+                className="font-medium"
+                data-testid="rows-passed">
+                {`${formatNumberWithComma(passedRows)}/${formatNumberWithComma(
+                  totalRows
+                )}`}
+              </Typography>
+            </li>
+          )}
+          {/* Rows Failed */}
+          {!isUndefined(failedRows) && totalRows > 0 && (
+            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+              <Typography
+                as="span"
+                className="flex items-center text-grey-muted">
+                {t('label.failed-rows')}
+              </Typography>
+              <Typography
+                as="span"
+                className="font-medium"
+                data-testid="rows-failed">
+                {`${formatNumberWithComma(failedRows)}/${formatNumberWithComma(
+                  totalRows
+                )}`}
+              </Typography>
+            </li>
+          )}
+          {/* Other test result values */}
+          {data.map((entry) =>
+            tooltipRender(entry as [string, string | number | Thread])
+          )}
+          {/* Assignee (at the bottom) */}
+          {task?.task && (
+            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+              <Typography
+                as="span"
+                className="flex items-center text-grey-muted">
+                {t('label.assignee')}
+              </Typography>
+              <Typography
+                as="span"
+                className="font-medium"
+                data-testid="assignee">
+                <OwnerLabel owners={task.task.assignees} />
+              </Typography>
+            </li>
+          )}
+        </ul>
+      </div>
     </Card>
   );
 };

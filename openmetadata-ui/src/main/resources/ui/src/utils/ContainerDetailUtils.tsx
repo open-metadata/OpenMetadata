@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { isEmpty, omit } from 'lodash';
+import { get, isEmpty, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -23,14 +23,17 @@ import ContainerChildren from '../components/Container/ContainerChildren/Contain
 import { ContainerWidget } from '../components/Container/ContainerWidget/ContainerWidget';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import {
   Column,
+  Container,
   ContainerDataModel as ContainerDataModelType,
 } from '../generated/entity/data/container';
 import { PageType } from '../generated/system/ui/uiCustomization';
+import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ContainerDetailPageTabProps } from './ContainerDetailsClassBase';
@@ -128,7 +131,7 @@ export const getContainerDetailPageTabs = ({
   decodedContainerName,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
@@ -227,6 +230,16 @@ export const getContainerDetailPageTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
           name={t('label.custom-property-plural')}
         />
@@ -236,7 +249,7 @@ export const getContainerDetailPageTabs = ({
         <CustomPropertyTable<EntityType.CONTAINER>
           entityType={EntityType.CONTAINER}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },
@@ -256,5 +269,21 @@ export const getContainerWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       entityType={EntityType.CONTAINER}
       widgetConfig={widgetConfig}
     />
+  );
+};
+
+export const extractContainerColumns = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  data: T
+): Column[] => {
+  const container = data as Partial<Container>;
+
+  return (container.dataModel?.columns ?? []).map(
+    (column) =>
+      ({
+        ...column,
+        tags: column.tags ?? [],
+      } as Column)
   );
 };

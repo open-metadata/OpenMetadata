@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Iterator, Union
 
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -80,11 +81,12 @@ class StoredProcedureLineageMixin(ABC):
         Yield query and stored procedure object for lineage processing.
         """
         query = self.get_stored_procedure_sql_statement()
-        results = self.engine.execute(query).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(query)).all()
 
         for row in results:
             try:
-                query_by_procedure = QueryByProcedure.model_validate(dict(row))
+                query_by_procedure = QueryByProcedure.model_validate(row._asdict())
                 query_by_procedure.procedure_name = (
                     query_by_procedure.procedure_name
                     or get_procedure_name_from_call(
@@ -206,6 +208,7 @@ class StoredProcedureLineageMixin(ABC):
             self.source_config.parsingTimeoutLimit,
             self.procedure_graph_map,
             self.source_config.enableTempTableLineage,
+            self.get_query_parser_type(),
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,

@@ -70,12 +70,32 @@ jest.mock('../../TestCaseStatusModal/TestCaseStatusModal.component', () => ({
       </div>
     )),
 }));
+jest.mock('./InlineTestCaseIncidentStatus.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ data, hasEditPermission, onSubmit }) => (
+      <div data-testid="inline-test-case-status">
+        InlineTestCaseIncidentStatus
+        <span data-testid="inline-status-type">
+          {data.testCaseResolutionStatusType}
+        </span>
+        <span data-testid="inline-has-permission">
+          {hasEditPermission.toString()}
+        </span>
+        <button data-testid="inline-submit-btn" onClick={() => onSubmit(data)}>
+          Submit
+        </button>
+      </div>
+    )),
+}));
+jest.mock('../../../../test/unit/mocks/mui.mock');
 
 describe('TestCaseIncidentManagerStatus', () => {
   it('Should render component', async () => {
     render(<TestCaseIncidentManagerStatus {...mockProps} />);
 
-    expect(await screen.findByText('New')).toBeInTheDocument();
+    expect(await screen.findByText('label.new')).toBeInTheDocument();
     expect(
       await screen.findByTestId('edit-resolution-icon')
     ).toBeInTheDocument();
@@ -153,5 +173,77 @@ describe('TestCaseIncidentManagerStatus', () => {
     expect(
       queryByText(container, 'TestCaseStatusModal')
     ).not.toBeInTheDocument();
+  });
+
+  describe('Inline Mode', () => {
+    it('should render InlineTestCaseIncidentStatus when isInline is true', () => {
+      render(<TestCaseIncidentManagerStatus {...mockProps} isInline />);
+
+      expect(screen.getByTestId('inline-test-case-status')).toBeInTheDocument();
+      expect(
+        screen.getByText('InlineTestCaseIncidentStatus')
+      ).toBeInTheDocument();
+    });
+
+    it('should pass correct data to InlineTestCaseIncidentStatus', () => {
+      render(<TestCaseIncidentManagerStatus {...mockProps} isInline />);
+
+      expect(screen.getByTestId('inline-status-type')).toHaveTextContent('New');
+    });
+
+    it('should pass hasEditPermission as true when permission exists', () => {
+      render(<TestCaseIncidentManagerStatus {...mockProps} isInline />);
+
+      expect(screen.getByTestId('inline-has-permission')).toHaveTextContent(
+        'true'
+      );
+    });
+
+    it('should pass hasEditPermission as false when permission is false', () => {
+      (checkPermission as jest.Mock).mockReturnValueOnce(false);
+      render(<TestCaseIncidentManagerStatus {...mockProps} isInline />);
+
+      expect(screen.getByTestId('inline-has-permission')).toHaveTextContent(
+        'false'
+      );
+    });
+
+    it('should call onSubmit when InlineTestCaseIncidentStatus submits', async () => {
+      render(<TestCaseIncidentManagerStatus {...mockProps} isInline />);
+
+      const submitBtn = screen.getByTestId('inline-submit-btn');
+      await act(async () => {
+        fireEvent.click(submitBtn);
+      });
+
+      expect(mockProps.onSubmit).toHaveBeenCalledWith(mockProps.data);
+    });
+
+    it('should not render modal components when isInline is true', () => {
+      const { container } = render(
+        <TestCaseIncidentManagerStatus {...mockProps} isInline />
+      );
+
+      expect(
+        queryByTestId(container, 'edit-resolution-icon')
+      ).not.toBeInTheDocument();
+      expect(
+        queryByText(container, 'TestCaseStatusModal')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should respect hasPermission prop when passed explicitly', () => {
+      render(
+        <TestCaseIncidentManagerStatus
+          isInline
+          {...mockProps}
+          hasPermission={false}
+        />
+      );
+
+      expect(screen.getByTestId('inline-has-permission')).toHaveTextContent(
+        'false'
+      );
+    });
   });
 });

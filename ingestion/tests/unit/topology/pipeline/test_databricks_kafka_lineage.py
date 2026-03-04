@@ -36,6 +36,8 @@ class TestKafkaTopicDiscovery(unittest.TestCase):
         with patch.object(DatabrickspipelineSource, "__init__", lambda x, y, z: None):
             self.source = DatabrickspipelineSource(None, None)
             self.source.metadata = self.mock_metadata
+            self.source._table_lookup_cache = {}
+            self.source._dlt_table_cache = {}
 
     def test_find_topic_simple_name(self):
         """Test finding topic with simple name (no dots)"""
@@ -138,6 +140,8 @@ class TestDatabricksServiceCaching(unittest.TestCase):
             self.source.metadata = self.mock_metadata
             self.source._databricks_services_cached = False
             self.source._databricks_services = []
+            self.source._table_lookup_cache = {}
+            self.source._dlt_table_cache = {}
 
     def test_get_databricks_services_caches_result(self):
         """Test that databricks services are cached"""
@@ -213,6 +217,8 @@ class TestDLTTableDiscovery(unittest.TestCase):
             self.source.metadata = self.mock_metadata
             self.source._databricks_services_cached = True
             self.source._databricks_services = ["databricks-prod", "databricks-dev"]
+            self.source._table_lookup_cache = {}
+            self.source._dlt_table_cache = {}
 
     def test_find_dlt_table_exact_match(self):
         """Test finding table with exact case match"""
@@ -329,6 +335,8 @@ class TestKafkaLineageIntegration(unittest.TestCase):
             self.source.client = self.mock_client
             self.source._databricks_services_cached = True
             self.source._databricks_services = ["databricks-prod"]
+            self.source._table_lookup_cache = {}
+            self.source._dlt_table_cache = {}
 
     def test_lineage_creation_flow(self):
         """Test complete flow: parse notebook -> find topic -> find table -> create lineage"""

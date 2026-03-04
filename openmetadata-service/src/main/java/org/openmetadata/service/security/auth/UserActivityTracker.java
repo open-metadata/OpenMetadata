@@ -92,13 +92,14 @@ public class UserActivityTracker {
 
   public void shutdown() {
     LOG.info("Shutting down UserActivityTracker...");
-    scheduler.shutdown();
-    virtualThreadExecutor.shutdown();
+    // Perform final batch update BEFORE shutting down executors
     try {
-      performBatchUpdate();
+      forceFlushSync();
     } catch (Exception e) {
       LOG.error("Error during final batch update", e);
     }
+    scheduler.shutdown();
+    virtualThreadExecutor.shutdown();
     try {
       if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
         scheduler.shutdownNow();

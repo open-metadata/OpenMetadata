@@ -15,7 +15,7 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
 
-from sqlalchemy import sql
+from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine import Inspector
 
@@ -222,9 +222,11 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector
     ) -> Tuple[bool, TablePartition]:
-        result = self.engine.execute(
-            POSTGRES_PARTITION_DETAILS, table_name=table_name, schema_name=schema_name
-        ).all()
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text(POSTGRES_PARTITION_DETAILS),
+                {"table_name": table_name, "schema_name": schema_name},
+            ).all()
 
         if result:
             partition_details = TablePartition(
@@ -250,12 +252,15 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         Fetch Tags
         """
         try:
-            result = self.engine.execute(
-                POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
-                )
-            ).all()
+            with self.engine.connect() as conn:
+                result = conn.execute(
+                    text(
+                        POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
+                            database_name=self.context.get().database,
+                            schema_name=schema_name,
+                        )
+                    )
+                ).all()
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
@@ -283,18 +288,21 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
     def _get_stored_procedures_internal(
         self, query: str
     ) -> Iterable[PostgresStoredProcedure]:
-        results = self.engine.execute(query).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(query)).all()
         for row in results:
             try:
                 stored_procedure = PostgresStoredProcedure.model_validate(
                     dict(row._mapping)  # pylint: disable=protected-access
                 )
+                if self.is_stored_procedure_filtered(stored_procedure.name):
+                    continue
                 yield stored_procedure
             except Exception as exc:
                 logger.error()
                 self.status.failed(
                     error=StackTraceError(
-                        name=dict(row).get("name", "UNKNOWN"),
+                        name=row._asdict().get("name", "UNKNOWN"),
                         error=f"Error parsing Stored Procedure payload: {exc}",
                         stackTrace=traceback.format_exc(),
                     )

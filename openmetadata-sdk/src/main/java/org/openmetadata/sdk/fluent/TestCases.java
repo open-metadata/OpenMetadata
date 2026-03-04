@@ -1,7 +1,12 @@
 package org.openmetadata.sdk.fluent;
 
 import java.util.*;
+import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -89,11 +94,22 @@ public final class TestCases {
     return new TestCaseLister(getClient());
   }
 
+  // ==================== Test Case Operations ====================
+
+  public static TestCaseOperations forTestCase(String id) {
+    return new TestCaseOperations(getClient(), id);
+  }
+
+  public static TestCaseOperations forTestCase(UUID id) {
+    return forTestCase(id.toString());
+  }
+
   // ==================== Creator ====================
 
   public static class TestCaseCreator {
     private final OpenMetadataClient client;
-    private final TestCase request = new TestCase();
+    private final CreateTestCase request = new CreateTestCase();
+    private final List<TestCaseParameterValue> parameters = new ArrayList<>();
 
     TestCaseCreator(OpenMetadataClient client) {
       this.client = client;
@@ -114,8 +130,104 @@ public final class TestCases {
       return this;
     }
 
+    public TestCaseCreator forTable(Table table) {
+      request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+      return this;
+    }
+
+    public TestCaseCreator forTable(String tableFqn) {
+      request.setEntityLink("<#E::table::" + tableFqn + ">");
+      return this;
+    }
+
+    public TestCaseCreator forColumn(Table table, String columnName) {
+      request.setEntityLink(
+          "<#E::table::" + table.getFullyQualifiedName() + "::columns::" + columnName + ">");
+      return this;
+    }
+
+    public TestCaseCreator forColumn(String tableFqn, String columnName) {
+      request.setEntityLink("<#E::table::" + tableFqn + "::columns::" + columnName + ">");
+      return this;
+    }
+
+    public TestCaseCreator entityLink(String entityLink) {
+      request.setEntityLink(entityLink);
+      return this;
+    }
+
+    public TestCaseCreator testDefinition(String testDefinitionName) {
+      request.setTestDefinition(testDefinitionName);
+      return this;
+    }
+
+    public TestCaseCreator parameter(String name, String value) {
+      parameters.add(new TestCaseParameterValue().withName(name).withValue(value));
+      return this;
+    }
+
+    public TestCaseCreator parameters(List<TestCaseParameterValue> params) {
+      parameters.clear();
+      parameters.addAll(params);
+      return this;
+    }
+
+    public TestCaseCreator owners(List<EntityReference> owners) {
+      request.setOwners(owners);
+      return this;
+    }
+
+    public TestCaseCreator computePassedFailedRowCount(boolean value) {
+      request.setComputePassedFailedRowCount(value);
+      return this;
+    }
+
+    public TestCaseCreator useDynamicAssertion(boolean value) {
+      request.setUseDynamicAssertion(value);
+      return this;
+    }
+
+    public CreateTestCase build() {
+      if (!parameters.isEmpty()) {
+        request.setParameterValues(parameters);
+      }
+      return request;
+    }
+
     public TestCase execute() {
-      return client.testCases().create(request);
+      return client.testCases().create(build());
+    }
+
+    public TestCase createOrUpdate() {
+      return client.testCases().upsert(build());
+    }
+  }
+
+  // ==================== Test Case Operations ====================
+
+  public static class TestCaseOperations {
+    private final OpenMetadataClient client;
+    private final String testCaseId;
+
+    TestCaseOperations(OpenMetadataClient client, String testCaseId) {
+      this.client = client;
+      this.testCaseId = testCaseId;
+    }
+
+    public TableData getFailedRowsSample() {
+      return client.testCases().getFailedRowsSample(testCaseId);
+    }
+
+    public TestCase addFailedRowsSample(TableData sampleData) {
+      return client.testCases().addFailedRowsSample(testCaseId, sampleData);
+    }
+
+    public TestCase deleteFailedRowsSample() {
+      return client.testCases().deleteFailedRowsSample(testCaseId);
+    }
+
+    public TestCase setInspectionQuery(String query) {
+      return client.testCases().setInspectionQuery(testCaseId, query);
     }
   }
 
@@ -265,10 +377,15 @@ public final class TestCases {
     }
 
     public void confirm() {
-      Map<String, String> params = new HashMap<>();
-      if (recursive) params.put("recursive", "true");
-      if (hardDelete) params.put("hardDelete", "true");
-      client.testCases().delete(id, params.isEmpty() ? null : params);
+      if (!recursive && !hardDelete) {
+        // Use simple delete when no params needed
+        client.testCases().delete(id);
+      } else {
+        Map<String, String> params = new HashMap<>();
+        if (recursive) params.put("recursive", "true");
+        if (hardDelete) params.put("hardDelete", "true");
+        client.testCases().delete(id, params);
+      }
     }
   }
 }

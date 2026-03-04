@@ -133,7 +133,7 @@ class MlflowSource(MlModelServiceSource):
             mlFeatures=self._get_ml_features(
                 run.data, latest_version.run_id, model.name
             ),
-            mlStore=self._get_ml_store(latest_version),
+            mlStore=self._get_ml_store(latest_version, run),
             service=FullyQualifiedEntityName(self.context.get().mlmodel_service),
             sourceUrl=SourceUrl(source_url),
         )
@@ -170,13 +170,16 @@ class MlflowSource(MlModelServiceSource):
     def _get_ml_store(  # pylint: disable=arguments-differ
         self,
         version: ModelVersion,
+        run,
     ) -> Optional[MlStore]:
         """
-        Get the Ml Store from the model version object
+        Get the Ml Store from the model version object.
+        Uses the artifact URI from the run for actual storage location.
         """
         try:
-            if version.source:
-                return MlStore(storage=version.source)
+            storage = run.info.artifact_uri if run and run.info else version.source
+            if storage:
+                return MlStore(storage=storage)
         except ValidationError as err:
             logger.debug(traceback.format_exc())
             logger.warning(

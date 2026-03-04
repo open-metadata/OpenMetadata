@@ -84,7 +84,6 @@ import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
   getGlossaryTerms,
-  GlossaryTermWithChildren,
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
@@ -218,7 +217,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         return terms.map((term) => {
           if (term.fullyQualifiedName === parentFQN) {
             const existingChildren = after ? term.children ?? [] : [];
-            const newChildren = data as GlossaryTermWithChildren[];
+            const newChildren = data;
 
             return {
               ...term,
@@ -243,7 +242,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       };
 
       const updatedTerms = updateNestedTerms(glossaryChildTerms);
-      setGlossaryChildTerms(updatedTerms as ModifiedGlossary[]);
+      setGlossaryChildTerms(updatedTerms);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -251,17 +250,24 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
   };
 
-  const fetchAllTerms = async (loadMore = false) => {
-    if (!loadMore) {
-      setIsTableLoading(true);
-      if (searchTerm) {
-        setSearchPaging({ offset: 0, total: undefined, hasMore: true });
-      } else {
-        handlePagingChange((prev) => ({ ...prev, after: undefined }));
-      }
-    } else {
+  const initializeLoadingStates = (loadMore: boolean) => {
+    if (loadMore) {
       setIsLoadingMore(true);
+
+      return;
     }
+
+    setIsTableLoading(true);
+
+    if (searchTerm) {
+      setSearchPaging({ offset: 0, total: undefined, hasMore: true });
+    } else {
+      handlePagingChange((prev) => ({ ...prev, after: undefined }));
+    }
+  };
+
+  const fetchAllTerms = async (loadMore = false) => {
+    initializeLoadingStates(loadMore);
 
     try {
       let data;
@@ -716,8 +722,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         ellipsis: true,
         width: tableColumnsWidth.name,
         render: (_, record) => {
-          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
-            .isLoadMoreButton;
+          const isLoadMoreRow = record.isLoadMoreButton;
 
           if (isLoadMoreRow) {
             const parentRecord = (
@@ -779,14 +784,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: tableColumnsWidth.description,
         render: (description: string, record) => {
-          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
-            .isLoadMoreButton;
+          const isLoadMoreRow = record.isLoadMoreButton;
 
           if (isLoadMoreRow) {
             return null;
           }
 
-          return description.trim() ? (
+          return description?.trim() ? (
             <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={description}
@@ -807,8 +811,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           width: tableColumnsWidth.status,
         }),
         render: (_, record) => {
-          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
-            .isLoadMoreButton;
+          const isLoadMoreRow = record.isLoadMoreButton;
 
           if (isLoadMoreRow) {
             return null;
@@ -858,8 +861,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
         width: tableColumnsWidth.reviewers,
         render: (reviewers: EntityReference[], record) => {
-          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
-            .isLoadMoreButton;
+          const isLoadMoreRow = record.isLoadMoreButton;
 
           if (isLoadMoreRow) {
             return null;
@@ -883,8 +885,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
         width: tableColumnsWidth.synonyms,
         render: (synonyms: string[], record) => {
-          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
-            .isLoadMoreButton;
+          const isLoadMoreRow = record.isLoadMoreButton;
 
           if (isLoadMoreRow) {
             return null;
@@ -908,8 +909,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       ...ownerTableObject<ModifiedGlossaryTerm>().map((col) => ({
         ...col,
         render: (owners: EntityReference[], record: ModifiedGlossaryTerm) => {
-          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
-            .isLoadMoreButton;
+          const isLoadMoreRow = record.isLoadMoreButton;
 
           if (isLoadMoreRow) {
             return null;
@@ -925,8 +925,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         render: (_, record) => {
-          const isLoadMoreRow = (record as ModifiedGlossaryTerm)
-            .isLoadMoreButton;
+          const isLoadMoreRow = record.isLoadMoreButton;
 
           if (isLoadMoreRow) {
             return null;
@@ -1123,7 +1122,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const handleEditGlossary = () => {
     navigate({
       pathname: getEntityBulkEditPath(
-        EntityType.GLOSSARY_TERM,
+        isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM,
         activeGlossary?.fullyQualifiedName ?? ''
       ),
     });
@@ -1139,10 +1138,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   );
 
   const extraTableFilters = useMemo(() => {
+    let expandCollapseLabel = '';
+
+    if (isExpandingAll) {
+      expandCollapseLabel = t('label.loading');
+    } else if (isAllExpanded) {
+      expandCollapseLabel = t('label.collapse-all');
+    } else {
+      expandCollapseLabel = t('label.expand-all');
+    }
+
     return (
       <>
         <Input
           allowClear
+          data-testid="search-glossary-terms-input"
           placeholder={t('label.search-entity', {
             entity: t('label.term-plural'),
           })}
@@ -1188,11 +1198,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 height="14px"
               />
             )}
-            {isExpandingAll
-              ? t('label.loading')
-              : isAllExpanded
-              ? t('label.collapse-all')
-              : t('label.expand-all')}
+            {expandCollapseLabel}
           </Space>
         </Button>
       </>
@@ -1208,7 +1214,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const handleAddGlossaryTermClick = () => {
     onAddGlossaryTerm(
-      !isGlossary ? (activeGlossary as GlossaryTerm) : undefined
+      isGlossary ? undefined : (activeGlossary as GlossaryTerm)
     );
   };
 
@@ -1227,7 +1233,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
       expandIcon: ({ expanded, onExpand, record }) => {
-        const isLoadMoreRow = (record as ModifiedGlossaryTerm).isLoadMoreButton;
+        const isLoadMoreRow = record.isLoadMoreButton;
 
         if (isLoadMoreRow) {
           return <span className="expand-cell-empty-icon-container" />;
@@ -1236,7 +1242,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         const { children, childrenCount } = record;
         const isLoading = loadingChildren[record.fullyQualifiedName || ''];
 
-        return childrenCount ?? children?.length ?? 0 > 0 ? (
+        return (childrenCount ?? children?.length ?? 0) > 0 ? (
           <>
             <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
             {isLoading ? (
@@ -1277,15 +1283,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           ) {
             await fetchChildTerms(record.fullyQualifiedName || '');
           }
-        } else {
-          // Remove from expanded keys immediately
-          setExpandedRowKeys((prev) =>
-            prev.filter((key) => key !== record.fullyQualifiedName)
-          );
+
+          return;
         }
+        // Remove from expanded keys immediately
+        const newExpandedKeys = expandedRowKeys.filter(
+          (key) => key !== record.fullyQualifiedName
+        );
+        setExpandedRowKeys(newExpandedKeys);
       },
       rowExpandable: (record) => {
-        const rec = record as ModifiedGlossaryTerm;
+        const rec = record;
         const isLoadMoreRow = rec.isLoadMoreButton;
 
         return (
@@ -1342,7 +1350,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
       try {
         await patchGlossaryTerm(movedGlossaryTerm.from?.id || '', jsonPatch);
-        refreshGlossaryTerms && refreshGlossaryTerms();
+        refreshGlossaryTerms?.();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -1388,10 +1396,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         if (term.children && term.children.length > 0) {
           processedTerm = {
             ...processedTerm,
-            children: processTermsWithLoadMore(
-              term.children as ModifiedGlossaryTerm[],
-              level + 1
-            ),
+            children: processTermsWithLoadMore(term.children, level + 1),
           };
         }
 
@@ -1461,6 +1466,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   // Check if this is due to search returning no results
   const isSearchActive = Boolean(searchTerm && searchTerm.trim().length > 0);
   const hasNoTerms = isEmpty(glossaryTerms);
+
+  const glossaryPlaceholderText = useMemo(() => {
+    if (isSearchActive && searchTerm) {
+      return `No Glossary Term found for "${searchTerm}"`;
+    }
+    if (isSearchActive) {
+      return 'No Glossary Term found';
+    }
+
+    return 'No Glossary Terms';
+  }, [isSearchActive, searchTerm]);
 
   // Special case: if there are truly no terms in the glossary at all (not just search results)
   // and no search is active, show the full placeholder
@@ -1550,13 +1566,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 emptyText: (
                   <ErrorPlaceHolder
                     className="p-md"
-                    placeholderText={
-                      isSearchActive && searchTerm
-                        ? `No Glossary Term found for "${searchTerm}"`
-                        : isSearchActive
-                        ? 'No Glossary Term found'
-                        : 'No Glossary Terms'
-                    }
+                    placeholderText={glossaryPlaceholderText}
                     type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
                   />
                 ),

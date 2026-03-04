@@ -18,6 +18,7 @@ import { DeleteTagsType } from '../../../pages/TagsPage/TagsPage.interface';
 export interface ClassificationDetailsProps {
   classificationPermissions: OperationPermission;
   isVersionView?: boolean;
+  isClassificationLoading?: boolean;
   currentClassification?: Classification;
   deleteTags?: DeleteTagsType;
   isAddingTag?: boolean;
@@ -29,6 +30,7 @@ export interface ClassificationDetailsProps {
   handleUpdateClassification?: (
     updatedClassification: Classification
   ) => Promise<void>;
+  handleToggleDisable?: (tag: Tag) => void;
 }
 export interface ClassificationDetailsRef {
   refreshClassificationTags: () => void;

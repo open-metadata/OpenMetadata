@@ -22,6 +22,9 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedureCode,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import (
@@ -446,6 +449,8 @@ class CrossDatabaseLineageSQLTest(TestCase):
                             metadata=self.mock_metadata,
                             service_names="service1",
                             connection_type="snowflake",
+                            timeout_seconds=30,
+                            parser_type=QueryParserType.Auto,
                         )
                     )
 
@@ -495,6 +500,8 @@ class CrossDatabaseLineageSQLTest(TestCase):
                             metadata=self.mock_metadata,
                             service_names=["service1", "service2"],
                             connection_type="snowflake",
+                            timeout_seconds=30,
+                            parser_type=QueryParserType.Auto,
                         )
                     )
 
@@ -551,6 +558,8 @@ class CrossDatabaseLineageSQLTest(TestCase):
                             metadata=self.mock_metadata,
                             service_names=["service1", "service2"],
                             connection_type="postgres",
+                            timeout_seconds=30,
+                            parser_type=QueryParserType.Auto,
                         )
                     )
 
@@ -644,6 +653,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
                         procedure=mock_procedure,
                         procedure_graph_map=mixin.procedure_graph_map,
                         enableTempTableLineage=mixin.source_config.enableTempTableLineage,
+                        parser_type=QueryParserType.Auto,
                     )
                 )
 

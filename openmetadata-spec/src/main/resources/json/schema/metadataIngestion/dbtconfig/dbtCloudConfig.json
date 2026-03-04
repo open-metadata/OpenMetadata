@@ -37,8 +37,7 @@
       "title": "dbt Cloud URL",
       "description": "URL to connect to your dbt cloud instance. E.g., https://cloud.getdbt.com or https://emea.dbt.com/",
       "type": "string",
-      "format": "uri",
-      "default": "https://cloud.getdbt.com"
+      "format": "uri"
     }
   },
   "additionalProperties": false,

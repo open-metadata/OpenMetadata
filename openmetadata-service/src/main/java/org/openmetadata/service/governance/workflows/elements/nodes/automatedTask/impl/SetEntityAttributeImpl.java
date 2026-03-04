@@ -56,14 +56,24 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       }
 
       String updatedByNamespace = (String) inputNamespaceMap.get(UPDATED_BY_VARIABLE);
-      String user =
+      String actualUser =
           Optional.ofNullable(updatedByNamespace)
               .map(ns -> (String) varHandler.getNamespacedVariable(ns, UPDATED_BY_VARIABLE))
-              .orElse("governance-bot");
+              .orElse(null);
 
-      // Apply the field change using shared utility
+      // Apply the field change using shared utility with bot impersonation
       // Note: fieldValue can be null to clear/remove a field value
-      EntityFieldUtils.setEntityField(entity, entityType, user, fieldName, fieldValue, true);
+      // When actualUser is available, use it as the user and mark 'governance-bot' as impersonator
+      // Otherwise, use 'governance-bot' directly (for system-initiated workflows)
+      if (actualUser != null && !actualUser.isEmpty()) {
+        // User-initiated workflow: preserve actual user, mark bot as impersonator
+        EntityFieldUtils.setEntityField(
+            entity, entityType, actualUser, fieldName, fieldValue, true, "governance-bot");
+      } else {
+        // System-initiated workflow: use governance-bot directly
+        EntityFieldUtils.setEntityField(
+            entity, entityType, "governance-bot", fieldName, fieldValue, true, null);
+      }
 
     } catch (Exception exc) {
       LOG.error(

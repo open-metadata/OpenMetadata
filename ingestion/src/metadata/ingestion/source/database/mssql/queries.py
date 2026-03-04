@@ -242,8 +242,7 @@ JOIN sys.procedures p ON p.name = r.ROUTINE_NAME
 JOIN sys.sql_modules l on l.object_id = p.object_id
  WHERE ROUTINE_TYPE = 'PROCEDURE'
    AND ROUTINE_CATALOG = '{database_name}'
-   AND ROUTINE_SCHEMA = '{schema_name}' 
-   AND LEFT(ROUTINE_NAME, 3) NOT IN ('sp_', 'xp_', 'ms_')
+   AND ROUTINE_SCHEMA = '{schema_name}'
     """
 )
 

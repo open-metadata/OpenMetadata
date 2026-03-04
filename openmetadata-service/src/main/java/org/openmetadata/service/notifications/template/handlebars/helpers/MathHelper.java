@@ -3,7 +3,10 @@ package org.openmetadata.service.notifications.template.handlebars.helpers;
 import com.github.jknack.handlebars.Handlebars;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to perform binary mathematical operations.
@@ -83,5 +86,21 @@ public class MathHelper implements HandlebarsHelper {
       return number.doubleValue();
     }
     return Double.parseDouble(value.toString());
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("math")
+        .withDescription("Perform mathematical operations")
+        .withCursorOffset(8)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{math }}")
+                    .withExample("{{math @index '+' 1}}"),
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{math }}")
+                    .withExample("{{math 3.14159 'round' 2}}")));
   }
 }

@@ -18,6 +18,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
@@ -77,12 +78,12 @@ describe('Test CustomField Table Component', () => {
 
     const tableCellName = await findByText('label.name');
     const tableCellType = await findByText('label.type');
-    const tableCellDescription = await findByText('label.description');
+
     const tableCellActions = await findByText('label.action-plural');
 
     expect(tableCellName).toBeInTheDocument();
     expect(tableCellType).toBeInTheDocument();
-    expect(tableCellDescription).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith({ width: 300 });
     expect(tableCellActions).toBeInTheDocument();
 
     const tableRow = await findAllByRole('row');
@@ -100,12 +101,11 @@ describe('Test CustomField Table Component', () => {
 
     const tableCellName = await screen.findByText('label.name');
     const tableCellType = await screen.findByText('label.type');
-    const tableCellDescription = await screen.findByText('label.description');
     const tableCellActions = await screen.findByText('label.action-plural');
 
     expect(tableCellName).toBeInTheDocument();
     expect(tableCellType).toBeInTheDocument();
-    expect(tableCellDescription).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith({ width: 300 });
     expect(tableCellActions).toBeInTheDocument();
 
     const tableRow = await screen.findAllByRole('row');
@@ -144,12 +144,12 @@ describe('Test CustomField Table Component', () => {
 
     const tableCellName = await screen.findByText('label.name');
     const tableCellType = await screen.findByText('label.type');
-    const tableCellDescription = await screen.findByText('label.description');
+
     const tableCellActions = await screen.findByText('label.action-plural');
 
     expect(tableCellName).toBeInTheDocument();
     expect(tableCellType).toBeInTheDocument();
-    expect(tableCellDescription).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith({ width: 300 });
     expect(tableCellActions).toBeInTheDocument();
 
     const tableRow = await findAllByRole('row');

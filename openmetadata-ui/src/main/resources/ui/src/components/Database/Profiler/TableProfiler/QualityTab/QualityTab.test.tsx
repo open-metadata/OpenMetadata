@@ -14,7 +14,40 @@
 jest.mock('../../../../../utils/PermissionsUtils', () => ({
   getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
   getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
+  checkPermission: jest.fn().mockReturnValue(true),
 }));
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const MockTabPanel = ({
+    children,
+    id,
+  }: {
+    children: React.ReactNode;
+    id?: string;
+  }) => <div data-testid={`tab-panel-${id}`}>{children}</div>;
+  const MockTabList = ({ children }: { children: React.ReactNode }) => (
+    <div role="tablist">{children}</div>
+  );
+  const MockTabItem = ({
+    children,
+    id,
+  }: {
+    children: React.ReactNode;
+    id?: string;
+  }) => (
+    <button data-testid={`tab-${id}`} role="tab">
+      {children}
+    </button>
+  );
+  const MockTabs = ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+  MockTabs.Panel = MockTabPanel;
+  MockTabs.List = MockTabList;
+  MockTabs.Item = MockTabItem;
+
+  return { Tabs: MockTabs };
+});
 
 import { render, screen } from '@testing-library/react';
 import { act } from 'react';
@@ -41,6 +74,7 @@ const mockTable = {
 
 const mockUseTableProfiler = {
   tableProfiler: MOCK_TABLE,
+  table: MOCK_TABLE,
   onSettingButtonClick: jest.fn(),
   permissions: {
     EditAll: true,
@@ -61,6 +95,14 @@ const mockUseTableProfiler = {
     handlePageChange: jest.fn(),
     handlePageSizeChange: jest.fn(),
     showPagination: true,
+  },
+  testCaseSummary: {
+    total: {
+      total: 10,
+      success: 5,
+      failed: 3,
+      aborted: 2,
+    },
   },
 };
 
@@ -149,6 +191,55 @@ jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
     paging: { total: 0 },
   }),
 }));
+
+jest.mock('../../../../../context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: jest.fn().mockReturnValue({
+    getResourceLimit: jest.fn(),
+  }),
+}));
+
+jest.mock(
+  '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => ({
+    useEntityExportModalProvider: jest.fn().mockReturnValue({
+      showModal: jest.fn(),
+    }),
+  })
+);
+
+jest.mock('../../../../../utils/TestCaseUtils', () => ({
+  ExtraTestCaseDropdownOptions: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../../common/EntityPageInfos/ManageButton/ManageButton', () =>
+  jest.fn().mockImplementation((props) => (
+    <div
+      data-deleted={props.deleted}
+      data-entity-id={props.entityId}
+      data-entity-type={props.entityType}
+      data-testid="manage-button">
+      ManageButton
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component',
+  () => jest.fn().mockReturnValue(<div>TestSuitePipelineTab</div>)
+);
+
+jest.mock('../../../../common/SummaryCard/SummaryCardV1', () =>
+  jest.fn().mockImplementation(({ title, value }) => (
+    <div data-testid="summary-card">
+      <span>{title}</span>
+      <span>{value}</span>
+    </div>
+  ))
+);
+
+jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
+);
 
 describe('QualityTab', () => {
   it('should render QualityTab', async () => {
@@ -381,5 +472,138 @@ describe('QualityTab', () => {
     });
 
     expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
+  });
+
+  it('should render ManageButton component', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValue(mockUseTableProfiler);
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByText('ManageButton')).toBeInTheDocument();
+  });
+
+  it('should call ExtraTestCaseDropdownOptions with correct parameters when table has fullyQualifiedName', async () => {
+    const { ExtraTestCaseDropdownOptions } = jest.requireMock(
+      '../../../../../utils/TestCaseUtils'
+    );
+
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        fullyQualifiedName: 'test.table.fqn',
+        deleted: false,
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(ExtraTestCaseDropdownOptions).toHaveBeenCalled();
+  });
+
+  it('should not call ExtraTestCaseDropdownOptions when table has no fullyQualifiedName', async () => {
+    const { ExtraTestCaseDropdownOptions } = jest.requireMock(
+      '../../../../../utils/TestCaseUtils'
+    );
+    ExtraTestCaseDropdownOptions.mockClear();
+
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        fullyQualifiedName: undefined,
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(ExtraTestCaseDropdownOptions).not.toHaveBeenCalled();
+  });
+
+  it('should call checkPermission for ViewAll and EditAll operations', async () => {
+    const { checkPermission } = jest.requireMock(
+      '../../../../../utils/PermissionsUtils'
+    );
+    checkPermission.mockClear();
+
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        fullyQualifiedName: 'test.table.fqn',
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(checkPermission).toHaveBeenCalled();
+  });
+
+  it('should pass correct props to ManageButton', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        id: 'test-table-id',
+        fullyQualifiedName: 'test.table.fqn',
+        deleted: false,
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    const manageButton = await screen.findByTestId('manage-button');
+
+    expect(manageButton).toHaveAttribute('data-deleted', 'false');
+    expect(manageButton).toHaveAttribute('data-entity-id', 'test-table-id');
+    expect(manageButton).toHaveAttribute('data-entity-type', 'testCase');
+  });
+
+  it('should pass deleted true to ManageButton when table is deleted', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        id: 'test-table-id',
+        fullyQualifiedName: 'test.table.fqn',
+        deleted: true,
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    const manageButton = await screen.findByTestId('manage-button');
+
+    expect(manageButton).toHaveAttribute('data-deleted', 'true');
+  });
+
+  it('should render ErrorPlaceHolder when ViewTests permission is false', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      permissions: {
+        EditAll: true,
+        EditTests: true,
+        ViewTests: false,
+        ViewAll: true,
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 });

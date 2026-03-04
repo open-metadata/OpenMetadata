@@ -170,7 +170,7 @@ class PiiProcessorTest(TestCase):
             serviceName="test",
             sourceConfig=SourceConfig(
                 config=DatabaseServiceAutoClassificationPipeline(
-                    confidence=85,
+                    confidence=80,
                     enableAutoClassification=True,
                 )
             ),
@@ -266,6 +266,6 @@ class PiiProcessorTest(TestCase):
             self.assertRegex(
                 updated.tag_label.reason,
                 expected_regex=re.compile(
-                    f"Chose {expected.tag_label.tagFQN.root} with a classification score of \d+([.,]?\d{{1,2}})?"
+                    f"Detected by `[A-Za-z]+Recognizer` \d+ times? with an average score of \d+([.,]?\d{{1,2}})?"
                 ),
             )

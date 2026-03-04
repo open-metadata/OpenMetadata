@@ -285,8 +285,7 @@
     },
     "entityStatus": {
       "description": "Status of the SearchIndex.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

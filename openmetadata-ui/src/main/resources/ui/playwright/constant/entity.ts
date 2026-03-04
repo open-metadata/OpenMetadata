@@ -1,3 +1,5 @@
+import { EntityType } from '../support/entity/EntityDataClass.interface';
+
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,3 +37,16 @@ export const ES_RESERVED_CHARACTERS: Record<string, string> = {
   '\\': '\\\\',
   '/': '\\/',
 };
+
+export const ENTITY_TYPES: EntityType[] = [
+  'table',
+  'database',
+  'databaseSchema',
+  'dashboard',
+  'dashboardDataModel',
+  'pipeline',
+  'topic',
+  'mlmodel',
+  'container',
+  'searchIndex',
+];

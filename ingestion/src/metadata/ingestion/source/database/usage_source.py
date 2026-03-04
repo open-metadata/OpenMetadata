@@ -18,6 +18,8 @@ from abc import ABC
 from datetime import datetime, timedelta, timezone
 from typing import Iterable
 
+from sqlalchemy import text
+
 from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.models import Either
@@ -115,12 +117,15 @@ class UsageSource(QueryParserSource, ABC):
                     start_time=self.start + timedelta(days=days),
                     end_time=self.start + timedelta(days=days + 1),
                 )
+                logger.debug(f"Executing usage query: {query}")
                 for engine in self.get_engine():
                     with engine.connect() as conn:
-                        rows = conn.execute(query)
+                        rows = conn.execute(text(query))
                         queries = []
+                        row_count = 0
                         for row in rows:
-                            row = dict(row)
+                            row_count += 1
+                            row = row._asdict()
                             try:
                                 row.update({k.lower(): v for k, v in row.items()})
                                 logger.debug(f"Processing row: {row}")
@@ -151,6 +156,7 @@ class UsageSource(QueryParserSource, ABC):
                                 logger.warning(
                                     f"Unexpected exception processing row [{row}]: {exc}"
                                 )
+                    logger.info(f"Processed {row_count} query log entries for usage")
                     yield TableQueries(queries=queries)
             except Exception as exc:
                 if query:

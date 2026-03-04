@@ -106,6 +106,22 @@ This directory will be used to set the `LD_LIBRARY_PATH` env variable. It is req
 $$
 
 $$section
+### Preserve Identifier Case $(id="preserveIdentifierCase")
+
+Controls how Oracle identifier names (tables, columns, schemas) are stored in OpenMetadata.
+
+Oracle stores unquoted identifiers in UPPERCASE (e.g. `CREATE TABLE EMPLOYEES` → `EMPLOYEES` in the data dictionary). Quoted identifiers keep their original case (e.g. `CREATE TABLE "employees"` → `employees`).
+
+**Disabled (default):** Identifiers with the same letters but different case — such as unquoted `EMPLOYEES` and quoted `"employees"` — are not guaranteed to be stored distinctly and may collide into the same name.
+
+**Enabled:** Names are stored exactly as Oracle persists them, preserving the distinction between `EMPLOYEES` and `"employees"`.
+
+**When to enable:** If your schema contains identifiers that share the same letters but differ only in case (one unquoted UPPERCASE, one quoted lowercase) and you need them treated as separate entities in OpenMetadata.
+
+**⚠ Migration warning:** Enabling this after data has already been ingested with the default setting will change the stored names of **all** existing tables, columns, schemas, and constraints. This breaks all attached metadata — tags, descriptions, lineage, data quality tests, and custom properties — on those entities. If you must switch, soft-delete all previously ingested entities before re-ingesting with the new setting.
+$$
+
+$$section
 ### Database Name $(id="databaseName")
 In OpenMetadata, the Database Service hierarchy works as follows:
 ```
@@ -127,4 +143,132 @@ $$section
 ### Connection Arguments $(id="connectionArguments")
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Oracle during the connection. These details must be added as Key-Value pairs.
+$$
+
+## Sample Storage AWS S3 Config
+
+$$section
+### AWS Access Key ID $(id="awsAccessKeyId")
+
+When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests (<a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html" target="_blank">docs</a>).
+
+Access keys consist of two parts:
+1. An access key ID (for example, `AKIAIOSFODNN7EXAMPLE`),
+2. And a secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
+
+You must use both the access key ID and secret access key together to authenticate your requests.
+
+You can find further information on how to manage your access keys <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html" target="_blank">here</a>
+$$
+
+$$section
+### AWS Secret Access Key $(id="awsSecretAccessKey")
+
+Secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
+$$
+
+$$section
+### AWS Region $(id="awsRegion")
+
+Each AWS Region is a separate geographic area in which AWS clusters data centers (<a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html" target="_blank">docs</a>).
+
+As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
+
+Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials <a href="https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials" target="_blank">here</a>.
+$$
+
+$$section
+### AWS Session Token $(id="awsSessionToken")
+
+If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID and AWS Secrets Access Key. Also, these will include an AWS Session Token.
+
+You can find more information on <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html" target="_blank">Using temporary credentials with AWS resources</a>.
+$$
+
+$$section
+### Endpoint URL $(id="endPointURL")
+
+To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the default endpoint for each service in an AWS Region. But you can specify an alternate endpoint for your API requests.
+
+Find more information on <a href="https://docs.aws.amazon.com/general/latest/gr/rande.html" target="_blank">AWS service endpoints</a>.
+$$
+
+$$section
+### Profile Name $(id="profileName")
+
+A named profile is a collection of settings and credentials that you can apply to an AWS CLI command. When you specify a profile to run a command, the settings and credentials are used to run that command. Multiple named profiles can be stored in the config and credentials files.
+
+You can inform this field if you'd like to use a profile other than `default`.
+
+Find here more information about <a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html" target="_blank">Named profiles for the AWS CLI</a>.
+$$
+
+$$section
+### Assume Role ARN $(id="assumeRoleArn")
+
+Typically, you use `AssumeRole` within your account or for cross-account access. In this field you'll set the `ARN` (Amazon Resource Name) of the policy of the other account.
+
+A user who wants to access a role in a different account must also have permissions that are delegated from the account administrator. The administrator must attach a policy that allows the user to call `AssumeRole` for the `ARN` of the role in the other account.
+
+This is a required field if you'd like to `AssumeRole`.
+
+Find more information on <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html" target="_blank">AssumeRole</a>.
+$$
+
+$$section
+### Assume Role Session Name $(id="assumeRoleSessionName")
+
+An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons.
+
+By default, we'll use the name `OpenMetadataSession`.
+
+Find more information about the <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session." target="_blank">Role Session Name</a>.
+$$
+
+$$section
+### Assume Role Source Identity $(id="assumeRoleSourceIdentity")
+
+The source identity specified by the principal that is calling the `AssumeRole` operation. You can use source identity information in AWS CloudTrail logs to determine who took actions with a role.
+
+Find more information about <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity" target="_blank">Source Identity</a>.
+$$
+
+$$section
+### Bucket Name $(id="bucketName")
+
+A bucket name in Data Lake is a unique identifier used to organize and store data objects.
+
+It's similar to a folder name, but it's used for object storage rather than file storage.
+$$
+
+$$section
+### Prefix $(id="prefix")
+
+The prefix of a data source refers to the first part of the data path that identifies the source or origin of the data.
+
+It's used to organize and categorize data within the container, and can help users easily locate and access the data they need.
+$$
+
+$$section
+### Default Database Filter Pattern $(id="databaseFilterPattern")
+
+Regex to only include/exclude databases that matches the pattern.
+$$
+
+$$section
+### Default Schema Filter Pattern $(id="schemaFilterPattern")
+
+Regex to only include/exclude schemas that matches the pattern.
+$$
+
+$$section
+### Default Table Filter Pattern $(id="tableFilterPattern")
+
+Regex to only include/exclude tables that matches the pattern.
+$$
+
+
+$$section
+### Default Stored Procedure Filter Pattern $(id="storedProcedureFilterPattern")
+Regex to only include/exclude stored procedures that matches the pattern.
 $$

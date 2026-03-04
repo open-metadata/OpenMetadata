@@ -12,14 +12,20 @@
 """
 Cardinality Distribution Metric definition
 """
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from sqlalchemy import case, column, func, or_
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy import case, column, desc, func, or_
+from sqlalchemy.orm import Session
 
+if TYPE_CHECKING:
+    from metadata.profiler.processor.runner import PandasRunner
+
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.distinct_count import DistinctCount
+from metadata.profiler.metrics.static.sum import Sum
+from metadata.profiler.metrics.window.value_rank import ValueRank
 from metadata.profiler.orm.registry import is_concatenable, is_enum
 from metadata.utils.logger import profiler_logger
 
@@ -34,12 +40,14 @@ class CardinalityDistribution(HybridMetric):
     with an "Others" bucket. Only works for concatenable types (strings, enums).
     """
 
+    schema_metric_type = MetricType.cardinalityDistribution
+
     threshold_percentage: float = 0.02  # 2% threshold for "Others" bucket
     min_buckets: int = 5  # Minimum number of top categories to show
 
     @classmethod
     def name(cls):
-        return "cardinalityDistribution"
+        return MetricType.cardinalityDistribution.value
 
     @property
     def metric_type(self):
@@ -47,7 +55,7 @@ class CardinalityDistribution(HybridMetric):
 
     def fn(
         self,
-        sample: Optional[DeclarativeMeta],
+        sample: Optional[type],
         res: Dict[str, Any],
         session: Optional[Session] = None,
     ) -> Optional[Dict[str, Any]]:
@@ -76,64 +84,50 @@ class CardinalityDistribution(HybridMetric):
             logger.debug(
                 f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct."
             )
-            return None
+            return {"allValuesUnique": True}
 
         col = column(self.col.name, self.col.type)
         threshold = self.threshold_percentage * total_count
 
         # Build a cross-database compatible query using CTEs
-        # Step 1: Get value counts
+        # Step 1: Get value counts and ranks
         value_counts_cte = (
             session.query(  # type: ignore
-                col.label("category"), func.count(col).label("category_count")
+                col.label("category"),
+                func.count(col).label("category_count"),
+                ValueRank(col).fn(),
             )
             .select_from(sample)
+            .where(col != None)
             .group_by(col)
             .cte("value_counts")
         )
 
-        # Step 2: Get top categories
-        top_categories_cte = (
-            session.query(value_counts_cte.c.category)  # type: ignore
-            .select_from(value_counts_cte)
-            .order_by(value_counts_cte.c.category_count.desc())
-            .limit(self.min_buckets)
-            .cte("top_categories")
-        )
-
-        # Step 3: Create categorization CTE to avoid complex GROUP BY
-        categorized_cte = (
-            session.query(  # type: ignore
-                case(
-                    (
-                        or_(
-                            value_counts_cte.c.category.in_(
-                                session.query(top_categories_cte.c.category)  # type: ignore
-                            ),
-                            value_counts_cte.c.category_count >= threshold,
-                        ),
-                        value_counts_cte.c.category,
+        # step 2: Get categories
+        categories = session.query(  # type: ignore
+            case(
+                (
+                    or_(
+                        value_counts_cte.c["category_count"] >= threshold,
+                        value_counts_cte.c["valueRank"] <= self.min_buckets,
                     ),
-                    else_="Others",
-                ).label("category_group"),
-                value_counts_cte.c.category_count,
-            )
-            .select_from(value_counts_cte)
-            .cte("categorized")
-        )
+                    value_counts_cte.c["category"],
+                ),
+                else_="Others",
+            ).label("category"),
+            value_counts_cte.c["category_count"],
+        ).cte("categories")
 
-        # Step 4: Final aggregation with simple GROUP BY
-        query = (
-            session.query(  # type: ignore
-                categorized_cte.c.category_group,
-                func.sum(categorized_cte.c.category_count).label("total_count"),
+        # Step 3: Final aggregation with simple GROUP BY
+        rows = (
+            session.query(
+                categories.c["category"],
+                Sum(categories.c["category_count"]).fn(),
             )
-            .select_from(categorized_cte)
-            .group_by(categorized_cte.c.category_group)
-            .order_by(func.sum(categorized_cte.c.category_count).desc())
-        )
-
-        rows = query.all()
+            .select_from(categories)
+            .group_by(categories.c["category"])
+            .order_by(desc("sum"))
+        ).all()
 
         if rows:
             return {
@@ -143,7 +137,7 @@ class CardinalityDistribution(HybridMetric):
             }
         return None
 
-    def df_fn(self, res: Dict[str, Any], dfs=None):
+    def df_fn(self, res: Dict[str, Any], dfs: Optional["PandasRunner"] = None):
         """
         Pandas implementation for dataframes
         """
@@ -170,41 +164,33 @@ class CardinalityDistribution(HybridMetric):
             logger.debug(
                 f"CardinalityDistribution not applicable for {self.col.name} because all values are distinct."
             )
-            return None
+            return {"allValuesUnique": True}
 
         try:
             if dfs is None:
                 return None
 
-            # Calculate threshold
             threshold = self.threshold_percentage * total_count
 
-            # Use pandas value_counts() for efficient processing - much faster for large datasets
             combined_value_counts = pd.Series(dtype="object")
 
             for df in dfs:
-                # Use value_counts() directly on the column - much more memory efficient
                 df_value_counts = df[self.col.name].value_counts()
                 combined_value_counts = combined_value_counts.add(
                     df_value_counts, fill_value=0
                 )
 
-            # Get top categories that meet the threshold OR are in the top N
             top_categories = {}
             others_count = 0
 
-            # Get the top N categories by count
             top_n_categories = set(combined_value_counts.head(self.min_buckets).index)
 
-            # Process in descending order of frequency
             for category, count in combined_value_counts.items():
-                # First check if it's in top N, then check threshold
                 if category in top_n_categories or count >= threshold:
                     top_categories[category] = count
                 else:
                     others_count += count
 
-            # Build result
             categories = []
             counts = []
             percentages = []

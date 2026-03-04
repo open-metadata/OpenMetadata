@@ -17,15 +17,16 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDomain,
+  assignSingleSelectDomain,
   descriptionBox,
   redirectToHomePage,
-  removeDomain,
+  removeSingleSelectDomain,
   toastNotification,
   uuid,
 } from '../../utils/common';
 import { addMultiOwner, removeOwnersFromList } from '../../utils/entity';
 import { test } from '../fixtures/pages';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 const table = new TableClass();
 const user1 = new UserClass();
@@ -45,21 +46,11 @@ test.beforeAll(async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await table.delete(apiContext);
-  await user1.delete(apiContext);
-  await user2.delete(apiContext);
-  await domain1.delete(apiContext);
-  await domain2.delete(apiContext);
-  await afterAction();
-});
-
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test('Logical TestSuite', async ({ page, ownerPage }) => {
+test('Logical TestSuite', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page, ownerPage }) => {
   test.slow();
 
   const NEW_TEST_SUITE = {
@@ -92,6 +83,11 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
     );
     await getTestCase;
 
+    await page.waitForSelector(
+      "[data-testid='test-case-selection-card'] [data-testid='loader']",
+      { state: 'detached' }
+    );
+
     await page.click(
       `[data-testid="test-case-selection-card"] [data-testid="${testCaseName1}"]`
     );
@@ -109,10 +105,9 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
   });
 
   await test.step('Domain Add, Update and Remove', async () => {
-    await assignDomain(page, domain1.responseData);
-    // TODO: Add domain update
-    // await updateDomain(page, domain2.responseData);
-    await removeDomain(page, domain1.responseData, false);
+    await assignSingleSelectDomain(page, domain1.responseData);
+    await assignSingleSelectDomain(page, domain2.responseData);
+    await removeSingleSelectDomain(page, domain2.responseData, true);
   });
 
   await test.step(
@@ -120,14 +115,14 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
     async () => {
       await addMultiOwner({
         page,
-        ownerNames: [user1.getUserName()],
+        ownerNames: [user1.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         endpoint: EntityTypeEndpoint.TestSuites,
         type: 'Users',
       });
       await removeOwnersFromList({
         page,
-        ownerNames: [user1.getUserName()],
+        ownerNames: [user1.getUserDisplayName()],
         endpoint: EntityTypeEndpoint.TestSuites,
       });
       await addMultiOwner({

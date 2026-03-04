@@ -14,11 +14,10 @@ Python API REST wrapper and helpers
 import time
 import traceback
 from datetime import datetime, timezone
-from json import JSONDecodeError
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, JSONDecodeError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
@@ -264,9 +263,10 @@ class REST:
                 try:
                     return resp.json()
                 except JSONDecodeError as json_decode_error:
-                    logger.error(
-                        f"Json decoding error while returning response {resp} in json format - {json_decode_error}."
-                        f"The Response still returned to be handled by client..."
+                    logger.debug(
+                        "Non-JSON response (%s) returned as-is: %s",
+                        resp.status_code,
+                        json_decode_error,
                     )
                     return resp
                 except Exception as exc:
@@ -306,21 +306,22 @@ class REST:
         return None
 
     @calculate_execution_time(context="GET")
-    def get(self, path, data=None):
+    def get(self, path, data=None, headers=None):
         """
         GET method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional custom headers to override default headers
 
         Returns:
             Response
         """
-        return self._request("GET", path, data)
+        return self._request("GET", path, data, headers=headers)
 
     @calculate_execution_time(context="POST")
-    def post(self, path, data=None, json=None):
+    def post(self, path, data=None, json=None, headers=None):
         """
         POST method
 
@@ -328,11 +329,12 @@ class REST:
             path (str):
             data ():
             json ():
+            headers (dict): Optional custom headers to override default headers
 
         Returns:
             Response
         """
-        return self._request("POST", path, data, json)
+        return self._request("POST", path, data, json, headers=headers)
 
     @calculate_execution_time(context="PUT")
     def put(self, path, data=None, json=None, headers=None):
@@ -342,6 +344,8 @@ class REST:
         Parameters:
             path (str):
             data ():
+            json ():
+            headers (dict): Optional custom headers to override default headers
 
         Returns:
             Response
@@ -368,18 +372,19 @@ class REST:
         )
 
     @calculate_execution_time(context="DELETE")
-    def delete(self, path, data=None):
+    def delete(self, path, data=None, headers=None):
         """
         DELETE method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional custom headers to override default headers
 
         Returns:
             Response
         """
-        return self._request("DELETE", path, data)
+        return self._request("DELETE", path, data, headers=headers)
 
     def __enter__(self):
         return self

@@ -1,7 +1,6 @@
 """Base class for param setter logic for table data diff"""
 
 from typing import List, Optional, Set, Type, Union
-from urllib.parse import urlparse
 
 from sqlalchemy.engine import make_url
 
@@ -79,6 +78,7 @@ class BaseTableParameter:
             path=self.get_data_diff_table_path(
                 entity.fullyQualifiedName.root, service.serviceType
             ),
+            fullyQualifiedName=entity.fullyQualifiedName.root,
             serviceUrl=self.get_data_diff_url(
                 service,
                 entity.fullyQualifiedName.root,
@@ -143,7 +143,9 @@ class BaseTableParameter:
             connection_class = service_spec_patch.get_connection_class()
             if not connection_class:
                 return (
-                    str(get_connection(service_connection_config).url)
+                    get_connection(service_connection_config).url.render_as_string(
+                        hide_password=False
+                    )
                     if service_connection_config
                     else None
                 )
@@ -151,7 +153,9 @@ class BaseTableParameter:
             return connection.get_connection_dict()
         except (ValueError, AttributeError, NotImplementedError):
             return (
-                str(get_connection(service_connection_config).url)
+                get_connection(service_connection_config).url.render_as_string(
+                    hide_password=False
+                )
                 if service_connection_config
                 else None
             )
@@ -188,19 +192,22 @@ class BaseTableParameter:
             source_url["driver"] = source_url["driver"].split("+")[0]
             return source_url
 
-        url = urlparse(source_url)
+        url = make_url(source_url)
         # remove the driver name from the url because table-diff doesn't support it
-        kwargs = {"scheme": url.scheme.split("+")[0]}
-        _, database, schema, _ = fqn.split(table_fqn)  # pylint: disable=unused-variable
-        # path needs to include the database AND schema in some of the connectors
+        drivername = url.drivername.split("+")[0]
+        _, database, schema, _ = fqn.split(table_fqn)
         if hasattr(db_service.connection.config, "supportsDatabase"):
-            if kwargs["scheme"] in {Dialects.UnityCatalog, Dialects.Databricks}:
-                kwargs["query"] = f"catalog={database}"
+            if drivername in {Dialects.UnityCatalog, Dialects.Databricks}:
+                url = url.set(drivername=drivername, query={"catalog": database})
             else:
-                kwargs["path"] = f"/{database}"
-        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
-            kwargs["path"] = f"/{database}/{schema}"
-        return url._replace(**kwargs).geturl()
+                url = url.set(drivername=drivername, database=database)
+        if drivername in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
+            url = url.set(drivername=drivername, database=f"{database}/{schema}")
+        elif drivername in {Dialects.MySQL, Dialects.MariaDB}:
+            url = url.set(drivername=drivername, database=f"{schema}")
+        else:
+            url = url.set(drivername=drivername)
+        return url.render_as_string(hide_password=False)
 
     @staticmethod
     def filter_relevant_columns(

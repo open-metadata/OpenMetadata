@@ -72,7 +72,7 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "spreadsheets")
 public class SpreadsheetResource extends EntityResource<Spreadsheet, SpreadsheetRepository> {
-  public static final String COLLECTION_PATH = "v1/drives/spreadsheets/";
+  public static final String COLLECTION_PATH = "/v1/drives/spreadsheets/";
   static final String FIELDS =
       "owners,directory,worksheets,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,mimeType,createdTime,modifiedTime";
   private final SpreadsheetMapper mapper = new SpreadsheetMapper();
@@ -209,8 +209,17 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -249,8 +258,17 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
   }
 
   @POST
@@ -275,6 +293,27 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
     Spreadsheet spreadsheet =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, spreadsheet);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateSpreadsheets",
+      summary = "Bulk create or update spreadsheets",
+      description = "Create or update multiple spreadsheets in a single operation.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Bulk operation results"),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateSpreadsheet> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH

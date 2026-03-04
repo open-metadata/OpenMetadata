@@ -1,4 +1,5 @@
 """Convenience classes that represent test definitions"""
+
 from .base_tests import *
 from .column_tests import *
 from .table_tests import *

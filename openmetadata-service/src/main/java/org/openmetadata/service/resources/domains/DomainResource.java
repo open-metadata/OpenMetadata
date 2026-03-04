@@ -75,7 +75,8 @@ import org.openmetadata.service.util.EntityHierarchyList;
 public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
   private final DomainMapper mapper = new DomainMapper();
-  static final String FIELDS = "tags,children,owners,experts,extension,followers";
+  static final String FIELDS =
+      "tags,children,childrenCount,owners,experts,extension,followers,votes,certification";
 
   public DomainResource(Authorizer authorizer, Limits limits) {
     super(Entity.DOMAIN, authorizer, limits);
@@ -425,6 +426,33 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for an Entity",
+      description = "Update vote for an Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Valid org.openmetadata.schema.api.VoteRequest request) {
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
+        .toResponse();
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -507,9 +535,24 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
-          int limitParam) {
+          int limitParam,
+      @Parameter(
+              description =
+                  "List domains filtered to retrieve the first level/immediate children of the domain `directChildrenOf` parameter. "
+                      + "If not specified, returns only root domains (domains with no parent).",
+              schema = @Schema(type = "string"))
+          @QueryParam("directChildrenOf")
+          String directChildrenOf,
+      @Parameter(
+              description =
+                  "Offset from which to start returning results (for offset-based pagination)",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          int offset) {
 
-    return new EntityHierarchyList(repository.buildHierarchy(fieldsParam, limitParam));
+    return repository.buildHierarchy(fieldsParam, limitParam, directChildrenOf, offset);
   }
 
   @PUT
@@ -649,5 +692,24 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @Min(0)
           int offset) {
     return Response.ok(repository.getDomainAssetsByName(fqn, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllDomainsWithAssetsCount",
+      summary = "Get all domains with their asset counts",
+      description =
+          "Get a map of domain fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of domain FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllDomainsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllDomainsWithAssetsCount();
+    return Response.ok(result).build();
   }
 }

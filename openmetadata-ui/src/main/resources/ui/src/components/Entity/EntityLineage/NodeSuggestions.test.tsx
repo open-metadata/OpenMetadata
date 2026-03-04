@@ -23,6 +23,7 @@ const mockProps = {
 
 const entityType = [
   SearchIndex.TABLE,
+  SearchIndex.STORED_PROCEDURE,
   SearchIndex.TOPIC,
   SearchIndex.DASHBOARD,
   SearchIndex.PIPELINE,

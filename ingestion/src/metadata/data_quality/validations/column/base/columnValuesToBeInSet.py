@@ -44,131 +44,8 @@ ALLOWED_VALUE_COUNT = "allowedValueCount"
 class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
     """Validator for column value to be in set test case"""
 
-    def _get_test_parameters(self) -> dict:
-        """Extract test-specific parameters from test case
-
-        Returns:
-            dict with keys: allowed_values, match_enum
-        """
-        allowed_values = self.get_test_case_param_value(
-            self.test_case.parameterValues,
-            "allowedValues",
-            literal_eval,
-        )
-        match_enum = utils.get_bool_test_case_param(
-            self.test_case.parameterValues, "matchEnum"
-        )
-
-        return {
-            "allowed_values": allowed_values,
-            "match_enum": match_enum,
-        }
-
-    def _get_metrics_to_compute(self, test_params: dict) -> dict:
-        """Define which metrics to compute based on test parameters
-
-        Args:
-            test_params: Dictionary with 'allowed_values' and 'match_enum'
-
-        Returns:
-            dict: Mapping of Metrics enum names to Metrics enum values
-        """
-        metrics = {
-            Metrics.COUNT_IN_SET.name: Metrics.COUNT_IN_SET,
-        }
-
-        if test_params["match_enum"]:
-            metrics[Metrics.ROW_COUNT.name] = Metrics.ROW_COUNT
-
-        return metrics
-
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: Optional[dict] = None
-    ) -> TestEvaluation:
-        """Evaluate the in-set test condition
-
-        For in-set test, behavior depends on match_enum flag:
-        - match_enum=False: Pass if at least one value is in the set (count_in_set > 0)
-        - match_enum=True: Pass if ALL values are in the set (row_count - count_in_set == 0)
-
-        Args:
-            metric_values: Dictionary with keys from Metrics enum names
-                          e.g., {"COUNT_IN_SET": 50, "ROW_COUNT": 100}
-            test_params: Dictionary with 'allowed_values' and 'match_enum'.
-                        Required for this validator.
-
-        Returns:
-            TestEvaluation: TypedDict with keys:
-                - matched: bool - whether test passed
-                - passed_rows: int - number of values in set
-                - failed_rows: int - number of values not in set (0 if not match_enum)
-                - total_rows: int - total row count for reporting
-        """
-        if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValuesToBeInSet._evaluate_test_condition"
-            )
-        count_in_set = metric_values[Metrics.COUNT_IN_SET.name]
-        match_enum = test_params["match_enum"]
-
-        if match_enum:
-            row_count = metric_values.get(Metrics.ROW_COUNT.name, 0)
-            failed_count = row_count - count_in_set
-            matched = failed_count == 0
-            total_rows = row_count
-        else:
-            matched = count_in_set > 0
-            failed_count = 0
-            total_rows = count_in_set
-
-        return {
-            "matched": matched,
-            "passed_rows": count_in_set,
-            "failed_rows": failed_count,
-            "total_rows": total_rows,
-        }
-
-    def _format_result_message(
-        self,
-        metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
-    ) -> str:
-        """Format the result message for in-set test
-
-        Args:
-            metric_values: Dictionary with Metrics enum names as keys
-            dimension_info: Optional DimensionInfo with dimension details
-            test_params: Optional test parameters (not used by this validator)
-
-        Returns:
-            str: Formatted result message
-        """
-        count_in_set = metric_values[Metrics.COUNT_IN_SET.name]
-
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found countInSet={count_in_set}"
-            )
-        else:
-            return f"Found countInSet={count_in_set}."
-
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
-        """Get test result values for in-set test
-
-        Args:
-            metric_values: Dictionary with Metrics enum names as keys
-
-        Returns:
-            List[TestResultValue]: Test result values for the test case
-        """
-        return [
-            TestResultValue(
-                name=ALLOWED_VALUE_COUNT,
-                value=str(metric_values[Metrics.COUNT_IN_SET.name]),
-            ),
-        ]
+    ALLOWED_VALUES = "allowedValues"
+    MATCH_ENUM = "matchEnum"
 
     def _run_validation(self) -> TestCaseResult:
         """Execute the specific test validation logic
@@ -182,20 +59,20 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+            column: Union[SQALikeColumn, Column] = self.get_column()
             count_in_set = self._run_results(
-                Metrics.COUNT_IN_SET, column, values=test_params["allowed_values"]
+                Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES]
             )
 
             metric_values = {
-                Metrics.COUNT_IN_SET.name: count_in_set,
+                Metrics.countInSet.name: count_in_set,
             }
 
-            if test_params["match_enum"]:
+            if test_params[self.MATCH_ENUM]:
                 row_count = self._run_results(
-                    Metrics.ROW_COUNT, column, values=test_params["allowed_values"]
+                    Metrics.rowCount, column, values=test_params[self.ALLOWED_VALUES]
                 )
-                metric_values[Metrics.ROW_COUNT.name] = row_count
+                metric_values[Metrics.rowCount.name] = row_count
 
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -228,50 +105,131 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             passed_rows=evaluation["passed_rows"],
         )
 
-    def _run_dimensional_validation(self) -> List[DimensionResult]:
-        """Execute dimensional validation for column values to be in set
-
-        The new approach runs separate queries for each dimension column instead of
-        combining them with GROUP BY. For example, if dimensionColumns = ["region", "age"],
-        this method will:
-        1. Run one query: GROUP BY region -> {"mumbai": result1, "delhi": result2}
-        2. Run another query: GROUP BY age -> {"25": result3, "30": result4}
+    def _get_test_parameters(self) -> dict:
+        """Extract test-specific parameters from test case
 
         Returns:
-            List[DimensionResult]: List of dimension-specific test results
+            dict with keys: allowed_values, match_enum
         """
-        try:
-            dimension_columns = self.test_case.dimensionColumns or []
-            if not dimension_columns:
-                return []
+        allowed_values = self.get_test_case_param_value(
+            self.test_case.parameterValues,
+            self.ALLOWED_VALUES,
+            literal_eval,
+        )
+        match_enum = utils.get_bool_test_case_param(
+            self.test_case.parameterValues, self.MATCH_ENUM
+        )
 
-            column: Union[SQALikeColumn, Column] = self._get_column_name()
+        return {
+            self.ALLOWED_VALUES: allowed_values,
+            self.MATCH_ENUM: match_enum,
+        }
 
-            test_params = self._get_test_parameters()
-            metrics_to_compute = self._get_metrics_to_compute(test_params)
+    def _get_metrics_to_compute(self, test_params: dict) -> dict:
+        """Define which metrics to compute based on test parameters
 
-            dimension_results = []
-            for dimension_column in dimension_columns:
-                try:
-                    dimension_col = self._get_column_name(dimension_column)
+        Args:
+            test_params: Dictionary with 'allowed_values' and 'match_enum'
 
-                    single_dimension_results = self._execute_dimensional_validation(
-                        column, dimension_col, metrics_to_compute, test_params
-                    )
+        Returns:
+            dict: Mapping of Metrics enum names to Metrics enum values
+        """
+        metrics = {
+            Metrics.countInSet.name: Metrics.countInSet,
+        }
 
-                    dimension_results.extend(single_dimension_results)
+        if test_params[self.MATCH_ENUM]:
+            metrics[Metrics.rowCount.name] = Metrics.rowCount
 
-                except Exception as exc:
-                    logger.warning(
-                        f"Error executing dimensional query for column {dimension_column}: {exc}"
-                    )
-                    continue
+        return metrics
 
-            return dimension_results
+    def _evaluate_test_condition(
+        self, metric_values: dict, test_params: Optional[dict] = None
+    ) -> TestEvaluation:
+        """Evaluate the in-set test condition
 
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional validation: {exc}")
-            return []
+        For in-set test, behavior depends on match_enum flag:
+        - match_enum=False: Pass if at least one value is in the set (count_in_set > 0)
+        - match_enum=True: Pass if ALL values are in the set (row_count - count_in_set == 0)
+
+        Args:
+            metric_values: Dictionary with keys from Metrics enum names
+                          e.g., {"COUNT_IN_SET": 50, "ROW_COUNT": 100}
+            test_params: Dictionary with 'allowed_values' and 'match_enum'.
+                        Required for this validator.
+
+        Returns:
+            TestEvaluation: TypedDict with keys:
+                - matched: bool - whether test passed
+                - passed_rows: int - number of values in set
+                - failed_rows: int - number of values not in set (0 if not match_enum)
+                - total_rows: int - total row count for reporting
+        """
+        if test_params is None:
+            raise ValueError(
+                "test_params is required for columnValuesToBeInSet._evaluate_test_condition"
+            )
+        count_in_set = metric_values[Metrics.countInSet.name]
+        match_enum = test_params[self.MATCH_ENUM]
+
+        if match_enum:
+            row_count = metric_values.get(Metrics.rowCount.name, 0)
+            failed_count = row_count - count_in_set
+            matched = failed_count == 0
+            total_rows = row_count
+        else:
+            matched = count_in_set > 0
+            failed_count = 0
+            total_rows = count_in_set
+
+        return {
+            "matched": matched,
+            "passed_rows": count_in_set,
+            "failed_rows": failed_count,
+            "total_rows": total_rows,
+        }
+
+    def _format_result_message(
+        self,
+        metric_values: dict,
+        dimension_info: Optional[DimensionInfo] = None,
+        test_params: Optional[dict] = None,
+    ) -> str:
+        """Format the result message for in-set test
+
+        Args:
+            metric_values: Dictionary with Metrics enum names as keys
+            dimension_info: Optional DimensionInfo with dimension details
+            test_params: Optional test parameters (not used by this validator)
+
+        Returns:
+            str: Formatted result message
+        """
+        count_in_set = metric_values[Metrics.countInSet.name]
+
+        if dimension_info:
+            return (
+                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
+                f"Found countInSet={count_in_set}"
+            )
+        else:
+            return f"Found countInSet={count_in_set}."
+
+    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+        """Get test result values for in-set test
+
+        Args:
+            metric_values: Dictionary with Metrics enum names as keys
+
+        Returns:
+            List[TestResultValue]: Test result values for the test case
+        """
+        return [
+            TestResultValue(
+                name=ALLOWED_VALUE_COUNT,
+                value=str(metric_values[Metrics.countInSet.name]),
+            ),
+        ]
 
     def _create_dimension_result(
         self,
@@ -304,7 +262,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         )
 
         # Apply test-specific logic: non-enum mode doesn't have meaningful impact score
-        if test_params and not test_params.get("match_enum", True):
+        if test_params and not test_params.get(self.MATCH_ENUM, True):
             dimension_result.impactScore = None
 
         return dimension_result
@@ -323,16 +281,12 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             column: The main column being validated
             dimension_col: Single dimension column object
             metrics_to_compute: Dictionary mapping Metrics enum names to Metrics objects
-                              e.g., {"COUNT_IN_SET": Metrics.COUNT_IN_SET}
+                              e.g., {"COUNT_IN_SET": Metrics.countInSet}
             test_params: Dictionary with test-specific parameters (allowed_values, match_enum)
 
         Returns:
             List[DimensionResult]: List of dimension results for this dimension column
         """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _get_column_name(self, column_name: Optional[str] = None):
         raise NotImplementedError
 
     @abstractmethod
@@ -359,4 +313,4 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         Returns:
             Tuple[int, int]:
         """
-        return self.compute_row_count(self._get_column_name())
+        return self.compute_row_count(self.get_column())

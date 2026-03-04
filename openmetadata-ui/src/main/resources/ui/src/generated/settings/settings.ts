@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -41,6 +41,7 @@ export enum SettingType {
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
     LoginConfiguration = "loginConfiguration",
+    OpenLineageSettings = "openLineageSettings",
     OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
@@ -54,6 +55,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
 
@@ -84,6 +86,8 @@ export enum SettingType {
  *
  * This schema defines the Slack App Information
  *
+ * This schema defines the Microsoft Teams App configuration
+ *
  * This schema defines the profiler configuration. It is used to configure globally the
  * metrics to compute for specific data types.
  *
@@ -94,6 +98,9 @@ export enum SettingType {
  * This schema defines the Workflow Settings.
  *
  * Complete security configuration including authentication and authorization
+ *
+ * Settings for OpenLineage HTTP API integration. Configure how OpenMetadata receives and
+ * processes lineage events from external systems like Spark, Airflow, and Flink.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -119,6 +126,8 @@ export interface PipelineServiceClientConfiguration {
      * can set this value to false to not check the Pipeline Service Client component health.
      *
      * Is Task Notification Enabled?
+     *
+     * Enable or disable the OpenLineage HTTP API endpoint.
      */
     enabled?: boolean;
     /**
@@ -179,17 +188,34 @@ export interface PipelineServiceClientConfiguration {
      */
     clientType?: ClientType;
     /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
+    /**
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
+    /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
     /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
+    /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
     /**
      * LDAP Configuration in case the Provider is LDAP
      */
@@ -261,6 +287,11 @@ export interface PipelineServiceClientConfiguration {
      */
     useRolesFromProvider?: boolean;
     /**
+     * AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled.
+     * When enabled, uses standard AWS environment variables or configured credentials.
+     */
+    aws?: Aws;
+    /**
      * Batch Size for Requests
      */
     batchSize?: number;
@@ -273,7 +304,8 @@ export interface PipelineServiceClientConfiguration {
      */
     connectionTimeoutSecs?: number;
     /**
-     * Elastic Search Host
+     * Elastic Search Host. Supports single host or comma-separated list for multiple hosts
+     * (e.g., 'localhost' or 'es-node1:9200,es-node2:9200,es-node3:9200').
      */
     host?: string;
     /**
@@ -303,7 +335,8 @@ export interface PipelineServiceClientConfiguration {
      */
     payLoadSize?: number;
     /**
-     * Elastic Search port
+     * Elastic Search port. Used when host does not include port. Ignored when using
+     * comma-separated hosts with ports.
      */
     port?: number;
     /**
@@ -393,6 +426,10 @@ export interface PipelineServiceClientConfiguration {
      */
     openMetadataUrl?: string;
     /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
      * Client Secret of the Application.
      */
     clientSecret?: string;
@@ -400,8 +437,24 @@ export interface PipelineServiceClientConfiguration {
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
      */
-    signingSecret?:       string;
-    metricConfiguration?: MetricConfigurationDefinition[];
+    signingSecret?: string;
+    /**
+     * User Token
+     */
+    userToken?: string;
+    /**
+     * Azure AD Application (Client) ID for the Teams bot
+     */
+    microsoftAppId?: string;
+    /**
+     * Azure AD Client Secret for the Teams bot
+     */
+    microsoftAppPassword?: string;
+    /**
+     * Azure AD Tenant ID (optional, for single-tenant bots). Use 'common' for multi-tenant.
+     */
+    microsoftAppTenantId?: string;
+    metricConfiguration?:  MetricConfigurationDefinition[];
     /**
      * Configurations of allowed searchable fields for each entity type
      */
@@ -436,6 +489,10 @@ export interface PipelineServiceClientConfiguration {
      */
     downstreamDepth?: number;
     /**
+     * Performance configuration for lineage graph builder.
+     */
+    graphPerformanceConfig?: GraphPerformanceConfig;
+    /**
      * Lineage Layer.
      */
     lineageLayer?: LineageLayer;
@@ -456,6 +513,10 @@ export interface PipelineServiceClientConfiguration {
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
     /**
+     * Used to set up the History CleanUp Settings.
+     */
+    runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
+    /**
      * Semantics rules defined in the data contract.
      */
     entitySemantics?: SemanticsRule[];
@@ -467,6 +528,27 @@ export interface PipelineServiceClientConfiguration {
      * Authorization configuration
      */
     authorizerConfiguration?: AuthorizerConfiguration;
+    /**
+     * Automatically create Table and Pipeline entities when they are referenced in OpenLineage
+     * events but don't exist in OpenMetadata.
+     */
+    autoCreateEntities?: boolean;
+    /**
+     * Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage
+     * jobs. This service must exist in OpenMetadata.
+     */
+    defaultPipelineService?: string;
+    /**
+     * List of OpenLineage event types to process. Only events matching these types will create
+     * lineage. Default is to only process COMPLETE events.
+     */
+    eventTypeFilter?: EventTypeFilter[];
+    /**
+     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names. Used to
+     * resolve dataset references to existing tables. Example: 'postgresql://prod-db:5432' ->
+     * 'prod-postgres'
+     */
+    namespaceToServiceMapping?: { [key: string]: string };
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -913,31 +995,48 @@ export interface AuthenticationConfiguration {
     /**
      * Authentication Authority
      */
-    authority: string;
+    authority?: string;
     /**
      * Callback URL
      */
-    callbackUrl: string;
+    callbackUrl?: string;
     /**
      * Client ID
      */
-    clientId: string;
+    clientId?: string;
     /**
      * Client Type
      */
     clientType?: ClientType;
     /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
+    /**
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
+    /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
     /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
+    /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
     /**
      * LDAP Configuration in case the Provider is LDAP
      */
@@ -954,7 +1053,7 @@ export interface AuthenticationConfiguration {
     /**
      * List of Public Key URLs
      */
-    publicKeyUrls: string[];
+    publicKeyUrls?: string[];
     /**
      * This is used by auth provider provide response as either id_token or code.
      */
@@ -1276,8 +1375,13 @@ export interface SamlSSOClientConfig {
      */
     debugMode?: boolean;
     idp:        Idp;
-    security?:  Security;
-    sp:         SP;
+    /**
+     * Ordered list of SAML attribute names to check for display name. First available attribute
+     * wins. Defaults to common OIDC/SAML attribute names.
+     */
+    samlDisplayNameAttributes?: string[];
+    security?:                  Security;
+    sp:                         SP;
 }
 
 /**
@@ -1285,7 +1389,7 @@ export interface SamlSSOClientConfig {
  */
 export interface Idp {
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Authority URL (deprecated, use entityId instead).
      */
     authorityUrl?: string;
     /**
@@ -1297,7 +1401,7 @@ export interface Idp {
      */
     idpX509Certificate?: string;
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Name ID format for SAML assertions
      */
     nameId?: string;
     /**
@@ -1390,6 +1494,9 @@ export interface SP {
  * Token Validation Algorithm to use.
  */
 export enum TokenValidationAlgorithm {
+    Es256 = "ES256",
+    Es384 = "ES384",
+    Es512 = "ES512",
     Rs256 = "RS256",
     Rs384 = "RS384",
     Rs512 = "RS512",
@@ -1449,6 +1556,24 @@ export interface AuthorizerConfiguration {
 }
 
 /**
+ * AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled.
+ * When enabled, uses standard AWS environment variables or configured credentials.
+ */
+export interface Aws {
+    /**
+     * Enable AWS IAM authentication for OpenSearch. When enabled, requires region to be
+     * configured. Defaults to false for backward compatibility.
+     */
+    enabled?: boolean;
+    /**
+     * AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch
+     * Serverless)
+     */
+    serviceName?: string;
+    [property: string]: any;
+}
+
+/**
  * Semantics rule defined in the data contract.
  */
 export interface SemanticsRule {
@@ -1468,6 +1593,10 @@ export interface SemanticsRule {
      * List of entities to ignore for this semantics rule.
      */
     ignoredEntities?: string[];
+    /**
+     * Whether this rule was inherited from a Data Product.
+     */
+    inherited?: boolean;
     /**
      * JSON Tree to represents rule in UI.
      */
@@ -1493,6 +1622,15 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
+}
+
+export enum EventTypeFilter {
+    Abort = "ABORT",
+    Complete = "COMPLETE",
+    Fail = "FAIL",
+    Other = "OTHER",
+    Running = "RUNNING",
+    Start = "START",
 }
 
 /**
@@ -1560,13 +1698,87 @@ export interface GlobalSettings {
 }
 
 /**
+ * Performance configuration for lineage graph builder.
+ *
+ * Configuration for lineage graph performance and scalability
+ */
+export interface GraphPerformanceConfig {
+    /**
+     * Cache time-to-live in seconds
+     */
+    cacheTTLSeconds?: number;
+    /**
+     * Enable caching for small/medium graphs
+     */
+    enableCaching?: boolean;
+    /**
+     * Enable progress tracking for long-running queries
+     */
+    enableProgressTracking?: boolean;
+    /**
+     * Batch size for fetching large graph nodes
+     */
+    largeGraphBatchSize?: number;
+    /**
+     * Maximum number of graphs to cache
+     */
+    maxCachedGraphs?: number;
+    /**
+     * Maximum nodes to keep in memory before switching to streaming
+     */
+    maxInMemoryNodes?: number;
+    /**
+     * Batch size for fetching medium graph nodes
+     */
+    mediumGraphBatchSize?: number;
+    /**
+     * Node count threshold for medium graphs (optimized batching)
+     */
+    mediumGraphThreshold?: number;
+    /**
+     * Report progress every N nodes processed
+     */
+    progressReportInterval?: number;
+    /**
+     * Scroll context timeout in minutes
+     */
+    scrollTimeoutMinutes?: number;
+    /**
+     * Batch size for fetching small graph nodes from search backend
+     */
+    smallGraphBatchSize?: number;
+    /**
+     * Node count threshold for small graphs (eligible for caching)
+     */
+    smallGraphThreshold?: number;
+    /**
+     * Batch size for streaming very large graphs
+     */
+    streamingBatchSize?: number;
+    /**
+     * Use Elasticsearch/OpenSearch scroll API for large result sets
+     */
+    useScrollForLargeGraphs?: boolean;
+}
+
+/**
  * Used to set up the History CleanUp Settings.
  */
 export interface HistoryCleanUpConfiguration {
     /**
+     * Batch size used when cleaning up Flowable History data
+     */
+    batchSize?: number;
+    /**
      * Cleans the Workflow Task that were finished, after given number of days.
      */
     cleanAfterNumberOfDays?: number;
+    /**
+     * Cron expression used by Flowable's history cleaning job
+     * (setHistoryCleaningTimeCycleConfig). For example: '0 0 1 * * ?' runs daily at 01:00, '0 *
+     * * ? * *' runs every minute (testing only).
+     */
+    timeCycleConfig?: string;
 }
 
 /**
@@ -1679,6 +1891,12 @@ export interface AWSCredentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -1882,9 +2100,18 @@ export interface NaturalLanguageSearch {
      */
     enabled?: boolean;
     /**
+     * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
+     * endpoints.
+     */
+    openai?: Openai;
+    /**
      * Fully qualified class name of the NLQService implementation to use
      */
     providerClass?: string;
+    /**
+     * Enable or disable semantic search using vector embeddings
+     */
+    semanticSearchEnabled?: boolean;
 }
 
 /**
@@ -1892,9 +2119,9 @@ export interface NaturalLanguageSearch {
  */
 export interface Bedrock {
     /**
-     * AWS access key for Bedrock service authentication
+     * AWS credentials configuration for Bedrock service
      */
-    accessKey?: string;
+    awsConfig?: AWSBaseConfig;
     /**
      * Dimension of the embedding vector
      */
@@ -1907,18 +2134,49 @@ export interface Bedrock {
      * Bedrock model identifier to use for query transformation
      */
     modelId?: string;
+}
+
+/**
+ * AWS credentials configuration for Bedrock service
+ *
+ * Base AWS configuration for authentication. Supports static credentials, IAM roles, and
+ * default credential provider chain.
+ */
+export interface AWSBaseConfig {
     /**
-     * AWS Region for Bedrock service
+     * AWS Access Key ID. Falls back to default credential provider chain if not set.
+     */
+    accessKeyId?: string;
+    /**
+     * ARN of IAM role to assume for cross-account access.
+     */
+    assumeRoleArn?: string;
+    /**
+     * Session name for assumed role.
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
+     * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
+     */
+    endpointUrl?: string;
+    /**
+     * AWS Region (e.g., us-east-1). Required when AWS authentication is enabled.
      */
     region?: string;
     /**
-     * AWS secret key for Bedrock service authentication
+     * AWS Secret Access Key. Falls back to default credential provider chain if not set.
      */
-    secretKey?: string;
+    secretAccessKey?: string;
     /**
-     * Set to true to use IAM role based authentication instead of access/secret keys.
+     * AWS Session Token for temporary credentials.
      */
-    useIamRole?: boolean;
+    sessionToken?: string;
 }
 
 /**
@@ -1929,6 +2187,38 @@ export interface Djl {
      * DJL model name for embedding generation
      */
     embeddingModel?: string;
+}
+
+/**
+ * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
+ * endpoints.
+ */
+export interface Openai {
+    /**
+     * API key for authenticating with OpenAI or Azure OpenAI.
+     */
+    apiKey?: string;
+    /**
+     * Azure OpenAI API version. Only used with Azure OpenAI.
+     */
+    apiVersion?: string;
+    /**
+     * Azure OpenAI deployment name. Required when using Azure OpenAI.
+     */
+    deploymentName?: string;
+    /**
+     * Dimension of the embedding vector. Default is 1536 for text-embedding-3-small.
+     */
+    embeddingDimension?: number;
+    /**
+     * OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).
+     */
+    embeddingModelId?: string;
+    /**
+     * Custom endpoint URL. For Azure OpenAI, use the Azure resource endpoint (e.g.,
+     * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
+     */
+    endpoint?: string;
 }
 
 /**
@@ -2073,6 +2363,16 @@ export interface TitleSection {
 export enum PipelineViewMode {
     Edge = "Edge",
     Node = "Node",
+}
+
+/**
+ * Used to set up the History CleanUp Settings.
+ */
+export interface RunTimeCleanUpConfiguration {
+    /**
+     * Batch size used when cleaning up Flowable Run Time data
+     */
+    batchSize?: number;
 }
 
 /**

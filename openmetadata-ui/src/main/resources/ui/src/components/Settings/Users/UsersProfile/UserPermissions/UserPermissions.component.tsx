@@ -107,7 +107,6 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         </Space>
         {!isEmpty(rule.operations) && (
           <div>
-            {/* eslint-disable-next-line i18next/no-literal-string */}
             <Text type="secondary">{t('label.operation-plural')}: </Text>
             {rule.operations.map((op, idx) => (
               <Tag className="m-r-xs" key={idx}>
@@ -118,7 +117,6 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         )}
         {!isEmpty(rule.resources) && (
           <div>
-            {/* eslint-disable-next-line i18next/no-literal-string */}
             <Text type="secondary">{t('label.resource-plural')}: </Text>
             {rule.resources.map((res, idx) => (
               <Tag className="m-r-xs" key={idx}>
@@ -129,7 +127,6 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         )}
         {rule.condition && (
           <div>
-            {/* eslint-disable-next-line i18next/no-literal-string */}
             <Text type="secondary">{t('label.condition')}: </Text>
             <Text code>{rule.condition}</Text>
           </div>
@@ -160,8 +157,6 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
               }>
               {policy.effect}
             </Tag>
-            {/* eslint-disable-next-line i18next/no-literal-string */}
-            {/* eslint-disable-next-line i18next/no-literal-string */}
             <Text type="secondary">
               <span>{policy.rules.length}</span>
               {t('label.rule-lowercase-plural')}
@@ -187,7 +182,6 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
           (rolePermission: DirectRolePermission, index: number) => (
             <div className="m-b-md" key={index}>
               <Space className="m-b-sm">
-                {/* eslint-disable-next-line i18next/no-literal-string */}
                 <Text strong>{t('label.role')}: </Text>
                 <Link
                   to={getEntityLink(
@@ -249,7 +243,6 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             <div className="team-permission m-b-lg" key={index}>
               <Space className="w-full" direction="vertical">
                 <Space>
-                  {/* eslint-disable-next-line i18next/no-literal-string */}
                   <Text strong>{t('label.team')}: </Text>
                   <Link
                     to={getEntityLink(

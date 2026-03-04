@@ -11,12 +11,73 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Column, DataType } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
 import '../../../../../test/unit/mocks/mui.mock';
 import TabFilters from './TabFilters';
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const Button = ({
+    children,
+    ...props
+  }: PropsWithChildren<Record<string, unknown>>) => (
+    <button {...props}>{children}</button>
+  );
+
+  const DropdownRoot = ({ children }: PropsWithChildren) => (
+    <div>{children}</div>
+  );
+
+  const DropdownPopover = ({ children }: PropsWithChildren) => (
+    <div>{children}</div>
+  );
+
+  const DropdownMenu = <T extends { id: string }>({
+    items,
+    children,
+  }: {
+    items: T[];
+    children: (item: T) => ReactNode;
+  }) => (
+    <div>
+      {items.map((item) => (
+        <div key={item.id}>{children(item)}</div>
+      ))}
+    </div>
+  );
+
+  const DropdownItem = ({
+    id,
+    label,
+    onAction,
+  }: {
+    id: string;
+    label: string;
+    onAction?: () => void;
+  }) => (
+    <button data-testid={`dropdown-item-${id}`} onClick={onAction}>
+      {label}
+    </button>
+  );
+
+  const Tooltip = ({ children }: PropsWithChildren) => <>{children}</>;
+
+  const Dropdown = {
+    Root: DropdownRoot,
+    Popover: DropdownPopover,
+    Menu: DropdownMenu,
+    Item: DropdownItem,
+  };
+
+  return {
+    Button,
+    Dropdown,
+    Tooltip,
+  };
+});
 
 const mockNavigate = jest.fn();
 const mockOnSettingButtonClick = jest.fn();
@@ -92,8 +153,14 @@ jest.mock('../../../../../constants/profiler.constant', () => ({
   DEFAULT_RANGE_DATA: {
     startTs: 1711065600000,
     endTs: 1711670399000,
+  },
+  DEFAULT_SELECTED_RANGE: {
     key: 'last7days',
-    title: 'Last 7 days',
+    title: 'label.last-number-of-days',
+    titleData: {
+      numberOfDays: 7,
+    },
+    days: 7,
   },
 }));
 
@@ -158,7 +225,6 @@ jest.mock('../../TableProfiler/ColumnPickerMenu', () => {
     handleChange,
   }: {
     activeColumnFqn: string;
-    columns: Column[];
     handleChange: (key: string) => void;
   }) {
     return (
@@ -343,6 +409,32 @@ describe('TabFilters', () => {
       expect(
         screen.queryByTestId('mui-date-picker-menu')
       ).not.toBeInTheDocument();
+    });
+
+    it('should not render date picker on overview tab without active column', () => {
+      mockUseParams.mockReturnValue({ subTab: 'overview' });
+      mockUseCustomLocation.mockReturnValue({
+        search: '',
+        pathname: '/table/test-table/profiler',
+      });
+
+      renderComponent();
+
+      expect(
+        screen.queryByTestId('mui-date-picker-menu')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render date picker on overview tab when column is selected', () => {
+      mockUseParams.mockReturnValue({ subTab: 'overview' });
+      mockUseCustomLocation.mockReturnValue({
+        search: '?activeColumnFqn=table.column1',
+        pathname: '/table/test-table/profiler',
+      });
+
+      renderComponent();
+
+      expect(screen.getByTestId('mui-date-picker-menu')).toBeInTheDocument();
     });
 
     it('should display date label when date picker is shown', () => {

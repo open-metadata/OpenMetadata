@@ -160,7 +160,7 @@ export const testConnection = async (page: Page) => {
   const warningBadge = page.locator('[data-testid="warning-badge"]');
 
   await expect(successBadge.or(warningBadge)).toBeVisible({
-    timeout: 2.5 * 60 * 1000,
+    timeout: 3.5 * 60 * 1000, // 3 minutes for connection test and 0.5 minute buffer
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(

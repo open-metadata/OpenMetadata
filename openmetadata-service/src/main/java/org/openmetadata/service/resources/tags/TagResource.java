@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
@@ -73,6 +74,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -100,6 +103,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       "owners,reviewers,domains,children,usageCount,recognizers,autoClassificationEnabled,autoClassificationPriority";
 
   static class TagList extends ResultList<Tag> {
+    /* Required for serde */
+  }
+
+  static class RecognizerList extends ResultList<Recognizer> {
     /* Required for serde */
   }
 
@@ -183,7 +190,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               description = "Filter Disabled Classifications",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("disabled")
-          @DefaultValue("false")
           Boolean disabled,
       @Parameter(description = "Limit the number tags returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
@@ -207,10 +213,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter =
-        new ListFilter(include)
-            .addQueryParam("parent", parent)
-            .addQueryParam("classification.disabled", disabled);
+    ListFilter filter = new ListFilter(include).addQueryParam("parent", parent);
+    if (disabled != null) {
+      filter.addQueryParam("classification.disabled", disabled);
+    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -246,8 +252,17 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -282,8 +297,17 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -765,5 +789,121 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
 
     return feedbackRepository.getPendingFeedback();
+  }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllTagsWithAssetsCount",
+      summary = "Get all tags with their asset counts",
+      description =
+          "Get a map of tag fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of tag FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllTagsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllTagsWithAssetsCount();
+    return Response.ok(result).build();
+  }
+
+  @GET
+  @Path("{id}/recognizers")
+  @Operation(
+      operationId = "listATagsRecognizersById",
+      summary = "Lists a tag's recognizers",
+      description = "Paginated endpoint to return a tag's recognizer list",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "A list of recognizers",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = RecognizerList.class)))
+      })
+  public ResultList<Recognizer> listRecognizersByTagId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the tag in question", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number tags returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Returns list of tags before this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(
+              description = "Returns list of tags after this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after) {
+
+    ResourceContextInterface resourceContext = getResourceContextById(id);
+    OperationContext operationContext =
+        new OperationContext(entityType, getViewOperations(getFields("recognizers")));
+
+    limits.enforceLimits(securityContext, resourceContext, operationContext);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    return repository.getRecognizersOfTagById(id, before, after, limitParam);
+  }
+
+  @GET
+  @Path("name/{fqn}/recognizers")
+  @Operation(
+      operationId = "listATagsRecognizersByFQN",
+      summary = "Lists a tag's recognizers",
+      description = "Paginated endpoint to return a tag's recognizer list",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "A list of recognizers",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = RecognizerList.class)))
+      })
+  public ResultList<Recognizer> listRecognizersByTagFQN(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully Qualified Name of the tag in question",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number tags returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Returns list of tags before this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(
+              description = "Returns list of tags after this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after) {
+
+    ResourceContextInterface resourceContext = getResourceContextByName(fqn);
+    OperationContext operationContext =
+        new OperationContext(entityType, getViewOperations(getFields("recognizers")));
+
+    limits.enforceLimits(securityContext, resourceContext, operationContext);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.getRecognizersOfTagByFQN(fqn, before, after, limitParam);
   }
 }

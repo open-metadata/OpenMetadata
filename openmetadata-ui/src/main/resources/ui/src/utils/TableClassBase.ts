@@ -41,6 +41,7 @@ export interface TableDetailPageTabProps {
   feedCount: FeedCounts;
   isViewTableType: boolean;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   viewQueriesPermission: boolean;
   editLineagePermission: boolean;
   viewProfilerPermission: boolean;
@@ -53,6 +54,8 @@ export interface TableDetailPageTabProps {
   fetchTableDetails: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   labelMap?: Record<EntityTabs, string>;
+  columnFqn?: string;
+  columnPart?: string;
 }
 
 type TableWidgetKeys =

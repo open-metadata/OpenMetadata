@@ -13,6 +13,7 @@
 
 import { BarProps } from 'recharts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 
 export const CONTRACT_DATE_TIME_FORMAT = 'MM/dd/yyyy, h:mma';
 
@@ -48,16 +49,27 @@ export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [
   EntityReferenceFields.DELETED,
 ];
 
+export const SUPPORTED_ROW_FILTER_ENTITIES = [
+  EntityType.TABLE,
+  EntityType.DASHBOARD_DATA_MODEL,
+];
+
 export const SEMANTIC_TAG_OPERATORS = ['array_contains', 'array_not_contains'];
 
 export const SLA_AVAILABILITY_TIME_FORMAT = 'HH:mm';
 
 export enum DATA_CONTRACT_ACTION_DROPDOWN_KEY {
+  CREATE = 'create',
   EDIT = 'edit',
   RUN_NOW = 'run_now',
   EXPORT = 'export',
+  EXPORT_ODCS = 'export_odcs',
+  IMPORT_ODCS = 'import_odcs',
+  IMPORT_OPENMETADATA = 'import_openmetadata',
   DELETE = 'delete',
 }
+
+export type ContractImportFormat = 'odcs' | 'openmetadata';
 
 export enum DATA_CONTRACT_SLA {
   REFRESH_FREQUENCY = 'refresh_frequency',

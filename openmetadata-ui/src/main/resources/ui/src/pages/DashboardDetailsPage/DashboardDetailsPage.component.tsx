@@ -63,7 +63,8 @@ const DashboardDetailsPage = () => {
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn: dashboardFQN } = useFqn();
+  const { entityFqn: dashboardFQN } = useFqn({ type: EntityType.DASHBOARD });
+
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
@@ -239,9 +240,11 @@ const DashboardDetailsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDashboardVotes(id, data);
-      const details = await getDashboardByFqn(dashboardFQN, {
-        fields: defaultFields,
-      });
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      const details = await getDashboardByFqn(dashboardFQN, { fields });
       setDashboardDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

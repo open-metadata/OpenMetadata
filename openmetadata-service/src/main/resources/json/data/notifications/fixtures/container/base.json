@@ -1,0 +1,45 @@
+{
+  "id": "cf7d6b5a-4f3e-2d1c-0b9a-8f7e6d5c4b3a",
+  "name": "sample_container",
+  "displayName": "Sample Container",
+  "fullyQualifiedName": "sample-storage-service.sample_container",
+  "description": "Mock container for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "dataModel": {
+    "isPartitioned": false
+  },
+  "prefix": "/data/",
+  "numberOfObjects": 150,
+  "size": 1073741824,
+  "fileFormats": ["parquet", "json"],
+  "href": "http://localhost:8585/api/v1/containers/cf7d6b5a-4f3e-2d1c-0b9a-8f7e6d5c4b3a",
+  "service": {
+    "id": "5a4f3e2d-1c0b-9a8f-7e6d-5c4b3a2f1e0d",
+    "type": "storageService",
+    "name": "sample-storage-service",
+    "fullyQualifiedName": "sample-storage-service",
+    "deleted": false,
+    "href": "http://localhost:8585/api/v1/services/storageServices/5a4f3e2d-1c0b-9a8f-7e6d-5c4b3a2f1e0d"
+  },
+  "serviceType": "S3",
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "domains": [
+    {
+      "id": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+      "type": "domain",
+      "name": "Engineering",
+      "fullyQualifiedName": "Engineering"
+    }
+  ],
+  "tags": []
+}

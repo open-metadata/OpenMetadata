@@ -242,6 +242,10 @@ const IncidentManagerPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/IncidentManager/IncidentManagerPage'))
 );
 
+const TestLibraryPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/TestLibrary/TestLibraryPage'))
+);
+
 const IncidentManagerDetailPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -282,6 +286,13 @@ const MetricListPage = withSuspenseFallback(
 const AddMetricPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
+  )
+);
+
+const ColumnBulkOperationsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/ColumnBulkOperations/ColumnBulkOperations.component')
   )
 );
 
@@ -590,27 +601,35 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={
           <AdminProtectedRoute
             hasPermission={userPermissions.hasViewPermissions(
-              ResourceEntity.TEST_CASE,
+              ResourceEntity.TEST_DEFINITION,
               permissions
             )}>
-            <IncidentManagerDetailPage />
+            <TestLibraryPage />
           </AdminProtectedRoute>
         }
-        path={ROUTES.TEST_CASE_DETAILS}
+        path={ROUTES.TEST_LIBRARY}
       />
 
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={userPermissions.hasViewPermissions(
-              ResourceEntity.TEST_CASE,
-              permissions
-            )}>
-            <IncidentManagerDetailPage />
-          </AdminProtectedRoute>
-        }
-        path={ROUTES.TEST_CASE_DETAILS_WITH_TAB}
-      />
+      {[
+        ROUTES.TEST_CASE_DETAILS,
+        ROUTES.TEST_CASE_DETAILS_WITH_TAB,
+        ROUTES.TEST_CASE_DIMENSIONS,
+        ROUTES.TEST_CASE_DIMENSIONS_WITH_TAB,
+      ].map((route) => (
+        <Route
+          element={
+            <AdminProtectedRoute
+              hasPermission={userPermissions.hasViewPermissions(
+                ResourceEntity.TEST_CASE,
+                permissions
+              )}>
+              <IncidentManagerDetailPage />
+            </AdminProtectedRoute>
+          }
+          key={route}
+          path={route}
+        />
+      ))}
 
       <Route
         element={
@@ -711,8 +730,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
 
       {/* Plugin routes */}
-      {pluginRoutes.map((route, idx) => {
-        return <Route key={idx} {...route} />;
+      {pluginRoutes?.map((route) => {
+        return <Route key={route.path ?? route.id} {...route} />;
       })}
 
       <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.HOME} />
@@ -746,6 +765,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           />
         }
         path={ROUTES.ADD_METRIC}
+      />
+      <Route
+        element={<ColumnBulkOperationsPage />}
+        path={ROUTES.COLUMN_BULK_OPERATIONS}
       />
 
       <Route

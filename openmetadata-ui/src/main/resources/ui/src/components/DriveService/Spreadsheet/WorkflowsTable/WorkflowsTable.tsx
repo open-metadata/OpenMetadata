@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,8 +21,8 @@ import {
 } from '../../../../generated/entity/data/spreadsheet';
 import { getColumnSorter, getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 
@@ -53,24 +52,7 @@ function WorkflowsTable() {
           </div>
         ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (description: EntityReference['description']) => (
-          <>
-            {description ? (
-              <RichTextEditorPreviewerNew markdown={description} />
-            ) : (
-              <Typography.Text className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </Typography.Text>
-            )}
-          </>
-        ),
-      },
+      ...descriptionTableObject(),
     ],
     []
   );

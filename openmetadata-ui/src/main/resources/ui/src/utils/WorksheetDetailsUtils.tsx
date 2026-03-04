@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { get } from 'lodash';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import WorksheetColumnsTable from '../components/DriveService/Worksheet/WorksheetColumnsTable/WorksheetColumnsTable';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
@@ -51,6 +53,7 @@ export const getWorksheetDetailsPageTabs = ({
   customPropertiesTab,
   activeTab,
   feedCount,
+  labelMap,
 }: WorksheetDetailPageTabProps) => {
   return [
     {
@@ -58,7 +61,7 @@ export const getWorksheetDetailsPageTabs = ({
         <TabsLabel
           id={EntityTabs.SCHEMA}
           isActive={activeTab === EntityTabs.SCHEMA}
-          name={i18n.t('label.schema')}
+          name={get(labelMap, EntityTabs.SCHEMA, i18n.t('label.schema'))}
         />
       ),
       key: EntityTabs.SCHEMA,
@@ -70,7 +73,11 @@ export const getWorksheetDetailsPageTabs = ({
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={i18n.t('label.activity-feed-and-task-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.ACTIVITY_FEED,
+            i18n.t('label.activity-feed-and-task-plural')
+          )}
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -78,7 +85,10 @@ export const getWorksheetDetailsPageTabs = ({
     },
     {
       label: (
-        <TabsLabel id={EntityTabs.LINEAGE} name={i18n.t('label.lineage')} />
+        <TabsLabel
+          id={EntityTabs.LINEAGE}
+          name={get(labelMap, EntityTabs.LINEAGE, i18n.t('label.lineage'))}
+        />
       ),
       key: EntityTabs.LINEAGE,
       children: lineageTab,
@@ -86,8 +96,22 @@ export const getWorksheetDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, i18n.t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={i18n.t('label.custom-property-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.CUSTOM_PROPERTIES,
+            i18n.t('label.custom-property-plural')
+          )}
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,

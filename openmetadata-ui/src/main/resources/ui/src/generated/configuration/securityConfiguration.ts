@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -33,31 +33,48 @@ export interface AuthenticationConfiguration {
     /**
      * Authentication Authority
      */
-    authority: string;
+    authority?: string;
     /**
      * Callback URL
      */
-    callbackUrl: string;
+    callbackUrl?: string;
     /**
      * Client ID
      */
-    clientId: string;
+    clientId?: string;
     /**
      * Client Type
      */
     clientType?: ClientType;
     /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
+    /**
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
+    /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
     /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
+    /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
     /**
      * LDAP Configuration in case the Provider is LDAP
      */
@@ -74,7 +91,7 @@ export interface AuthenticationConfiguration {
     /**
      * List of Public Key URLs
      */
-    publicKeyUrls: string[];
+    publicKeyUrls?: string[];
     /**
      * This is used by auth provider provide response as either id_token or code.
      */
@@ -413,8 +430,13 @@ export interface SamlSSOClientConfig {
      */
     debugMode?: boolean;
     idp:        Idp;
-    security?:  Security;
-    sp:         SP;
+    /**
+     * Ordered list of SAML attribute names to check for display name. First available attribute
+     * wins. Defaults to common OIDC/SAML attribute names.
+     */
+    samlDisplayNameAttributes?: string[];
+    security?:                  Security;
+    sp:                         SP;
 }
 
 /**
@@ -422,7 +444,7 @@ export interface SamlSSOClientConfig {
  */
 export interface Idp {
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Authority URL (deprecated, use entityId instead).
      */
     authorityUrl?: string;
     /**
@@ -434,7 +456,7 @@ export interface Idp {
      */
     idpX509Certificate?: string;
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Name ID format for SAML assertions
      */
     nameId?: string;
     /**
@@ -527,6 +549,9 @@ export interface SP {
  * Token Validation Algorithm to use.
  */
 export enum TokenValidationAlgorithm {
+    Es256 = "ES256",
+    Es384 = "ES384",
+    Es512 = "ES512",
     Rs256 = "RS256",
     Rs384 = "RS384",
     Rs512 = "RS512",

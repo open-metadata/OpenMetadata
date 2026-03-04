@@ -52,6 +52,11 @@ describe('PersonaUtils', () => {
 
       expect(options).toEqual([
         expect.objectContaining({
+          key: PageType.DataProduct,
+          label: 'Data Product',
+          icon: 'svg-mock',
+        }),
+        expect.objectContaining({
           key: PageType.Domain,
           label: 'Domain',
           icon: 'svg-mock',

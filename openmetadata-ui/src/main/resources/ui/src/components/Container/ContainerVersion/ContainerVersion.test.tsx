@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { containerVersionMockProps } from '../../../mocks/ContainerVersion.mock';
 import ContainerVersion from './ContainerVersion.component';
 
@@ -57,12 +58,26 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     tab: 'container',
   }),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
+
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
 
 describe('ContainerVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {
-      render(<ContainerVersion {...containerVersionMockProps} />);
+      render(<ContainerVersion {...containerVersionMockProps} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const dataAssetsVersionHeader = screen.getByText('DataAssetsVersionHeader');
@@ -85,7 +100,10 @@ describe('ContainerVersion tests', () => {
   it('Should display Loader if isVersionLoading is true', async () => {
     await act(async () => {
       render(
-        <ContainerVersion {...containerVersionMockProps} isVersionLoading />
+        <ContainerVersion {...containerVersionMockProps} isVersionLoading />,
+        {
+          wrapper: MemoryRouter,
+        }
       );
     });
 
@@ -110,7 +128,9 @@ describe('ContainerVersion tests', () => {
 
   it('Should update url on click of tab', async () => {
     await act(async () => {
-      render(<ContainerVersion {...containerVersionMockProps} />);
+      render(<ContainerVersion {...containerVersionMockProps} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const customPropertyTabLabel = screen.getByText(

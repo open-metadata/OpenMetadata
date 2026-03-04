@@ -49,6 +49,7 @@ public class StreamableLogsMetrics {
   private final Timer s3OperationLatency;
   private final AtomicInteger activeMultipartUploads;
   private final AtomicLong s3WriteThroughputBytes;
+  private final AtomicInteger pendingPartUploads;
 
   private final Counter sessionCreated;
   private final Counter sessionReused;
@@ -160,6 +161,12 @@ public class StreamableLogsMetrics {
     this.s3WriteThroughputBytes = new AtomicLong(0);
     Gauge.builder("om_s3_write_throughput_bytes", s3WriteThroughputBytes, AtomicLong::get)
         .description("Current S3 write throughput in bytes/sec")
+        .register(meterRegistry);
+
+    // Add gauge for pending part uploads
+    this.pendingPartUploads = new AtomicInteger(0);
+    Gauge.builder("om_s3_pending_part_uploads", pendingPartUploads, AtomicInteger::get)
+        .description("Number of pending S3 multipart part uploads")
         .register(meterRegistry);
 
     this.sessionCreated =
@@ -296,6 +303,18 @@ public class StreamableLogsMetrics {
 
   public void updateWriteThroughput(long bytesPerSecond) {
     s3WriteThroughputBytes.set(bytesPerSecond);
+  }
+
+  public void updatePendingPartUploads(int count) {
+    pendingPartUploads.set(count);
+  }
+
+  public void incrementPendingPartUploads() {
+    pendingPartUploads.incrementAndGet();
+  }
+
+  public void decrementPendingPartUploads() {
+    pendingPartUploads.decrementAndGet();
   }
 
   public void recordSessionCreated() {

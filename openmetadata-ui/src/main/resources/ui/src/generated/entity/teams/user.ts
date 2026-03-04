@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -78,6 +78,10 @@ export interface User {
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Personas inherited through membership in teams that have set a team default persona.
+     */
+    inheritedPersonas?: EntityReference[];
     /**
      * Roles that a user is inheriting through membership in teams that have set team default
      * roles.
@@ -303,8 +307,13 @@ export interface SsoClientConfig {
      */
     debugMode?: boolean;
     idp?:       Idp;
-    security?:  Security;
-    sp?:        SP;
+    /**
+     * Ordered list of SAML attribute names to check for display name. First available attribute
+     * wins. Defaults to common OIDC/SAML attribute names.
+     */
+    samlDisplayNameAttributes?: string[];
+    security?:                  Security;
+    sp?:                        SP;
 }
 
 /**
@@ -312,7 +321,7 @@ export interface SsoClientConfig {
  */
 export interface Idp {
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Authority URL (deprecated, use entityId instead).
      */
     authorityUrl?: string;
     /**
@@ -324,7 +333,7 @@ export interface Idp {
      */
     idpX509Certificate?: string;
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Name ID format for SAML assertions
      */
     nameId?: string;
     /**

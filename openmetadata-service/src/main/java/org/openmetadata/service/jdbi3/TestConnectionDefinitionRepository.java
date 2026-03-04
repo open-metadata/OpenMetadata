@@ -9,6 +9,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.connections.TestConnectionDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /*
  We won't have any POST/PUT operations on these definitions.
@@ -39,7 +40,10 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public void setFields(TestConnectionDefinition entity, EntityUtil.Fields fields) {
+  public void setFields(
+      TestConnectionDefinition entity,
+      EntityUtil.Fields fields,
+      RelationIncludes relationIncludes) {
     /* Nothing to do */
   }
 

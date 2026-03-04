@@ -137,7 +137,7 @@ public class AzureAuthValidator {
         return tenantValidation;
       }
 
-      // Then validate against the discovery document
+      // Validate against the discovery document
       FieldError discoveryCheck =
           discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
       if (discoveryCheck != null) {
@@ -343,13 +343,13 @@ public class AzureAuthValidator {
           return null;
         } else {
           return ValidationErrorBuilder.createFieldError(
-              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, "Client ID validation failed");
+              ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID, "Client ID validation failed");
         }
       }
 
     } catch (Exception e) {
       return ValidationErrorBuilder.createFieldError(
-          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, "Client ID validation failed");
+          ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID, "Client ID validation failed");
     }
   }
 
@@ -357,9 +357,11 @@ public class AzureAuthValidator {
       AuthenticationConfiguration authConfig, String tenantId) {
     try {
       List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
+      // Skip validation if publicKeyUrls is empty - it's auto-populated for confidential clients
       if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS, "Public key urls are required");
+        LOG.debug(
+            "publicKeyUrls is empty, skipping validation (auto-populated for confidential clients)");
+        return null;
       }
 
       String expectedJwksUrl = AZURE_LOGIN_BASE + "/" + tenantId + "/discovery/v2.0/keys";

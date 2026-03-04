@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
   redirectToHomePage,
@@ -83,137 +84,145 @@ const DRAG_AND_DROP_TEAM_DETAILS = [
   },
 ];
 
-test.describe('Teams drag and drop should work properly', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
+test.describe(
+  'Teams drag and drop should work properly',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
 
-    const getOrganizationResponse = page.waitForResponse(
-      '/api/v1/teams/name/*'
-    );
-    const permissionResponse = page.waitForResponse(
-      '/api/v1/permissions/team/name/*'
-    );
-
-    await settingClick(page, GlobalSettingOptions.TEAMS);
-    await permissionResponse;
-    await getOrganizationResponse;
-  });
-
-  test('Add teams in hierarchy', async ({ page }) => {
-    for (const teamDetails of DRAG_AND_DROP_TEAM_DETAILS) {
-      await addTeamHierarchy(page, teamDetails);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      await expect(
-        page.locator(`[data-row-key="${teamDetails.name}"]`)
-      ).toContainText(teamDetails.description);
-    }
-  });
-
-  test('Should fail when drop team type is Group', async ({ page }) => {
-    for (const team of teams) {
-      await dragAndDropElement(page, team, teamNameGroup);
-      await toastNotification(
-        page,
-        `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Group children`
+      const getOrganizationResponse = page.waitForResponse(
+        '/api/v1/teams/name/*'
       );
-    }
-  });
-
-  test('Should fail when droppable team type is Department', async ({
-    page,
-  }) => {
-    const teams = [teamNameBusiness, teamNameDivision];
-
-    for (const team of teams) {
-      await dragAndDropElement(page, team, teamNameDepartment);
-      await toastNotification(
-        page,
-        `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Department children`
+      const permissionResponse = page.waitForResponse(
+        '/api/v1/permissions/team/name/*'
       );
-    }
-  });
 
-  test('Should fail when draggable team type is BusinessUnit and droppable team type is Division', async ({
-    page,
-  }) => {
-    await dragAndDropElement(page, teamNameBusiness, teamNameDivision);
-    await toastNotification(
-      page,
-      "You cannot move to this team as Team Type BusinessUnit can't be Division children"
-    );
-  });
+      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await permissionResponse;
+      await getOrganizationResponse;
+    });
 
-  for (const [index, droppableTeamName] of teams.entries()) {
-    test(`Should drag and drop on ${TEAM_TYPE_BY_NAME[droppableTeamName]} team type`, async ({
+    test('Add teams in hierarchy', async ({ page }) => {
+      for (const teamDetails of DRAG_AND_DROP_TEAM_DETAILS) {
+        await addTeamHierarchy(page, teamDetails);
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await expect(
+          page.locator(`[data-row-key="${teamDetails.name}"]`)
+        ).toContainText(teamDetails.description);
+      }
+    });
+
+    test('Should fail when drop team type is Group', async ({ page }) => {
+      for (const team of teams) {
+        await dragAndDropElement(page, team, teamNameGroup);
+        await toastNotification(
+          page,
+          `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Group children`
+        );
+      }
+    });
+
+    test('Should fail when droppable team type is Department', async ({
       page,
     }) => {
-      // Nested team will be shown once anything is moved under it
-      if (index !== 0) {
-        await openDragDropDropdown(page, teams[index - 1]);
+      const teams = [teamNameBusiness, teamNameDivision];
+
+      for (const team of teams) {
+        await dragAndDropElement(page, team, teamNameDepartment);
+        await toastNotification(
+          page,
+          `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Department children`
+        );
       }
+    });
 
-      await dragAndDropElement(page, teamNameGroup, droppableTeamName);
-      await confirmationDragAndDropTeam(page, teamNameGroup, droppableTeamName);
-
-      // Verify the team is moved under the business team
-      await openDragDropDropdown(page, droppableTeamName);
-      const movedTeam = page.locator(
-        `.ant-table-row-level-1[data-row-key="${teamNameGroup}"]`
+    test('Should fail when draggable team type is BusinessUnit and droppable team type is Division', async ({
+      page,
+    }) => {
+      await dragAndDropElement(page, teamNameBusiness, teamNameDivision);
+      await toastNotification(
+        page,
+        "You cannot move to this team as Team Type BusinessUnit can't be Division children"
       );
+    });
+
+    for (const [index, droppableTeamName] of teams.entries()) {
+      test(`Should drag and drop on ${TEAM_TYPE_BY_NAME[droppableTeamName]} team type`, async ({
+        page,
+      }) => {
+        // Nested team will be shown once anything is moved under it
+        if (index !== 0) {
+          await openDragDropDropdown(page, teams[index - 1]);
+        }
+
+        await dragAndDropElement(page, teamNameGroup, droppableTeamName);
+        await confirmationDragAndDropTeam(
+          page,
+          teamNameGroup,
+          droppableTeamName
+        );
+
+        // Verify the team is moved under the business team
+        await openDragDropDropdown(page, droppableTeamName);
+        const movedTeam = page.locator(
+          `.ant-table-row-level-1[data-row-key="${teamNameGroup}"]`
+        );
+
+        await expect(movedTeam).toBeVisible();
+      });
+    }
+
+    test(`Should drag and drop team on table level`, async ({ page }) => {
+      // Open department team dropdown as it is moved under it from last test
+      await openDragDropDropdown(page, teamNameDepartment);
+
+      await dragAndDropElement(
+        page,
+        teamNameGroup,
+        '.ant-table-thead > tr',
+        true
+      );
+      await confirmationDragAndDropTeam(page, teamNameGroup, 'Organization');
+
+      // Verify the team is moved under the table level
+      const movedTeam = page.locator(
+        `.ant-table-row-level-0[data-row-key="${teamNameGroup}"]`
+      );
+      await movedTeam.scrollIntoViewIfNeeded();
 
       await expect(movedTeam).toBeVisible();
     });
+
+    test('Delete Teams', async ({ page }) => {
+      for (const teamName of [
+        teamNameBusiness,
+        teamNameDivision,
+        teamNameDepartment,
+        teamNameGroup,
+      ]) {
+        const getTeamResponse = page.waitForResponse(
+          `/api/v1/teams/name/${teamName}*`
+        );
+
+        await page.getByRole('link', { name: teamName }).click();
+        await getTeamResponse;
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await hardDeleteTeam(page);
+
+        // Validate the deleted team
+        await expect(
+          page.getByRole('cell', { name: teamName })
+        ).not.toBeVisible();
+      }
+    });
   }
-
-  test(`Should drag and drop team on table level`, async ({ page }) => {
-    // Open department team dropdown as it is moved under it from last test
-    await openDragDropDropdown(page, teamNameDepartment);
-
-    await dragAndDropElement(
-      page,
-      teamNameGroup,
-      '.ant-table-thead > tr',
-      true
-    );
-    await confirmationDragAndDropTeam(page, teamNameGroup, 'Organization');
-
-    // Verify the team is moved under the table level
-    const movedTeam = page.locator(
-      `.ant-table-row-level-0[data-row-key="${teamNameGroup}"]`
-    );
-    await movedTeam.scrollIntoViewIfNeeded();
-
-    await expect(movedTeam).toBeVisible();
-  });
-
-  test('Delete Teams', async ({ page }) => {
-    for (const teamName of [
-      teamNameBusiness,
-      teamNameDivision,
-      teamNameDepartment,
-      teamNameGroup,
-    ]) {
-      const getTeamResponse = page.waitForResponse(
-        `/api/v1/teams/name/${teamName}*`
-      );
-
-      await page.getByRole('link', { name: teamName }).click();
-      await getTeamResponse;
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      await hardDeleteTeam(page);
-
-      // Validate the deleted team
-      await expect(
-        page.getByRole('cell', { name: teamName })
-      ).not.toBeVisible();
-    }
-  });
-});
+);

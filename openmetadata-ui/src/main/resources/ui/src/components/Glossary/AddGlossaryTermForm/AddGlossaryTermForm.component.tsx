@@ -20,8 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   FieldProp,
   FieldTypes,
@@ -29,6 +31,7 @@ import {
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
 import { generateFormFields, getField } from '../../../utils/formUtils';
+import { referenceURLValidator } from '../../../utils/GlossaryUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
@@ -40,6 +43,7 @@ const AddGlossaryTermForm = ({
   formRef: form,
 }: AddGlossaryTermFormProps) => {
   const { currentUser } = useApplicationStore();
+  const { entityRules } = useEntityRules(EntityType.GLOSSARY_TERM);
   const selectedOwners =
     Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
   const { t } = useTranslation();
@@ -330,7 +334,10 @@ const AddGlossaryTermForm = ({
           type="primary"
         />
       ),
-      multiple: { user: true, team: false },
+      multiple: {
+        user: entityRules.canAddMultipleUserOwners,
+        team: entityRules.canAddMultipleTeamOwner,
+      },
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
@@ -429,6 +436,9 @@ const AddGlossaryTermForm = ({
                           required: true,
                           message: t('message.valid-url-endpoint'),
                           type: 'url',
+                        },
+                        {
+                          validator: referenceURLValidator,
                         },
                       ]}>
                       <Input

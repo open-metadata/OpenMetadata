@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { SuggestionType } from '../../../generated/api/feed/createSuggestion';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
 import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 import SuggestionsSlider from './SuggestionsSlider';
@@ -49,6 +50,7 @@ const mockContextValue = {
   onUpdateActiveUser: jest.fn(),
   fetchSuggestionsByUserId: jest.fn(),
   acceptRejectSuggestion: jest.fn(),
+  dataSuggestionType: undefined,
 };
 
 describe('SuggestionsSlider', () => {
@@ -202,7 +204,57 @@ describe('SuggestionsSlider', () => {
     fireEvent.click(moreButton);
 
     expect(mockFetchSuggestions).toHaveBeenCalledTimes(1);
-    // Check that it's called without parameters (default behavior)
     expect(mockFetchSuggestions).toHaveBeenCalledWith();
+  });
+
+  it('should display correct label for SuggestDescription type', () => {
+    (useSuggestionsContext as jest.Mock).mockReturnValue({
+      ...mockContextValue,
+      dataSuggestionType: SuggestionType.SuggestDescription,
+    });
+
+    render(<SuggestionsSlider />);
+
+    expect(
+      screen.getByText('label.suggested-description-plural')
+    ).toBeInTheDocument();
+  });
+
+  it('should display correct label for SuggestTagLabel type', () => {
+    (useSuggestionsContext as jest.Mock).mockReturnValue({
+      ...mockContextValue,
+      dataSuggestionType: SuggestionType.SuggestTagLabel,
+    });
+
+    render(<SuggestionsSlider />);
+
+    expect(screen.getByText('label.suggested-tag-plural')).toBeInTheDocument();
+  });
+
+  it('should display default label when dataSuggestionType is undefined', () => {
+    (useSuggestionsContext as jest.Mock).mockReturnValue({
+      ...mockContextValue,
+      dataSuggestionType: undefined,
+    });
+
+    render(<SuggestionsSlider />);
+
+    expect(
+      screen.getByText('label.suggested-description-tag-plural')
+    ).toBeInTheDocument();
+  });
+
+  it('should call onUpdateActiveUser when close button is clicked', () => {
+    const mockOnUpdateActiveUser = jest.fn();
+    (useSuggestionsContext as jest.Mock).mockReturnValue({
+      ...mockContextValue,
+      onUpdateActiveUser: mockOnUpdateActiveUser,
+    });
+
+    render(<SuggestionsSlider />);
+
+    fireEvent.click(screen.getByTestId('close-suggestion'));
+
+    expect(mockOnUpdateActiveUser).toHaveBeenCalledTimes(1);
   });
 });

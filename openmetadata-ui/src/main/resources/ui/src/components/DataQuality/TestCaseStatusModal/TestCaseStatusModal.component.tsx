@@ -33,6 +33,7 @@ import {
   PAGE_SIZE_MEDIUM,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
+import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../constants/TestSuite.constant';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
@@ -83,7 +84,7 @@ export const TestCaseStatusModal = ({
         : Object.values(TestCaseResolutionStatusTypes);
 
     return status.map((value) => ({
-      label: value,
+      label: TEST_CASE_RESOLUTION_STATUS_LABELS[value],
       value,
     }));
   }, [data]);
