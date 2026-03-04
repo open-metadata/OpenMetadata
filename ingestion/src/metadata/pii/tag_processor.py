@@ -25,6 +25,7 @@ from metadata.pii.classification_manager import (
 )
 from metadata.pii.conflict_resolver import ConflictResolver
 from metadata.pii.models import ScoredTag
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -83,6 +84,8 @@ class TagProcessor(AutoClassificationProcessor):
                     classification_language=self.classification_language
                 ),
                 language=self.classification_language,
+                max_cell_length=self.source_config.maxCellLength
+                or SAMPLE_DATA_MAX_CELL_LENGTH,
             )
         self.score_tags_for_column = score_tags_for_column
 
