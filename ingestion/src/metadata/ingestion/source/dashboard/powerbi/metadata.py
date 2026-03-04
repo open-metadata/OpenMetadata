@@ -1060,9 +1060,6 @@ class PowerbiSource(DashboardServiceSource):
                 return None
 
             logger.debug(f"Found GoogleBigQuery.Database in expression")
-            logger.debug(
-                f"Parsing BigQuery source expression for powerbi table ({table.name}):: {source_expression}"
-            )
             # Extract project, dataset (schema), and table from BigQuery M expression
             # Pattern: [Name="project"][Data][Name="dataset",Kind="Schema"][Data][Name="table",Kind="Table"]
 
@@ -1092,7 +1089,10 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(
                 f"Extracted BigQuery info: project={project}, dataset={dataset}, table={table_name}"
             )
-
+            if not table_name:
+                logger.debug(
+                    f"Parsing BigQuery source expression for powerbi table ({table.name}):: {source_expression}"
+                )
             if table_name:
                 return [{"database": project, "schema": dataset, "table": table_name}]
 
