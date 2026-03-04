@@ -115,16 +115,24 @@ const TabFilters = () => {
   };
 
   const addMenuItems = [
-    {
-      id: 'test-case',
-      label: t('label.test-case'),
-      onAction: handleTestCaseClick,
-    },
-    {
-      id: 'custom-metric',
-      label: t('label.custom-metric'),
-      onAction: handleCustomMetricClick,
-    },
+    ...(createTestCasePermission
+      ? [
+          {
+            id: 'test-case',
+            label: t('label.test-case'),
+            onAction: handleTestCaseClick,
+          },
+        ]
+      : []),
+    ...(editDataProfile
+      ? [
+          {
+            id: 'custom-metric',
+            label: t('label.custom-metric'),
+            onAction: handleCustomMetricClick,
+          },
+        ]
+      : []),
   ];
 
   const handleDateRangeChange = (value: DateRangeObject) => {
@@ -213,37 +221,45 @@ const TabFilters = () => {
 
       {!isTableDeleted && (
         <>
-          <LimitWrapper resource="dataQuality">
-            <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
+          {(editDataProfile || createTestCasePermission) && (
+            <LimitWrapper resource="dataQuality">
+              <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <Button
+                  color="primary"
+                  data-testid="profiler-add-table-test-btn"
+                  iconTrailing={<ChevronDown className="tw:size-4" />}
+                  size="sm">
+                  {t('label.add')}
+                </Button>
+                <Dropdown.Popover className="tw:w-max">
+                  <Dropdown.Menu items={addMenuItems}>
+                    {(item: {
+                      id: string;
+                      label: string;
+                      onAction: () => void;
+                    }) => (
+                      <Dropdown.Item
+                        id={item.id}
+                        label={item.label}
+                        onAction={item.onAction}
+                      />
+                    )}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
+            </LimitWrapper>
+          )}
+          {editDataProfile && (
+            <Tooltip placement="top" title={t('label.setting-plural')}>
               <Button
-                color="primary"
-                data-testid="profiler-add-table-test-btn"
-                iconTrailing={<ChevronDown className="tw:size-4" />}
-                size="sm">
-                {t('label.add')}
+                color="secondary"
+                data-testid="profiler-setting-btn"
+                size="sm"
+                onClick={onSettingButtonClick}>
+                <SettingIcon />
               </Button>
-              <Dropdown.Popover className="tw:w-max">
-                <Dropdown.Menu items={addMenuItems}>
-                  {(item) => (
-                    <Dropdown.Item
-                      id={item.id}
-                      label={item.label}
-                      onAction={item.onAction}
-                    />
-                  )}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </LimitWrapper>
-          <Tooltip placement="top" title={t('label.setting-plural')}>
-            <Button
-              color="secondary"
-              data-testid="profiler-setting-btn"
-              size="sm"
-              onClick={onSettingButtonClick}>
-              <SettingIcon />
-            </Button>
-          </Tooltip>
+            </Tooltip>
+          )}
         </>
       )}
     </div>
