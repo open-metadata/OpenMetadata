@@ -269,9 +269,13 @@ public class DistributedJobParticipant implements Managed {
       // Set up failure callback on bulk sink to record sink failures
       final IndexingFailureRecorder recorder = failureRecorder;
       bulkSink.setFailureCallback(
-          (entityType, entityId, entityFqn, errorMessage) -> {
+          (entityType, entityId, entityFqn, errorMessage, stage) -> {
             if (recorder != null) {
-              recorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+              if (stage == IndexingFailureRecorder.FailureStage.PROCESS) {
+                recorder.recordProcessFailure(entityType, entityId, entityFqn, errorMessage);
+              } else {
+                recorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+              }
             }
           });
 

@@ -71,7 +71,6 @@ show_contexts = true
 [tool.mypy]
 mypy_path = "src"
 plugins = [
-    "sqlalchemy.ext.mypy.plugin",
     "pydantic.mypy"
 ]
 ignore_missing_imports = true

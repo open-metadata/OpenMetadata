@@ -22,6 +22,7 @@ import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.inject.AbstractBinder;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 
 /**
  * Dropwizard bundle for configuring Micrometer metrics with Prometheus backend.
@@ -60,6 +61,8 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
 
     // Create StreamableLogsMetrics instance
     streamableLogsMetrics = new StreamableLogsMetrics(prometheusMeterRegistry);
+
+    ReindexingMetrics.initialize(prometheusMeterRegistry);
 
     // Register Prometheus endpoint on admin connector
     registerPrometheusEndpoint(environment);

@@ -17,6 +17,7 @@ from typing import Any, Iterable, List, Optional, Tuple
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
+from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -380,10 +381,12 @@ class UnitycatalogSource(
                     return f"CREATE {view_type} `{table.catalog_name}`.`{table.schema_name}`.`{table_name}` AS {table.view_definition}"
             elif self.source_config.includeDDL and table_type != TableType.Iceberg:
                 cursor = self.sql_connection.execute(
-                    UNITY_CATALOG_GET_TABLE_DDL.format(
-                        database=self.context.get().database,
-                        schema=self.context.get().database_schema,
-                        table=table_name,
+                    text(
+                        UNITY_CATALOG_GET_TABLE_DDL.format(
+                            database=self.context.get().database,
+                            schema=self.context.get().database_schema,
+                            table=table_name,
+                        )
                     )
                 )
                 result = cursor.fetchone()
@@ -640,7 +643,7 @@ class UnitycatalogSource(
         )
         try:
             for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                for tag in self.sql_connection.execute(query):
+                for tag in self.sql_connection.execute(text(query)):
                     if tag.tag_value:
                         yield from get_ometa_tag_and_classification(
                             tag_fqn=FullyQualifiedEntityName(
@@ -691,7 +694,7 @@ class UnitycatalogSource(
         )
         try:
             for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                for tag in self.sql_connection.execute(query):
+                for tag in self.sql_connection.execute(text(query)):
                     if tag.tag_value:
                         yield from get_ometa_tag_and_classification(
                             tag_fqn=FullyQualifiedEntityName(

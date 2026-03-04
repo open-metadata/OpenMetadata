@@ -103,7 +103,10 @@ public class ApplicationHandler {
   public void cleanupStaleJobs() {
     try {
       LOG.info("Cleaning up stale application jobs from previous server runs");
-      Entity.getCollectionDAO().appExtensionTimeSeriesDao().markAllStaleEntriesFailed();
+      CollectionDAO.AppExtensionTimeSeries dao =
+          Entity.getCollectionDAO().appExtensionTimeSeriesDao();
+      dao.markStaleEntriesStoppedByName("SearchIndexingApplication");
+      dao.markAllStaleEntriesFailed();
       LOG.info("Stale application jobs cleanup completed successfully");
     } catch (Exception e) {
       LOG.error("Failed to cleanup stale application jobs", e);

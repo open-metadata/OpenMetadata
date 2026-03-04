@@ -124,7 +124,7 @@ def get_volume_factor_expression(total_count: ClauseElement) -> ClauseElement:
     for threshold, factor in VOLUME_FACTOR_TIERS:
         conditions.append((total_count < threshold, factor))
 
-    return case(conditions, else_=VOLUME_FACTOR_MAX)
+    return case(*conditions, else_=VOLUME_FACTOR_MAX)
 
 
 def get_impact_score_expression(
@@ -160,7 +160,7 @@ def get_impact_score_expression(
     """
     # Calculate failure rate with safe division
     failure_rate = case(
-        [(total_count > 0, func.cast(failed_count, Float) / total_count)], else_=0.0
+        (total_count > 0, func.cast(failed_count, Float) / total_count), else_=0.0
     )
 
     # Square the failure rate to emphasize high failure percentages
@@ -176,7 +176,7 @@ def get_impact_score_expression(
     # Ramps from 0 to 1 as sample size goes from 0 to threshold
     # Using case instead of least for database compatibility
     sample_weight_raw = func.cast(total_count, Float) / sample_weight_threshold
-    sample_weight = case([(sample_weight_raw < 1.0, sample_weight_raw)], else_=1.0)
+    sample_weight = case((sample_weight_raw < 1.0, sample_weight_raw), else_=1.0)
 
     # Combine all factors
     raw_impact = failure_severity * volume_factor * sample_weight
@@ -188,7 +188,8 @@ def get_impact_score_expression(
 
     # Ensure final score is between 0 and 1 using case expressions for compatibility
     return case(
-        [(normalized_impact < 0.0, 0.0), (normalized_impact > 1.0, 1.0)],
+        (normalized_impact < 0.0, 0.0),
+        (normalized_impact > 1.0, 1.0),
         else_=normalized_impact,
     )
 
