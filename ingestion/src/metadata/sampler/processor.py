@@ -125,6 +125,7 @@ class SamplerProcessor(Processor):
                 table_config=get_config_for_table(entity, self.profiler_config),
                 default_sample_config=SampleConfig(),
                 default_sample_data_count=self.source_config.sampleDataCount,
+                max_cell_length=self.source_config.maxCellLength or 1_000,
             )
             sample_data = SampleData(
                 data=sampler_interface.generate_sample_data(),

@@ -77,6 +77,7 @@ class SamplerInterface(ABC):
         storage_config: Optional[DataStorageConfig] = None,
         sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
         processing_engine: Optional[ProcessingEngine] = None,
+        max_cell_length: int = SAMPLE_DATA_MAX_CELL_LENGTH,
         **__,
     ):
         self.ometa_client = ometa_client
@@ -92,6 +93,7 @@ class SamplerInterface(ABC):
         self.partition_details = partition_details
         self.storage_config = storage_config
         self.processing_engine = processing_engine
+        self.max_cell_length = max_cell_length
 
         self.service_connection_config = service_connection_config
         self.connection = get_ssl_connection(self.service_connection_config)
@@ -110,6 +112,7 @@ class SamplerInterface(ABC):
         default_sample_config: Optional[SampleConfig] = None,
         default_sample_data_count: int = SAMPLE_DATA_DEFAULT_COUNT,
         processing_engine: Optional[ProcessingEngine] = None,
+        max_cell_length: int = SAMPLE_DATA_MAX_CELL_LENGTH,
         **kwargs,
     ) -> "SamplerInterface":
         """Create sampler"""
@@ -147,6 +150,7 @@ class SamplerInterface(ABC):
             storage_config=storage_config,
             sample_data_count=sample_data_count,
             processing_engine=processing_engine,
+            max_cell_length=max_cell_length,
             **kwargs,
         )
 
@@ -232,11 +236,10 @@ class SamplerInterface(ABC):
         """get columns"""
         raise NotImplementedError
 
-    @staticmethod
-    def _truncate_cell(value: Any) -> Any:
+    def _truncate_cell(self, value: Any) -> Any:
         """Truncate string values that exceed the max cell length."""
-        if isinstance(value, str) and len(value) > SAMPLE_DATA_MAX_CELL_LENGTH:
-            return value[:SAMPLE_DATA_MAX_CELL_LENGTH]
+        if isinstance(value, str) and len(value) > self.max_cell_length:
+            return value[: self.max_cell_length]
         return value
 
     @calculate_execution_time(store=False)
