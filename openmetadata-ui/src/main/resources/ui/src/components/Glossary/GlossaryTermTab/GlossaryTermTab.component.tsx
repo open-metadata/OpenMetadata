@@ -363,10 +363,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setIsTableLoading(true);
     setIsExpandingAll(true);
     const key = isGlossary ? 'glossary' : 'parent';
-    const isStatusFilterActive = !selectedStatus.includes('all');
-    const entityStatus = isStatusFilterActive
-      ? selectedStatus.filter((s) => s !== 'all').join(',')
-      : undefined;
     const { data } = await getGlossaryTerms({
       [key]: activeGlossary?.id || '',
       limit: API_RES_MAX_SIZE,
@@ -375,7 +371,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         TabSpecificField.PARENT,
         TabSpecificField.CHILDREN,
       ],
-      entityStatus,
     });
     setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
     const keys = data.reduce((prev, curr) => {
