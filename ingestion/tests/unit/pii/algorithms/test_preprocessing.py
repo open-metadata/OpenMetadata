@@ -52,18 +52,18 @@ def test_normal_length_string_processed_correctly():
 
 
 def test_max_length_string_processed_correctly():
-    max_length_string = "a" * MAX_NLP_TEXT_LENGTH
+    max_length_string = "a" * SAMPLE_DATA_MAX_CELL_LENGTH
     result = convert_to_str(max_length_string)
     assert result == max_length_string
 
 
 @patch("metadata.pii.algorithms.preprocessing.logger")
 def test_oversized_string_is_truncated_and_logs_warning(mock_logger):
-    oversized_string = "a" * (MAX_NLP_TEXT_LENGTH + 1)
+    oversized_string = "a" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1)
     result = convert_to_str(oversized_string)
 
-    assert result == "a" * MAX_NLP_TEXT_LENGTH
-    assert len(result) == MAX_NLP_TEXT_LENGTH
+    assert result == "a" * SAMPLE_DATA_MAX_CELL_LENGTH
+    assert len(result) == SAMPLE_DATA_MAX_CELL_LENGTH
     mock_logger.warning.assert_called_once()
 
 
@@ -72,34 +72,34 @@ def test_very_large_string_is_truncated_and_logs_warning(mock_logger):
     very_large_string = "x" * 2_000_000
     result = convert_to_str(very_large_string)
 
-    assert result == "x" * MAX_NLP_TEXT_LENGTH
-    assert len(result) == MAX_NLP_TEXT_LENGTH
+    assert result == "x" * SAMPLE_DATA_MAX_CELL_LENGTH
+    assert len(result) == SAMPLE_DATA_MAX_CELL_LENGTH
     mock_logger.warning.assert_called_once()
 
 
 @patch("metadata.pii.algorithms.preprocessing.logger")
 def test_oversized_string_preserves_content_prefix(mock_logger):
     prefix = "hello_world_"
-    oversized_string = prefix + "a" * (MAX_NLP_TEXT_LENGTH + 100)
+    oversized_string = prefix + "a" * (SAMPLE_DATA_MAX_CELL_LENGTH + 100)
     result = convert_to_str(oversized_string)
 
     assert result.startswith(prefix)
-    assert len(result) == MAX_NLP_TEXT_LENGTH
+    assert len(result) == SAMPLE_DATA_MAX_CELL_LENGTH
     mock_logger.warning.assert_called_once()
 
 
 @patch("metadata.pii.algorithms.preprocessing.logger")
 def test_preprocess_values_with_mixed_size_strings(mock_logger):
     normal_string = "normal"
-    oversized_string = "a" * (MAX_NLP_TEXT_LENGTH + 1)
-    max_length_string = "b" * MAX_NLP_TEXT_LENGTH
+    oversized_string = "a" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1)
+    max_length_string = "b" * SAMPLE_DATA_MAX_CELL_LENGTH
 
     input_values = [normal_string, oversized_string, max_length_string, "another"]
     result = preprocess_values(input_values)
 
     assert len(result) == 4
     assert result[0] == normal_string
-    assert result[1] == "a" * MAX_NLP_TEXT_LENGTH
+    assert result[1] == "a" * SAMPLE_DATA_MAX_CELL_LENGTH
     assert result[2] == max_length_string
     assert result[3] == "another"
     mock_logger.warning.assert_called_once()
@@ -108,22 +108,22 @@ def test_preprocess_values_with_mixed_size_strings(mock_logger):
 @patch("metadata.pii.algorithms.preprocessing.logger")
 def test_preprocess_values_with_list_containing_oversized_string(mock_logger):
     normal_string = "normal"
-    oversized_string = "a" * (MAX_NLP_TEXT_LENGTH + 1)
+    oversized_string = "a" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1)
 
     input_values = [[normal_string, oversized_string, "valid"]]
     result = preprocess_values(input_values)
 
     assert len(result) == 3
     assert result[0] == normal_string
-    assert result[1] == "a" * MAX_NLP_TEXT_LENGTH
+    assert result[1] == "a" * SAMPLE_DATA_MAX_CELL_LENGTH
     assert result[2] == "valid"
     mock_logger.warning.assert_called_once()
 
 
 @patch("metadata.pii.algorithms.preprocessing.logger")
 def test_preprocess_values_all_oversized_returns_truncated(mock_logger):
-    oversized_1 = "a" * (MAX_NLP_TEXT_LENGTH + 1)
-    oversized_2 = "b" * (MAX_NLP_TEXT_LENGTH + 100)
+    oversized_1 = "a" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1)
+    oversized_2 = "b" * (SAMPLE_DATA_MAX_CELL_LENGTH + 100)
 
     input_values = [oversized_1, oversized_2]
     result = preprocess_values(input_values)
