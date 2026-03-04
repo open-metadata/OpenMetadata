@@ -446,16 +446,6 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     }
   }, [glossaries]);
 
-  const treeData = useMemo(() => {
-    return convertGlossaryTermsToTreeOptions(
-      isNull(searchOptions)
-        ? (glossaries as ModifiedGlossaryTerm[])
-        : (searchOptions as unknown as ModifiedGlossaryTerm[]),
-      0,
-      isParentSelectable
-    );
-  }, [glossaries, searchOptions, expandableKeys.current, isParentSelectable]);
-
   const defaultSelectedValues = useMemo(() => {
     if (!initialOptions || initialOptions.length === 0) {
       return isMultiSelect ? [] : undefined;
