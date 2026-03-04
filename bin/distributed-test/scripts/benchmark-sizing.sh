@@ -17,6 +17,7 @@ RAMP=false
 SKIP_EXISTING=false
 MIXED=false
 MIXED_DURATION=60
+NO_BREAK=false
 
 # ─── Scale Ladder (ordered) ────────────────────────────────────────────────────
 ALL_SCALES=(10k 50k 100k 200k 500k large xlarge)
@@ -52,6 +53,7 @@ OPTIONS:
   --skip-existing         Skip tiers that already have JSON output in output-dir
   --mixed                 Also run mixed read/write workload at each tier
   --mixed-duration SECS   Duration for mixed workload (default: 60)
+  --no-break              Don't stop at break-points, run all tiers regardless
   -h, --help              Show this help message
 
 EXAMPLES:
@@ -85,6 +87,7 @@ while [[ $# -gt 0 ]]; do
         --skip-existing) SKIP_EXISTING=true; shift ;;
         --mixed)        MIXED=true; shift ;;
         --mixed-duration) MIXED_DURATION="$2"; shift 2 ;;
+        --no-break)     NO_BREAK=true; shift ;;
         -h|--help)      usage ;;
         *) echo "Unknown option: $1"; usage ;;
     esac
@@ -162,6 +165,7 @@ echo -e "  Modes:        ${CYAN}${MODE_LIST[*]}${NC}"
 echo -e "  Output:       ${CYAN}$OUTPUT_DIR${NC}"
 echo -e "  Ramp test:    ${CYAN}$RAMP${NC}"
 echo -e "  Mixed:        ${CYAN}$MIXED${NC}"
+echo -e "  No-break:     ${CYAN}$NO_BREAK${NC}"
 [[ -n "$ADMIN_PORT" ]] && echo -e "  Admin port:   ${CYAN}$ADMIN_PORT${NC}"
 echo ""
 
@@ -409,21 +413,33 @@ for scale in "${SCALES[@]}"; do
         log "  ${GREEN}[$scale / $MODE_LABEL] Done:${NC} ${_total} entities, ${_rps} RPS, p95=${_p95}ms, err=${_err}%, ${_assess} (${RUN_DURATION}s)"
 
         if is_broken "$METRICS"; then
-            BREAK_SCALE="$scale"
-            BREAK_MODE="$mode"
             if [[ "$_assess" == "undersized" ]]; then
-                BREAK_REASON="Cluster assessed as undersized"
+                reason="Cluster assessed as undersized"
             elif python3 -c "exit(0 if float('$_err') > 10 else 1)" 2>/dev/null; then
-                BREAK_REASON="Error rate ${_err}% exceeds 10% threshold"
+                reason="Error rate ${_err}% exceeds 10% threshold"
             elif python3 -c "exit(0 if float('$_p95') > 10000 else 1)" 2>/dev/null; then
-                BREAK_REASON="p95 latency ${_p95}ms exceeds 10s threshold"
+                reason="p95 latency ${_p95}ms exceeds 10s threshold"
             else
-                BREAK_REASON="Throughput degraded >50% from previous tier"
+                reason="Throughput degraded >50% from previous tier"
             fi
-            echo -e "\n  ${RED}${BOLD}BREAK-POINT DETECTED at $scale/$MODE_LABEL: $BREAK_REASON${NC}\n"
-            log "BREAK-POINT DETECTED at $scale/$MODE_LABEL: $BREAK_REASON"
-            BROKEN=true
-            break
+
+            if $NO_BREAK; then
+                echo -e "\n  ${YELLOW}${BOLD}BREAK-POINT WOULD FIRE at $scale/$MODE_LABEL: $reason (--no-break, continuing)${NC}\n"
+                log "BREAK-POINT SUPPRESSED at $scale/$MODE_LABEL: $reason (--no-break)"
+                if [[ -z "$BREAK_SCALE" ]]; then
+                    BREAK_SCALE="$scale"
+                    BREAK_MODE="$mode"
+                    BREAK_REASON="$reason (continued with --no-break)"
+                fi
+            else
+                BREAK_SCALE="$scale"
+                BREAK_MODE="$mode"
+                BREAK_REASON="$reason"
+                echo -e "\n  ${RED}${BOLD}BREAK-POINT DETECTED at $scale/$MODE_LABEL: $BREAK_REASON${NC}\n"
+                log "BREAK-POINT DETECTED at $scale/$MODE_LABEL: $BREAK_REASON"
+                BROKEN=true
+                break
+            fi
         fi
 
         if [[ "$_total" != "0" && "$_total" != "N/A" ]]; then
