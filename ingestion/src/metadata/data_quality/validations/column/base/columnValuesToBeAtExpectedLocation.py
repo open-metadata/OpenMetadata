@@ -30,10 +30,7 @@ from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_VALUE_KEY,
     BaseTestValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score
 from metadata.data_quality.validations.utils import casefold_if_string
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -448,6 +445,8 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
             if not dimension_columns:
                 return []
 
+            top_n = self._get_top_dimensions()
+
             # Use unified counting logic
             dimension_counts = self._calculate_counts(
                 dimension_columns=dimension_columns
@@ -459,7 +458,9 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
                 try:
                     dimension_results = (
                         self._create_dimension_results_from_location_counts(
-                            dimension_counts[dimension_col_name], dimension_col_name
+                            dimension_counts[dimension_col_name],
+                            dimension_col_name,
+                            top_n=top_n,
                         )
                     )
                     all_dimension_results.extend(dimension_results)
@@ -482,12 +483,14 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
         self,
         dimension_counts: dict,
         dimension_col_name: str,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Apply top N + Others aggregation and create DimensionResults
 
         Args:
             dimension_counts: Dictionary mapping dimension values to location counts
             dimension_col_name: Name of the dimension column
+            top_n: Number of top dimension values before grouping as "Others"
 
         Returns:
             List[DimensionResult]: Dimension results with impact scores
@@ -520,7 +523,6 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
         )
 
         # Apply top N + Others aggregation
-        top_n = DEFAULT_TOP_DIMENSIONS
         if len(dimension_data) <= top_n:
             final_data = dimension_data
         else:

@@ -36,6 +36,7 @@ const metrics = [
   'notLikeCount',
   'notRegexCount',
   'nullCount',
+  'nullMissingCount',
   'nullProportion',
   'regexCount',
   'rowCount',
@@ -45,6 +46,7 @@ const metrics = [
   'thirdQuartile',
   'uniqueCount',
   'uniqueProportion',
+  'valueRank',
   'valuesCount',
 ];
 
