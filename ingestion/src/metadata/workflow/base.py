@@ -128,6 +128,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 enable_streaming=True,
             )
 
+        self._log_workflow_execution_info()
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.post_init()
@@ -242,7 +243,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         3. Validate the pipeline status
         4. Update the pipeline status at the end
         """
-        self._log_workflow_execution_info()
         pipeline_state = PipelineState.success
         self.timer.trigger()
         try:
