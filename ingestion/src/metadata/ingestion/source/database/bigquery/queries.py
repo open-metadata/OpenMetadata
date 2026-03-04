@@ -245,7 +245,9 @@ class BigQueryQueryResult(BaseModel):
             )
         )
 
-        return TypeAdapter(List[BigQueryQueryResult]).validate_python(map(dict, rows))
+        return TypeAdapter(List[BigQueryQueryResult]).validate_python(
+            [r._asdict() for r in rows]
+        )
 
 
 JOBS = """

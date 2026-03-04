@@ -89,11 +89,11 @@ class ColumnValuesSumToBeBetweenValidator(
 
         try:
             dfs = self.runner
-            sum_impl = Metrics.SUM(column).get_pandas_computation()
+            sum_impl = Metrics.sum(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.SUM.name: sum_impl.create_accumulator(),
+                    Metrics.sum.name: sum_impl.create_accumulator(),
                     DIMENSION_TOTAL_COUNT_KEY: 0,
                 }
             )
@@ -106,9 +106,9 @@ class ColumnValuesSumToBeBetweenValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.SUM.name
+                        Metrics.sum.name
                     ] = sum_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.SUM.name],
+                        dimension_aggregates[dimension_value][Metrics.sum.name],
                         group_df,
                     )
 
@@ -118,7 +118,7 @@ class ColumnValuesSumToBeBetweenValidator(
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                sum_value = agg[Metrics.SUM.name]
+                sum_value = agg[Metrics.sum.name]
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
                 if sum_value is None:
@@ -130,14 +130,14 @@ class ColumnValuesSumToBeBetweenValidator(
 
                 failed_count = (
                     total_rows
-                    if checker.violates_pandas({Metrics.SUM.name: sum_value})
+                    if checker.violates_pandas({Metrics.sum.name: sum_value})
                     else 0
                 )
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.SUM.name: sum_value,
+                        Metrics.sum.name: sum_value,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -156,12 +156,12 @@ class ColumnValuesSumToBeBetweenValidator(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={
-                        Metrics.SUM.name: "sum",
+                        Metrics.sum.name: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                     },
                     top_n=DEFAULT_TOP_DIMENSIONS,
-                    violation_metrics=[Metrics.SUM.name],
+                    violation_metrics=[Metrics.sum.name],
                     violation_predicate=checker.violates_pandas,
                 )
 

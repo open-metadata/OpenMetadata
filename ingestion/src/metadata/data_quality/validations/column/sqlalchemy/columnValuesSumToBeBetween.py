@@ -73,19 +73,19 @@ class ColumnValuesSumToBeBetweenValidator(
         dimension_results = []
 
         try:
-            row_count_expr = Metrics.ROW_COUNT().fn()
-            sum_expr = Metrics.SUM(column).fn()
+            row_count_expr = Metrics.rowCount().fn()
+            sum_expr = Metrics.sum(column).fn()
 
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                Metrics.SUM.name: sum_expr,
+                Metrics.sum.name: sum_expr,
             }
 
             failed_count_builder = (
                 lambda cte, row_count_expr: self._get_validation_checker(
                     test_params
                 ).build_agg_level_violation_sqa(
-                    [getattr(cte.c, Metrics.SUM.name)], row_count_expr
+                    [getattr(cte.c, Metrics.sum.name)], row_count_expr
                 )
             )
 
@@ -101,13 +101,13 @@ class ColumnValuesSumToBeBetweenValidator(
             )
 
             for row in result_rows:
-                sum_value = row.get(Metrics.SUM.name)
+                sum_value = row.get(Metrics.sum.name)
 
                 if sum_value is None:
                     continue
 
                 metric_values = {
-                    Metrics.SUM.name: sum_value,
+                    Metrics.sum.name: sum_value,
                 }
 
                 evaluation = self._evaluate_test_condition(metric_values, test_params)

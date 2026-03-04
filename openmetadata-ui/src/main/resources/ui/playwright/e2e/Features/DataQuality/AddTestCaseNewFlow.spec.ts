@@ -343,7 +343,7 @@ test.describe('Add TestCase New Flow', { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Dat
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await page.click('[data-testid="profiler-add-table-test-btn"]');
-    await page.getByRole('menuitem', { name: 'Test case' }).click();
+    await page.getByRole('menuitemradio', { name: 'Test case' }).click();
     await page.waitForLoadState('networkidle');
 
     await createTestCase({
@@ -352,7 +352,7 @@ test.describe('Add TestCase New Flow', { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Dat
     });
 
     await page.click('[data-testid="profiler-add-table-test-btn"]');
-    await page.getByRole('menuitem', { name: 'Test case' }).click();
+    await page.getByRole('menuitemradio', { name: 'Test case' }).click();
     await page
       .getByTestId('select-table-card')
       .getByText('Column Level')

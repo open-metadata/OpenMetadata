@@ -4682,12 +4682,12 @@ public interface CollectionDAO {
         mySqlCondition.append(
             " AND (JSON_EXTRACT(c.json, '$.disabled') = TRUE OR JSON_EXTRACT(tag.json, '$.disabled') = TRUE)");
         postgresCondition.append(
-            " AND (COALESCE((c.json#>'{disabled}')::boolean, FALSE) = TRUE OR COALESCE((tag.json#>'{disabled}')::boolean, FALSE) = TRUE)");
+            " AND (COALESCE((c.json->>'disabled')::boolean, FALSE) = TRUE OR COALESCE((tag.json->>'disabled')::boolean, FALSE) = TRUE)");
       } else if (filter.getQueryParam("classification.disabled") != null) {
         mySqlCondition.append(
-            " AND (JSON_EXTRACT(c.json, '$.disabled') = FALSE AND JSON_EXTRACT(tag.json, '$.disabled') = FALSE)");
+            " AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE) AND (JSON_EXTRACT(tag.json, '$.disabled') IS NULL OR JSON_EXTRACT(tag.json, '$.disabled') = FALSE)");
         postgresCondition.append(
-            " AND (COALESCE((c.json#>'{disabled}')::boolean, FALSE) = FALSE AND COALESCE((tag.json#>'{disabled}')::boolean, FALSE) = FALSE)");
+            " AND COALESCE((c.json->>'disabled')::boolean, FALSE) = FALSE AND COALESCE((tag.json->>'disabled')::boolean, FALSE) = FALSE");
       }
 
       String tagCondition = filter.getCondition("tag");
@@ -7509,6 +7509,27 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'stopped') WHERE appName=:appName AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')) = 'running' AND extension = 'status'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"stopped\"') WHERE appName = :appName AND json->>'status' = 'running' AND extension = 'status'",
+        connectionType = POSTGRES)
+    void markStaleEntriesStoppedByName(@Bind("appName") String appName);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'stopped') WHERE appName=:appName AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')) = 'running' AND extension = 'status' AND timestamp < :beforeTimestamp",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"stopped\"') WHERE appName = :appName AND json->>'status' = 'running' AND extension = 'status' AND timestamp < :beforeTimestamp",
+        connectionType = POSTGRES)
+    void markStaleEntriesStoppedBefore(
+        @Bind("appName") String appName, @Bind("beforeTimestamp") long beforeTimestamp);
+
+    @ConnectionAwareSqlUpdate(
+        value =
             "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'failed') WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')) = 'running' AND extension = 'status'",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
@@ -9644,10 +9665,13 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT * FROM search_index_partition WHERE jobId = :jobId AND status = 'PROCESSING' "
-            + "AND assignedServer = :serverId ORDER BY claimedAt DESC LIMIT 1")
+            + "AND assignedServer = :serverId AND claimedAt = :claimedAt "
+            + "ORDER BY priority DESC, entityType, partitionIndex LIMIT 1")
     @RegisterRowMapper(SearchIndexPartitionMapper.class)
     SearchIndexPartitionRecord findLatestClaimedPartition(
-        @Bind("jobId") String jobId, @Bind("serverId") String serverId);
+        @Bind("jobId") String jobId,
+        @Bind("serverId") String serverId,
+        @Bind("claimedAt") long claimedAt);
 
     @SqlQuery(
         "SELECT * FROM search_index_partition WHERE jobId = :jobId AND status = :status "

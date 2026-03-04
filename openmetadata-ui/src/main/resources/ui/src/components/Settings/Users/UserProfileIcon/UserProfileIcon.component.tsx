@@ -134,9 +134,23 @@ export const UserProfileIcon = () => {
         : currentUser?.roles,
       teams: currentUser?.teams,
       inheritedRoles: currentUser?.inheritedRoles,
-      personas: currentUser?.personas,
+      personas: (() => {
+        const directPersonas = currentUser?.personas ?? [];
+        const inheritedPersonas = currentUser?.inheritedPersonas ?? [];
+        const allPersonas = [...directPersonas, ...inheritedPersonas];
+        
+        if (currentUser?.defaultPersona) {
+          allPersonas.push(currentUser.defaultPersona);
+        }
+        
+        // Deduplicate by id
+        const uniquePersonasMap = new Map();
+        allPersonas.forEach((p) => uniquePersonasMap.set(p.id, p));
+        
+        return Array.from(uniquePersonasMap.values());
+      })(),
     };
-  }, [currentUser, currentUser?.personas]);
+  }, [currentUser, currentUser?.personas, currentUser?.inheritedPersonas]);
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => {

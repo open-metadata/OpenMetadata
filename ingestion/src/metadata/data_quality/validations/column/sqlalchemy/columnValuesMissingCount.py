@@ -78,13 +78,13 @@ class ColumnValuesMissingCountValidator(
             missing_values = test_params.get(self.MISSING_VALUE_MATCH)
             expected_missing_count = test_params.get(self.MISSING_COUNT_VALUE, 0)
 
-            row_count_expr = Metrics.ROW_COUNT().fn()
-            total_missing_expr = Metrics.NULL_MISSING_COUNT(column).fn()
+            row_count_expr = Metrics.rowCount().fn()
+            total_missing_expr = Metrics.nullMissingCount(column).fn()
 
             if missing_values:
                 total_missing_expr = (
                     total_missing_expr
-                    + add_props(values=missing_values)(Metrics.COUNT_IN_SET.value)(
+                    + add_props(values=missing_values)(Metrics.countInSet.value)(
                         column
                     ).fn()
                 )
