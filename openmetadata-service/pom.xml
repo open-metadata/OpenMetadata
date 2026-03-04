@@ -914,7 +914,7 @@
     <dependency>
       <groupId>com.mchange</groupId>
       <artifactId>c3p0</artifactId>
-      <version>0.10.1</version>
+      <version>0.12.0</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.woodstox</groupId>
@@ -987,7 +987,7 @@
     <dependency>
       <groupId>org.flowable</groupId>
       <artifactId>flowable-engine</artifactId>
-      <version>7.2.0</version>
+      <version>8.0.0</version>
     </dependency>
     <dependency>
       <groupId>io.github.jamsesso</groupId>
@@ -1057,7 +1057,7 @@
     <dependency>
       <groupId>org.apache.jena</groupId>
       <artifactId>apache-jena-libs</artifactId>
-      <version>4.10.0</version>
+      <version>5.0.0</version>
       <type>pom</type>
     </dependency>
     
