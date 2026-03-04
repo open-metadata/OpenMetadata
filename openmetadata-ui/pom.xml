@@ -121,7 +121,7 @@
             <phase>prepare-package</phase>
             <configuration>
               <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
-              <arguments>install --frozen-lockfile</arguments>
+              <arguments>install --frozen-lockfile --prefer-offline</arguments>
             </configuration>
           </execution>
           <execution>

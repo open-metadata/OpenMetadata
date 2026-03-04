@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FC, useMemo } from 'react';
+import { FC, lazy, Suspense, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
+import Loader from '../../common/Loader/Loader';
 import LineageTable from '../../LineageTable/LineageTable';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import Lineage from '../Lineage.component';
+
+const Lineage = lazy(() => import('../Lineage.component'));
 
 interface EntityLineageTabProps {
   deleted: boolean;
@@ -43,12 +45,14 @@ export const EntityLineageTab: FC<EntityLineageTabProps> = ({
 
   const lineageTab = useMemo(
     () => (
-      <Lineage
-        deleted={deleted}
-        entity={entity}
-        entityType={entityType}
-        hasEditAccess={hasEditAccess}
-      />
+      <Suspense fallback={<Loader />}>
+        <Lineage
+          deleted={deleted}
+          entity={entity}
+          entityType={entityType}
+          hasEditAccess={hasEditAccess}
+        />
+      </Suspense>
     ),
     [deleted, entity, entityType, hasEditAccess]
   );

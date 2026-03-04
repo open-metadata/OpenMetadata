@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import Loader from '../../components/common/Loader/Loader';
 import {
   GRAPH_BACKGROUND_COLOR,
@@ -19,8 +19,9 @@ import {
 } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getOidcToken } from '../../utils/SwTokenStorageUtils';
-import RapiDocReact from './RapiDocReact';
 import './swagger.less';
+
+const RapiDocReact = lazy(() => import('./RapiDocReact'));
 
 const SwaggerPage = () => {
   const { theme } = useApplicationStore();
@@ -46,24 +47,26 @@ const SwaggerPage = () => {
       className="container-fluid"
       data-testid="fluid-container"
       id="doc-container">
-      <RapiDocReact
-        allow-spec-file-download
-        api-key-location="header"
-        api-key-name="Authorization"
-        api-key-value={apiKeyValue}
-        font-size="large"
-        nav-bg-color={GRAPH_BACKGROUND_COLOR}
-        nav-item-spacing="compact"
-        nav-text-color={TEXT_BODY_COLOR}
-        primary-color={theme.primaryColor}
-        regular-font="Open Sans"
-        render-style="focused"
-        show-header={false}
-        show-method-in-nav-bar="as-colored-block"
-        spec-url="./swagger.json"
-        text-color={TEXT_BODY_COLOR}
-        theme="light"
-      />
+      <Suspense fallback={<Loader />}>
+        <RapiDocReact
+          allow-spec-file-download
+          api-key-location="header"
+          api-key-name="Authorization"
+          api-key-value={apiKeyValue}
+          font-size="large"
+          nav-bg-color={GRAPH_BACKGROUND_COLOR}
+          nav-item-spacing="compact"
+          nav-text-color={TEXT_BODY_COLOR}
+          primary-color={theme.primaryColor}
+          regular-font="Open Sans"
+          render-style="focused"
+          show-header={false}
+          show-method-in-nav-bar="as-colored-block"
+          spec-url="./swagger.json"
+          text-color={TEXT_BODY_COLOR}
+          theme="light"
+        />
+      </Suspense>
     </div>
   );
 };
