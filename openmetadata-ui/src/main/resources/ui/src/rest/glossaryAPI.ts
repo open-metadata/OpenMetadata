@@ -36,6 +36,7 @@ import APIClient from './index';
 export type ListGlossaryTermsParams = ListParams & {
   glossary?: string;
   parent?: string;
+  entityStatus?: string;
 };
 
 export type SearchGlossaryTermsParams = ListParamsWithOffset & {
