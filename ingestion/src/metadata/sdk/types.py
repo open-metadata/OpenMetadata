@@ -1,4 +1,5 @@
 """Common type aliases for the OpenMetadata SDK."""
+
 from __future__ import annotations
 
 from typing import Any, TypeAlias
@@ -14,7 +15,7 @@ UuidLike: TypeAlias = str | UUID
 OMetaClient: TypeAlias = _OMeta[BaseModel, BaseModel]
 
 
-def _ensure_uuid(value: UuidLike) -> _basic.Uuid:
+def ensure_uuid(value: UuidLike) -> _basic.Uuid:
     """Convert any UUID-like value to the schema Uuid type, safely handling basic.Uuid inputs."""
     if isinstance(value, _basic.Uuid):
         return value
@@ -23,4 +24,4 @@ def _ensure_uuid(value: UuidLike) -> _basic.Uuid:
     return _basic.Uuid(UUID(str(value)))
 
 
-__all__ = ["JsonDict", "UuidLike", "OMetaClient", "_ensure_uuid"]
+__all__ = ["JsonDict", "UuidLike", "OMetaClient", "ensure_uuid"]
