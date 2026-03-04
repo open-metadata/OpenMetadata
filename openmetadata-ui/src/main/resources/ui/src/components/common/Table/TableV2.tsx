@@ -263,7 +263,7 @@ const TableV2 = <T extends object>(
       );
 
       rest.rowSelection.onChange(selectedKeys, selectedRows, {
-        type: 'multiple',
+        type: selectionMode === 'single' ? 'single' : 'multiple',
       });
     },
     [rest.rowSelection, rest.dataSource, getRowKey]
@@ -276,9 +276,13 @@ const TableV2 = <T extends object>(
       if (!rest.onChange) {
         return;
       }
-      const matchedCol = propsColumns.find(
-        (c) => c.key === descriptor.column
-      ) as ColumnType<T> | undefined;
+      const matchedCol = propsColumns.find((c, colIdx) => {
+        const resolvedKey = String(
+          c.key ?? (c as ColumnType<T>).dataIndex ?? colIdx
+        );
+
+        return resolvedKey === descriptor.column;
+      }) as ColumnType<T> | undefined;
 
       rest.onChange(
         {} as TablePaginationConfig,
@@ -287,7 +291,12 @@ const TableV2 = <T extends object>(
           column: matchedCol,
           columnKey: String(descriptor.column ?? ''),
           field: String(descriptor.column ?? ''),
-          order: descriptor.direction === 'ascending' ? 'ascend' : 'descend',
+          order:
+            descriptor.direction === 'ascending'
+              ? 'ascend'
+              : descriptor.direction === 'descending'
+              ? 'descend'
+              : null,
         } as SorterResult<T>,
         {
           currentDataSource: (rest.dataSource ?? []) as T[],
@@ -351,10 +360,15 @@ const TableV2 = <T extends object>(
   const resolveCellValue = useCallback(
     (col: ColumnType<T>, record: T, index: number): ReactNode => {
       const { dataIndex, render } = col;
-      const rawValue =
-        typeof dataIndex === 'string'
-          ? (record as Record<string, unknown>)[dataIndex]
-          : undefined;
+      const rawValue = Array.isArray(dataIndex)
+        ? dataIndex.reduce(
+            (obj: unknown, key) =>
+              (obj as Record<string, unknown>)?.[key as string],
+            record as unknown
+          )
+        : typeof dataIndex === 'string'
+        ? (record as Record<string, unknown>)[dataIndex]
+        : undefined;
 
       if (render) {
         const rendered = render(rawValue, record, index);
@@ -460,9 +474,9 @@ const TableV2 = <T extends object>(
           onSelectionChange={handleSelectionChange}
           onSortChange={handleSortChange}>
           <UntitledTable.Header className="tw:px-2">
-            {propsColumns.map((col) => {
+            {propsColumns.map((col, colIdx) => {
               const colType = col as ColumnType<T>;
-              const colKey = String(col.key);
+              const colKey = String(col.key ?? colType.dataIndex ?? colIdx);
 
               return (
                 <UntitledTable.Head
@@ -493,10 +507,12 @@ const TableV2 = <T extends object>(
                 }
                 id={getRowKey(record, index)}
                 key={getRowKey(record, index)}>
-                {propsColumns.map((col) => (
+                {propsColumns.map((col, colIdx) => (
                   <UntitledTable.Cell
                     className="tw:py-2 tw:pl-4 tw:pr-2 tw:align-top"
-                    key={String(col.key)}>
+                    key={String(
+                      col.key ?? (col as ColumnType<T>).dataIndex ?? colIdx
+                    )}>
                     {resolveCellValue(col as ColumnType<T>, record, index)}
                   </UntitledTable.Cell>
                 ))}
