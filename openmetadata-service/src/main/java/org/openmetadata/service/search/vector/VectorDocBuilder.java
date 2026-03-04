@@ -4,23 +4,34 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.Votes;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ParseTags;
+import org.openmetadata.service.search.models.FlattenColumn;
+import org.openmetadata.service.search.models.FlattenSchemaField;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
@@ -97,7 +108,7 @@ public class VectorDocBuilder {
     boolean isGlossaryTerm = entity instanceof GlossaryTerm;
     boolean isMetric = entity instanceof Metric;
 
-    List<TagLabel> tagsPojo = entity.getTags() != null ? entity.getTags() : Collections.emptyList();
+    List<TagLabel> tagsPojo = collectAllTags(entity);
 
     List<String> classificationTagFqns =
         tagsPojo.stream()
@@ -221,13 +232,16 @@ public class VectorDocBuilder {
 
     if (entity instanceof Table table) {
       bodyParts.add("columns: " + columnsToString(table.getColumns()));
+    } else if (entity instanceof Container container && container.getDataModel() != null) {
+      bodyParts.add("columns: " + columnsToString(container.getDataModel().getColumns()));
     }
 
     return String.join("; ", bodyParts);
   }
 
   private static void addTagsAndTier(Map<String, Object> doc, EntityInterface entity) {
-    if (entity.getTags() == null || entity.getTags().isEmpty()) {
+    List<TagLabel> allTags = collectAllTags(entity);
+    if (allTags.isEmpty()) {
       doc.put("tags", Collections.emptyList());
       return;
     }
@@ -235,7 +249,7 @@ public class VectorDocBuilder {
     List<Map<String, Object>> tagsList = new ArrayList<>();
     Map<String, Object> tierMap = null;
 
-    for (TagLabel tag : entity.getTags()) {
+    for (TagLabel tag : allTags) {
       Map<String, Object> tagDoc = new HashMap<>();
       tagDoc.put("tagFQN", tag.getTagFQN());
       tagDoc.put("name", tag.getName());
@@ -363,6 +377,14 @@ public class VectorDocBuilder {
             table.getColumns().stream().map(Column::getName).collect(Collectors.toList());
         doc.put("columns", columnNames);
       }
+    } else if (entity instanceof Container container
+        && container.getDataModel() != null
+        && container.getDataModel().getColumns() != null) {
+      List<String> columnNames =
+          container.getDataModel().getColumns().stream()
+              .map(Column::getName)
+              .collect(Collectors.toList());
+      doc.put("columns", columnNames);
     } else if (entity instanceof GlossaryTerm glossaryTerm) {
       if (glossaryTerm.getSynonyms() != null) {
         doc.put("synonyms", glossaryTerm.getSynonyms());
@@ -409,6 +431,95 @@ public class VectorDocBuilder {
             metric.getRelatedMetrics().stream()
                 .map(EntityReference::getFullyQualifiedName)
                 .collect(Collectors.toList()));
+      }
+    }
+  }
+
+  static List<TagLabel> collectAllTags(EntityInterface entity) {
+    String entityType = entity.getEntityReference().getType();
+    Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
+
+    if (entity instanceof ColumnsEntityInterface columnsEntity) {
+      List<Column> columns = columnsEntity.getColumns();
+      if (columns != null) {
+        List<FlattenColumn> flatCols = new ArrayList<>();
+        parseColumns(columns, flatCols, null);
+        for (FlattenColumn col : flatCols) {
+          if (col.getTags() != null) {
+            tagsWithChildren.add(col.getTags());
+          }
+        }
+      }
+    }
+
+    if (entity instanceof Topic topic
+        && topic.getMessageSchema() != null
+        && topic.getMessageSchema().getSchemaFields() != null) {
+      List<FlattenSchemaField> flatFields = new ArrayList<>();
+      parseSchemaFields(topic.getMessageSchema().getSchemaFields(), flatFields, null);
+      for (FlattenSchemaField field : flatFields) {
+        if (field.getTags() != null) {
+          tagsWithChildren.add(field.getTags());
+        }
+      }
+    }
+
+    if (entity instanceof Container container
+        && container.getDataModel() != null
+        && container.getDataModel().getColumns() != null) {
+      List<FlattenColumn> flatCols = new ArrayList<>();
+      parseColumns(container.getDataModel().getColumns(), flatCols, null);
+      for (FlattenColumn col : flatCols) {
+        if (col.getTags() != null) {
+          tagsWithChildren.add(col.getTags());
+        }
+      }
+    }
+
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(entityType, entity));
+    tagsWithChildren.add(parseTags.getTags());
+
+    return tagsWithChildren.stream()
+        .flatMap(List::stream)
+        .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+  }
+
+  private static void parseColumns(
+      List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
+    Optional<String> optParent = Optional.ofNullable(parentColumn).filter(s -> !s.isEmpty());
+    List<TagLabel> tags = new ArrayList<>();
+    for (Column col : columns) {
+      String colName = optParent.isPresent() ? optParent.get() + "." + col.getName() : col.getName();
+      if (col.getTags() != null) {
+        tags = col.getTags();
+      }
+      FlattenColumn flat = FlattenColumn.builder().name(colName).description(col.getDescription()).build();
+      if (!tags.isEmpty()) {
+        flat.setTags(tags);
+      }
+      flattenColumns.add(flat);
+      if (col.getChildren() != null) {
+        parseColumns(col.getChildren(), flattenColumns, col.getName());
+      }
+    }
+  }
+
+  private static void parseSchemaFields(
+      List<Field> fields, List<FlattenSchemaField> flattenFields, String parentField) {
+    Optional<String> optParent = Optional.ofNullable(parentField).filter(s -> !s.isEmpty());
+    List<TagLabel> tags = new ArrayList<>();
+    for (Field field : fields) {
+      String fieldName = optParent.isPresent() ? optParent.get() + "." + field.getName() : field.getName();
+      if (field.getTags() != null) {
+        tags = field.getTags();
+      }
+      FlattenSchemaField flat = FlattenSchemaField.builder().name(fieldName).description(field.getDescription()).build();
+      if (!tags.isEmpty()) {
+        flat.setTags(tags);
+      }
+      flattenFields.add(flat);
+      if (field.getChildren() != null) {
+        parseSchemaFields(field.getChildren(), flattenFields, field.getName());
       }
     }
   }

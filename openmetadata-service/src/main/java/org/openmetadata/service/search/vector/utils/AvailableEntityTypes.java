@@ -27,7 +27,8 @@ public final class AvailableEntityTypes {
           "page",
           "storedProcedure",
           "searchIndex",
-          "topic");
+          "topic",
+          "container");
 
   public static final Set<String> SET =
       LIST.stream().map(s -> s.toLowerCase(Locale.ROOT)).collect(Collectors.toUnmodifiableSet());
