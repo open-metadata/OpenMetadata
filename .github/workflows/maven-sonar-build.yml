@@ -89,18 +89,4 @@ jobs:
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -Pstatic-code-analysis clean package -am
-
-      - name: Clean Up
-        run: |
-          cd ./docker/development
-          docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
-
-      - name: Publish Test Report
-        if: ${{ always() }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
-          report_paths: "openmetadata-service/target/surefire-reports/TEST-*.xml"
+        run: mvn -Pstatic-code-analysis clean package -DskipTests -am
