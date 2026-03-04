@@ -14,6 +14,12 @@ clusterName: openmetadata
 swagger:
   resourcePackage: org.openmetadata.service.webservice.resources
 
+assets:
+  resourcePath: /assets/
+  uriPath: /test-base-path/
+
+basePath: /test-base-path/
+
 server:
   rootPath: '/api/*'
   applicationConnectors:
