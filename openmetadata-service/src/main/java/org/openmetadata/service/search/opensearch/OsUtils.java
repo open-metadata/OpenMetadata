@@ -611,18 +611,22 @@ public class OsUtils {
       return;
     }
 
+    JsonNode meta = rootNode.path("mappings").path("_meta");
+    if (meta.isMissingNode() || !meta.has("embedding_dimension")) {
+      LOG.warn(
+          "Index has embedding fields (fingerprint) but no _meta.embedding_dimension set. "
+              + "Skipping knn_vector setup. Ensure the vector search service is initialized "
+              + "before creating embedding-enabled indexes.");
+      return;
+    }
+    int dimension = meta.get("embedding_dimension").asInt();
+
     JsonNode indexSettingsNode = rootNode.path("settings").path("index");
     if (!indexSettingsNode.isMissingNode() && indexSettingsNode.isObject()) {
       ObjectNode indexSettings = (ObjectNode) indexSettingsNode;
       indexSettings.put("knn", true);
       indexSettings.put("knn.algo_param.ef_search", 1000);
       indexSettings.put("knn.advanced.filtered_exact_search_threshold", 0);
-    }
-
-    int dimension = 512;
-    JsonNode meta = rootNode.path("mappings").path("_meta");
-    if (!meta.isMissingNode() && meta.has("embedding_dimension")) {
-      dimension = meta.get("embedding_dimension").asInt(512);
     }
 
     ObjectMapper mapper = new ObjectMapper();
