@@ -9,6 +9,9 @@ from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
 )
 from metadata.generated.schema.entity.data.dataContract import DataContract
+from metadata.generated.schema.entity.datacontract.dataContractResult import (
+    DataContractResult,
+)
 from metadata.generated.schema.entity.datacontract.odcs.odcsDataContract import (
     ODCSDataContract,
 )
@@ -270,7 +273,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         return client.get_data_contract_by_entity_id(_ensure_uuid(entity_id), entity_type)
 
     @classmethod
-    def validate_by_entity(cls, entity_id: UuidLike, entity_type: str) -> Optional[Any]:
+    def validate_by_entity(cls, entity_id: UuidLike, entity_type: str) -> Optional[DataContractResult]:
         """
         Validate a data contract for an entity
         """
@@ -278,7 +281,7 @@ class DataContracts(BaseEntity[DataContract, CreateDataContractRequest]):
         return client.validate_data_contract_by_entity_id(_ensure_uuid(entity_id), entity_type)
 
     @classmethod
-    def validate_request(cls, request: Any) -> Optional[Any]:
+    def validate_request(cls, request: CreateDataContractRequest) -> Optional[DataContractResult]:
         """
         Validate a CreateDataContract request without creating
         """

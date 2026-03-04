@@ -17,6 +17,9 @@ import traceback
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
+from metadata.generated.schema.api.data.createDataContract import (
+    CreateDataContractRequest,
+)
 from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
@@ -481,7 +484,9 @@ class OMetaDataContractMixin:
             )
         return None
 
-    def validate_data_contract_request(self, create_request: Any) -> Optional[Any]:
+    def validate_data_contract_request(
+        self, create_request: CreateDataContractRequest
+    ) -> Optional[DataContractResult]:
         """
         Validate a CreateDataContract request without creating
         """
@@ -491,7 +496,7 @@ class OMetaDataContractMixin:
                 data=create_request.model_dump_json(),
             )
             if resp:
-                return resp
+                return DataContractResult(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error validating data contract request: {err}")
