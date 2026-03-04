@@ -105,7 +105,7 @@ class AbstractTableMetricComputer(ABC):
         """get table and schema name from table args
 
         Args:
-            table (DeclarativeMeta): _description_
+            table (DeclarativeBase): _description_
         """
         try:
             self._schema_name = self.runner.schema_name
@@ -131,7 +131,7 @@ class AbstractTableMetricComputer(ABC):
         """get column names and count from table
 
         Args:
-            table (DeclarativeMeta): table object
+            table (DeclarativeBase): table object
 
         Returns:
             Tuple[str, int]

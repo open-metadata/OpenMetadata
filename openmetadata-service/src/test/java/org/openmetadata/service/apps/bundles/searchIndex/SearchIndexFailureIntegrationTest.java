@@ -66,13 +66,33 @@ class SearchIndexFailureIntegrationTest {
 
         // Simulate what happens when BulkSink fails to index entities
         BulkSink.FailureCallback callback =
-            (entityType, entityId, entityFqn, errorMessage) ->
+            (entityType, entityId, entityFqn, errorMessage, stage) -> {
+              if (stage == IndexingFailureRecorder.FailureStage.PROCESS) {
+                recorder.recordProcessFailure(entityType, entityId, entityFqn, errorMessage);
+              } else {
                 recorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+              }
+            };
 
         // Simulate 3 sink failures
-        callback.onFailure("table", "uuid-1", "db.schema.table1", "Mapping error");
-        callback.onFailure("table", "uuid-2", "db.schema.table2", "Document too large");
-        callback.onFailure("dashboard", "uuid-3", "service.dashboard1", "Index not found");
+        callback.onFailure(
+            "table",
+            "uuid-1",
+            "db.schema.table1",
+            "Mapping error",
+            IndexingFailureRecorder.FailureStage.SINK);
+        callback.onFailure(
+            "table",
+            "uuid-2",
+            "db.schema.table2",
+            "Document too large",
+            IndexingFailureRecorder.FailureStage.SINK);
+        callback.onFailure(
+            "dashboard",
+            "uuid-3",
+            "service.dashboard1",
+            "Index not found",
+            IndexingFailureRecorder.FailureStage.SINK);
 
         // Flush to capture
         recorder.flush();
