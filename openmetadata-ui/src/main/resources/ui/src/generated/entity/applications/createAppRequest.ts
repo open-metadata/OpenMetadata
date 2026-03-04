@@ -15,6 +15,11 @@
  */
 export interface CreateAppRequest {
     /**
+     * When true, the bot created for this application will have allowImpersonation enabled,
+     * allowing it to act on behalf of users.
+     */
+    allowBotImpersonation?: boolean;
+    /**
      * Application Configuration object.
      */
     appConfiguration?: any;

@@ -896,6 +896,9 @@ def test_sap_hana_lineage_filter_pattern() -> None:
                     super().__init__(lowercase_data)
                     self._data = data
 
+                def _asdict(self):
+                    return {k.lower(): v for k, v in self._data.items()}
+
                 def __getitem__(self, key):
                     if key in self._data:
                         return self._data[key]

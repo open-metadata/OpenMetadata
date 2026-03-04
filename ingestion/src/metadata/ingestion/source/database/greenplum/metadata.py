@@ -15,7 +15,7 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
 
-from sqlalchemy import sql
+from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.reflection import Inspector
 
@@ -163,11 +163,14 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:
-        result = self.engine.execute(
-            GREENPLUM_PARTITION_DETAILS.format(
-                table_name=table_name, schema_name=schema_name
-            )
-        ).all()
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text(
+                    GREENPLUM_PARTITION_DETAILS.format(
+                        table_name=table_name, schema_name=schema_name
+                    )
+                )
+            ).all()
 
         if result:
             partition_details = TablePartition(

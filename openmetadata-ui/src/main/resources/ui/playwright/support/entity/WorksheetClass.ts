@@ -12,21 +12,22 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  Column,
+  DataType,
+  Worksheet,
+} from '../../../src/generated/entity/data/worksheet';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import {
-  EntityTypeEndpoint,
-  ResponseDataType,
-  ResponseDataWithServiceType,
-} from './Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class WorksheetClass extends EntityClass {
-  private spreadsheetName = `pw-spreadsheet-${uuid()}`;
-  private worksheetName = `pw-worksheet-${uuid()}`;
-  private serviceName = `pw-worksheet-service-${uuid()}`;
+  private readonly spreadsheetName = `pw-spreadsheet-${uuid()}`;
+  private readonly worksheetName = `pw-worksheet-${uuid()}`;
+  private readonly serviceName = `pw-worksheet-service-${uuid()}`;
 
   service = {
     name: this.serviceName,
@@ -56,48 +57,18 @@ export class WorksheetClass extends EntityClass {
     },
   };
 
-  worksheetColumns = [
-    {
-      name: `segment_name-${uuid()}`,
-      displayName: 'Segment Name',
-      dataType: 'STRING',
-      dataTypeDisplay: 'string',
-    },
-    {
-      name: `customer_count-${uuid()}`,
-      displayName: 'Customer Count',
-      dataType: 'INT',
-      dataTypeDisplay: 'int',
-      children: [
-        {
-          name: `ltv-${uuid()}`,
-          displayName: 'Lifetime Value',
-          dataType: 'DECIMAL',
-          dataTypeDisplay: 'decimal(12,2)',
-          children: [],
-        },
-      ],
-    },
-    {
-      name: `avg_revenue_per_customer-${uuid()}`,
-      displayName: 'Avg Revenue per Customer',
-      dataType: 'DECIMAL',
-      dataTypeDisplay: 'decimal(10,2)',
-      children: [],
-    },
-  ];
-  entity = {
-    name: this.worksheetName,
-    displayName: this.worksheetName,
-    service: this.service.name,
-    description: 'description',
+  children: Column[];
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
+    description: string;
+    columns?: Column[];
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
-  entityResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
-  spreadsheetResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
+  entityResponseData: Worksheet = {} as Worksheet;
+  spreadsheetResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Worksheet);
@@ -105,7 +76,54 @@ export class WorksheetClass extends EntityClass {
     this.type = 'Worksheet';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
-    this.childrenSelectorId = `${this.service.name}.${this.spreadsheetName}.${this.worksheetName}.${this.worksheetColumns[0].name}`;
+
+    this.children = [
+      {
+        name: `segment_name-${uuid()}`,
+        displayName: 'Segment Name',
+        dataType: DataType.String,
+        dataTypeDisplay: 'string',
+      },
+      {
+        name: `customer_count-${uuid()}`,
+        displayName: 'Customer Count',
+        dataType: DataType.Int,
+        dataTypeDisplay: 'int',
+        children: [
+          {
+            name: `ltv-${uuid()}`,
+            displayName: 'Lifetime Value',
+            dataType: DataType.Decimal,
+            dataTypeDisplay: 'decimal(12,2)',
+            children: [
+              {
+                name: `number`,
+                displayName: 'Number',
+                dataType: DataType.Decimal,
+                dataTypeDisplay: 'decimal(12,2)',
+                children: [],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        name: `avg_revenue_per_customer-${uuid()}`,
+        displayName: 'Avg Revenue per Customer',
+        dataType: DataType.Decimal,
+        dataTypeDisplay: 'decimal(10,2)',
+        children: [],
+      },
+    ];
+
+    this.childrenSelectorId = `${this.service.name}.${this.spreadsheetName}.${this.worksheetName}.${this.children[0].name}`;
+    this.entity = {
+      name: this.worksheetName,
+      displayName: this.worksheetName,
+      service: this.service.name,
+      description: 'description',
+      columns: this.children,
+    };
   }
 
   async create(apiContext: APIRequestContext) {
@@ -134,14 +152,15 @@ export class WorksheetClass extends EntityClass {
       `/api/v1/${EntityTypeEndpoint.Worksheet}`,
       {
         data: {
-          name: this.worksheetName,
+          ...this.entity,
           spreadsheet: this.spreadsheetResponseData.fullyQualifiedName,
-          columns: this.worksheetColumns,
-          description: this.entity.description,
         },
       }
     );
     this.entityResponseData = await entityResponse.json();
+
+    this.childrenSelectorId =
+      this.entityResponseData.columns?.[0]?.fullyQualifiedName ?? '';
 
     return {
       service: serviceResponse.body,
@@ -183,9 +202,9 @@ export class WorksheetClass extends EntityClass {
   }
 
   public set(data: {
-    entity: ResponseDataWithServiceType;
+    entity: Worksheet;
     service: ResponseDataType;
-    spreadsheet: ResponseDataWithServiceType;
+    spreadsheet: ResponseDataType;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
@@ -195,9 +214,9 @@ export class WorksheetClass extends EntityClass {
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
+      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
       dataTestId: `${
-        this.entityResponseData.service.name ?? this.service.name
+        this.entityResponseData.service?.name ?? this.service.name
       }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
@@ -205,7 +224,7 @@ export class WorksheetClass extends EntityClass {
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/driveServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
+        this.serviceResponseData?.fullyQualifiedName ?? ''
       )}?recursive=true&hardDelete=true`
     );
 

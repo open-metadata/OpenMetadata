@@ -79,19 +79,19 @@ class ColumnValueStdDevToBeBetweenValidator(
         dimension_results = []
 
         try:
-            row_count_expr = Metrics.ROW_COUNT().fn()
-            stddev_expr = Metrics.STDDEV(column).fn()
+            row_count_expr = Metrics.rowCount().fn()
+            stddev_expr = Metrics.stddev(column).fn()
 
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                Metrics.STDDEV.name: stddev_expr,
+                Metrics.stddev.name: stddev_expr,
             }
 
             failed_count_builder = (
                 lambda cte, row_count_expr: self._get_validation_checker(
                     test_params
                 ).build_agg_level_violation_sqa(
-                    [getattr(cte.c, Metrics.STDDEV.name)], row_count_expr
+                    [getattr(cte.c, Metrics.stddev.name)], row_count_expr
                 )
             )
 
@@ -107,7 +107,7 @@ class ColumnValueStdDevToBeBetweenValidator(
             )
 
             for row in result_rows:
-                stddev_value = row.get(Metrics.STDDEV.name)
+                stddev_value = row.get(Metrics.stddev.name)
 
                 if stddev_value is None:
                     logger.debug(
@@ -118,7 +118,7 @@ class ColumnValueStdDevToBeBetweenValidator(
                     continue
 
                 metric_values = {
-                    Metrics.STDDEV.name: stddev_value,
+                    Metrics.stddev.name: stddev_value,
                 }
 
                 evaluation = self._evaluate_test_condition(metric_values, test_params)

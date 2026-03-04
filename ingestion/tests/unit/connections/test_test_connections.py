@@ -37,7 +37,7 @@ def bigquery(monkeypatch):
     (
         [
             ("sqlite", "SELECT 42"),
-            ("mysql", "SELECT 42"),
+            ("mysql+pymysql", "SELECT 42"),
             ("bigquery", "SELECT SESSION_USER()"),
             # TODO this is skipped because installing ibm_db_sa requires going through hoops
             # ("ibmi", "SELECT 42 FROM SYSIBM.SYSDUMMY1;"),

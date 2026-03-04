@@ -24,6 +24,9 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     DataflowEntityAttribute,
     DataflowExportResponse,
     Dataset,
+    Datasource,
+    DatasourceConnectionDetails,
+    PowerBiColumns,
     PowerBIDashboard,
     PowerBIReport,
     PowerBiTable,
@@ -933,35 +936,36 @@ class PowerBIUnitTest(TestCase):
     @pytest.mark.order(17)
     def test_paginate_project_filter_pattern_includes_under_limit(self):
         """
-        Test _paginate_project_filter_pattern with include filters under the limit (20)
-        Should return a single batch with all include filters
+        Test _paginate_project_filter_pattern with include filters = 15
+        Should return two batches
         """
         includes = [f"workspace{i}" for i in range(15)]
         filter_pattern = FilterPattern(includes=includes)
 
         result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
 
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].includes, includes)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].includes, includes[:10])
 
     @pytest.mark.order(18)
     def test_paginate_project_filter_pattern_includes_at_limit(self):
         """
         Test _paginate_project_filter_pattern with exactly 20 include filters
-        Should return a single batch
+        Should return two batches
         """
         includes = [f"workspace{i}" for i in range(20)]
         filter_pattern = FilterPattern(includes=includes)
 
         result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
 
-        self.assertEqual(len(result), 1)
-        self.assertEqual(len(result[0].includes), 20)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(len(result[0].includes), 10)
+        self.assertEqual(len(result[1].includes), 10)
 
     @pytest.mark.order(19)
     def test_paginate_project_filter_pattern_includes_over_limit(self):
         """
-        Test _paginate_project_filter_pattern with include filters over the limit (20)
+        Test _paginate_project_filter_pattern with include filters over the limit = 45
         Should paginate into multiple batches
         """
         includes = [f"workspace{i}" for i in range(45)]
@@ -969,13 +973,11 @@ class PowerBIUnitTest(TestCase):
 
         result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
 
-        self.assertEqual(len(result), 3)
-        self.assertEqual(len(result[0].includes), 20)
-        self.assertEqual(len(result[1].includes), 20)
-        self.assertEqual(len(result[2].includes), 5)
-        self.assertEqual(result[0].includes, includes[:20])
-        self.assertEqual(result[1].includes, includes[20:40])
-        self.assertEqual(result[2].includes, includes[40:45])
+        self.assertEqual(len(result), 5)
+        self.assertEqual(len(result[0].includes), 10)
+        self.assertEqual(len(result[4].includes), 5)
+        self.assertEqual(result[1].includes, includes[10:20])
+        self.assertEqual(result[4].includes, includes[40:45])
 
     @pytest.mark.order(20)
     def test_paginate_project_filter_pattern_with_includes_and_excludes(self):
@@ -989,9 +991,9 @@ class PowerBIUnitTest(TestCase):
 
         result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
 
-        self.assertEqual(len(result), 2)
-        self.assertEqual(len(result[0].includes), 20)
-        self.assertEqual(len(result[1].includes), 5)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(len(result[0].includes), 10)
+        self.assertEqual(len(result[2].includes), 5)
         self.assertEqual(result[0].excludes, excludes)
         self.assertEqual(result[1].excludes, excludes)
 
@@ -1020,9 +1022,10 @@ class PowerBIUnitTest(TestCase):
 
         result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
 
-        self.assertEqual(len(result), 5)
-        for i in range(4):
-            self.assertEqual(len(result[i].includes), 20)
+        self.assertEqual(len(result), 10)
+        for i in range(9):
+            self.assertEqual(len(result[i].includes), 10)
+        self.assertEqual(len(result[9].includes), 10)
         total_includes = sum(len(batch.includes) for batch in result)
         self.assertEqual(total_includes, 100)
 
@@ -1225,3 +1228,106 @@ class PowerBIUnitTest(TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].name.root, "EmptyTable")
         self.assertEqual(len(result[0].children), 0)
+
+    @pytest.mark.order(28)
+    def test_get_dataset_ids_from_report_datasources(self):
+        """
+        Test that _get_dataset_ids_from_report_datasources extracts dataset IDs
+        from the report datasources API response by parsing the
+        connectionDetails.database field with pattern sobe_wowvirtualserver-{DATASET_ID}
+        """
+        from unittest.mock import MagicMock, PropertyMock
+
+        mock_api_client = MagicMock()
+        self.powerbi.client = MagicMock()
+        self.powerbi.client.api_client = mock_api_client
+
+        mock_context = MagicMock()
+        mock_context.workspace.id = "test-workspace-id"
+
+        with patch.object(
+            type(self.powerbi), "context", new_callable=PropertyMock
+        ) as mock_ctx:
+            mock_ctx.return_value.get.return_value = mock_context
+
+            mock_api_client.fetch_report_datasources.return_value = [
+                Datasource(
+                    name="TestDatasource",
+                    datasourceType="AnalysisServices",
+                    connectionDetails=DatasourceConnectionDetails(
+                        server="pbiazure://api.powerbi.com/",
+                        database="sobe_wowvirtualserver-45812303-926b-49b3-9eb2-8c8209acfaa2",
+                    ),
+                    datasourceId="3bb310b9-daee-4442-aa3a-f344038e17d8",
+                    gatewayId="1ce5fe9c-93eb-410e-8cb8-05ec0b7f3ac6",
+                ),
+            ]
+
+            result = self.powerbi._get_dataset_ids_from_report_datasources(
+                report_id="test-report-id"
+            )
+
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0], "45812303-926b-49b3-9eb2-8c8209acfaa2")
+            mock_api_client.fetch_report_datasources.assert_called_once_with(
+                group_id="test-workspace-id", report_id="test-report-id"
+            )
+
+            mock_api_client.fetch_report_datasources.return_value = [
+                Datasource(
+                    name="NoDB",
+                    datasourceType="Web",
+                    connectionDetails=DatasourceConnectionDetails(
+                        server="https://example.com",
+                        database=None,
+                    ),
+                ),
+            ]
+
+            result = self.powerbi._get_dataset_ids_from_report_datasources(
+                report_id="test-report-id"
+            )
+            self.assertEqual(result, [])
+
+            mock_api_client.fetch_report_datasources.return_value = None
+            result = self.powerbi._get_dataset_ids_from_report_datasources(
+                report_id="test-report-id"
+            )
+            self.assertEqual(result, [])
+
+    @pytest.mark.order(29)
+    def test_column_name_truncated_when_exceeding_max_length(self):
+        """
+        Test that column names longer than 256 characters are truncated
+        and the full name is preserved in displayName
+        """
+        long_column_name = "A" * 300
+        long_table_name = "B" * 300
+        dataset = Dataset(
+            id="test-dataset-id",
+            name="test-dataset",
+            tables=[
+                PowerBiTable(
+                    name=long_table_name,
+                    columns=[
+                        PowerBiColumns(
+                            name=long_column_name,
+                            dataType="string",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        result = self.powerbi._get_column_info(dataset)
+
+        assert len(result) == 1
+        table_column = result[0]
+        assert len(table_column.name.root) == 256
+        assert table_column.name.root == long_table_name[:256]
+        assert table_column.displayName == long_table_name
+
+        child_column = table_column.children[0]
+        assert len(child_column.name.root) == 256
+        assert child_column.name.root == long_column_name[:256]
+        assert child_column.displayName == long_column_name

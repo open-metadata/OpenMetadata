@@ -1,5 +1,10 @@
 package org.openmetadata.service.migration.utils.v1120;
 
+import static org.openmetadata.service.Entity.CLASSIFICATION;
+import static org.openmetadata.service.migration.utils.LongStatementsUtil.executeAndUpdate;
+
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -7,6 +12,8 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.classification.LoadTags;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -15,9 +22,13 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ColumnUtil;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -467,5 +478,59 @@ public class MigrationUtil {
     }
 
     LOG.info("Fixed {} APIEndpoint entities with incorrect FQN hash", fixedCount);
+  }
+
+  public static Map<String, QueryStatus> updateClassificationAndRecognizers(
+      String classificationStatement,
+      String tagStatement,
+      Handle handle,
+      MigrationDAO migrationDAO,
+      String version,
+      boolean isForceMigration) {
+    Map<String, QueryStatus> result = new HashMap<>();
+    List<LoadTags> loadTagsList;
+    try {
+      loadTagsList =
+          EntityRepository.getEntitiesFromSeedData(
+              CLASSIFICATION, ".*json/data/tags/piiTagsWithRecognizers.json$", LoadTags.class);
+    } catch (IOException e) {
+      LOG.error("Failed to load tag data", e);
+      result.put(
+          "loadPiiTagsSeedData",
+          new QueryStatus(
+              QueryStatus.Status.FAILURE, "Failed to load PII seed data: " + e.getMessage()));
+      return result;
+    }
+
+    for (LoadTags loadTags : loadTagsList) {
+      String classification = loadTags.getCreateClassification().getName();
+      // Update Classification Config
+      Object[] args = {
+        JsonUtils.pojoToJson(loadTags.getCreateClassification().getAutoClassificationConfig()),
+        classification
+      };
+      Map<String, QueryStatus> res =
+          executeAndUpdate(
+              handle, migrationDAO, version, isForceMigration, classificationStatement, args);
+
+      result.putAll(res);
+
+      for (CreateTag createTag : loadTags.getCreateTags()) {
+        Boolean autoClassificationEnabled = createTag.getAutoClassificationEnabled();
+        // Update tags config
+        Object[] tagArgs = {
+          Boolean.TRUE.equals(autoClassificationEnabled) ? "true" : "false",
+          createTag.getAutoClassificationPriority(),
+          JsonUtils.pojoToJson(createTag.getRecognizers()),
+          classification + "." + createTag.getName()
+        };
+        Map<String, QueryStatus> tagRes =
+            executeAndUpdate(
+                handle, migrationDAO, version, isForceMigration, tagStatement, tagArgs);
+        result.putAll(tagRes);
+      }
+    }
+
+    return result;
   }
 }

@@ -713,10 +713,16 @@ public class DatabaseServiceResourceTest
         expectedRedshiftConnection.getConnectionOptions(),
         actualRedshiftConnection.getConnectionOptions());
     if (maskedPasswords) {
-      assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualRedshiftConnection.getPassword());
+      assertEquals(
+          PasswordEntityMasker.PASSWORD_MASK,
+          JsonUtils.convertValue(actualRedshiftConnection.getAuthType(), basicAuth.class)
+              .getPassword());
     } else {
       assertEquals(
-          expectedRedshiftConnection.getPassword(), actualRedshiftConnection.getPassword());
+          JsonUtils.convertValue(expectedRedshiftConnection.getAuthType(), basicAuth.class)
+              .getPassword(),
+          JsonUtils.convertValue(actualRedshiftConnection.getAuthType(), basicAuth.class)
+              .getPassword());
     }
   }
 

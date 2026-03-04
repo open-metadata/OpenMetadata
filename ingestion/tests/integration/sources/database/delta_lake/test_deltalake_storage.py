@@ -9,8 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """deltalake storage integration tests"""
-import sys
-
 import deltalake
 import pandas as pd
 import pytest
@@ -48,7 +46,7 @@ from metadata.generated.schema.security.credentials.awsCredentials import AWSCre
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.workflow.metadata import MetadataWorkflow
 
-SERVICE_NAME = "docker_test_delta_storage"
+from ....integration_base import generate_name
 
 TABLE_NAME = "TABLE"
 WRONG_TABLE_NAME = "WRONG_TABLE"
@@ -89,8 +87,10 @@ def service(metadata, deltalake_storage_environment):
     region = deltalake_storage_environment.storage_options["AWS_REGION"]
     endpoint = deltalake_storage_environment.storage_options["AWS_ENDPOINT_URL"]
 
+    service_name = generate_name()
+
     service = CreateDatabaseServiceRequest(
-        name=SERVICE_NAME,
+        name=service_name,
         serviceType=DatabaseServiceType.DeltaLake,
         connection=DatabaseConnection(
             config=DeltaLakeConnection(
@@ -113,7 +113,7 @@ def service(metadata, deltalake_storage_environment):
 
     service_entity = metadata.create_or_update(data=service)
     service_entity.connection.config.configSource.connection.securityConfig.awsSecretAccessKey = CustomSecretStr(
-        "password"
+        secret_key
     )
     yield service_entity
     metadata.delete(
@@ -140,19 +140,13 @@ def ingest(metadata, service, create_data):
     return
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9),
-    reason="testcontainers exposed port not working correctly on Python3.8. receiving a MagicMock.",
-)
-def test_delta(ingest, metadata):
-    tables = metadata.list_all_entities(entity=Table)
+def test_delta(ingest, metadata, service, deltalake_storage_environment):
+    # For Delta Lake, schema name is the bucket name
+    bucket_name = deltalake_storage_environment.bucket_name
+    table_fqn = f"{service.name.root}.default.{bucket_name}.{TABLE_NAME}"
+    table = metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["*"])
 
-    filtered_tables = [table for table in tables if table.service.name == SERVICE_NAME]
-
-    assert len(filtered_tables) == 1
-
-    table = filtered_tables[0]
-
+    assert table is not None, f"Table not found at FQN: {table_fqn}"
     assert table.name.root == TABLE_NAME
     assert table.description.root == "description"
     assert table.tablePartition.columns[0].columnName == "COL0"

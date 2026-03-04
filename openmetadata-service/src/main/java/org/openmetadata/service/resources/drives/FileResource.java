@@ -470,7 +470,7 @@ public class FileResource extends EntityResource<File, FileRepository> {
   }
 
   @PUT
-  @Path("/{id}/restore")
+  @Path("{id}/restore")
   @Operation(
       operationId = "restoreFile",
       summary = "Restore a soft deleted file",
@@ -487,8 +487,9 @@ public class FileResource extends EntityResource<File, FileRepository> {
   public Response restoreFile(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+      @Parameter(description = "Id of the file", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return restoreEntity(uriInfo, securityContext, id);
   }
 
   @PUT

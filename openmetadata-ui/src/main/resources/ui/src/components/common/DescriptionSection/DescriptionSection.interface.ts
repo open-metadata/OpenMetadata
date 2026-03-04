@@ -10,9 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../../../enums/entity.enum';
+
 export interface DescriptionSectionProps {
   description?: string;
   onDescriptionUpdate?: (description: string) => Promise<void>;
   showEditButton?: boolean;
+  entityFqn?: string;
+  entityType: EntityType;
   hasPermission?: boolean;
 }

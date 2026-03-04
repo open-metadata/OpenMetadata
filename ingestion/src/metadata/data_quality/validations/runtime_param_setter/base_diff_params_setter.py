@@ -78,6 +78,7 @@ class BaseTableParameter:
             path=self.get_data_diff_table_path(
                 entity.fullyQualifiedName.root, service.serviceType
             ),
+            fullyQualifiedName=entity.fullyQualifiedName.root,
             serviceUrl=self.get_data_diff_url(
                 service,
                 entity.fullyQualifiedName.root,
@@ -142,7 +143,9 @@ class BaseTableParameter:
             connection_class = service_spec_patch.get_connection_class()
             if not connection_class:
                 return (
-                    str(get_connection(service_connection_config).url)
+                    get_connection(service_connection_config).url.render_as_string(
+                        hide_password=False
+                    )
                     if service_connection_config
                     else None
                 )
@@ -150,7 +153,9 @@ class BaseTableParameter:
             return connection.get_connection_dict()
         except (ValueError, AttributeError, NotImplementedError):
             return (
-                str(get_connection(service_connection_config).url)
+                get_connection(service_connection_config).url.render_as_string(
+                    hide_password=False
+                )
                 if service_connection_config
                 else None
             )
@@ -202,7 +207,7 @@ class BaseTableParameter:
             url = url.set(drivername=drivername, database=f"{schema}")
         else:
             url = url.set(drivername=drivername)
-        return str(url)
+        return url.render_as_string(hide_password=False)
 
     @staticmethod
     def filter_relevant_columns(

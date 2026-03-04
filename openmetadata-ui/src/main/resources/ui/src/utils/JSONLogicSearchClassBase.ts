@@ -22,10 +22,13 @@ import {
 } from '@react-awesome-query-builder/antd';
 import { get, sortBy, toLower } from 'lodash';
 import {
+  LIST_VALUE_OPERATORS,
+  MULTISELECT_FIELD_OPERATORS,
   RANGE_FIELD_OPERATORS,
   TEXT_FIELD_DESCRIPTION_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
+import { SEMANTIC_TAG_OPERATORS } from '../constants/DataContract.constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
   GLOSSARY_ENTITY_FIELDS_KEYS,
@@ -36,6 +39,7 @@ import {
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
@@ -318,6 +322,26 @@ class JSONLogicSearchClassBase {
           },
         },
       },
+      [EntityReferenceFields.TIER]: {
+        label: t('label.tier'),
+        type: '!group',
+        mode: 'some',
+        fieldName: 'tags',
+        defaultField: 'tagFQN',
+        subfields: {
+          tagFQN: {
+            label: t('label.tier'),
+            type: 'multiselect',
+            defaultOperator: 'array_contains',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: SEMANTIC_TAG_OPERATORS,
+            fieldSettings: {
+              asyncFetch: this.autoCompleteTier,
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
       [EntityReferenceFields.DOMAIN]: {
         label: t('label.domain'),
         type: '!group',
@@ -412,6 +436,22 @@ class JSONLogicSearchClassBase {
         },
       },
 
+      [EntityReferenceFields.ENTITY_STATUS]: {
+        label: t('label.status'),
+        type: 'select',
+        operators: LIST_VALUE_OPERATORS,
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        fieldSettings: {
+          listValues: Object.values(EntityStatus).map((status) => ({
+            value: status,
+            title: status,
+          })),
+          showSearch: true,
+          useAsyncSearch: false,
+        },
+      },
+
       [EntityReferenceFields.REVIEWERS]: {
         label: t('label.reviewer-plural'),
         type: '!group',
@@ -432,6 +472,51 @@ class JSONLogicSearchClassBase {
                   label: 'displayName',
                   value: 'fullyQualifiedName',
                 },
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
+      [EntityReferenceFields.SYNONYMS]: {
+        label: t('label.synonym-plural'),
+        type: 'multiselect',
+        preferWidgets: ['multiselect'],
+        defaultOperator: 'like',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: ['like', 'not_like', 'is_null', 'is_not_null'],
+        widgets: {
+          multiselect: {
+            operators: ['like', 'not_like', 'is_null', 'is_not_null'],
+            widgetProps: {
+              customProps: {
+                open: false,
+              },
+            },
+          },
+        },
+        fieldSettings: {
+          allowCustomValues: true,
+          showSearch: false,
+        },
+      },
+      [EntityReferenceFields.RELATED_TERMS]: {
+        label: t('label.related-term-plural'),
+        type: '!group',
+        mode: 'some',
+        defaultField: EntityFields.FULLY_QUALIFIED_NAME,
+        subfields: {
+          [EntityFields.FULLY_QUALIFIED_NAME]: {
+            label: 'Related Terms',
+            type: 'multiselect',
+            defaultOperator: 'multiselect_equals',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: MULTISELECT_FIELD_OPERATORS,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: SearchIndex.GLOSSARY_TERM,
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
               }),
               useAsyncSearch: true,
             },

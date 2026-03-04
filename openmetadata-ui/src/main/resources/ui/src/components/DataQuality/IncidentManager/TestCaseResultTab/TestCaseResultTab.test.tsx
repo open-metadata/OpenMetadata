@@ -153,6 +153,18 @@ jest.mock('../../../Tag/TagsContainerV2/TagsContainerV2', () => {
 });
 
 describe('TestCaseResultTab', () => {
+  const originalParameterValues = JSON.parse(
+    JSON.stringify(mockTestCaseData.parameterValues)
+  );
+
+  afterEach(() => {
+    mockUseTestCaseStore.testCase.parameterValues = JSON.parse(
+      JSON.stringify(originalParameterValues)
+    );
+    mockUseTestCaseStore.testCase.useDynamicAssertion = undefined;
+    mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
+  });
+
   it('Should render component', async () => {
     render(<TestCaseResultTab />);
 
@@ -240,6 +252,60 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = false;
   });
 
+  it('when useDynamicAssertion is false, dynamic assertion label should not be present and parameters can be present', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = false;
+    mockUseTestCaseStore.testCase.parameterValues = [
+      { name: 'columnCount', value: '10' },
+      { name: 'sqlExpression', value: 'select * from t' },
+    ];
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('parameter-container');
+
+    expect(screen.queryByTestId('dynamic-assertion')).not.toBeInTheDocument();
+    expect(screen.getByText('columnCount:')).toBeInTheDocument();
+    expect(screen.getByText('10')).toBeInTheDocument();
+  });
+
+  it('when useDynamicAssertion is true, dynamic assertion should be present and parameters except compute row count should be absent', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = true;
+    mockUseTestCaseStore.testCase.parameterValues = [
+      { name: 'columnCount', value: '10' },
+      { name: 'sqlExpression', value: 'select * from t' },
+    ];
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('parameter-container');
+
+    expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
+    expect(screen.queryByText('columnCount:')).not.toBeInTheDocument();
+    expect(screen.queryByText('10')).not.toBeInTheDocument();
+  });
+
+  it('when useDynamicAssertion is true, compute row count can still be present', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = true;
+    mockUseTestCaseStore.testCase.computePassedFailedRowCount = true;
+    mockUseTestCaseStore.testCase.parameterValues = [
+      { name: 'columnCount', value: '10' },
+      { name: 'sqlExpression', value: 'select * from t' },
+    ];
+    mockGetTestDefinitionById.mockResolvedValue({
+      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+      name: 'tableColumnCountToEqual',
+      supportsRowLevelPassedFailed: true,
+    });
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('parameter-container');
+
+    expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
+    expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
+    expect(screen.queryByText('columnCount:')).not.toBeInTheDocument();
+  });
+
   it('Should show edit button, for useDynamicAssertion', async () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = true;
     render(<TestCaseResultTab />);
@@ -300,9 +366,15 @@ describe('TestCaseResultTab', () => {
 
       render(<TestCaseResultTab />);
 
-      expect(
-        await screen.findByTestId('computed-row-count-container')
-      ).toBeInTheDocument();
+      const parameterContainer = await screen.findByTestId(
+        'parameter-container'
+      );
+
+      expect(parameterContainer).toBeInTheDocument();
+      // Check that compute row count label is present in the parameter section
+      expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
+      // Check that the value "true" is present
+      expect(screen.getByText('true')).toBeInTheDocument();
     });
 
     it('should not show Compute Row Count when testDefinition does not support supportsRowLevelPassedFailed', async () => {
@@ -321,8 +393,9 @@ describe('TestCaseResultTab', () => {
 
       await screen.findByTestId('test-case-result-tab-container');
 
+      // Compute row count should not be shown in parameter section when not supported
       expect(
-        screen.queryByTestId('computed-row-count-container')
+        screen.queryByText('label.compute-row-count:')
       ).not.toBeInTheDocument();
     });
 
@@ -342,8 +415,9 @@ describe('TestCaseResultTab', () => {
 
       await screen.findByTestId('test-case-result-tab-container');
 
+      // Compute row count should not be shown when computePassedFailedRowCount is undefined
       expect(
-        screen.queryByTestId('computed-row-count-container')
+        screen.queryByText('label.compute-row-count:')
       ).not.toBeInTheDocument();
     });
   });

@@ -60,7 +60,7 @@ jest.mock('../../../utils/SSOUtils', () => ({
     {
       key: 'auth0',
       label: 'Auth0',
-      icon: '/icon-auth0.png',
+      icon: '/icon-auth0.svg',
     },
   ],
   getProviderDisplayName: (provider: string) => {

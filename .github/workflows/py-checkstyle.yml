@@ -16,11 +16,14 @@ name: Python Checkstyle
 on:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
 
 permissions:
   contents: read
 
-concurrency: 
+concurrency:
   group: py-checkstyle-${{ github.head_ref }}
   cancel-in-progress: true
 
@@ -32,7 +35,6 @@ jobs:
       pull-requests: write
 
     steps:
-
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}

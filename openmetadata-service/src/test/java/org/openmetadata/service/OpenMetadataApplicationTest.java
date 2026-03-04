@@ -16,8 +16,8 @@ package org.openmetadata.service;
 import static java.lang.String.format;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import es.org.elasticsearch.client.RestClient;
-import es.org.elasticsearch.client.RestClientBuilder;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
 import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
@@ -42,11 +42,10 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.core5.http.HttpHost;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.jdbi.v3.core.Jdbi;
@@ -91,6 +90,7 @@ import org.testcontainers.utility.DockerImageName;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class OpenMetadataApplicationTest {
   protected static Boolean runWithOpensearch = false;
+  protected static Boolean runWithVectorEmbeddings = false;
   protected static Boolean runWithRdf = false;
 
   protected static final String CONFIG_PATH =
@@ -132,8 +132,8 @@ public abstract class OpenMetadataApplicationTest {
       "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
   private static final String ELASTIC_SEARCH_CONTAINER_IMAGE =
-      "docker.elastic.co/elasticsearch/elasticsearch:8.11.4";
-  private static final String OPENSEARCH_CONTAINER_IMAGE = "opensearchproject/opensearch:2.11.0";
+      "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
+  private static final String OPENSEARCH_CONTAINER_IMAGE = "opensearchproject/opensearch:3.4.0";
 
   private static String HOST;
   private static String PORT;
@@ -219,6 +219,18 @@ public abstract class OpenMetadataApplicationTest {
       HOST = OPENSEARCH_CONTAINER.getHost();
       PORT = OPENSEARCH_CONTAINER.getMappedPort(9200).toString();
       overrideSearchConfig(true);
+
+      if (Boolean.TRUE.equals(runWithVectorEmbeddings)) {
+        configOverrides.add(
+            ConfigOverride.config(
+                "elasticsearch.naturalLanguageSearch.semanticSearchEnabled", "true"));
+        configOverrides.add(
+            ConfigOverride.config("elasticsearch.naturalLanguageSearch.embeddingProvider", "djl"));
+        configOverrides.add(
+            ConfigOverride.config(
+                "elasticsearch.naturalLanguageSearch.djl.embeddingModel",
+                "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"));
+      }
     } else {
       LOG.info("Using Elasticsearch container with image: {}", elasticSearchContainerImage);
 
@@ -430,20 +442,25 @@ public abstract class OpenMetadataApplicationTest {
     searchRepository.createIndexes();
   }
 
-  public static RestClient getSearchClient() {
-    CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+  public static Rest5Client getSearchClient() {
+    BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     credentialsProvider.setCredentials(
-        AuthScope.ANY, new UsernamePasswordCredentials(ELASTIC_USER, "password"));
+        new AuthScope(null, -1),
+        new UsernamePasswordCredentials(ELASTIC_USER, "password".toCharArray()));
 
-    String hostAddress;
+    HttpHost httpHost;
     if (Boolean.TRUE.equals(runWithOpensearch)) {
-      hostAddress = OPENSEARCH_CONTAINER.getHost() + ":" + OPENSEARCH_CONTAINER.getMappedPort(9200);
+      httpHost =
+          new HttpHost(
+              "http", OPENSEARCH_CONTAINER.getHost(), OPENSEARCH_CONTAINER.getMappedPort(9200));
     } else {
-      hostAddress = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress();
+      String hostAddress = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress();
+      String[] parts = hostAddress.split(":");
+      httpHost = new HttpHost("http", parts[0], Integer.parseInt(parts[1]));
     }
 
-    RestClientBuilder builder =
-        RestClient.builder(HttpHost.create(hostAddress))
+    Rest5ClientBuilder builder =
+        Rest5Client.builder(httpHost)
             .setHttpClientConfigCallback(
                 httpClientBuilder ->
                     httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
@@ -630,6 +647,21 @@ public abstract class OpenMetadataApplicationTest {
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(searchType);
+
+    if (Boolean.TRUE.equals(runWithVectorEmbeddings) && Boolean.TRUE.equals(runWithOpensearch)) {
+      org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration
+          nlSearch =
+              new org.openmetadata.schema.service.configuration.elasticsearch
+                  .NaturalLanguageSearchConfiguration();
+      nlSearch.setSemanticSearchEnabled(true);
+      nlSearch.setEmbeddingProvider("djl");
+      nlSearch.setDjl(
+          new org.openmetadata.schema.service.configuration.elasticsearch.Djl()
+              .withEmbeddingModel(
+                  "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"));
+      searchConfig.setNaturalLanguageSearch(nlSearch);
+    }
+
     return searchConfig;
   }
 

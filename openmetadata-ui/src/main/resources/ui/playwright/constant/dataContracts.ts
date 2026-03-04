@@ -416,13 +416,13 @@ status: active
 description:
   purpose: Contract testing security roles
 roles:
-  - name: data_admin
+  - role: data_admin
     description: Full access to all data
     access: readWrite
-  - name: analyst
+  - role: analyst
     description: Read-only access for analysis
     access: read
-  - name: auditor
+  - role: auditor
     description: Audit access for compliance
     access: read
 `;
@@ -519,10 +519,10 @@ slaProperties:
     value: "365"
     unit: day
 roles:
-  - name: data_admin
+  - role: data_admin
     description: Full access to all data
     access: readWrite
-  - name: analyst
+  - role: analyst
     description: Read-only access for analysis
     access: read
 `;
@@ -732,6 +732,35 @@ slaProperties:
     unit: hours
 `;
 
+// Multi-object YAML without schema properties for import testing
+// (schema validation passes since there are no properties to validate)
+export const ODCS_VALID_MULTI_OBJECT_SIMPLE_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: multi-object-simple-contract
+name: Multi-Object Simple Contract
+version: "1.0.0"
+status: active
+description:
+  purpose: Contract with multiple schema objects for testing multi-object import (no properties)
+schema:
+  - name: customers
+    logicalType: object
+    physicalType: table
+    description: Customer records table
+  - name: orders
+    logicalType: object
+    physicalType: table
+    description: Customer orders table
+  - name: products
+    logicalType: object
+    physicalType: table
+    description: Product catalog table
+slaProperties:
+  - property: freshness
+    value: "12"
+    unit: hours
+`;
+
 export const ODCS_INVALID_MISSING_APIVERSION_YAML = `kind: DataContract
 id: missing-apiversion
 name: Missing API Version Contract
@@ -812,6 +841,27 @@ export const ODCS_INVALID_MALFORMED_JSON = `{
   "name": "Missing comma"
 }`;
 
+export const VALID_OM_SIMPLE_YAML = `name: test contract
+displayName: test contract
+entityStatus: Approved
+entity:
+  id: b27eaa6a-f94f-4509-97eb-300afd853db7
+  type: table
+semantics: []
+sla:
+  refreshFrequency:
+    interval: 1
+    unit: hour
+  maxLatency:
+    value: 1
+    unit: hour
+  timezone: GMT+00:00 (Europe/London)
+  retention:
+    period: 5
+    unit: day
+owners: []
+reviewers: []`
+
 // Helper function to generate unique ODCS contract
 export const generateODCSContract = (
   name: string,
@@ -855,3 +905,32 @@ status: ${status}
 
   return yaml;
 };
+
+export const ODCS_VALID_WITH_MARKDOWN_DESCRIPTION_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: markdown-description-contract
+name: Markdown Description Contract
+version: "1.0.0"
+status: active
+description:
+  purpose: |
+    # Data Contract Overview
+
+    This contract defines the **quality standards** for our _customer analytics_ data.
+
+    ## Key Features
+
+    - **Real-time updates** every 15 minutes
+    - *Historical data* retention for 365 days
+    - Supports \`SQL\` and \`Python\` queries
+
+    ### Data Sources
+
+    1. Customer transactions
+    2. User behavior logs
+    3. Product catalog
+
+    > Note: This data is subject to GDPR compliance requirements.
+
+    For more details, see the [documentation](https://example.com/docs).
+`;

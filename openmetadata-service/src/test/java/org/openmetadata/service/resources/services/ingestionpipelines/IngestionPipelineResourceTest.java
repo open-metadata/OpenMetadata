@@ -71,6 +71,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.StepSummary;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.DatabaseServiceProfilerPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
@@ -78,6 +79,7 @@ import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
+import org.openmetadata.schema.profiler.MetricType;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.ConnectionArguments;
@@ -173,7 +175,9 @@ public class IngestionPipelineResourceTest
         createRequest.getAirflowConfig().getConcurrency(),
         ingestion.getAirflowConfig().getConcurrency());
     validateSourceConfig(createRequest.getSourceConfig(), ingestion.getSourceConfig(), ingestion);
-    assertNotNull(ingestion.getOpenMetadataServerConnection());
+    // SECURITY: OpenMetadataServerConnection should NOT be returned in GET/LIST API responses
+    // to prevent JWT token exposure. It's only populated during deploy operations.
+    assertNull(ingestion.getOpenMetadataServerConnection());
   }
 
   @Override
@@ -343,6 +347,31 @@ public class IngestionPipelineResourceTest
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
     ingestion = getEntity(ingestion.getId(), FIELD_OWNERS, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
+  }
+
+  @Test
+  void post_AirflowWithDatabaseServiceProfilerWithMetrics_200_ok(TestInfo test) throws IOException {
+    List<MetricType> expectedMetrics =
+        List.of(MetricType.MEAN, MetricType.ROW_COUNT, MetricType.NULL_COUNT);
+    DatabaseServiceProfilerPipeline profilerPipeline =
+        new DatabaseServiceProfilerPipeline().withMetrics(expectedMetrics);
+    SourceConfig profilerSourceConfig = new SourceConfig().withConfig(profilerPipeline);
+
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.PROFILER)
+            .withService(BIGQUERY_REFERENCE)
+            .withSourceConfig(profilerSourceConfig)
+            .withAirflowConfig(
+                new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    IngestionPipeline fetched = getEntity(pipeline.getId(), ADMIN_AUTH_HEADERS);
+    DatabaseServiceProfilerPipeline fetchedConfig =
+        JsonUtils.convertValue(
+            fetched.getSourceConfig().getConfig(), DatabaseServiceProfilerPipeline.class);
+    assertEquals(expectedMetrics, fetchedConfig.getMetrics());
   }
 
   @Test
@@ -1025,6 +1054,135 @@ public class IngestionPipelineResourceTest
     assertEquals(ingestionPipeline.getId(), multipleParamsResult.getData().get(0).getId());
   }
 
+  @Test
+  void get_ingestionPipeline_doesNotExposeJwtToken_security(TestInfo test) throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withDescription("Security test pipeline");
+    IngestionPipeline created = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // GET by ID should NOT return openMetadataServerConnection (contains JWT)
+    IngestionPipeline fetched = getEntity(created.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(
+        fetched.getOpenMetadataServerConnection(),
+        "SECURITY: GET by ID must NOT return openMetadataServerConnection to prevent JWT token exposure");
+
+    // GET by name should NOT return openMetadataServerConnection
+    IngestionPipeline fetchedByName =
+        getEntityByName(created.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
+    assertNull(
+        fetchedByName.getOpenMetadataServerConnection(),
+        "SECURITY: GET by name must NOT return openMetadataServerConnection to prevent JWT token exposure");
+  }
+
+  @Test
+  void get_ingestionPipeline_doesNotExposeJwtToken_regularUser_security(TestInfo test)
+      throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withDescription("Security test pipeline for regular user")
+            .withOwners(List.of(USER1_REF));
+    IngestionPipeline created = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Regular user (owner) should also NOT see JWT token
+    IngestionPipeline fetched = getEntity(created.getId(), authHeaders(USER1.getName()));
+    assertNull(
+        fetched.getOpenMetadataServerConnection(),
+        "SECURITY: Regular users must NOT see openMetadataServerConnection");
+  }
+
+  @Test
+  void list_ingestionPipelines_doesNotExposeJwtToken_security(TestInfo test) throws IOException {
+    CreateIngestionPipeline request1 =
+        createRequest(test)
+            .withName("security_test_list_1")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE);
+    createAndCheckEntity(request1, ADMIN_AUTH_HEADERS);
+
+    CreateIngestionPipeline request2 =
+        createRequest(test)
+            .withName("security_test_list_2")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE);
+    createAndCheckEntity(request2, ADMIN_AUTH_HEADERS);
+
+    // LIST should NOT return openMetadataServerConnection for ANY pipeline
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", BIGQUERY_REFERENCE.getFullyQualifiedName());
+    ResultList<IngestionPipeline> pipelines = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    for (IngestionPipeline pipeline : pipelines.getData()) {
+      assertNull(
+          pipeline.getOpenMetadataServerConnection(),
+          String.format(
+              "SECURITY: LIST must NOT return openMetadataServerConnection for pipeline [%s]",
+              pipeline.getName()));
+    }
+  }
+
+  @Test
+  void get_ingestionPipelineVersions_doesNotExposeJwtToken_security(TestInfo test)
+      throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withDescription("Security test for versions");
+    IngestionPipeline created = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Update to create a new version
+    request.withDescription("Updated description for version test");
+    updateIngestionPipeline(request, ADMIN_AUTH_HEADERS);
+
+    // GET version should NOT return openMetadataServerConnection
+    IngestionPipeline version =
+        getVersion(created.getId(), created.getVersion(), ADMIN_AUTH_HEADERS);
+    assertNull(
+        version.getOpenMetadataServerConnection(),
+        "SECURITY: GET version must NOT return openMetadataServerConnection");
+  }
+
+  @Test
+  void bot_canAccessPipeline_butApiDoesNotExposeJwt_security(TestInfo test) throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withDescription("Security test for bot access");
+    IngestionPipeline created = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Even ingestion bot should NOT see JWT token via GET API
+    // The JWT is only needed internally during deploy operations
+    IngestionPipeline fetchedByBot = getEntity(created.getId(), INGESTION_BOT_AUTH_HEADERS);
+    assertNull(
+        fetchedByBot.getOpenMetadataServerConnection(),
+        "SECURITY: Even bot users must NOT see openMetadataServerConnection via GET API. "
+            + "JWT should only be passed to pipeline service during deploy.");
+  }
+
+  @Test
+  void put_ingestionPipeline_doesNotExposeJwtToken_security(TestInfo test) throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withDescription("Security test for PUT");
+    createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // PUT (update) response should NOT return openMetadataServerConnection
+    IngestionPipeline updated =
+        updateIngestionPipeline(
+            request.withDescription("Updated description for security test"), ADMIN_AUTH_HEADERS);
+    assertNull(
+        updated.getOpenMetadataServerConnection(),
+        "SECURITY: PUT response must NOT return openMetadataServerConnection");
+  }
+
   private IngestionPipeline updateIngestionPipeline(
       CreateIngestionPipeline create, Map<String, String> authHeaders)
       throws HttpResponseException {
@@ -1083,6 +1241,13 @@ public class IngestionPipelineResourceTest
           (DatabaseServiceQueryUsagePipeline) orig.getConfig();
       DatabaseServiceQueryUsagePipeline updatedConfig =
           JsonUtils.convertValue(updated.getConfig(), DatabaseServiceQueryUsagePipeline.class);
+      assertEquals(origConfig, updatedConfig);
+    } else if (serviceType.equals(Entity.DATABASE_SERVICE)
+        && ingestionPipeline.getPipelineType().equals(PipelineType.PROFILER)) {
+      DatabaseServiceProfilerPipeline origConfig =
+          (DatabaseServiceProfilerPipeline) orig.getConfig();
+      DatabaseServiceProfilerPipeline updatedConfig =
+          JsonUtils.convertValue(updated.getConfig(), DatabaseServiceProfilerPipeline.class);
       assertEquals(origConfig, updatedConfig);
     } else if (serviceType.equals(Entity.DASHBOARD_SERVICE)) {
       DashboardServiceMetadataPipeline origConfig =

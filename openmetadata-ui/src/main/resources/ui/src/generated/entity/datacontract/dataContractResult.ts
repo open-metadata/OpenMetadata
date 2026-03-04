@@ -106,11 +106,15 @@ export interface QualityValidation {
  */
 export interface SchemaValidation {
     /**
+     * List of field names that appear more than once in the contract schema.
+     */
+    duplicateFields?: string[];
+    /**
      * Number of schema checks failed.
      */
     failed?: number;
     /**
-     * List of fields that failed validation.
+     * List of fields that do not exist in the entity.
      */
     failedFields?: string[];
     /**
@@ -121,6 +125,11 @@ export interface SchemaValidation {
      * Total number of schema checks.
      */
     total?: number;
+    /**
+     * List of fields with data type mismatches between contract and entity (format: 'fieldName:
+     * expected TYPE1, got TYPE2').
+     */
+    typeMismatchFields?: string[];
 }
 
 /**

@@ -72,7 +72,10 @@ from metadata.generated.schema.entity.services.connections.pipeline.matillionCon
 )
 from metadata.generated.schema.security.ssl import verifySSLConfig
 from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
-from metadata.ingestion.connections.builders import init_empty_connection_arguments
+from metadata.ingestion.connections.builders import (
+    init_empty_connection_arguments,
+    init_empty_connection_options,
+)
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import utils_logger
@@ -314,24 +317,24 @@ class SSLManager:
     def _(self, connection):
         connection = cast(Db2Connection, connection)
 
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
+        if not connection.connectionOptions:
+            connection.connectionOptions = init_empty_connection_options()
 
         if connection.sslMode and connection.sslMode != SslMode.disable:
-            connection.connectionArguments.root["SECURITY"] = "SSL"
+            connection.connectionOptions.root["SECURITY"] = "SSL"
 
             if self.ca_file_path:
-                connection.connectionArguments.root[
+                connection.connectionOptions.root[
                     "SSLServerCertificate"
                 ] = self.ca_file_path
 
             if self.cert_file_path:
-                connection.connectionArguments.root[
+                connection.connectionOptions.root[
                     "SSLClientKeystoredb"
                 ] = self.cert_file_path
 
             if self.key_file_path:
-                connection.connectionArguments.root[
+                connection.connectionOptions.root[
                     "SSLClientKeystash"
                 ] = self.key_file_path
 

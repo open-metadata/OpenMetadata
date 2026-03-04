@@ -68,9 +68,16 @@ public class LineageAPI {
         optionsBuilder.build());
   }
 
-  public String exportLineage(String entityType, String entityId) throws OpenMetadataException {
+  public String exportLineage(String fqn, String type, String upstreamDepth, String downstreamDepth)
+      throws OpenMetadataException {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    optionsBuilder.queryParam("fqn", fqn);
+    optionsBuilder.queryParam("type", type);
+    if (upstreamDepth != null) optionsBuilder.queryParam("upstreamDepth", upstreamDepth);
+    if (downstreamDepth != null) optionsBuilder.queryParam("downstreamDepth", downstreamDepth);
+
     return httpClient.executeForString(
-        HttpMethod.GET, String.format("/v1/lineage/%s/%s/export", entityType, entityId), null);
+        HttpMethod.GET, "/v1/lineage/export", null, optionsBuilder.build());
   }
 
   public String getLineageByName(

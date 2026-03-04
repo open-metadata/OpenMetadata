@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 
 
 class MicroStrategyColumnParser:
@@ -58,7 +59,8 @@ class MicroStrategyColumnParser:
         )
 
         column_def = {
-            "name": field["name"],
+            "name": truncate_column_name(str(field["name"])),
+            "displayName": field["name"],
             "dataTypeDisplay": field["dataType"],
             "dataType": data_type,
             "arrayDataType": array_data_type,

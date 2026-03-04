@@ -66,13 +66,33 @@ class SearchIndexFailureIntegrationTest {
 
         // Simulate what happens when BulkSink fails to index entities
         BulkSink.FailureCallback callback =
-            (entityType, entityId, entityFqn, errorMessage) ->
+            (entityType, entityId, entityFqn, errorMessage, stage) -> {
+              if (stage == IndexingFailureRecorder.FailureStage.PROCESS) {
+                recorder.recordProcessFailure(entityType, entityId, entityFqn, errorMessage);
+              } else {
                 recorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+              }
+            };
 
         // Simulate 3 sink failures
-        callback.onFailure("table", "uuid-1", "db.schema.table1", "Mapping error");
-        callback.onFailure("table", "uuid-2", "db.schema.table2", "Document too large");
-        callback.onFailure("dashboard", "uuid-3", "service.dashboard1", "Index not found");
+        callback.onFailure(
+            "table",
+            "uuid-1",
+            "db.schema.table1",
+            "Mapping error",
+            IndexingFailureRecorder.FailureStage.SINK);
+        callback.onFailure(
+            "table",
+            "uuid-2",
+            "db.schema.table2",
+            "Document too large",
+            IndexingFailureRecorder.FailureStage.SINK);
+        callback.onFailure(
+            "dashboard",
+            "uuid-3",
+            "service.dashboard1",
+            "Index not found",
+            IndexingFailureRecorder.FailureStage.SINK);
 
         // Flush to capture
         recorder.flush();
@@ -116,12 +136,13 @@ class SearchIndexFailureIntegrationTest {
 
       assertEquals(2, capturedFailures.size());
 
-      // Reader failures should have READER stage
-      assertTrue(capturedFailures.stream().allMatch(r -> "READER".equals(r.getFailureStage())));
+      // Reader failures should have READER_EXCEPTION stage
+      assertTrue(
+          capturedFailures.stream().allMatch(r -> "READER_EXCEPTION".equals(r.getFailureStage())));
 
-      // Reader failures should have null entityId and entityFqn
-      assertTrue(capturedFailures.stream().allMatch(r -> r.getEntityId() == null));
-      assertTrue(capturedFailures.stream().allMatch(r -> r.getEntityFqn() == null));
+      // Reader failures have generated entityId and "BATCH_FAILED" as entityFqn
+      assertTrue(capturedFailures.stream().allMatch(r -> r.getEntityId() != null));
+      assertTrue(capturedFailures.stream().allMatch(r -> "BATCH_FAILED".equals(r.getEntityFqn())));
     }
   }
 
@@ -174,7 +195,9 @@ class SearchIndexFailureIntegrationTest {
       assertEquals(5, capturedFailures.size());
 
       long readerFailures =
-          capturedFailures.stream().filter(r -> "READER".equals(r.getFailureStage())).count();
+          capturedFailures.stream()
+              .filter(r -> "READER_EXCEPTION".equals(r.getFailureStage()))
+              .count();
       long sinkFailures =
           capturedFailures.stream().filter(r -> "SINK".equals(r.getFailureStage())).count();
 

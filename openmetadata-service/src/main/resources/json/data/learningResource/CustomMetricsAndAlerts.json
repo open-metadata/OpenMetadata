@@ -1,0 +1,15 @@
+{
+  "name": "Custom Metrics & Alerts",
+  "description": "Learn how to use SQL to create your own custom metrics and alerts.",
+  "resourceType": "Storylane",
+  "categories": ["Observability"],
+  "source": {
+    "url": "https://collate.storylane.io/share/j0tbqkydycg1"
+  },
+  "contexts": [
+    {"pageId": "alerts"},
+    {"pageId": "profilerConfiguration"},
+    {"pageId": "dataObservability"}
+  ],
+  "status": "Active"
+}

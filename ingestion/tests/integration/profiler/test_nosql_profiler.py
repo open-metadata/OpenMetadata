@@ -48,6 +48,8 @@ from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
+from ..conftest import _safe_delete
+
 SERVICE_NAME = Path(__file__).stem
 
 
@@ -156,15 +158,17 @@ class NoSQLProfiler(TestCase):
 
     @classmethod
     def delete_service(cls):
-        service_id = str(
-            cls.metadata.get_by_name(entity=DatabaseService, fqn=SERVICE_NAME).id.root
+        service_entity = cls.metadata.get_by_name(
+            entity=DatabaseService, fqn=SERVICE_NAME
         )
-        cls.metadata.delete(
-            entity=DatabaseService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
+        if service_entity:
+            _safe_delete(
+                cls.metadata,
+                entity=DatabaseService,
+                entity_id=service_entity.id,
+                recursive=True,
+                hard_delete=True,
+            )
 
     def test_setup_teardown(self):
         """

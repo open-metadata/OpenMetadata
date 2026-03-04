@@ -7,15 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -31,6 +30,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
@@ -44,6 +44,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -75,6 +77,8 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -102,13 +106,17 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   {
     // Table CSV export exports columns from a specific table, not tables from a schema
-    // The test framework expects export from a container (schema), but tables use a different API
-    supportsImportExport = false;
+    // Enable import/export for table column CSV testing
+    supportsImportExport = true;
+    supportsBatchImport = true;
+    supportsRecursiveImport = false; // Tables don't support recursive import
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   private DatabaseSchema lastCreatedSchema;
+  private Table lastCreatedTable;
 
   // ===================================================================
   // OVERRIDE: Tables allow duplicates in different schemas
@@ -258,11 +266,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   @Override
   protected String getImportExportContainerName(TestNamespace ns) {
-    if (lastCreatedSchema == null) {
-      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-      lastCreatedSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    // For table CSV import/export, we need a table FQN, not a schema FQN
+    // Create a table for CSV operations if it doesn't exist
+    if (lastCreatedTable == null) {
+      CreateTable tableRequest = createMinimalRequest(ns);
+      tableRequest.setName(ns.prefix("csv_table"));
+      lastCreatedTable = createEntity(tableRequest);
     }
-    return lastCreatedSchema.getFullyQualifiedName();
+    return lastCreatedTable.getFullyQualifiedName();
   }
 
   // ===================================================================
@@ -964,6 +975,181 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals(1, updated.getTableConstraints().size());
   }
 
+  @Test
+  void test_patchTable_removeColumnWithPrimaryKeyConstraint(TestNamespace ns) {
+
+    // Create a table with 3 columns: id (PRIMARY KEY), name, email
+    CreateTable request = createMinimalRequest(ns);
+    request.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build(),
+            ColumnBuilder.of("email", "VARCHAR").dataLength(255).build()));
+
+    // Add PRIMARY KEY constraint on id column
+    TableConstraint primaryKeyConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+            .withColumns(List.of("id"));
+    request.setTableConstraints(List.of(primaryKeyConstraint));
+
+    Table originalTable = createEntity(request);
+    assertEquals(3, originalTable.getColumns().size(), "Should have 3 initial columns");
+    assertEquals(1, originalTable.getTableConstraints().size(), "Should have 1 constraint");
+    assertEquals(
+        TableConstraint.ConstraintType.PRIMARY_KEY,
+        originalTable.getTableConstraints().get(0).getConstraintType(),
+        "Should have PRIMARY_KEY constraint");
+
+    // Patch the table to remove the id column (keep only name and email)
+    List<Column> updatedColumns =
+        List.of(
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build(),
+            ColumnBuilder.of("email", "VARCHAR").dataLength(255).build());
+
+    originalTable.setColumns(updatedColumns);
+    //    // Remove the constraint since the referenced column is being removed
+    //    originalTable.setTableConstraints(List.of());
+
+    Table updated = patchEntity(originalTable.getId().toString(), originalTable);
+
+    // Verify the patch operation succeeded and column is removed
+    assertEquals(2, updated.getColumns().size(), "Should have 2 columns after removing id");
+    assertFalse(
+        updated.getColumns().stream().anyMatch(col -> "id".equals(col.getName())),
+        "id column should be removed");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "name".equals(col.getName())),
+        "name column should remain");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "email".equals(col.getName())),
+        "email column should remain");
+
+    // Check that the table constraint is also removed
+    assertTrue(
+        updated.getTableConstraints() == null || updated.getTableConstraints().isEmpty(),
+        "PRIMARY_KEY constraint should be removed when referenced column is removed");
+  }
+
+  @Test
+  void test_patchTable_removeColumnWithForeignKeyConstraint(TestNamespace ns) {
+
+    // Create a referenced table with an id column
+    CreateTable referencedTableRequest = createMinimalRequest(ns);
+    referencedTableRequest.setName("referenced_table_" + UUID.randomUUID());
+    referencedTableRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    Table referencedTable = createEntity(referencedTableRequest);
+
+    // Create a main table with columns: id, ref_id (with FOREIGN KEY), name
+    CreateTable mainTableRequest = createMinimalRequest(ns);
+    mainTableRequest.setName("main_table_" + UUID.randomUUID());
+    mainTableRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("ref_id", "BIGINT").build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
+
+    // Add FOREIGN KEY constraint on ref_id referencing the other table
+    // referredColumns must be fully qualified column names (service.database.schema.table.column)
+    String referencedColumnFQN = referencedTable.getFullyQualifiedName() + ".id";
+    TableConstraint foreignKeyConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("ref_id"))
+            .withReferredColumns(List.of(referencedColumnFQN));
+    mainTableRequest.setTableConstraints(List.of(foreignKeyConstraint));
+
+    Table originalMainTable = createEntity(mainTableRequest);
+    assertEquals(3, originalMainTable.getColumns().size(), "Should have 3 initial columns");
+    assertEquals(1, originalMainTable.getTableConstraints().size(), "Should have 1 constraint");
+    assertEquals(
+        TableConstraint.ConstraintType.FOREIGN_KEY,
+        originalMainTable.getTableConstraints().get(0).getConstraintType(),
+        "Should have FOREIGN_KEY constraint");
+
+    // Patch the main table to remove the ref_id column
+    List<Column> updatedColumns =
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build());
+
+    originalMainTable.setColumns(updatedColumns);
+    // Let the server-side cleanupConstraintsForRemovedColumns handle FK constraint removal
+
+    Table updated = patchEntity(originalMainTable.getId().toString(), originalMainTable);
+
+    // Verify the patch operation succeeded and column is removed
+    assertEquals(2, updated.getColumns().size(), "Should have 2 columns after removing ref_id");
+    assertFalse(
+        updated.getColumns().stream().anyMatch(col -> "ref_id".equals(col.getName())),
+        "ref_id column should be removed");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "id".equals(col.getName())),
+        "id column should remain");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "name".equals(col.getName())),
+        "name column should remain");
+
+    // Check that the foreign key constraint is also removed
+    assertTrue(
+        updated.getTableConstraints() == null || updated.getTableConstraints().isEmpty(),
+        "FOREIGN_KEY constraint should be removed when referenced column is removed");
+  }
+
+  @Test
+  void test_patchTable_removeColumnWithUniqueConstraint(TestNamespace ns) {
+
+    // Create a table with 3 columns: id, email (UNIQUE), name
+    CreateTable request = createMinimalRequest(ns);
+    request.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("email", "VARCHAR").dataLength(255).build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
+
+    // Add UNIQUE constraint on email column
+    TableConstraint uniqueConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(List.of("email"));
+    request.setTableConstraints(List.of(uniqueConstraint));
+
+    Table originalTable = createEntity(request);
+    assertEquals(3, originalTable.getColumns().size(), "Should have 3 initial columns");
+    assertEquals(1, originalTable.getTableConstraints().size(), "Should have 1 constraint");
+    assertEquals(
+        TableConstraint.ConstraintType.UNIQUE,
+        originalTable.getTableConstraints().get(0).getConstraintType(),
+        "Should have UNIQUE constraint");
+
+    // Patch the table to remove the email column (keep only id and name)
+    List<Column> updatedColumns =
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build());
+    originalTable.setColumns(updatedColumns);
+
+    Table updated = patchEntity(originalTable.getId().toString(), originalTable);
+
+    // Verify the patch operation succeeded and column is removed
+    assertEquals(2, updated.getColumns().size(), "Should have 2 columns after removing email");
+    assertFalse(
+        updated.getColumns().stream().anyMatch(col -> "email".equals(col.getName())),
+        "email column should be removed");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "id".equals(col.getName())),
+        "id column should remain");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "name".equals(col.getName())),
+        "name column should remain");
+
+    // Check that the UNIQUE constraint is automatically removed
+    assertTrue(
+        updated.getTableConstraints() == null || updated.getTableConstraints().isEmpty(),
+        "UNIQUE constraint should be automatically removed when referenced column is removed");
+  }
+
   // ===================================================================
   // TODO: TESTS REQUIRING SPECIAL SDK SUPPORT
   // ===================================================================
@@ -1196,6 +1382,67 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   // ===================================================================
+  // PIPELINE OBSERVABILITY TESTS
+  // ===================================================================
+
+  @Test
+  void pipelineObservability_excludesDeletedPipelines(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createTableRequest = createRequest(ns.prefix("observability_table"), ns);
+    Table table = createEntity(createTableRequest);
+
+    String shortId = UUID.randomUUID().toString().substring(0, 8);
+    org.openmetadata.schema.api.services.CreatePipelineService createPipelineService =
+        new org.openmetadata.schema.api.services.CreatePipelineService()
+            .withName("airflow_" + shortId)
+            .withServiceType(
+                org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType
+                    .Airflow);
+    org.openmetadata.schema.entity.services.PipelineService pipelineService =
+        client.pipelineServices().create(createPipelineService);
+
+    CreatePipeline createPipelineRequest =
+        new CreatePipeline()
+            .withName("pipe_" + shortId)
+            .withService(pipelineService.getFullyQualifiedName())
+            .withDescription("Test pipeline for observability");
+    Pipeline pipeline = client.pipelines().create(createPipelineRequest);
+
+    EntityReference pipelineRef =
+        new EntityReference()
+            .withId(pipeline.getId())
+            .withType("pipeline")
+            .withFullyQualifiedName(pipeline.getFullyQualifiedName());
+
+    org.openmetadata.schema.type.PipelineObservability observability =
+        new org.openmetadata.schema.type.PipelineObservability()
+            .withPipeline(pipelineRef)
+            .withStartTime(System.currentTimeMillis())
+            .withEndTime(System.currentTimeMillis() + 10000);
+
+    client.tables().addPipelineObservability(table.getId(), Arrays.asList(observability));
+
+    List<org.openmetadata.schema.type.PipelineObservability> fetchedObservability =
+        client.tables().getPipelineObservability(table.getId());
+    assertNotNull(fetchedObservability);
+    assertEquals(1, fetchedObservability.size());
+    assertEquals(pipeline.getId(), fetchedObservability.get(0).getPipeline().getId());
+
+    java.util.Map<String, String> deleteParams = new java.util.HashMap<>();
+    deleteParams.put("hardDelete", "true");
+    client.pipelines().delete(pipeline.getId().toString(), deleteParams);
+
+    List<org.openmetadata.schema.type.PipelineObservability> observabilityAfterDelete =
+        client.tables().getPipelineObservability(table.getId());
+    assertNotNull(observabilityAfterDelete);
+    assertEquals(
+        0,
+        observabilityAfterDelete.size(),
+        "Pipeline observability should be empty after pipeline is deleted");
+  }
+
+  // ===================================================================
   // TABLE JOINS OPERATIONS TESTS
   // ===================================================================
 
@@ -1423,6 +1670,32 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table updated = client.tables().updateDataModel(table.getId(), dataModel);
     assertNotNull(updated.getDataModel());
     assertEquals("Test data model", updated.getDataModel().getDescription());
+  }
+
+  @Test
+  void put_tableUpdatePreservesDataModel(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createRequest = createRequest(ns.prefix("preserve_datamodel_table"), ns);
+    Table table = createEntity(createRequest);
+
+    // Add dataModel via the dedicated endpoint (simulates dbt ingestion)
+    DataModel dataModel =
+        new DataModel().withModelType(DataModel.ModelType.DBT).withSql("select * from test;");
+    client.tables().updateDataModel(table.getId(), dataModel);
+
+    Table beforeUpdate = client.tables().get(table.getId().toString(), "dataModel");
+    assertNotNull(beforeUpdate.getDataModel());
+    assertEquals("select * from test;", beforeUpdate.getDataModel().getSql());
+
+    // Simulate database ingestion re-run: PUT /tables with CreateTableRequest (no dataModel)
+    createRequest.setDescription("updated description");
+    client.tables().createOrUpdate(createRequest);
+
+    // dataModel must be preserved after the re-ingestion PUT
+    Table afterUpdate = client.tables().get(table.getId().toString(), "dataModel");
+    assertNotNull(afterUpdate.getDataModel(), "dataModel was cleared by a PUT table update");
+    assertEquals("select * from test;", afterUpdate.getDataModel().getSql());
   }
 
   // ===================================================================
@@ -3350,15 +3623,25 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     withDesc.setColumns(cols3);
     Table tableWithDesc = client.tables().create(withDesc);
 
-    // Wait for indexing (Elasticsearch needs time to index)
-    Thread.sleep(2000);
+    // Poll until the last created table is indexed using SDK search API
+    Awaitility.await("Wait for tables to be indexed in search")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + tableWithDesc.getId())
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              return searchResponse.contains("\"id\":\"" + tableWithDesc.getId() + "\"");
+            });
 
-    // Search using REST client to Elasticsearch directly
-    try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
-
-      // Refresh index to make documents searchable
-      refreshSearchIndex(searchClient);
-
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
       // Create search request for tables with missing descriptions
       String searchQuery =
           "{"
@@ -3384,7 +3667,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       Response response = searchClient.performRequest(request);
 
       // Verify response
-      assertEquals(200, response.getStatusLine().getStatusCode());
+      assertEquals(200, response.getStatusCode());
 
       // Parse response to check tables without descriptions were found
       String responseBody =
@@ -3423,15 +3706,25 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Table table = client.tables().create(req);
 
-    // Wait for indexing
-    Thread.sleep(2000);
+    // Poll until the table is indexed in search using SDK search API
+    Awaitility.await("Wait for searchable table to be indexed")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + table.getId())
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              return searchResponse.contains("\"id\":\"" + table.getId() + "\"");
+            });
 
-    // Search for tables containing "email" in columns
-    try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
-
-      // Refresh index to make documents searchable
-      refreshSearchIndex(searchClient);
-
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
       String searchQuery =
           "{"
               + "  \"query\": {"
@@ -3453,7 +3746,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
       Response response = searchClient.performRequest(request);
 
-      assertEquals(200, response.getStatusLine().getStatusCode());
+      assertEquals(200, response.getStatusCode());
 
       String responseBody =
           new String(
@@ -3571,55 +3864,23 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               .allMatch(d -> d.getInherited() != null && d.getInherited()),
           "All table domains should be marked as inherited");
 
-      // Wait for Elasticsearch indexing using Awaitility
-      try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
-        String tableId = table.getId().toString();
-        AtomicReference<String> responseBodyRef = new AtomicReference<>();
-
-        Awaitility.await("Wait for table to appear in search index")
-            .pollInterval(Duration.ofMillis(500))
-            .atMost(Duration.ofSeconds(30))
-            .ignoreExceptions()
-            .until(
-                () -> {
-                  refreshSearchIndex(searchClient);
-
-                  String tableSearchQuery =
-                      "{"
-                          + "  \"size\": 1,"
-                          + "  \"query\": {"
-                          + "    \"bool\": {"
-                          + "      \"must\": ["
-                          + "        { \"term\": { \"_id\": \""
-                          + tableId
-                          + "\" } }"
-                          + "      ]"
-                          + "    }"
-                          + "  }"
-                          + "}";
-
-                  Request request =
-                      new Request("POST", "/" + getTableSearchIndexName() + "/_search");
-                  request.setJsonEntity(tableSearchQuery);
-                  Response response = searchClient.performRequest(request);
-
-                  if (response.getStatusLine().getStatusCode() != 200) {
-                    return false;
-                  }
-
-                  String body =
-                      new String(
-                          response.getEntity().getContent().readAllBytes(),
-                          java.nio.charset.StandardCharsets.UTF_8);
-                  responseBodyRef.set(body);
-                  return body.contains(tableId);
-                });
-
-        // Verify the table appears in search results
-        String responseBody = responseBodyRef.get();
-        assertTrue(responseBody.contains(tableId));
-        assertTrue(responseBody.contains("\"total\""));
-      }
+      String tableId = table.getId().toString();
+      Awaitility.await("Wait for table to appear in search index")
+          .pollDelay(Duration.ofMillis(500))
+          .pollInterval(Duration.ofSeconds(2))
+          .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                String searchResponse =
+                    client
+                        .search()
+                        .query("id:" + tableId)
+                        .index("table_search_index")
+                        .size(1)
+                        .execute();
+                return searchResponse.contains("\"id\":\"" + tableId + "\"");
+              });
     } finally {
       // Re-enable multi-domain rule after test (only if we successfully disabled it)
       if (rulesAvailable) {
@@ -4205,57 +4466,435 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     return "openmetadata_table_search_index";
   }
 
-  /**
-   * Ensure Elasticsearch index exists. If not, wait for it to be created by SearchIndexHandler.
-   * The index is created lazily when the first table is indexed.
-   */
-  private void ensureSearchIndexExists(RestClient searchClient) throws Exception {
-    String indexName = getTableSearchIndexName();
-    Request checkRequest = new Request("HEAD", "/" + indexName);
+  // ===================================================================
+  // TABLE CONSTRAINTS PRESERVATION TESTS
+  // ===================================================================
 
-    // Try to check if index exists
-    try {
-      searchClient.performRequest(checkRequest);
-      // Index exists, we're good
-      System.out.println("Index " + indexName + " already exists");
-    } catch (Exception e) {
-      // Index doesn't exist yet - wait for SearchIndexHandler to create it
-      // This happens asynchronously after table creation
-      System.out.println(
-          "Index " + indexName + " doesn't exist yet, waiting up to 30 seconds for creation...");
+  @Test
+  void test_tableConstraintsCsvBulkOperation_preservesConstraints(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
 
-      // Wait up to 30 seconds for index to be created (SearchIndexHandler processes async)
-      for (int i = 0; i < 60; i++) {
-        Thread.sleep(500);
-        try {
-          searchClient.performRequest(checkRequest);
-          System.out.println("Index " + indexName + " now exists after " + ((i + 1) * 500) + "ms");
-          return;
-        } catch (Exception ignored) {
-          // Still doesn't exist, keep waiting
-          if (i % 10 == 9) {
-            System.out.println(
-                "Still waiting for index creation... (" + ((i + 1) * 500) + "ms elapsed)");
-          }
-        }
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Create table with multiple types of constraints
+    Column idColumn = ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build();
+    Column emailColumn = ColumnBuilder.of("email", "VARCHAR").dataLength(255).build();
+    Column usernameColumn = ColumnBuilder.of("username", "VARCHAR").dataLength(100).build();
+
+    // Create table constraints - UNIQUE and PRIMARY_KEY
+    TableConstraint uniqueConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(List.of("email"));
+
+    TableConstraint primaryKeyConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+            .withColumns(List.of("id"));
+
+    TableConstraint multiColumnUniqueConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(List.of("username", "email"));
+
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("constraints_bulk_test"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(List.of(idColumn, emailColumn, usernameColumn));
+    createRequest.setTableConstraints(
+        List.of(uniqueConstraint, primaryKeyConstraint, multiColumnUniqueConstraint));
+
+    // Create the table
+    Table originalTable = createEntity(createRequest);
+
+    // Verify constraints were created correctly
+    assertNotNull(originalTable.getTableConstraints(), "Table should have constraints");
+    assertEquals(3, originalTable.getTableConstraints().size(), "Should have 3 constraints");
+
+    // Get the table's current version before any operations
+    Double originalVersion = originalTable.getVersion();
+
+    // Simulate the exact scenario that caused the bug:
+    // 1. Load table with minimal fields (like CSV import does)
+    // 2. Trigger bulk operation versioning
+    // 3. Verify constraints survive
+
+    Table tableForUpdate =
+        client.tables().getByName(originalTable.getFullyQualifiedName(), "tableConstraints");
+
+    // Verify constraints are present before update
+    assertNotNull(
+        tableForUpdate.getTableConstraints(), "Constraints should exist before bulk operation");
+    assertEquals(
+        3,
+        tableForUpdate.getTableConstraints().size(),
+        "Should have 3 constraints before bulk operation");
+
+    // Perform update that triggers createChangeEventForBulkOperation
+    // This is the critical path that was deleting constraints
+    tableForUpdate.setDescription("Updated via bulk operation");
+    Table updatedTable = client.tables().update(tableForUpdate.getId(), tableForUpdate);
+
+    // CRITICAL TEST: Verify constraints survived the bulk operation
+    assertNotNull(
+        updatedTable.getTableConstraints(),
+        "Constraints should survive bulk operation (this was the bug)");
+    assertEquals(
+        3,
+        updatedTable.getTableConstraints().size(),
+        "Should still have 3 constraints after bulk operation");
+
+    // Verify specific constraints are preserved
+    List<TableConstraint> constraints = updatedTable.getTableConstraints();
+
+    // Check UNIQUE constraint on email
+    assertTrue(
+        constraints.stream()
+            .anyMatch(
+                c ->
+                    c.getConstraintType() == TableConstraint.ConstraintType.UNIQUE
+                        && c.getColumns().size() == 1
+                        && c.getColumns().contains("email")),
+        "UNIQUE constraint on email should be preserved");
+
+    // Check PRIMARY_KEY constraint on id
+    assertTrue(
+        constraints.stream()
+            .anyMatch(
+                c ->
+                    c.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY
+                        && c.getColumns().contains("id")),
+        "PRIMARY_KEY constraint should be preserved");
+
+    // Check multi-column UNIQUE constraint
+    assertTrue(
+        constraints.stream()
+            .anyMatch(
+                c ->
+                    c.getConstraintType() == TableConstraint.ConstraintType.UNIQUE
+                        && c.getColumns().size() == 2
+                        && c.getColumns().containsAll(List.of("username", "email"))),
+        "Multi-column UNIQUE constraint should be preserved");
+
+    // Verify version was incremented (indicating change event was created)
+    assertTrue(
+        updatedTable.getVersion() > originalVersion,
+        "Version should be incremented after bulk operation");
+
+    // Test version history preservation
+    EntityHistory history = getVersionHistory(updatedTable.getId());
+    assertNotNull(history, "Should have version history");
+    assertTrue(history.getVersions().size() >= 2, "Should have at least 2 versions");
+
+    // Get the original version from history and verify it has constraints
+    Table historicalVersion = getVersion(updatedTable.getId(), originalVersion);
+    assertNotNull(historicalVersion, "Should be able to retrieve historical version");
+    assertNotNull(
+        historicalVersion.getTableConstraints(), "Historical version should preserve constraints");
+    assertEquals(
+        3,
+        historicalVersion.getTableConstraints().size(),
+        "Historical version should have all 3 constraints");
+  }
+
+  @Test
+  void test_tableConstraintsVersioning_multipleBulkOperations(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Create table with constraints
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("multi_bulk_constraints"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("code", "VARCHAR").dataLength(50).build()));
+
+    TableConstraint uniqueConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(List.of("code"));
+    createRequest.setTableConstraints(List.of(uniqueConstraint));
+
+    Table originalTable = createEntity(createRequest);
+    Double version1 = originalTable.getVersion();
+
+    // Multiple bulk operations to test constraint preservation across versions
+    for (int i = 0; i < 3; i++) {
+      Table currentTable =
+          client.tables().getByName(originalTable.getFullyQualifiedName(), "tableConstraints");
+      currentTable.setDescription("Bulk update iteration " + (i + 1));
+
+      Table updated = client.tables().update(currentTable.getId(), currentTable);
+
+      // Verify constraints survive each bulk operation
+      assertNotNull(
+          updated.getTableConstraints(),
+          "Constraints should survive bulk operation iteration " + (i + 1));
+      assertEquals(
+          1,
+          updated.getTableConstraints().size(),
+          "Should have 1 constraint after bulk operation iteration " + (i + 1));
+      assertEquals(
+          TableConstraint.ConstraintType.UNIQUE,
+          updated.getTableConstraints().get(0).getConstraintType(),
+          "Constraint type should be preserved in iteration " + (i + 1));
+
+      assertTrue(
+          updated.getVersion() > version1, "Version should increment in iteration " + (i + 1));
+    }
+
+    // Verify all versions in history preserve constraints
+    EntityHistory history = getVersionHistory(originalTable.getId());
+    assertNotNull(history, "Should have version history");
+    assertTrue(
+        history.getVersions().size() > 1, "Should have multiple versions (original + updates)");
+
+    // Check that each historical version preserved constraints
+    for (Object versionObj : history.getVersions()) {
+      if (versionObj instanceof String versionJson) {
+        assertTrue(
+            versionJson.contains("tableConstraints"),
+            "Historical version should contain tableConstraints in JSON");
+        assertTrue(
+            versionJson.contains("UNIQUE"),
+            "Historical version should contain UNIQUE constraint type");
       }
-
-      // If we get here, index still doesn't exist after 30 seconds
-      throw new RuntimeException("Index " + indexName + " was not created after 30 seconds");
     }
   }
 
-  /**
-   * Refresh Elasticsearch index to make sure all documents are searchable.
-   * Must be called after creating/updating entities before searching.
-   */
-  private void refreshSearchIndex(RestClient searchClient) throws Exception {
-    // First ensure index exists
-    ensureSearchIndexExists(searchClient);
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT
+  // ===================================================================
 
-    // Now refresh it
-    Request refreshRequest = new Request("POST", "/" + getTableSearchIndexName() + "/_refresh");
-    searchClient.performRequest(refreshRequest);
+  protected String generateValidCsvData(TestNamespace ns, List<Table> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return null;
+    }
+
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "column.name*,column.displayName,column.description,column.dataTypeDisplay,column.dataType*,column.arrayDataType,column.dataLength,column.tags,column.glossaryTerms\n");
+
+    for (Table table : entities) {
+      if (table.getColumns() != null) {
+        for (Column column : table.getColumns()) {
+          csv.append(escapeCSVValue(column.getName())).append(",");
+          csv.append(escapeCSVValue(column.getDisplayName())).append(",");
+          csv.append(escapeCSVValue(column.getDescription())).append(",");
+          csv.append(escapeCSVValue(column.getDataTypeDisplay())).append(",");
+          csv.append(escapeCSVValue(column.getDataType().toString())).append(",");
+          csv.append(
+                  escapeCSVValue(
+                      column.getArrayDataType() != null
+                          ? column.getArrayDataType().toString()
+                          : ""))
+              .append(",");
+          csv.append(
+                  escapeCSVValue(
+                      column.getDataLength() != null ? column.getDataLength().toString() : ""))
+              .append(",");
+          csv.append(escapeCSVValue(formatTagsForCsv(column.getTags()))).append(",");
+          csv.append(escapeCSVValue("")); // glossaryTerms - not available on Column
+          csv.append("\n");
+        }
+      }
+    }
+
+    return csv.toString();
+  }
+
+  protected String generateInvalidCsvData(TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "column.name*,column.displayName,column.description,column.dataTypeDisplay,column.dataType*,column.arrayDataType,column.dataLength,column.tags,column.glossaryTerms\n");
+    // Missing required column.name and column.dataType (empty name and empty datatype)
+    csv.append(",Test Column,Description,,,,,,,\n");
+    // Invalid data type
+    csv.append("invalid_column,,,,INVALID_TYPE,,,,,\n");
+    return csv.toString();
+  }
+
+  protected List<String> getRequiredCsvHeaders() {
+    return List.of(
+        "column.name*",
+        "column.displayName",
+        "column.description",
+        "column.dataTypeDisplay",
+        "column.dataType*",
+        "column.arrayDataType",
+        "column.dataLength",
+        "column.tags",
+        "column.glossaryTerms");
+  }
+
+  protected List<String> getAllCsvHeaders() {
+    return List.of(
+        "column.name*",
+        "column.displayName",
+        "column.description",
+        "column.dataTypeDisplay",
+        "column.dataType*",
+        "column.arrayDataType",
+        "column.dataLength",
+        "column.tags",
+        "column.glossaryTerms");
+  }
+
+  protected boolean validateCsvRow(String[] row, List<String> headers) {
+    if (row.length != headers.size()) {
+      return false;
+    }
+
+    int nameIndex = headers.indexOf("column.name*");
+    int dataTypeIndex = headers.indexOf("column.dataType*");
+
+    if (nameIndex >= 0 && (row[nameIndex] == null || row[nameIndex].trim().isEmpty())) {
+      return false;
+    }
+
+    if (dataTypeIndex >= 0 && (row[dataTypeIndex] == null || row[dataTypeIndex].trim().isEmpty())) {
+      return false;
+    }
+
+    // Validate data type if present
+    if (dataTypeIndex >= 0 && !row[dataTypeIndex].trim().isEmpty()) {
+      try {
+        ColumnDataType.fromValue(row[dataTypeIndex].trim());
+      } catch (IllegalArgumentException e) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private String formatTagsForCsv(List<TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream().map(TagLabel::getTagFQN).reduce((a, b) -> a + ";" + b).orElse("");
+  }
+
+  private String escapeCSVValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  // ===================================================================
+  // DATA PERSISTENCE VALIDATION - Critical for CSV import testing
+  // ===================================================================
+
+  @Override
+  protected void validateCsvDataPersistence(
+      List<Table> originalEntities, String csvData, CsvImportResult result) {
+    super.validateCsvDataPersistence(originalEntities, csvData, result);
+
+    if (result.getStatus() != ApiStatus.SUCCESS) {
+      return;
+    }
+
+    if (lastCreatedTable != null) {
+      Table originalTable = lastCreatedTable;
+      Table updatedTable =
+          SdkClients.adminClient()
+              .tables()
+              .get(originalTable.getId().toString(), "columns,tags,owners");
+      assertNotNull(updatedTable, "Table should exist after CSV import");
+
+      validateTableFieldsAfterImport(originalTable, updatedTable);
+
+      if (originalTable.getColumns() != null && updatedTable.getColumns() != null) {
+        validateColumnsAfterImport(originalTable.getColumns(), updatedTable.getColumns());
+      }
+    }
+  }
+
+  private void validateTableFieldsAfterImport(Table original, Table imported) {
+    if (original.getDescription() != null) {
+      assertEquals(
+          original.getDescription(),
+          imported.getDescription(),
+          "Table description should be preserved");
+    }
+
+    if (original.getDisplayName() != null) {
+      assertEquals(
+          original.getDisplayName(),
+          imported.getDisplayName(),
+          "Table displayName should be preserved");
+    }
+
+    if (original.getOwners() != null && !original.getOwners().isEmpty()) {
+      assertNotNull(imported.getOwners(), "Table owners should be preserved");
+      assertEquals(
+          original.getOwners().size(),
+          imported.getOwners().size(),
+          "Table owner count should match");
+    }
+  }
+
+  private void validateColumnsAfterImport(
+      List<Column> originalColumns, List<Column> importedColumns) {
+    assertEquals(
+        originalColumns.size(), importedColumns.size(), "Column count should be preserved");
+
+    for (Column originalColumn : originalColumns) {
+      Column importedColumn = findColumnByName(importedColumns, originalColumn.getName());
+      assertNotNull(
+          importedColumn, "Column " + originalColumn.getName() + " should exist after import");
+
+      assertEquals(originalColumn.getName(), importedColumn.getName(), "Column name should match");
+      assertEquals(
+          originalColumn.getDataType(),
+          importedColumn.getDataType(),
+          "Column data type should match");
+
+      if (originalColumn.getDescription() != null) {
+        assertEquals(
+            originalColumn.getDescription(),
+            importedColumn.getDescription(),
+            "Column description should be preserved");
+      }
+
+      if (originalColumn.getDisplayName() != null) {
+        assertEquals(
+            originalColumn.getDisplayName(),
+            importedColumn.getDisplayName(),
+            "Column displayName should be preserved");
+      }
+
+      if (originalColumn.getDataLength() != null) {
+        assertEquals(
+            originalColumn.getDataLength(),
+            importedColumn.getDataLength(),
+            "Column data length should be preserved");
+      }
+
+      if (originalColumn.getTags() != null && !originalColumn.getTags().isEmpty()) {
+        assertNotNull(importedColumn.getTags(), "Column tags should be preserved");
+        assertEquals(
+            originalColumn.getTags().size(),
+            importedColumn.getTags().size(),
+            "Column tag count should match");
+      }
+    }
+  }
+
+  private Column findColumnByName(List<Column> columns, String columnName) {
+    return columns.stream()
+        .filter(col -> col.getName().equals(columnName))
+        .findFirst()
+        .orElse(null);
   }
 
   // ===================================================================
@@ -4270,5 +4909,47 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Override
   protected Table getVersion(UUID id, Double version) {
     return SdkClients.adminClient().tables().getVersion(id.toString(), version);
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateTable> createRequests) {
+    return SdkClients.adminClient().tables().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateTable> createRequests) {
+    return SdkClients.adminClient().tables().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateTable createInvalidRequestForBulk(TestNamespace ns) {
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("invalid_table"));
+    request.setDatabaseSchema("nonexistent.service.db.schema");
+    request.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
+    return request;
+  }
+
+  @Override
+  protected List<CreateTable> createBulkRequests(TestNamespace ns, String prefix, int count) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    List<CreateTable> requests = new ArrayList<>();
+    for (int i = 0; i < count; i++) {
+      CreateTable request = new CreateTable();
+      request.setName(ns.prefix(prefix + i));
+      request.setDatabaseSchema(schema.getFullyQualifiedName());
+      request.setColumns(
+          List.of(
+              ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+              ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
+      requests.add(request);
+    }
+    return requests;
   }
 }
