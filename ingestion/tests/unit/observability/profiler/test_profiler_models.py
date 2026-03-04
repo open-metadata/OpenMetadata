@@ -18,8 +18,8 @@ def test_valid_metrics():
     """
     Test that the metrics are valid
     """
-    profiler_def = ProfilerDef(name="test", metrics=["count"])
-    assert profiler_def.metrics == ["COUNT"]
+    profiler_def = ProfilerDef(name="test", metrics=["valuesCount"])
+    assert profiler_def.metrics == ["valuesCount"]
 
     with pytest.raises(ValueError):
         ProfilerDef(name="test", metrics=["potato"])

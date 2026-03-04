@@ -265,27 +265,27 @@ class DatalakeSampleTest(TestCase):
         Profile sample should be ignored in row count
         """
 
-        table_count = Metrics.ROW_COUNT.value
+        table_count = Metrics.rowCount.value
         profiler = Profiler(
             table_count,
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
         # We expect the full count of the table
-        assert res.get(Metrics.ROW_COUNT.name) == 2
+        assert res.get(Metrics.rowCount.name) == 2
 
     @pytest.mark.skip(reason="Flaky test due to small sample size")
     def test_random_sample_histogram(self):
         """
         Histogram should run correctly
         """
-        hist = Metrics.HISTOGRAM.value
-        count = Metrics.COUNT.value
-        min = Metrics.MIN.value
-        max = Metrics.MAX.value
-        first_quartile = Metrics.FIRST_QUARTILE.value
-        third_quartile = Metrics.THIRD_QUARTILE.value
-        iqr = Metrics.IQR.value
+        hist = Metrics.histogram.value
+        count = Metrics.valuesCount.value
+        min = Metrics.min.value
+        max = Metrics.max.value
+        first_quartile = Metrics.firstQuartile.value
+        third_quartile = Metrics.thirdQuartile.value
+        iqr = Metrics.interQuartileRange.value
 
         profiler = Profiler(
             hist,
@@ -300,7 +300,7 @@ class DatalakeSampleTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # The sum of all frequencies should be sampled
-        assert sum(res.get(User.age.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
+        assert sum(res.get(User.age.name)[Metrics.histogram.name]["frequencies"]) < 30
 
     @mock.patch(
         "metadata.sampler.sampler_interface.get_ssl_connection",
