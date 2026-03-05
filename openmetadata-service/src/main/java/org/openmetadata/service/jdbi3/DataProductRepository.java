@@ -663,9 +663,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
               entityInterface.getVersion(), isAdd, successfulAssets, null);
+      String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
       ChangeEvent changeEvent =
           getChangeEvent(
-              entityInterface, change, fromEntity, entityInterface.getVersion(), userName);
+              entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     }
 
