@@ -1319,6 +1319,20 @@ public class SearchIndexExecutor implements AutoCloseable {
     processStats.setFailedRecords(0);
     jobDataStats.setProcessStats(processStats);
 
+    // Add a stats slot for TABLE_COLUMN since columns are indexed as part of table processing
+    // but TABLE_COLUMN is not a standalone entity in the entities set
+    if (entities.contains(Entity.TABLE) && !entities.contains(Entity.TABLE_COLUMN)) {
+      StepStats columnEntityStats = new StepStats();
+      columnEntityStats.setTotalRecords(0);
+      columnEntityStats.setSuccessRecords(0);
+      columnEntityStats.setFailedRecords(0);
+      jobDataStats
+          .getEntityStats()
+          .getAdditionalProperties()
+          .put(Entity.TABLE_COLUMN, columnEntityStats);
+      LOG.info("Added TABLE_COLUMN stats slot for column indexing tracking");
+    }
+
     return jobDataStats;
   }
 
