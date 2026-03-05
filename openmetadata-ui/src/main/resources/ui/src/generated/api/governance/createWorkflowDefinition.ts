@@ -259,9 +259,9 @@ export interface TriggerConfiguration {
     filter?: FilterConditionObject | string;
     /**
      * Map of fields to their required values/patterns that must match to trigger the workflow.
-     * Takes priority over exclude fields. Field values support regex patterns.
+     * Takes priority over exclude fields. Field values use substring matching.
      */
-    include?: { [key: string]: string };
+    include?: { [key: string]: string[] };
     /**
      * Number of Entities to process at once.
      */
