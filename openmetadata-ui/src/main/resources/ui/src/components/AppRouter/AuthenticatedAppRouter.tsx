@@ -110,6 +110,15 @@ const MarketPlacePage = withSuspenseFallback(
   React.lazy(() => import('../../pages/MarketPlacePage/MarketPlacePage'))
 );
 
+const DataMarketplacePage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "DataMarketplacePage" */ '../../pages/DataMarketplacePage/DataMarketplacePage.component'
+      )
+  )
+);
+
 const BotDetailsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/BotDetailsPage/BotDetailsPage'))
 );
@@ -434,6 +443,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           </AdminProtectedRoute>
         }
         path={ROUTES.MARKETPLACE_APP_INSTALL}
+      />
+      <Route
+        element={<DataMarketplacePage />}
+        path={ROUTES.DATA_MARKETPLACE}
       />
       <Route element={<SwaggerPage />} path={ROUTES.SWAGGER} />
       <Route element={<DomainVersionPage />} path={ROUTES.DOMAIN_VERSION} />

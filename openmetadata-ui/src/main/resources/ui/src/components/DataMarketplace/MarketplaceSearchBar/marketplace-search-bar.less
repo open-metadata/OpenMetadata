@@ -1,0 +1,122 @@
+.marketplace-search-bar {
+  margin-bottom: 16px;
+  position: relative;
+
+  .marketplace-search-input {
+    border-radius: 8px;
+    border: 1px solid #d0d5dd;
+    height: 44px;
+    font-size: 14px;
+
+    &:hover,
+    &:focus {
+      border-color: #7f56d9;
+    }
+  }
+
+  .marketplace-search-icon {
+    color: #667085;
+    display: flex;
+    align-items: center;
+  }
+
+  .marketplace-recent-searches {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+
+    .recent-search-label {
+      color: #667085;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .recent-search-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .recent-search-tag {
+      cursor: pointer;
+      border-radius: 6px;
+      border: 1px solid #d0d5dd;
+      background: #f9fafb;
+      color: #344054;
+      font-size: 13px;
+      padding: 2px 10px;
+
+      &:hover {
+        background: #f2f4f7;
+      }
+    }
+
+    .clear-btn {
+      margin-left: auto;
+      padding: 0;
+      font-size: 14px;
+      color: #667085;
+    }
+  }
+}
+
+.marketplace-search-overlay {
+  max-width: 100%;
+
+  .ant-popover-inner {
+    padding: 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(16, 24, 40, 0.1);
+  }
+}
+
+.marketplace-search-results {
+  max-height: 400px;
+  overflow-y: auto;
+
+  .search-result-section {
+    padding: 8px 0;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid #eaecf0;
+    }
+
+    .search-result-section-title {
+      display: block;
+      padding: 4px 16px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #667085;
+      text-transform: uppercase;
+    }
+  }
+
+  .search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+
+    &:hover {
+      background: #f9fafb;
+    }
+
+    .search-result-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      min-width: 24px;
+
+      img,
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+}

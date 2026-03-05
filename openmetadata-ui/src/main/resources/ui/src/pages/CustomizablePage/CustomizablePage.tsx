@@ -331,6 +331,14 @@ export const CustomizablePage = () => {
           onSaveLayout={handlePageCustomizeSave}
         />
       );
+    case PageType.DataMarketplace:
+      return (
+        <CustomizeMyData
+          initialPageData={currentPage}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
     case PageType.Domain:
       return (
         <CustomizableDomainPage

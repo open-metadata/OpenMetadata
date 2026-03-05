@@ -53,6 +53,10 @@ export const CustomizablePageHeader = ({
     'reset' | 'close'
   >('close');
 
+  const showWidgetActions =
+    currentPageType === PageType.LandingPage ||
+    currentPageType === PageType.DataMarketplace;
+
   const isLandingPage = currentPageType === PageType.LandingPage;
 
   const handleCancel = () => {
@@ -157,7 +161,7 @@ export const CustomizablePageHeader = ({
           </Typography.Paragraph>
         </div>
         <Space>
-          {isLandingPage && (
+          {showWidgetActions && (
             <Button
               data-testid="add-widget-button"
               icon={<PlusOutlined />}

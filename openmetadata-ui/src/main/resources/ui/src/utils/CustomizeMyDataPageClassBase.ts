@@ -30,6 +30,8 @@ import FollowingWidget from '../components/MyData/RightSidebar/FollowingWidget';
 import CuratedAssetsWidget from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget';
 import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
 import DataProductsWidget from '../components/MyData/Widgets/DataProductsWidget/DataProductsWidget.component';
+import MarketplaceDataProductsWidget from '../components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component';
+import MarketplaceDomainsWidget from '../components/DataMarketplace/MarketplaceDomainsWidget/MarketplaceDomainsWidget.component';
 import DomainsWidget from '../components/MyData/Widgets/DomainsWidget/DomainsWidget';
 import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
 import MyTaskWidget from '../components/MyData/Widgets/MyTaskWidget/MyTaskWidget';
@@ -61,6 +63,8 @@ class CustomizeMyDataPageClassBase {
     curatedAssets: 3,
     myTask: 3,
     domains: 3,
+    marketplaceDataProducts: 3,
+    marketplaceDomains: 3,
   };
 
   curatedAssetsWidgetDefaultValues: WidgetConfig = {
@@ -144,6 +148,25 @@ class CustomizeMyDataPageClassBase {
     },
   ];
 
+  marketplaceDefaultLayout: Array<WidgetConfig> = [
+    {
+      h: this.landingPageWidgetDefaultHeights.marketplaceDataProducts,
+      i: LandingPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS,
+      w: 3,
+      x: 0,
+      y: 0,
+      static: false,
+    },
+    {
+      h: this.landingPageWidgetDefaultHeights.marketplaceDomains,
+      i: LandingPageWidgetKeys.MARKETPLACE_DOMAINS,
+      w: 3,
+      x: 0,
+      y: 1,
+      static: false,
+    },
+  ];
+
   protected updateDefaultLayoutLayout(layout: Array<WidgetConfig>) {
     this.defaultLayout = layout;
   }
@@ -197,6 +220,12 @@ class CustomizeMyDataPageClassBase {
     if (widgetKey.startsWith(LandingPageWidgetKeys.DOMAINS)) {
       return DomainsWidget;
     }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS)) {
+      return MarketplaceDataProductsWidget;
+    }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.MARKETPLACE_DOMAINS)) {
+      return MarketplaceDomainsWidget;
+    }
 
     return (() => null) as React.FC;
   }
@@ -241,6 +270,12 @@ class CustomizeMyDataPageClassBase {
       case LandingPageWidgetKeys.DOMAINS: {
         return DomainsImg;
       }
+      case LandingPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS: {
+        return DataProductsImg;
+      }
+      case LandingPageWidgetKeys.MARKETPLACE_DOMAINS: {
+        return DomainsImg;
+      }
       default: {
         return '';
       }
@@ -281,6 +316,12 @@ class CustomizeMyDataPageClassBase {
 
       case 'Domains':
         return this.landingPageWidgetDefaultHeights.domains;
+
+      case 'MarketplaceDataProducts':
+        return this.landingPageWidgetDefaultHeights.marketplaceDataProducts;
+
+      case 'MarketplaceDomains':
+        return this.landingPageWidgetDefaultHeights.marketplaceDomains;
 
       default:
         return this.defaultWidgetHeight;
