@@ -64,6 +64,7 @@ import { GenericTab } from '../../Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
+import { OntologyExplorer } from '../../OntologyExplorer';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
 import { useGlossaryStore } from '../useGlossary.store';
@@ -308,6 +309,25 @@ const GlossaryTermsV1 = ({
                   owners={glossaryTerm.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={refreshActiveGlossaryTerm}
+                />
+              ),
+            },
+            {
+              label: (
+                <TabsLabel
+                  id={EntityTabs.RELATIONS_GRAPH}
+                  name={
+                    tabLabelMap[EntityTabs.RELATIONS_GRAPH] ??
+                    t('label.relations-graph')
+                  }
+                />
+              ),
+              key: EntityTabs.RELATIONS_GRAPH,
+              children: (
+                <OntologyExplorer
+                  height="calc(100vh - 250px)"
+                  scope="term"
+                  showHeader={false}
                 />
               ),
             },

@@ -251,6 +251,7 @@ export enum EntityTabs {
   WORKSHEETS = 'worksheets',
   FILES = 'files',
   SPREADSHEETS = 'spreadsheets',
+  RELATIONS_GRAPH = 'relations_graph',
 }
 
 export enum EntityAction {

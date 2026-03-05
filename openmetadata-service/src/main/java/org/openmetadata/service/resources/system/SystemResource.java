@@ -3,6 +3,7 @@ package org.openmetadata.service.resources.system;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 
@@ -44,6 +45,9 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationType;
+import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -64,6 +68,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
@@ -372,6 +377,16 @@ public class SystemResource {
       SearchSettings mergedSettings =
           searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
       settingName.setConfigValue(mergedSettings);
+    }
+
+    if (GLOSSARY_TERM_RELATION_SETTINGS
+        .value()
+        .equalsIgnoreCase(settingName.getConfigType().toString())) {
+      GlossaryTermRelationSettings relationSettings =
+          JsonUtils.convertValue(settingName.getConfigValue(), GlossaryTermRelationSettings.class);
+      normalizeGlossaryTermRelationSettings(relationSettings);
+      settingName.setConfigValue(relationSettings);
+      validateGlossaryTermRelationSettingsUpdate(settingName);
     }
     Response response = systemRepository.createOrUpdate(settingName);
     // Explicitly invalidate the cache to ensure latest settings are fetched
@@ -802,5 +817,117 @@ public class SystemResource {
 
     Map<String, Object> stats = CacheBundle.getCacheProvider().getStats();
     return Response.ok(stats).build();
+  }
+
+  private void validateGlossaryTermRelationSettingsUpdate(Settings newSettings) {
+    Settings currentSettings =
+        systemRepository.getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.value());
+    if (currentSettings == null) {
+      return;
+    }
+
+    GlossaryTermRelationSettings currentConfig =
+        JsonUtils.convertValue(
+            currentSettings.getConfigValue(), GlossaryTermRelationSettings.class);
+    GlossaryTermRelationSettings newConfig =
+        JsonUtils.convertValue(newSettings.getConfigValue(), GlossaryTermRelationSettings.class);
+
+    if (currentConfig.getRelationTypes() == null || newConfig.getRelationTypes() == null) {
+      return;
+    }
+
+    List<String> currentRelationTypeNames =
+        currentConfig.getRelationTypes().stream().map(GlossaryTermRelationType::getName).toList();
+    List<String> newRelationTypeNames =
+        newConfig.getRelationTypes().stream().map(GlossaryTermRelationType::getName).toList();
+
+    List<String> removedRelationTypes =
+        currentRelationTypeNames.stream()
+            .filter(name -> !newRelationTypeNames.contains(name))
+            .toList();
+
+    if (removedRelationTypes.isEmpty()) {
+      return;
+    }
+
+    GlossaryTermRepository glossaryTermRepository =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    Map<String, Integer> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();
+
+    List<String> inUseRelationTypes =
+        removedRelationTypes.stream()
+            .filter(name -> usageCounts.getOrDefault(name, 0) > 0)
+            .toList();
+
+    if (!inUseRelationTypes.isEmpty()) {
+      StringBuilder message = new StringBuilder("Cannot delete relation types that are in use: ");
+      for (String relationTypeName : inUseRelationTypes) {
+        int count = usageCounts.get(relationTypeName);
+        message.append(
+            String.format("%s (%d usage%s), ", relationTypeName, count, count == 1 ? "" : "s"));
+      }
+      message.setLength(message.length() - 2);
+      throw new SystemSettingsException(message.toString());
+    }
+  }
+
+  private void normalizeGlossaryTermRelationSettings(GlossaryTermRelationSettings settings) {
+    if (settings == null || settings.getRelationTypes() == null) {
+      return;
+    }
+
+    for (GlossaryTermRelationType relationType : settings.getRelationTypes()) {
+      if (relationType == null) {
+        continue;
+      }
+
+      RelationCardinality cardinality = relationType.getCardinality();
+      if (cardinality == null) {
+        relationType.setCardinality(
+            deriveCardinality(relationType.getSourceMax(), relationType.getTargetMax()));
+        continue;
+      }
+
+      switch (cardinality) {
+        case ONE_TO_ONE -> {
+          relationType.setSourceMax(1);
+          relationType.setTargetMax(1);
+        }
+        case ONE_TO_MANY -> {
+          relationType.setSourceMax(1);
+          relationType.setTargetMax(null);
+        }
+        case MANY_TO_ONE -> {
+          relationType.setSourceMax(null);
+          relationType.setTargetMax(1);
+        }
+        case MANY_TO_MANY -> {
+          relationType.setSourceMax(null);
+          relationType.setTargetMax(null);
+        }
+        case CUSTOM -> {
+          // Keep explicit values as-is.
+        }
+        default -> {
+          // No-op for unknown values.
+        }
+      }
+    }
+  }
+
+  private RelationCardinality deriveCardinality(Integer sourceMax, Integer targetMax) {
+    if (sourceMax == null && targetMax == null) {
+      return RelationCardinality.MANY_TO_MANY;
+    }
+    if (Integer.valueOf(1).equals(sourceMax) && Integer.valueOf(1).equals(targetMax)) {
+      return RelationCardinality.ONE_TO_ONE;
+    }
+    if (Integer.valueOf(1).equals(sourceMax) && targetMax == null) {
+      return RelationCardinality.ONE_TO_MANY;
+    }
+    if (sourceMax == null && Integer.valueOf(1).equals(targetMax)) {
+      return RelationCardinality.MANY_TO_ONE;
+    }
+    return RelationCardinality.CUSTOM;
   }
 }

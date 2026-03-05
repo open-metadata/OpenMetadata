@@ -1,0 +1,588 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../styles/variables.less';
+
+.ontology-explorer {
+  &-sidebar {
+    width: 280px;
+    min-width: 280px;
+    border-right: 1px solid @border-color;
+    display: flex;
+    flex-direction: column;
+    background: @white;
+    overflow: hidden;
+
+    .sidebar-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid @border-color;
+      background: @white;
+
+      .sidebar-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: @grey-4;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        display: block;
+      }
+
+      .sidebar-search {
+        .ant-input-affix-wrapper {
+          border-radius: 4px;
+          border-color: @border-color;
+
+          &:hover,
+          &:focus {
+            border-color: @primary-color;
+          }
+        }
+      }
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+
+      .ant-tree {
+        background: transparent;
+
+        .ant-tree-treenode {
+          padding: 2px 8px;
+          width: 100%;
+
+          &:hover {
+            background: @grey-1;
+          }
+
+          &.ant-tree-treenode-selected {
+            background: @primary-1;
+          }
+        }
+
+        .ant-tree-node-content-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 4px 8px;
+          border-radius: 4px;
+
+          &:hover {
+            background: transparent;
+          }
+        }
+
+        .ant-tree-title {
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .ant-tree-switcher {
+          width: 20px;
+          height: 20px;
+          line-height: 20px;
+        }
+
+        .ant-tree-switcher-icon {
+          width: 12px;
+          height: 12px;
+          color: @grey-4;
+        }
+      }
+    }
+  }
+
+  &-details {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 340px;
+    max-height: calc(100% - 24px);
+    background: @white;
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    z-index: 101;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+
+    &.enhanced {
+      width: 360px;
+    }
+
+    .details-header {
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid @border-color;
+      background: @white;
+
+      .details-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: @text-color;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow: hidden;
+        flex: 1;
+        min-width: 0;
+
+        .title-text {
+          flex: 1;
+          min-width: 0;
+          font-weight: 600;
+        }
+      }
+    }
+
+    .details-breadcrumb {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      background: @grey-1;
+      border-bottom: 1px solid @border-color;
+
+      .ant-breadcrumb {
+        font-size: 12px;
+
+        .ant-breadcrumb-link {
+          color: @grey-4;
+        }
+
+        .ant-breadcrumb-separator {
+          margin: 0 4px;
+          color: @grey-4;
+        }
+      }
+    }
+
+    .details-tabs {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .details-tab-content {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 12px 16px;
+
+      .detail-section {
+        margin-bottom: 16px;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        .section-label {
+          font-size: 11px;
+          font-weight: 600;
+          color: @grey-4;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 6px;
+        }
+
+        .section-value {
+          font-size: 13px;
+          color: @text-color;
+          line-height: 1.5;
+
+          &.description-preview {
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 12px;
+            color: @grey-7;
+          }
+        }
+      }
+
+      .relations-section {
+        .relation-item {
+          padding: 8px 12px;
+          border-radius: 6px;
+          transition: background-color 0.2s;
+
+          &:hover {
+            background: @grey-1;
+          }
+
+          .ant-tag {
+            font-size: 11px;
+            margin-right: 8px;
+          }
+        }
+      }
+    }
+
+    .details-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+
+      .detail-section {
+        margin-bottom: 16px;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        .section-label {
+          font-size: 11px;
+          font-weight: 600;
+          color: @grey-4;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 8px;
+        }
+
+        .section-value {
+          font-size: 13px;
+          color: @text-color;
+          line-height: 1.5;
+        }
+      }
+    }
+
+    .details-actions {
+      flex-shrink: 0;
+      padding: 12px 16px;
+      border-top: 1px solid @border-color;
+      display: flex;
+      gap: 8px;
+
+      .ant-btn {
+        flex: 1;
+      }
+    }
+  }
+
+  .quick-add-panel {
+    display: flex;
+    flex-direction: column;
+
+    .ant-select {
+      .ant-select-selector {
+        border-radius: 6px !important;
+      }
+    }
+
+    .ant-btn {
+      border-radius: 6px;
+    }
+  }
+}
+
+// Node context menu styles
+.node-context-menu {
+  .ant-menu {
+    padding: 4px 0;
+
+    .ant-menu-item {
+      height: 32px;
+      line-height: 32px;
+      margin: 0;
+      padding: 0 12px;
+      font-size: 13px;
+
+      .anticon {
+        font-size: 14px;
+        margin-right: 8px;
+      }
+
+      &:hover {
+        background: @grey-1;
+      }
+    }
+
+    .ant-menu-item-divider {
+      margin: 4px 0;
+    }
+  }
+}
+
+// React Flow container styles
+.ontology-flow-container {
+  width: 100%;
+  height: 100%;
+
+  .react-flow {
+    background: @grey-1;
+  }
+
+  .react-flow__nodes {
+    z-index: 0 !important;
+  }
+
+  .react-flow__node {
+    z-index: 0 !important;
+  }
+
+  .react-flow__edges {
+    z-index: 10 !important;
+  }
+
+  .react-flow__edge,
+  .react-flow__edge-path {
+    z-index: 10 !important;
+  }
+
+  .react-flow__minimap {
+    background: @white;
+    border: 1px solid @border-color;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .react-flow__background {
+    background-color: @grey-1;
+  }
+}
+
+// React Flow custom node styles
+.ontology-flow-node {
+  background: @white;
+  border: 1px solid @border-color;
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 160px;
+  max-width: 220px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+
+  &--selected {
+    border-width: 2px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  &--highlighted {
+    border-width: 1.5px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  &--glossary {
+    background: linear-gradient(135deg, @white 0%, #f0fdf4 100%);
+  }
+
+  &--isolated {
+    background: #fafafa;
+    border-style: dashed;
+    opacity: 0.8;
+  }
+
+  &__content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    .anticon {
+      font-size: 14px;
+    }
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__label {
+    font-size: 13px;
+    line-height: 1.4;
+    color: @text-color;
+    max-width: 140px;
+  }
+
+  &__group {
+    font-size: 11px;
+    line-height: 1.3;
+    max-width: 140px;
+  }
+
+  &__badge {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: @white;
+    font-size: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+}
+
+// React Flow handle styles - keep handles invisible
+.ontology-flow-handle {
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 1px !important;
+  min-height: 1px !important;
+  background: transparent !important;
+  border: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+// Hide React Flow default handles
+.react-flow__handle {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+// React Flow edge styles
+.ontology-flow-edge {
+  transition: stroke 0.2s ease, stroke-width 0.2s ease;
+
+  &--highlighted {
+    stroke-width: 2.5px;
+  }
+
+  &--selected {
+    stroke-width: 3px;
+  }
+}
+
+.ontology-flow-edge-label-container {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.ontology-flow-edge-label {
+  background: @white;
+  border-radius: 4px;
+  font-size: 10px;
+  display: inline-block;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  &--highlighted {
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+}
+
+// Fix edge selection - hide default React Flow edge selection
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 2.5px;
+}
+
+// Remove default edge interaction stroke
+.react-flow__edge-interaction {
+  stroke-width: 20px;
+  stroke: transparent;
+}
+
+// Legend component styles
+.ontology-legend {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: @white;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  z-index: 100;
+  max-width: 200px;
+  max-height: 300px;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid @border-color;
+    background: @grey-1;
+
+    &:hover {
+      background: @grey-2;
+    }
+  }
+
+  &__title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: @grey-7;
+  }
+
+  &__icon {
+    font-size: 10px;
+    color: @grey-5;
+  }
+
+  &__content {
+    padding: 8px 12px;
+    overflow-y: auto;
+    max-height: 240px;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+
+  &__line {
+    width: 20px;
+    height: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  &__label {
+    font-size: 12px;
+    color: @text-color;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

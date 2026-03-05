@@ -71,6 +71,11 @@ jest.mock('../GlossaryHeader/GlossaryHeader.component', () =>
 jest.mock('../../Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <div>GenericTab</div>),
 }));
+jest.mock('../../OntologyExplorer', () => ({
+  OntologyExplorer: jest
+    .fn()
+    .mockImplementation(() => <div>OntologyExplorer</div>),
+}));
 
 const mockProps = {
   isSummaryPanelOpen: false,
@@ -141,7 +146,7 @@ describe('Test Glossary-term component', () => {
 
     const tabs = await screen.findAllByRole('tab');
 
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(6);
     expect(tabs[0].textContent).toBe('label.overview');
 
     tabs
@@ -166,12 +171,13 @@ describe('Test Glossary-term component', () => {
 
     expect(await screen.findByText('GlossaryTermTab')).toBeInTheDocument();
 
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(6);
     expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
       'label.overview',
       'label.glossary-term-plural2',
       'label.asset-plural0',
       'label.activity-feed-and-task-plural0',
+      'label.relations-graph',
       'label.custom-property-plural',
     ]);
   });

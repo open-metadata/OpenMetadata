@@ -23,6 +23,7 @@ import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contrac
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
+import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
@@ -150,6 +151,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.GLOSSARY,
         icon: GlossaryIcon,
         dataTestId: `app-bar-item-${SidebarItem.GLOSSARY}`,
+      },
+      {
+        key: ROUTES.ONTOLOGY_EXPLORER,
+        title: 'label.ontology-explorer',
+        redirect_url: ROUTES.ONTOLOGY_EXPLORER,
+        icon: LineageIcon,
+        dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
       },
       {
         key: ROUTES.TAGS,

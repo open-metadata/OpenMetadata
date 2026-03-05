@@ -19,6 +19,7 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -147,11 +148,11 @@ public class VectorDocBuilder {
       List<String> synonyms =
           term.getSynonyms() != null ? term.getSynonyms() : Collections.emptyList();
       parts.add("synonyms: " + joinOrEmpty(synonyms));
-      List<EntityReference> relatedTerms =
+      List<TermRelation> relatedTerms =
           term.getRelatedTerms() != null ? term.getRelatedTerms() : Collections.emptyList();
       List<String> relatedTermFqns =
           relatedTerms.stream()
-              .map(EntityReference::getFullyQualifiedName)
+              .map(tr -> tr.getTerm().getFullyQualifiedName())
               .filter(fqn -> fqn != null)
               .collect(Collectors.toList());
       parts.add("relatedTerms: " + joinOrEmpty(relatedTermFqns));
@@ -369,7 +370,8 @@ public class VectorDocBuilder {
       }
       if (glossaryTerm.getRelatedTerms() != null) {
         List<Map<String, Object>> relatedTerms = new ArrayList<>();
-        for (EntityReference ref : glossaryTerm.getRelatedTerms()) {
+        for (TermRelation rel : glossaryTerm.getRelatedTerms()) {
+          EntityReference ref = rel.getTerm();
           Map<String, Object> relMap = new HashMap<>();
           relMap.put("id", ref.getId() != null ? ref.getId().toString() : null);
           relMap.put("name", ref.getName());

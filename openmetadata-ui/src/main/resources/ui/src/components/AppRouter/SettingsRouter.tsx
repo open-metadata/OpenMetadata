@@ -40,6 +40,7 @@ import EditEmailConfigPage from '../../pages/EditEmailConfigPage/EditEmailConfig
 import EmailConfigSettingsPage from '../../pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component';
 import GlobalSettingCategoryPage from '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage';
 import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
+import GlossaryTermRelationSettingsPage from '../../pages/GlossaryTermRelationSettings/GlossaryTermRelationSettings';
 import { LearningResourcesPage } from '../../pages/LearningResourcesPage/LearningResourcesPage';
 import LineageConfigPage from '../../pages/LineageConfigPage/LineageConfigPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
@@ -670,6 +671,17 @@ const SettingsRouter = () => {
       <Route
         element={<SettingsSso />}
         path={getSettingPathRelative(GlobalSettingsMenuCategory.SSO)}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <GlossaryTermRelationSettingsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.GLOSSARY_TERM_RELATIONS
+        )}
       />
     </Routes>
   );

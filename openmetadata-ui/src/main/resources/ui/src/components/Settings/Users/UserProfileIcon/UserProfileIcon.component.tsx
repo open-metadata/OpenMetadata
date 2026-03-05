@@ -138,15 +138,15 @@ export const UserProfileIcon = () => {
         const directPersonas = currentUser?.personas ?? [];
         const inheritedPersonas = currentUser?.inheritedPersonas ?? [];
         const allPersonas = [...directPersonas, ...inheritedPersonas];
-        
+
         if (currentUser?.defaultPersona) {
           allPersonas.push(currentUser.defaultPersona);
         }
-        
+
         // Deduplicate by id
         const uniquePersonasMap = new Map();
         allPersonas.forEach((p) => uniquePersonasMap.set(p.id, p));
-        
+
         return Array.from(uniquePersonasMap.values());
       })(),
     };

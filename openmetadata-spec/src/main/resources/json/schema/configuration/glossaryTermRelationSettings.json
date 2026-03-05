@@ -1,0 +1,107 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/glossaryTermRelationSettings.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlossaryTermRelationSettings",
+  "description": "This schema defines the Glossary Term Relation Settings for configuring typed semantic relations between glossary terms.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.GlossaryTermRelationSettings",
+  "definitions": {
+    "relationCategory": {
+      "javaType": "org.openmetadata.schema.configuration.RelationCategory",
+      "description": "Category of the relation type.",
+      "type": "string",
+      "enum": ["hierarchical", "associative", "equivalence"]
+    },
+    "relationCardinality": {
+      "javaType": "org.openmetadata.schema.configuration.RelationCardinality",
+      "description": "Preset cardinality for term-to-term relations.",
+      "type": "string",
+      "enum": ["ONE_TO_ONE", "ONE_TO_MANY", "MANY_TO_ONE", "MANY_TO_MANY", "CUSTOM"]
+    },
+    "glossaryTermRelationType": {
+      "javaType": "org.openmetadata.schema.configuration.GlossaryTermRelationType",
+      "description": "Definition of a glossary term relation type.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Unique name of the relation type (e.g., 'broader', 'synonym').",
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9]*$"
+        },
+        "displayName": {
+          "description": "Display name for the relation type.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of what this relation type represents.",
+          "type": "string"
+        },
+        "inverseRelation": {
+          "description": "Name of the inverse relation type (e.g., 'narrower' for 'broader'). Null for symmetric relations.",
+          "type": "string"
+        },
+        "rdfPredicate": {
+          "description": "RDF predicate URI for this relation (e.g., 'skos:broader').",
+          "type": "string",
+          "format": "uri"
+        },
+        "cardinality": {
+          "description": "Preset cardinality for this relation type. CUSTOM lets you set explicit source/target maxima.",
+          "$ref": "#/definitions/relationCardinality"
+        },
+        "sourceMax": {
+          "description": "Maximum number of relations of this type that can originate from a term. Null means unbounded.",
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "targetMax": {
+          "description": "Maximum number of relations of this type that can target a term. Null means unbounded.",
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "isSymmetric": {
+          "description": "Whether the relation is symmetric (A relates B implies B relates A).",
+          "type": "boolean",
+          "default": false
+        },
+        "isTransitive": {
+          "description": "Whether the relation is transitive (A relates B, B relates C implies A relates C).",
+          "type": "boolean",
+          "default": false
+        },
+        "isCrossGlossaryAllowed": {
+          "description": "Whether relations can be created between terms in different glossaries.",
+          "type": "boolean",
+          "default": true
+        },
+        "category": {
+          "description": "Category of the relation.",
+          "$ref": "#/definitions/relationCategory"
+        },
+        "isSystemDefined": {
+          "description": "Whether this is a system-defined relation type (cannot be deleted).",
+          "type": "boolean",
+          "default": false
+        },
+        "color": {
+          "description": "Hex color code for visualizing this relation type in graphs (e.g., '#1890ff').",
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        }
+      },
+      "required": ["name", "displayName", "category"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "relationTypes": {
+      "description": "List of configured glossary term relation types.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/glossaryTermRelationType"
+      },
+      "default": []
+    }
+  },
+  "additionalProperties": false
+}

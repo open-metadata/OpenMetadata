@@ -27,6 +27,10 @@ export interface GlossaryTerm {
      */
     childrenCount?: number;
     /**
+     * Optional mappings to external concepts (e.g., SKOS alignments).
+     */
+    conceptMappings?: ConceptMapping[];
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -110,9 +114,9 @@ export interface GlossaryTerm {
      */
     references?: TermReference[];
     /**
-     * Other glossary terms that are related to this glossary term.
+     * Other glossary terms that are related to this glossary term with typed semantic relations.
      */
-    relatedTerms?: EntityReference[];
+    relatedTerms?: TermRelation[];
     /**
      * User names of the reviewers for this glossary.
      */
@@ -235,6 +239,8 @@ export interface FieldChange {
  *
  * Parent glossary term that this term is child of. When `null` this term is the root term
  * of the glossary.
+ *
+ * Reference to the related glossary term.
  */
 export interface EntityReference {
     /**
@@ -280,6 +286,42 @@ export interface EntityReference {
 }
 
 /**
+ * Mapping to an external concept (e.g., SKOS concept IRI).
+ */
+export interface ConceptMapping {
+    /**
+     * External concept IRI to map this glossary term to.
+     */
+    conceptIri: string;
+    /**
+     * Type of mapping used for the external concept alignment.
+     */
+    mappingType: ConceptMappingType;
+    /**
+     * Optional external concept scheme IRI for the mapped concept.
+     */
+    schemeIri?: string;
+    /**
+     * Optional source label or catalog for the external concept.
+     */
+    source?: string;
+}
+
+/**
+ * Type of mapping used for the external concept alignment.
+ *
+ * Type of mapping used to align this term with an external concept.
+ */
+export enum ConceptMappingType {
+    BroadMatch = "BROAD_MATCH",
+    CloseMatch = "CLOSE_MATCH",
+    ExactMatch = "EXACT_MATCH",
+    NarrowMatch = "NARROW_MATCH",
+    RelatedMatch = "RELATED_MATCH",
+    SameAs = "SAME_AS",
+}
+
+/**
  * Approval status of the glossary term.
  *
  * Status of an entity. It is used for governance and is applied to all the entities in the
@@ -315,6 +357,22 @@ export interface TermReference {
      * Name that identifies the source of an external glossary term. Example `HealthCare.gov`.
      */
     name?: string;
+}
+
+/**
+ * This schema defines the TermRelation type used for establishing typed semantic
+ * relationships between glossary terms.
+ */
+export interface TermRelation {
+    /**
+     * Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to
+     * 'relatedTo' for backward compatibility.
+     */
+    relationType?: string;
+    /**
+     * Reference to the related glossary term.
+     */
+    term: EntityReference;
 }
 
 /**

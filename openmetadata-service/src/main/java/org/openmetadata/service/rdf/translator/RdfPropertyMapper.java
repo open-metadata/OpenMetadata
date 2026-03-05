@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
@@ -15,6 +16,9 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfUtils;
 
 /**
@@ -26,6 +30,7 @@ public class RdfPropertyMapper {
   private final String baseUri;
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
+  private final Map<String, UUID> glossaryTermIdCache = new ConcurrentHashMap<>();
 
   // Common namespace URIs
   private static final String OM_NS = "https://open-metadata.org/ontology/";
@@ -92,6 +97,9 @@ public class RdfPropertyMapper {
     }
   }
 
+  // Fields that are handled separately with typed predicates (not via JSON-LD context)
+  private static final Set<String> TYPED_RELATION_FIELDS = Set.of("relatedTerms");
+
   private void processContextMappings(
       Map<String, Object> contextMap, JsonNode entityJson, Resource entityResource, Model model) {
     // Iterate through all fields in the entity JSON
@@ -106,6 +114,12 @@ public class RdfPropertyMapper {
           || fieldName.equals("href")
           || fieldName.equals("id")
           || fieldName.equals("type")) {
+        continue;
+      }
+
+      // Skip fields that are handled separately with typed predicates
+      // (e.g., relatedTerms which use typed relations like broader, synonym, etc.)
+      if (TYPED_RELATION_FIELDS.contains(fieldName)) {
         continue;
       }
 
@@ -288,8 +302,9 @@ public class RdfPropertyMapper {
       tagResource.addProperty(model.createProperty(OM_NS, "tagSource"), source);
 
       // Also add appropriate type based on source
-      if ("Glossary".equals(source)) {
+      if ("Glossary".equalsIgnoreCase(source)) {
         tagResource.addProperty(RDF.type, model.createResource(SKOS.getURI() + "Concept"));
+        addGlossaryTermReference(resource, tagFqn, tagLabel, model);
       }
     }
 
@@ -303,6 +318,78 @@ public class RdfPropertyMapper {
     if (tagLabel.has("description")) {
       tagResource.addProperty(
           model.createProperty(DCT_NS, "description"), tagLabel.get("description").asText());
+    }
+  }
+
+  private void addGlossaryTermReference(
+      Resource resource, String termFqn, JsonNode tagLabel, Model model) {
+    UUID termId = resolveGlossaryTermId(termFqn, tagLabel);
+    if (termId == null) {
+      return;
+    }
+
+    String termUri = baseUri + "entity/glossaryTerm/" + termId;
+    Resource termResource = model.createResource(termUri);
+    resource.addProperty(model.createProperty(OM_NS, "hasGlossaryTerm"), termResource);
+    termResource.addProperty(RDF.type, model.createResource(getRdfType("glossaryTerm")));
+  }
+
+  private UUID resolveGlossaryTermId(String termFqn, JsonNode tagLabel) {
+    if (termFqn == null || termFqn.isEmpty()) {
+      return null;
+    }
+
+    if (glossaryTermIdCache.containsKey(termFqn)) {
+      return glossaryTermIdCache.get(termFqn);
+    }
+
+    try {
+      UUID resolvedTermId = tryResolveGlossaryTermIdFromHref(tagLabel);
+      if (resolvedTermId != null) {
+        glossaryTermIdCache.put(termFqn, resolvedTermId);
+        return resolvedTermId;
+      }
+
+      GlossaryTerm term =
+          Entity.getEntityByName(Entity.GLOSSARY_TERM, termFqn, "id", Include.NON_DELETED, false);
+      UUID termId = term != null ? term.getId() : null;
+      if (termId != null) {
+        glossaryTermIdCache.put(termFqn, termId);
+      }
+      return termId;
+    } catch (Exception e) {
+      LOG.debug("Could not resolve glossary term id for FQN {}", termFqn);
+      return null;
+    }
+  }
+
+  private UUID tryResolveGlossaryTermIdFromHref(JsonNode tagLabel) {
+    if (tagLabel == null || !tagLabel.has("href")) {
+      return null;
+    }
+
+    String href = tagLabel.get("href").asText();
+    if (href == null || href.isBlank()) {
+      return null;
+    }
+
+    try {
+      java.net.URI uri = java.net.URI.create(href);
+      String path = uri.getPath();
+      if (path == null || path.isBlank()) {
+        return null;
+      }
+      String[] parts = path.split("/");
+      if (parts.length == 0) {
+        return null;
+      }
+      String last = parts[parts.length - 1];
+      if (last.isBlank()) {
+        return null;
+      }
+      return java.util.UUID.fromString(last);
+    } catch (Exception e) {
+      return null;
     }
   }
 

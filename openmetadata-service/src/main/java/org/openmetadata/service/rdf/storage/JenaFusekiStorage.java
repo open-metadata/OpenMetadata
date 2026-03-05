@@ -2,7 +2,12 @@ package org.openmetadata.service.rdf.storage;
 
 import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -44,6 +49,9 @@ public class JenaFusekiStorage implements RdfStorageInterface {
             ? config.getRemoteEndpoint().toString()
             : "http://openmetadata-fuseki:3030/openmetadata";
 
+    // Ensure the dataset exists before connecting
+    ensureDatasetExists(endpoint, config.getUsername(), config.getPassword());
+
     if (config.getUsername() != null && config.getPassword() != null) {
       java.net.http.HttpClient httpClient =
           java.net.http.HttpClient.newBuilder()
@@ -64,6 +72,113 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
     LOG.info("Connected to Apache Jena Fuseki at {}", endpoint);
     loadOntology();
+  }
+
+  /**
+   * Ensures the Fuseki dataset exists, creating it if necessary.
+   * Parses the endpoint URL to extract the server base URL and dataset name,
+   * then checks if the dataset exists and creates it if not.
+   */
+  private void ensureDatasetExists(String endpoint, String username, String password) {
+    try {
+      // Parse endpoint to extract server base URL and dataset name
+      // Expected format: http://host:port/datasetName
+      URI uri = URI.create(endpoint);
+      String path = uri.getPath();
+      if (path == null || path.isEmpty() || path.equals("/")) {
+        LOG.warn("Could not extract dataset name from endpoint: {}", endpoint);
+        return;
+      }
+
+      // Remove leading slash and get dataset name
+      String datasetName = path.startsWith("/") ? path.substring(1) : path;
+      // Handle paths like /openmetadata/sparql -> extract just openmetadata
+      if (datasetName.contains("/")) {
+        datasetName = datasetName.split("/")[0];
+      }
+
+      String serverBaseUrl =
+          uri.getScheme() + "://" + uri.getHost() + (uri.getPort() > 0 ? ":" + uri.getPort() : "");
+
+      LOG.info("Checking if Fuseki dataset '{}' exists at server {}", datasetName, serverBaseUrl);
+
+      // Check if dataset exists by querying the datasets admin endpoint
+      HttpClient httpClient = HttpClient.newHttpClient();
+      String adminUrl = serverBaseUrl + "/$/datasets/" + datasetName;
+
+      HttpRequest.Builder requestBuilder = HttpRequest.newBuilder().uri(URI.create(adminUrl)).GET();
+
+      // Add basic auth if credentials provided
+      if (username != null && password != null) {
+        String auth = username + ":" + password;
+        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+        requestBuilder.header("Authorization", "Basic " + encodedAuth);
+      }
+
+      HttpResponse<String> response =
+          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() == 200) {
+        LOG.info("Fuseki dataset '{}' already exists", datasetName);
+        return;
+      }
+
+      if (response.statusCode() == 404) {
+        LOG.info("Fuseki dataset '{}' does not exist, creating it...", datasetName);
+        createDataset(serverBaseUrl, datasetName, username, password);
+      } else {
+        LOG.warn(
+            "Unexpected response checking dataset existence: {} - {}",
+            response.statusCode(),
+            response.body());
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Could not verify/create Fuseki dataset. "
+              + "If the dataset doesn't exist, you may need to create it manually. Error: {}",
+          e.getMessage());
+    }
+  }
+
+  /**
+   * Creates a new TDB2 dataset in Fuseki using the admin API.
+   */
+  private void createDataset(
+      String serverBaseUrl, String datasetName, String username, String password) {
+    try {
+      HttpClient httpClient = HttpClient.newHttpClient();
+      String adminUrl = serverBaseUrl + "/$/datasets";
+
+      String body = "dbName=" + datasetName + "&dbType=tdb2";
+
+      HttpRequest.Builder requestBuilder =
+          HttpRequest.newBuilder()
+              .uri(URI.create(adminUrl))
+              .header("Content-Type", "application/x-www-form-urlencoded")
+              .POST(HttpRequest.BodyPublishers.ofString(body));
+
+      // Add basic auth if credentials provided
+      if (username != null && password != null) {
+        String auth = username + ":" + password;
+        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+        requestBuilder.header("Authorization", "Basic " + encodedAuth);
+      }
+
+      HttpResponse<String> response =
+          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() == 200 || response.statusCode() == 201) {
+        LOG.info("Successfully created Fuseki dataset '{}'", datasetName);
+      } else {
+        LOG.error(
+            "Failed to create Fuseki dataset '{}': {} - {}",
+            datasetName,
+            response.statusCode(),
+            response.body());
+      }
+    } catch (Exception e) {
+      LOG.error("Error creating Fuseki dataset '{}': {}", datasetName, e.getMessage());
+    }
   }
 
   private void loadOntology() {

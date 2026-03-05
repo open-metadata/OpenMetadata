@@ -442,6 +442,10 @@ export const LearningResourcesPage: React.FC = () => {
     <PageLayoutV1
       fullHeight
       mainContainerClassName="learning-resources-page-layout"
+      pageContainerStyle={{
+        height: 'calc(100vh - 64px)',
+        overflow: 'hidden',
+      }}
       pageTitle={t('label.learning-resource')}>
       <Box
         data-testid="learning-resources-page"

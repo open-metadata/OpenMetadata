@@ -332,6 +332,10 @@ export interface CoverImage {
  */
 export interface CreateGlossaryTermRequest {
     /**
+     * Optional mappings to external concepts (e.g., SKOS alignments).
+     */
+    conceptMappings?: ConceptMapping[];
+    /**
      * Description of the glossary term.
      */
     description: string;
@@ -388,6 +392,42 @@ export interface CreateGlossaryTermRequest {
      * Tags for this glossary term.
      */
     tags?: TagLabel[];
+}
+
+/**
+ * Mapping to an external concept (e.g., SKOS concept IRI).
+ */
+export interface ConceptMapping {
+    /**
+     * External concept IRI to map this glossary term to.
+     */
+    conceptIri: string;
+    /**
+     * Type of mapping used for the external concept alignment.
+     */
+    mappingType: ConceptMappingType;
+    /**
+     * Optional external concept scheme IRI for the mapped concept.
+     */
+    schemeIri?: string;
+    /**
+     * Optional source label or catalog for the external concept.
+     */
+    source?: string;
+}
+
+/**
+ * Type of mapping used for the external concept alignment.
+ *
+ * Type of mapping used to align this term with an external concept.
+ */
+export enum ConceptMappingType {
+    BroadMatch = "BROAD_MATCH",
+    CloseMatch = "CLOSE_MATCH",
+    ExactMatch = "EXACT_MATCH",
+    NarrowMatch = "NARROW_MATCH",
+    RelatedMatch = "RELATED_MATCH",
+    SameAs = "SAME_AS",
 }
 
 export interface TermReference {

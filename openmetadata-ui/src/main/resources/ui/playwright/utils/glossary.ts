@@ -26,7 +26,7 @@ import { Glossary } from '../support/glossary/Glossary';
 import {
   GlossaryData,
   GlossaryTermData,
-  UserTeamRef
+  UserTeamRef,
 } from '../support/glossary/Glossary.interface';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../support/tag/ClassificationClass';
@@ -43,7 +43,7 @@ import {
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
   toastNotification,
-  uuid
+  uuid,
 } from './common';
 import { addMultiOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
@@ -1059,9 +1059,10 @@ export const confirmationDragAndDropGlossary = async (
   await expect(
     page.locator('[data-testid="confirmation-modal"] .ant-modal-body')
   ).toContainText(
-    `Click on Confirm if you’d like to move ${isHeader
-      ? `${dragElement} under ${dropElement} .`
-      : `${dragElement} term under ${dropElement} term.`
+    `Click on Confirm if you’d like to move ${
+      isHeader
+        ? `${dragElement} under ${dropElement} .`
+        : `${dragElement} term under ${dropElement} term.`
     }`
   );
 
@@ -1185,24 +1186,93 @@ export const addReferences = async (
 
 export const addRelatedTerms = async (
   page: Page,
-  relatedTerms: GlossaryTerm[]
+  relatedTerms: GlossaryTerm[],
+  relationType?: string
 ) => {
-  await page.getByTestId('related-term-add-button').click();
+  // Click the add or edit button to enter editing mode
+  // After first relation is added, the button changes from 'related-term-add-button' to 'edit-button'
+  const addButton = page.getByTestId('related-term-add-button');
+  const editButton = page
+    .getByTestId('related-term-container')
+    .getByTestId('edit-button');
+
+  if (await addButton.isVisible()) {
+    await addButton.click();
+  } else {
+    await editButton.click();
+  }
+
+  // Wait for the editing form to appear
+  const relationTypeSelect = page.getByTestId('relation-type-select');
+  await expect(relationTypeSelect).toBeVisible();
+
+  // The TagSelectForm tree might auto-open and cover the relation type selector
+  // Close any open tree dropdowns first
+  const openTreeDropdowns = page.locator('.async-tree-select-list-dropdown');
+  if (await openTreeDropdowns.isVisible()) {
+    await page.keyboard.press('Escape');
+    await expect(openTreeDropdowns).not.toBeVisible();
+  }
+
+  // Select relation type if provided (not the default 'relatedTo')
+  if (relationType) {
+    await expect(relationTypeSelect).toBeVisible();
+
+    // Click on the selector to open dropdown
+    await relationTypeSelect.locator('.ant-select-selector').click();
+
+    // Use :visible chain pattern (never store :visible locators!)
+    const option = page
+      .locator('.ant-select-dropdown:visible')
+      .locator('.ant-select-item-option-content')
+      .filter({ hasText: relationType });
+    await expect(option).toBeVisible();
+    await option.click();
+  }
+
   for (const term of relatedTerms) {
-    const entityName = get(term, 'responseData.name');
-    const entityFqn = get(term, 'responseData.fullyQualifiedName');
-    await page.locator('#tagsForm_tags').fill(entityName);
-    await page.getByTestId(`tag-${entityFqn}`).click();
+    const entityDisplayName = get(term, 'responseData.displayName');
+
+    // Find the search input within the tag selector
+    const searchInput = page
+      .getByTestId('tag-selector')
+      .locator('.ant-select-selection-search-input');
+
+    // Wait for search response before clicking on the option
+    const searchTerms = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('index=glossary_term')
+    );
+    await searchInput.fill(entityDisplayName);
+    await searchTerms;
+
+    // Wait for tree to render using element visibility
+    const treeDropdown = page.locator('.async-tree-select-list-dropdown');
+    await expect(treeDropdown).toBeVisible();
+
+    // Click on the tree node checkbox - the tree node title contains the display name
+    const treeNode = treeDropdown
+      .locator('.ant-select-tree-treenode')
+      .filter({ hasText: entityDisplayName })
+      .first();
+    await expect(treeNode).toBeVisible();
+    await treeNode.locator('.ant-select-tree-checkbox').click();
   }
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
   await page.getByTestId('saveAssociatedTag').click();
   await saveRes;
 
+  // Wait for the form to close and page to update
+  await waitForAllLoadersToDisappear(page);
+
   for (const term of relatedTerms) {
     const entityName = get(term, 'responseData.displayName');
 
-    await expect(page.getByTestId(entityName)).toBeVisible();
+    // Verify the term appears in the related terms container
+    const relatedContainer = page.getByTestId('related-term-container');
+    await expect(relatedContainer.getByText(entityName)).toBeVisible();
   }
 };
 
@@ -1256,7 +1326,8 @@ export const createDescriptionTaskForGlossary = async (
   const entityName = get(entity, 'responseData.displayName');
 
   expect(await page.locator('#title').inputValue()).toBe(
-    `${addDescription ? 'Update' : 'Request'
+    `${
+      addDescription ? 'Update' : 'Request'
     } description for ${entityType} ${entityName}`
   );
 

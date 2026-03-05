@@ -3461,7 +3461,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void applyTags(T entity) {
     if (supportsTags) {
       // Add entity level tags by adding tag to the entity relationship
-      applyTags(entity.getTags(), entity.getFullyQualifiedName());
+      applyTags(entity.getTags(), entity.getFullyQualifiedName(), entityType, entity.getId());
     }
   }
 
@@ -3470,6 +3470,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
+    applyTags(tagLabels, targetFQN, null, null);
+  }
+
+  /**
+   * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}
+   */
+  @Transaction
+  public final void applyTags(
+      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
         daoCollection
@@ -3486,7 +3495,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getMetadata());
 
         // Update RDF store
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
+            tagLabel, targetFQN, targetType, targetId);
       }
     }
   }
@@ -3496,6 +3506,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTagsAdd(List<TagLabel> tagLabels, String targetFQN) {
+    applyTagsAdd(tagLabels, targetFQN, null, null);
+  }
+
+  /**
+   * Apply multiple tags in batch to improve performance
+   */
+  @Transaction
+  public final void applyTagsAdd(
+      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
@@ -3510,7 +3529,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Update RDF store for each tag
       for (TagLabel tagLabel : nonDerivedTags) {
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
+            tagLabel, targetFQN, targetType, targetId);
       }
     }
   }
@@ -3520,6 +3540,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTagsDelete(List<TagLabel> tagLabels, String targetFQN) {
+    applyTagsDelete(tagLabels, targetFQN, null, null);
+  }
+
+  /**
+   * Delete multiple tags in batch to improve performance
+   */
+  @Transaction
+  public final void applyTagsDelete(
+      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
@@ -3534,7 +3563,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Remove from RDF store for each tag
       for (TagLabel tagLabel : nonDerivedTags) {
-        org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel.getTagFQN(), targetFQN);
+        org.openmetadata.service.rdf.RdfTagUpdater.removeTag(
+            tagLabel, targetFQN, targetType, targetId);
       }
     }
   }
@@ -5131,7 +5161,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateOwners();
         updateExtension(consolidatingChanges);
         updateTags(
-            updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
+            updated.getFullyQualifiedName(),
+            FIELD_TAGS,
+            original.getTags(),
+            updated.getTags(),
+            entityType,
+            updated.getId());
         updateDomains();
         updateDataProducts();
         updateExperts();
@@ -5157,7 +5192,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateOwnersForImport();
         updateExtension(consolidatingChanges);
         updateTagsForImport(
-            updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
+            updated.getFullyQualifiedName(),
+            FIELD_TAGS,
+            original.getTags(),
+            updated.getTags(),
+            entityType,
+            updated.getId());
         updateDomainsForImport();
         updateDataProducts();
         updateExperts();
@@ -5297,6 +5337,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     protected void updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      updateTags(fqn, fieldName, origTags, updatedTags, null, null);
+    }
+
+    protected void updateTags(
+        String fqn,
+        String fieldName,
+        List<TagLabel> origTags,
+        List<TagLabel> updatedTags,
+        String targetType,
+        UUID targetId) {
       origTags = listOrEmpty(origTags);
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
@@ -5345,11 +5395,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Apply differential updates - only modify what changed
       if (!deletedTags.isEmpty()) {
-        applyTagsDelete(deletedTags, fqn);
+        applyTagsDelete(deletedTags, fqn, targetType, targetId);
       }
       if (!addedTags.isEmpty()) {
         applyTagsAdd(
-            addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
+            addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(),
+            fqn,
+            targetType,
+            targetId);
       }
 
       // Record changes for audit trail
@@ -5360,6 +5413,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     protected void updateTagsForImport(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      updateTagsForImport(fqn, fieldName, origTags, updatedTags, null, null);
+    }
+
+    protected void updateTagsForImport(
+        String fqn,
+        String fieldName,
+        List<TagLabel> origTags,
+        List<TagLabel> updatedTags,
+        String targetType,
+        UUID targetId) {
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
       origTags = listOrEmpty(origTags);
@@ -5378,7 +5441,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<TagLabel> deletedTags = new ArrayList<>();
       recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
       updatedTags.sort(compareTagLabel);
-      applyTags(updatedTags, fqn);
+      applyTags(updatedTags, fqn, targetType, targetId);
     }
 
     private void updateExtension(boolean consolidatingChanges) {

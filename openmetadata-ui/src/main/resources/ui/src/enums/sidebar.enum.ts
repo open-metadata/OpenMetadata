@@ -24,6 +24,7 @@ export enum SidebarItem {
   DATA_PRODUCT = 'data-product',
   GOVERNANCE = 'governance',
   GLOSSARY = 'glossary',
+  ONTOLOGY_EXPLORER = 'ontology-explorer',
   TAGS = 'tags',
   INSIGHTS = 'insights',
   SETTINGS = 'settings',

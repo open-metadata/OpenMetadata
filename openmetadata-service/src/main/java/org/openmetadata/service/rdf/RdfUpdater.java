@@ -81,19 +81,50 @@ public class RdfUpdater {
     }
   }
 
-  /**
-   * Check if RDF is enabled
-   */
+  public static void disable() {
+    rdfRepository = null;
+    LOG.info("RDF updater disabled");
+  }
+
   public static boolean isEnabled() {
     return rdfRepository != null && rdfRepository.isEnabled();
   }
 
   /**
-   * Disable RDF updater. Used by tests to limit RDF operations to specific test classes.
+   * Add a glossary term relation to RDF
    */
-  public static void disable() {
-    rdfRepository = null;
-    RdfRepository.reset();
-    LOG.info("RDF updater disabled");
+  public static void addGlossaryTermRelation(
+      java.util.UUID fromTermId, java.util.UUID toTermId, String relationType) {
+    if (rdfRepository != null && rdfRepository.isEnabled()) {
+      try {
+        rdfRepository.addGlossaryTermRelation(fromTermId, toTermId, relationType);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to add glossary term relation {} -> {} ({}) to RDF",
+            fromTermId,
+            toTermId,
+            relationType,
+            e);
+      }
+    }
+  }
+
+  /**
+   * Remove a glossary term relation from RDF
+   */
+  public static void removeGlossaryTermRelation(
+      java.util.UUID fromTermId, java.util.UUID toTermId, String relationType) {
+    if (rdfRepository != null && rdfRepository.isEnabled()) {
+      try {
+        rdfRepository.removeGlossaryTermRelation(fromTermId, toTermId, relationType);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to remove glossary term relation {} -> {} ({}) from RDF",
+            fromTermId,
+            toTermId,
+            relationType,
+            e);
+      }
+    }
   }
 }

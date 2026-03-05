@@ -45,9 +45,11 @@
     {
       "name": "relatedTerms",
       "required": false,
-      "description": "List of related glossary term **fully qualified names** separated by `;`.",
+      "description": "List of related glossary terms with optional relation type. Format: `relationType:termFQN` or just `termFQN` (defaults to `relatedTo`). Multiple terms separated by `;`. Valid relation types: `relatedTo` (default), `synonym`, `broader`, `narrower`, `antonym`, `partOf`, `hasPart`.",
       "examples": [
-        "`Business terms.Client Identifier`, `Support.Subscriber Id`"
+        "`Business terms.Client Identifier;Support.Subscriber Id` - Both default to relatedTo",
+        "`synonym:Business terms.Client Identifier;broader:Support.Subscriber Id` - With explicit relation types",
+        "`synonym:Finance.Revenue;Finance.Income;narrower:Finance.Net Revenue` - Mixed format"
       ]
     },
     {
