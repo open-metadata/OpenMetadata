@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { Edge, Viewport } from 'reactflow';
 import { StatusType } from '../../../generated/entity/data/pipeline';
@@ -194,7 +193,7 @@ describe('CanvasButtonPopover', () => {
 
     const popover = screen.getByTestId('entity-popover-card').parentElement;
 
-    await userEvent.hover(popover!);
+    fireEvent.mouseEnter(popover!);
 
     expect(mockIsOverPopoverRef.current).toBe(true);
     expect(mockHoverTimeoutRef.current).toBeNull();
@@ -214,7 +213,7 @@ describe('CanvasButtonPopover', () => {
 
     const popover = screen.getByTestId('entity-popover-card').parentElement;
 
-    await userEvent.unhover(popover!);
+    fireEvent.mouseLeave(popover!);
 
     expect(mockOnMouseLeave).toHaveBeenCalledTimes(1);
   });

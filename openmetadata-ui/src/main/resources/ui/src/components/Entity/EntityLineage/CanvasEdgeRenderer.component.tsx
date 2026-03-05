@@ -220,20 +220,23 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
           />
         ) : null
       )}
-      {hoveredButton && hoveredEdge && !isEditMode && (
-        <CanvasButtonPopover
-          hoverTimeoutRef={hoverTimeoutRef}
-          hoveredButton={hoveredButton}
-          hoveredEdge={hoveredEdge}
-          isOverPopoverRef={isOverPopoverRef}
-          viewport={viewport}
-          onMouseLeave={() => {
-            isOverPopoverRef.current = false;
-            setHoveredButton(null);
-            onEdgeHoverRef.current?.(null);
-          }}
-        />
-      )}
+      {hoveredButton &&
+        hoveredButton.type === 'pipeline' &&
+        hoveredEdge &&
+        !isEditMode && (
+          <CanvasButtonPopover
+            hoverTimeoutRef={hoverTimeoutRef}
+            hoveredButton={hoveredButton}
+            hoveredEdge={hoveredEdge}
+            isOverPopoverRef={isOverPopoverRef}
+            viewport={viewport}
+            onMouseLeave={() => {
+              isOverPopoverRef.current = false;
+              setHoveredButton(null);
+              onEdgeHoverRef.current?.(null);
+            }}
+          />
+        )}
     </div>
   );
 };
