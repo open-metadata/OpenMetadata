@@ -63,8 +63,8 @@ class CustomizeMyDataPageClassBase {
     curatedAssets: 3,
     myTask: 3,
     domains: 3,
-    marketplaceDataProducts: 3,
-    marketplaceDomains: 3,
+    marketplaceDataProducts: 1,
+    marketplaceDomains: 1,
   };
 
   curatedAssetsWidgetDefaultValues: WidgetConfig = {
