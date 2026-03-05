@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
+import { getBasePath } from '../../../utils/HistoryUtils';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 
@@ -28,7 +29,8 @@ export const GenericAuthenticator = forwardRef(
       setIsAuthenticated(false);
       setIsSigningUp(true);
       const redirectUri = `${window.location.origin}${ROUTES.AUTH_CALLBACK}`;
-      window.location.assign(`api/v1/auth/login?redirectUri=${redirectUri}`);
+      const basePath = getBasePath();
+      window.location.assign(`${basePath}/api/v1/auth/login?redirectUri=${redirectUri}`);
     };
 
     const handleLogout = async () => {
