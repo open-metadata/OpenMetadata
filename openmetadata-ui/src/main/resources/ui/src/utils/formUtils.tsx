@@ -333,7 +333,8 @@ export const getField = (field: FieldProp) => {
 
         fieldElement = (
           <DomainSelectableList
-            {...(rest as unknown as DomainSelectableListProps)}>
+            {...(rest as unknown as DomainSelectableListProps)}
+          >
             {children}
           </DomainSelectableList>
         );
@@ -362,7 +363,8 @@ export const getField = (field: FieldProp) => {
 
         fieldElement = (
           <UserTeamSelectableList
-            {...(rest as unknown as UserSelectDropdownProps)}>
+            {...(rest as unknown as UserSelectDropdownProps)}
+          >
             {children}
           </UserTeamSelectableList>
         );
@@ -466,7 +468,7 @@ export const getField = (field: FieldProp) => {
         <Form.Item {...formProps} valuePropName="isSelected">
           <Toggle
             isDisabled={disabled}
-            label={muiLabel as string}
+            label={typeof muiLabel === 'string' ? muiLabel : ''}
             size={size}
             onChange={onChange}
             {...switchRest}
@@ -516,7 +518,8 @@ export const getField = (field: FieldProp) => {
           'm-b-xss': helperTextType === HelperTextType.ALERT,
         })}
         {...formProps}
-        label={labelValue}>
+        label={labelValue}
+      >
         {fieldElement}
       </Form.Item>
 
