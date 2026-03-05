@@ -137,6 +137,11 @@
     "vite": "^7.1.11",
     "vite-plugin-dts": "^4.5.4"
   },
+  "resolutions": {
+    "rollup": "4.59.0",
+    "@storybook/react-vite/minimatch": "9.0.7",
+    "vite-plugin-dts/minimatch": "10.2.3"
+  },
   "publishConfig": {
     "access": "restricted",
     "registry": "https://registry.npmjs.org/"
