@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.util.FieldChangeValueExtractor;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
@@ -151,71 +152,6 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
   }
 
   private String extractFieldValue(FieldChange change, EntityInterface entity) {
-    Object valueToCheck = change.getNewValue();
-    if (valueToCheck == null && change.getOldValue() != null) {
-      valueToCheck = change.getOldValue();
-    }
-    if (valueToCheck == null) {
-      return null;
-    }
-
-    return extractFqnFromValue(valueToCheck);
-  }
-
-  private String extractFqnFromValue(Object value) {
-    if (value == null) {
-      return null;
-    }
-
-    // FieldChange values are often stored as JSON strings, try to parse first
-    if (value instanceof String) {
-      String strValue = (String) value;
-      String trimmed = strValue.trim();
-      if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
-        try {
-          Object parsed = JsonUtils.readValue(trimmed, Object.class);
-          return extractFqnFromValue(parsed);
-        } catch (Exception e) {
-          // Not valid JSON, return as-is
-          return strValue;
-        }
-      }
-      return strValue;
-    }
-
-    if (value instanceof List) {
-      List<?> valueList = (List<?>) value;
-      if (!valueList.isEmpty()) {
-        // Collect all FQNs from the list items
-        StringBuilder fqns = new StringBuilder();
-        for (Object item : valueList) {
-          String fqn = extractFqnFromSingleItem(item);
-          if (fqn != null) {
-            if (fqns.length() > 0) fqns.append(",");
-            fqns.append(fqn);
-          }
-        }
-        return fqns.length() > 0 ? fqns.toString() : null;
-      }
-      return null;
-    } else if (value instanceof Map) {
-      return extractFqnFromSingleItem(value);
-    }
-    return value.toString();
-  }
-
-  @SuppressWarnings("unchecked")
-  private String extractFqnFromSingleItem(Object item) {
-    if (item instanceof Map) {
-      Map<String, Object> map = (Map<String, Object>) item;
-      // Check "fullyQualifiedName" first (for domains, entities, etc.)
-      Object fqn = map.get("fullyQualifiedName");
-      if (fqn != null) return fqn.toString();
-      // Check "tagFQN" for tag labels
-      Object tagFqn = map.get("tagFQN");
-      if (tagFqn != null) return tagFqn.toString();
-      return null;
-    }
-    return item != null ? item.toString() : null;
+    return FieldChangeValueExtractor.extractFieldValueForMatching(change, entity);
   }
 }
