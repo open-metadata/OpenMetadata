@@ -113,7 +113,6 @@ class ColumnValuesToBeBetweenValidator(
                 result_rows, dimension_col.name, metrics_to_compute, test_params
             )
 
-
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
             logger.debug("Full error details: ", exc_info=True)
