@@ -58,6 +58,7 @@ public record ReindexingConfiguration(
     if (metrics == null) {
       return config;
     }
+    metrics.logRecommendations();
     return ReindexingConfiguration.builder()
         .entities(config.entities())
         .batchSize(metrics.getRecommendedBatchSize())
@@ -147,6 +148,19 @@ public record ReindexingConfiguration(
       return -1;
     }
     return System.currentTimeMillis() - (days * 86_400_000L);
+  }
+
+  /**
+   * Writes the (possibly auto-tuned) configuration back to the job so it gets persisted in the
+   * AppRunRecord.
+   */
+  public void applyTo(EventPublisherJob jobData) {
+    jobData.setBatchSize(batchSize);
+    jobData.setConsumerThreads(consumerThreads);
+    jobData.setProducerThreads(producerThreads);
+    jobData.setQueueSize(queueSize);
+    jobData.setMaxConcurrentRequests(maxConcurrentRequests);
+    jobData.setPayLoadSize(payloadSize);
   }
 
   /** Check if Slack notifications are configured */

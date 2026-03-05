@@ -224,6 +224,7 @@ public class ReindexingOrchestrator {
 
     ReindexingConfiguration config = ReindexingConfiguration.from(jobData);
     config = ReindexingConfiguration.applyAutoTuning(config, searchRepository);
+    config.applyTo(jobData);
 
     ExecutionResult result = activeStrategy.execute(config, jobContext);
     updateJobDataFromResult(result);

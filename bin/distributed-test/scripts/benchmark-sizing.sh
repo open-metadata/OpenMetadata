@@ -557,7 +557,7 @@ done
     else
         echo "## Result"
         echo ""
-        echo "No break-point detected. The cluster handled all tested scales up to **${SCALES[-1]}**."
+        echo "No break-point detected. The cluster handled all tested scales up to **${SCALES[${#SCALES[@]}-1]}**."
         echo ""
     fi
 
@@ -704,7 +704,7 @@ if [[ -n "$BREAK_SCALE" ]]; then
         echo -e "  ${GREEN}Last adequate scale: $LAST_ADEQUATE_SCALE${NC}"
     fi
 else
-    echo -e "  ${GREEN}No break-point detected — cluster handled all scales through ${SCALES[-1]}${NC}"
+    echo -e "  ${GREEN}No break-point detected — cluster handled all scales through ${SCALES[${#SCALES[@]}-1]}${NC}"
 fi
 
 echo ""
