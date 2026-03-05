@@ -158,7 +158,39 @@ export const expectGlossaryVisible = async (
   page: Page,
   displayName: string
 ) => {
-  await expect(page.getByRole('menuitem', { name: displayName })).toBeVisible();
+  const menuitem = page.getByRole('menuitem', { name: displayName });
+  const scroller = page.getByTestId('glossary-left-panel-scroller');
+
+  const maxIterations = 15;
+  let iterations = 0;
+
+  while (!(await menuitem.isVisible())) {
+    if (iterations >= maxIterations) {
+      throw new Error(
+        `Glossary "${displayName}" not found after ${maxIterations} iterations. ` +
+          'Check if the displayName is correct or the item exists.'
+      );
+    }
+
+    const apiResponse = page
+      .waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/glossaries') &&
+          response.status() === 200,
+        { timeout: 2000 }
+      )
+      .catch(() => null);
+
+    await scroller.scrollIntoViewIfNeeded();
+
+    if (!(await apiResponse)) {
+      break;
+    }
+
+    iterations++;
+  }
+
+  await expect(menuitem).toBeVisible();
 };
 
 /**
