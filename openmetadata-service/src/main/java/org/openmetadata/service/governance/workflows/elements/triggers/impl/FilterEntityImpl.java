@@ -47,7 +47,7 @@ public class FilterEntityImpl implements JavaDelegate {
           JsonUtils.readOrConvertValue(excludedFieldsExpr.getValue(execution), List.class);
     }
 
-    java.util.Map<String, String> includeFields = null;
+    java.util.Map<String, java.util.List<String>> includeFields = null;
     if (includeFieldsExpr != null && includeFieldsExpr.getValue(execution) != null) {
       includeFields =
           JsonUtils.readOrConvertValue(includeFieldsExpr.getValue(execution), java.util.Map.class);
@@ -189,7 +189,7 @@ public class FilterEntityImpl implements JavaDelegate {
   private boolean passesExcludedFilter(
       String entityLinkStr,
       List<String> excludedFilter,
-      Map<String, String> includeFields,
+      Map<String, List<String>> includeFields,
       String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
@@ -230,7 +230,7 @@ public class FilterEntityImpl implements JavaDelegate {
 
   private boolean passesFieldBasedFilter(
       List<FieldChange> changedFields,
-      Map<String, String> includeFields,
+      Map<String, List<String>> includeFields,
       List<String> excludedFilter,
       EntityInterface entity) {
     return changedFields.stream()
@@ -247,31 +247,28 @@ public class FilterEntityImpl implements JavaDelegate {
 
               // Check include filter first (higher priority)
               if (includeFields != null && !includeFields.isEmpty()) {
-                boolean passesInclude = passesIncludeFilter(field, includeFields, entity);
-                if (passesInclude) {
-                  return true; // Include filter passes - trigger workflow regardless of exclude
-                }
+                // If include fields are specified, ONLY those fields should trigger
+                return passesIncludeFilter(field, includeFields, entity);
               }
 
-              // If no include filter matched, check exclude filter
+              // If no include filter specified, check exclude filter
               return excludedFilter == null || !excludedFilter.contains(fieldName);
             });
   }
 
   private boolean passesIncludeFilter(
-      FieldChange fieldChange, Map<String, String> includeFields, EntityInterface entity) {
+      FieldChange fieldChange, Map<String, List<String>> includeFields, EntityInterface entity) {
     String fieldName = fieldChange.getName();
-    String includeFqn = includeFields.get(fieldName);
-    if (includeFqn == null) {
+    List<String> includeFqns = includeFields.get(fieldName);
+    if (includeFqns == null || includeFqns.isEmpty()) {
       return false;
     }
     String fieldValue = getFieldValueForPatternMatching(fieldChange, entity);
     if (fieldValue == null) {
       return false;
     }
-    // Use contains check since fieldValue may be extracted from a list
-    // that contains multiple FQNs, or it could be an exact match
-    return fieldValue.contains(includeFqn);
+    // Check if fieldValue contains ANY of the patterns in the include array
+    return includeFqns.stream().anyMatch(includeFqn -> fieldValue.contains(includeFqn));
   }
 
   private String getFieldValueForPatternMatching(FieldChange fieldChange, EntityInterface entity) {

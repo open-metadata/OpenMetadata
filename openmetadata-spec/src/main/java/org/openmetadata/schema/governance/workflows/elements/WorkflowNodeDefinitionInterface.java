@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckChangeDescriptionTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
@@ -28,6 +29,9 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
   @JsonSubTypes.Type(
       value = CheckEntityAttributesTaskDefinition.class,
       name = "checkEntityAttributesTask"),
+  @JsonSubTypes.Type(
+      value = CheckChangeDescriptionTaskDefinition.class,
+      name = "checkChangeDescriptionTask"),
   @JsonSubTypes.Type(
       value = SetEntityCertificationTaskDefinition.class,
       name = "setEntityCertificationTask"),

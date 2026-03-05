@@ -7584,8 +7584,8 @@ public class WorkflowDefinitionResourceIT {
     triggerConfig.put("events", List.of("Updated"));
     triggerConfig.put("exclude", List.of());
 
-    Map<String, String> includeFields = new HashMap<>();
-    includeFields.put("tags", privateTag.getFullyQualifiedName());
+    Map<String, List<String>> includeFields = new HashMap<>();
+    includeFields.put("tags", List.of(privateTag.getFullyQualifiedName()));
     triggerConfig.put("include", includeFields);
     triggerConfig.put("filter", new HashMap<>());
 
@@ -7679,7 +7679,7 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(workflow.get("trigger").get("config").has("include"));
     assertEquals(
         privateTag.getFullyQualifiedName(),
-        workflow.get("trigger").get("config").get("include").get("tags").asText());
+        workflow.get("trigger").get("config").get("include").get("tags").get(0).asText());
 
     LOG.info("✓ Tag approval workflow with include fields created and verified successfully");
 
@@ -7816,8 +7816,8 @@ public class WorkflowDefinitionResourceIT {
     triggerConfig.put("events", List.of("Updated"));
     triggerConfig.put("exclude", List.of());
 
-    Map<String, String> includeFields = new HashMap<>();
-    includeFields.put("domain", domain.getFullyQualifiedName());
+    Map<String, List<String>> includeFields = new HashMap<>();
+    includeFields.put("domains", List.of(domain.getFullyQualifiedName()));
     triggerConfig.put("include", includeFields);
     triggerConfig.put("filter", new HashMap<>());
 
@@ -7911,7 +7911,7 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(workflow.get("trigger").get("config").has("include"));
     assertEquals(
         domain.getFullyQualifiedName(),
-        workflow.get("trigger").get("config").get("include").get("domain").asText());
+        workflow.get("trigger").get("config").get("include").get("domains").get(0).asText());
 
     LOG.info("✓ Domain approval workflow with include fields created and verified successfully");
 
@@ -8054,8 +8054,8 @@ public class WorkflowDefinitionResourceIT {
     triggerConfig.put("events", List.of("Updated"));
     triggerConfig.put("exclude", List.of("tags")); // Exclude tags field
 
-    Map<String, String> includeFields = new HashMap<>();
-    includeFields.put("tags", tag.getFullyQualifiedName()); // But include specific tag
+    Map<String, List<String>> includeFields = new HashMap<>();
+    includeFields.put("tags", List.of(tag.getFullyQualifiedName())); // But include specific tag
     triggerConfig.put("include", includeFields);
     triggerConfig.put("filter", new HashMap<>());
 
@@ -8152,7 +8152,7 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(triggerConfigNode.get("exclude").size() > 0);
     assertEquals("tags", triggerConfigNode.get("exclude").get(0).asText());
     assertEquals(
-        tag.getFullyQualifiedName(), triggerConfigNode.get("include").get("tags").asText());
+        tag.getFullyQualifiedName(), triggerConfigNode.get("include").get("tags").get(0).asText());
 
     LOG.info("✓ Include priority workflow created with both include and exclude fields verified");
 
@@ -8475,9 +8475,9 @@ public class WorkflowDefinitionResourceIT {
     triggerConfig.put("events", List.of("Updated"));
     triggerConfig.put("exclude", List.of());
 
-    Map<String, String> includeFields = new HashMap<>();
-    includeFields.put("tags", tag.getFullyQualifiedName());
-    includeFields.put("domain", domain.getFullyQualifiedName());
+    Map<String, List<String>> includeFields = new HashMap<>();
+    includeFields.put("tags", List.of(tag.getFullyQualifiedName()));
+    includeFields.put("domains", List.of(domain.getFullyQualifiedName()));
     triggerConfig.put("include", includeFields);
     triggerConfig.put("filter", new HashMap<>());
 
@@ -8569,9 +8569,9 @@ public class WorkflowDefinitionResourceIT {
 
     JsonNode includeNode = workflow.get("trigger").get("config").get("include");
     assertTrue(includeNode.has("tags"));
-    assertTrue(includeNode.has("domain"));
-    assertEquals(tag.getFullyQualifiedName(), includeNode.get("tags").asText());
-    assertEquals(domain.getFullyQualifiedName(), includeNode.get("domain").asText());
+    assertTrue(includeNode.has("domains"));
+    assertEquals(tag.getFullyQualifiedName(), includeNode.get("tags").get(0).asText());
+    assertEquals(domain.getFullyQualifiedName(), includeNode.get("domains").get(0).asText());
 
     LOG.info("✓ Multi-field include workflow created with both tag and domain includes verified");
 
@@ -8671,6 +8671,508 @@ public class WorkflowDefinitionResourceIT {
       client.classifications().delete(classification.getId().toString(), params);
       client.users().delete(testUser.getId().toString(), params);
       LOG.debug("✓ Deleted all test entities");
+    } catch (Exception e) {
+      LOG.warn("Cleanup error: {}", e.getMessage());
+    }
+  }
+
+  @Test
+  @Order(42)
+  void test_CheckChangeDescriptionTask(TestNamespace ns) throws IOException {
+    LOG.info("Starting test_CheckChangeDescriptionTask");
+    OpenMetadataClient client = SdkClients.adminClient();
+    String uniqueSuffix = String.valueOf(System.currentTimeMillis());
+
+    // Step 1: Create 2 user clients as owners
+    LOG.debug("Creating test users for database schema ownership");
+    CreateUser createOwner1 =
+        new CreateUser()
+            .withName("schema_owner1_" + uniqueSuffix)
+            .withEmail("schema_owner1_" + uniqueSuffix + "@example.com")
+            .withDisplayName("Schema Owner 1");
+    User owner1 = client.users().create(createOwner1);
+    LOG.debug("Created owner user 1: {}", owner1.getName());
+
+    CreateUser createOwner2 =
+        new CreateUser()
+            .withName("schema_owner2_" + uniqueSuffix)
+            .withEmail("schema_owner2_" + uniqueSuffix + "@example.com")
+            .withDisplayName("Schema Owner 2");
+    User owner2 = client.users().create(createOwner2);
+    LOG.debug("Created owner user 2: {}", owner2.getName());
+
+    // Step 2: Create database service, database, and 2 database schemas
+    LOG.debug("Creating database infrastructure");
+    CreateDatabaseService createDbService =
+        new CreateDatabaseService()
+            .withName(ns.prefix("test-db-service-change-desc"))
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(
+                new DatabaseConnection()
+                    .withConfig(
+                        new MysqlConnection()
+                            .withHostPort("localhost:3306")
+                            .withUsername("test")
+                            .withAuthType(new basicAuth().withPassword("test"))));
+    DatabaseService dbService = client.databaseServices().create(createDbService);
+    LOG.debug("Created database service: {}", dbService.getName());
+
+    CreateDatabase createDb =
+        new CreateDatabase()
+            .withName(ns.prefix("test-database-change-desc"))
+            .withService(dbService.getFullyQualifiedName())
+            .withDescription("Test database for checkChangeDescriptionTask testing");
+    Database database = client.databases().create(createDb);
+    LOG.debug("Created database: {}", database.getName());
+
+    CreateDatabaseSchema createSchema1 =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("test-schema1"))
+            .withDatabase(database.getFullyQualifiedName())
+            .withDescription("Test schema 1 for change description testing")
+            .withOwners(List.of(owner1.getEntityReference()));
+    DatabaseSchema dbSchema1 = client.databaseSchemas().create(createSchema1);
+    LOG.debug(
+        "Created database schema 1: {} with owner: {}", dbSchema1.getName(), owner1.getName());
+
+    CreateDatabaseSchema createSchema2 =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("test-schema2"))
+            .withDatabase(database.getFullyQualifiedName())
+            .withDescription("Test schema 2 for change description testing")
+            .withOwners(List.of(owner2.getEntityReference()));
+    DatabaseSchema dbSchema2 = client.databaseSchemas().create(createSchema2);
+    LOG.debug(
+        "Created database schema 2: {} with owner: {}", dbSchema2.getName(), owner2.getName());
+
+    // Step 3: Create Finance and Business domains
+    LOG.debug("Creating test domains");
+    CreateDomain createFinanceDomain =
+        new CreateDomain()
+            .withName(ns.prefix("Finance"))
+            .withDescription("Finance domain for testing")
+            .withDomainType(CreateDomain.DomainType.CONSUMER_ALIGNED);
+    Domain financeDomain = client.domains().create(createFinanceDomain);
+    LOG.debug("Created Finance domain: {}", financeDomain.getName());
+
+    CreateDomain createBusinessDomain =
+        new CreateDomain()
+            .withName(ns.prefix("Business"))
+            .withDescription("Business domain for testing")
+            .withDomainType(CreateDomain.DomainType.CONSUMER_ALIGNED);
+    Domain businessDomain = client.domains().create(createBusinessDomain);
+    LOG.debug("Created Business domain: {}", businessDomain.getName());
+
+    // Step 4: Get existing PII tags (PII.Sensitive and PII.None should already exist)
+    Tag piiSensitiveTag;
+    Tag piiNoneTag;
+    try {
+      piiSensitiveTag = client.tags().getByName("PII.Sensitive");
+      piiNoneTag = client.tags().getByName("PII.None");
+      LOG.debug("Found existing PII tags: PII.Sensitive and PII.None");
+    } catch (Exception e) {
+      LOG.error("Failed to find existing PII tags. They should exist in the system.", e);
+      throw new RuntimeException("PII tags not found", e);
+    }
+
+    // Step 5: Create workflow with checkChangeDescriptionTask and static name
+    String workflowName = "CheckChangeDescriptionWorkflow";
+    LOG.debug("Creating workflow: {}", workflowName);
+    String workflowJson =
+        """
+        {
+          "name": "%s",
+          "displayName": "Check Change Description Workflow",
+          "description": "Workflow that checks change description for tags or domains changes",
+          "type": "eventBasedEntity",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "events": ["Updated"],
+              "entityTypes": ["databaseSchema"]
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {
+              "name": "start",
+              "type": "startEvent",
+              "subType": "startEvent"
+            },
+            {
+              "name": "checkChangeDesc",
+              "type": "automatedTask",
+              "subType": "checkChangeDescriptionTask",
+              "displayName": "Check Tags or Domains Changed",
+              "config": {
+                "condition": "OR",
+                "include": {
+                  "tags": ["PII.Sensitive", "PII.None"],
+                  "domains": ["Finance"]
+                }
+              },
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {
+                "relatedEntity": "global"
+              },
+              "branches": ["true", "false"]
+            },
+            {
+              "name": "userApproval",
+              "type": "userTask",
+              "subType": "userApprovalTask",
+              "displayName": "Approve Changes",
+              "input": ["relatedEntity"],
+              "output": ["updatedBy"],
+              "branches": ["true", "false"],
+              "config": {
+                "assignees": {
+                  "addReviewers": true,
+                  "addOwners": true,
+                  "candidates": []
+                },
+                "approvalThreshold": 1,
+                "rejectionThreshold": 1
+              },
+              "inputNamespaceMap": {
+                "relatedEntity": "global"
+              }
+            },
+            {
+              "name": "setApproved",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Approved",
+              "config": {
+                "fieldName": "status",
+                "fieldValue": "Approved"
+              },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": {
+                "relatedEntity": "global",
+                "updatedBy": "userApproval"
+              }
+            },
+            {
+              "name": "setRejected",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Rejected",
+              "config": {
+                "fieldName": "status",
+                "fieldValue": "Rejected"
+              },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": {
+                "relatedEntity": "global",
+                "updatedBy": "userApproval"
+              }
+            },
+            {
+              "name": "setDraft",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Draft",
+              "config": {
+                "fieldName": "status",
+                "fieldValue": "Draft"
+              },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": {
+                "relatedEntity": "global",
+                "updatedBy": "global"
+              }
+            },
+            {
+              "name": "end",
+              "type": "endEvent",
+              "subType": "endEvent"
+            }
+          ],
+          "edges": [
+            {
+              "from": "start",
+              "to": "checkChangeDesc"
+            },
+            {
+              "from": "checkChangeDesc",
+              "to": "userApproval",
+              "condition": "true"
+            },
+            {
+              "from": "checkChangeDesc",
+              "to": "setDraft",
+              "condition": "false"
+            },
+            {
+              "from": "userApproval",
+              "to": "setApproved",
+              "condition": "true"
+            },
+            {
+              "from": "userApproval",
+              "to": "setRejected",
+              "condition": "false"
+            },
+            {
+              "from": "setApproved",
+              "to": "end"
+            },
+            {
+              "from": "setRejected",
+              "to": "end"
+            },
+            {
+              "from": "setDraft",
+              "to": "end"
+            }
+          ]
+        }
+        """
+            .formatted(workflowName);
+
+    CreateWorkflowDefinition workflowRequest =
+        MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class);
+    WorkflowDefinition workflow = client.workflowDefinitions().create(workflowRequest);
+    LOG.debug("Created workflow: {}", workflow.getName());
+
+    // Wait for workflow to be deployed
+    waitForWorkflowDeployment(client, workflowName);
+    LOG.debug("✓ Workflow deployed successfully");
+
+    // Step 6: Update dbSchema1 with Finance domain and verify task creation
+    LOG.info("Testing Finance domain update on dbSchema1");
+    String schema1EntityLink =
+        String.format("<#E::databaseSchema::%s>", dbSchema1.getFullyQualifiedName());
+
+    String domainPatchJson =
+        String.format(
+            """
+        [
+          {
+            "op": "add",
+            "path": "/domains",
+            "value": [
+              {
+                "id": "%s",
+                "type": "domain",
+                "name": "%s",
+                "fullyQualifiedName": "%s"
+              }
+            ]
+          }
+        ]
+        """,
+            financeDomain.getId(), financeDomain.getName(), financeDomain.getFullyQualifiedName());
+
+    JsonNode domainPatch = MAPPER.readTree(domainPatchJson);
+    client.databaseSchemas().patch(dbSchema1.getId(), domainPatch);
+    LOG.debug("Updated dbSchema1 with Finance domain");
+
+    // Verify task creation for Finance domain
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> {
+              try {
+                ResultList<Thread> tasks =
+                    client.feed().listTasks(schema1EntityLink, TaskStatus.Open, 10);
+                boolean hasTask = !tasks.getData().isEmpty();
+                if (hasTask) {
+                  LOG.debug("✓ Found task for Finance domain change");
+                }
+                return hasTask;
+              } catch (Exception e) {
+                LOG.debug("Waiting for task creation: {}", e.getMessage());
+                return false;
+              }
+            });
+
+    ResultList<Thread> financeTasks =
+        client.feed().listTasks(schema1EntityLink, TaskStatus.Open, 10);
+    assertFalse(financeTasks.getData().isEmpty(), "Should have approval task for Finance domain");
+    Thread financeTask = financeTasks.getData().get(0);
+    LOG.debug("Found Finance domain task: {}", financeTask.getId());
+
+    // Step 7: Approve the Finance domain task
+    LOG.info("Approving Finance domain task");
+    OpenMetadataClient owner1Client =
+        SdkClients.createClient(owner1.getName(), owner1.getEmail(), new String[] {});
+    ResolveTask resolveFinanceTask =
+        new ResolveTask().withNewValue(org.openmetadata.schema.type.EntityStatus.APPROVED.value());
+    owner1Client.feed().resolveTask(financeTask.getTask().getId().toString(), resolveFinanceTask);
+    LOG.debug("✓ Resolved Finance domain task");
+
+    // Step 8: Update dbSchema1 with PII.Sensitive tag and verify task creation
+    LOG.info("Testing PII.Sensitive tag update on dbSchema1");
+    String tagPatchJson =
+        String.format(
+            """
+        [
+          {
+            "op": "add",
+            "path": "/tags",
+            "value": [
+              {
+                "tagFQN": "%s",
+                "source": "Classification",
+                "labelType": "Manual",
+                "state": "Confirmed"
+              }
+            ]
+          }
+        ]
+        """,
+            piiSensitiveTag.getFullyQualifiedName());
+
+    JsonNode tagPatch = MAPPER.readTree(tagPatchJson);
+    client.databaseSchemas().patch(dbSchema1.getId(), tagPatch);
+    LOG.debug("Updated dbSchema1 with PII.Sensitive tag");
+
+    // Verify task creation for PII.Sensitive tag
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> {
+              try {
+                ResultList<Thread> tasks =
+                    client.feed().listTasks(schema1EntityLink, TaskStatus.Open, 10);
+                boolean hasNewTask = tasks.getData().size() > 0; // Should have new task
+                if (hasNewTask) {
+                  LOG.debug("✓ Found task for PII.Sensitive tag change");
+                }
+                return hasNewTask;
+              } catch (Exception e) {
+                LOG.debug("Waiting for PII tag task creation: {}", e.getMessage());
+                return false;
+              }
+            });
+
+    ResultList<Thread> piiTasks = client.feed().listTasks(schema1EntityLink, TaskStatus.Open, 10);
+    assertFalse(piiTasks.getData().isEmpty(), "Should have approval task for PII.Sensitive tag");
+    Thread piiTask = piiTasks.getData().get(0);
+    LOG.debug("Found PII.Sensitive tag task: {}", piiTask.getId());
+
+    // Step 9: Resolve the PII.Sensitive tag task
+    LOG.info("Resolving PII.Sensitive tag task");
+    ResolveTask resolvePiiTask =
+        new ResolveTask().withNewValue(org.openmetadata.schema.type.EntityStatus.APPROVED.value());
+    owner1Client.feed().resolveTask(piiTask.getTask().getId().toString(), resolvePiiTask);
+    LOG.debug("✓ Resolved PII.Sensitive tag task");
+
+    // Step 10: Update dbSchema2 with PII.NonSensitive tag, verify NO tasks created
+    LOG.info("Testing PII.NonSensitive tag update on dbSchema2 - should NOT create task");
+    String schema2EntityLink =
+        String.format("<#E::databaseSchema::%s>", dbSchema2.getFullyQualifiedName());
+
+    // Create a tag that's not in the include list
+    CreateClassification createTestClassification =
+        new CreateClassification()
+            .withName(ns.prefix("TestClassification"))
+            .withDescription("Test classification for negative testing");
+    Classification testClassification = client.classifications().create(createTestClassification);
+
+    CreateTag createNonSensitiveTag =
+        new CreateTag()
+            .withName("NonSensitive")
+            .withClassification(testClassification.getFullyQualifiedName())
+            .withDescription("Non-sensitive tag for negative testing");
+    Tag nonSensitiveTag = client.tags().create(createNonSensitiveTag);
+
+    String nonSensitiveTagPatchJson =
+        String.format(
+            """
+        [
+          {
+            "op": "add",
+            "path": "/tags",
+            "value": [
+              {
+                "tagFQN": "%s",
+                "source": "Classification",
+                "labelType": "Manual",
+                "state": "Confirmed"
+              }
+            ]
+          }
+        ]
+        """,
+            nonSensitiveTag.getFullyQualifiedName());
+
+    JsonNode nonSensitiveTagPatch = MAPPER.readTree(nonSensitiveTagPatchJson);
+    client.databaseSchemas().patch(dbSchema2.getId(), nonSensitiveTagPatch);
+    LOG.debug("Updated dbSchema2 with non-included tag");
+
+    // Wait and verify NO task is created for non-included tag
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ResultList<Thread> tasks =
+                  client.feed().listTasks(schema2EntityLink, TaskStatus.Open, 10);
+              assertTrue(tasks.getData().isEmpty(), "Should NOT have task for non-included tag");
+            });
+    LOG.debug("✓ Confirmed no task created for non-included tag");
+
+    // Step 11: Update dbSchema2 with Business domain, verify NO tasks created
+    LOG.info("Testing Business domain update on dbSchema2 - should NOT create task");
+    String businessDomainPatchJson =
+        String.format(
+            """
+        [
+          {
+            "op": "add",
+            "path": "/domains",
+            "value": [
+              {
+                "id": "%s",
+                "type": "domain",
+                "name": "%s",
+                "fullyQualifiedName": "%s"
+              }
+            ]
+          }
+        ]
+        """,
+            businessDomain.getId(),
+            businessDomain.getName(),
+            businessDomain.getFullyQualifiedName());
+
+    JsonNode businessDomainPatch = MAPPER.readTree(businessDomainPatchJson);
+    client.databaseSchemas().patch(dbSchema2.getId(), businessDomainPatch);
+    LOG.debug("Updated dbSchema2 with Business domain (not in include list)");
+
+    // Wait and verify NO task is created for non-included domain
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ResultList<Thread> tasks =
+                  client.feed().listTasks(schema2EntityLink, TaskStatus.Open, 10);
+              assertTrue(tasks.getData().isEmpty(), "Should NOT have task for non-included domain");
+            });
+    LOG.debug("✓ Confirmed no task created for non-included domain");
+
+    LOG.info("test_CheckChangeDescriptionTask completed successfully");
+
+    // Cleanup
+    try {
+      client.workflowDefinitions().delete(workflow.getId().toString());
+      client.databaseSchemas().delete(dbSchema1.getId().toString());
+      client.databaseSchemas().delete(dbSchema2.getId().toString());
+      client.databases().delete(database.getId().toString());
+      client.databaseServices().delete(dbService.getId().toString());
+      client.domains().delete(financeDomain.getId().toString());
+      client.domains().delete(businessDomain.getId().toString());
+      client.tags().delete(nonSensitiveTag.getId().toString());
+      client.classifications().delete(testClassification.getId().toString());
+      client.users().delete(owner1.getId().toString());
+      client.users().delete(owner2.getId().toString());
+      LOG.debug("✓ Cleaned up test entities");
     } catch (Exception e) {
       LOG.warn("Cleanup error: {}", e.getMessage());
     }

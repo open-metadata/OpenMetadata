@@ -54,11 +54,14 @@
         },
         "include": {
           "title": "Include Fields",
-          "description": "Map of fields to their required values/patterns that must match to trigger the workflow. Takes priority over exclude fields. Field values support regex patterns.",
+          "description": "Map of fields to their required values/patterns that must match to trigger the workflow. Takes priority over exclude fields. Field values use substring matching.",
           "type": "object",
           "additionalProperties": {
-            "type": "string",
-            "description": "Field value pattern (supports regex) that must match for the workflow to trigger"
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Field value pattern (substring matching) that must match for the workflow to trigger"
+            }
           }
         },
         "filter": {
