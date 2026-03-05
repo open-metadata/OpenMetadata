@@ -17,7 +17,7 @@
     
     <properties>
         <assertj-core.version>3.27.7</assertj-core.version>
-        <jetty.version>12.1.1</jetty.version>
+        <jetty.version>12.1.6</jetty.version>
     </properties>
 
     <dependencyManagement>
