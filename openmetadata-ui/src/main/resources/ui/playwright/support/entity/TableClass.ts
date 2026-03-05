@@ -319,10 +319,23 @@ export class TableClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page, searchTerm?: string) {
+    const tableFqn = this.entityResponseData.fullyQualifiedName ?? '';
+    const canUseDirectNavigation =
+      !searchTerm || (tableFqn.length > 0 && searchTerm === tableFqn);
+
+    if (canUseDirectNavigation && tableFqn.length > 0) {
+      await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      return;
+    }
+
     await visitEntityPage({
       page,
-      searchTerm:
-        searchTerm ?? this.entityResponseData.fullyQualifiedName ?? '',
+      searchTerm: searchTerm ?? tableFqn,
       dataTestId: `${
         this.entityResponseData.service?.name ?? this.service.name
       }-${this.entityResponseData.name ?? this.entity.name}`,

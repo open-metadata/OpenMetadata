@@ -715,7 +715,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       }
 
       CompletableFuture<BulkResponse> future =
-          asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+          asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.True));
 
       future.whenComplete(
           (response, error) -> {

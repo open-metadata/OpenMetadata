@@ -6,14 +6,18 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -600,6 +604,106 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Test
+  void test_domainInheritancePropagatesToSearch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    org.openmetadata.schema.entity.domains.Domain domainA =
+        client
+            .domains()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDomain()
+                    .withName(ns.shortPrefix("search_domain_a"))
+                    .withDomainType(
+                        org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain A for search propagation"));
+
+    org.openmetadata.schema.entity.domains.Domain domainB =
+        client
+            .domains()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDomain()
+                    .withName(ns.shortPrefix("search_domain_b"))
+                    .withDomainType(
+                        org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain B for search propagation"));
+
+    String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("domain_search") + "_" + uniqueSuffix)
+                    .withDescription("Classification for domain search propagation")
+                    .withDomains(List.of(domainA.getFullyQualifiedName())));
+
+    Tag tag =
+        createEntity(
+            new CreateTag()
+                .withName(ns.shortPrefix("domain_search_tag"))
+                .withClassification(classification.getFullyQualifiedName())
+                .withDescription("Tag for domain search propagation"));
+
+    awaitTagSearchDomains(client, mapper, tag.getId(), Set.of(domainA.getFullyQualifiedName()));
+
+    Classification updatedClassification =
+        client.classifications().get(classification.getId().toString(), "domains");
+    updatedClassification.setDomains(List.of(domainB.getEntityReference()));
+    client
+        .classifications()
+        .update(updatedClassification.getId().toString(), updatedClassification);
+
+    awaitTagSearchDomains(client, mapper, tag.getId(), Set.of(domainB.getFullyQualifiedName()));
+  }
+
+  @Test
+  void test_searchTagByClassificationDisplayName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+    String displayName = "PW Classification " + ns.uniqueShortId();
+
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("display_name_search") + "_" + uniqueSuffix)
+                    .withDisplayName(displayName)
+                    .withDescription("Classification for display name search"));
+
+    Tag tag =
+        createEntity(
+            new CreateTag()
+                .withName(ns.shortPrefix("display_name_tag"))
+                .withClassification(classification.getFullyQualifiedName())
+                .withDescription("Tag for classification display name search"));
+
+    Awaitility.await("Tag should be searchable by classification display name")
+        .atMost(java.time.Duration.ofSeconds(30))
+        .pollInterval(java.time.Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              String response =
+                  client.search().query(displayName).index("tag_search_index").size(25).execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              boolean found =
+                  StreamSupport.stream(hits.spliterator(), false)
+                      .anyMatch(
+                          hit ->
+                              tag.getId().toString().equals(hit.path("_id").asText())
+                                  || tag.getId()
+                                      .toString()
+                                      .equals(hit.path("_source").path("id").asText()));
+              assertTrue(
+                  found,
+                  "Expected tag to be present when searching by classification display name");
+            });
+  }
+
+  @Test
   void test_disableClassification_disablesAllTags(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -1037,6 +1141,38 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   private ResultList<Recognizer> fetchRecognizersByTagFQN(
       String fqn, String after, String before, int limit) {
     return fetchRecognizers("/v1/tags/name/" + fqn + "/recognizers", after, before, limit);
+  }
+
+  private void awaitTagSearchDomains(
+      OpenMetadataClient client, ObjectMapper mapper, UUID tagId, Set<String> expectedDomainFqns) {
+    Awaitility.await("Tag search document should have expected domains")
+        .atMost(java.time.Duration.ofSeconds(30))
+        .pollInterval(java.time.Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              String response =
+                  client.search().query("id:" + tagId).index("tag_search_index").size(5).execute();
+              JsonNode root = mapper.readTree(response);
+              JsonNode hits = root.path("hits").path("hits");
+              assertTrue(
+                  hits.isArray() && !hits.isEmpty(), "Tag should be present in tag_search_index");
+
+              JsonNode source = null;
+              for (JsonNode hit : hits) {
+                if (tagId.toString().equals(hit.path("_id").asText())
+                    || tagId.toString().equals(hit.path("_source").path("id").asText())) {
+                  source = hit.path("_source");
+                  break;
+                }
+              }
+              assertNotNull(source, "Expected to find tag document in search hits");
+
+              Set<String> actualDomainFqns =
+                  StreamSupport.stream(source.path("domains").spliterator(), false)
+                      .map(domainNode -> domainNode.path("fullyQualifiedName").asText())
+                      .collect(java.util.stream.Collectors.toSet());
+              assertEquals(expectedDomainFqns, actualDomainFqns);
+            });
   }
 
   @Test

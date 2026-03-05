@@ -21,7 +21,6 @@ import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 
-import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -102,8 +101,11 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void setFieldsInBulk(Fields fields, List<Domain> entities) {
     fetchAndSetFields(entities, fields);
-    setInheritedFields(entities, fields);
-    entities.forEach(entity -> clearFieldsInternal(entity, fields));
+    entities.forEach(
+        entity -> {
+          setInheritedFields(entity, fields);
+          clearFieldsInternal(entity, fields);
+        });
   }
 
   private void fetchAndSetParents(List<Domain> domains, Fields fields) {
@@ -143,30 +145,18 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("parent");
+  }
+
+  @Override
   public void storeEntity(Domain entity, boolean update) {
-    EntityReference parent = entity.getParent();
-    entity.withParent(null);
     store(entity, update);
-    entity.withParent(parent);
   }
 
   @Override
   public void storeEntities(List<Domain> entities) {
-    List<Domain> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Domain entity : entities) {
-      EntityReference parent = entity.getParent();
-
-      entity.withParent(null);
-
-      String jsonCopy = gson.toJson(entity);
-      entitiesToStore.add(gson.fromJson(jsonCopy, Domain.class));
-
-      entity.withParent(parent);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   @Override
@@ -397,6 +387,11 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
+  protected EntityReference getParentReference(Domain entity) {
+    return entity.getParent();
+  }
+
+  @Override
   public EntityInterface getParentEntity(Domain entity, String fields) {
     return entity.getParent() != null
         ? Entity.getEntity(entity.getParent(), fields, Include.NON_DELETED)
@@ -434,8 +429,16 @@ public class DomainRepository extends EntityRepository<Domain> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateName(updated);
-      recordChange("domainType", original.getDomainType(), updated.getDomainType());
+      compareAndUpdate(
+          "name",
+          () -> {
+            updateName(updated);
+          });
+      compareAndUpdate(
+          "domainType",
+          () -> {
+            recordChange("domainType", original.getDomainType(), updated.getDomainType());
+          });
     }
 
     private void updateName(Domain updated) {

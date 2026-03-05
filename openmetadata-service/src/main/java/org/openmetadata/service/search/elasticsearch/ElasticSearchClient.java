@@ -475,7 +475,8 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
+      throws IOException {
     entityManager.createEntities(indexName, docsAndIds);
   }
 

@@ -1,7 +1,7 @@
 package org.openmetadata.sdk.client;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.UUID;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.network.HttpClient;
@@ -75,6 +75,7 @@ import org.openmetadata.sdk.services.tests.TestDefinitionService;
 import org.openmetadata.sdk.services.tests.TestSuiteService;
 
 public class OpenMetadataClient {
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final OpenMetadataConfig config;
   private final HttpClient httpClient;
   private UUID cachedUserId = null;
@@ -659,11 +660,10 @@ public class OpenMetadataClient {
               RequestOptions.builder().queryParam("fields", "profile").build());
 
       // Parse the response to get the user ID
-      JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
+      JsonNode jsonResponse = OBJECT_MAPPER.readTree(response);
 
       if (jsonResponse.has("id")) {
-        String userIdStr = jsonResponse.get("id").getAsString();
-        cachedUserId = UUID.fromString(userIdStr);
+        cachedUserId = UUID.fromString(jsonResponse.get("id").asText());
         return cachedUserId;
       }
     } catch (Exception e) {

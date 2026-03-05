@@ -13,8 +13,9 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 
-import com.google.common.collect.Lists;
-import com.google.gson.Gson;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -294,8 +295,8 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void prepare(Container container, boolean update) {
     // the storage service is not fully filled in terms of props - go to the db and get it in full
     // and re-set it
-    StorageService storageService =
-        Entity.getEntity(container.getService(), "", Include.NON_DELETED);
+    var storageService =
+        (StorageService) getCachedParentOrLoad(container.getService(), "", Include.NON_DELETED);
     container.setService(storageService.getEntityReference());
     container.setServiceType(storageService.getServiceType());
 
@@ -306,55 +307,38 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public void storeEntity(Container container, boolean update) {
-    EntityReference storageService = container.getService();
-    EntityReference parent = container.getParent();
-    container.withService(null).withParent(null);
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("service", "parent");
+  }
 
-    // Don't store datamodel column tags as JSON but build it on the fly based on relationships
-    List<Column> columnWithTags = Lists.newArrayList();
-    if (container.getDataModel() != null) {
-      columnWithTags.addAll(container.getDataModel().getColumns());
-      container.getDataModel().setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
-      container.getDataModel().getColumns().forEach(column -> column.setTags(null));
+  @Override
+  protected ObjectNode storageJsonNode(Container container) {
+    ObjectNode node = super.storageJsonNode(container);
+    stripColumnTags(node.at("/dataModel/columns"));
+    return node;
+  }
+
+  private void stripColumnTags(JsonNode columnsNode) {
+    if (!(columnsNode instanceof ArrayNode columnArray)) {
+      return;
     }
-
-    store(container, update);
-
-    // Restore the relationships
-    container.withService(storageService).withParent(parent);
-    if (container.getDataModel() != null) {
-      container.getDataModel().setColumns(columnWithTags);
+    for (JsonNode column : columnArray) {
+      if (!(column instanceof ObjectNode columnNode)) {
+        continue;
+      }
+      columnNode.remove("tags");
+      stripColumnTags(columnNode.get("children"));
     }
   }
 
   @Override
+  public void storeEntity(Container container, boolean update) {
+    store(container, update);
+  }
+
+  @Override
   public void storeEntities(List<Container> containers) {
-    List<Container> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Container container : containers) {
-      EntityReference storageService = container.getService();
-      EntityReference parent = container.getParent();
-      List<Column> columnWithTags = Lists.newArrayList();
-      if (container.getDataModel() != null) {
-        columnWithTags.addAll(container.getDataModel().getColumns());
-        container.getDataModel().setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
-        container.getDataModel().getColumns().forEach(column -> column.setTags(null));
-      }
-
-      container.withService(null).withParent(null);
-
-      String jsonCopy = gson.toJson(container);
-      entitiesToStore.add(gson.fromJson(jsonCopy, Container.class));
-
-      container.withService(storageService).withParent(parent);
-      if (container.getDataModel() != null) {
-        container.getDataModel().setColumns(columnWithTags);
-      }
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(containers);
   }
 
   @Override
@@ -385,6 +369,30 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
+  protected void storeEntitySpecificRelationshipsForMany(List<Container> entities) {
+    List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
+    for (Container container : entities) {
+      EntityReference service = container.getService();
+      if (service != null && service.getId() != null) {
+        relationships.add(
+            newRelationship(
+                service.getId(),
+                container.getId(),
+                service.getType(),
+                entityType,
+                Relationship.CONTAINS));
+      }
+      EntityReference parent = container.getParent();
+      if (parent != null && parent.getId() != null) {
+        relationships.add(
+            newRelationship(
+                parent.getId(), container.getId(), CONTAINER, CONTAINER, Relationship.CONTAINS));
+      }
+    }
+    bulkInsertRelationships(relationships);
+  }
+
+  @Override
   public EntityRepository<Container>.EntityUpdater getUpdater(
       Container original, Container updated, Operation operation, ChangeSource changeSource) {
     return new ContainerUpdater(original, updated, operation);
@@ -405,6 +413,11 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container.getDataModel() != null) {
       validateColumnTags(container.getDataModel().getColumns());
     }
+  }
+
+  @Override
+  protected EntityReference getParentReference(Container entity) {
+    return entity.getService();
   }
 
   @Override
@@ -536,38 +549,79 @@ public class ContainerRepository extends EntityRepository<Container> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateDataModel(original, updated);
-      recordChange("prefix", original.getPrefix(), updated.getPrefix());
-      List<ContainerFileFormat> addedItems = new ArrayList<>();
-      List<ContainerFileFormat> deletedItems = new ArrayList<>();
-      recordListChange(
+      compareAndUpdate(
+          "dataModel",
+          () -> {
+            updateDataModel(original, updated);
+          });
+      compareAndUpdate(
+          "prefix",
+          () -> {
+            recordChange("prefix", original.getPrefix(), updated.getPrefix());
+          });
+      compareAndUpdate(
           "fileFormats",
-          original.getFileFormats(),
-          updated.getFileFormats(),
-          addedItems,
-          deletedItems,
-          EntityUtil.containerFileFormatMatch);
+          () -> {
+            List<ContainerFileFormat> addedItems = new ArrayList<>();
+            List<ContainerFileFormat> deletedItems = new ArrayList<>();
+            recordListChange(
+                "fileFormats",
+                original.getFileFormats(),
+                updated.getFileFormats(),
+                addedItems,
+                deletedItems,
+                EntityUtil.containerFileFormatMatch);
+          });
 
-      // record the changes for size and numOfObjects change without version update.
-      recordChange(
+      compareAndUpdate(
           "numberOfObjects",
-          original.getNumberOfObjects(),
-          updated.getNumberOfObjects(),
-          false,
-          EntityUtil.objectMatch,
-          false);
-      recordChange(
-          "size", original.getSize(), updated.getSize(), false, EntityUtil.objectMatch, false);
-      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-      recordChange("fullPath", original.getFullPath(), updated.getFullPath());
-      recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
-      recordChange(
+          () -> {
+            recordChange(
+                "numberOfObjects",
+                original.getNumberOfObjects(),
+                updated.getNumberOfObjects(),
+                false,
+                EntityUtil.objectMatch,
+                false);
+          });
+      compareAndUpdate(
+          "size",
+          () -> {
+            recordChange(
+                "size",
+                original.getSize(),
+                updated.getSize(),
+                false,
+                EntityUtil.objectMatch,
+                false);
+          });
+      compareAndUpdate(
+          "sourceUrl",
+          () -> {
+            recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+          });
+      compareAndUpdate(
+          "fullPath",
+          () -> {
+            recordChange("fullPath", original.getFullPath(), updated.getFullPath());
+          });
+      compareAndUpdate(
+          "retentionPeriod",
+          () -> {
+            recordChange(
+                "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+          });
+      compareAndUpdate(
           "sourceHash",
-          original.getSourceHash(),
-          updated.getSourceHash(),
-          false,
-          EntityUtil.objectMatch,
-          false);
+          () -> {
+            recordChange(
+                "sourceHash",
+                original.getSourceHash(),
+                updated.getSourceHash(),
+                false,
+                EntityUtil.objectMatch,
+                false);
+          });
     }
 
     private void updateDataModel(Container original, Container updated) {

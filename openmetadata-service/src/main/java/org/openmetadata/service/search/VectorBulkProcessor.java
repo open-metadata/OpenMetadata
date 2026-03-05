@@ -79,8 +79,7 @@ public class VectorBulkProcessor implements AutoCloseable {
                                 .document(chunk.document()))));
       }
 
-      BulkRequest bulkRequest =
-          BulkRequest.of(b -> b.operations(operations).refresh(Refresh.False));
+      BulkRequest bulkRequest = BulkRequest.of(b -> b.operations(operations).refresh(Refresh.True));
       BulkResponse response = client.bulk(bulkRequest);
 
       int success = 0;

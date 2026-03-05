@@ -30,7 +30,6 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.search.SearchClient.GLOSSARY_TERM_SEARCH_INDEX;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 
-import com.google.gson.Gson;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -164,31 +163,18 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   public void prepare(Glossary glossary, boolean update) {}
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of("reviewers");
+  }
+
+  @Override
   public void storeEntity(Glossary glossary, boolean update) {
-    // Relationships and fields such as reviewers are derived and not stored as part of json
-    List<EntityReference> reviewers = glossary.getReviewers();
-    glossary.withReviewers(null);
     store(glossary, update);
-    glossary.withReviewers(reviewers);
   }
 
   @Override
   public void storeEntities(List<Glossary> entities) {
-    List<Glossary> entitiesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (Glossary glossary : entities) {
-      List<EntityReference> reviewers = glossary.getReviewers();
-
-      glossary.withReviewers(null);
-
-      String jsonCopy = gson.toJson(glossary);
-      entitiesToStore.add(gson.fromJson(jsonCopy, Glossary.class));
-
-      glossary.withReviewers(reviewers);
-    }
-
-    storeMany(entitiesToStore);
+    storeMany(entities);
   }
 
   @Override
@@ -531,7 +517,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateName(updated);
+      compareAndUpdate(
+          "name",
+          () -> {
+            updateName(updated);
+          });
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }

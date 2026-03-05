@@ -970,14 +970,21 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       createEntity(createRequest);
     }
 
-    // Basic list test - just verify list works
-    org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
-    params.setLimit(10);
-    org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
+    Awaitility.await("Wait for entities to be listable")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> {
+              org.openmetadata.sdk.models.ListParams params =
+                  new org.openmetadata.sdk.models.ListParams();
+              params.setLimit(10);
+              org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
 
-    assertNotNull(response, "List response should not be null");
-    assertNotNull(response.getData(), "List data should not be null");
-    assertTrue(response.getData().size() > 0, "Should have entities in list");
+              assertNotNull(response, "List response should not be null");
+              assertNotNull(response.getData(), "List data should not be null");
+              assertTrue(response.getData().size() > 0, "Should have entities in list");
+            });
   }
 
   @Test

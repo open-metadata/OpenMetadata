@@ -8,8 +8,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -41,6 +43,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
+import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -1183,36 +1186,115 @@ public class WorkflowHandler {
 
     String baseProcessKey = getTriggerWorkflowId(workflowName);
 
-    // For PeriodicBatchEntityTrigger, find all processes that start with the base key
+    // Prefer the current workflow definition config to avoid triggering stale process keys left
+    // behind by older deployments.
+    List<String> configuredTriggerKeys =
+        getConfiguredPeriodicTriggerProcessKeys(workflowName, baseProcessKey);
+    if (!configuredTriggerKeys.isEmpty()) {
+      return triggerProcessDefinitions(runtimeService, configuredTriggerKeys);
+    }
+
+    // Legacy fallback: trigger all latest process definitions matching the workflow prefix.
     List<ProcessDefinition> processDefinitions =
         repositoryService
             .createProcessDefinitionQuery()
             .processDefinitionKeyLike(baseProcessKey + "-%")
             .latestVersion()
             .list();
-
     if (!processDefinitions.isEmpty()) {
-      boolean anyStarted = false;
-      for (ProcessDefinition pd : processDefinitions) {
-        try {
-          LOG.info("Triggering process with key: {}", pd.getKey());
-          runtimeService.startProcessInstanceByKey(pd.getKey());
-          anyStarted = true;
-        } catch (Exception e) {
-          LOG.error("Failed to start process: {}", pd.getKey(), e);
-        }
-      }
-      return anyStarted;
-    } else {
-      // Fallback to original behavior for other trigger types
+      return triggerProcessDefinitions(
+          runtimeService, processDefinitions.stream().map(ProcessDefinition::getKey).toList());
+    }
+
+    // Fallback to original behavior for non-periodic trigger types.
+    try {
+      runtimeService.startProcessInstanceByKey(baseProcessKey);
+      return true;
+    } catch (FlowableObjectNotFoundException ex) {
+      LOG.error("No process definition found for key: {}", baseProcessKey);
+      return false;
+    }
+  }
+
+  private boolean triggerProcessDefinitions(
+      RuntimeService runtimeService, List<String> processKeys) {
+    boolean anyStarted = false;
+    for (String processKey : processKeys) {
       try {
-        runtimeService.startProcessInstanceByKey(baseProcessKey);
-        return true;
-      } catch (FlowableObjectNotFoundException ex) {
-        LOG.error("No process definition found for key: {}", baseProcessKey);
-        return false;
+        LOG.info("Triggering process with key: {}", processKey);
+        runtimeService.startProcessInstanceByKey(processKey);
+        anyStarted = true;
+      } catch (Exception e) {
+        LOG.error("Failed to start process: {}", processKey, e);
       }
     }
+    return anyStarted;
+  }
+
+  private List<String> getConfiguredPeriodicTriggerProcessKeys(
+      String workflowName, String baseProcessKey) {
+    try {
+      WorkflowDefinitionRepository repository =
+          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+      WorkflowDefinition workflowDefinition =
+          repository.getByName(
+              null, workflowName, repository.getFields("trigger"), Include.NON_DELETED, true);
+      WorkflowTriggerInterface trigger = workflowDefinition.getTrigger();
+      if (trigger == null || !"periodicBatchEntity".equals(trigger.getType())) {
+        return List.of();
+      }
+
+      List<String> configuredEntityTypes = getConfiguredEntityTypes(trigger);
+      if (configuredEntityTypes.isEmpty()) {
+        return List.of();
+      }
+
+      Set<String> processKeys = new LinkedHashSet<>();
+      for (String entityType : configuredEntityTypes) {
+        String processKey = String.format("%s-%s", baseProcessKey, entityType);
+        ProcessDefinition processDefinition =
+            processEngine
+                .getRepositoryService()
+                .createProcessDefinitionQuery()
+                .processDefinitionKey(processKey)
+                .latestVersion()
+                .singleResult();
+        if (processDefinition != null) {
+          processKeys.add(processKey);
+        }
+      }
+      return List.copyOf(processKeys);
+    } catch (Exception e) {
+      LOG.warn(
+          "Unable to resolve configured trigger process keys for workflow '{}': {}",
+          workflowName,
+          e.getMessage());
+      return List.of();
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<String> getConfiguredEntityTypes(WorkflowTriggerInterface trigger) {
+    Object configObject = trigger.getConfig();
+    if (configObject == null) {
+      return List.of();
+    }
+    Map<String, Object> configMap = JsonUtils.getMap(configObject);
+    Object entityTypesObject = configMap.get("entityTypes");
+
+    if (entityTypesObject instanceof List<?> entityTypes) {
+      return entityTypes.stream()
+          .filter(Objects::nonNull)
+          .map(Object::toString)
+          .filter(entityType -> !entityType.isBlank())
+          .toList();
+    }
+
+    if (entityTypesObject instanceof String entityType && !entityType.isBlank()) {
+      return List.of(entityType);
+    }
+
+    return List.of();
   }
 
   public boolean isWorkflowSuspended(String workflowName) {

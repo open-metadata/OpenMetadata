@@ -81,6 +81,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -821,6 +822,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/sampleData")
+  @LatencyPhase("tableSampleDataPut")
   @Operation(
       operationId = "addSampleData",
       summary = "Add sample data",
@@ -849,6 +851,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/{id}/sampleData")
+  @LatencyPhase("tableSampleDataGet")
   @Operation(
       operationId = "getSampleData",
       summary = "Get sample data",
@@ -879,6 +882,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @DELETE
   @Path("/{id}/sampleData")
+  @LatencyPhase("tableSampleDataDelete")
   @Operation(
       operationId = "deleteSampleData",
       summary = "Delete sample data",
@@ -906,6 +910,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/pipelineObservability")
+  @LatencyPhase("tablePipelineObservabilityPut")
   @Operation(
       operationId = "addPipelineObservability",
       summary = "Add pipeline observability data",
@@ -942,6 +947,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/{id}/pipelineObservability")
+  @LatencyPhase("tablePipelineObservabilityGet")
   @Operation(
       operationId = "getPipelineObservability",
       summary = "Get pipeline observability data",
@@ -968,6 +974,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/name/{fqn}/pipelineObservability")
+  @LatencyPhase("tablePipelineObservabilityGetByName")
   @Operation(
       operationId = "getPipelineObservabilityByFQN",
       summary = "Get pipeline observability data by table FQN",
@@ -997,6 +1004,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @DELETE
   @Path("/{id}/pipelineObservability")
+  @LatencyPhase("tablePipelineObservabilityDelete")
   @Operation(
       operationId = "deletePipelineObservability",
       summary = "Delete pipeline observability data",
@@ -1024,6 +1032,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/pipelineObservability/{pipelineFqn}")
+  @LatencyPhase("tablePipelineObservabilityPutSingle")
   @Operation(
       operationId = "addSinglePipelineObservability",
       summary = "Add or update single pipeline observability data",
@@ -1062,6 +1071,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @DELETE
   @Path("/{id}/pipelineObservability/{pipelineFqn}")
+  @LatencyPhase("tablePipelineObservabilityDeleteSingle")
   @Operation(
       operationId = "deleteSinglePipelineObservability",
       summary = "Delete single pipeline observability data",
@@ -1091,6 +1101,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/tableProfilerConfig")
+  @LatencyPhase("tableProfilerConfigPut")
   @Operation(
       operationId = "addDataProfilerConfig",
       summary = "Add table profile config",
@@ -1119,6 +1130,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/{id}/tableProfilerConfig")
+  @LatencyPhase("tableProfilerConfigGet")
   @Operation(
       operationId = "getDataProfilerConfig",
       summary = "Get table profile config",
@@ -1147,6 +1159,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @DELETE
   @Path("/{id}/tableProfilerConfig")
+  @LatencyPhase("tableProfilerConfigDelete")
   @Operation(
       operationId = "delete DataProfilerConfig",
       summary = "Delete table profiler config",
@@ -1174,6 +1187,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/{fqn}/tableProfile/latest")
+  @LatencyPhase("tableProfileLatestGet")
   @Operation(
       operationId = "Get the latest table and column profile",
       summary = "Get the latest table profile",
@@ -1212,6 +1226,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @GET
   @Path("/{fqn}/tableProfile")
+  @LatencyPhase("tableProfileListGet")
   @Operation(
       operationId = "list Profiles",
       summary = "List of table profiles",
@@ -1337,6 +1352,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/tableProfile")
+  @LatencyPhase("tableProfilePut")
   @Operation(
       operationId = "addDataProfiler",
       summary = "Add table profile data",
@@ -1644,7 +1660,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String sortOrder) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    ResourceContext<Table> resourceContext = getResourceContextById(id, include);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
 
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.getTableColumns(
@@ -1655,6 +1672,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
+            resourceContext.getOwners(),
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();
@@ -1731,7 +1749,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     // JAX-RS automatically URL-decodes path parameters, so fqn is already decoded
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    ResourceContext<Table> resourceContext = getResourceContextByName(fqn, include);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
 
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.getTableColumnsByFQN(
@@ -1742,6 +1761,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
+            resourceContext.getOwners(),
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();

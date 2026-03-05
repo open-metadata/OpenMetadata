@@ -38,6 +38,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
@@ -65,8 +66,10 @@ public class SubjectCacheTest {
                 isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
         .thenAnswer(
             i ->
-                EntityRepository.CACHE_WITH_NAME.get(
-                    new ImmutablePair<>(Entity.USER, i.getArgument(1))));
+                JsonUtils.readValue(
+                    EntityRepository.CACHE_WITH_NAME.get(
+                        new ImmutablePair<>(Entity.USER, i.getArgument(1))),
+                    User.class));
 
     TeamRepository teamRepository = mock(TeamRepository.class);
     Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
@@ -75,8 +78,10 @@ public class SubjectCacheTest {
                 isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
         .thenAnswer(
             i ->
-                EntityRepository.CACHE_WITH_ID.get(
-                    new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
+                JsonUtils.readValue(
+                    EntityRepository.CACHE_WITH_ID.get(
+                        new ImmutablePair<>(Entity.TEAM, i.getArgument(1))),
+                    Team.class));
 
     RoleRepository roleRepository = mock(RoleRepository.class);
     Entity.registerEntity(Role.class, Entity.ROLE, roleRepository);
@@ -85,8 +90,10 @@ public class SubjectCacheTest {
                 isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
         .thenAnswer(
             i ->
-                EntityRepository.CACHE_WITH_ID.get(
-                    new ImmutablePair<>(Entity.ROLE, i.getArgument(1))));
+                JsonUtils.readValue(
+                    EntityRepository.CACHE_WITH_ID.get(
+                        new ImmutablePair<>(Entity.ROLE, i.getArgument(1))),
+                    Role.class));
 
     PolicyRepository policyRepository = mock(PolicyRepository.class);
     Entity.registerEntity(Policy.class, Entity.POLICY, policyRepository);
@@ -95,8 +102,10 @@ public class SubjectCacheTest {
                 isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
         .thenAnswer(
             i ->
-                EntityRepository.CACHE_WITH_ID.get(
-                    new ImmutablePair<>(Entity.POLICY, i.getArgument(1))));
+                JsonUtils.readValue(
+                    EntityRepository.CACHE_WITH_ID.get(
+                        new ImmutablePair<>(Entity.POLICY, i.getArgument(1))),
+                    Policy.class));
 
     // Create team hierarchy: team1 -> team11 -> user
     team1Roles = getRoles("team1");
@@ -114,7 +123,8 @@ public class SubjectCacheTest {
             .withName("testUser")
             .withRoles(userRolesRef)
             .withTeams(List.of(team11.getEntityReference()));
-    EntityRepository.CACHE_WITH_NAME.put(new ImmutablePair<>(Entity.USER, "testUser"), user);
+    EntityRepository.CACHE_WITH_NAME.put(
+        new ImmutablePair<>(Entity.USER, "testUser"), JsonUtils.pojoToJson(user));
   }
 
   @BeforeEach
@@ -276,7 +286,8 @@ public class SubjectCacheTest {
             .withRoles(toEntityReferences(botRoles))
             .withTeams(List.of(team11.getEntityReference()))
             .withIsBot(true);
-    EntityRepository.CACHE_WITH_NAME.put(new ImmutablePair<>(Entity.USER, "botUser"), botUser);
+    EntityRepository.CACHE_WITH_NAME.put(
+        new ImmutablePair<>(Entity.USER, "botUser"), JsonUtils.pojoToJson(botUser));
 
     List<PolicyContext> botPolicies = SubjectCache.getPolicies("botUser");
 
@@ -295,7 +306,8 @@ public class SubjectCacheTest {
       String name = prefix + "_role_" + i;
       List<EntityReference> policies = toEntityReferences(getPolicies(name));
       Role role = new Role().withName(name).withId(UUID.randomUUID()).withPolicies(policies);
-      EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.ROLE, role.getId()), role);
+      EntityRepository.CACHE_WITH_ID.put(
+          new ImmutablePair<>(Entity.ROLE, role.getId()), JsonUtils.pojoToJson(role));
       roles.add(role);
     }
     return roles;
@@ -309,7 +321,7 @@ public class SubjectCacheTest {
           new Policy().withName(name).withId(UUID.randomUUID()).withRules(getRules(name));
       policies.add(policy);
       EntityRepository.CACHE_WITH_ID.put(
-          new ImmutablePair<>(Entity.POLICY, policy.getId()), policy);
+          new ImmutablePair<>(Entity.POLICY, policy.getId()), JsonUtils.pojoToJson(policy));
     }
     return policies;
   }
@@ -341,7 +353,8 @@ public class SubjectCacheTest {
             .withDefaultRoles(toEntityReferences(roles))
             .withPolicies(toEntityReferences(policies))
             .withParents(parentList);
-    EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.TEAM, team.getId()), team);
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
     return team;
   }
 }

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.internal.AutoPilotAppConfig;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -19,10 +20,11 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -110,9 +112,12 @@ public class AutoPilotApp extends AbstractNativeApplication {
   }
 
   private WorkflowDefinition loadWorkflow() {
-    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    EntityReference adminReference =
-        userRepository.findByName(getAppBot(), Include.NON_DELETED).getEntityReference();
+    BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+    Bot appBot = botRepository.findByName(getAppBot(), Include.NON_DELETED);
+    EntityReference adminReference = botRepository.getBotUser(appBot);
+    if (adminReference == null) {
+      throw EntityNotFoundException.byName(getAppBot());
+    }
 
     String resourceFile = "/applications/AutoPilotApplication/collate/AutoPilotWorkflow.json";
     resourceFile =
@@ -123,7 +128,7 @@ public class AutoPilotApp extends AbstractNativeApplication {
     return JsonUtils.readOrConvertValue(readResource(resourceFile), WorkflowDefinition.class)
         .withOwners(List.of(adminReference))
         .withUpdatedAt(System.currentTimeMillis())
-        .withUpdatedBy(getAppBot());
+        .withUpdatedBy(adminReference.getName());
   }
 
   private void createWorkflow(String createdBy) {

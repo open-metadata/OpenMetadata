@@ -956,7 +956,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
       CompletableFuture<BulkResponse> future;
       try {
-        future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+        future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.True));
       } catch (IOException e) {
         if (metrics != null && bulkTimerSample != null) {
           metrics.recordBulkRequestCompleted(bulkTimerSample, false);

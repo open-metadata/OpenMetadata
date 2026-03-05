@@ -765,6 +765,18 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     org.openmetadata.schema.entity.data.Table downstreamTable =
         client.tables().create(downstreamRequest);
 
+    org.awaitility.Awaitility.await("Wait for tables to be indexed in search")
+        .atMost(30, java.util.concurrent.TimeUnit.SECONDS)
+        .pollInterval(2, java.util.concurrent.TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult
+                  awaitResult = searchSchemaEntityRelationship(client, schemaFqn, null, false);
+              assertNotNull(awaitResult);
+              assertNotNull(awaitResult.getData().getNodes());
+              assertEquals(4, awaitResult.getData().getNodes().size());
+            });
+
     org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult result =
         searchSchemaEntityRelationship(client, schemaFqn, null, false);
 

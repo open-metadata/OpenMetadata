@@ -194,7 +194,7 @@ public class PatchOperationMetricsTest {
     Timer totalTimer =
         meterRegistry
             .find("request.latency.total")
-            .tag("endpoint", MetricUtils.normalizeUri(endpoint))
+            .tag("endpoint", endpoint)
             .tag("method", "PATCH")
             .timer();
     assertNotNull(totalTimer);

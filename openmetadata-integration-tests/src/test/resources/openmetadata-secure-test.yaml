@@ -3,6 +3,7 @@ swagger:
   resourcePackage: org.openmetadata.service.webservice.resources
 server:
   rootPath: '/api/*'
+  enableVirtualThreads: true
   applicationConnectors:
     - type: http
       port: 0

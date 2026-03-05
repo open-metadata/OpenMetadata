@@ -21,6 +21,8 @@
     <logger name="org.openmetadata.service.Entity" level="ERROR" />
     <!-- Add specific logger for SearchIndexApp and ReindexingJobLogger -->
     <logger name="org.openmetadata.service.apps.bundles.searchIndex" level="INFO" />
+    <!-- Slow request diagnostics: set to WARN to enable, OFF to disable -->
+    <logger name="org.openmetadata.slowrequest" level="${SLOW_REQUEST_LOG_LEVEL:-OFF}" />
     <root level="${LOG_LEVEL:-INFO}">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="file"/>

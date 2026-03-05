@@ -25,7 +25,9 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FILE;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +43,6 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.services.DriveService;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FileType;
 import org.openmetadata.schema.type.Include;
@@ -123,40 +124,33 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   @Override
-  public void storeEntity(File file, boolean update) {
-    // Don't store column tags as JSON but build it on the fly based on relationships
-    List<Column> columnsWithTags = file.getColumns();
-    file.setColumns(ColumnUtil.cloneWithoutTags(columnsWithTags));
-    if (file.getColumns() != null) {
-      file.getColumns().forEach(column -> column.setTags(null));
+  protected ObjectNode storageJsonNode(File file) {
+    ObjectNode node = super.storageJsonNode(file);
+    stripColumnTags(node.get("columns"));
+    return node;
+  }
+
+  private void stripColumnTags(JsonNode columnsNode) {
+    if (!(columnsNode instanceof ArrayNode columnArray)) {
+      return;
     }
+    for (JsonNode column : columnArray) {
+      if (!(column instanceof ObjectNode columnNode)) {
+        continue;
+      }
+      columnNode.remove("tags");
+      stripColumnTags(columnNode.get("children"));
+    }
+  }
+
+  @Override
+  public void storeEntity(File file, boolean update) {
     store(file, update);
-    // Restore columns with tags
-    file.withColumns(columnsWithTags);
   }
 
   @Override
   public void storeEntities(List<File> files) {
-    List<File> filesToStore = new ArrayList<>();
-    Gson gson = new Gson();
-
-    for (File file : files) {
-      // Don't store column tags as JSON but build it on the fly based on relationships
-      List<Column> columnsWithTags = file.getColumns();
-      file.setColumns(ColumnUtil.cloneWithoutTags(columnsWithTags));
-      if (file.getColumns() != null) {
-        file.getColumns().forEach(column -> column.setTags(null));
-      }
-
-      // Clone for storage
-      String jsonCopy = gson.toJson(file);
-      filesToStore.add(gson.fromJson(jsonCopy, File.class));
-
-      // Restore columns with tags in original
-      file.withColumns(columnsWithTags);
-    }
-
-    storeMany(filesToStore);
+    storeMany(files);
   }
 
   @Override
@@ -483,19 +477,62 @@ public class FileRepository extends EntityRepository<File> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange("fileType", original.getFileType(), updated.getFileType());
-      recordChange("mimeType", original.getMimeType(), updated.getMimeType());
-      recordChange("fileExtension", original.getFileExtension(), updated.getFileExtension());
-      recordChange("path", original.getPath(), updated.getPath());
-      recordChange("size", original.getSize(), updated.getSize());
-      recordChange("checksum", original.getChecksum(), updated.getChecksum());
-      recordChange("webViewLink", original.getWebViewLink(), updated.getWebViewLink());
-      recordChange("downloadLink", original.getDownloadLink(), updated.getDownloadLink());
-      recordChange("isShared", original.getIsShared(), updated.getIsShared());
-      recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion());
-      // Handle columns with proper column handling including tags
-      updateColumns(
-          COLUMN_FIELD, original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+      compareAndUpdate(
+          "fileType",
+          () -> {
+            recordChange("fileType", original.getFileType(), updated.getFileType());
+          });
+      compareAndUpdate(
+          "mimeType",
+          () -> {
+            recordChange("mimeType", original.getMimeType(), updated.getMimeType());
+          });
+      compareAndUpdate(
+          "fileExtension",
+          () -> {
+            recordChange("fileExtension", original.getFileExtension(), updated.getFileExtension());
+          });
+      compareAndUpdate(
+          "path",
+          () -> {
+            recordChange("path", original.getPath(), updated.getPath());
+          });
+      compareAndUpdate(
+          "size",
+          () -> {
+            recordChange("size", original.getSize(), updated.getSize());
+          });
+      compareAndUpdate(
+          "checksum",
+          () -> {
+            recordChange("checksum", original.getChecksum(), updated.getChecksum());
+          });
+      compareAndUpdate(
+          "webViewLink",
+          () -> {
+            recordChange("webViewLink", original.getWebViewLink(), updated.getWebViewLink());
+          });
+      compareAndUpdate(
+          "downloadLink",
+          () -> {
+            recordChange("downloadLink", original.getDownloadLink(), updated.getDownloadLink());
+          });
+      compareAndUpdate(
+          "isShared",
+          () -> {
+            recordChange("isShared", original.getIsShared(), updated.getIsShared());
+          });
+      compareAndUpdate(
+          "fileVersion",
+          () -> {
+            recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion());
+          });
+      compareAndUpdate(
+          "columns",
+          () -> {
+            updateColumns(
+                COLUMN_FIELD, original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+          });
     }
   }
 }

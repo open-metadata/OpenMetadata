@@ -18,6 +18,7 @@ import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.ext.Provider;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.util.RequestEntityCache;
 
 /**
  * JAX-RS filter that extracts If-Match header from requests and stores it
@@ -31,6 +32,9 @@ public class ETagRequestFilter implements ContainerRequestFilter {
 
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
+    // Start each request with a clean request-scoped cache.
+    RequestEntityCache.clear();
+
     // Clear any previous value
     IF_MATCH_HEADER.remove();
 

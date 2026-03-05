@@ -7,6 +7,7 @@ import io.micrometer.core.instrument.Timer;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.SqlLogger;
@@ -20,6 +21,7 @@ public class OMSqlLogger implements SqlLogger {
       Pattern.compile(
           "^\\s*(SELECT|INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP)\\b",
           Pattern.CASE_INSENSITIVE);
+  private static final Pattern DAO_METHOD_PATTERN = Pattern.compile("/\\*\\s*([^*]+?)\\s*\\*/");
 
   private static volatile long slowQueryThresholdMs = 100;
 
@@ -45,10 +47,6 @@ public class OMSqlLogger implements SqlLogger {
 
   @Override
   public void logBeforeExecution(StatementContext context) {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("sql {}, parameters {}", context.getRenderedSql(), context.getBinding());
-    }
-
     try {
       Timer.Sample timerSample = RequestLatencyContext.startDatabaseOperation();
       if (timerSample != null) {
@@ -114,12 +112,21 @@ public class OMSqlLogger implements SqlLogger {
     }
 
     if (LOG.isDebugEnabled()) {
+      String sql = context.getRenderedSql();
+      String daoMethod = extractDaoMethod(sql);
       LOG.debug(
-          "sql {}, parameters {}, timeTaken {} ms",
-          context.getRenderedSql(),
+          "/* {} */ sql {}, parameters {}, timeTaken {} ms",
+          daoMethod,
+          sql,
           context.getBinding(),
           elapsedTimeMillis);
     }
+  }
+
+  private String extractDaoMethod(String sql) {
+    if (sql == null) return "unknown";
+    Matcher matcher = DAO_METHOD_PATTERN.matcher(sql);
+    return matcher.find() ? matcher.group(1).trim() : "unknown";
   }
 
   private String extractQueryType(String sql) {

@@ -25,7 +25,6 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FILE;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 
-import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -112,16 +111,15 @@ public class DirectoryRepository extends EntityRepository<Directory> {
 
   @Override
   public void storeEntities(List<Directory> directories) {
-    List<Directory> directoriesToStore = new ArrayList<>();
-    Gson gson = new Gson();
+    List<String> fqns = new ArrayList<>(directories.size());
+    List<String> jsons = new ArrayList<>(directories.size());
 
     for (Directory directory : directories) {
-      // Clone for storage
-      String jsonCopy = gson.toJson(directory);
-      directoriesToStore.add(gson.fromJson(jsonCopy, Directory.class));
+      fqns.add(directory.getFullyQualifiedName());
+      jsons.add(serializeForStorage(directory));
     }
 
-    storeMany(directoriesToStore);
+    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
 
   @Override
@@ -479,23 +477,51 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateFromRelationship(
+      compareAndUpdate(
           "parent",
-          DIRECTORY,
-          original.getParent(),
-          updated.getParent(),
-          Relationship.CONTAINS,
-          DIRECTORY,
-          original.getId());
-      recordChange("directoryType", original.getDirectoryType(), updated.getDirectoryType());
-      recordChange("path", original.getPath(), updated.getPath());
-      recordChange("isShared", original.getIsShared(), updated.getIsShared());
-      recordChange("numberOfFiles", original.getNumberOfFiles(), updated.getNumberOfFiles());
-      recordChange(
+          () -> {
+            updateFromRelationship(
+                "parent",
+                DIRECTORY,
+                original.getParent(),
+                updated.getParent(),
+                Relationship.CONTAINS,
+                DIRECTORY,
+                original.getId());
+          });
+      compareAndUpdate(
+          "directoryType",
+          () -> {
+            recordChange("directoryType", original.getDirectoryType(), updated.getDirectoryType());
+          });
+      compareAndUpdate(
+          "path",
+          () -> {
+            recordChange("path", original.getPath(), updated.getPath());
+          });
+      compareAndUpdate(
+          "isShared",
+          () -> {
+            recordChange("isShared", original.getIsShared(), updated.getIsShared());
+          });
+      compareAndUpdate(
+          "numberOfFiles",
+          () -> {
+            recordChange("numberOfFiles", original.getNumberOfFiles(), updated.getNumberOfFiles());
+          });
+      compareAndUpdate(
           "numberOfSubDirectories",
-          original.getNumberOfSubDirectories(),
-          updated.getNumberOfSubDirectories());
-      recordChange("totalSize", original.getTotalSize(), updated.getTotalSize());
+          () -> {
+            recordChange(
+                "numberOfSubDirectories",
+                original.getNumberOfSubDirectories(),
+                updated.getNumberOfSubDirectories());
+          });
+      compareAndUpdate(
+          "totalSize",
+          () -> {
+            recordChange("totalSize", original.getTotalSize(), updated.getTotalSize());
+          });
     }
   }
 }

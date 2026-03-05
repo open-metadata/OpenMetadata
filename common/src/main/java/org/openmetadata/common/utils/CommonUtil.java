@@ -195,6 +195,10 @@ public final class CommonUtil {
     return list == null || list.isEmpty();
   }
 
+  public static boolean nullOrEmpty(Collection<?> collection) {
+    return collection == null || collection.isEmpty();
+  }
+
   public static boolean nullOrEmpty(Map<?, ?> m) {
     return m == null || m.isEmpty();
   }
