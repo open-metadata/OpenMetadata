@@ -70,7 +70,7 @@ class TestGetConnectionURL(unittest.TestCase):
         )
         engine_connection = MySQLConnection(connection).client
         self.assertEqual(
-            str(engine_connection.url),
+            engine_connection.url.render_as_string(hide_password=False),
             "mysql+pymysql://openmetadata_user:openmetadata_password@localhost:3306/openmetadata_db",
         )
         connection = MysqlConnectionConfig(
@@ -93,7 +93,7 @@ class TestGetConnectionURL(unittest.TestCase):
         ):
             engine_connection = MySQLConnection(connection).client
             self.assertEqual(
-                str(engine_connection.url),
+                engine_connection.url.render_as_string(hide_password=False),
                 "mysql+pymysql://openmetadata_user:mocked_token@localhost:3306/openmetadata_db",
             )
 
@@ -106,7 +106,7 @@ class TestGetConnectionURL(unittest.TestCase):
         )
         engine_connection = PostgresConnection(connection).client
         self.assertEqual(
-            str(engine_connection.url),
+            engine_connection.url.render_as_string(hide_password=False),
             "postgresql+psycopg2://openmetadata_user:openmetadata_password@localhost:3306/openmetadata_db",
         )
         connection = PostgresConnectionConfig(
@@ -129,6 +129,6 @@ class TestGetConnectionURL(unittest.TestCase):
         ):
             engine_connection = PostgresConnection(connection).client
             self.assertEqual(
-                str(engine_connection.url),
+                engine_connection.url.render_as_string(hide_password=False),
                 "postgresql+psycopg2://openmetadata_user:mocked_token@localhost:3306/openmetadata_db",
             )

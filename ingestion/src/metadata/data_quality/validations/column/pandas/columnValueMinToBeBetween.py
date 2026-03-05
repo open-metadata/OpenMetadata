@@ -26,10 +26,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValueMinToBeBetween import (
     BaseColumnValueMinToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
@@ -62,6 +59,7 @@ class ColumnValueMinToBeBetweenValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for min with proper aggregation
 
@@ -89,11 +87,11 @@ class ColumnValueMinToBeBetweenValidator(
 
         try:
             dfs = self.runner
-            min_impl = Metrics.MIN(column).get_pandas_computation()
+            min_impl = Metrics.min(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.MIN.name: min_impl.create_accumulator(),
+                    Metrics.min.name: min_impl.create_accumulator(),
                     DIMENSION_TOTAL_COUNT_KEY: 0,
                 }
             )
@@ -106,9 +104,9 @@ class ColumnValueMinToBeBetweenValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.MIN.name
+                        Metrics.min.name
                     ] = min_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.MIN.name],
+                        dimension_aggregates[dimension_value][Metrics.min.name],
                         group_df,
                     )
 
@@ -118,7 +116,7 @@ class ColumnValueMinToBeBetweenValidator(
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                min_value = agg[Metrics.MIN.name]
+                min_value = agg[Metrics.min.name]
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
                 if min_value is None:
@@ -131,14 +129,14 @@ class ColumnValueMinToBeBetweenValidator(
 
                 failed_count = (
                     total_rows
-                    if checker.violates_pandas({Metrics.MIN.name: min_value})
+                    if checker.violates_pandas({Metrics.min.name: min_value})
                     else 0
                 )
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.MIN.name: min_value,
+                        Metrics.min.name: min_value,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -157,12 +155,12 @@ class ColumnValueMinToBeBetweenValidator(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={
-                        Metrics.MIN.name: "min",
+                        Metrics.min.name: "min",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
-                    top_n=DEFAULT_TOP_DIMENSIONS,
-                    violation_metrics=[Metrics.MIN.name],
+                    top_n=top_n,
+                    violation_metrics=[Metrics.min.name],
                     violation_predicate=checker.violates_pandas,
                 )
 

@@ -46,6 +46,7 @@ import { Paging } from '../../generated/type/paging';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
+import { useLineageStore } from '../../hooks/useLineageStore';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -88,12 +89,9 @@ import { StyledMenu, StyledToggleButtonGroup } from './LineageTable.styled';
 import { useLineageTableState } from './useLineageTableState';
 
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
-  const {
-    selectedQuickFilters,
-    setSelectedQuickFilters,
-    lineageConfig,
-    updateEntityData,
-  } = useLineageProvider();
+  const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
+    useLineageProvider();
+  const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { t } = useTranslation();

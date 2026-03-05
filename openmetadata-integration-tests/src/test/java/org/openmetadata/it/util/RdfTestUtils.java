@@ -52,6 +52,10 @@ public final class RdfTestUtils {
 
   private RdfTestUtils() {}
 
+  public static boolean isRdfEnabled() {
+    return "true".equals(System.getProperty("enableRdf"));
+  }
+
   /**
    * Escape a string value for use in SPARQL queries.
    */
@@ -207,6 +211,11 @@ public final class RdfTestUtils {
    */
   public static void verifyContainsRelationship(EntityReference parent, EntityReference child) {
     verifyRelationshipInRdf(parent, child, Relationship.CONTAINS);
+  }
+
+  public static void verifyContainsRelationshipInRdf(
+      EntityReference parent, EntityReference child) {
+    verifyContainsRelationship(parent, child);
   }
 
   /**

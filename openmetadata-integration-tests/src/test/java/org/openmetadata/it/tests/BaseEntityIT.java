@@ -2619,6 +2619,104 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
+   * Test: Entity Status functionality
+   * Verifies that entityStatus field works correctly for entities that support it
+   */
+  @Test
+  void test_entityStatus(TestNamespace ns) {
+    // Only test if entity has entityStatus field (check if getEntityStatus method exists)
+    if ("glossaryTerm".equals(getEntityType())) {
+      log.info(
+          "Skipping entityStatus test for GlossaryTerm - has different entityStatus implementation");
+      return;
+    }
+
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+
+    try {
+      // Check if entity supports entityStatus
+      org.openmetadata.schema.type.EntityStatus currentStatus = entity.getEntityStatus();
+
+      // If entityStatus is null, the entity doesn't support this field - skip the test
+      if (currentStatus == null) {
+        log.info(
+            "Entity {} does not support entityStatus field - skipping test",
+            entity.getClass().getSimpleName());
+        return;
+      }
+
+      // Default status should be UNPROCESSED
+      assertEquals(
+          org.openmetadata.schema.type.EntityStatus.UNPROCESSED,
+          currentStatus,
+          "Default entity status should be UNPROCESSED");
+
+      // Test updating entityStatus via PATCH
+      if (supportsPatch) {
+        // Update to DRAFT
+        entity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DRAFT);
+        T updatedEntity = patchEntity(entity.getId().toString(), entity);
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.DRAFT,
+            updatedEntity.getEntityStatus(),
+            "Entity status should be updated to DRAFT");
+
+        // Update to IN_REVIEW
+        updatedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
+        T reviewEntity = patchEntity(updatedEntity.getId().toString(), updatedEntity);
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.IN_REVIEW,
+            reviewEntity.getEntityStatus(),
+            "Entity status should be updated to IN_REVIEW");
+
+        // Update to APPROVED
+        reviewEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.APPROVED);
+        T approvedEntity = patchEntity(reviewEntity.getId().toString(), reviewEntity);
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.APPROVED,
+            approvedEntity.getEntityStatus(),
+            "Entity status should be updated to APPROVED");
+
+        // Update to DEPRECATED
+        approvedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
+        T deprecatedEntity = patchEntity(approvedEntity.getId().toString(), approvedEntity);
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.DEPRECATED,
+            deprecatedEntity.getEntityStatus(),
+            "Entity status should be updated to DEPRECATED");
+
+        // Update to REJECTED
+        deprecatedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.REJECTED);
+        T rejectedEntity = patchEntity(deprecatedEntity.getId().toString(), deprecatedEntity);
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.REJECTED,
+            rejectedEntity.getEntityStatus(),
+            "Entity status should be updated to REJECTED");
+
+        // Verify entity can be retrieved with correct status
+        T fetchedEntity = getEntity(rejectedEntity.getId().toString());
+        assertEquals(
+            org.openmetadata.schema.type.EntityStatus.REJECTED,
+            fetchedEntity.getEntityStatus(),
+            "Fetched entity should maintain the REJECTED status");
+
+        // Verify version increments with status changes (if entity supports versioning)
+        assertTrue(
+            fetchedEntity.getVersion() > entity.getVersion(),
+            "Version should increment when entityStatus is updated");
+      }
+
+    } catch (NoSuchMethodError | UnsupportedOperationException e) {
+      log.info(
+          "Entity "
+              + entity.getClass().getSimpleName()
+              + " does not support entityStatus: "
+              + e.getMessage());
+    }
+  }
+
+  /**
    * Test: Bulk loading efficiency
    * Test: Bulk entity creation and fetching works correctly.
    * Basic functionality test - comprehensive pagination is in PaginationIT.

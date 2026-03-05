@@ -75,12 +75,6 @@ Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/
 $$
 
 $$section
-### Compute Metrics $(id="computeMetrics")
-
-Set the `Compute Metrics` toggle off to not perform any metric computation during the profiler ingestion workflow. Used in combination with `Ingest Sample Data` toggle on allows you to only ingest sample data.
-$$
-
-$$section
 ### Profile Sample Type $(id="profileSampleType")
 The sample type can be set to either:  
 
@@ -126,6 +120,12 @@ $$section
 When using the ROWS sampling type choose wheather to randomized the sample or. Non randomized sample will be faster to compute.
 
 Defaults to `True`
+$$
+
+$$section
+### Metrics $(id="metrics")
+
+Select which metrics the profiler should compute. By default, a standard set of metrics is selected. You can add expensive metrics such as `histogram` or `cardinalityDistribution` if needed, or remove metrics you don't require to speed up profiling.
 $$
 
 $$section

@@ -56,6 +56,7 @@ public class DistributedJobParticipant implements Managed {
 
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final AtomicBoolean participating = new AtomicBoolean(false);
+  private OrphanJobMonitor orphanJobMonitor;
 
   /**
    * -- GETTER --
@@ -107,6 +108,10 @@ public class DistributedJobParticipant implements Managed {
       // Start the notifier (Redis subscription or polling)
       notifier.start();
 
+      // Start orphan job monitor to detect jobs left behind by crashed coordinators
+      orphanJobMonitor = new OrphanJobMonitor(collectionDAO);
+      orphanJobMonitor.start();
+
       LOG.info(
           "Started distributed job participant on server {} using {} notifier",
           serverId,
@@ -118,6 +123,9 @@ public class DistributedJobParticipant implements Managed {
   @Override
   public void stop() {
     if (running.compareAndSet(true, false)) {
+      if (orphanJobMonitor != null) {
+        orphanJobMonitor.shutdown();
+      }
       Thread thread = participantThread;
       if (thread != null) {
         thread.interrupt();
@@ -269,9 +277,13 @@ public class DistributedJobParticipant implements Managed {
       // Set up failure callback on bulk sink to record sink failures
       final IndexingFailureRecorder recorder = failureRecorder;
       bulkSink.setFailureCallback(
-          (entityType, entityId, entityFqn, errorMessage) -> {
+          (entityType, entityId, entityFqn, errorMessage, stage) -> {
             if (recorder != null) {
-              recorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+              if (stage == IndexingFailureRecorder.FailureStage.PROCESS) {
+                recorder.recordProcessFailure(entityType, entityId, entityFqn, errorMessage);
+              } else {
+                recorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+              }
             }
           });
 

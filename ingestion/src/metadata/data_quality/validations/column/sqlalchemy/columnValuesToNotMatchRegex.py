@@ -55,7 +55,7 @@ class ColumnValuesToNotMatchRegexValidator(
                 f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`"
             )
             return self.run_query_results(
-                self.runner, Metrics.NOT_LIKE_COUNT, column, **kwargs
+                self.runner, Metrics.notLikeCount, column, **kwargs
             )
 
     def _execute_dimensional_validation(
@@ -64,6 +64,7 @@ class ColumnValuesToNotMatchRegexValidator(
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
@@ -87,15 +88,15 @@ class ColumnValuesToNotMatchRegexValidator(
             ]
 
             metric_expressions = {
-                Metrics.NOT_REGEX_COUNT.name: add_props(expression=forbidden_regex)(
-                    Metrics.NOT_REGEX_COUNT.value
+                Metrics.notRegexCount.name: add_props(expression=forbidden_regex)(
+                    Metrics.notRegexCount.value
                 )(column).fn(),
-                Metrics.ROW_COUNT.name: Metrics.ROW_COUNT().fn(),
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.ROW_COUNT().fn(),
+                Metrics.rowCount.name: Metrics.rowCount().fn(),
+                DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
             }
 
             metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[
-                Metrics.NOT_REGEX_COUNT.name
+                Metrics.notRegexCount.name
             ]
 
             normalized_dimension = self._get_normalized_dimension_expression(
@@ -106,6 +107,7 @@ class ColumnValuesToNotMatchRegexValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                top_n=top_n,
             )
 
             for row in result_rows:

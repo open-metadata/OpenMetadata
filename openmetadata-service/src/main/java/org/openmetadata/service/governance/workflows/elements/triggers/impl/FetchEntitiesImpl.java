@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -21,6 +22,11 @@ import org.openmetadata.service.search.SearchSortFilter;
 
 @Slf4j
 public class FetchEntitiesImpl implements JavaDelegate {
+  // Entity types whose fullyQualifiedName is mapped as "text" (not "keyword")
+  // and require the .keyword subfield for reliable sorting in deep pagination.
+  private static final Set<String> ENTITIES_NEEDING_KEYWORD_SORT =
+      Set.of("testCase", "user", "team");
+
   private Expression entityTypesExpr;
   private Expression searchFilterExpr;
   private Expression batchSizeExpr;
@@ -127,8 +133,22 @@ public class FetchEntitiesImpl implements JavaDelegate {
   private SearchResultListMapper fetchEntities(
       List<Object> searchAfterList, String entityType, String searchFilter, int batchSize) {
     SearchRepository searchRepository = Entity.getSearchRepository();
-    SearchSortFilter searchSortFilter =
-        new SearchSortFilter("fullyQualifiedName", null, null, null);
+
+    // Skip entity types that don't have search indices (e.g., dataContract, dataInsightChart,
+    // report)
+    if (!searchRepository.checkIfIndexingIsSupported(entityType)) {
+      LOG.warn(
+          "Entity type '{}' does not have a search index. Skipping fetch for this type.",
+          entityType);
+      return new SearchResultListMapper(List.of(), 0);
+    }
+
+    // Use .keyword suffix for entities with text fields
+    String sortField = "fullyQualifiedName";
+    if (ENTITIES_NEEDING_KEYWORD_SORT.contains(entityType)) {
+      sortField = "fullyQualifiedName.keyword";
+    }
+    SearchSortFilter searchSortFilter = new SearchSortFilter(sortField, null, null, null);
     Object[] searchAfter = searchAfterList.isEmpty() ? null : searchAfterList.toArray();
 
     try {
