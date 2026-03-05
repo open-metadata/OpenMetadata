@@ -58,6 +58,7 @@ class ColumnValueMedianToBeBetweenValidator(
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for median using normalized CTE approach.
 
@@ -128,6 +129,7 @@ class ColumnValueMedianToBeBetweenValidator(
                     test_params
                 ),
                 failed_count_builder=failed_count_builder,
+                top_n=top_n,
             )
             for row in result_rows:
                 median_value = row.get(Metrics.median.name)

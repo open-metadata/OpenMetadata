@@ -83,6 +83,7 @@ class ColumnValueLengthsToBeBetweenValidator(
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for max with proper aggregation
 
@@ -122,6 +123,7 @@ class ColumnValueLengthsToBeBetweenValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                top_n=top_n,
             )
 
             for row in result_rows:
