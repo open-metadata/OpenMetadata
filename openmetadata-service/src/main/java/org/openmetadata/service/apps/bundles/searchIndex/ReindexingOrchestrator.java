@@ -225,6 +225,7 @@ public class ReindexingOrchestrator {
     ReindexingConfiguration config = ReindexingConfiguration.from(jobData);
     config = ReindexingConfiguration.applyAutoTuning(config, searchRepository);
     config.applyTo(jobData);
+    updateRunRecordConfig(config);
 
     ExecutionResult result = activeStrategy.execute(config, jobContext);
     updateJobDataFromResult(result);
@@ -266,6 +267,26 @@ public class ReindexingOrchestrator {
       case COMPLETED_WITH_ERRORS -> jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
       case FAILED -> jobData.setStatus(EventPublisherJob.Status.FAILED);
       case STOPPED -> jobData.setStatus(EventPublisherJob.Status.STOPPED);
+    }
+  }
+
+  private void updateRunRecordConfig(ReindexingConfiguration config) {
+    try {
+      AppRunRecord appRecord = context.getJobRecord();
+      if (appRecord != null) {
+        Map<String, Object> configMap = appRecord.getConfig();
+        if (configMap != null) {
+          configMap.put("batchSize", config.batchSize());
+          configMap.put("consumerThreads", config.consumerThreads());
+          configMap.put("producerThreads", config.producerThreads());
+          configMap.put("queueSize", config.queueSize());
+          configMap.put("maxConcurrentRequests", config.maxConcurrentRequests());
+          configMap.put("payLoadSize", config.payloadSize());
+        }
+        context.storeRunRecord(JsonUtils.pojoToJson(appRecord));
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to update run record with auto-tuned config", e);
     }
   }
 
