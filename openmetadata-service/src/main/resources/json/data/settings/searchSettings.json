@@ -2097,6 +2097,74 @@
         "phraseMatchMultiplier": 1.5,
         "fuzzyMatchMultiplier": 1.0
       }
+    },
+    {
+      "assetType": "metric",
+      "searchFields": [
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        }
+      ],
+      "aggregations": [],
+      "scoreMode": "sum",
+      "boostMode": "sum",
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description"
+      ],
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
     }
   ],
   "defaultConfiguration": {
@@ -3230,6 +3298,43 @@
         {
           "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with glossary term."
+        }
+      ]
+    },
+    {
+      "entityType": "metric",
+      "fields": [
+        {
+          "name": "displayName.keyword",
+          "description": "Exact match on metric display name for precise lookups."
+        },
+        {
+          "name": "name",
+          "description": "Standard text analysis on metric name with tokenization and stemming."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Partial matching on metric name for finding with incomplete information."
+        },
+        {
+          "name": "displayName",
+          "description": "Standard text analysis on the human-readable metric name."
+        },
+        {
+          "name": "displayName.ngram",
+          "description": "Partial matching on display name for flexible searching."
+        },
+        {
+          "name": "description",
+          "description": "Full-text search on metric descriptions to find by purpose or definition."
+        },
+        {
+          "name": "fullyQualifiedName",
+          "description": "Search on the complete hierarchical name of the metric."
+        },
+        {
+          "name": "fqnParts",
+          "description": "Search on parts of the hierarchical name for flexible matching."
         }
       ]
     },
