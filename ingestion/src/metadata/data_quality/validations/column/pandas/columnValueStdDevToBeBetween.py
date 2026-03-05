@@ -26,10 +26,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValueStdDevToBeBetween import (
     BaseColumnValueStdDevToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
@@ -65,6 +62,7 @@ class ColumnValueStdDevToBeBetweenValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for stddev with proper weighted aggregation
 
@@ -227,7 +225,7 @@ class ColumnValueStdDevToBeBetweenValidator(
                         Metrics.valuesCount.name,
                         SUM_SQUARES_KEY,
                     ],
-                    top_n=DEFAULT_TOP_DIMENSIONS,
+                    top_n=top_n,
                     violation_metrics=[Metrics.stddev.name],
                     violation_predicate=checker.violates_pandas,
                 )

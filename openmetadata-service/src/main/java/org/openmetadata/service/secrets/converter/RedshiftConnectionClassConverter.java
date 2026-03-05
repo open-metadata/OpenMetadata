@@ -16,14 +16,16 @@ package org.openmetadata.service.secrets.converter;
 import java.util.List;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
+import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.utils.JsonUtils;
 
-/**
- * Converter class to get an `DatalakeConnection` object.
- */
 public class RedshiftConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
+
+  private static final List<Class<?>> AUTH_SOURCE_CLASSES =
+      List.of(basicAuth.class, IamAuthConfig.class);
 
   public RedshiftConnectionClassConverter() {
     super(RedshiftConnection.class);
@@ -33,6 +35,10 @@ public class RedshiftConnectionClassConverter extends ClassConverter {
   public Object convert(Object object) {
     RedshiftConnection redshiftConnection =
         (RedshiftConnection) JsonUtils.convertValue(object, this.clazz);
+
+    tryToConvert(redshiftConnection.getAuthType(), AUTH_SOURCE_CLASSES)
+        .ifPresent(redshiftConnection::setAuthType);
+
     tryToConvert(redshiftConnection.getSslConfig(), SSL_SOURCE_CLASS)
         .ifPresent(redshiftConnection::setSslConfig);
 
