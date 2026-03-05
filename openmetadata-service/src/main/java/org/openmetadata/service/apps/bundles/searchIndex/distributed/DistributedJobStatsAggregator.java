@@ -23,7 +23,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
@@ -62,6 +64,8 @@ public class DistributedJobStatsAggregator {
   private final AtomicReference<IndexJobStatus> lastNotifiedStatus = new AtomicReference<>();
   private long lastBroadcastSuccess = -1;
   private long lastBroadcastFailed = -1;
+  private String cachedRunType;
+  private AppSchedule cachedScheduleInfo;
 
   public DistributedJobStatsAggregator(DistributedSearchIndexCoordinator coordinator, UUID jobId) {
     this(coordinator, jobId, null, null, DEFAULT_POLL_INTERVAL_MS);
@@ -114,6 +118,8 @@ public class DistributedJobStatsAggregator {
    */
   public void start() {
     if (running.compareAndSet(false, true)) {
+      cacheAppRunRecordFields();
+
       scheduler =
           Executors.newSingleThreadScheduledExecutor(
               Thread.ofPlatform()
@@ -124,6 +130,26 @@ public class DistributedJobStatsAggregator {
           this::aggregateAndBroadcast, 0, pollIntervalMs, TimeUnit.MILLISECONDS);
 
       LOG.info("Started stats aggregator for job {} with interval {}ms", jobId, pollIntervalMs);
+    }
+  }
+
+  private void cacheAppRunRecordFields() {
+    if (appId == null || appStartTime == null) {
+      return;
+    }
+    try {
+      CollectionDAO dao = coordinator.getCollectionDAO();
+      String json =
+          dao.appExtensionTimeSeriesDao()
+              .getByAppIdAndTimestamp(
+                  appId.toString(), appStartTime, AppExtension.ExtensionType.STATUS.toString());
+      if (json != null) {
+        AppRunRecord record = JsonUtils.readValue(json, AppRunRecord.class);
+        cachedRunType = record.getRunType();
+        cachedScheduleInfo = record.getScheduleInfo();
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not cache AppRunRecord fields for aggregator", e);
     }
   }
 
@@ -393,7 +419,8 @@ public class DistributedJobStatsAggregator {
     // Use the actual app ID so frontend can match the record for live updates
     appRecord.setAppId(appId != null ? appId : UUID.randomUUID());
     appRecord.setStatus(convertStatus(job.getStatus()));
-    appRecord.setRunType("SearchIndexApp");
+    appRecord.setRunType(cachedRunType != null ? cachedRunType : "OnDemandJob");
+    appRecord.setScheduleInfo(cachedScheduleInfo);
     // Use the app's start time so frontend can match the record
     appRecord.setStartTime(appStartTime != null ? appStartTime : job.getStartedAt());
     appRecord.setEndTime(job.getCompletedAt());
