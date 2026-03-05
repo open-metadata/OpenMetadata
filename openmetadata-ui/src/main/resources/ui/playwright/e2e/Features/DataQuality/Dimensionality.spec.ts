@@ -231,15 +231,15 @@ test(
       await page.locator(`[data-testid="dimension-select"]`).click();
 
       await expect(
-        page.locator(
-          `[data-value=${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions[0]}]`
-        )
+        page.getByRole('option', {
+          name: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions[0],
+        })
       ).toBeVisible();
 
       await expect(
-        page.locator(
-          `[data-value=${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0]}]`
-        )
+        page.getByRole('option', {
+          name: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0],
+        })
       ).toBeVisible();
     });
   }

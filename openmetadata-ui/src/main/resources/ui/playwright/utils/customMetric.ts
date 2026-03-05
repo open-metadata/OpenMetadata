@@ -128,7 +128,7 @@ export const createCustomMetric = async ({
   // verify the created custom metric
   await expect(page).toHaveURL(/profiler/);
 
-  await expect(page.getByRole('heading', { name: metric.name })).toBeVisible();
+  await expect(page.getByTestId(`${metric.name}-title`)).toBeVisible();
 };
 
 export const deleteCustomMetric = async ({
@@ -140,14 +140,12 @@ export const deleteCustomMetric = async ({
   metric: CustomMetricDetails['metric'];
   isColumnMetric?: boolean;
 }) => {
-  await page
-    .getByRole('heading', { name: metric.name })
-    .scrollIntoViewIfNeeded();
+  await page.getByTestId(`${metric.name}-title`).scrollIntoViewIfNeeded();
 
-  await expect(page.getByRole('heading', { name: metric.name })).toBeVisible();
+  await expect(page.getByTestId(`${metric.name}-title`)).toBeVisible();
 
   await page.click(`[data-testid="${metric.name}-custom-metrics-menu"]`);
-  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await page.getByRole('menuitemradio', { name: 'Delete' }).click();
 
   await expect(page.locator('.ant-modal-header')).toContainText(metric.name);
 

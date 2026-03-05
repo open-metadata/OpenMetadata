@@ -28,7 +28,9 @@ const ProfilerStateWrapper = ({
   return (
     <div>
       {title && (
-        <p className="tw:m-0 tw:mb-3 tw:text-md tw:font-semibold tw:text-primary">
+        <p
+          className="tw:m-0 tw:mb-3 tw:text-md tw:font-semibold tw:text-primary"
+          data-testid={`${title}-title`}>
           {title}
         </p>
       )}
