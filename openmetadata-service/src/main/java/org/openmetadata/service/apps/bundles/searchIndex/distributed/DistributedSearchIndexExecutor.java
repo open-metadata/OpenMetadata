@@ -507,51 +507,76 @@ public class DistributedSearchIndexExecutor {
       }
 
       // Flush sink and wait for all pending bulk requests to complete
-      if (searchIndexSink != null) {
-        LOG.info("Flushing sink and waiting for pending requests");
-        boolean completed = searchIndexSink.flushAndAwait(60);
-        if (!completed) {
-          LOG.warn("Sink flush timed out - some requests may not be reflected in final stats");
+      try {
+        if (searchIndexSink != null) {
+          LOG.info("Flushing sink and waiting for pending requests");
+          boolean completed = searchIndexSink.flushAndAwait(60);
+          if (!completed) {
+            LOG.warn("Sink flush timed out - some requests may not be reflected in final stats");
+          }
         }
+      } catch (Exception e) {
+        LOG.error("Error flushing sink", e);
       }
 
-      // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
-      // No need for redundant server-level stats persistence
-
-      // Final stats broadcast and cleanup
-      statsAggregator.forceUpdate();
-      statsAggregator.stop();
-
-      if (metrics != null && timerSample != null) {
-        SearchIndexJob finalJob = coordinator.getJob(jobId).orElse(null);
-        IndexJobStatus finalStatus = finalJob != null ? finalJob.getStatus() : null;
-        if (finalStatus == IndexJobStatus.COMPLETED
-            || finalStatus == IndexJobStatus.COMPLETED_WITH_ERRORS) {
-          metrics.recordJobCompleted(timerSample);
-        } else if (finalStatus == IndexJobStatus.STOPPED) {
-          metrics.recordJobStopped(timerSample);
-        } else {
-          metrics.recordJobFailed(timerSample);
+      // Flush and close failure recorder before stats aggregator so failure count is available
+      try {
+        if (failureRecorder != null) {
+          failureRecorder.close();
         }
-      }
-
-      // Flush and close failure recorder
-      if (failureRecorder != null) {
-        failureRecorder.close();
+      } catch (Exception e) {
+        LOG.error("Error closing failure recorder", e);
       }
 
       // Clear failure callback from sink
-      if (searchIndexSink != null) {
-        searchIndexSink.setFailureCallback(null);
+      try {
+        if (searchIndexSink != null) {
+          searchIndexSink.setFailureCallback(null);
+        }
+      } catch (Exception e) {
+        LOG.debug("Error clearing failure callback", e);
+      }
+
+      // Final stats broadcast and cleanup
+      try {
+        statsAggregator.forceUpdate();
+        statsAggregator.stop();
+      } catch (Exception e) {
+        LOG.error("Error stopping stats aggregator", e);
+      }
+
+      try {
+        if (metrics != null && timerSample != null) {
+          SearchIndexJob finalJob = coordinator.getJob(jobId).orElse(null);
+          IndexJobStatus finalStatus = finalJob != null ? finalJob.getStatus() : null;
+          if (finalStatus == IndexJobStatus.COMPLETED
+              || finalStatus == IndexJobStatus.COMPLETED_WITH_ERRORS) {
+            metrics.recordJobCompleted(timerSample);
+          } else if (finalStatus == IndexJobStatus.STOPPED) {
+            metrics.recordJobStopped(timerSample);
+          } else {
+            metrics.recordJobFailed(timerSample);
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("Error recording metrics", e);
       }
 
       // Notify other servers that job has completed
-      if (jobNotifier != null) {
-        jobNotifier.notifyJobCompleted(jobId);
+      try {
+        if (jobNotifier != null) {
+          jobNotifier.notifyJobCompleted(jobId);
+        }
+      } catch (Exception e) {
+        LOG.debug("Error notifying job completion", e);
       }
 
       // Release lock
-      coordinator.releaseReindexLock(jobId);
+      try {
+        coordinator.releaseReindexLock(jobId);
+      } catch (Exception e) {
+        LOG.warn("Error releasing reindex lock", e);
+      }
 
       // Remove from coordinated jobs set
       COORDINATED_JOBS.remove(jobId);
