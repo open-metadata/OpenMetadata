@@ -104,6 +104,27 @@ export const EDIT_INCIDENTS_POLICY: PolicyRule[] = [
   },
 ];
 
+export const TABLE_VIEW_INCIDENTS_POLICY: PolicyRule[] = [
+  {
+    name: `table-view-incidents-${uuid()}`,
+    resources: [ResourceEntity.TABLE],
+    operations: [Operation.ViewTests, Operation.ViewAll, Operation.ViewBasic],
+    effect: Effect.Allow,
+  },
+  {
+    name: `table-view-incidents-tc-${uuid()}`,
+    resources: [ResourceEntity.TEST_CASE],
+    operations: [Operation.ViewAll, Operation.ViewBasic],
+    effect: Effect.Allow,
+  },
+  {
+    name: `table-view-incidents-all-${uuid()}`,
+    resources: [ResourceEntity.ALL],
+    operations: [Operation.ViewBasic],
+    effect: Effect.Allow,
+  },
+];
+
 export const TABLE_EDIT_INCIDENTS_POLICY: PolicyRule[] = [
   {
     name: `table-edit-incidents-${uuid()}`,
@@ -112,6 +133,17 @@ export const TABLE_EDIT_INCIDENTS_POLICY: PolicyRule[] = [
       Operation.EditTests,
       Operation.ViewAll,
       Operation.ViewTests,
+      Operation.ViewBasic,
+    ],
+    effect: Effect.Allow,
+  },
+  {
+    name: `table-edit-incidents-tc-${uuid()}`,
+    resources: [ResourceEntity.TEST_CASE],
+    operations: [
+      Operation.EditTests,
+      Operation.EditAll,
+      Operation.ViewAll,
       Operation.ViewBasic,
     ],
     effect: Effect.Allow,

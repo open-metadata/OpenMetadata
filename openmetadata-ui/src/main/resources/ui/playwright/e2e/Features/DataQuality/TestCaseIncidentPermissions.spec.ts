@@ -16,6 +16,7 @@ import {
   CONSUMER_LIKE_POLICY,
   EDIT_INCIDENTS_POLICY,
   TABLE_EDIT_INCIDENTS_POLICY,
+  TABLE_VIEW_INCIDENTS_POLICY,
   VIEW_INCIDENTS_POLICY,
 } from '../../../constant/dataQualityPermissions';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
@@ -40,6 +41,10 @@ const tableEditIncidentsPolicy = new PolicyClass();
 const tableEditIncidentsRole = new RolesClass();
 const tableEditIncidentsUser = new UserClass();
 
+const tableViewIncidentsPolicy = new PolicyClass();
+const tableViewIncidentsRole = new RolesClass();
+const tableViewIncidentsUser = new UserClass();
+
 const consumerLikePolicy = new PolicyClass();
 const consumerLikeRole = new RolesClass();
 const consumerLikeUser = new UserClass();
@@ -52,6 +57,7 @@ const test = base.extend<{
   viewIncidentsPage: Page;
   editIncidentsPage: Page;
   tableEditIncidentsPage: Page;
+  tableViewIncidentsPage: Page;
   consumerLikePage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
@@ -74,6 +80,12 @@ const test = base.extend<{
   tableEditIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await tableEditIncidentsUser.login(page);
+    await use(page);
+    await page.close();
+  },
+  tableViewIncidentsPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await tableViewIncidentsUser.login(page);
     await use(page);
     await page.close();
   },
@@ -176,6 +188,13 @@ test.describe(
       );
       await setupUserWithPolicy(
         apiContext,
+        tableViewIncidentsUser,
+        tableViewIncidentsPolicy,
+        tableViewIncidentsRole,
+        TABLE_VIEW_INCIDENTS_POLICY
+      );
+      await setupUserWithPolicy(
+        apiContext,
         consumerLikeUser,
         consumerLikePolicy,
         consumerLikeRole,
@@ -216,17 +235,17 @@ test.describe(
       });
 
       test('User with TABLE.VIEW_TESTS can view incidents in UI (alternative)', async ({
-        tableEditIncidentsPage,
+        tableViewIncidentsPage,
       }) => {
-        await visitTestCaseIncidentPage(tableEditIncidentsPage);
+        await visitTestCaseIncidentPage(tableViewIncidentsPage);
         await expect(
-          tableEditIncidentsPage.getByTestId('open-task')
+          tableViewIncidentsPage.getByTestId('open-task')
         ).toBeVisible();
         await expect(
-          tableEditIncidentsPage.getByTestId('closed-task')
+          tableViewIncidentsPage.getByTestId('closed-task')
         ).toBeVisible();
         await expect(
-          tableEditIncidentsPage.getByTestId('edit-resolution-icon')
+          tableViewIncidentsPage.getByTestId('edit-resolution-icon')
         ).toBeHidden();
       });
     });
