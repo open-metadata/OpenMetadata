@@ -123,11 +123,8 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
   @Override
   public void setInheritedFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
-    DatabaseSchema schema =
-        Entity.getEntity(
-            DATABASE_SCHEMA, storedProcedure.getDatabaseSchema().getId(), "owners,domains", ALL);
-    inheritOwners(storedProcedure, fields, schema);
-    inheritDomains(storedProcedure, fields, schema);
+    hydrateParentReferencesForInheritance(List.of(storedProcedure), fields);
+    super.setInheritedFields(storedProcedure, fields);
   }
 
   @Override
@@ -189,6 +186,27 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
     super.setFieldsInBulk(fields, storedProcedures);
   }
 
+  @Override
+  protected void setInheritedFields(List<StoredProcedure> entities, EntityUtil.Fields fields) {
+    hydrateParentReferencesForInheritance(entities, fields);
+    super.setInheritedFields(entities, fields);
+  }
+
+  @Override
+  protected String getInheritableFields() {
+    return "owners,domains";
+  }
+
+  @Override
+  protected void applyInheritance(
+      StoredProcedure entity, EntityUtil.Fields fields, EntityInterface parent) {
+    if (!(parent instanceof DatabaseSchema schema)) {
+      return;
+    }
+    inheritOwners(entity, fields, schema);
+    inheritDomains(entity, fields, schema);
+  }
+
   private void setDefaultFields(StoredProcedure storedProcedure) {
     EntityReference schemaRef = getContainer(storedProcedure.getId());
     DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
@@ -196,6 +214,33 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
         .withDatabaseSchema(schemaRef)
         .withDatabase(schema.getDatabase())
         .withService(schema.getService());
+  }
+
+  private void hydrateParentReferencesForInheritance(
+      List<StoredProcedure> storedProcedures, EntityUtil.Fields fields) {
+    if (storedProcedures == null || storedProcedures.isEmpty()) {
+      return;
+    }
+    boolean needsOwners = fields.contains(Entity.FIELD_OWNERS);
+    boolean needsDomains = fields.contains("domains");
+    if (!needsOwners && !needsDomains) {
+      return;
+    }
+
+    List<StoredProcedure> missingParentRefs =
+        storedProcedures.stream().filter(sp -> sp.getDatabaseSchema() == null).toList();
+    if (missingParentRefs.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, EntityReference> schemaRefs =
+        batchFetchContainers(missingParentRefs, DATABASE_SCHEMA, ALL);
+    for (StoredProcedure storedProcedure : missingParentRefs) {
+      EntityReference schemaRef = schemaRefs.get(storedProcedure.getId());
+      if (schemaRef != null) {
+        storedProcedure.withDatabaseSchema(schemaRef);
+      }
+    }
   }
 
   @Override

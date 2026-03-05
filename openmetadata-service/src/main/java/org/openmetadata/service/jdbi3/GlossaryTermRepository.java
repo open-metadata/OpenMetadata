@@ -900,7 +900,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // will be a Task created.
     // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
     // Glossary Term goes back to DRAFT.
-    if (updated.getEntityStatus() == EntityStatus.DRAFT) {
+    if (original.getEntityStatus() != EntityStatus.DRAFT
+        && updated.getEntityStatus() == EntityStatus.DRAFT) {
       try {
         closeApprovalTask(updated, "Closed due to glossary term going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {

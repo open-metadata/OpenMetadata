@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.API_COLLECTION;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
@@ -99,28 +100,8 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
 
   @Override
   public void setInheritedFields(APIEndpoint endpoint, Fields fields) {
-    if (!super.requiresParentForInheritance(endpoint, fields)) {
-      return;
-    }
-
-    // Ensure apiCollection is populated before accessing it
-    if (endpoint.getApiCollection() == null) {
-      EntityReference apiCollectionRef = getContainer(endpoint.getId());
-      if (apiCollectionRef != null) {
-        endpoint.withApiCollection(apiCollectionRef);
-      }
-    }
-
-    if (endpoint.getApiCollection() != null) {
-      APICollection apiCollection =
-          getOrLoadInheritanceParent(
-              endpoint.getApiCollection(), getInheritableFields(), APICollection.class);
-      if (apiCollection == null) {
-        return;
-      }
-      inheritOwners(endpoint, fields, apiCollection);
-      inheritDomains(endpoint, fields, apiCollection);
-    }
+    hydrateParentReferencesForInheritance(List.of(endpoint), fields);
+    super.setInheritedFields(endpoint, fields);
   }
 
   @Override
@@ -232,6 +213,12 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     }
     fetchAndSetDefaultFields(entities);
     super.setFieldsInBulk(fields, entities);
+  }
+
+  @Override
+  protected void setInheritedFields(List<APIEndpoint> entities, Fields fields) {
+    hydrateParentReferencesForInheritance(entities, fields);
+    super.setInheritedFields(entities, fields);
   }
 
   // Individual field fetchers registered in constructor
@@ -408,6 +395,32 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
 
   private boolean hasDefaultFields(APIEndpoint apiEndpoint) {
     return apiEndpoint.getApiCollection() != null && apiEndpoint.getService() != null;
+  }
+
+  private void hydrateParentReferencesForInheritance(List<APIEndpoint> endpoints, Fields fields) {
+    if (endpoints == null || endpoints.isEmpty()) {
+      return;
+    }
+    boolean needsOwners = fields.contains(FIELD_OWNERS);
+    boolean needsDomains = fields.contains("domains");
+    if (!needsOwners && !needsDomains) {
+      return;
+    }
+
+    List<APIEndpoint> missingParentRefs =
+        endpoints.stream().filter(endpoint -> endpoint.getApiCollection() == null).toList();
+    if (missingParentRefs.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, EntityReference> apiCollectionRefs =
+        batchFetchContainers(missingParentRefs, API_COLLECTION, Include.ALL);
+    for (APIEndpoint endpoint : missingParentRefs) {
+      EntityReference parentRef = apiCollectionRefs.get(endpoint.getId());
+      if (parentRef != null) {
+        endpoint.withApiCollection(parentRef);
+      }
+    }
   }
 
   private void fetchAndSetDefaultFields(List<APIEndpoint> apiEndpoints) {

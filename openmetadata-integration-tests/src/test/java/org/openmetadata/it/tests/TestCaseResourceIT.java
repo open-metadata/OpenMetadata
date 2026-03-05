@@ -1859,6 +1859,163 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_searchListReturnsIncidentIdWhenFieldsIncludeAll(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("incident_search_list"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+    failedResult.setTimestamp(System.currentTimeMillis());
+    failedResult.setTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed);
+    failedResult.setResult("Test failed - trigger incident");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestCase fetched =
+                  client.testCases().get(testCase.getId().toString(), "incidentId,testCaseResult");
+              assertNotNull(fetched.getIncidentId());
+              assertNotNull(fetched.getTestCaseResult());
+            });
+
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("fields", "*")
+            .queryParam("entityLink", "<#E::table::" + table.getFullyQualifiedName() + ">")
+            .queryParam("includeAllTests", "true")
+            .queryParam("limit", "100")
+            .queryParam("offset", "0")
+            .build();
+
+    String responseJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
+    TestCaseResource.TestCaseList result =
+        JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
+
+    TestCase matching =
+        result.getData().stream()
+            .filter(tc -> testCase.getId().equals(tc.getId()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(matching, "Expected created test case in search/list response");
+    assertNotNull(
+        matching.getIncidentId(),
+        "search/list with fields=* must include incidentId even when testCaseResult is present");
+  }
+
+  @Test
+  void test_incidentReopensAsNewAfterResolveAndNewFailure(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("incident_reopen"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult()
+            .withTimestamp(System.currentTimeMillis())
+            .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+            .withResult("Initial failure");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+
+    final java.util.UUID firstIncidentId =
+        Awaitility.await()
+            .atMost(30, TimeUnit.SECONDS)
+            .pollInterval(Duration.ofSeconds(2))
+            .until(
+                () -> {
+                  TestCase fetched =
+                      client.testCases().get(testCase.getId().toString(), "incidentId");
+                  return fetched.getIncidentId();
+                },
+                java.util.Objects::nonNull);
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus resolvedStatus =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(
+                org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Resolved)
+            .withTestCaseResolutionStatusDetails(new org.openmetadata.schema.tests.type.Resolved());
+    client.testCaseResolutionStatuses().create(resolvedStatus);
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestStatus =
+                  latestIncidentStatus(client, testCase.getFullyQualifiedName());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Resolved,
+                  latestStatus.getTestCaseResolutionStatusType());
+              assertEquals(firstIncidentId, latestStatus.getStateId());
+            });
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedAgain =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult()
+            .withTimestamp(System.currentTimeMillis() + 1)
+            .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+            .withResult("Failure after resolve");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedAgain);
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestCase fetched =
+                  client
+                      .testCases()
+                      .get(testCase.getId().toString(), "incidentId,testCaseResult,testCaseStatus");
+              assertNotNull(fetched.getIncidentId());
+              assertNotEquals(firstIncidentId, fetched.getIncidentId());
+              assertNotNull(fetched.getTestCaseResult());
+              assertEquals(fetched.getIncidentId(), fetched.getTestCaseResult().getIncidentId());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseStatus.Failed,
+                  fetched.getTestCaseStatus());
+
+              org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestStatus =
+                  latestIncidentStatus(client, testCase.getFullyQualifiedName());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.New,
+                  latestStatus.getTestCaseResolutionStatusType());
+              assertEquals(fetched.getIncidentId(), latestStatus.getStateId());
+            });
+  }
+
+  private org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestIncidentStatus(
+      OpenMetadataClient client, String testCaseFqn) {
+    ListParams params =
+        new ListParams().withLatest(true).withLimit(10).addFilter("testCaseFQN", testCaseFqn);
+    ListResponse<?> response = client.testCaseResolutionStatuses().searchList(params);
+    assertEquals(1, response.getData().size());
+    return JsonUtils.convertValue(
+        response.getData().get(0),
+        org.openmetadata.schema.tests.type.TestCaseResolutionStatus.class);
+  }
+
+  @Test
   void test_listTestCasesFilteredByOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);

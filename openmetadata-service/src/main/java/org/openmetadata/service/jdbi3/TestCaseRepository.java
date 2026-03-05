@@ -172,13 +172,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           testCases, fields.contains(TEST_CASE_RESULT), fields.contains(INCIDENTS_FIELD));
     }
 
-    boolean needTables =
-        fields.contains(FIELD_TAGS)
-            || fields.contains(FIELD_OWNERS)
-            || fields.contains("domains")
-            || fields.contains(FIELD_FOLLOWERS);
-    if (needTables) {
-      Map<String, Table> tableCache = batchLoadLinkedTables(testCases);
+    Set<String> linkedTableFields = resolveLinkedTableFields(testCases, fields);
+    if (!linkedTableFields.isEmpty()) {
+      Map<String, Table> tableCache = batchLoadLinkedTables(testCases, linkedTableFields);
       linkedTablesCache.set(tableCache);
     }
 
@@ -192,7 +188,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  private Map<String, Table> batchLoadLinkedTables(List<TestCase> testCases) {
+  private Map<String, Table> batchLoadLinkedTables(
+      List<TestCase> testCases, Set<String> tableFields) {
+    if (tableFields == null || tableFields.isEmpty()) {
+      return new HashMap<>();
+    }
+
     Map<String, String> fqnToEntityLink = new HashMap<>();
     for (TestCase tc : testCases) {
       try {
@@ -213,11 +214,46 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     tableRepo.setFieldsInBulk(
         new Fields(
             Set.of("tags", "columns", FIELD_OWNERS, "domains", FIELD_FOLLOWERS),
-            "tags,columns,owners,domains,followers"),
+            String.join(",", tableFields)),
         tables);
 
     return tables.stream()
         .collect(Collectors.toMap(Table::getFullyQualifiedName, Function.identity(), (a, b) -> a));
+  }
+
+  private Set<String> resolveLinkedTableFields(List<TestCase> testCases, Fields fields) {
+    Set<String> tableFields = new HashSet<>();
+    if (fields.contains(FIELD_OWNERS)) {
+      tableFields.add(FIELD_OWNERS);
+    }
+    if (fields.contains("domains")) {
+      tableFields.add("domains");
+    }
+    if (fields.contains(FIELD_FOLLOWERS)) {
+      tableFields.add(FIELD_FOLLOWERS);
+    }
+    if (fields.contains(FIELD_TAGS)) {
+      tableFields.add(FIELD_TAGS);
+      if (hasColumnScopedEntityLink(testCases)) {
+        tableFields.add("columns");
+      }
+    }
+    return tableFields;
+  }
+
+  private boolean hasColumnScopedEntityLink(List<TestCase> testCases) {
+    for (TestCase testCase : testCases) {
+      try {
+        EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
+        if ("columns".equals(entityLink.getFieldName())) {
+          return true;
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to parse entity link for test case {}: {}", testCase.getId(), e.getMessage());
+      }
+    }
+    return false;
   }
 
   private void fetchAndSetTestDefinitions(List<TestCase> testCases) {
@@ -324,12 +360,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private void fetchAndSetTestCaseResultsAndIncidents(
       List<TestCase> testCases, boolean setResults, boolean setIncidents) {
-    List<String> fqns =
-        testCases.stream()
-            .filter(tc -> tc.getTestCaseResult() == null)
-            .map(TestCase::getFullyQualifiedName)
-            .distinct()
-            .toList();
+    List<String> fqns = testCases.stream().map(TestCase::getFullyQualifiedName).distinct().toList();
 
     if (fqns.isEmpty()) {
       return;
@@ -370,7 +401,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private void fetchAndSetTags(List<TestCase> testCases) {
     Map<String, Table> tableCache = linkedTablesCache.get();
     if (tableCache == null) {
-      tableCache = batchLoadLinkedTables(testCases);
+      Set<String> tableFields = new HashSet<>();
+      tableFields.add(FIELD_TAGS);
+      if (hasColumnScopedEntityLink(testCases)) {
+        tableFields.add("columns");
+      }
+      tableCache = batchLoadLinkedTables(testCases, tableFields);
     }
 
     for (TestCase testCase : testCases) {
@@ -406,7 +442,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     Table table = tableCache != null ? tableCache.get(entityLink.getEntityFQN()) : null;
 
     if (table == null) {
-      table = Entity.getEntity(entityLink, "owners,domains,tags,columns,followers", ALL);
+      Set<String> linkedTableFields = resolveLinkedTableFields(List.of(testCase), fields);
+      if (!linkedTableFields.isEmpty()) {
+        table = Entity.getEntity(entityLink, String.join(",", linkedTableFields), ALL);
+      }
     }
 
     if (table != null) {
@@ -429,7 +468,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   protected void setInheritedFields(List<TestCase> testCases, Fields fields) {
     Map<String, Table> tableCache = linkedTablesCache.get();
     if (tableCache == null) {
-      tableCache = batchLoadLinkedTables(testCases);
+      Set<String> linkedTableFields = resolveLinkedTableFields(testCases, fields);
+      tableCache = batchLoadLinkedTables(testCases, linkedTableFields);
     }
 
     Map<UUID, List<TestSuite>> testCaseToSuites = null;
@@ -1054,19 +1094,25 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             String.format(
                 "Failed to find test case resolution status for %s", resolveTask.getTestCaseFQN()));
       }
+      long resolvedTimestamp =
+          Math.max(
+              System.currentTimeMillis(),
+              latestTestCaseResolutionStatus.getTimestamp() != null
+                  ? latestTestCaseResolutionStatus.getTimestamp() + 1
+                  : System.currentTimeMillis());
       User user = getEntityByName(Entity.USER, userName, "", Include.ALL);
       TestCaseResolutionStatus testCaseResolutionStatus =
           new TestCaseResolutionStatus()
               .withId(UUID.randomUUID())
               .withStateId(latestTestCaseResolutionStatus.getStateId())
-              .withTimestamp(System.currentTimeMillis())
+              .withTimestamp(resolvedTimestamp)
               .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
               .withTestCaseResolutionStatusDetails(
                   new Resolved()
                       .withTestCaseFailureComment(resolveTask.getNewValue())
                       .withTestCaseFailureReason(resolveTask.getTestCaseFailureReason())
                       .withResolvedBy(user.getEntityReference()))
-              .withUpdatedAt(System.currentTimeMillis())
+              .withUpdatedAt(resolvedTimestamp)
               .withTestCaseReference(latestTestCaseResolutionStatus.getTestCaseReference())
               .withUpdatedBy(user.getEntityReference());
 
@@ -1112,12 +1158,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         return;
       }
 
+      long resolvedTimestamp =
+          Math.max(
+              System.currentTimeMillis(),
+              latestTestCaseResolutionStatus.getTimestamp() != null
+                  ? latestTestCaseResolutionStatus.getTimestamp() + 1
+                  : System.currentTimeMillis());
       User user = getEntityByName(Entity.USER, userName, "", Include.ALL);
       TestCaseResolutionStatus testCaseResolutionStatus =
           new TestCaseResolutionStatus()
               .withId(UUID.randomUUID())
               .withStateId(latestTestCaseResolutionStatus.getStateId())
-              .withTimestamp(System.currentTimeMillis())
+              .withTimestamp(resolvedTimestamp)
               .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
               .withTestCaseResolutionStatusDetails(
                   new Resolved()
@@ -1125,7 +1177,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                       // If we close the task directly we won't know the reason
                       .withTestCaseFailureReason(TestCaseFailureReasonType.FalsePositive)
                       .withResolvedBy(user.getEntityReference()))
-              .withUpdatedAt(System.currentTimeMillis())
+              .withUpdatedAt(resolvedTimestamp)
               .withTestCaseReference(latestTestCaseResolutionStatus.getTestCaseReference())
               .withUpdatedBy(user.getEntityReference());
 
@@ -1374,7 +1426,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // will be a Task created.
     // This if handles this case scenario, by guaranteeing that we close any Approval Task if the
     // TestCase goes back to DRAFT.
-    if (EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
+    if (!EntityStatus.DRAFT.equals(original.getEntityStatus())
+        && EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
       try {
         closeApprovalTask(updated, "Closed due to test case going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {

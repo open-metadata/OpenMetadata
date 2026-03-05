@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -245,43 +246,123 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schemas == null || schemas.isEmpty()) {
       return;
     }
+
+    // Database and service references are part of default response contract for list/get.
+    boolean includeDatabaseDetails = true;
+    boolean includeServiceDetails = true;
+
     List<DatabaseSchema> schemasMissingDefaults =
-        schemas.stream().filter(schema -> !hasDefaultFields(schema)).toList();
+        schemas.stream()
+            .filter(
+                schema -> {
+                  boolean missingDatabase =
+                      schema.getDatabase() == null || schema.getDatabase().getId() == null;
+                  boolean missingService =
+                      schema.getService() == null || schema.getService().getId() == null;
+                  return missingDatabase || (includeServiceDetails && missingService);
+                })
+            .toList();
     if (schemasMissingDefaults.isEmpty()) {
       return;
     }
 
-    var databaseRefsMap = batchFetchDatabases(schemasMissingDefaults);
-    var uniqueDatabaseIds =
-        databaseRefsMap.values().stream().map(EntityReference::getId).distinct().toList();
-    var databaseRepository = (DatabaseRepository) Entity.getEntityRepository(Entity.DATABASE);
-    var databasesList =
-        databaseRepository
-            .getDao()
-            .findEntitiesByIds(new ArrayList<>(uniqueDatabaseIds), Include.ALL);
-
-    databaseRepository.setFieldsInBulk(Fields.EMPTY_FIELDS, databasesList);
-
-    var databases =
-        databasesList.stream().collect(Collectors.toMap(Database::getId, database -> database));
+    var databaseRefsMap = batchFetchDatabases(schemasMissingDefaults, includeDatabaseDetails);
+    Map<UUID, EntityReference> databaseToServiceRefs =
+        includeServiceDetails
+            ? batchFetchServicesForDatabases(
+                databaseRefsMap.values().stream()
+                    .map(EntityReference::getId)
+                    .collect(Collectors.toSet()),
+                true)
+            : Collections.emptyMap();
 
     schemasMissingDefaults.forEach(
         schema -> {
           var databaseRef = databaseRefsMap.get(schema.getId());
           if (databaseRef != null) {
-            var database = databases.get(databaseRef.getId());
-            if (database != null) {
-              schema.withDatabase(databaseRef).withService(database.getService());
+            schema.withDatabase(databaseRef);
+            if (includeServiceDetails) {
+              schema.withService(databaseToServiceRefs.get(databaseRef.getId()));
             }
           }
         });
+  }
+
+  private Map<UUID, EntityReference> batchFetchServicesForDatabases(
+      Set<UUID> databaseIds, boolean includeDetails) {
+    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    if (databaseIds == null || databaseIds.isEmpty()) {
+      return serviceMap;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                databaseIds.stream().map(UUID::toString).toList(),
+                Relationship.CONTAINS.ordinal(),
+                Include.ALL);
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      if (record.getFromEntity() == null
+          || record.getFromId() == null
+          || record.getToId() == null) {
+        continue;
+      }
+      if (!includeDetails) {
+        serviceMap.put(
+            UUID.fromString(record.getToId()),
+            new EntityReference()
+                .withId(UUID.fromString(record.getFromId()))
+                .withType(record.getFromEntity()));
+      }
+    }
+
+    if (includeDetails) {
+      Map<String, Set<UUID>> serviceIdsByType = new HashMap<>();
+      for (CollectionDAO.EntityRelationshipObject record : records) {
+        if (record.getFromEntity() == null
+            || record.getFromId() == null
+            || record.getToId() == null) {
+          continue;
+        }
+        serviceIdsByType
+            .computeIfAbsent(record.getFromEntity(), ignored -> new HashSet<>())
+            .add(UUID.fromString(record.getFromId()));
+      }
+
+      Map<String, Map<UUID, EntityReference>> serviceRefsByType = new HashMap<>();
+      for (Map.Entry<String, Set<UUID>> entry : serviceIdsByType.entrySet()) {
+        List<EntityReference> refs =
+            Entity.getEntityReferencesByIds(
+                entry.getKey(), new ArrayList<>(entry.getValue()), Include.ALL);
+        serviceRefsByType.put(
+            entry.getKey(),
+            refs.stream()
+                .collect(
+                    Collectors.toMap(EntityReference::getId, ref -> ref, (left, right) -> left)));
+      }
+
+      for (CollectionDAO.EntityRelationshipObject record : records) {
+        Map<UUID, EntityReference> refsForType = serviceRefsByType.get(record.getFromEntity());
+        if (refsForType == null) {
+          continue;
+        }
+        EntityReference serviceRef = refsForType.get(UUID.fromString(record.getFromId()));
+        if (serviceRef != null) {
+          serviceMap.put(UUID.fromString(record.getToId()), serviceRef);
+        }
+      }
+    }
+    return serviceMap;
   }
 
   private boolean hasDefaultFields(DatabaseSchema schema) {
     return schema.getDatabase() != null && schema.getService() != null;
   }
 
-  private Map<UUID, EntityReference> batchFetchDatabases(List<DatabaseSchema> schemas) {
+  private Map<UUID, EntityReference> batchFetchDatabases(
+      List<DatabaseSchema> schemas, boolean includeDetails) {
     var databaseMap = new HashMap<UUID, EntityReference>();
     if (schemas == null || schemas.isEmpty()) {
       return databaseMap;
@@ -299,10 +380,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
             .distinct()
             .toList();
 
-    // Batch fetch all database entity references
-    var databaseRefs = Entity.getEntityReferencesByIds(Entity.DATABASE, databaseIds, Include.ALL);
-    var databaseRefMap =
-        databaseRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+    Map<UUID, EntityReference> databaseRefMap = new HashMap<>();
+    if (includeDetails) {
+      // Batch fetch all database entity references
+      var databaseRefs = Entity.getEntityReferencesByIds(Entity.DATABASE, databaseIds, Include.ALL);
+      databaseRefMap.putAll(
+          databaseRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref)));
+    }
 
     // Map schemas to their databases
     relations.forEach(
@@ -311,7 +395,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           if (Entity.DATABASE.equals(relation.getFromEntity())) {
             var schemaId = UUID.fromString(relation.getToId());
             var databaseId = UUID.fromString(relation.getFromId());
-            var databaseRef = databaseRefMap.get(databaseId);
+            var databaseRef =
+                includeDetails
+                    ? databaseRefMap.get(databaseId)
+                    : new EntityReference().withId(databaseId).withType(Entity.DATABASE);
             if (databaseRef != null) {
               databaseMap.put(schemaId, databaseRef);
             }

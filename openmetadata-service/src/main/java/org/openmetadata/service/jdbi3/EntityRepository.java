@@ -2455,17 +2455,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsTags) {
       return;
     }
+    Map<String, List<TagLabel>> tagsByTarget = new LinkedHashMap<>();
     for (T entity : entities) {
       List<TagLabel> nonDerivedTags =
           listOrEmpty(entity.getTags()).stream()
               .filter(t -> !t.getLabelType().equals(TagLabel.LabelType.DERIVED))
               .toList();
-      if (!nonDerivedTags.isEmpty()) {
-        daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, entity.getFullyQualifiedName());
-        for (TagLabel tagLabel : nonDerivedTags) {
-          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
-              tagLabel, entity.getFullyQualifiedName());
-        }
+      if (nonDerivedTags.isEmpty()) {
+        continue;
+      }
+      tagsByTarget
+          .computeIfAbsent(entity.getFullyQualifiedName(), ignored -> new ArrayList<>())
+          .addAll(nonDerivedTags);
+    }
+
+    if (tagsByTarget.isEmpty()) {
+      return;
+    }
+
+    daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
+
+    for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
+      String targetFqn = entry.getKey();
+      for (TagLabel tagLabel : entry.getValue()) {
+        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFqn);
       }
     }
   }

@@ -226,7 +226,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     // will be a Task created.
     // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
     // Data Contract goes back to DRAFT.
-    if (updated.getEntityStatus() == EntityStatus.DRAFT) {
+    if (original.getEntityStatus() != EntityStatus.DRAFT
+        && updated.getEntityStatus() == EntityStatus.DRAFT) {
       try {
         closeApprovalTask(updated, "Closed due to data contract going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {

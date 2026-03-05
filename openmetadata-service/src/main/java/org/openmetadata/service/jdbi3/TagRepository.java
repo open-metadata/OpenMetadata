@@ -922,7 +922,8 @@ public class TagRepository extends EntityRepository<Tag> {
     // will be a Task created.
     // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
     // Tag goes back to DRAFT.
-    if (EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
+    if (!EntityStatus.DRAFT.equals(original.getEntityStatus())
+        && EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
       try {
         closeApprovalTask(updated, "Closed due to tag going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {

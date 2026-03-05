@@ -38,16 +38,24 @@ public class VersionResource {
 
   static {
     OPEN_METADATA_SERVER_VERSION = new OpenMetadataServerVersion();
+    OPEN_METADATA_SERVER_VERSION.setVersion("unknown");
+    OPEN_METADATA_SERVER_VERSION.setRevision("unknown");
     try {
       InputStream fileInput = OpenMetadataApplication.class.getResourceAsStream("/catalog/VERSION");
-      Properties props = new Properties();
-      props.load(fileInput);
-      OPEN_METADATA_SERVER_VERSION.setVersion(props.getProperty("version", "unknown"));
-      OPEN_METADATA_SERVER_VERSION.setRevision(props.getProperty("revision", "unknown"));
+      if (fileInput != null) {
+        try (fileInput) {
+          Properties props = new Properties();
+          props.load(fileInput);
+          OPEN_METADATA_SERVER_VERSION.setVersion(props.getProperty("version", "unknown"));
+          OPEN_METADATA_SERVER_VERSION.setRevision(props.getProperty("revision", "unknown"));
 
-      String timestampAsString = props.getProperty("timestamp");
-      Long timestamp = timestampAsString != null ? Long.valueOf(timestampAsString) : null;
-      OPEN_METADATA_SERVER_VERSION.setTimestamp(timestamp);
+          String timestampAsString = props.getProperty("timestamp");
+          Long timestamp = timestampAsString != null ? Long.valueOf(timestampAsString) : null;
+          OPEN_METADATA_SERVER_VERSION.setTimestamp(timestamp);
+        }
+      } else {
+        LOG.warn("Catalog version file /catalog/VERSION not found. Falling back to unknown.");
+      }
     } catch (Exception ie) {
       LOG.warn("Failed to read catalog version file");
     }

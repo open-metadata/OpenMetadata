@@ -309,7 +309,8 @@ public class MetricRepository extends EntityRepository<Metric> {
     // Handle case where task goes from DRAFT to IN_REVIEW to DRAFT quickly
     // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT,
     // but there will be a task created. This handles that case scenario.
-    if (updated.getEntityStatus() == EntityStatus.DRAFT) {
+    if (original.getEntityStatus() != EntityStatus.DRAFT
+        && updated.getEntityStatus() == EntityStatus.DRAFT) {
       try {
         closeApprovalTask(updated, "Closed due to metric going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
