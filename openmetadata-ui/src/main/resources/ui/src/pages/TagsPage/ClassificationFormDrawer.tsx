@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button as UTButton,
-  SlideoutMenu,
-} from '@openmetadata/ui-core-components';
+import { Button, SlideoutMenu } from '@openmetadata/ui-core-components';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsForm from './TagsForm';
@@ -44,17 +41,20 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
     <SlideoutMenu
       data-testid="classification-form-drawer"
       isOpen={open}
-      onOpenChange={handleOpenChange}>
+      onOpenChange={handleOpenChange}
+    >
       {({ close }) => (
         <>
           <SlideoutMenu.Header
             className="tw:flex tw:items-center"
             data-testid="drawer-header"
-            onClose={close}>
+            onClose={close}
+          >
             <div className="tw:prose">
               <h6
                 className="tw:text-lg tw:font-semibold"
-                data-testid="form-heading">
+                data-testid="form-heading"
+              >
                 {t('label.adding-new-classification')}
               </h6>
             </div>
@@ -74,20 +74,22 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
 
           <SlideoutMenu.Footer>
             <div className="tw:flex tw:justify-end tw:gap-4">
-              <UTButton
+              <Button
                 color="tertiary"
                 data-testid="cancel-button"
-                onClick={close}>
+                onClick={close}
+              >
                 {t('label.cancel')}
-              </UTButton>
-              <UTButton
+              </Button>
+              <Button
                 color="primary"
                 data-testid="save-button"
                 isDisabled={isLoading}
                 isLoading={isLoading}
-                onClick={() => formRef.submit()}>
+                onClick={() => formRef.submit()}
+              >
                 {t('label.save')}
-              </UTButton>
+              </Button>
             </div>
           </SlideoutMenu.Footer>
         </>

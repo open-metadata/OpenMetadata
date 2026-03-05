@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Button as UTButton } from '@openmetadata/ui-core-components';
+import { Badge, Button } from '@openmetadata/ui-core-components';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -656,11 +656,14 @@ const TagsPage = () => {
     () => (
       <div className="h-full" data-testid="tags-left-panel">
         <TagsLeftPanelSkeleton loading={isLoading}>
-          <div className="p-y-xs" data-testid="data-summary-container">
+          <div
+            className="p-y-xs d-flex flex-col"
+            data-testid="data-summary-container"
+          >
             <div className="tw:w-full p-x-sm m-b-sm tw:flex tw:flex-col tw:gap-2">
               {createClassificationPermission && (
-                <UTButton
-                  className="tw:w-full tw:font-normal shadow-none tw:hover:bg-transparent tw:border tw:border-gray-300 tw:hover:border-brand-600 tw:text-brand-600!"
+                <Button
+                  className="tw:w-full"
                   color="secondary"
                   data-testid="add-classification"
                   iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
@@ -668,18 +671,21 @@ const TagsPage = () => {
                   onClick={() => {
                     classificationForm.resetFields();
                     handleClassificationDrawerOpen();
-                  }}>
-                  {t('label.add-entity', {
-                    entity: t('label.classification'),
-                  })}
-                </UTButton>
+                  }}
+                >
+                  <span className="tw:text-brand-600 tw:font-normal">
+                    {t('label.add-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </span>
+                </Button>
               )}
             </div>
 
             {classifications.map((category: Classification) => (
-              <div
+              <button
                 className={classNames(
-                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
+                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss w-streach',
                   {
                     activeCategory:
                       currentClassification?.name === category.name,
@@ -687,7 +693,8 @@ const TagsPage = () => {
                 )}
                 data-testid="side-panel-classification"
                 key={category.name}
-                onClick={() => onClickClassifications(category)}>
+                onClick={() => onClickClassifications(category)}
+              >
                 <div className="prose">
                   <p
                     className={classNames(
@@ -698,7 +705,8 @@ const TagsPage = () => {
                       }
                     )}
                     data-testid="tag-name"
-                    title={getEntityName(category)}>
+                    title={getEntityName(category)}
+                  >
                     {getEntityName(category)}
                     {category.disabled && (
                       <Badge
@@ -706,7 +714,8 @@ const TagsPage = () => {
                         color="gray"
                         data-testid="disabled"
                         size="sm"
-                        type="pill-color">
+                        type="pill-color"
+                      >
                         {t('label.disabled')}
                       </Badge>
                     )}
@@ -719,7 +728,7 @@ const TagsPage = () => {
                   currentClassification?.fullyQualifiedName ===
                     category.fullyQualifiedName
                 )}
-              </div>
+              </button>
             ))}
           </div>
         </TagsLeftPanelSkeleton>
