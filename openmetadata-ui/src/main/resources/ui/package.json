@@ -275,7 +275,6 @@
     "cross-spawn": "7.0.5",
     "serialize-javascript": "7.0.3",
     "dompurify": "3.2.7",
-    "immutable": "5.1.5",
     "@tootallnate/once": "3.0.1",
     "on-headers": "1.1.0",
     "form-data": "3.0.4",
