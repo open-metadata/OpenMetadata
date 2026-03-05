@@ -1627,5 +1627,3 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
 }
-
-

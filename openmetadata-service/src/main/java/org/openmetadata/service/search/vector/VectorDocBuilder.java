@@ -489,11 +489,13 @@ public class VectorDocBuilder {
     Optional<String> optParent = Optional.ofNullable(parentColumn).filter(s -> !s.isEmpty());
     List<TagLabel> tags = new ArrayList<>();
     for (Column col : columns) {
-      String colName = optParent.isPresent() ? optParent.get() + "." + col.getName() : col.getName();
+      String colName =
+          optParent.isPresent() ? optParent.get() + "." + col.getName() : col.getName();
       if (col.getTags() != null) {
         tags = col.getTags();
       }
-      FlattenColumn flat = FlattenColumn.builder().name(colName).description(col.getDescription()).build();
+      FlattenColumn flat =
+          FlattenColumn.builder().name(colName).description(col.getDescription()).build();
       if (!tags.isEmpty()) {
         flat.setTags(tags);
       }
@@ -509,11 +511,13 @@ public class VectorDocBuilder {
     Optional<String> optParent = Optional.ofNullable(parentField).filter(s -> !s.isEmpty());
     List<TagLabel> tags = new ArrayList<>();
     for (Field field : fields) {
-      String fieldName = optParent.isPresent() ? optParent.get() + "." + field.getName() : field.getName();
+      String fieldName =
+          optParent.isPresent() ? optParent.get() + "." + field.getName() : field.getName();
       if (field.getTags() != null) {
         tags = field.getTags();
       }
-      FlattenSchemaField flat = FlattenSchemaField.builder().name(fieldName).description(field.getDescription()).build();
+      FlattenSchemaField flat =
+          FlattenSchemaField.builder().name(fieldName).description(field.getDescription()).build();
       if (!tags.isEmpty()) {
         flat.setTags(tags);
       }
