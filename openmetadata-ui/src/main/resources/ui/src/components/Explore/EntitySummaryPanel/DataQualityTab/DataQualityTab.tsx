@@ -658,7 +658,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   };
 
   const renderDataQualityTabContent = () => {
-    if (isLoading) {
+    if (isLoading && statusCounts.total === 0) {
       return (
         <div className="flex-center p-lg">
           <Loader size="default" />
