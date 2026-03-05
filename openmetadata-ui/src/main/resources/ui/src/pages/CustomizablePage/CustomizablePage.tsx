@@ -47,6 +47,7 @@ import { Transi18next } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import CustomizableDataMarketplacePage from '../CustomizableDataMarketplacePage/CustomizableDataMarketplacePage';
 import CustomizableDataProductPage from '../CustomizableDataProductPage/CustomizableDataProductPage';
 import CustomizableDomainPage from '../CustomizableDomainPage/CustomizableDomainPage';
 import { CustomizeDetailsPage } from '../CustomizeDetailsPage/CustomizeDetailsPage';
@@ -333,7 +334,7 @@ export const CustomizablePage = () => {
       );
     case PageType.DataMarketplace:
       return (
-        <CustomizeMyData
+        <CustomizableDataMarketplacePage
           initialPageData={currentPage}
           personaDetails={personaDetails}
           onSaveLayout={handlePageCustomizeSave}

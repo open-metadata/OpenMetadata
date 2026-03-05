@@ -53,9 +53,7 @@ export const CustomizablePageHeader = ({
     'reset' | 'close'
   >('close');
 
-  const showWidgetActions =
-    currentPageType === PageType.LandingPage ||
-    currentPageType === PageType.DataMarketplace;
+  const showWidgetActions = currentPageType === PageType.LandingPage;
 
   const isLandingPage = currentPageType === PageType.LandingPage;
 

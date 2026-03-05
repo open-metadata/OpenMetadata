@@ -21,13 +21,17 @@ import MarketplaceGreetingBanner from '../../components/DataMarketplace/Marketpl
 import MarketplaceSearchBar from '../../components/DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { EntityType } from '../../enums/entity.enum';
+import { TAB_GRID_MAX_COLUMNS } from '../../constants/CustomizeWidgets.constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
-import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
-import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
+import {
+  getLayoutFromCustomizedPage,
+  getWidgetsFromKey,
+} from '../../utils/CustomizePage/CustomizePageUtils';
+import dataMarketplaceClassBase from '../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { getCustomizePagePath } from '../../utils/GlobalSettingsUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './data-marketplace-page.less';
@@ -36,17 +40,17 @@ const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;
 
-const MARKETPLACE_ROW_HEIGHT = 200;
-
 const DataMarketplacePage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { selectedPersona } = useApplicationStore();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [layout, setLayout] = useState<Array<WidgetConfig>>(
-    customizePageClassBase.marketplaceDefaultLayout
+  const defaultLayout = dataMarketplaceClassBase.getDefaultLayout(
+    EntityTabs.OVERVIEW
   );
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [layout, setLayout] = useState<Array<WidgetConfig>>(defaultLayout);
 
   useGridLayoutDirection(false);
 
@@ -59,20 +63,28 @@ const DataMarketplacePage = () => {
 
         const pageData = docData.data?.pages?.find(
           (p: Page) => p.pageType === PageType.DataMarketplace
-        ) ?? { layout: [], pageType: PageType.DataMarketplace };
-
-        const savedLayout = pageData.layout as WidgetConfig[];
-
-        setLayout(
-          isEmpty(savedLayout)
-            ? customizePageClassBase.marketplaceDefaultLayout
-            : savedLayout
         );
+
+        // Try tab-based layout first (new format)
+        const tabLayout = getLayoutFromCustomizedPage(
+          PageType.DataMarketplace,
+          EntityTabs.OVERVIEW,
+          pageData
+        ) as WidgetConfig[];
+
+        if (!isEmpty(tabLayout)) {
+          setLayout(tabLayout);
+        } else if (!isEmpty(pageData?.layout)) {
+          // Fallback to flat layout (old format)
+          setLayout(pageData?.layout as WidgetConfig[]);
+        } else {
+          setLayout(defaultLayout);
+        }
       } else {
-        setLayout(customizePageClassBase.marketplaceDefaultLayout);
+        setLayout(defaultLayout);
       }
     } catch {
-      setLayout(customizePageClassBase.marketplaceDefaultLayout);
+      setLayout(defaultLayout);
     } finally {
       setIsLoading(false);
     }
@@ -97,10 +109,7 @@ const DataMarketplacePage = () => {
     () =>
       layout.map((widget) => (
         <div data-grid={widget} key={widget.i}>
-          {getWidgetFromKey({
-            widgetConfig: widget,
-            currentLayout: layout,
-          })}
+          {getWidgetsFromKey(PageType.DataMarketplace, widget)}
         </div>
       )),
     [layout]
@@ -130,15 +139,12 @@ const DataMarketplacePage = () => {
         </div>
         <ReactGridLayout
           className="grid-container p-x-box"
-          cols={customizePageClassBase.landingPageMaxGridSize}
+          cols={TAB_GRID_MAX_COLUMNS}
           containerPadding={[0, 0]}
           isDraggable={false}
           isResizable={false}
-          margin={[
-            customizePageClassBase.landingPageWidgetMargin,
-            8,
-          ]}
-          rowHeight={MARKETPLACE_ROW_HEIGHT}>
+          margin={[16, 8]}
+          rowHeight={100}>
           {widgets}
         </ReactGridLayout>
       </div>

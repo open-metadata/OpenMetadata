@@ -27,8 +27,6 @@ export enum LandingPageWidgetKeys {
   EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
   FOLLOWING = 'KnowledgePanel.Following',
   KPI = 'KnowledgePanel.KPI',
-  MARKETPLACE_DATA_PRODUCTS = 'KnowledgePanel.MarketplaceDataProducts',
-  MARKETPLACE_DOMAINS = 'KnowledgePanel.MarketplaceDomains',
   MY_DATA = 'KnowledgePanel.MyData',
   MY_TASK = 'KnowledgePanel.MyTask',
   PIPELINE = 'KnowledgePanel.Pipeline',

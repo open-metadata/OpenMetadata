@@ -66,13 +66,7 @@ function CustomizeMyData({
   const { t } = useTranslation();
   const { currentPageType } = useCustomizeStore();
 
-  const defaultLayout = useMemo(
-    () =>
-      currentPageType === PageType.DataMarketplace
-        ? customizeMyDataPageClassBase.marketplaceDefaultLayout
-        : customizeMyDataPageClassBase.defaultLayout,
-    [currentPageType]
-  );
+  const defaultLayout = customizeMyDataPageClassBase.defaultLayout;
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLandingPageLayoutWithEmptyWidgetPlaceholder(
