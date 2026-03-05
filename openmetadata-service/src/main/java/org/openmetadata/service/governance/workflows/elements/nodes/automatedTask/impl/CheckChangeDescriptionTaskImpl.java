@@ -45,8 +45,8 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       boolean result = checkChangeDescription(execution, entityLinkStr);
       varHandler.setNodeVariable(RESULT_VARIABLE, result);
     } catch (Exception exc) {
-      LOG.error(
-          "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
+      log.error(
+            "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
@@ -57,12 +57,12 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-    // No changeDescription means it's a create event - return true
-    ChangeDescription changeDescription = entity.getChangeDescription();
-    if (changeDescription == null) {
-      LOG.debug("No changeDescription found (likely a create event), returning true");
-      return true;
-    }
+      // No changeDescription means it's a create event - return true
+      ChangeDescription changeDescription = entity.getChangeDescription();
+      if (changeDescription == null) {
+        log.debug("No changeDescription found (likely a create event), returning true");
+        return true;
+      }
 
     // Parse config
     String condition = "OR"; // default
@@ -78,7 +78,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
 
     // If no include fields specified, return true
     if (includeFields == null || includeFields.isEmpty()) {
-      LOG.debug("No include fields specified, returning true");
+      log.debug("No include fields specified, returning true");
       return true;
     }
 
@@ -98,11 +98,11 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       result = checkAnyFieldMatches(allChanges, includeFields, entity);
     }
 
-    LOG.debug(
-        "CheckChangeDescription result: {} for entity: {} with condition: {}",
-        result,
-        entityLinkStr,
-        condition);
+    log.debug(
+          "CheckChangeDescription result: {} for entity: {} with condition: {}",
+          result,
+          entityLinkStr,
+          condition);
     return result;
   }
 
