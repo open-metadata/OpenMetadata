@@ -158,17 +158,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Batch fetch service references for all pipelines
     Map<UUID, EntityReference> serviceRefs = batchFetchServices(pipelines);
 
-    // Set service field for all pipelines
+    // Batch fetch latest pipeline statuses if requested
+    Map<String, PipelineStatus> statusMap = Map.of();
+    if (fields.contains("pipelineStatuses")) {
+      statusMap = batchFetchLatestPipelineStatuses(pipelines);
+    }
+
     for (IngestionPipeline pipeline : pipelines) {
+      if (fields.contains("pipelineStatuses")) {
+        String fqnHash = FullyQualifiedName.buildHash(pipeline.getFullyQualifiedName());
+        pipeline.setPipelineStatuses(statusMap.get(fqnHash));
+      }
       EntityReference serviceRef = serviceRefs.get(pipeline.getId());
-      pipeline.setPipelineStatuses(
-          fields.contains("pipelineStatuses")
-              ? getLatestPipelineStatus(pipeline)
-              : pipeline.getPipelineStatuses());
       if (serviceRef != null) {
         pipeline.withService(serviceRef);
       } else {
-        // Service is guaranteed to exist, so fetch it individually if batch fetch missed it
         LOG.warn(
             "Service not found in batch fetch for pipeline: {} (id: {}). Fetching individually.",
             pipeline.getName(),
@@ -184,6 +188,24 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         }
       }
     }
+  }
+
+  private Map<String, PipelineStatus> batchFetchLatestPipelineStatuses(
+      List<IngestionPipeline> pipelines) {
+    List<String> fqnHashes =
+        pipelines.stream()
+            .map(p -> FullyQualifiedName.buildHash(p.getFullyQualifiedName()))
+            .toList();
+    Map<String, String> jsonMap =
+        getLatestExtensionFromTimeSeriesBatch(fqnHashes, PIPELINE_STATUS_EXTENSION);
+    Map<String, PipelineStatus> result = new HashMap<>();
+    for (Map.Entry<String, String> entry : jsonMap.entrySet()) {
+      PipelineStatus status = JsonUtils.readValue(entry.getValue(), PipelineStatus.class);
+      if (status != null) {
+        result.put(entry.getKey(), status);
+      }
+    }
+    return result;
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<IngestionPipeline> pipelines) {
@@ -606,16 +628,29 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       String ingestionPipelineFQN, Long startTs, Long endTs, Integer limit) {
     IngestionPipeline ingestionPipeline =
         getByName(null, ingestionPipelineFQN, getFields("service"));
+    Integer effectiveLimit = resolvePipelineStatusLimit(startTs, endTs, limit);
     Long effectiveStartTs = Optional.ofNullable(startTs).orElse(Long.MIN_VALUE);
     Long effectiveEndTs = Optional.ofNullable(endTs).orElse(Long.MAX_VALUE);
+    List<String> jsonResults;
+    if (effectiveLimit != null) {
+      jsonResults =
+          getResultsFromAndToTimestampsWithLimit(
+              ingestionPipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              effectiveStartTs,
+              effectiveEndTs,
+              EntityTimeSeriesDAO.OrderBy.DESC,
+              effectiveLimit);
+    } else {
+      jsonResults =
+          getResultsFromAndToTimestamps(
+              ingestionPipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              effectiveStartTs,
+              effectiveEndTs);
+    }
     List<PipelineStatus> pipelineStatusList =
-        JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(
-                ingestionPipeline.getFullyQualifiedName(),
-                PIPELINE_STATUS_EXTENSION,
-                effectiveStartTs,
-                effectiveEndTs),
-            PipelineStatus.class);
+        JsonUtils.readObjects(jsonResults, PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
     if (pipelineServiceClient != null) {
       allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
@@ -625,7 +660,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         Comparator.comparing(
             PipelineStatus::getTimestamp, Comparator.nullsLast(Comparator.reverseOrder())));
 
-    Integer effectiveLimit = resolvePipelineStatusLimit(startTs, endTs, limit);
     if (effectiveLimit != null && allPipelineStatusList.size() > effectiveLimit) {
       allPipelineStatusList = new ArrayList<>(allPipelineStatusList.subList(0, effectiveLimit));
     }

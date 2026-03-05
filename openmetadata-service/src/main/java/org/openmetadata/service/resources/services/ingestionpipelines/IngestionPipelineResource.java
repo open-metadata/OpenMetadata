@@ -19,7 +19,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.sdk.PipelineServiceClientInterface.TYPE_TO_TASK;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
-import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -301,10 +300,6 @@ public class IngestionPipelineResource
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 
     for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {
-      if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
-        ingestionPipeline.setPipelineStatuses(
-            repository.getLatestPipelineStatus(ingestionPipeline));
-      }
       decryptOrNullify(securityContext, ingestionPipeline, false);
     }
     return ingestionPipelines;
@@ -443,9 +438,6 @@ public class IngestionPipelineResource
           String includeRelations) {
     IngestionPipeline ingestionPipeline =
         getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
-    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
-      ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
-    }
     decryptOrNullify(securityContext, ingestionPipeline, false);
     return ingestionPipeline;
   }
@@ -532,9 +524,6 @@ public class IngestionPipelineResource
           String includeRelations) {
     IngestionPipeline ingestionPipeline =
         getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
-    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
-      ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
-    }
     decryptOrNullify(securityContext, ingestionPipeline, false);
     return ingestionPipeline;
   }
