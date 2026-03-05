@@ -362,7 +362,7 @@ export const QualityTab = () => {
   }
 
   return (
-    <div className="quality-tab-container tw:flex tw:flex-col tw:gap-[30px]">
+    <div className="quality-tab-container tw:flex tw:flex-col tw:gap-7.5">
       <div className="tw:grid tw:grid-cols-4 tw:gap-6">
         {totalTestCaseSummary?.map((summary) => (
           <SummaryCardV1
@@ -376,9 +376,12 @@ export const QualityTab = () => {
       </div>
 
       <div className="tw:border tw:border-secondary tw:rounded-[10px]">
-        <Tabs selectedKey={qualityTab} onSelectionChange={handleTabChange}>
-          <div className="tw:flex tw:items-center tw:justify-between tw:p-4">
-            <div className="tw:flex tw:gap-5 tw:w-full">
+        <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:p-4">
+          <div className="tw:flex tw:items-center tw:gap-5">
+            <Tabs
+              className="tw:w-max"
+              selectedKey={qualityTab}
+              onSelectionChange={handleTabChange}>
               <Tabs.List size="sm" type="button-border">
                 {tabs.map(({ label, key }) => (
                   <Tabs.Item id={key} key={key}>
@@ -386,79 +389,79 @@ export const QualityTab = () => {
                   </Tabs.Item>
                 ))}
               </Tabs.List>
-
-              {isTestCaseTab && (
-                <div className="tw:w-[400px]">
-                  <Searchbar
-                    removeMargin
-                    placeholder={t('label.search-entity', {
-                      entity: t('label.test-case-lowercase'),
-                    })}
-                    searchValue={searchValue}
-                    onSearch={handleSearchTestCase}
-                  />
-                </div>
-              )}
-            </div>
+            </Tabs>
 
             {isTestCaseTab && (
-              <Form className="new-form-style" layout="inline">
-                <Space align="center" className="w-full justify-end" size={20}>
-                  <Form.Item className="m-0 w-52" label={t('label.type')}>
-                    <Select
-                      options={TEST_CASE_TYPE_OPTION}
-                      value={selectedTestType}
-                      onChange={handleTestCaseTypeChange}
-                    />
-                  </Form.Item>
-                  <Form.Item className="m-0 w-52" label={t('label.status')}>
-                    <Select
-                      options={TEST_CASE_STATUS_OPTION}
-                      value={selectedTestCaseStatus}
-                      onChange={handleTestCaseStatusChange}
-                    />
-                  </Form.Item>
-                  <ManageButton
-                    canDelete={false}
-                    deleted={table?.deleted ?? false}
-                    displayName={t('label.manage-entity', {
-                      entity: t('label.test-case-plural'),
-                    })}
-                    entityId={table?.id}
-                    entityName={getEntityName(table)}
-                    entityType={EntityType.TEST_CASE}
-                    extraDropdownContent={extraDropdownContent}
-                    isRecursiveDelete={false}
-                  />
-                </Space>
-              </Form>
+              <div className="tw:w-100">
+                <Searchbar
+                  removeMargin
+                  placeholder={t('label.search-entity', {
+                    entity: t('label.test-case-lowercase'),
+                  })}
+                  searchValue={searchValue}
+                  onSearch={handleSearchTestCase}
+                />
+              </div>
             )}
           </div>
 
-          <Tabs.Panel id={EntityTabs.TEST_CASES}>
-            <DataQualityTab
-              removeTableBorder
-              afterDeleteAction={async (...params) => {
-                await fetchAllTests(...params);
-                params?.length &&
-                  (await getResourceLimit('dataQuality', true, true));
-              }}
-              breadcrumbData={tableBreadcrumb}
-              fetchTestCases={handleSortTestCase}
-              isEditAllowed={editTest}
-              isLoading={isTestsLoading}
-              pagingData={pagingData}
-              showTableColumn={false}
-              testCases={allTestCases}
-              onTestCaseResultUpdate={onTestCaseUpdate}
-              onTestUpdate={onTestCaseUpdate}
-            />
-          </Tabs.Panel>
+          {isTestCaseTab && (
+            <Form className="new-form-style" layout="inline">
+              <Space align="center" className="w-full justify-end" size={20}>
+                <Form.Item className="m-0 w-52" label={t('label.type')}>
+                  <Select
+                    options={TEST_CASE_TYPE_OPTION}
+                    value={selectedTestType}
+                    onChange={handleTestCaseTypeChange}
+                  />
+                </Form.Item>
+                <Form.Item className="m-0 w-52" label={t('label.status')}>
+                  <Select
+                    options={TEST_CASE_STATUS_OPTION}
+                    value={selectedTestCaseStatus}
+                    onChange={handleTestCaseStatusChange}
+                  />
+                </Form.Item>
+                <ManageButton
+                  canDelete={false}
+                  deleted={table?.deleted ?? false}
+                  displayName={t('label.manage-entity', {
+                    entity: t('label.test-case-plural'),
+                  })}
+                  entityId={table?.id}
+                  entityName={getEntityName(table)}
+                  entityType={EntityType.TEST_CASE}
+                  extraDropdownContent={extraDropdownContent}
+                  isRecursiveDelete={false}
+                />
+              </Space>
+            </Form>
+          )}
+        </div>
 
-          <Tabs.Panel id={EntityTabs.PIPELINE}>
-            <TestSuitePipelineTab testSuite={testSuite} />
-          </Tabs.Panel>
-        </Tabs>
+        {qualityTab === EntityTabs.TEST_CASES && (
+          <DataQualityTab
+            removeTableBorder
+            afterDeleteAction={async (...params) => {
+              await fetchAllTests(...params);
+              params?.length &&
+                (await getResourceLimit('dataQuality', true, true));
+            }}
+            breadcrumbData={tableBreadcrumb}
+            fetchTestCases={handleSortTestCase}
+            isEditAllowed={editTest}
+            isLoading={isTestsLoading}
+            pagingData={pagingData}
+            showTableColumn={false}
+            testCases={allTestCases}
+            onTestCaseResultUpdate={onTestCaseUpdate}
+            onTestUpdate={onTestCaseUpdate}
+          />
+        )}
+
+        {qualityTab === EntityTabs.PIPELINE && (
+          <TestSuitePipelineTab testSuite={testSuite} />
+        )}
       </div>
     </div>
   );
