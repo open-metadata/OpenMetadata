@@ -125,6 +125,7 @@ class PowerBiMeasureModel(BaseModel):
     dataType: str
     dataTypeDisplay: str
     name: str
+    displayName: Optional[str] = None
     description: str
 
 

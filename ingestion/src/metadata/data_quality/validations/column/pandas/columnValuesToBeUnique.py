@@ -27,10 +27,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
@@ -69,7 +66,8 @@ class ColumnValuesToBeUniqueValidator(
         column: SQALikeColumn,
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
-        test_params: Optional[dict] = None,
+        test_params: Optional[dict],
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
@@ -96,12 +94,12 @@ class ColumnValuesToBeUniqueValidator(
 
         try:
             dfs = self.runner
-            unique_count_impl = Metrics.UNIQUE_COUNT(column).get_pandas_computation()
+            unique_count_impl = Metrics.uniqueCount(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.UNIQUE_COUNT.name: unique_count_impl.create_accumulator(),
-                    Metrics.COUNT.name: 0,
+                    Metrics.uniqueCount.name: unique_count_impl.create_accumulator(),
+                    Metrics.valuesCount.name: 0,
                     DIMENSION_TOTAL_COUNT_KEY: 0,
                 }
             )
@@ -114,23 +112,21 @@ class ColumnValuesToBeUniqueValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     unique_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][
-                            Metrics.UNIQUE_COUNT.name
-                        ],
+                        dimension_aggregates[dimension_value][Metrics.uniqueCount.name],
                         group_df,
                     )
                     dimension_aggregates[dimension_value][
-                        Metrics.COUNT.name
-                    ] += Metrics.COUNT(column).df_fn([group_df])
+                        Metrics.valuesCount.name
+                    ] += Metrics.valuesCount(column).df_fn([group_df])
                     dimension_aggregates[dimension_value][
                         DIMENSION_TOTAL_COUNT_KEY
                     ] += len(group_df)
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                total_count = agg[Metrics.COUNT.name]
+                total_count = agg[Metrics.valuesCount.name]
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
-                counter_accumulator = agg[Metrics.UNIQUE_COUNT.name]
+                counter_accumulator = agg[Metrics.uniqueCount.name]
                 unique_count = unique_count_impl.aggregate_accumulator(
                     counter_accumulator
                 )
@@ -140,8 +136,8 @@ class ColumnValuesToBeUniqueValidator(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
                         COUNTER_ACCUMULATOR_KEY: counter_accumulator,
-                        Metrics.COUNT.name: total_count,
-                        Metrics.UNIQUE_COUNT.name: unique_count,
+                        Metrics.valuesCount.name: total_count,
+                        Metrics.uniqueCount.name: unique_count,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -173,11 +169,11 @@ class ColumnValuesToBeUniqueValidator(
                 ):
                     result = df_aggregated[metric_column].copy()
                     if others_mask.any():
-                        count = df_aggregated.loc[others_mask, Metrics.COUNT.name].iloc[
-                            0
-                        ]
+                        count = df_aggregated.loc[
+                            others_mask, Metrics.valuesCount.name
+                        ].iloc[0]
                         unique_count = df_aggregated.loc[
-                            others_mask, Metrics.UNIQUE_COUNT.name
+                            others_mask, Metrics.uniqueCount.name
                         ].iloc[0]
                         failed_count = count - unique_count
                         result.loc[others_mask] = failed_count
@@ -190,16 +186,16 @@ class ColumnValuesToBeUniqueValidator(
                         COUNTER_ACCUMULATOR_KEY: lambda counters: sum(
                             counters, Counter()
                         ),
-                        Metrics.COUNT.name: "sum",
+                        Metrics.valuesCount.name: "sum",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
                     final_metric_calculators={
-                        Metrics.UNIQUE_COUNT.name: calculate_unique_count_from_counter,
+                        Metrics.uniqueCount.name: calculate_unique_count_from_counter,
                         DIMENSION_FAILED_COUNT_KEY: calculate_failed_count_from_metrics,
                     },
                     exclude_from_final=[COUNTER_ACCUMULATOR_KEY],
-                    top_n=DEFAULT_TOP_DIMENSIONS,
+                    top_n=top_n,
                 )
 
                 for row_dict in results_df.to_dict("records"):

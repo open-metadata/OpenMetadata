@@ -683,8 +683,6 @@ export interface ConfigObject {
      *
      * Password to connect to Presto.
      *
-     * Password to connect to Redshift.
-     *
      * Password to connect to Salesforce.
      *
      * Password to connect to SingleStore.
@@ -928,6 +926,8 @@ export interface ConfigObject {
      * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
+     *
+     * Choose Auth Configuration Type.
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
@@ -1421,6 +1421,20 @@ export interface ConfigObject {
      */
     oracleConnectionType?: OracleConnectionType;
     /**
+     * Controls how Oracle identifier names (tables, columns, schemas) are stored in
+     * OpenMetadata. When disabled (default), Oracle's UPPERCASE unquoted identifiers (e.g.
+     * EMPLOYEES) are not guaranteed to be stored as-is — identifiers with the same letters but
+     * different case (e.g. unquoted EMPLOYEES and quoted 'employees') will collide into the
+     * same name. When enabled, names are stored exactly as Oracle persists them, which solves
+     * same-name collisions between quoted and unquoted identifiers. WARNING: enabling this
+     * after data has already been ingested with the default setting will change the stored
+     * names of all existing tables, columns, schemas, and constraints — breaking attached tags,
+     * descriptions, lineage, data quality tests, and any other metadata associated with those
+     * entities. If you must switch, soft-delete all previously ingested entities before
+     * re-ingesting.
+     */
+    preserveIdentifierCase?: boolean;
+    /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      *
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
@@ -1558,6 +1572,12 @@ export interface ConfigObject {
      * Prefix of the data source.
      */
     prefix?: string;
+    /**
+     * Skip files in cold storage tiers (e.g., S3 Glacier, Azure Archive/Cool/Cold, GCS
+     * Coldline/Archive). When enabled, only files in hot/standard storage tiers will be
+     * processed.
+     */
+    skipColdStorage?: boolean;
     /**
      * Couchbase connection Bucket options.
      */
@@ -1716,8 +1736,6 @@ export interface ConfigObject {
     schemaRegistryURL?: string;
     /**
      * security.protocol consumer config property
-     *
-     * Kafka security protocol config
      */
     securityProtocol?: KafkaSecurityProtocol;
     /**
@@ -1974,33 +1992,9 @@ export interface ConfigObject {
      */
     uiHostPort?: string;
     /**
-     * service type of the messaging source
+     * Event broker configuration. Choose between Kafka and Kinesis.
      */
-    brokersUrl?: string;
-    /**
-     * consumer group name
-     */
-    consumerGroupName?: string;
-    /**
-     * initial Kafka consumer offset
-     */
-    consumerOffsets?: InitialConsumerOffsets;
-    /**
-     * max allowed wait time
-     */
-    poolTimeout?: number;
-    /**
-     * SASL Configuration details.
-     */
-    saslConfig?: SASLClientConfig;
-    /**
-     * max allowed inactivity time
-     */
-    sessionTimeout?: number;
-    /**
-     * topic from where Open lineage events will be pulled
-     */
-    topicName?: string;
+    brokerConfig?: BrokerConfiguration;
     /**
      * We support username/password or No Authentication
      */
@@ -2382,6 +2376,8 @@ export enum AuthProvider {
  *
  * Azure Database Connection Config
  *
+ * Choose Auth Configuration Type.
+ *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  *
  * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
@@ -2403,6 +2399,8 @@ export enum AuthProvider {
  * SSL Certificates By Path
  *
  * AWS credentials configs.
+ *
+ * AWS credentials configuration.
  *
  * Authentication type to connect to Apache Ranger.
  *
@@ -2581,6 +2579,8 @@ export interface AuthenticationTypeForTableau {
 
 /**
  * AWS credentials configs.
+ *
+ * AWS credentials configuration.
  */
 export interface AWSCredentials {
     /**
@@ -2781,6 +2781,161 @@ export enum AuthenticationEnum {
 }
 
 /**
+ * Event broker configuration. Choose between Kafka and Kinesis.
+ *
+ * Kafka broker configuration for OpenLineage events.
+ *
+ * AWS Kinesis Data Streams configuration for OpenLineage events.
+ */
+export interface BrokerConfiguration {
+    /**
+     * Kafka bootstrap servers URL.
+     */
+    brokersUrl?: string;
+    /**
+     * Kafka consumer group name.
+     */
+    consumerGroupName?: string;
+    /**
+     * Initial Kafka consumer offset.
+     *
+     * Initial Kinesis shard iterator type.
+     */
+    consumerOffsets?: InitialConsumerOffsets;
+    /**
+     * Max allowed wait time.
+     *
+     * Poll interval in seconds.
+     */
+    poolTimeout?: number;
+    /**
+     * SASL Configuration details.
+     */
+    saslConfig?: SASLClientConfig;
+    /**
+     * Kafka security protocol config.
+     */
+    securityProtocol?: KafkaSecurityProtocol;
+    /**
+     * Max allowed inactivity time.
+     *
+     * Max inactivity timeout in seconds.
+     */
+    sessionTimeout?: number;
+    /**
+     * SSL Configuration details.
+     */
+    sslConfig?: ConsumerConfigSSLClass;
+    /**
+     * Topic from where OpenLineage events will be pulled.
+     */
+    topicName?: string;
+    /**
+     * AWS credentials configuration.
+     */
+    awsConfig?: AWSCredentials;
+    /**
+     * Kinesis Data Stream name.
+     */
+    streamName?: string;
+}
+
+/**
+ * Initial Kafka consumer offset.
+ *
+ * Initial Kinesis shard iterator type.
+ */
+export enum InitialConsumerOffsets {
+    Earliest = "earliest",
+    InitialConsumerOffsetsLATEST = "LATEST",
+    Latest = "latest",
+    TrimHorizon = "TRIM_HORIZON",
+}
+
+/**
+ * SASL Configuration details.
+ *
+ * SASL client configuration.
+ */
+export interface SASLClientConfig {
+    /**
+     * SASL security mechanism
+     */
+    saslMechanism?: SaslMechanismType;
+    /**
+     * The SASL authentication password.
+     */
+    saslPassword?: string;
+    /**
+     * The SASL authentication username.
+     */
+    saslUsername?: string;
+}
+
+/**
+ * sasl.mechanism Consumer Config property
+ *
+ * SASL Mechanism consumer config property
+ *
+ * SASL security mechanism
+ */
+export enum SaslMechanismType {
+    Gssapi = "GSSAPI",
+    Oauthbearer = "OAUTHBEARER",
+    Plain = "PLAIN",
+    ScramSHA256 = "SCRAM-SHA-256",
+    ScramSHA512 = "SCRAM-SHA-512",
+}
+
+/**
+ * Kafka security protocol config.
+ *
+ * security.protocol consumer config property
+ */
+export enum KafkaSecurityProtocol {
+    Plaintext = "PLAINTEXT",
+    SSL = "SSL",
+    SaslPlaintext = "SASL_PLAINTEXT",
+    SaslSSL = "SASL_SSL",
+}
+
+/**
+ * Client SSL configuration
+ *
+ * SSL Configuration details.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * SSL Configuration for OpenMetadata Server
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface ConsumerConfigSSLClass {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
  * Iceberg Catalog configuration.
  */
 export interface IcebergCatalog {
@@ -2867,6 +3022,8 @@ export interface IcebergFileSystem {
 
 /**
  * AWS credentials configs.
+ *
+ * AWS credentials configuration.
  *
  * Azure Cloud Credentials
  *
@@ -3005,42 +3162,6 @@ export interface QlikCertificatesBy {
 }
 
 /**
- * Client SSL configuration
- *
- * SSL Configuration details.
- *
- * SSL Configuration details for DB2 connection. Provide CA certificate for server
- * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
- * client certificate, and private key for mutual TLS authentication.
- *
- * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
- * connection.
- *
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
- * connection.
- *
- * SSL Configuration for OpenMetadata Server
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface ConsumerConfigSSLClass {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
-}
-
-/**
  * Cloud provider where Snowplow is deployed
  */
 export enum CloudProvider {
@@ -3176,6 +3297,8 @@ export interface ConfigSourceConnection {
  * GCP Credentials for Google Drive API
  *
  * AWS credentials configs.
+ *
+ * AWS credentials configuration.
  */
 export interface Credentials {
     /**
@@ -3602,6 +3725,8 @@ export interface DataStorageConfig {
 
 /**
  * AWS credentials configs.
+ *
+ * AWS credentials configuration.
  */
 export interface AwsCredentials {
     /**
@@ -3732,14 +3857,6 @@ export enum VerifySSL {
     Ignore = "ignore",
     NoSSL = "no-ssl",
     Validate = "validate",
-}
-
-/**
- * initial Kafka consumer offset
- */
-export enum InitialConsumerOffsets {
-    Earliest = "earliest",
-    Latest = "latest",
 }
 
 /**
@@ -4289,41 +4406,6 @@ export enum RunMode {
 }
 
 /**
- * SASL Configuration details.
- *
- * SASL client configuration.
- */
-export interface SASLClientConfig {
-    /**
-     * SASL security mechanism
-     */
-    saslMechanism?: SaslMechanismType;
-    /**
-     * The SASL authentication password.
-     */
-    saslPassword?: string;
-    /**
-     * The SASL authentication username.
-     */
-    saslUsername?: string;
-}
-
-/**
- * sasl.mechanism Consumer Config property
- *
- * SASL Mechanism consumer config property
- *
- * SASL security mechanism
- */
-export enum SaslMechanismType {
-    Gssapi = "GSSAPI",
-    Oauthbearer = "OAUTHBEARER",
-    Plain = "PLAIN",
-    ScramSHA256 = "SCRAM-SHA-256",
-    ScramSHA512 = "SCRAM-SHA-512",
-}
-
-/**
  * SQLAlchemy driver scheme options.
  *
  * Mongo connection scheme options.
@@ -4424,18 +4506,6 @@ export interface OpenMetadataJWTClientConfig {
      * OpenMetadata generated JWT token.
      */
     jwtToken: string;
-}
-
-/**
- * security.protocol consumer config property
- *
- * Kafka security protocol config
- */
-export enum KafkaSecurityProtocol {
-    Plaintext = "PLAINTEXT",
-    SSL = "SSL",
-    SaslPlaintext = "SASL_PLAINTEXT",
-    SaslSSL = "SASL_SSL",
 }
 
 export enum SpaceType {
@@ -5099,15 +5169,15 @@ export interface Pipeline {
      */
     computeColumnMetrics?: boolean;
     /**
-     * Option to turn on/off computing profiler metrics.
-     */
-    computeMetrics?: boolean;
-    /**
      * Option to turn on/off table metric computation. If enabled, profiler will compute table
      * level metrics.
      */
     computeTableMetrics?: boolean;
-    processingEngine?:    ProcessingEngine;
+    /**
+     * List of metrics to compute. If empty, then all metrics will be computed
+     */
+    metrics?:          MetricType[];
+    processingEngine?: ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
@@ -5130,10 +5200,11 @@ export interface Pipeline {
      */
     timeoutSeconds?: number;
     /**
-     * Use system tables to extract metrics. Metrics that cannot be gathered from system tables
-     * will use the default methods. Using system tables can be faster but requires gathering
-     * statistics before running (for example using the ANALYZE procedure). More information can
-     * be found in the documentation: https://docs.openmetadata.org/latest/profler
+     * Use system tables to extract table metrics. Metrics that cannot be gathered from system
+     * tables will use the default methods. Using system tables can be faster but requires
+     * gathering statistics before running (for example using the ANALYZE procedure). More
+     * information can be found in the documentation:
+     * https://docs.openmetadata.org/latest/profler
      */
     useStatistics?: boolean;
     /**
@@ -5547,6 +5618,17 @@ export interface CollateAIAppConfig {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Per-entity-type override for time series max days. Keys are entity type names (e.g.
+     * testCaseResult, queryCostRecord), values are number of days. Entities not listed here use
+     * the default Time Series Max Days value.
+     */
+    timeSeriesEntityDays?: { [key: string]: number };
+    /**
+     * Maximum age in days for time series data during reindexing. Default 0 (index all data).
+     * Set to a positive value like 15 to limit to recent data only.
+     */
+    timeSeriesMaxDays?: number;
     /**
      * Enable distributed indexing to scale reindexing across multiple servers with fault
      * tolerance and parallel processing
@@ -6748,6 +6830,48 @@ export interface LineageInformation {
      */
     storageServiceNames?: string[];
     [property: string]: any;
+}
+
+/**
+ * This schema defines all possible metric types in OpenMetadata.
+ */
+export enum MetricType {
+    CardinalityDistribution = "cardinalityDistribution",
+    ColumnCount = "columnCount",
+    ColumnNames = "columnNames",
+    CountInSet = "countInSet",
+    DistinctCount = "distinctCount",
+    DistinctProportion = "distinctProportion",
+    DuplicateCount = "duplicateCount",
+    FirstQuartile = "firstQuartile",
+    Histogram = "histogram",
+    ILikeCount = "iLikeCount",
+    ILikeRatio = "iLikeRatio",
+    InterQuartileRange = "interQuartileRange",
+    LikeCount = "likeCount",
+    LikeRatio = "likeRatio",
+    Max = "max",
+    MaxLength = "maxLength",
+    Mean = "mean",
+    Median = "median",
+    Min = "min",
+    MinLength = "minLength",
+    NonParametricSkew = "nonParametricSkew",
+    NotLikeCount = "notLikeCount",
+    NotRegexCount = "notRegexCount",
+    NullCount = "nullCount",
+    NullMissingCount = "nullMissingCount",
+    NullProportion = "nullProportion",
+    RegexCount = "regexCount",
+    RowCount = "rowCount",
+    Stddev = "stddev",
+    Sum = "sum",
+    System = "system",
+    ThirdQuartile = "thirdQuartile",
+    UniqueCount = "uniqueCount",
+    UniqueProportion = "uniqueProportion",
+    ValueRank = "valueRank",
+    ValuesCount = "valuesCount",
 }
 
 /**

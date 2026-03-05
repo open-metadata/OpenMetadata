@@ -106,9 +106,12 @@ public class CostAnalysisWorkflow {
         new PaginatedEntitiesSource(Entity.DATABASE_SERVICE, batchSize, List.of("*"));
     int total = 0;
 
-    while (!databaseServices.isDone().get()) {
-      ResultList<DatabaseService> resultList =
-          filterDatabaseServices(databaseServices.readNext(null));
+    String keysetCursor = null;
+    while (true) {
+      ResultList<? extends EntityInterface> rawResult =
+          databaseServices.readNextKeyset(keysetCursor);
+      keysetCursor = rawResult.getPaging().getAfter();
+      ResultList<DatabaseService> resultList = filterDatabaseServices(rawResult);
       if (!resultList.getData().isEmpty()) {
         for (DatabaseService databaseService : resultList.getData()) {
           ListFilter filter = new ListFilter(null);
@@ -124,6 +127,9 @@ public class CostAnalysisWorkflow {
                   .getDao()
                   .listCount(filter);
         }
+      }
+      if (keysetCursor == null) {
+        break;
       }
     }
 
@@ -166,22 +172,29 @@ public class CostAnalysisWorkflow {
 
       Optional<String> initialProcessorError = Optional.empty();
 
-      while (!source.isDone().get()) {
+      String tableKeysetCursor = null;
+      while (true) {
         try {
-          ResultList<? extends EntityInterface> resultList = source.readNext(null);
+          ResultList<? extends EntityInterface> resultList =
+              source.readNextKeyset(tableKeysetCursor);
+          tableKeysetCursor = resultList.getPaging().getAfter();
           List<CostAnalysisTableData> costAnalysisTableData =
               databaseServiceTablesProcessor.process(resultList, contextData);
           rawCostAnalysisReportDataList.addAll(
               rawCostAnalysisReportDataProcessor.process(costAnalysisTableData, contextData));
           aggregatedCostAnalysisReportDataProcessor.process(costAnalysisTableData, contextData);
           source.updateStats(resultList.getData().size(), 0);
+          if (tableKeysetCursor == null) {
+            break;
+          }
         } catch (SearchIndexException ex) {
           source.updateStats(
               ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
           String errorMessage =
-              String.format("Failed processing Data from %s: ", source.getName(), ex);
+              String.format("Failed processing Data from %s: %s", source.getName(), ex);
           initialProcessorError = Optional.of(errorMessage);
           workflowStats.addFailure(errorMessage);
+          break;
         } finally {
           updateWorkflowStats(source.getName(), source.getStats());
         }

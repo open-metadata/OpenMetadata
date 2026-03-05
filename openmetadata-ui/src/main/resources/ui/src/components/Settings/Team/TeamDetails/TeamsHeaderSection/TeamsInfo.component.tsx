@@ -19,6 +19,7 @@ import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
 import { isEmpty, last } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
@@ -33,13 +34,20 @@ import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useEntityRules } from '../../../../../hooks/useEntityRules';
+import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
+import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
+import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
 import { SubscriptionWebhook, TeamsInfoProps } from '../team.interface';
 import './teams-info.less';
 import TeamsSubscription from './TeamsSubscription.component';
+import { useTheme } from '@mui/material';
+import { showErrorToast, showSuccessToast } from '../../../../../utils/ToastUtils';
+import { AxiosError } from 'axios';
+
 const TeamsInfo = ({
   parentTeams,
   isGroupType,
@@ -50,7 +58,7 @@ const TeamsInfo = ({
   isTeamDeleted,
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
-
+  const theme = useTheme();
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -134,14 +142,32 @@ const TeamsInfo = ({
           subscription: isEmpty(data)
             ? undefined
             : {
-                [data?.webhook ?? '']: { endpoint: data?.endpoint },
-              },
+              [data?.webhook ?? '']: { endpoint: data?.endpoint },
+            },
         },
       };
 
       await updateTeamHandler(updatedData);
     }
   };
+
+  const handleDefaultPersonaUpdate = useCallback(
+    async (defaultPersona?: EntityReference) => {
+      try {
+        if (currentTeam) {
+          const updatedData: Team = {
+            ...currentTeam,
+            defaultPersona,
+          };
+          await updateTeamHandler(updatedData);
+          showSuccessToast(t('message.persona-updated-successfully'));
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [currentTeam, updateTeamHandler]
+  );
 
   const emailRender = useMemo(
     () => (
@@ -309,6 +335,48 @@ const TeamsInfo = ({
     setShowTypeSelector,
   ]);
 
+  const personaRender = useMemo(() => {
+    if (!isGroupType) {
+      return null;
+    }
+
+    return (
+      <>
+        <Divider className="vertical-divider" type="vertical" />
+        <Space align="start" className="d-flex flex-col gap-2">
+          <div className="d-flex gap-2">
+            <Typography.Text className="text-sm font-medium teams-info-heading">
+              {t('label.persona')}
+            </Typography.Text>
+            <PersonaSelectableList
+              isDefaultPersona
+              hasPermission={hasEditPermission}
+              multiSelect={false}
+              selectedPersonas={currentTeam.defaultPersona ? [currentTeam.defaultPersona] : []}
+              onUpdate={handleDefaultPersonaUpdate}
+            />
+          </div>
+          <div className="d-flex items-center" data-testid="team-persona">
+            {currentTeam.defaultPersona ? (
+              <Link
+                className="text-sm"
+                to={entityUtilClassBase.getEntityLink(
+                  EntityType.PERSONA,
+                  currentTeam.defaultPersona.fullyQualifiedName ?? ''
+                )}>
+                {getEntityName(currentTeam.defaultPersona)}
+              </Link>
+            ) : (
+              <Typography.Text className="text-sm font-medium" color={theme.palette.grey['700']}>
+                {t('message.no-persona-assigned')}
+              </Typography.Text>
+            )}
+          </div>
+        </Space>
+      </>
+    );
+  }, [isGroupType, currentTeam.defaultPersona, hasEditPermission, handleDefaultPersonaUpdate, t]);
+
   return (
     <Space
       className="teams-info-header-container"
@@ -344,6 +412,8 @@ const TeamsInfo = ({
         updateTeamSubscription={updateTeamSubscription}
       />
       {teamTypeElement}
+
+      {personaRender}
 
       <Divider className="vertical-divider" type="vertical" />
 

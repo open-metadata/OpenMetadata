@@ -25,6 +25,7 @@ public class AuditLogRecordMapper implements RowMapper<AuditLogRecord> {
         .entityFQN(rs.getString("entity_fqn"))
         .entityFQNHash(rs.getString("entity_fqn_hash"))
         .eventJson(rs.getString("event_json"))
+        .searchText(rs.getString("search_text"))
         .createdAt(rs.getLong("created_at"))
         .build();
   }

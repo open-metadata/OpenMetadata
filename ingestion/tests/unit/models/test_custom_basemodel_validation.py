@@ -992,6 +992,131 @@ class TestDashboardDataModelValidation(TestCase):
                 self.assertEqual(fetch_result.columns[0].name.root, original_name)
 
 
+class TestColumnNameEncodingTruncation:
+    """
+    Test that column names expanded beyond 256 chars by replace_separators
+    are truncated to fit the ColumnName maxLength constraint.
+
+    Real-world scenario: PowerBI column names with double quotes (e.g. survey
+    questions) where each '"' expands to '__reserved__quote__' (+19 chars).
+    """
+
+    REAL_WORLD_COLUMN_NAME = (
+        "Q8 (Root Cause) - Was the communication clear and structured? "
+        'following the relevant stages of communication, a "what, why, how" '
+        "format for the answer, and any major grammar/language mistakes "
+        "affecting communication. | Human Support - 33%"
+    )
+
+    def test_replace_separators_expands_name_beyond_256(self):
+        encoded = replace_separators(self.REAL_WORLD_COLUMN_NAME)
+        assert len(self.REAL_WORLD_COLUMN_NAME) <= 256
+        assert len(encoded) > 256
+
+    def test_create_table_request_truncates_encoded_column_name(self):
+        from metadata.generated.schema.type.basic import (
+            EntityName,
+            FullyQualifiedEntityName,
+        )
+
+        req = CreateTableRequest(
+            name=EntityName("test_table"),
+            databaseSchema=FullyQualifiedEntityName("service.db.schema"),
+            columns=[
+                Column(
+                    name=ColumnName(self.REAL_WORLD_COLUMN_NAME),
+                    displayName=self.REAL_WORLD_COLUMN_NAME,
+                    dataType=DataType.STRING,
+                )
+            ],
+        )
+        encoded_root = req.columns[0].name.root
+        assert "__reserved__quote__" in encoded_root
+        assert len(encoded_root) <= 256
+
+    def test_create_dashboard_data_model_truncates_encoded_column_name(self):
+        from metadata.generated.schema.api.data.createDashboardDataModel import (
+            CreateDashboardDataModelRequest,
+        )
+        from metadata.generated.schema.entity.data.dashboardDataModel import (
+            DataModelType,
+        )
+        from metadata.generated.schema.type.basic import (
+            EntityName,
+            FullyQualifiedEntityName,
+        )
+
+        req = CreateDashboardDataModelRequest(
+            name=EntityName("test_model"),
+            displayName="Test Model",
+            dataModelType=DataModelType.PowerBIDataModel,
+            service=FullyQualifiedEntityName("service.test"),
+            columns=[
+                Column(
+                    name=ColumnName(self.REAL_WORLD_COLUMN_NAME),
+                    displayName=self.REAL_WORLD_COLUMN_NAME,
+                    dataType=DataType.STRING,
+                )
+            ],
+        )
+        encoded_root = req.columns[0].name.root
+        assert "__reserved__quote__" in encoded_root
+        assert len(encoded_root) <= 256
+
+    def test_short_names_with_special_chars_not_truncated(self):
+        short_name = 'column "with" quotes'
+        encoded = replace_separators(short_name)
+        assert len(encoded) <= 256
+
+        from metadata.generated.schema.type.basic import (
+            EntityName,
+            FullyQualifiedEntityName,
+        )
+
+        req = CreateTableRequest(
+            name=EntityName("test_table"),
+            databaseSchema=FullyQualifiedEntityName("service.db.schema"),
+            columns=[
+                Column(
+                    name=ColumnName(short_name),
+                    displayName=short_name,
+                    dataType=DataType.STRING,
+                )
+            ],
+        )
+        assert req.columns[0].name.root == encoded
+
+    def test_names_without_special_chars_unchanged(self):
+        plain_name = "a" * 200
+        from metadata.generated.schema.type.basic import (
+            EntityName,
+            FullyQualifiedEntityName,
+        )
+
+        req = CreateTableRequest(
+            name=EntityName("test_table"),
+            databaseSchema=FullyQualifiedEntityName("service.db.schema"),
+            columns=[
+                Column(
+                    name=ColumnName(plain_name),
+                    displayName=plain_name,
+                    dataType=DataType.STRING,
+                )
+            ],
+        )
+        assert req.columns[0].name.root == plain_name
+
+    def test_transform_entity_names_root_attribute_truncated(self):
+        long_name_with_quotes = "a" * 230 + '"' + "b" * 10 + '"'
+        assert len(long_name_with_quotes) <= 256
+        encoded = replace_separators(long_name_with_quotes)
+        assert len(encoded) > 256
+
+        cn = ColumnName(long_name_with_quotes)
+        result = transform_entity_names(cn, ColumnName)
+        assert len(result.root) <= 256
+
+
 if __name__ == "__main__":
     import unittest
 

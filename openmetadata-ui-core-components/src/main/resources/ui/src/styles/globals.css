@@ -1,4 +1,5 @@
 @import "tailwindcss/theme.css" prefix(tw);
+@import "tailwindcss/preflight.css" prefix(tw);
 @import "tailwindcss/utilities.css" prefix(tw);
 
 @import "./theme.css";
@@ -36,4 +37,25 @@
     height: revert-layer;
     display: inline;
   }
+}
+
+/* Skeleton wave animation */
+@keyframes skeleton-wave {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-wave {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-quaternary) 25%,
+    var(--color-bg-tertiary) 50%,
+    var(--color-bg-quaternary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-wave 1.5s ease-in-out infinite;
 }

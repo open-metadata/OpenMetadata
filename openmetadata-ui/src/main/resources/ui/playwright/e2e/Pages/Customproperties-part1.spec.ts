@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { expect } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { TableClass } from '../../support/entity/TableClass';
@@ -20,8 +21,8 @@ import {
   deleteCreatedProperty,
   editCreatedProperty,
   verifyCustomPropertyInAdvancedSearch,
-  verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const propertiesList = [
@@ -36,8 +37,6 @@ const propertiesList = [
   'Timestamp',
   'Hyperlink',
 ];
-
-const TABLE_COLUMN_ENTITY_NAME = 'tableColumn';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -58,14 +57,12 @@ test.describe(
       await redirectToHomePage(page);
     });
 
-    propertiesList.forEach((property) => {
-      test.describe(
-        `Add update and delete ${property} custom properties`,
+    Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
+      test.describe.serial(
+        `Add update and delete custom properties for ${entity.name}`,
         () => {
-          Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-            test(`Add ${property} custom property for ${entity.name}`, async ({
-              page,
-            }) => {
+          propertiesList.forEach((property) => {
+            test(property, async ({ page }) => {
               // Using Date.now() to generate property names in a way that new property will always be
               // added after existing properties to avoid conflicts due to parallel test executions
               const propertyName = `pwcp${Date.now()}test${entity.name}`;
@@ -91,26 +88,6 @@ test.describe(
                 property
               );
 
-              if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
-                await test.step(
-                  'Verify Custom Property Persistence on Reload',
-                  async () => {
-                    const tableName = adminTestEntity.entity.name ?? '';
-                    const tableFqn =
-                      adminTestEntity.entityResponseData.fullyQualifiedName ??
-                      '';
-
-                    await verifyTableColumnCustomPropertyPersistence({
-                      page,
-                      tableName,
-                      tableFqn,
-                      propertyName,
-                      propertyType: property,
-                    });
-                  }
-                );
-              }
-
               await settingClick(
                 page,
                 entity.entityApiType as SettingOptionsType,
@@ -119,6 +96,95 @@ test.describe(
 
               await deleteCreatedProperty(page, propertyName);
             });
+          });
+        }
+      );
+    });
+
+    test.describe.serial('Sql Query custom property layout and scroll', () => {
+      const entity = CUSTOM_PROPERTIES_ENTITIES['entity_table'];
+
+      test(
+        'sqlQuery shows scrollable CodeMirror container and no expand toggle',
+        async ({ page }) => {
+          test.slow();
+          const propertyName = `pwcp${Date.now()}sqlQueryLayout`;
+
+          await test.step('Create sqlQuery property', async () => {
+            await settingClick(
+              page,
+              entity.entityApiType as SettingOptionsType,
+              true
+            );
+            await addCustomPropertiesForEntity({
+              page,
+              propertyName,
+              customPropertyData: entity,
+              customType: 'Sql Query',
+            });
+          });
+
+          await test.step('Set multi-line SQL value', async () => {
+            await adminTestEntity.visitEntityPage(page);
+            await waitForAllLoadersToDisappear(page);
+            await page.getByTestId('custom_properties').click();
+
+            const container = page.locator(
+              `[data-testid="custom-property-${propertyName}-card"]`
+            );
+            const editButton = container.getByTestId('edit-icon');
+            await editButton.scrollIntoViewIfNeeded();
+            await expect(editButton).toBeVisible();
+            await expect(editButton).toBeEnabled();
+            await editButton.click();
+
+            await page.locator("pre[role='presentation']").last().click();
+            await page.keyboard.type(
+              "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100"
+            );
+
+            const patchResponse = page.waitForResponse(
+              `/api/v1/${entity.entityApiType}/*`
+            );
+            await container.getByTestId('inline-save-btn').click();
+            expect((await patchResponse).status()).toBe(200);
+            await waitForAllLoadersToDisappear(page);
+          });
+
+          await test.step(
+            'Verify .CodeMirror-scroll is height-constrained and scrollable',
+            async () => {
+              const container = page.locator(
+                `[data-testid="custom-property-${propertyName}-card"]`
+              );
+              const codeMirrorScroll = container.locator('.CodeMirror-scroll');
+              await expect(codeMirrorScroll).toBeVisible();
+              const isScrollable = await codeMirrorScroll.evaluate(
+                (el) => el.scrollHeight > el.clientHeight
+              );
+              expect(isScrollable).toBeTruthy();
+            }
+          );
+
+          await test.step(
+            'Verify expand/collapse toggle is hidden',
+            async () => {
+              const container = page.locator(
+                `[data-testid="custom-property-${propertyName}-card"]`
+              );
+              await expect(
+                container.getByTestId(`toggle-${propertyName}`)
+              ).not.toBeVisible();
+            }
+          );
+
+          await test.step('Cleanup property', async () => {
+            await settingClick(
+              page,
+              entity.entityApiType as SettingOptionsType,
+              true
+            );
+            await deleteCreatedProperty(page, propertyName);
           });
         }
       );

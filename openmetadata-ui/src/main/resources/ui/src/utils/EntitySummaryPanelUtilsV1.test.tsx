@@ -1152,14 +1152,17 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
+      // Parent is shown collapsed; child is behind expand button
       expect(
-        screen.getByTestId('field-card-nested_child_field')
+        screen.getByTestId('field-card-parent_record')
       ).toBeInTheDocument();
+      expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
       expect(
         screen.queryByTestId('field-card-top_level_field')
       ).not.toBeInTheDocument();
+      // Child card is not rendered until user expands
       expect(
-        screen.queryByTestId('field-card-parent_record')
+        screen.queryByTestId('field-card-nested_child_field')
       ).not.toBeInTheDocument();
     });
 
@@ -1174,11 +1177,16 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
+      // Ancestor parent is shown collapsed; deeply nested child is behind expand
       expect(
-        screen.getByTestId('field-card-deeply_nested')
+        screen.getByTestId('field-card-parent_record')
       ).toBeInTheDocument();
+      expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
       expect(
         screen.queryByTestId('field-card-top_level_field')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-deeply_nested')
       ).not.toBeInTheDocument();
     });
 
@@ -1243,14 +1251,16 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
+      // Parent is shown collapsed; child is behind expand button
       expect(
-        screen.getByTestId('field-card-nested_column_child')
+        screen.getByTestId('field-card-struct_column')
       ).toBeInTheDocument();
+      expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
       expect(
         screen.queryByTestId('field-card-top_column')
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('field-card-struct_column')
+        screen.queryByTestId('field-card-nested_column_child')
       ).not.toBeInTheDocument();
     });
 
@@ -1265,11 +1275,16 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
+      // Ancestor parent is shown collapsed; deeply nested column is behind expand
       expect(
-        screen.getByTestId('field-card-deeply_nested_column')
+        screen.getByTestId('field-card-struct_column')
       ).toBeInTheDocument();
+      expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
       expect(
         screen.queryByTestId('field-card-top_column')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-deeply_nested_column')
       ).not.toBeInTheDocument();
     });
 
@@ -1334,14 +1349,16 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
+      // Parent is shown collapsed; child is behind expand button
       expect(
-        screen.getByTestId('field-card-nested_si_child')
+        screen.getByTestId('field-card-nested_si_parent')
       ).toBeInTheDocument();
+      expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
       expect(
         screen.queryByTestId('field-card-top_si_field')
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('field-card-nested_si_parent')
+        screen.queryByTestId('field-card-nested_si_child')
       ).not.toBeInTheDocument();
     });
 
@@ -1356,11 +1373,16 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
+      // Ancestor parent is shown collapsed; deeply nested field is behind expand
       expect(
-        screen.getByTestId('field-card-deeply_nested_si_field')
+        screen.getByTestId('field-card-nested_si_parent')
       ).toBeInTheDocument();
+      expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
       expect(
         screen.queryByTestId('field-card-top_si_field')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('field-card-deeply_nested_si_field')
       ).not.toBeInTheDocument();
     });
 

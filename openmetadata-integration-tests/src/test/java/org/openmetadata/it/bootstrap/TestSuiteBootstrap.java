@@ -556,10 +556,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void configurePipelineServiceClient(OpenMetadataApplicationConfig config) {
-    PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
-
     if (kubeConfigYaml != null) {
-      // K3s was started - configure K8s pipeline client
+      PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
       LOG.info("Configuring K8sPipelineClient for pipeline operations");
       pipelineConfig.setEnabled(true);
       pipelineConfig.setClassName(
@@ -574,13 +572,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       params.setAdditionalProperty("serviceAccountName", "default");
       params.setAdditionalProperty("imagePullPolicy", "IfNotPresent");
       pipelineConfig.setParameters(params);
+      config.setPipelineServiceClientConfiguration(pipelineConfig);
     } else {
-      // No K3s - disable pipeline service client
-      pipelineConfig.setEnabled(false);
       LOG.info("Pipeline service client disabled (K8s not enabled)");
+      config.getPipelineServiceClientConfiguration().setEnabled(false);
     }
-
-    config.setPipelineServiceClientConfiguration(pipelineConfig);
   }
 
   private void configureRdf(OpenMetadataApplicationConfig config) {
@@ -613,16 +609,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     try {
-      if (WorkflowHandler.isInitialized()) {
-        LOG.info("Shutting down Flowable ProcessEngine...");
-        org.flowable.engine.ProcessEngines.destroy();
-        LOG.info("Flowable ProcessEngine shut down successfully");
-      }
-    } catch (Exception e) {
-      LOG.warn("Error shutting down Flowable ProcessEngine", e);
-    }
-
-    try {
       if (APP != null) {
         APP.after();
         if (APP.getEnvironment() != null
@@ -633,6 +619,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       }
     } catch (Exception e) {
       LOG.warn("Error stopping Dropwizard app", e);
+    }
+
+    try {
+      if (WorkflowHandler.isInitialized()) {
+        LOG.info("Shutting down Flowable ProcessEngine...");
+        org.flowable.engine.ProcessEngines.destroy();
+        LOG.info("Flowable ProcessEngine shut down successfully");
+      }
+    } catch (Exception e) {
+      LOG.warn("Error shutting down Flowable ProcessEngine", e);
     }
 
     try {

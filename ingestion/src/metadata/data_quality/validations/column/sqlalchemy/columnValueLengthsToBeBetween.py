@@ -83,6 +83,7 @@ class ColumnValueLengthsToBeBetweenValidator(
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for max with proper aggregation
 
@@ -106,9 +107,9 @@ class ColumnValueLengthsToBeBetweenValidator(
             checker = self._get_validation_checker(test_params)
 
             metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.ROW_COUNT().fn(),
-                Metrics.MIN_LENGTH.name: Metrics.MIN_LENGTH(column).fn(),
-                Metrics.MAX_LENGTH.name: Metrics.MAX_LENGTH(column).fn(),
+                DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
+                Metrics.minLength.name: Metrics.minLength(column).fn(),
+                Metrics.maxLength.name: Metrics.maxLength(column).fn(),
                 DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(
                     LenFn(column)
                 ),
@@ -122,18 +123,19 @@ class ColumnValueLengthsToBeBetweenValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                top_n=top_n,
             )
 
             for row in result_rows:
-                min_len_value = row.get(Metrics.MIN_LENGTH.name)
-                max_len_value = row.get(Metrics.MAX_LENGTH.name)
+                min_len_value = row.get(Metrics.minLength.name)
+                max_len_value = row.get(Metrics.maxLength.name)
 
                 if min_len_value is None or max_len_value is None:
                     continue
 
                 metric_values = {
-                    Metrics.MIN_LENGTH.name: min_len_value,
-                    Metrics.MAX_LENGTH.name: max_len_value,
+                    Metrics.minLength.name: min_len_value,
+                    Metrics.maxLength.name: max_len_value,
                     DIMENSION_TOTAL_COUNT_KEY: row.get(DIMENSION_TOTAL_COUNT_KEY),
                     DIMENSION_FAILED_COUNT_KEY: row.get(DIMENSION_FAILED_COUNT_KEY),
                 }
