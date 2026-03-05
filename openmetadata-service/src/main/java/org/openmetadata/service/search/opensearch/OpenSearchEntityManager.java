@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +48,6 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.json.JsonData;
-import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.BulkByScrollFailure;
 import os.org.opensearch.client.opensearch._types.Conflicts;
@@ -79,16 +77,11 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
 public class OpenSearchEntityManager implements EntityManagementClient {
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
-  private OpenSearchAsyncClient asyncClient;
-  private final boolean isAsyncClientAvailable;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   public OpenSearchEntityManager(OpenSearchClient client) {
     this.client = client;
     this.isClientAvailable = client != null;
-    this.asyncClient =
-        this.isClientAvailable ? new OpenSearchAsyncClient(client._transport()) : null;
-    this.isAsyncClientAvailable = this.asyncClient != null;
   }
 
   @Override
@@ -99,8 +92,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   @Override
   public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
       throws IOException {
-    if (!isAsyncClientAvailable) {
-      LOG.error("OpenSearch async client is not available. Cannot create entities.");
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot create entities.");
       return;
     }
 
@@ -118,37 +111,30 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                               .document(toJsonData(entry.getValue())))));
     }
 
+    if (operations.isEmpty()) {
+      return;
+    }
+
     BulkRequest bulkRequest = BulkRequest.of(b -> b.operations(operations).refresh(Refresh.True));
-    // Async call using OpenSearchAsyncClient
-    CompletableFuture<BulkResponse> future = asyncClient.bulk(bulkRequest);
+    BulkResponse response = client.bulk(bulkRequest);
 
-    future.whenComplete(
-        (response, error) -> {
-          if (error != null) {
-            LOG.error("Failed to create entities in OpenSearch (async)", error);
-            return;
-          }
+    if (response.errors()) {
+      LOG.error(
+          "Bulk indexing to OpenSearch encountered errors. Index: {}, Total: {}, Failed: {}",
+          indexName,
+          docsAndIds.size(),
+          response.items().stream().filter(item -> item.error() != null).count());
 
-          if (response.errors()) {
-            LOG.error(
-                "Bulk indexing to OpenSearch encountered errors. Index: {}, Total: {}, Failed: {}",
-                indexName,
-                docsAndIds.size(),
-                response.items().stream().filter(item -> item.error() != null).count());
-
-            response.items().stream()
-                .filter(item -> item.error() != null)
-                .forEach(
-                    item ->
-                        LOG.error(
-                            "Indexing failed for ID {}: {}", item.id(), item.error().reason()));
-          } else {
-            LOG.info(
-                "Successfully indexed {} entities to OpenSearch (async) for index: {}",
-                docsAndIds.size(),
-                indexName);
-          }
-        });
+      response.items().stream()
+          .filter(item -> item.error() != null)
+          .forEach(
+              item -> LOG.error("Indexing failed for ID {}: {}", item.id(), item.error().reason()));
+    } else {
+      LOG.info(
+          "Successfully indexed {} entities to OpenSearch for index: {}",
+          docsAndIds.size(),
+          indexName);
+    }
   }
 
   @Override

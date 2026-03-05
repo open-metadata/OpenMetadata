@@ -15,7 +15,6 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import es.co.elastic.clients.elasticsearch._types.Conflicts;
@@ -45,7 +44,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -77,16 +75,11 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class ElasticSearchEntityManager implements EntityManagementClient {
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
-  private ElasticsearchAsyncClient asyncClient;
-  private final boolean isAsyncClientAvailable;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   public ElasticSearchEntityManager(ElasticsearchClient client) {
     this.client = client;
     this.isClientAvailable = client != null;
-    this.asyncClient =
-        this.isClientAvailable ? new ElasticsearchAsyncClient(this.client._transport()) : null;
-    this.isAsyncClientAvailable = this.asyncClient != null;
   }
 
   @Override
@@ -95,9 +88,10 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
-    if (!isAsyncClientAvailable) {
-      LOG.error("ElasticSearch async client is not available. Cannot create entities.");
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot create entities.");
       return;
     }
 
@@ -115,38 +109,30 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                               .document(toJsonData(entry.getValue())))));
     }
 
-    // Execute the async bulk request
-    CompletableFuture<BulkResponse> future =
-        asyncClient.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
+    if (operations.isEmpty()) {
+      return;
+    }
 
-    // Handle response asynchronously
-    future.whenComplete(
-        (response, error) -> {
-          if (error != null) {
-            LOG.error("Failed to create entities in ElasticSearch (async)", error);
-            return;
-          }
+    BulkResponse response =
+        client.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
 
-          if (response.errors()) {
-            LOG.error(
-                "Bulk indexing to ElasticSearch encountered errors. Index: {}, Total: {}, Failed: {}",
-                indexName,
-                docsAndIds.size(),
-                response.items().stream().filter(item -> item.error() != null).count());
+    if (response.errors()) {
+      LOG.error(
+          "Bulk indexing to ElasticSearch encountered errors. Index: {}, Total: {}, Failed: {}",
+          indexName,
+          docsAndIds.size(),
+          response.items().stream().filter(item -> item.error() != null).count());
 
-            response.items().stream()
-                .filter(item -> item.error() != null)
-                .forEach(
-                    item ->
-                        LOG.error(
-                            "Indexing failed for ID {}: {}", item.id(), item.error().reason()));
-          } else {
-            LOG.info(
-                "Successfully indexed {} entities to ElasticSearch (async) for index: {}",
-                docsAndIds.size(),
-                indexName);
-          }
-        });
+      response.items().stream()
+          .filter(item -> item.error() != null)
+          .forEach(
+              item -> LOG.error("Indexing failed for ID {}: {}", item.id(), item.error().reason()));
+    } else {
+      LOG.info(
+          "Successfully indexed {} entities to ElasticSearch for index: {}",
+          docsAndIds.size(),
+          indexName);
+    }
   }
 
   @Override
