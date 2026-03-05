@@ -317,11 +317,11 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void raisePreviewMessage(App app) {
+  public void raiseNotEnabledMessage(App app) {
     throw AppException.byMessage(
         app.getName(),
-        "Preview",
-        "App is in Preview Mode. Enable it from the server configuration.");
+        "NotEnabled",
+        "App is not enabled. Enable it from the server configuration.");
   }
 
   public static AppRuntime getAppRuntime(App app) {
