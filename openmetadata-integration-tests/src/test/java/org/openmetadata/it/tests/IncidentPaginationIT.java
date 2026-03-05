@@ -91,6 +91,27 @@ public class IncidentPaginationIT {
                 return false;
               }
             });
+
+    String firstFqn = testCases.get(0).getFullyQualifiedName();
+    await()
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(3))
+        .until(
+            () -> {
+              try {
+                ListParams params =
+                    new ListParams()
+                        .withLimit(PAGE_SIZE)
+                        .withOffset(0)
+                        .withLatest(true)
+                        .addFilter("testCaseFQN", firstFqn);
+                ListResponse<TestCaseResolutionStatus> response =
+                    client.testCaseResolutionStatuses().searchList(params);
+                return response.getData().size() == 1;
+              } catch (Exception e) {
+                return false;
+              }
+            });
   }
 
   @Test
@@ -186,9 +207,9 @@ public class IncidentPaginationIT {
     String targetFqn = testCases.get(0).getFullyQualifiedName();
 
     await("Wait for filtered incident to be searchable by testCaseFQN")
-        .atMost(Duration.ofSeconds(30))
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(3))
         .ignoreExceptions()
         .untilAsserted(
             () -> {
