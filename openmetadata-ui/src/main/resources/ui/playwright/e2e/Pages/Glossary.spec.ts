@@ -476,10 +476,13 @@ test.describe('Glossary tests', () => {
         'Approved'
       );
 
+      const taskResolve2 = page1.waitForResponse(
+        '/api/v1/feed/tasks/*/resolve'
+      );
       await page1
         .getByTestId(`${glossary1.data.terms[1].data.name}-reject-btn`)
         .click();
-      await taskResolve;
+      await taskResolve2;
 
       await expect(
         page1.getByTestId(`${glossary1.data.terms[1].data.name}`)
@@ -550,8 +553,8 @@ test.describe('Glossary tests', () => {
         await page.getByText(glossaryTerm1.data.displayName).click();
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-            glossaryTerm1.data.displayName +
-            '")'
+          glossaryTerm1.data.displayName +
+          '")'
         );
 
         // Select 2nd term
@@ -570,8 +573,8 @@ test.describe('Glossary tests', () => {
 
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-            glossaryTerm2.data.displayName +
-            '")'
+          glossaryTerm2.data.displayName +
+          '")'
         );
 
         const patchRequest = page.waitForResponse(`/api/v1/dashboards/*`);
@@ -606,8 +609,8 @@ test.describe('Glossary tests', () => {
         await page.getByText(glossaryTerm3.data.displayName).click();
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-            glossaryTerm3.data.displayName +
-            '")'
+          glossaryTerm3.data.displayName +
+          '")'
         );
 
         // Select 2nd term
@@ -626,8 +629,8 @@ test.describe('Glossary tests', () => {
 
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-            glossaryTerm4.data.displayName +
-            '")'
+          glossaryTerm4.data.displayName +
+          '")'
         );
 
         const patchRequest2 = page.waitForResponse(`/api/v1/dashboards/*`);
@@ -683,8 +686,8 @@ test.describe('Glossary tests', () => {
 
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-            glossaryTerm3.data.displayName +
-            '")'
+          glossaryTerm3.data.displayName +
+          '")'
         );
 
         const patchRequest3 = page.waitForResponse(`/api/v1/charts/*`);
