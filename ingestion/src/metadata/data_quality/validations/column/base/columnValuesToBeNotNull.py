@@ -54,14 +54,14 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
 
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
-            null_count = self._run_results(Metrics.NULL_COUNT, column)
+            null_count = self._run_results(Metrics.nullCount, column)
 
             metric_values = {
-                Metrics.NULL_COUNT.name: null_count,
+                Metrics.nullCount.name: null_count,
             }
 
             if self.test_case.computePassedFailedRowCount:
-                metric_values[Metrics.ROW_COUNT.name] = self.get_row_count()
+                metric_values[Metrics.rowCount.name] = self.get_row_count()
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -99,11 +99,11 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
             dict: Mapping of Metrics enum names to Metrics enum values
         """
         metrics = {
-            Metrics.NULL_COUNT.name: Metrics.NULL_COUNT,
+            Metrics.nullCount.name: Metrics.nullCount,
         }
 
         if self.test_case.computePassedFailedRowCount:
-            metrics[Metrics.ROW_COUNT.name] = Metrics.ROW_COUNT
+            metrics[Metrics.rowCount.name] = Metrics.rowCount
 
         return metrics
 
@@ -126,8 +126,8 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
                 - failed_rows: int - number of null values
                 - total_rows: int - total row count for reporting
         """
-        null_count = metric_values[Metrics.NULL_COUNT.name]
-        total_rows = metric_values.get(Metrics.ROW_COUNT.name)
+        null_count = metric_values[Metrics.nullCount.name]
+        total_rows = metric_values.get(Metrics.rowCount.name)
 
         matched = null_count == 0
         failed_count = null_count
@@ -156,7 +156,7 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
-        null_count = metric_values[Metrics.NULL_COUNT.name]
+        null_count = metric_values[Metrics.nullCount.name]
 
         if dimension_info:
             return (
@@ -178,7 +178,7 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
         return [
             TestResultValue(
                 name=NULL_COUNT,
-                value=str(metric_values[Metrics.NULL_COUNT.name]),
+                value=str(metric_values[Metrics.nullCount.name]),
             ),
         ]
 

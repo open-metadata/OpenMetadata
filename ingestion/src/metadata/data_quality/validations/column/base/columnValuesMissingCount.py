@@ -60,23 +60,23 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
             null_missing_count = self._run_results(
-                Metrics.NULL_MISSING_COUNT,
+                Metrics.nullMissingCount,
                 column,
             )
 
             metric_values = {
-                Metrics.NULL_MISSING_COUNT.name: null_missing_count,
+                Metrics.nullMissingCount.name: null_missing_count,
             }
 
             if test_params.get(self.MISSING_VALUE_MATCH):
                 # if user supplies missing values, we need to compute the count of missing values
                 # in addition to the count of null values
                 count_in_set = self._run_results(
-                    Metrics.COUNT_IN_SET,
+                    Metrics.countInSet,
                     column,
                     values=test_params[self.MISSING_VALUE_MATCH],
                 )
-                metric_values[Metrics.COUNT_IN_SET.name] = count_in_set
+                metric_values[Metrics.countInSet.name] = count_in_set
                 metric_values[self.TOTAL_MISSING_COUNT] = (
                     null_missing_count + count_in_set
                 )
@@ -140,11 +140,11 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
             dict: Mapping of Metrics enum names to Metrics enum values
         """
         metrics = {
-            Metrics.NULL_MISSING_COUNT.name: Metrics.NULL_MISSING_COUNT,
+            Metrics.nullMissingCount.name: Metrics.nullMissingCount,
         }
 
         if test_params.get(self.MISSING_VALUE_MATCH):
-            metrics[Metrics.COUNT_IN_SET.name] = Metrics.COUNT_IN_SET
+            metrics[Metrics.countInSet.name] = Metrics.countInSet
 
         return metrics
 

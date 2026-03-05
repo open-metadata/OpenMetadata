@@ -26,10 +26,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValueMeanToBeBetween import (
     BaseColumnValueMeanToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
@@ -62,6 +59,7 @@ class ColumnValueMeanToBeBetweenValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for mean with proper weighted aggregation
 
@@ -92,11 +90,11 @@ class ColumnValueMeanToBeBetweenValidator(
 
         try:
             dfs = self.runner
-            mean_impl = Metrics.MEAN(column).get_pandas_computation()
+            mean_impl = Metrics.mean(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.MEAN.name: mean_impl.create_accumulator(),
+                    Metrics.mean.name: mean_impl.create_accumulator(),
                     DIMENSION_TOTAL_COUNT_KEY: 0,
                 }
             )
@@ -109,9 +107,9 @@ class ColumnValueMeanToBeBetweenValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.MEAN.name
+                        Metrics.mean.name
                     ] = mean_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.MEAN.name],
+                        dimension_aggregates[dimension_value][Metrics.mean.name],
                         group_df,
                     )
 
@@ -121,7 +119,7 @@ class ColumnValueMeanToBeBetweenValidator(
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                mean_value = mean_impl.aggregate_accumulator(agg[Metrics.MEAN.name])
+                mean_value = mean_impl.aggregate_accumulator(agg[Metrics.mean.name])
 
                 if mean_value is None:
                     logger.warning(
@@ -136,16 +134,16 @@ class ColumnValueMeanToBeBetweenValidator(
                 # Statistical validator: when mean fails, ALL rows in dimension fail
                 failed_count = (
                     total_rows
-                    if checker.violates_pandas({Metrics.MEAN.name: mean_value})
+                    if checker.violates_pandas({Metrics.mean.name: mean_value})
                     else 0
                 )
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.MEAN.name: mean_value,
-                        Metrics.COUNT.name: agg[Metrics.MEAN.name].count_value,
-                        Metrics.SUM.name: agg[Metrics.MEAN.name].sum_value,
+                        Metrics.mean.name: mean_value,
+                        Metrics.valuesCount.name: agg[Metrics.mean.name].count_value,
+                        Metrics.sum.name: agg[Metrics.mean.name].sum_value,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -164,10 +162,10 @@ class ColumnValueMeanToBeBetweenValidator(
                     result = df_aggregated[metric_column].copy()
                     if others_mask.any():
                         others_sum = df_aggregated.loc[
-                            others_mask, Metrics.SUM.name
+                            others_mask, Metrics.sum.name
                         ].iloc[0]
                         others_count = df_aggregated.loc[
-                            others_mask, Metrics.COUNT.name
+                            others_mask, Metrics.valuesCount.name
                         ].iloc[0]
                         if others_count > 0:
                             result.loc[others_mask] = others_sum / others_count
@@ -177,17 +175,17 @@ class ColumnValueMeanToBeBetweenValidator(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={
-                        Metrics.SUM.name: "sum",
-                        Metrics.COUNT.name: "sum",
+                        Metrics.sum.name: "sum",
+                        Metrics.valuesCount.name: "sum",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
                     final_metric_calculators={
-                        Metrics.MEAN.name: calculate_weighted_mean
+                        Metrics.mean.name: calculate_weighted_mean
                     },
-                    exclude_from_final=[Metrics.SUM.name, Metrics.COUNT.name],
-                    top_n=DEFAULT_TOP_DIMENSIONS,
-                    violation_metrics=[Metrics.MEAN.name],
+                    exclude_from_final=[Metrics.sum.name, Metrics.valuesCount.name],
+                    top_n=top_n,
+                    violation_metrics=[Metrics.mean.name],
                     violation_predicate=checker.violates_pandas,
                 )
 

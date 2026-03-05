@@ -26,10 +26,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeBetween import (
     BaseColumnValuesToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
@@ -62,6 +59,7 @@ class ColumnValuesToBeBetweenValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for values to be between with proper aggregation
 
@@ -90,14 +88,14 @@ class ColumnValuesToBeBetweenValidator(
 
         try:
             dfs = self.runner
-            min_impl = Metrics.MIN(column).get_pandas_computation()
-            max_impl = Metrics.MAX(column).get_pandas_computation()
-            row_count_impl = Metrics.ROW_COUNT().get_pandas_computation()
+            min_impl = Metrics.min(column).get_pandas_computation()
+            max_impl = Metrics.max(column).get_pandas_computation()
+            row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.MIN.name: min_impl.create_accumulator(),
-                    Metrics.MAX.name: max_impl.create_accumulator(),
+                    Metrics.min.name: min_impl.create_accumulator(),
+                    Metrics.max.name: max_impl.create_accumulator(),
                     DIMENSION_TOTAL_COUNT_KEY: row_count_impl.create_accumulator(),
                     DIMENSION_FAILED_COUNT_KEY: 0,
                 }
@@ -111,15 +109,15 @@ class ColumnValuesToBeBetweenValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.MIN.name
+                        Metrics.min.name
                     ] = min_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.MIN.name],
+                        dimension_aggregates[dimension_value][Metrics.min.name],
                         group_df,
                     )
                     dimension_aggregates[dimension_value][
-                        Metrics.MAX.name
+                        Metrics.max.name
                     ] = max_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.MAX.name],
+                        dimension_aggregates[dimension_value][Metrics.max.name],
                         group_df,
                     )
 
@@ -141,8 +139,8 @@ class ColumnValuesToBeBetweenValidator(
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                min_value = min_impl.aggregate_accumulator(agg[Metrics.MIN.name])
-                max_value = max_impl.aggregate_accumulator(agg[Metrics.MAX.name])
+                min_value = min_impl.aggregate_accumulator(agg[Metrics.min.name])
+                max_value = max_impl.aggregate_accumulator(agg[Metrics.max.name])
                 total_rows = row_count_impl.aggregate_accumulator(
                     agg[DIMENSION_TOTAL_COUNT_KEY]
                 )
@@ -163,8 +161,8 @@ class ColumnValuesToBeBetweenValidator(
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.MIN.name: min_value,
-                        Metrics.MAX.name: max_value,
+                        Metrics.min.name: min_value,
+                        Metrics.max.name: max_value,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -183,15 +181,15 @@ class ColumnValuesToBeBetweenValidator(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={
-                        Metrics.MIN.name: "min",
-                        Metrics.MAX.name: "max",
+                        Metrics.min.name: "min",
+                        Metrics.max.name: "max",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
-                    top_n=DEFAULT_TOP_DIMENSIONS,
+                    top_n=top_n,
                     violation_metrics=[
-                        Metrics.MIN.name,
-                        Metrics.MAX.name,
+                        Metrics.min.name,
+                        Metrics.max.name,
                     ],
                     violation_predicate=checker.violates_pandas,
                 )
