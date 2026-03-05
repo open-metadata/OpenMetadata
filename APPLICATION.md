@@ -34,15 +34,15 @@ If you have defined an external application, you need to create the relevant Pyt
 e.g. `ingestion/src/metadata/applications/observability_data_exporter/app.py`
 
 ## [Optional] Disabling the application
-In `openmetadata-service/src/main/resources/applications` you can add private configuration to your application. You also have the possibility to disable the application by default so that a feature flag needs to be used to allow users to install the application. Below is an example of a the feature flag (preview) as well as the private config.
+In `openmetadata-service/src/main/resources/applications` you can add private configuration to your application. You also have the possibility to disable the application by setting `enabled: false` so that users cannot install it. Below is an example of the configuration.
 
 ```
-preview: false
+enabled: false
 parameters:
   instance: <instance>
   token: <token?
   omURL: <omURL>
 ```
 
-Setting `preview: false` will prevent users from being able to install the application. The private configuration parameters can be set at `openmetadata-spec/src/main/resources/json/schema/entity/applications/configuration/private`
+Setting `enabled: false` will prevent users from being able to install the application. The private configuration parameters can be set at `openmetadata-spec/src/main/resources/json/schema/entity/applications/configuration/private`
 
