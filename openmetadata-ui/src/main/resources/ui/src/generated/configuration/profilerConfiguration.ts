@@ -150,6 +150,7 @@ export enum MetricType {
     NotLikeCount = "notLikeCount",
     NotRegexCount = "notRegexCount",
     NullCount = "nullCount",
+    NullMissingCount = "nullMissingCount",
     NullProportion = "nullProportion",
     RegexCount = "regexCount",
     RowCount = "rowCount",
@@ -159,5 +160,6 @@ export enum MetricType {
     ThirdQuartile = "thirdQuartile",
     UniqueCount = "uniqueCount",
     UniqueProportion = "uniqueProportion",
+    ValueRank = "valueRank",
     ValuesCount = "valuesCount",
 }

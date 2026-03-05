@@ -386,6 +386,71 @@ class TestBaseTestValidator:
         validator._run_dimensional_validation.assert_called_once()
 
 
+class TestGetTopDimensions:
+    @pytest.fixture
+    def make_validator(self):
+        def _make(top_dimensions=None):
+            test_case = MagicMock(spec=TestCase)
+            test_case.name = "test_top_dims"
+            test_case.dimensionColumns = ["col1"]
+            test_case.topDimensions = top_dimensions
+            return MockTestValidator(
+                runner=MagicMock(),
+                test_case=test_case,
+                execution_date=EXECUTION_DATE.timestamp(),
+            )
+
+        return _make
+
+    def test_returns_configured_value(self, make_validator):
+        validator = make_validator(top_dimensions=10)
+        assert validator._get_top_dimensions() == 10
+
+    def test_returns_default_when_none(self, make_validator):
+        validator = make_validator(top_dimensions=None)
+        assert validator._get_top_dimensions() == 5
+
+    def test_returns_default_when_zero(self, make_validator):
+        validator = make_validator(top_dimensions=0)
+        assert validator._get_top_dimensions() == 5
+
+    def test_returns_one(self, make_validator):
+        validator = make_validator(top_dimensions=1)
+        assert validator._get_top_dimensions() == 1
+
+    def test_caps_large_value_to_maximum(self, make_validator):
+        validator = make_validator(top_dimensions=100)
+        assert validator._get_top_dimensions() == 50
+
+    def test_returns_value_at_maximum(self, make_validator):
+        validator = make_validator(top_dimensions=50)
+        assert validator._get_top_dimensions() == 50
+
+    def test_returns_value_just_below_maximum(self, make_validator):
+        validator = make_validator(top_dimensions=49)
+        assert validator._get_top_dimensions() == 49
+
+    def test_caps_value_just_above_maximum(self, make_validator):
+        validator = make_validator(top_dimensions=51)
+        assert validator._get_top_dimensions() == 50
+
+    def test_returns_default_when_negative(self, make_validator):
+        validator = make_validator(top_dimensions=-3)
+        assert validator._get_top_dimensions() == 5
+
+    def test_returns_default_when_attribute_missing(self):
+        test_case = MagicMock()
+        del test_case.topDimensions
+        test_case.name = "test_no_attr"
+        test_case.dimensionColumns = ["col1"]
+        validator = MockTestValidator(
+            runner=MagicMock(),
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+        assert validator._get_top_dimensions() == 5
+
+
 def test_get_test_parameters_default_returns_empty_dict():
     """Test that default _get_test_parameters implementation returns None"""
     test_case = MagicMock(spec=TestCase)
