@@ -505,8 +505,6 @@ test.describe.serial('Team persona setting flow', () => {
 
       await testTeam.visitTeamPage(adminPage);
 
-      // const teamSettingsResponse = adminPage.waitForResponse('/api/v1/teams/*');
-
       // Click to edit default persona
       await adminPage.getByTestId('default-edit-user-persona').click();
 
@@ -518,7 +516,9 @@ test.describe.serial('Team persona setting flow', () => {
         state: 'visible',
       });
 
-      const option = adminPage.getByTitle(teamPersona.responseData.displayName);
+      const option = adminPage.locator(
+        `.ant-select-dropdown:visible [title="${teamPersona.responseData.displayName}"]`
+      );
 
       await expect(option).toBeVisible();
       await option.click();
@@ -558,8 +558,8 @@ test.describe.serial('Team persona setting flow', () => {
       });
 
       // Click the new persona (teamPersona2)
-      const userPersonaOption = adminPage.getByTitle(
-        teamPersona2.responseData.displayName
+      const userPersonaOption = adminPage.locator(
+        `.ant-select-dropdown:visible [title="${teamPersona2.responseData.displayName}"]`
       );
       await expect(userPersonaOption).toBeVisible();
       await userPersonaOption.click();
@@ -593,8 +593,8 @@ test.describe.serial('Team persona setting flow', () => {
       await adminPage.waitForSelector('.ant-select-dropdown', {
         state: 'visible',
       });
-      const revertOption = adminPage.getByTitle(
-        teamPersona.responseData.displayName
+      const revertOption = adminPage.locator(
+        `.ant-select-dropdown:visible [title="${teamPersona.responseData.displayName}"]`
       );
       await expect(revertOption).toBeVisible();
       await revertOption.click();
