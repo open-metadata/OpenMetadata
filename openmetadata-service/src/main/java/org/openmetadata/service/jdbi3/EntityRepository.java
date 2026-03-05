@@ -6139,7 +6139,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     /** React phase: post-commit side effects. */
     private void reactUpdate() {
       // No-op updates should not fan out search/RDF work.
-      if (!versionChanged && !entityChanged) {
+      // Must also check incrementalFieldsChanged() because session consolidation may net
+      // to zero change (previous == updated) while intermediate operations already modified
+      // the search index. The incremental description captures the per-request change that
+      // needs to be reconciled in ES even when the consolidated version doesn't change.
+      if (!versionChanged && !entityChanged && !incrementalFieldsChanged()) {
         return;
       }
       try (var ignored = phase("entityUpdatePostUpdate")) {

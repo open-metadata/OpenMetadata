@@ -1950,6 +1950,27 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 },
                 java.util.Objects::nonNull);
 
+    // Mirror Incident Manager flow: New -> Ack -> Resolved, then verify a new failure reopens.
+    org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus ackStatus =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(
+                org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Ack);
+    client.testCaseResolutionStatuses().create(ackStatus);
+
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestStatus =
+                  latestIncidentStatus(client, testCase.getFullyQualifiedName());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes.Ack,
+                  latestStatus.getTestCaseResolutionStatusType());
+              assertEquals(firstIncidentId, latestStatus.getStateId());
+            });
+
     org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus resolvedStatus =
         new org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCase.getFullyQualifiedName())
