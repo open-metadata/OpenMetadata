@@ -13,5 +13,4 @@ CREATE INDEX idx_query_cost_ts_keyset ON query_cost_time_series(timestamp, entit
 -- Supports "latest row per entityFQNHash" in data_quality_data_time_series.
 -- Use with FORCE INDEX (idx_entity_timestamp_desc) in TestCaseResultTimeSeriesDAO for MySQL.
 ALTER TABLE data_quality_data_time_series
-ADD KEY idx_entity_timestamp_desc (entityFQNHash, timestamp DESC),
-ALGORITHM=INPLACE, LOCK=NONE;
+ADD KEY idx_entity_timestamp_desc (entityFQNHash, timestamp DESC);
