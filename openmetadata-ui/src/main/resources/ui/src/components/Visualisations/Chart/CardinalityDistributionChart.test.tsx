@@ -19,6 +19,16 @@ import CardinalityDistributionChart, {
   CardinalityDistributionChartProps,
 } from './CardinalityDistributionChart.component';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => <span data-testid={props['data-testid'] as string}>{children}</span>,
+}));
+
 // Mock utility functions
 jest.mock('../../../utils/ChartUtils', () => ({
   axisTickFormatter: jest.fn(
