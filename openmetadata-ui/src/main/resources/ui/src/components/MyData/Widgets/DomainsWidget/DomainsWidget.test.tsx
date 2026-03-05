@@ -213,7 +213,7 @@ describe('DomainsWidget', () => {
         pageSize: PAGE_SIZE_MEDIUM,
         sortField: 'updatedAt',
         sortOrder: 'desc',
-        searchIndex: 'domain_search_index',
+        searchIndex: 'domain',
       });
     });
   });

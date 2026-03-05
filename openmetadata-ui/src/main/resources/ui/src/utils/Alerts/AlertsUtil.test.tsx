@@ -345,7 +345,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'table_search_index',
+      searchIndex: 'table',
     });
   });
 
@@ -363,7 +363,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'domain_search_index',
+      searchIndex: 'domain',
     });
   });
 
@@ -386,7 +386,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'table_search_index',
+      searchIndex: 'table',
     });
   });
 
@@ -409,7 +409,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: getTermQuery({ isBot: 'false' }),
-      searchIndex: ['team_search_index', 'user_search_index'],
+      searchIndex: ['team', 'user'],
     });
   });
 
@@ -432,7 +432,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'user_search_index',
+      searchIndex: 'user',
     });
   });
 
@@ -450,7 +450,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: getTermQuery({ isBot: 'false' }),
-      searchIndex: 'user_search_index',
+      searchIndex: 'user',
     });
   });
 
@@ -563,7 +563,7 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: 'test_suite_search_index',
+      searchIndex: 'testSuite',
     });
   });
 

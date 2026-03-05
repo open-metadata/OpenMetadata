@@ -159,7 +159,7 @@ export const editTags = async (page: Page, tagName: string) => {
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes(`q=`) &&
-      response.url().includes('index=tag_search_index')
+      response.url().includes('index=tag')
   );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
@@ -288,10 +288,10 @@ export const verifyDeletedEntityNotVisible = async (
   searchIndexType: 'user' | 'team' | 'tag' | 'glossaryTerm'
 ) => {
   const searchIndexMap = {
-    user: 'user_search_index',
-    team: 'team_search_index',
-    tag: 'tag_search_index',
-    glossaryTerm: 'glossary_term_search_index',
+    user: 'user',
+    team: 'team',
+    tag: 'tag',
+    glossaryTerm: 'glossaryTerm',
   };
 
   const searchBar = await page.waitForSelector(

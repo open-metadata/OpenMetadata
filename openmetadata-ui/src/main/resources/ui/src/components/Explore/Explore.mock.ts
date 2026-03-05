@@ -313,72 +313,72 @@ export const MOCK_EXPLORE_SEARCH_RESULTS: SearchResponse<ExploreSearchIndex> = {
 
 export const MOCK_EXPLORE_TAB_ITEMS = [
   {
-    key: 'data_product_search_index',
+    key: 'dataProduct',
     label: 'Data Products',
     count: 0,
   },
   {
-    key: 'table_search_index',
+    key: 'table',
     label: 'Tables',
     count: 60,
   },
   {
-    key: 'database_search_index',
+    key: 'database',
     label: 'Databases',
     count: 1,
   },
   {
-    key: 'database_schema_search_index',
+    key: 'databaseSchema',
     label: 'Database Schemas',
     count: 1,
   },
   {
-    key: 'stored_procedure_search_index',
+    key: 'storedProcedure',
     label: 'Stored Procedures',
     count: 6,
   },
   {
-    key: 'dashboard_search_index',
+    key: 'dashboard',
     label: 'Dashboards',
     count: 42,
   },
   {
-    key: 'dashboard_data_model_search_index',
+    key: 'dashboardDataModel',
     label: 'Data Models',
     count: 18,
   },
   {
-    key: 'pipeline_search_index',
+    key: 'pipeline',
     label: 'Pipelines',
     count: 24,
   },
   {
-    key: 'topic_search_index',
+    key: 'topic',
     label: 'Topics',
     count: 30,
   },
   {
-    key: 'mlmodel_search_index',
+    key: 'mlmodel',
     label: 'Ml Models',
     count: 6,
   },
   {
-    key: 'container_search_index',
+    key: 'container',
     label: 'Containers',
     count: 51,
   },
   {
-    key: 'glossary_term_search_index',
+    key: 'glossaryTerm',
     label: 'Glossaries',
     count: 0,
   },
   {
-    key: 'tag_search_index',
+    key: 'tag',
     label: 'Tags',
     count: 40,
   },
   {
-    key: 'search_entity_search_index',
+    key: 'searchIndex',
     label: 'Search Indexes',
     count: 3,
   },

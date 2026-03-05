@@ -22,10 +22,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  descriptionBox,
-  redirectToHomePage,
-} from '../../utils/common';
+import { descriptionBox, redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDataProduct,
   createDataProductFromListPage,
@@ -391,8 +388,8 @@ test.describe('Data Products', () => {
         const url = new URL(request.url());
         const index = url.searchParams.get('index');
 
-        // Only mock data_product_search_index requests
-        if (index === 'data_product_search_index') {
+        // Only mock dataProduct requests
+        if (index === 'dataProduct') {
           await route.fulfill({
             status: 200,
             contentType: 'application/json',
@@ -495,7 +492,7 @@ test.describe('Data Products', () => {
       await domainInput.waitFor({ state: 'visible' });
       await domainInput.click();
       const searchDomain = page.waitForResponse(
-        '/api/v1/search/query?q=*index=domain_search_index*'
+        '/api/v1/search/query?q=*index=domain*'
       );
       await domainInput.fill(domain.data.displayName);
       await searchDomain;
@@ -510,9 +507,9 @@ test.describe('Data Products', () => {
         tagFqn: tag.responseData.fullyQualifiedName,
       });
 
-      await expect(page.locator('[data-testid="tag-suggestion"]')).toContainText(
-        tag.data.displayName
-      );
+      await expect(
+        page.locator('[data-testid="tag-suggestion"]')
+      ).toContainText(tag.data.displayName);
     });
 
     await test.step('Save and verify tag is applied', async () => {

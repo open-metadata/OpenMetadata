@@ -384,7 +384,7 @@ test('Classification Page', async ({ page }) => {
 
       await page.click('[data-testid="select-assignee"]');
       const assigneeResponse = page.waitForResponse(
-        '/api/v1/search/query?q=*&index=user_search_index*team_search_index*'
+        '/api/v1/search/query?q=*&index=user*team*'
       );
       await page.keyboard.type(assignee);
       await page.click(`[data-testid="${assignee}"]`);
@@ -393,7 +393,7 @@ test('Classification Page', async ({ page }) => {
       await clickOutside(page);
 
       const suggestTag = page.waitForResponse(
-        'api/v1/search/query?q=*&index=tag_search_index*'
+        'api/v1/search/query?q=*&index=tag*'
       );
       await page.click('[data-testid="tag-selector"]');
       await page.keyboard.type(tag);

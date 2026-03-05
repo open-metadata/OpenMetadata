@@ -377,7 +377,7 @@ describe('AuditLogFilters', () => {
           query: '',
           pageNumber: 1,
           pageSize: 10,
-          searchIndex: 'user_search_index',
+          searchIndex: 'user',
           queryFilter: expect.objectContaining({
             query: expect.objectContaining({
               bool: expect.objectContaining({
@@ -409,7 +409,7 @@ describe('AuditLogFilters', () => {
           query: '',
           pageNumber: 1,
           pageSize: 10,
-          searchIndex: 'user_search_index',
+          searchIndex: 'user',
           queryFilter: expect.objectContaining({
             query: expect.objectContaining({
               bool: expect.objectContaining({

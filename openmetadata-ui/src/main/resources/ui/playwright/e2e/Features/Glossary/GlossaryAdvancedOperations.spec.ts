@@ -206,7 +206,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Search and add new owner
       const searchOwner = page.waitForResponse(
-        'api/v1/search/query?q=*&index=user_search_index*'
+        'api/v1/search/query?q=*&index=user*'
       );
       await page.fill(
         '[data-testid="owner-select-users-search-bar"]',
@@ -292,7 +292,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Search and add new reviewer
       const searchUser = page.waitForResponse(
-        'api/v1/search/query?q=*&index=user_search_index*'
+        'api/v1/search/query?q=*&index=user*'
       );
       await page.fill(
         '[data-testid="owner-select-users-search-bar"]',

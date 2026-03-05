@@ -576,7 +576,7 @@ export const addDomainFilter = async ({
   const awaitResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query?q=') &&
-      response.url().includes('index=domain_search_index')
+      response.url().includes('index=domain')
   );
 
   // Fill search term and wait for API response

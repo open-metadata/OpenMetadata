@@ -81,7 +81,7 @@ test.describe('Domain Owner Management', () => {
         const searchResponse = page.waitForResponse(
           (res) =>
             res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user_search_index')
+            res.url().includes('user')
         );
         // Search using name field
         await searchBar.fill(user.getUserName());
@@ -234,7 +234,7 @@ test.describe('Domain Expert Management', () => {
         const searchResponse = page.waitForResponse(
           (res) =>
             res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user_search_index')
+            res.url().includes('user')
         );
         // Search using name field
         await searchBar.fill(user.getUserName());
@@ -426,7 +426,7 @@ test.describe('Data Product UI Operations', () => {
         const searchResponse = page.waitForResponse(
           (res) =>
             res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user_search_index')
+            res.url().includes('user')
         );
         // Search using name field
         await searchBar.fill(user.getUserName());
