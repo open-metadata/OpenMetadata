@@ -20,12 +20,19 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.CreateTaskDetails;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -627,6 +634,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     Glossary glossary = client.glossaries().create(glossaryRequest);
 
     GlossaryTerm term = null;
+    Thread approvalTaskThread = null;
     try {
       CreateGlossaryTerm termRequest =
           new CreateGlossaryTerm()
@@ -635,6 +643,27 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
               .withDescription("Term that should keep an open approval task visible in feed");
       term = client.glossaryTerms().create(termRequest);
       final String termName = term.getName();
+      assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+
+      User assigneeUser = SdkClients.adminClient().users().getByName(testUser1().getName());
+      CreateThread createThread =
+          new CreateThread()
+              .withFrom("admin")
+              .withMessage("Please approve glossary term")
+              .withAbout(String.format("<#E::glossaryTerm::%s>", term.getFullyQualifiedName()))
+              .withType(ThreadType.Task)
+              .withTaskDetails(
+                  new CreateTaskDetails()
+                      .withType(TaskType.RequestApproval)
+                      .withAssignees(List.of(assigneeUser.getEntityReference()))
+                      .withOldValue(term.getEntityStatus().value())
+                      .withSuggestion(EntityStatus.APPROVED.value()));
+      approvalTaskThread =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .execute(HttpMethod.POST, "/v1/feed", createThread, Thread.class);
+      assertNotNull(approvalTaskThread);
+      assertNotNull(approvalTaskThread.getTask());
 
       Awaitility.await("wait for open approval task to appear in glossary feed")
           .atMost(java.time.Duration.ofSeconds(60))
@@ -657,6 +686,15 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                           .contains(termName),
                       "Open approval task disappeared from glossary feed before resolution"));
     } finally {
+      if (approvalTaskThread != null) {
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.DELETE,
+                "/v1/feed/" + approvalTaskThread.getId(),
+                null,
+                RequestOptions.builder().build());
+      }
       if (term != null) {
         client
             .glossaryTerms()
