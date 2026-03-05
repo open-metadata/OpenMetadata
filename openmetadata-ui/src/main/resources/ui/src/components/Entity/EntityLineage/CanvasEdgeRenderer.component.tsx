@@ -51,6 +51,8 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   const getEdgeAtPointRef = useRef<
     ((x: number, y: number, rect: DOMRect) => Edge | null) | null
   >(null);
+  const getButtonAtPointRef = useRef<typeof getButtonAtPoint | null>(null);
+  const setHoveredButtonRef = useRef<typeof setHoveredButton | null>(null);
 
   useEffect(() => {
     onEdgeClickRef.current = onEdgeClick;
@@ -86,19 +88,28 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     };
   }, []);
 
-  const { redraw, getEdgeAtPoint } = useCanvasEdgeRenderer({
-    canvasRef,
-    edges,
-    dqHighlightedEdges,
-    theme,
-    hoverEdge,
-    containerWidth: containerSize.width,
-    containerHeight: containerSize.height,
-  });
+  const { redraw, getEdgeAtPoint, getButtonAtPoint, setHoveredButton } =
+    useCanvasEdgeRenderer({
+      canvasRef,
+      edges,
+      dqHighlightedEdges,
+      theme,
+      hoverEdge,
+      containerWidth: containerSize.width,
+      containerHeight: containerSize.height,
+    });
 
   useEffect(() => {
     getEdgeAtPointRef.current = getEdgeAtPoint;
   }, [getEdgeAtPoint]);
+
+  useEffect(() => {
+    getButtonAtPointRef.current = getButtonAtPoint;
+  }, [getButtonAtPoint]);
+
+  useEffect(() => {
+    setHoveredButtonRef.current = setHoveredButton;
+  }, [setHoveredButton]);
 
   useEffect(() => {
     redraw();
@@ -137,12 +148,25 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     const handleClick = (event: Event) => {
       const mouseEvent = event as MouseEvent;
       const rect = container.getBoundingClientRect();
+
+      const buttonData = getButtonAtPointRef.current?.(
+        mouseEvent.clientX,
+        mouseEvent.clientY,
+        rect
+      );
+
+      if (buttonData && mouseEvent.currentTarget === mouseEvent.target) {
+        onEdgeClickRef.current?.(buttonData.edge, mouseEvent);
+
+        return;
+      }
+
       const edge = getEdgeAtPointRef.current?.(
         mouseEvent.clientX,
         mouseEvent.clientY,
         rect
       );
-      // This will ensure that we aren't catching events on any other element present on the pane
+
       if (edge && mouseEvent.currentTarget === mouseEvent.target) {
         onEdgeClickRef.current?.(edge, mouseEvent);
       }
@@ -151,6 +175,22 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     const handleMouseMove = (event: Event) => {
       const mouseEvent = event as MouseEvent;
       const rect = container.getBoundingClientRect();
+
+      const buttonData = getButtonAtPointRef.current?.(
+        mouseEvent.clientX,
+        mouseEvent.clientY,
+        rect
+      );
+
+      if (buttonData) {
+        setHoveredButtonRef.current?.(buttonData.button);
+        onEdgeHoverRef.current?.(null);
+
+        return;
+      }
+
+      setHoveredButtonRef.current?.(null);
+
       const edge = getEdgeAtPointRef.current?.(
         mouseEvent.clientX,
         mouseEvent.clientY,
@@ -161,6 +201,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
 
     const handleMouseLeave = () => {
       onEdgeHoverRef.current?.(null);
+      setHoveredButtonRef.current?.(null);
     };
 
     pane.addEventListener('click', handleClick);
