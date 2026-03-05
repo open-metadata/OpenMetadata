@@ -679,8 +679,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             newStatus
           );
 
-          if (!selectedStatus.includes('all') &&
-            !selectedStatus.includes(newStatus)) {
+          if (
+            !selectedStatus.includes('all') &&
+            !selectedStatus.includes(newStatus)
+          ) {
             setGlossaryChildTerms(
               updatedTerms.filter(
                 (term) => term.fullyQualifiedName !== glossaryTermFqn
@@ -1366,8 +1368,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         parent: isUndefined(movedGlossaryTerm.to)
           ? null
           : {
-            fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
-          },
+              fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
+            },
       };
       const jsonPatch = compare(movedGlossaryTerm.from, newTermData);
 
@@ -1388,18 +1390,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     record,
     index
   ) =>
-  ({
-    index,
-    handleMoveRow,
-    handleTableHover,
-    record,
-  } as DraggableBodyRowProps<GlossaryTerm>);
+    ({
+      index,
+      handleMoveRow,
+      handleTableHover,
+      record,
+    } as DraggableBodyRowProps<GlossaryTerm>);
 
   const onTableHeader: TableProps<ModifiedGlossaryTerm>['onHeaderRow'] = () =>
-  ({
-    handleMoveRow,
-    handleTableHover,
-  } as DraggableBodyRowProps<GlossaryTerm>);
+    ({
+      handleMoveRow,
+      handleTableHover,
+    } as DraggableBodyRowProps<GlossaryTerm>);
 
   const onDragConfirmationModalClose = useCallback(() => {
     setIsModalOpen(false);
@@ -1492,7 +1494,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return 'No Glossary Terms';
   }, [isSearchActive, isStatusFilterActive, searchTerm]);
 
-  if (hasNoTerms && !isSearchActive && totalTermsCount === 0 && !isTableLoading) {
+  if (
+    hasNoTerms &&
+    !isSearchActive &&
+    totalTermsCount === 0 &&
+    !isTableLoading
+  ) {
     return (
       <div className="h-full" ref={tableContainerRef}>
         <ErrorPlaceHolder
@@ -1552,13 +1559,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               {/* Show infinite scroll trigger if there are more results */}
               {((!searchTerm && paging.after !== undefined) ||
                 (searchTerm && searchPaging.hasMore)) && (
-                  <div
-                    className="m-t-md m-b-md text-center p-y-lg"
-                    ref={infiniteScrollRef}
-                    style={{ minHeight: '80px', background: 'transparent' }}>
-                    {isLoadingMore && <Loader size="small" />}
-                  </div>
-                )}
+                <div
+                  className="m-t-md m-b-md text-center p-y-lg"
+                  ref={infiniteScrollRef}
+                  style={{ minHeight: '80px', background: 'transparent' }}>
+                  {isLoadingMore && <Loader size="small" />}
+                </div>
+              )}
             </>
           ) : (
             // Show empty state within the table container when search returns no results

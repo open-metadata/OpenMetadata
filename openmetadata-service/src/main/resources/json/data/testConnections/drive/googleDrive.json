@@ -7,7 +7,8 @@
       "name": "CheckAccess",
       "description": "Validate that we can connect to Google Drive and authenticate using the provided credentials.",
       "errorMessage": "Failed to connect to Google Drive. Please verify your credentials and API access.",
-      "mandatory": true
+      "mandatory": true,
+      "shortCircuit": true
     },
     {
       "name": "GetDriveFiles",
