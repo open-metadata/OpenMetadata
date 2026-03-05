@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { useTheme } from '@mui/material';
+import { Tag } from 'antd';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
@@ -19,6 +20,7 @@ import { useLineageStore } from '../../../hooks/useLineageStore';
 import { calculateEdgeMidpoints } from '../../../utils/EdgeMidpointUtils';
 import { clearEdgeStyleCache } from '../../../utils/EdgeStyleUtils';
 import { isPlaywrightEnv } from '../../../utils/PlaywrightUtils';
+import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import { getAbsolutePosition } from './PipelineEdgeButtons.component';
 
 export interface CanvasEdgeRendererProps {
@@ -88,16 +90,21 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     };
   }, []);
 
-  const { redraw, getEdgeAtPoint, getButtonAtPoint, setHoveredButton } =
-    useCanvasEdgeRenderer({
-      canvasRef,
-      edges,
-      dqHighlightedEdges,
-      theme,
-      hoverEdge,
-      containerWidth: containerSize.width,
-      containerHeight: containerSize.height,
-    });
+  const {
+    redraw,
+    getEdgeAtPoint,
+    getButtonAtPoint,
+    setHoveredButton,
+    hoveredButton,
+  } = useCanvasEdgeRenderer({
+    canvasRef,
+    edges,
+    dqHighlightedEdges,
+    theme,
+    hoverEdge,
+    containerWidth: containerSize.width,
+    containerHeight: containerSize.height,
+  });
 
   useEffect(() => {
     getEdgeAtPointRef.current = getEdgeAtPoint;
@@ -124,6 +131,22 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
 
     return calculateEdgeMidpoints(edges, getNode, columnsInCurrentPages);
   }, [isPlaywright, edges, getNode, columnsInCurrentPages, isCanvasReady]);
+
+  const hoveredEdge = useMemo(() => {
+    if (!hoveredButton) {
+      return null;
+    }
+
+    return edges.find((edge) => edge.id === hoveredButton.edgeId);
+  }, [hoveredButton, edges]);
+
+  const hoveredButtonPosition = useMemo(() => {
+    if (!hoveredButton) {
+      return null;
+    }
+
+    return getAbsolutePosition(hoveredButton.x, hoveredButton.y, viewport);
+  }, [hoveredButton, viewport]);
 
   // Attach listeners to the ReactFlow pane element — it sits on top of the
   // canvas and captures all pointer events before they reach us.
@@ -215,6 +238,24 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     };
   }, [isEditMode]);
 
+  const getPipelineStatusClass = (executionStatus?: string): string => {
+    if (!executionStatus) {
+      return '';
+    }
+
+    switch (executionStatus) {
+      case 'Successful':
+        return 'green';
+      case 'Failed':
+        return 'red';
+      case 'Pending':
+      case 'Skipped':
+        return 'amber';
+      default:
+        return '';
+    }
+  };
+
   return (
     <div
       className="lineage-canvas-container"
@@ -249,6 +290,38 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
             }}
           />
         ) : null
+      )}
+      {hoveredButton && hoveredEdge && hoveredButtonPosition && !isEditMode && (
+        <div
+          key={`popover-${hoveredButton.edgeId}`}
+          style={{
+            ...hoveredButtonPosition,
+            pointerEvents: 'none',
+            zIndex: 1000,
+          }}>
+          <EntityPopOverCard
+            defaultOpen
+            entityFQN={
+              hoveredEdge.data?.edge?.pipeline?.fullyQualifiedName ?? ''
+            }
+            entityType={hoveredEdge.data?.edge?.pipelineEntityType ?? ''}
+            extraInfo={
+              hoveredEdge.data?.edge?.pipeline?.pipelineStatus && (
+                <Tag
+                  className={getPipelineStatusClass(
+                    hoveredEdge.data.edge.pipeline.pipelineStatus
+                      .executionStatus
+                  )}>
+                  {
+                    hoveredEdge.data.edge.pipeline.pipelineStatus
+                      .executionStatus
+                  }
+                </Tag>
+              )
+            }>
+            <div style={{ width: '36px', height: '36px' }} />
+          </EntityPopOverCard>
+        </div>
       )}
     </div>
   );

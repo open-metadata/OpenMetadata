@@ -228,6 +228,8 @@ export function useCanvasEdgeRenderer({
     ctx.clearRect(0, 0, containerWidth, containerHeight);
 
     if (isRepositioning) {
+      edgePathCacheRef.current = new WeakMap();
+
       if (isCanvasReadyRef.current) {
         isCanvasReadyRef.current = false;
         setIsCanvasReady(false);
@@ -413,6 +415,7 @@ export function useCanvasEdgeRenderer({
   }, []);
 
   useEffect(() => {
+    edgePathCacheRef.current = new WeakMap();
     scheduleRedraw();
 
     return () => {
