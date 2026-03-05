@@ -506,6 +506,9 @@ test.describe.serial('Team persona setting flow', () => {
       await testTeam.visitTeamPage(adminPage);
 
       // Click to edit default persona
+      const personasLoadResponse = adminPage.waitForResponse((response) =>
+        response.url().includes('/api/v1/personas')
+      );
       await adminPage.getByTestId('default-edit-user-persona').click();
 
       // Wait for dropdown to open and options to load
@@ -515,6 +518,8 @@ test.describe.serial('Team persona setting flow', () => {
       await adminPage.waitForSelector('.ant-select-dropdown', {
         state: 'visible',
       });
+      const personaResponse = await personasLoadResponse;
+      expect(personaResponse.status()).toBe(200);
 
       const option = adminPage.locator(
         `.ant-select-dropdown:visible [title="${teamPersona.responseData.displayName}"]`
@@ -549,6 +554,9 @@ test.describe.serial('Team persona setting flow', () => {
       );
 
       // Verify switching to a different persona in the single-select dropdown replaces the first one
+      const personasLoadResponse2 = adminPage.waitForResponse((response) =>
+        response.url().includes('/api/v1/personas')
+      );
       await adminPage.getByTestId('default-edit-user-persona').click();
       await adminPage.waitForSelector(
         '[data-testid="default-persona-select-list"]'
@@ -556,6 +564,8 @@ test.describe.serial('Team persona setting flow', () => {
       await adminPage.waitForSelector('.ant-select-dropdown', {
         state: 'visible',
       });
+      const personaResponse2 = await personasLoadResponse2;
+      expect(personaResponse2.status()).toBe(200);
 
       // Click the new persona (teamPersona2)
       const userPersonaOption = adminPage.locator(
@@ -589,10 +599,14 @@ test.describe.serial('Team persona setting flow', () => {
       );
 
       // Revert it back to teamPersona for the rest of the test
+      const personasLoadResponse3 = adminPage.waitForResponse((response) =>
+        response.url().includes('/api/v1/personas')
+      );
       await adminPage.getByTestId('default-edit-user-persona').click();
       await adminPage.waitForSelector('.ant-select-dropdown', {
         state: 'visible',
       });
+      await personasLoadResponse3;
       const revertOption = adminPage.locator(
         `.ant-select-dropdown:visible [title="${teamPersona.responseData.displayName}"]`
       );
@@ -603,7 +617,8 @@ test.describe.serial('Team persona setting flow', () => {
       await adminPage
         .getByTestId('user-profile-default-persona-edit-save')
         .click();
-      await teamPatchRevertResponse;
+      const teamPatchRevertResponseData = await teamPatchRevertResponse;
+      expect(teamPatchRevertResponseData.status()).toBe(200);
     });
 
     await test.step(
@@ -646,29 +661,62 @@ test.describe.serial('Team persona setting flow', () => {
 
   test('Admin can remove the default persona for a team', async ({
     adminPage,
+    browser,
   }) => {
     await test.step(
       'Admin removes the default persona for a team',
       async () => {
+        // Ensure the team has a default persona set via API before attempting removal
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await testTeam.patch(apiContext, [
+          {
+            op: 'add',
+            path: '/defaultPersona',
+            value: {
+              id: teamPersona.responseData.id,
+              type: 'persona',
+            },
+          },
+        ]);
+        await afterAction();
+
         await redirectToHomePage(adminPage);
         await testTeam.visitTeamPage(adminPage);
 
+        // Verify persona is displayed before trying to remove
+        await expect(adminPage.getByTestId('team-persona')).toContainText(
+          teamPersona.responseData.displayName
+        );
+
         await adminPage.getByTestId('default-edit-user-persona').click();
-        await adminPage.waitForSelector('.ant-select-dropdown', {
-          state: 'visible',
-        });
 
-        // Clear selection
-        await adminPage.locator('.profile-edit-popover').hover();
-        await adminPage.locator('.ant-select-clear').click();
+        await waitForAllLoadersToDisappear(adminPage);
 
-        const teamPatchRemoveResponse =
-          adminPage.waitForResponse('/api/v1/teams/*');
+        await adminPage.waitForSelector(
+          '[data-testid="default-persona-select-list"]'
+        );
+
+        // Hover over the select to reveal the clear button, then click it
         await adminPage
-          .getByTestId('user-profile-default-persona-edit-save')
-          .click();
-        await teamPatchRemoveResponse;
+          .locator('[data-testid="default-persona-select-list"]')
+          .hover();
 
+        await adminPage
+          .locator(
+            '[data-testid="default-persona-select-list"] .ant-select-clear'
+          )
+          .click();
+
+        const defaultPersonaChangeResponse =
+          adminPage.waitForResponse('/api/v1/teams/*');
+
+        // Save the changes
+        await adminPage
+          .locator('[data-testid="user-profile-default-persona-edit-save"]')
+          .click();
+
+        // Wait for the API call to complete and verify no default persona is shown
+        await defaultPersonaChangeResponse;
         await expect(adminPage.getByTestId('team-persona')).toContainText(
           'No persona assigned'
         );

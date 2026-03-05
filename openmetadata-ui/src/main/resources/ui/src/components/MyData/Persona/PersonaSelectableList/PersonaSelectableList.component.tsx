@@ -27,7 +27,7 @@ import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona
 import { ReactComponent as ClosePopoverIcon } from '../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/ic-popover-save.svg';
 
-import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
+import { AGGREGATE_PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
@@ -128,7 +128,7 @@ export const PersonaSelectableList = ({
           return { data: personaList, paging: { total: personaList.length } };
         }
         const { data, paging } = await getAllPersonas({
-          limit: PAGE_SIZE_LARGE,
+          limit: AGGREGATE_PAGE_SIZE_LARGE,
           after: after ?? undefined,
         });
         const filterData = getEntityReferenceListFromEntities(
@@ -154,6 +154,12 @@ export const PersonaSelectableList = ({
   useEffect(() => {
     loadOptions();
   }, [personaList]);
+
+  useEffect(() => {
+    if (popupVisible) {
+      loadOptions();
+    }
+  }, [popupVisible]);
 
   const handlePersonaUpdate = () => {
     setIsSaving(true);
