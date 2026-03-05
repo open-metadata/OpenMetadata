@@ -61,9 +61,9 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
 
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
-            res = self._run_results(Metrics.SUM, column)
+            res = self._run_results(Metrics.sum, column)
 
-            metric_values = {Metrics.SUM.name: res}
+            metric_values = {Metrics.sum.name: res}
 
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -118,7 +118,7 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
             dict: Dictionary mapping metric names to Metrics enum values
         """
         return {
-            Metrics.SUM.name: Metrics.SUM,
+            Metrics.sum.name: Metrics.sum,
         }
 
     def _evaluate_test_condition(
@@ -141,7 +141,7 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
                 - failed_rows: None - not applicable for statistical validators
                 - total_rows: None - not applicable for statistical validators
         """
-        sum_value = metric_values[Metrics.SUM.name]
+        sum_value = metric_values[Metrics.sum.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -175,7 +175,7 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
                 "test_params is required for columnValueSumToBeBetween._format_result_message"
             )
 
-        sum_value = metric_values[Metrics.SUM.name]
+        sum_value = metric_values[Metrics.sum.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -199,7 +199,7 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
         return [
             TestResultValue(
                 name=SUM,
-                value=str(metric_values[Metrics.SUM.name]),
+                value=str(metric_values[Metrics.sum.name]),
             ),
         ]
 

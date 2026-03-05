@@ -89,6 +89,8 @@ class Min(StaticMetric):
     Given a column, return the min value.
     """
 
+    schema_metric_type = MetricType.min
+
     @classmethod
     def name(cls):
         return MetricType.min.value

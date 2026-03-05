@@ -48,10 +48,10 @@ class ColumnValuesSumToBeBetweenValidator(
         return self.run_query_results(self.runner, metric, column)
 
     def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
-        sum_value = row.get(Metrics.SUM.name)
+        sum_value = row.get(Metrics.sum.name)
         if sum_value is None:
             return None
-        return {Metrics.SUM.name: sum_value}
+        return {Metrics.sum.name: sum_value}
 
     def _execute_dimensional_validation(
         self,
@@ -80,19 +80,19 @@ class ColumnValuesSumToBeBetweenValidator(
         dimension_results = []
 
         try:
-            row_count_expr = Metrics.ROW_COUNT().fn()
-            sum_expr = Metrics.SUM(column).fn()
+            row_count_expr = Metrics.rowCount().fn()
+            sum_expr = Metrics.sum(column).fn()
 
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                Metrics.SUM.name: sum_expr,
+                Metrics.sum.name: sum_expr,
             }
 
             failed_count_builder = (
                 lambda cte, row_count_expr: self._get_validation_checker(
                     test_params
                 ).build_agg_level_violation_sqa(
-                    [getattr(cte.c, Metrics.SUM.name)], row_count_expr
+                    [getattr(cte.c, Metrics.sum.name)], row_count_expr
                 )
             )
 
@@ -111,6 +111,7 @@ class ColumnValuesSumToBeBetweenValidator(
             return self._process_dimension_rows(
                 result_rows, dimension_col.name, metrics_to_compute, test_params
             )
+
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

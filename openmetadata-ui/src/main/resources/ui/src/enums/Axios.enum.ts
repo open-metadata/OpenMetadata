@@ -19,6 +19,10 @@ export enum ClientErrors {
   NOT_FOUND = 404,
 }
 
+export enum ErrorTypes {
+  RULE_VIOLATION = 'RULE_VIOLATION',
+}
+
 export enum SettledStatus {
   FULFILLED = 'fulfilled',
   REJECTED = 'rejected',

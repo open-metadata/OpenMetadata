@@ -86,11 +86,11 @@ class ColumnValueMaxToBeBetweenValidator(
 
         try:
             dfs = self.runner
-            max_impl = Metrics.MAX(column).get_pandas_computation()
+            max_impl = Metrics.max(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.MAX.name: max_impl.create_accumulator(),
+                    Metrics.max.name: max_impl.create_accumulator(),
                     DIMENSION_TOTAL_COUNT_KEY: 0,
                 }
             )
@@ -103,9 +103,9 @@ class ColumnValueMaxToBeBetweenValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.MAX.name
+                        Metrics.max.name
                     ] = max_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.MAX.name],
+                        dimension_aggregates[dimension_value][Metrics.max.name],
                         group_df,
                     )
 
@@ -115,7 +115,7 @@ class ColumnValueMaxToBeBetweenValidator(
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                max_value = agg[Metrics.MAX.name]
+                max_value = agg[Metrics.max.name]
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
                 if max_value is None:
@@ -128,14 +128,14 @@ class ColumnValueMaxToBeBetweenValidator(
 
                 failed_count = (
                     total_rows
-                    if checker.violates_pandas({Metrics.MAX.name: max_value})
+                    if checker.violates_pandas({Metrics.max.name: max_value})
                     else 0
                 )
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.MAX.name: max_value,
+                        Metrics.max.name: max_value,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -154,12 +154,12 @@ class ColumnValueMaxToBeBetweenValidator(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={
-                        Metrics.MAX.name: "max",
+                        Metrics.max.name: "max",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
                     top_n=top_n,
-                    violation_metrics=[Metrics.MAX.name],
+                    violation_metrics=[Metrics.max.name],
                     violation_predicate=checker.violates_pandas,
                 )
 

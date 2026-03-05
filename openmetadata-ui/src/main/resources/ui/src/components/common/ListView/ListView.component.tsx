@@ -80,15 +80,13 @@ export const ListView = <T extends object = any>({
       <Col className="text-right" span={14}>
         <Space align="center">
           {!isUndefined(handleDeletedSwitchChange) && (
-            <span>
+            <span className="flex-center gap-2">
               <Switch
                 checked={deleted}
                 data-testid="show-deleted-switch"
                 onChange={handleDeletedSwitchChange}
               />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>
+              <Typography.Text>{t('label.deleted')}</Typography.Text>
             </span>
           )}
 

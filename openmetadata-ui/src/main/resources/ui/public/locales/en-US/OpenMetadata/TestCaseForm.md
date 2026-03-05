@@ -63,6 +63,7 @@ Controls how many top dimension values are shown individually in the test result
 
 - **Default**: 5 (the top 5 dimension values by impact score are shown, the rest are aggregated)
 - **Minimum**: 1
+- **Maximum**: 50
 
 **When to adjust**:
 - **Increase** if you have high-cardinality dimensions and need visibility into more individual values

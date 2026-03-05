@@ -48,10 +48,10 @@ class ColumnValueMeanToBeBetweenValidator(
         return self.run_query_results(self.runner, metric, column)
 
     def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
-        mean_value = row.get(Metrics.MEAN.name)
+        mean_value = row.get(Metrics.mean.name)
         if mean_value is None:
             return None
-        return {Metrics.MEAN.name: mean_value}
+        return {Metrics.mean.name: mean_value}
 
     def _execute_dimensional_validation(
         self,
@@ -80,18 +80,18 @@ class ColumnValueMeanToBeBetweenValidator(
         dimension_results = []
 
         try:
-            row_count_expr = Metrics.ROW_COUNT().fn()
-            mean_expr = Metrics.MEAN(column).fn()
+            row_count_expr = Metrics.rowCount().fn()
+            mean_expr = Metrics.mean(column).fn()
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                Metrics.MEAN.name: mean_expr,
+                Metrics.mean.name: mean_expr,
             }
 
             failed_count_builder = (
                 lambda cte, row_count_expr: self._get_validation_checker(
                     test_params
                 ).build_agg_level_violation_sqa(
-                    [getattr(cte.c, Metrics.MEAN.name)], row_count_expr
+                    [getattr(cte.c, Metrics.mean.name)], row_count_expr
                 )
             )
 
@@ -110,6 +110,7 @@ class ColumnValueMeanToBeBetweenValidator(
             return self._process_dimension_rows(
                 result_rows, dimension_col.name, metrics_to_compute, test_params
             )
+
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

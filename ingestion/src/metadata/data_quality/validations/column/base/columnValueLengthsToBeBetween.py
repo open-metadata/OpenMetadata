@@ -64,12 +64,12 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
 
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
-            max_res = self._run_results(Metrics.MAX_LENGTH, column)
-            min_res = self._run_results(Metrics.MIN_LENGTH, column)
+            max_res = self._run_results(Metrics.maxLength, column)
+            min_res = self._run_results(Metrics.minLength, column)
 
             metric_values = {
-                Metrics.MAX_LENGTH.name: max_res,
-                Metrics.MIN_LENGTH.name: min_res,
+                Metrics.maxLength.name: max_res,
+                Metrics.minLength.name: min_res,
             }
 
         except (ValueError, RuntimeError) as exc:
@@ -137,8 +137,8 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
             dict: Dictionary mapping metric names to Metrics enum values
         """
         return {
-            Metrics.MAX_LENGTH.name: Metrics.MAX_LENGTH,
-            Metrics.MIN_LENGTH.name: Metrics.MIN_LENGTH,
+            Metrics.maxLength.name: Metrics.maxLength,
+            Metrics.minLength.name: Metrics.minLength,
         }
 
     def _evaluate_test_condition(
@@ -164,8 +164,8 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
                 - failed_rows: Optional[int] - rows with invalid lengths (or None for non-dimensional)
                 - total_rows: Optional[int] - total rows (or None for non-dimensional)
         """
-        min_length_value = metric_values[Metrics.MIN_LENGTH.name]
-        max_length_value = metric_values[Metrics.MAX_LENGTH.name]
+        min_length_value = metric_values[Metrics.minLength.name]
+        max_length_value = metric_values[Metrics.maxLength.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -206,8 +206,8 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
                 "test_params is required for columnValueLengthToBeBetween._format_result_message"
             )
 
-        min_length_value = metric_values[Metrics.MIN_LENGTH.name]
-        max_length_value = metric_values[Metrics.MAX_LENGTH.name]
+        min_length_value = metric_values[Metrics.minLength.name]
+        max_length_value = metric_values[Metrics.maxLength.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -231,11 +231,11 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
         return [
             TestResultValue(
                 name=MIN_LENGTH_METRIC_NAME,
-                value=str(metric_values[Metrics.MIN_LENGTH.name]),
+                value=str(metric_values[Metrics.minLength.name]),
             ),
             TestResultValue(
                 name=MAX_LENGTH_METRIC_NAME,
-                value=str(metric_values[Metrics.MAX_LENGTH.name]),
+                value=str(metric_values[Metrics.maxLength.name]),
             ),
         ]
 

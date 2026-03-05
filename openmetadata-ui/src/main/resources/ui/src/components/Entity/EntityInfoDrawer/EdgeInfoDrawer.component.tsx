@@ -29,7 +29,6 @@ import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
   getColumnFunctionValue,
-  getColumnSourceTargetHandles,
   getLineageDetailsObject,
 } from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -71,7 +70,7 @@ const EdgeInfoDrawer = ({
   }, [edge]);
 
   const isColumnLineage = useMemo(() => {
-    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    const { sourceHandle, targetHandle } = edge;
 
     return Boolean(sourceHandle && targetHandle);
   }, [edge]);
@@ -106,8 +105,7 @@ const EdgeInfoDrawer = ({
   const onFunctionUpdate = useCallback(
     async (updatedFunction: string) => {
       if (edge) {
-        const { sourceHandle, targetHandle } =
-          getColumnSourceTargetHandles(edge);
+        const { sourceHandle, targetHandle } = edge;
         const updatedColumnLineage = [...(edgeEntity.columns || [])];
 
         // Find and update the function for the specific column connection
@@ -152,7 +150,7 @@ const EdgeInfoDrawer = ({
 
   const edgeDetailsSection = useMemo(() => {
     const { data } = edge;
-    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    const { sourceHandle, targetHandle } = edge;
 
     if (isColumnLineage) {
       const functionValue = getColumnFunctionValue(
@@ -223,7 +221,7 @@ const EdgeInfoDrawer = ({
 
   const getEdgeInfo = () => {
     const { source, target, data } = edge;
-    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    const { sourceHandle, targetHandle } = edge;
     const { pipeline, pipelineEntityType } = data?.edge ?? {};
 
     let sourceData: Node | undefined, targetData: Node | undefined;

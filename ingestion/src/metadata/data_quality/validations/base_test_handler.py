@@ -33,7 +33,10 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from metadata.data_quality.validations import utils
-from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSIONS
+from metadata.data_quality.validations.impact_score import (
+    DEFAULT_TOP_DIMENSIONS,
+    MAX_TOP_DIMENSIONS,
+)
 from metadata.generated.schema.tests.basic import (
     DimensionValue,
     TestCaseDimensionResult,
@@ -129,7 +132,7 @@ class BaseTestValidator(ABC):
         value = getattr(self.test_case, "topDimensions", None)
         if not value or value < 1:
             return DEFAULT_TOP_DIMENSIONS
-        return value
+        return min(value, MAX_TOP_DIMENSIONS)
 
     def run_validation(self) -> TestCaseResult:
         """Template method defining the validation flow with optional dimensional analysis
@@ -273,7 +276,7 @@ class BaseTestValidator(ABC):
 
         Returns:
             dict: Dictionary mapping metric names to Metrics enum values
-                  e.g., {"MIN": Metrics.MIN} or {"COUNT": Metrics.COUNT, "UNIQUE_COUNT": Metrics.UNIQUE_COUNT}
+                  e.g., {"MIN": Metrics.min} or {"COUNT": Metrics.valuesCount, "UNIQUE_COUNT": Metrics.uniqueCount}
         """
         return {}
 

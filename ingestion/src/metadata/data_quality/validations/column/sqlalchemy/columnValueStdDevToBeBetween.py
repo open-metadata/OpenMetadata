@@ -47,10 +47,10 @@ class ColumnValueStdDevToBeBetweenValidator(
         return self.run_query_results(self.runner, metric, column)
 
     def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
-        stddev_value = row.get(Metrics.STDDEV.name)
+        stddev_value = row.get(Metrics.stddev.name)
         if stddev_value is None:
             return None
-        return {Metrics.STDDEV.name: stddev_value}
+        return {Metrics.stddev.name: stddev_value}
 
     def _execute_dimensional_validation(
         self,
@@ -85,19 +85,19 @@ class ColumnValueStdDevToBeBetweenValidator(
         dimension_results = []
 
         try:
-            row_count_expr = Metrics.ROW_COUNT().fn()
-            stddev_expr = Metrics.STDDEV(column).fn()
+            row_count_expr = Metrics.rowCount().fn()
+            stddev_expr = Metrics.stddev(column).fn()
 
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                Metrics.STDDEV.name: stddev_expr,
+                Metrics.stddev.name: stddev_expr,
             }
 
             failed_count_builder = (
                 lambda cte, row_count_expr: self._get_validation_checker(
                     test_params
                 ).build_agg_level_violation_sqa(
-                    [getattr(cte.c, Metrics.STDDEV.name)], row_count_expr
+                    [getattr(cte.c, Metrics.stddev.name)], row_count_expr
                 )
             )
 
@@ -116,6 +116,7 @@ class ColumnValueStdDevToBeBetweenValidator(
             return self._process_dimension_rows(
                 result_rows, dimension_col.name, metrics_to_compute, test_params
             )
+
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

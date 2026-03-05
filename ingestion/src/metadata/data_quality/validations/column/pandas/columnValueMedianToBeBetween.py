@@ -91,11 +91,11 @@ class ColumnValueMedianToBeBetweenValidator(
 
         try:
             dfs = self.runner
-            median_impl = Metrics.MEDIAN(column).get_pandas_computation()
+            median_impl = Metrics.median(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.MEDIAN.name: median_impl.create_accumulator(),
+                    Metrics.median.name: median_impl.create_accumulator(),
                     DIMENSION_TOTAL_COUNT_KEY: 0,
                 }
             )
@@ -108,9 +108,9 @@ class ColumnValueMedianToBeBetweenValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.MEDIAN.name
+                        Metrics.median.name
                     ] = median_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.MEDIAN.name],
+                        dimension_aggregates[dimension_value][Metrics.median.name],
                         group_df,
                     )
 
@@ -121,7 +121,7 @@ class ColumnValueMedianToBeBetweenValidator(
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
                 median_value = median_impl.aggregate_accumulator(
-                    agg[Metrics.MEDIAN.name]
+                    agg[Metrics.median.name]
                 )
 
                 if median_value is None:
@@ -137,16 +137,16 @@ class ColumnValueMedianToBeBetweenValidator(
                 # Statistical validator: when mean fails, ALL rows in dimension fail
                 failed_count = (
                     total_rows
-                    if checker.violates_pandas({Metrics.MEDIAN.name: median_value})
+                    if checker.violates_pandas({Metrics.median.name: median_value})
                     else 0
                 )
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.MEDIAN.name: median_value,
-                        Metrics.COUNT.name: agg[Metrics.MEDIAN.name].count_value,
-                        "RAW_MEDIAN_ARRAYS": agg[Metrics.MEDIAN.name].arrays,
+                        Metrics.median.name: median_value,
+                        Metrics.valuesCount.name: agg[Metrics.median.name].count_value,
+                        "RAW_MEDIAN_ARRAYS": agg[Metrics.median.name].arrays,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -168,7 +168,7 @@ class ColumnValueMedianToBeBetweenValidator(
                             others_mask, "RAW_MEDIAN_ARRAYS"
                         ].iloc[0]
                         others_count = df_aggregated.loc[
-                            others_mask, Metrics.COUNT.name
+                            others_mask, Metrics.valuesCount.name
                         ].iloc[0]
                         if others_count > 0:
                             result.loc[others_mask] = median_impl.aggregate_accumulator(
@@ -183,14 +183,14 @@ class ColumnValueMedianToBeBetweenValidator(
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={
                         "RAW_MEDIAN_ARRAYS": lambda s: list(chain.from_iterable(s)),
-                        Metrics.COUNT.name: "sum",
+                        Metrics.valuesCount.name: "sum",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                     },
-                    final_metric_calculators={Metrics.MEDIAN.name: recalculate_median},
-                    exclude_from_final=["RAW_MEDIAN_ARRAYS", Metrics.COUNT.name],
+                    final_metric_calculators={Metrics.median.name: recalculate_median},
+                    exclude_from_final=["RAW_MEDIAN_ARRAYS", Metrics.valuesCount.name],
                     top_n=top_n,
-                    violation_metrics=[Metrics.MEDIAN.name],
+                    violation_metrics=[Metrics.median.name],
                     violation_predicate=checker.violates_pandas,
                 )
 
