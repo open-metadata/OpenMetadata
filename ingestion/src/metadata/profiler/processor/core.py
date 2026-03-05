@@ -479,15 +479,13 @@ class Profiler(Generic[TMetric]):
         in a Dict in the shape {col_name: Profiler}
         """
 
-        if self.source_config.computeMetrics:
-            logger.debug(
-                f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.root}..."
-            )
-            self.compute_metrics()
+        logger.debug(
+            f"Computing profile metrics for {self.profiler_interface.table_entity.fullyQualifiedName.root}..."
+        )
+        self.compute_metrics()
 
         profile = self.get_profile()
-        if self.source_config.computeMetrics:
-            self._check_profile_and_handle(profile)
+        self._check_profile_and_handle(profile)
 
         table_profile = ProfilerResponse(
             table=self.profiler_interface.table_entity,

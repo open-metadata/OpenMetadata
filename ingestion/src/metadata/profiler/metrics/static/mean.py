@@ -108,6 +108,8 @@ class Mean(StaticMetric):
     - For a concatenable (str, text...) return the AVG length
     """
 
+    schema_metric_type = MetricType.mean
+
     @classmethod
     def name(cls):
         return MetricType.mean.value

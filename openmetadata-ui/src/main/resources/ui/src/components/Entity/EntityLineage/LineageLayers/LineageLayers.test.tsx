@@ -22,53 +22,16 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import LineageLayers from './LineageLayers';
 
-const onMockColumnClick = jest.fn();
-const onMockUpdateLayerView = jest.fn();
+const mockSetActiveLayer = jest.fn();
+const mockSetPlatformView = jest.fn();
 
-const mockNodeDataProps = {
-  id: 'node1',
-  type: 'table',
-  data: {
-    node: {
-      fullyQualifiedName: 'dim_customer',
-      type: 'table',
-      entityType: 'table',
-      id: 'khjahjfja',
-      columns: [
-        { fullyQualifiedName: 'col1', name: 'col1' },
-        { fullyQualifiedName: 'col2', name: 'col2' },
-        { fullyQualifiedName: 'col3', name: 'col3' },
-      ],
-    },
-  },
-  selected: false,
-  isConnectable: false,
-  xPos: 0,
-  yPos: 0,
-  dragging: true,
-  zIndex: 0,
-};
-
-jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: jest.fn().mockImplementation(() => ({
-    tracedNodes: [],
-    tracedColumns: [],
-    pipelineStatus: {},
-    nodes: [
-      {
-        mockNodeDataProps,
-      },
-    ],
-    upstreamDownstreamData: {
-      upstreamNodes: [],
-      downstreamNodes: [],
-      upstreamEdges: [],
-      downstreamEdges: [],
-    },
+jest.mock('../../../../hooks/useLineageStore', () => ({
+  useLineageStore: jest.fn().mockImplementation(() => ({
     activeLayer: [],
-    fetchPipelineStatus: jest.fn(),
-    onColumnClick: onMockColumnClick,
-    onUpdateLayerView: onMockUpdateLayerView,
+    platformView: [],
+    setPlatformView: mockSetPlatformView,
+    isPlatformLineage: false,
+    setActiveLayer: mockSetActiveLayer,
   })),
 }));
 
@@ -113,13 +76,13 @@ describe('LineageLayers component', () => {
 
     fireEvent.click(columnButton as HTMLElement);
 
-    expect(onMockUpdateLayerView).toHaveBeenCalledWith([
+    expect(mockSetActiveLayer).toHaveBeenCalledWith([
       LineageLayer.ColumnLevelLineage,
     ]);
 
     fireEvent.click(dataObservabilityBtn as HTMLElement);
 
-    expect(onMockUpdateLayerView).toHaveBeenCalledWith([
+    expect(mockSetActiveLayer).toHaveBeenCalledWith([
       LineageLayer.DataObservability,
     ]);
   });

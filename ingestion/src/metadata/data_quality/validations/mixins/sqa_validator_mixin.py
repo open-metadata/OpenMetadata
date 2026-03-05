@@ -170,11 +170,11 @@ class SQAValidatorMixin:
         """
         try:
             row = runner.dispatch_query_select_first(
-                Metrics.ROW_COUNT(column).fn(),
+                Metrics.rowCount(column).fn(),
                 query_filter_=query_filter,
             )
             value = dict(row._mapping)
-            res = value.get(Metrics.ROW_COUNT.name)
+            res = value.get(Metrics.rowCount.name)
         except Exception as exc:
             raise SQLAlchemyError(exc)
 
@@ -187,7 +187,7 @@ class SQAValidatorMixin:
             runner (QueryRunner): runner to run the test case against)
             column (SQALikeColumn): column to compute row count for
         """
-        return self.run_query_results(runner, Metrics.ROW_COUNT, column, **kwargs)
+        return self.run_query_results(runner, Metrics.rowCount, column, **kwargs)
 
     def _get_normalized_dimension_expression(
         self, dimension_col: Column
@@ -225,6 +225,7 @@ class SQAValidatorMixin:
         query_type: DataQualityQueryType,
         filter_clause: Optional[ColumnElement] = None,
         failed_count_builder: Optional[Callable] = None,
+        top_n: int = DEFAULT_TOP_DIMENSIONS,
     ):
         if DIMENSION_TOTAL_COUNT_KEY not in metric_expressions:
             raise ValueError(
@@ -311,7 +312,7 @@ class SQAValidatorMixin:
             final_query = final_query.order_by(
                 getattr(final_metrics_cte.c, DIMENSION_IMPACT_SCORE_KEY).desc(),
                 getattr(final_metrics_cte.c, DIMENSION_VALUE_KEY).asc(),
-            ).limit(DEFAULT_TOP_DIMENSIONS + 1)
+            ).limit(top_n + 1)
 
         return final_query
 
@@ -325,6 +326,7 @@ class SQAValidatorMixin:
         others_metric_expressions_builder: Optional[
             Callable[[FromClause], Dict[str, ClauseElement]]
         ] = None,
+        top_n: int = DEFAULT_TOP_DIMENSIONS,
     ) -> List[Dict[str, Any]]:
         """Execute two-pass dimensional validation with metrics.
 
@@ -355,18 +357,16 @@ class SQAValidatorMixin:
             metric_expressions=metric_expressions,
             query_type=DataQualityQueryType.DIMENSIONAL,
             failed_count_builder=failed_count_builder,
+            top_n=top_n,
         )
 
         top_n_plus_one_results = self.runner.session.execute(
             top_n_plus_one_query
         ).fetchall()
 
-        result_dicts = [
-            dict(row._mapping)
-            for row in top_n_plus_one_results[:DEFAULT_TOP_DIMENSIONS]
-        ]
+        result_dicts = [dict(row._mapping) for row in top_n_plus_one_results[:top_n]]
 
-        if len(top_n_plus_one_results) > DEFAULT_TOP_DIMENSIONS:
+        if len(top_n_plus_one_results) > top_n:
             top_n_values = [row[DIMENSION_VALUE_KEY] for row in result_dicts]
 
             # Build custom source and metrics if builders provided
@@ -390,6 +390,7 @@ class SQAValidatorMixin:
                 query_type=DataQualityQueryType.OTHERS,
                 failed_count_builder=failed_count_builder,
                 filter_clause=others_filter,
+                top_n=top_n,
             )
 
             others_result = self.runner.session.execute(others_query).fetchone()

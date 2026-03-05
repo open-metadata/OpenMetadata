@@ -54,6 +54,7 @@ class ColumnValuesToBeNotNullValidator(
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
@@ -79,9 +80,9 @@ class ColumnValuesToBeNotNullValidator(
                 metric_instance = metric.value(column)
                 metric_expressions[metric_name] = metric_instance.fn()
 
-            metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = Metrics.ROW_COUNT().fn()
+            metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = Metrics.rowCount().fn()
             metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[
-                Metrics.NULL_COUNT.name
+                Metrics.nullCount.name
             ]
 
             normalized_dimension = self._get_normalized_dimension_expression(
@@ -92,6 +93,7 @@ class ColumnValuesToBeNotNullValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                top_n=top_n,
             )
 
             for row in result_rows:

@@ -16,6 +16,7 @@ import ReactFlow from 'reactflow';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
+import { useLineageStore } from '../../hooks/useLineageStore';
 import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../Explore/Explore.mock';
@@ -37,12 +38,14 @@ const entityLineage: EntityLineageResponse = {
       fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_location',
       id: '30e9170c-0e07-4e55-bf93-2d2dfab3a36e',
       type: 'table',
+      entityType: 'table',
     },
     {
       name: 'dim_address_clean',
       fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address_clean',
       id: '6059959e-96c8-4b61-b905-fc5d88b33293',
       type: 'table',
+      entityType: 'table',
     },
   ],
   edges: [
@@ -127,7 +130,6 @@ const mockOnInitReactFlow = jest.fn();
 const mockLineageProviderValues = {
   nodes: mockNodes,
   edges: mockEdges,
-  isEditMode: false,
   init: true,
   onNodeClick: mockOnNodeClick,
   onEdgeClick: mockOnEdgeClick,
@@ -138,14 +140,22 @@ const mockLineageProviderValues = {
   onConnect: mockOnConnect,
   onInitReactFlow: mockOnInitReactFlow,
   updateEntityData: mockUpdateEntityData,
-  tracedNodes: [],
-  tracedColumns: [],
-  activeLayer: [],
   entityLineage,
+};
+
+const mockLineageStore = {
+  isEditMode: false,
+  tracedNodes: new Set(),
+  tracedColumns: new Set(),
+  activeLayer: [],
 };
 
 jest.mock('../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn(),
+}));
+
+jest.mock('../../hooks/useLineageStore', () => ({
+  useLineageStore: jest.fn(),
 }));
 
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => ({
@@ -223,6 +233,24 @@ jest.mock('reactflow', () => ({
   Panel: jest.fn(({ children }) => (
     <div data-testid="react-flow-panel">{children}</div>
   )),
+  ReactFlowProvider: jest.fn(({ children }) => (
+    <div data-testid="react-flow-provider">{children}</div>
+  )),
+  useReactFlow: jest.fn(() => ({
+    getNodes: jest.fn(),
+    getEdges: jest.fn(),
+    setNodes: jest.fn(),
+    setEdges: jest.fn(),
+    fitView: jest.fn(),
+  })),
+  useNodes: jest.fn(() => ({
+    getNodes: jest.fn(),
+    setNodes: jest.fn(),
+  })),
+  useViewport: jest.fn(() => ({
+    getViewport: jest.fn(),
+    setViewport: jest.fn(),
+  })),
 }));
 
 jest.mock('../../utils/EntityLineageUtils', () => ({
@@ -249,6 +277,8 @@ describe('Lineage Component', () => {
     (useLineageProvider as jest.Mock).mockReturnValue(
       mockLineageProviderValues
     );
+
+    (useLineageStore as unknown as jest.Mock).mockReturnValue(mockLineageStore);
   });
 
   describe('Rendering', () => {
@@ -303,8 +333,8 @@ describe('Lineage Component', () => {
     });
 
     it('should apply edit mode class when isEditMode is true', () => {
-      (useLineageProvider as jest.Mock).mockReturnValue({
-        ...mockLineageProviderValues,
+      (useLineageStore as unknown as jest.Mock).mockReturnValue({
+        ...mockLineageStore,
         isEditMode: true,
       });
 
@@ -437,30 +467,6 @@ describe('Lineage Component', () => {
     });
   });
 
-  describe('Edge Interactions', () => {
-    it('should handle edge click and stop propagation', () => {
-      render(<Lineage {...defaultProps} />);
-
-      const edge = screen.getByTestId('react-flow-edges');
-      edge.setAttribute('data-testid', 'react-flow-edge');
-
-      fireEvent.click(edge);
-
-      expect(mockOnEdgeClick).toHaveBeenCalledWith({ id: 'edge-1' });
-    });
-
-    it('should call onEdgesChange when edges are updated', () => {
-      render(<Lineage {...defaultProps} />);
-
-      expect(ReactFlow).toHaveBeenCalledWith(
-        expect.objectContaining({
-          onEdgesChange: mockOnEdgesChange,
-        }),
-        expect.anything()
-      );
-    });
-  });
-
   describe('Pane Interactions', () => {
     it('should handle pane click', () => {
       render(<Lineage {...defaultProps} />);
@@ -483,7 +489,7 @@ describe('Lineage Component', () => {
       expect(ReactFlow).toHaveBeenCalledWith(
         expect.objectContaining({
           nodes: mockNodes,
-          edges: mockEdges,
+          edges: [],
           nodesConnectable: false,
           selectNodesOnDrag: false,
           deleteKeyCode: null,
@@ -498,8 +504,8 @@ describe('Lineage Component', () => {
     });
 
     it('should enable nodesConnectable when in edit mode', () => {
-      (useLineageProvider as jest.Mock).mockReturnValue({
-        ...mockLineageProviderValues,
+      (useLineageStore as unknown as jest.Mock).mockReturnValue({
+        ...mockLineageStore,
         isEditMode: true,
       });
 

@@ -40,8 +40,10 @@ class CountInSet(StaticMetric):
 
     This Metric needs to be initialised passing the values to look for
     the count:
-    add_props(values=["John"])(Metrics.COUNT_IN_SET.value)
+    add_props(values=["John"])(Metrics.countInSet.value)
     """
+
+    schema_metric_type = MetricType.countInSet
 
     values: List[str]
 
@@ -58,7 +60,7 @@ class CountInSet(StaticMetric):
         """sqlalchemy function"""
         if not hasattr(self, "values"):
             raise AttributeError(
-                "CountInSet requires a set of values to be validate: add_props(values=...)(Metrics.COUNT_IN_SET)"
+                "CountInSet requires a set of values to be validate: add_props(values=...)(Metrics.countInSet)"
             )
 
         try:
@@ -93,7 +95,7 @@ class CountInSet(StaticMetric):
         """Returns the logic to compute this metrics using Pandas"""
         if not hasattr(self, "values"):
             raise AttributeError(
-                "CountInSet requires a set of values to be validate: add_props(values=...)(Metrics.COUNT_IN_SET)"
+                "CountInSet requires a set of values to be validate: add_props(values=...)(Metrics.countInSet)"
             )
 
         return PandasComputation[int, int](
