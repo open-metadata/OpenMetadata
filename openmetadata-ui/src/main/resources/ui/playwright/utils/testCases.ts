@@ -255,7 +255,6 @@ export const clickManageButton = async (
     await page
       .getByTestId('table-profiler-container')
       .getByTestId('manage-button')
-      .nth(1)
       .click();
   } else {
     await page.waitForSelector('[data-testid="manage-button"]', {
