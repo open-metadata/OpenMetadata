@@ -79,7 +79,8 @@ public class DistributedSearchIndexExecutor {
   }
 
   /** Maximum number of concurrent partition workers per server */
-  private static final int MAX_WORKER_THREADS = 10;
+  private static final int MAX_WORKER_THREADS =
+      Math.min(10, Runtime.getRuntime().availableProcessors() * 2);
 
   /** Time to wait for workers to finish on shutdown */
   private static final long SHUTDOWN_TIMEOUT_SECONDS = 60;

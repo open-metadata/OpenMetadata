@@ -41,10 +41,11 @@ public class EntityLifecycleEventDispatcher {
 
   private EntityLifecycleEventDispatcher() {
     this.handlers = new ArrayList<>();
+    int maxThreads = Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
     ThreadPoolExecutor pool =
         new ThreadPoolExecutor(
-            50,
-            50,
+            maxThreads,
+            maxThreads,
             60L,
             TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(),

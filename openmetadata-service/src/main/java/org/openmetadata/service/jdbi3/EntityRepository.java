@@ -301,7 +301,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .recordStats()
           .build(new EntityLoaderWithId());
 
-  private static final int MAX_CONCURRENT_FIELD_FETCHES = 50;
+  private static final int MAX_CONCURRENT_FIELD_FETCHES =
+      Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
   private static final ExecutorService FIELD_FETCH_EXECUTOR = createFieldFetchExecutor();
 
   private static ExecutorService createFieldFetchExecutor() {

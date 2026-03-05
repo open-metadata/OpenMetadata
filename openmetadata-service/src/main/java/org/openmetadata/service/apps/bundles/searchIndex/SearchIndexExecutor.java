@@ -89,10 +89,11 @@ public class SearchIndexExecutor implements AutoCloseable {
   private static final String QUERY_COST_RESULT_WARNING =
       "Found incorrect entity type 'queryCostResult', correcting to 'queryCostRecord'";
 
+  private static final int AVAILABLE_PROCESSORS = Runtime.getRuntime().availableProcessors();
   private static final int MAX_READERS_PER_ENTITY = 5;
-  private static final int MAX_PRODUCER_THREADS = 20;
-  private static final int MAX_CONSUMER_THREADS = 20;
-  private static final int MAX_TOTAL_THREADS = 50;
+  private static final int MAX_PRODUCER_THREADS = Math.min(20, AVAILABLE_PROCESSORS * 2);
+  private static final int MAX_CONSUMER_THREADS = Math.min(20, AVAILABLE_PROCESSORS * 2);
+  private static final int MAX_TOTAL_THREADS = Math.min(50, AVAILABLE_PROCESSORS * 4);
 
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(

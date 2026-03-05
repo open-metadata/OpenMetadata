@@ -53,7 +53,8 @@ public class ElasticSearchBulkSink implements BulkSink {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
-  private static final int MAX_CONCURRENT_DOC_BUILDS = 50;
+  private static final int MAX_CONCURRENT_DOC_BUILDS =
+      Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
   private static final ExecutorService DOC_BUILD_EXECUTOR = createDocBuildExecutor();
 
   private static ExecutorService createDocBuildExecutor() {

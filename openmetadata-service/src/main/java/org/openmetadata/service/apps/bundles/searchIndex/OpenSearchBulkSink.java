@@ -64,7 +64,8 @@ public class OpenSearchBulkSink implements BulkSink {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
-  private static final int MAX_CONCURRENT_DOC_BUILDS = 50;
+  private static final int MAX_CONCURRENT_DOC_BUILDS =
+      Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
   private static final ExecutorService DOC_BUILD_EXECUTOR = createDocBuildExecutor();
 
   private static ExecutorService createDocBuildExecutor() {
@@ -87,7 +88,8 @@ public class OpenSearchBulkSink implements BulkSink {
     void onFailure(String entityType, int count);
   }
 
-  private static final int MAX_VECTOR_THREADS = 10;
+  private static final int MAX_VECTOR_THREADS =
+      Math.min(10, Runtime.getRuntime().availableProcessors() * 2);
 
   private final OpenSearchClient searchClient;
   protected final SearchRepository searchRepository;
