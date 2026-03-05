@@ -161,6 +161,10 @@ jest.mock('../../common/Badge/Badge.component', () =>
     ))
 );
 
+jest.mock('../../common/Loader/Loader', () =>
+  jest.fn().mockImplementation(() => <div data-testid="loader">Loading...</div>)
+);
+
 const mockClassification: Classification = {
   id: 'classification-id-1',
   name: 'TestClassification',
@@ -494,5 +498,97 @@ describe('ClassificationDetails', () => {
         .getByTestId('tag-disable-toggle-Tag1')
         .getElementsByTagName('input')[0]
     ).toBeDisabled();
+  });
+
+  it('should show loader when classification is loading and data is not available', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <ClassificationDetails
+            {...defaultProps}
+            currentClassification={undefined}
+            isClassificationLoading
+          />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('header')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tags-table')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('domain-label')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('owner-label')).not.toBeInTheDocument();
+  });
+
+  it('should not show loader or content when classification is undefined and not loading', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <ClassificationDetails
+            {...defaultProps}
+            currentClassification={undefined}
+            isClassificationLoading={false}
+          />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('header')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tags-table')).not.toBeInTheDocument();
+  });
+
+  it('should render content and not loader when classification is available', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <ClassificationDetails {...defaultProps} />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    expect(screen.getByTestId('header')).toBeInTheDocument();
+    expect(screen.getByTestId('tags-table')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-label')).toBeInTheDocument();
+    expect(screen.getByTestId('owner-label')).toBeInTheDocument();
+  });
+
+  it('should pass currentClassification directly to GenericProvider', async () => {
+    const { GenericProvider } = jest.requireMock(
+      '../../Customization/GenericProvider/GenericProvider'
+    );
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <ClassificationDetails {...defaultProps} />
+        </MemoryRouter>
+      );
+    });
+
+    expect(GenericProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: mockClassification,
+      }),
+      expect.anything()
+    );
+  });
+
+  it('should show content when classification exists even if isClassificationLoading is true', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <ClassificationDetails
+            {...defaultProps}
+            isClassificationLoading
+          />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    expect(screen.getByTestId('header')).toBeInTheDocument();
+    expect(screen.getByTestId('tags-table')).toBeInTheDocument();
   });
 });
