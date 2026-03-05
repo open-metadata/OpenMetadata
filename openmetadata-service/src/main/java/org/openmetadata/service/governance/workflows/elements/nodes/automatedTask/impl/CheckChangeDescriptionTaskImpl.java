@@ -46,7 +46,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       varHandler.setNodeVariable(RESULT_VARIABLE, result);
     } catch (Exception exc) {
       log.error(
-            "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
+          "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
@@ -57,12 +57,12 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-      // No changeDescription means it's a create event - return true
-      ChangeDescription changeDescription = entity.getChangeDescription();
-      if (changeDescription == null) {
-        log.debug("No changeDescription found (likely a create event), returning true");
-        return true;
-      }
+    // No changeDescription means it's a create event - return true
+    ChangeDescription changeDescription = entity.getChangeDescription();
+    if (changeDescription == null) {
+      log.debug("No changeDescription found (likely a create event), returning true");
+      return true;
+    }
 
     // Parse config
     String condition = "OR"; // default
@@ -99,10 +99,10 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     }
 
     log.debug(
-          "CheckChangeDescription result: {} for entity: {} with condition: {}",
-          result,
-          entityLinkStr,
-          condition);
+        "CheckChangeDescription result: {} for entity: {} with condition: {}",
+        result,
+        entityLinkStr,
+        condition);
     return result;
   }
 
