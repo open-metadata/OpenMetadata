@@ -467,4 +467,14 @@ public class DistributedJobStatsAggregator {
   public SearchIndexJob getCurrentStats() {
     return coordinator.getJobWithAggregatedStats(jobId);
   }
+
+  public AppRunRecord buildFinalAppRunRecord() {
+    SearchIndexJob job = coordinator.getJobWithAggregatedStats(jobId);
+    if (job == null) {
+      return null;
+    }
+    CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStats =
+        fetchServerStats(job);
+    return convertToAppRunRecord(job, serverStats);
+  }
 }

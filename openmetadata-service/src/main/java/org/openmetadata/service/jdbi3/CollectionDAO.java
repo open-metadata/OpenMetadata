@@ -7560,6 +7560,27 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', :status, '$.endTime', :endTime) WHERE appId = :appId AND extension = 'status' AND timestamp = :timestamp",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(jsonb_set(json, '{status}', to_jsonb(:status::text)), '{endTime}', to_jsonb(:endTime::bigint)) WHERE appId = :appId AND extension = 'status' AND timestamp = :timestamp",
+        connectionType = POSTGRES)
+    void finalizeEntry(
+        @Bind("appId") String appId,
+        @Bind("timestamp") long timestamp,
+        @Bind("status") String status,
+        @Bind("endTime") long endTime);
+
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series WHERE appId = :appId AND extension = :extension AND timestamp = :timestamp")
+    String getByAppIdAndTimestamp(
+        @Bind("appId") String appId,
+        @Bind("timestamp") long timestamp,
+        @Bind("extension") String extension);
+
+    @ConnectionAwareSqlUpdate(
+        value =
             "UPDATE apps_extension_time_series set json = :json where appId=:appId and timestamp=:timestamp and extension=:extension",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(

@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
@@ -257,6 +258,41 @@ public class DistributedJobParticipant implements Managed {
     }
   }
 
+  private void finalizeAppRunRecord(
+      DistributedJobStatsAggregator statsAggregator, AppRunRecordContext appCtx, UUID jobId) {
+    try {
+      AppRunRecord finalRecord = statsAggregator.buildFinalAppRunRecord();
+      if (finalRecord == null) {
+        return;
+      }
+      AppRunRecord.Status status = finalRecord.getStatus();
+      if (status == AppRunRecord.Status.RUNNING || status == AppRunRecord.Status.PENDING) {
+        return;
+      }
+      String existingJson =
+          collectionDAO
+              .appExtensionTimeSeriesDao()
+              .getByAppIdAndTimestamp(appCtx.appId().toString(), appCtx.startTime(), "status");
+      if (existingJson == null) {
+        return;
+      }
+      AppRunRecord existingRecord = JsonUtils.readValue(existingJson, AppRunRecord.class);
+      existingRecord.setStatus(status);
+      existingRecord.setEndTime(System.currentTimeMillis());
+      existingRecord.setSuccessContext(finalRecord.getSuccessContext());
+      collectionDAO
+          .appExtensionTimeSeriesDao()
+          .update(
+              appCtx.appId().toString(),
+              JsonUtils.pojoToJson(existingRecord),
+              appCtx.startTime(),
+              "status");
+      LOG.info("Finalized appRunRecord to {} for recovered job {}", status, jobId);
+    } catch (Exception e) {
+      LOG.warn("Failed to finalize appRunRecord for job {}", jobId, e);
+    }
+  }
+
   private record AppRunRecordContext(UUID appId, long startTime) {}
 
   /** Process partitions for a job. */
@@ -266,8 +302,9 @@ public class DistributedJobParticipant implements Managed {
     BulkSink bulkSink = null;
     IndexingFailureRecorder failureRecorder = null;
     DistributedJobStatsAggregator statsAggregator = null;
+    AppRunRecordContext appCtx = null;
     try {
-      AppRunRecordContext appCtx = resolveAppRunRecordContext();
+      appCtx = resolveAppRunRecordContext();
       if (appCtx != null) {
         restoreAppRunRecordToRunning(appCtx.appId(), appCtx.startTime());
         statsAggregator =
@@ -422,8 +459,10 @@ public class DistributedJobParticipant implements Managed {
     } catch (Exception e) {
       LOG.error("Error participating in job {}", job.getId(), e);
     } finally {
-      if (statsAggregator != null) {
+      if (statsAggregator != null && appCtx != null) {
         try {
+          statsAggregator.forceUpdate();
+          finalizeAppRunRecord(statsAggregator, appCtx, job.getId());
           statsAggregator.stop();
         } catch (Exception e) {
           LOG.warn("Error stopping stats aggregator", e);
