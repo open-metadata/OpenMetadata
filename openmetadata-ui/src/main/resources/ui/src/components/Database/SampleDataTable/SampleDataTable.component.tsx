@@ -16,7 +16,7 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
-import { isEmpty, isObject, lowerCase } from 'lodash';
+import { isEmpty, lowerCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
@@ -50,6 +50,10 @@ import {
   SampleDataProps,
   SampleDataType,
 } from './SampleData.interface';
+import {
+  buildSampleDataCSVContent,
+  downloadSampleDataCSV,
+} from './SampleDataTable.utils';
 
 const SampleDataTable: FC<SampleDataProps> = ({
   isTableDeleted,
@@ -83,44 +87,19 @@ const SampleDataTable: FC<SampleDataProps> = ({
     []
   );
 
-  const stringifyValue = (value: SampleDataType): string => {
-    if (value === null || value === undefined) {
-      return '';
-    }
-    if (isObject(value)) {
-      return JSON.stringify(value);
-    }
-
-    return String(value);
-  };
-
-  const exportToCSV = () => {
+  const exportToCSV = useCallback(() => {
     if (!sampleData?.rows || !sampleData?.columns) {
       return;
     }
+    const columnNames = sampleData.columns.map((col) => String(col.key ?? ''));
+    const csvContent = buildSampleDataCSVContent(
+      columnNames,
+      sampleData.rows,
+      rowLimit
+    );
 
-    const limitedRows = sampleData.rows.slice(0, rowLimit);
-    const columnNames = sampleData.columns.map((col) => col.name);
-    const csvHeader = columnNames.join(',');
-    const csvRows = limitedRows.map((row) => {
-      return columnNames.map((col) => {
-        const value = stringifyValue(row[col]);
-
-        return `"${value.replace(/"/g, '""')}"`;
-      }).join(',');
-    });
-
-    const csvContent = [csvHeader, ...csvRows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `sample_data_${rowLimit}_rows.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    downloadSampleDataCSV(csvContent, `sample_data_${rowLimit}_rows.csv`);
+  }, [sampleData, rowLimit]);
 
   const getSampleDataWithType = (table: Table) => {
     const { sampleData, columns } = table;
@@ -212,9 +191,12 @@ const SampleDataTable: FC<SampleDataProps> = ({
           {
             label: (
               <ManageButtonItemLabel
-                description={t('message.delete-entity-type-action-description', {
-                  entityType: t('label.sample-data'),
-                })}
+                description={t(
+                  'message.delete-entity-type-action-description',
+                  {
+                    entityType: t('label.sample-data'),
+                  }
+                )}
                 icon={IconDelete}
                 id="delete-button"
                 name={t('label.delete')}
@@ -260,6 +242,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
             i18nKey="message.view-sample-data-entity"
             renderElement={
               <a
+                aria-label={t('label.auto-classification')}
                 href={AUTO_CLASSIFICATION_DOCS}
                 rel="noreferrer"
                 style={{ color: theme.primaryColor }}

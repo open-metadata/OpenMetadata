@@ -143,33 +143,35 @@ describe('Test SampleDataTable Component', () => {
   });
 
   it('Should trigger CSV export when export button is clicked', async () => {
-    const mockCreateElement = jest.fn(() => ({
-      setAttribute: jest.fn(),
-      click: jest.fn(),
-      style: {},
-    }));
+    const originalCreateElement = document.createElement.bind(document);
+    const mockCreateElement = jest.fn((tag: string) =>
+      originalCreateElement(tag)
+    );
     const mockCreateObjectURL = jest.fn(() => 'mock-url');
-    const mockAppendChild = jest.fn();
-    const mockRemoveChild = jest.fn();
 
     global.document.createElement = mockCreateElement;
     global.URL.createObjectURL = mockCreateObjectURL;
-    global.document.body.appendChild = mockAppendChild;
-    global.document.body.removeChild = mockRemoveChild;
+    global.URL.revokeObjectURL = jest.fn();
 
-    await act(async () => {
-      render(<SampleDataTable {...mockProps} />);
-    });
+    try {
+      await act(async () => {
+        render(<SampleDataTable {...mockProps} />);
+      });
 
-    const dropdown = screen.getByTestId('sample-data-manage-button');
+      const dropdown = screen.getByTestId('sample-data-manage-button');
 
-    fireEvent.click(dropdown);
+      fireEvent.click(dropdown);
 
-    const exportButton = screen.getByTestId('export-button-details-container');
+      const exportButton = screen.getByTestId(
+        'export-button-details-container'
+      );
 
-    fireEvent.click(exportButton);
+      fireEvent.click(exportButton);
 
-    expect(mockCreateElement).toHaveBeenCalledWith('a');
-    expect(mockCreateObjectURL).toHaveBeenCalled();
+      expect(mockCreateElement).toHaveBeenCalledWith('a');
+      expect(mockCreateObjectURL).toHaveBeenCalled();
+    } finally {
+      global.document.createElement = originalCreateElement;
+    }
   });
 });
