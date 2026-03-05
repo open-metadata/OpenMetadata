@@ -113,9 +113,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String TEST_SUITE_FIELD = "testSuite";
   private static final String INCIDENTS_FIELD = "incidentId";
   private static final String UPDATE_FIELDS =
-      "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns";
+      "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns,topDimensions";
   private static final String PATCH_FIELDS =
-      "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion,dimensionColumns";
+      "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion,dimensionColumns,topDimensions";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
   private final ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
 
@@ -1283,6 +1283,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           () -> {
             recordChange(
                 "dimensionColumns", original.getDimensionColumns(), updated.getDimensionColumns());
+          });
+      compareAndUpdate(
+          "topDimensions",
+          () -> {
+            recordChange("topDimensions", original.getTopDimensions(), updated.getTopDimensions());
           });
       compareAndUpdate(
           "testCaseStatus",
