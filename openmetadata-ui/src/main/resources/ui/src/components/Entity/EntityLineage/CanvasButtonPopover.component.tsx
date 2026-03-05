@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Tag } from 'antd';
-import React, { RefObject } from 'react';
+import React, { MutableRefObject } from 'react';
 import { Edge, Viewport } from 'reactflow';
 import { CanvasButton } from '../../../utils/CanvasButtonUtils';
 import { getPipelineStatusClass } from '../../../utils/PipelineStatusUtils';
@@ -22,8 +22,8 @@ export interface CanvasButtonPopoverProps {
   hoveredButton: CanvasButton;
   hoveredEdge: Edge;
   viewport: Viewport;
-  isOverPopoverRef: RefObject<boolean>;
-  hoverTimeoutRef: RefObject<NodeJS.Timeout | null>;
+  isOverPopoverRef: MutableRefObject<boolean>;
+  hoverTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
   onMouseLeave: () => void;
 }
 
@@ -53,9 +53,7 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
         zIndex: 1000,
       }}
       onMouseEnter={() => {
-        if (isOverPopoverRef.current) {
-          isOverPopoverRef.current = true;
-        }
+        isOverPopoverRef.current = true;
         if (hoverTimeoutRef.current) {
           clearTimeout(hoverTimeoutRef.current);
           hoverTimeoutRef.current = null;

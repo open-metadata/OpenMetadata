@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react';
-import { RefObject } from 'react';
+import { MutableRefObject, RefObject } from 'react';
 import { Edge } from 'reactflow';
 import { CanvasButton } from '../utils/CanvasButtonUtils';
 import { useCanvasMouseEvents } from './useCanvasMouseEvents';
@@ -36,8 +36,8 @@ describe('useCanvasMouseEvents', () => {
     ((edge: Edge, event: MouseEvent) => void) | undefined
   >;
   let onEdgeHoverRef: RefObject<((edge: Edge | null) => void) | undefined>;
-  let hoverTimeoutRef: RefObject<NodeJS.Timeout | null>;
-  let isOverPopoverRef: RefObject<boolean>;
+  let hoverTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
+  let isOverPopoverRef: MutableRefObject<boolean>;
 
   let mockContainer: HTMLDivElement;
   let mockGetEdgeAtPoint: jest.Mock;
@@ -171,11 +171,11 @@ describe('useCanvasMouseEvents', () => {
   });
 
   it('does not call click handlers when container is not available', () => {
-    containerRef.current = null;
+    const nullContainerRef = { current: null };
 
     const { result } = renderHook(() =>
       useCanvasMouseEvents({
-        containerRef,
+        containerRef: nullContainerRef,
         getEdgeAtPointRef,
         getButtonAtPointRef,
         setHoveredButtonRef,

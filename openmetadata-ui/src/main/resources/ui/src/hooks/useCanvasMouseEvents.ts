@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RefObject, useCallback } from 'react';
+import { MutableRefObject, RefObject, useCallback } from 'react';
 import { Edge } from 'reactflow';
 import { CanvasButton } from '../utils/CanvasButtonUtils';
 
@@ -37,8 +37,8 @@ interface UseCanvasMouseEventsProps {
     ((edge: Edge, event: MouseEvent) => void) | undefined
   >;
   onEdgeHoverRef: RefObject<((edge: Edge | null) => void) | undefined>;
-  hoverTimeoutRef: RefObject<NodeJS.Timeout | null>;
-  isOverPopoverRef: RefObject<boolean>;
+  hoverTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
+  isOverPopoverRef: MutableRefObject<boolean>;
 }
 
 export function useCanvasMouseEvents({

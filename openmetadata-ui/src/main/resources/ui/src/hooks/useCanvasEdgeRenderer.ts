@@ -65,7 +65,10 @@ export function useCanvasEdgeRenderer({
   const visibleEdgesRef = useRef<Edge[]>([]);
   const edgeHitPathsRef = useRef<EdgeHitEntry[]>([]);
   const canvasButtonsRef = useRef<CanvasButtonHitData[]>([]);
-  const [hoveredButton, setHoveredButton] = useState<CanvasButton | null>(null);
+  const hoveredButtonRef = useRef<CanvasButton | null>(null);
+  const [hoveredButton, setHoveredButtonState] = useState<CanvasButton | null>(
+    null
+  );
   const hitTestCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const edgePathCacheRef = useRef<
     WeakMap<
@@ -309,8 +312,8 @@ export function useCanvasEdgeRenderer({
         );
 
         const isHovered =
-          hoveredButton?.edgeId === edge.id &&
-          hoveredButton?.type === button.type;
+          hoveredButtonRef.current?.edgeId === edge.id &&
+          hoveredButtonRef.current?.type === button.type;
 
         ctx.save();
         drawCanvasButton(ctx, button, isHovered, isDQEnabled);
@@ -342,7 +345,6 @@ export function useCanvasEdgeRenderer({
     columnsInCurrentPages,
     isRepositioning,
     setIsCanvasReady,
-    hoveredButton,
     isDQEnabled,
     isEditMode,
     getNode,
@@ -412,6 +414,11 @@ export function useCanvasEdgeRenderer({
       drawAllEdgesRef.current();
       isDirtyRef.current = false;
     });
+  }, []);
+
+  const setHoveredButton = useCallback((button: CanvasButton | null) => {
+    hoveredButtonRef.current = button;
+    setHoveredButtonState(button);
   }, []);
 
   useEffect(() => {
