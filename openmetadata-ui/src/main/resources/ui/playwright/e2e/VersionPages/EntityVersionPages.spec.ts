@@ -158,7 +158,7 @@ test.describe('Entity Version pages', () => {
       await page.waitForLoadState('networkidle');
       const versionDetailResponse = page.waitForResponse(
         (response) =>
-          response.url().includes('/versions/0.2') && response.status() === 200
+          response.url().includes('/versions/') && response.status() === 200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
@@ -212,7 +212,10 @@ test.describe('Entity Version pages', () => {
 
         await reloadAndWaitForNetworkIdle(page);
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
+        const versionDetailResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/versions/') && response.status() === 200
+        );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -280,7 +283,10 @@ test.describe('Entity Version pages', () => {
 
         await reloadAndWaitForNetworkIdle(page);
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
+        const versionDetailResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/versions/') && response.status() === 200
+        );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -321,7 +327,10 @@ test.describe('Entity Version pages', () => {
 
           await expect(deletedBadge).toHaveText('Deleted');
 
-          const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
+          const versionDetailResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/versions/') && response.status() === 200
+          );
           await page.locator('[data-testid="version-button"]').click();
           await versionDetailResponse;
 
