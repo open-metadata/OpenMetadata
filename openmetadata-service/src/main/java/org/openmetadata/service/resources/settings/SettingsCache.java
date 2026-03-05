@@ -176,14 +176,11 @@ public class SettingsCache {
         SearchSettings defaultSearchSettings = JsonUtils.readValue(json, SearchSettings.class);
         if (storedSearchSettings == null) {
           Settings setting =
-              new Settings()
-                  .withConfigType(SEARCH_SETTINGS)
-                  .withConfigValue(defaultSearchSettings);
+              new Settings().withConfigType(SEARCH_SETTINGS).withConfigValue(defaultSearchSettings);
           Entity.getSystemRepository().createNewSetting(setting);
         } else {
           SearchSettings existingSearchSettings =
-              JsonUtils.convertValue(
-                  storedSearchSettings.getConfigValue(), SearchSettings.class);
+              JsonUtils.convertValue(storedSearchSettings.getConfigValue(), SearchSettings.class);
           SearchSettings mergedSettings =
               new SearchSettingsHandler()
                   .mergeSearchSettings(defaultSearchSettings, existingSearchSettings);
