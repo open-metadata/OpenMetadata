@@ -86,7 +86,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
           "mlmodel",
           "dataProduct",
           "glossaryTerm",
-          "tag");
+          "tag",
+          "metric");
 
   public final Set<String> dataQualityEntities =
       Set.of(Entity.TEST_CASE_RESULT, Entity.TEST_CASE_RESOLUTION_STATUS);
