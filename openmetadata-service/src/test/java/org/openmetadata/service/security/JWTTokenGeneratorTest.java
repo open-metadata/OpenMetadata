@@ -10,7 +10,8 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
-import io.dropwizard.testing.ResourceHelpers;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.ECPrivateKey;
@@ -31,10 +32,19 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JWTTokenGeneratorTest {
-  protected static final String rsaPrivateKeyPath =
-      ResourceHelpers.resourceFilePath("private_key.der");
-  protected static final String rsaPublicKeyPath =
-      ResourceHelpers.resourceFilePath("public_key.der");
+  protected static final String rsaPrivateKeyPath = resourceFilePath("private_key.der");
+  protected static final String rsaPublicKeyPath = resourceFilePath("public_key.der");
+
+  private static String resourceFilePath(String resourceName) {
+    try {
+      return Path.of(
+              Thread.currentThread().getContextClassLoader().getResource(resourceName).toURI())
+          .toString();
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   protected JWTTokenConfiguration jwtTokenConfiguration;
   protected JWTTokenGenerator jwtTokenGenerator;
 
