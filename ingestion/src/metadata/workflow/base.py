@@ -128,6 +128,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 enable_streaming=True,
             )
 
+        self._log_workflow_execution_info()
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.post_init()
@@ -226,6 +227,14 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"{step.name} reported warning: {Summary.from_step(step)}"
                 )
 
+    def _log_workflow_execution_info(self) -> None:
+        """Log the workflow type and ingestion runner at the start of execution"""
+        if self.config.ingestionRunnerName:
+            logger.info(
+                f"Executing workflow [{self.config.ingestionPipelineFQN}]"
+                f" in Runner [{self.config.ingestionRunnerName}]"
+            )
+
     def execute(self) -> None:
         """
         Main entrypoint:
@@ -291,7 +300,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         try:
             maybe_pipeline: Optional[IngestionPipeline] = self.metadata.get_by_name(
-                entity=IngestionPipeline, fqn=self.config.ingestionPipelineFQN
+                entity=IngestionPipeline,
+                fqn=self.config.ingestionPipelineFQN,
             )
 
             if maybe_pipeline:
