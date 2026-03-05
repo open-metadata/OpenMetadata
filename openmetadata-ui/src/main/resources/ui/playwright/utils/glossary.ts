@@ -533,7 +533,7 @@ export const verifyTaskCreated = async (
         // Custom expect message for reporting, optional.
         message: 'To get the last run execution status as success',
         timeout: 350_000,
-        intervals: [40_000, 30_000],
+        intervals: [5_000, 10_000],
       }
     )
     .toContain(glossaryTermData);
