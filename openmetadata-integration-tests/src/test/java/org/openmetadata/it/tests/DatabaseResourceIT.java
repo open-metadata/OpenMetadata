@@ -1205,7 +1205,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
    */
   @Test
   void test_databaseRdfRelationships(TestNamespace ns) {
-    if (!org.openmetadata.service.util.RdfTestUtils.isRdfEnabled()) {
+    if (!org.openmetadata.it.util.RdfTestUtils.isRdfEnabled()) {
       return; // Skip if RDF not enabled
     }
 
@@ -1243,19 +1243,19 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     Database database = createEntity(createRequest);
 
     // Verify database exists in RDF
-    org.openmetadata.service.util.RdfTestUtils.verifyEntityInRdf(
+    org.openmetadata.it.util.RdfTestUtils.verifyEntityInRdf(
         database, org.openmetadata.service.rdf.RdfUtils.getRdfType("database"));
 
     // Verify hierarchical relationship (service CONTAINS database)
-    org.openmetadata.service.util.RdfTestUtils.verifyContainsRelationshipInRdf(
+    org.openmetadata.it.util.RdfTestUtils.verifyContainsRelationshipInRdf(
         service.getEntityReference(), database.getEntityReference());
 
     // Verify owner relationship
-    org.openmetadata.service.util.RdfTestUtils.verifyOwnerInRdf(
+    org.openmetadata.it.util.RdfTestUtils.verifyOwnerInRdf(
         database.getFullyQualifiedName(), userRef);
 
     // Verify database tags
-    org.openmetadata.service.util.RdfTestUtils.verifyTagsInRdf(
+    org.openmetadata.it.util.RdfTestUtils.verifyTagsInRdf(
         database.getFullyQualifiedName(), database.getTags());
   }
 
@@ -1269,7 +1269,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
    */
   @Test
   void test_databaseRdfSoftDeleteAndRestore(TestNamespace ns) {
-    if (!org.openmetadata.service.util.RdfTestUtils.isRdfEnabled()) {
+    if (!org.openmetadata.it.util.RdfTestUtils.isRdfEnabled()) {
       return; // Skip if RDF not enabled
     }
 
@@ -1283,16 +1283,16 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     Database database = createEntity(createRequest);
 
     // Verify database exists in RDF
-    org.openmetadata.service.util.RdfTestUtils.verifyEntityInRdf(
+    org.openmetadata.it.util.RdfTestUtils.verifyEntityInRdf(
         database, org.openmetadata.service.rdf.RdfUtils.getRdfType("database"));
 
     // Soft delete the database
     deleteEntity(database.getId().toString());
 
     // Verify database STILL exists in RDF after soft delete (soft delete doesn't remove from RDF)
-    org.openmetadata.service.util.RdfTestUtils.verifyEntityInRdf(
+    org.openmetadata.it.util.RdfTestUtils.verifyEntityInRdf(
         database, org.openmetadata.service.rdf.RdfUtils.getRdfType("database"));
-    org.openmetadata.service.util.RdfTestUtils.verifyContainsRelationshipInRdf(
+    org.openmetadata.it.util.RdfTestUtils.verifyContainsRelationshipInRdf(
         service.getEntityReference(), database.getEntityReference());
 
     // Restore the database
@@ -1300,9 +1300,9 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
     // Verify database still exists in RDF after restore
     Database restored = getEntity(database.getId().toString());
-    org.openmetadata.service.util.RdfTestUtils.verifyEntityInRdf(
+    org.openmetadata.it.util.RdfTestUtils.verifyEntityInRdf(
         restored, org.openmetadata.service.rdf.RdfUtils.getRdfType("database"));
-    org.openmetadata.service.util.RdfTestUtils.verifyContainsRelationshipInRdf(
+    org.openmetadata.it.util.RdfTestUtils.verifyContainsRelationshipInRdf(
         service.getEntityReference(), restored.getEntityReference());
   }
 
@@ -1314,7 +1314,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
    */
   @Test
   void test_databaseRdfHardDelete(TestNamespace ns) {
-    if (!org.openmetadata.service.util.RdfTestUtils.isRdfEnabled()) {
+    if (!org.openmetadata.it.util.RdfTestUtils.isRdfEnabled()) {
       return; // Skip if RDF not enabled
     }
 
@@ -1330,14 +1330,14 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     String databaseFqn = database.getFullyQualifiedName();
 
     // Verify database exists in RDF
-    org.openmetadata.service.util.RdfTestUtils.verifyEntityInRdf(
+    org.openmetadata.it.util.RdfTestUtils.verifyEntityInRdf(
         database, org.openmetadata.service.rdf.RdfUtils.getRdfType("database"));
 
     // Hard delete the database (set hardDelete=true)
     hardDeleteEntity(database.getId().toString());
 
     // Verify database is completely removed from RDF
-    org.openmetadata.service.util.RdfTestUtils.verifyEntityNotInRdf(databaseFqn);
+    org.openmetadata.it.util.RdfTestUtils.verifyEntityNotInRdf(databaseFqn);
   }
 
   // ===================================================================
