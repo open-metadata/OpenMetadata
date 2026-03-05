@@ -14,38 +14,37 @@ Preprocessing functions for the classification tasks.
 import datetime
 from typing import Any, List, Mapping, Optional, Sequence, Union, cast
 
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
 
-MAX_NLP_TEXT_LENGTH = 5_000
-
 
 # pylint: disable=too-many-return-statements
-def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:
+def convert_to_str(
+    value: Any, max_length: int = SAMPLE_DATA_MAX_CELL_LENGTH
+) -> Optional[Union[List[str], str]]:
     """
     Convert the given value to a string. This is a conversion
     tailored to our use case, not a generic one.
     """
     if isinstance(value, str):
-        if len(value) > MAX_NLP_TEXT_LENGTH:
+        if len(value) > max_length:
             logger.warning(
                 "Truncating text field of length %d to %d characters for NLP processing",
                 len(value),
-                MAX_NLP_TEXT_LENGTH,
+                max_length,
             )
-            return value[:MAX_NLP_TEXT_LENGTH]
+            return value[:max_length]
         return value
     if isinstance(value, (int, float, datetime.datetime, datetime.date)):
-        # Values we want to convert to string out of the box
         return str(value)
     if isinstance(value, bytes):
-        # Don't classify binary columns, which might contain misleading or outright invalid strings
         return None
     if isinstance(value, (Sequence, Mapping)):
         if isinstance(value, Mapping):
             value = list(value.values())
-        converted = [convert_to_str(el) for el in cast(List[Any], value)]
+        converted = [convert_to_str(el, max_length) for el in cast(List[Any], value)]
         return [
             item
             for sublist in converted
@@ -53,25 +52,23 @@ def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:
             if item is not None
         ]
     if value is None:
-        # We want to skip None values, not convert them to "None"
         return None
     return None
 
 
-def preprocess_values(values: Sequence[Any]) -> List[str]:
+def preprocess_values(
+    values: Sequence[Any], max_length: int = SAMPLE_DATA_MAX_CELL_LENGTH
+) -> List[str]:
     result: List[str] = []
     for value in values:
-        converted_value = convert_to_str(value)
+        converted_value = convert_to_str(value, max_length)
         if converted_value is None:
-            # Skip None values
             continue
 
         if not isinstance(converted_value, list):
             converted_value = [converted_value]
 
-        # skip empty strings
         converted_value = [el.strip() for el in converted_value if el.strip()]
-        # Add the converted value as is, without any further processing
         result.extend(converted_value)
 
     return result

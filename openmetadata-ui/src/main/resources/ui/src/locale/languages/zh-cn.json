@@ -1104,6 +1104,7 @@
     "max": "最大值",
     "max-aggregate-size": "最大聚合大小",
     "max-analyzed-offset": "最大分析偏移量",
+    "max-cell-length": "最大单元格长度",
     "max-hierarchy-depth": "最大层次深度",
     "max-latency": "最大延迟",
     "max-login-fail-attempt-plural": "最大登录失败次数",

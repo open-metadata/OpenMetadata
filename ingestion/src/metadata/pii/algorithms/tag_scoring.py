@@ -33,6 +33,7 @@ from metadata.pii.algorithms.presidio_utils import (
 )
 from metadata.pii.models import ScoredTag
 from metadata.pii.tag_analyzer import TARGET_MAP, TagAnalysis, TagAnalyzer
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
 
 @final
@@ -48,6 +49,7 @@ class TagScorer:
         column_name_contribution: float = 0.5,
         score_cutoff: float = 0.1,
         relative_cardinality_cutoff: float = 0.01,
+        max_cell_length: int = SAMPLE_DATA_MAX_CELL_LENGTH,
     ):
         set_presidio_logger_level()
 
@@ -56,6 +58,7 @@ class TagScorer:
         self._column_name_contribution = column_name_contribution
         self._score_cutoff = score_cutoff
         self._relative_cardinality_cutoff = relative_cardinality_cutoff
+        self._max_cell_length = max_cell_length
 
     def predict_scores(
         self,
@@ -63,7 +66,7 @@ class TagScorer:
         column_name: Optional[str] = None,
         _column_data_type: Optional[DataType] = None,
     ) -> List[ScoredTag]:
-        str_values = preprocess_values(sample_data)
+        str_values = preprocess_values(sample_data, self._max_cell_length)
 
         if not str_values:
             return []
@@ -193,16 +196,19 @@ class TagScorer:
 class ScoreTagsForColumnService:
     _nlp_engine: "NlpEngine"
     _language: ClassificationLanguage
+    _max_cell_length: int
 
     def __init__(
         self,
         nlp_engine: Optional["NlpEngine"] = None,
         language: ClassificationLanguage = ClassificationLanguage.en,
+        max_cell_length: int = SAMPLE_DATA_MAX_CELL_LENGTH,
     ):
         if nlp_engine is None:
             nlp_engine = load_nlp_engine()
         self._nlp_engine = nlp_engine
         self._language = language
+        self._max_cell_length = max_cell_length
 
     def __call__(
         self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]
@@ -218,7 +224,9 @@ class ScoreTagsForColumnService:
             for tag in tags_to_analyze
         )
 
-        classifier = TagScorer(tag_analyzers=tag_analyzers)
+        classifier = TagScorer(
+            tag_analyzers=tag_analyzers, max_cell_length=self._max_cell_length
+        )
         column_name_str = (
             column.fullyQualifiedName.root if column.fullyQualifiedName else None
         )

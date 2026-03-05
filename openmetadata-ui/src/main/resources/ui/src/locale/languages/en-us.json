@@ -1104,6 +1104,7 @@
     "max": "Max",
     "max-aggregate-size": "Max Aggregate Size",
     "max-analyzed-offset": "Max Analyzed Offset",
+    "max-cell-length": "Maximum Cell Length",
     "max-hierarchy-depth": "Max hierarchy depth",
     "max-latency": "Max Latency",
     "max-login-fail-attempt-plural": "Max login fail attempts",

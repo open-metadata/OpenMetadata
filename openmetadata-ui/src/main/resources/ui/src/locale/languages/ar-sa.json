@@ -1104,6 +1104,7 @@
     "max": "الحد الأقصى",
     "max-aggregate-size": "الحد الأقصى لحجم التجميع",
     "max-analyzed-offset": "الحد الأقصى للإزاحة المحللة",
+    "max-cell-length": "الحد الأقصى لطول الخلية",
     "max-hierarchy-depth": "الحد الأقصى لعمق التسلسل الهرمي",
     "max-latency": "الحد الأقصى للكمون",
     "max-login-fail-attempt-plural": "الحد الأقصى لمحاولات تسجيل الدخول الفاشلة",

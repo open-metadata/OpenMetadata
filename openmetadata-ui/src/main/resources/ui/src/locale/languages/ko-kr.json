@@ -1104,6 +1104,7 @@
     "max": "최대",
     "max-aggregate-size": "최대 집게 크기",
     "max-analyzed-offset": "최대 분석 오프셋",
+    "max-cell-length": "최대 셀 길이",
     "max-hierarchy-depth": "최대 계층 구조 깊이",
     "max-latency": "최대 지연",
     "max-login-fail-attempt-plural": "최대 로그인 실패 시도 횟수",

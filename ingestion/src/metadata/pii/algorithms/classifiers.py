@@ -49,6 +49,7 @@ from metadata.pii.algorithms.presidio_utils import (
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
 T = TypeVar("T", bound=Hashable)
 
@@ -94,6 +95,7 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
         score_cutoff: float = 0.1,
         relative_cardinality_cutoff: float = 0.01,
         extra_patchers: Optional[Sequence[PresidioRecognizerResultPatcher]] = None,
+        max_cell_length: int = SAMPLE_DATA_MAX_CELL_LENGTH,
     ):
         set_presidio_logger_level()
         self._presidio_analyzer: AnalyzerEngine = build_analyzer_engine()
@@ -103,6 +105,7 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
         self._score_cutoff = score_cutoff
         self._relative_cardinality_cutoff = relative_cardinality_cutoff
         self._extra_patchers = extra_patchers or []
+        self._max_cell_length = max_cell_length
 
     def predict_scores(
         self,
@@ -113,7 +116,7 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
         if column_data_type is not None and is_non_pii_datatype(column_data_type):
             return {}
 
-        str_values = preprocess_values(sample_data)
+        str_values = preprocess_values(sample_data, self._max_cell_length)
 
         if not str_values:
             return {}

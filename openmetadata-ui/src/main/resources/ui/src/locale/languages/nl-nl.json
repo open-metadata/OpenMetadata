@@ -1104,6 +1104,7 @@
     "max": "Max",
     "max-aggregate-size": "Maximale aggregatiegrootte",
     "max-analyzed-offset": "Maximale geanalyseerde offset",
+    "max-cell-length": "Maximale Cellengte",
     "max-hierarchy-depth": "Max hierarchy depth",
     "max-latency": "Maximale latentie",
     "max-login-fail-attempt-plural": "Max aantal mislukte loginpogingen",

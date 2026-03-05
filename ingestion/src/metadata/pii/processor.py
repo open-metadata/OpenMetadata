@@ -24,6 +24,7 @@ from typing import Any, Sequence
 
 from metadata.pii.algorithms.presidio_patches import ResultCapturingPatcher
 from metadata.pii.algorithms.presidio_utils import explain_recognition_results
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
 warnings.warn(
     "PIIProcessor is deprecated and will be removed in a future version. "
@@ -108,7 +109,11 @@ class PIIProcessor(AutoClassificationProcessor):
         # Build classifier with the results capturing patcher
         result_capturer = ResultCapturingPatcher()
         classifier: ColumnClassifier[PIISensitivityTag] = PIISensitiveClassifier(
-            HeuristicPIIClassifier(extra_patchers=(result_capturer,))
+            HeuristicPIIClassifier(
+                extra_patchers=(result_capturer,),
+                max_cell_length=self.source_config.maxCellLength
+                or SAMPLE_DATA_MAX_CELL_LENGTH,
+            )
         )
 
         # Get the tags and confidence

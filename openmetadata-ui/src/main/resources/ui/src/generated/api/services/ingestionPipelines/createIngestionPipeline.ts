@@ -606,6 +606,16 @@ export interface Pipeline {
      */
     enableAutoClassification?: boolean;
     /**
+     * Maximum character length for text fields in sample data and NLP processing. Cell values
+     * exceeding this limit will be truncated during sampling and before NLP analysis to prevent
+     * memory issues. The default of 1000 characters balances accuracy and performance for most
+     * use cases. Increase this value if you need to preserve longer text content for
+     * classification analysis or if your sensitive data patterns appear in longer text fields,
+     * but be aware that larger values consume more memory (~1KB per character across all
+     * sampled rows) and significantly increase NLP processing time.
+     */
+    maxCellLength?: number;
+    /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */
     sampleDataCount?: number;

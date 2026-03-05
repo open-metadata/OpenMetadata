@@ -1104,6 +1104,7 @@
     "max": "حداکثر",
     "max-aggregate-size": "حداکثر اندازه جمع‌آوری",
     "max-analyzed-offset": "حداکثر جابجایی تحلیل شده",
+    "max-cell-length": "حداکثر طول سلول",
     "max-hierarchy-depth": "Max hierarchy depth",
     "max-latency": "حداکثر تأخیر",
     "max-login-fail-attempt-plural": "حداکثر تلاش‌های ناموفق برای ورود",

@@ -1104,6 +1104,7 @@
     "max": "कमाल",
     "max-aggregate-size": "अधिकतम एग्रिगेट आकार",
     "max-analyzed-offset": "अधिकतम विश्लेषित ऑफसेट",
+    "max-cell-length": "कमाल सेल लांबी",
     "max-hierarchy-depth": "Max hierarchy depth",
     "max-latency": "कमाल विलंबता",
     "max-login-fail-attempt-plural": "कमाल लॉगिन अयशस्वी प्रयत्न",

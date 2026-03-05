@@ -1104,6 +1104,7 @@
     "max": "Máx",
     "max-aggregate-size": "Tamanho máximo do agregado",
     "max-analyzed-offset": "Deslocamento máximo analisado",
+    "max-cell-length": "Comprimento Máximo de Célula",
     "max-hierarchy-depth": "Profundidade máxima da hierarquia",
     "max-latency": "Latência Máxima",
     "max-login-fail-attempt-plural": "Máximas tentativas de falha de login",

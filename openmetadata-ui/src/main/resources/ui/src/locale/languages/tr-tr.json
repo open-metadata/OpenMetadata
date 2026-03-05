@@ -1104,6 +1104,7 @@
     "max": "Maks",
     "max-aggregate-size": "Maks Toplam Boyut",
     "max-analyzed-offset": "Maks Analiz Edilen Ofset",
+    "max-cell-length": "Maksimum Hücre Uzunluğu",
     "max-hierarchy-depth": "Max hierarchy depth",
     "max-latency": "Maksimum Gecikme",
     "max-login-fail-attempt-plural": "Maksimum giriş başarısız denemesi",

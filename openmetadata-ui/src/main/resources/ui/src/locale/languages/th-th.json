@@ -1104,6 +1104,7 @@
     "max": "สูงสุด",
     "max-aggregate-size": "ขนาดสูงสุดของการรวม",
     "max-analyzed-offset": "การกระจัดที่วิเคราะห์สูงสุด",
+    "max-cell-length": "ความยาวเซลล์สูงสุด",
     "max-hierarchy-depth": "Max hierarchy depth",
     "max-latency": "ความหน่วงสูงสุด",
     "max-login-fail-attempt-plural": "จำนวนความพยายามในการเข้าสู่ระบบสูงสุดที่ล้มเหลว",
