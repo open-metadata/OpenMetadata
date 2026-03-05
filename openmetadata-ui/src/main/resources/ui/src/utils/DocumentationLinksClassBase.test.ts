@@ -100,6 +100,9 @@ describe('DocumentationLinksClassBase', () => {
     expect(docsURLs.HOW_TO_GUIDE_DOCS).toBe(
       'https://docs.open-metadata.org/how-to-guides'
     );
+    expect(docsURLs.AUTO_CLASSIFICATION_DOCS).toBe(
+      'https://docs.open-metadata.org/how-to-guides/data-governance/classification/auto-classification'
+    );
     expect(docsURLs.OMD_SLACK_LINK).toBe(
       'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow'
     );
@@ -182,6 +185,9 @@ describe('DocumentationLinksClassBase', () => {
       `${newURL}how-to-guides/data-discovery`
     );
     expect(docsURLs.HOW_TO_GUIDE_DOCS).toBe(`${newURL}how-to-guides`);
+    expect(docsURLs.AUTO_CLASSIFICATION_DOCS).toBe(
+      `${newURL}how-to-guides/data-governance/classification/auto-classification`
+    );
     expect(docsURLs.OMD_SLACK_LINK).toBe(
       'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow'
     );
