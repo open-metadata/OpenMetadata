@@ -632,6 +632,10 @@ public class ElasticSearchSourceBuilderFactory
             }
           });
 
+      int termCount = query.trim().split("\\s+").length;
+      String fuzziness = termCount > 2 ? "0" : "1";
+      int maxExpansions = termCount > 2 ? 2 : 10;
+
       es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQuery =
           es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
               q ->
@@ -642,8 +646,8 @@ public class ElasticSearchSourceBuilderFactory
                               .type(
                                   es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType
                                       .MostFields)
-                              .fuzziness("1")
-                              .maxExpansions(10)
+                              .fuzziness(fuzziness)
+                              .maxExpansions(maxExpansions)
                               .prefixLength(1)
                               .operator(
                                   es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or)
@@ -685,13 +689,15 @@ public class ElasticSearchSourceBuilderFactory
 
   private es.co.elastic.clients.elasticsearch._types.query_dsl.Query createStandardFuzzyQueryV2(
       String query, Map<String, Float> fields) {
+    int termCount = query.trim().split("\\s+").length;
+    String fuzziness = termCount > 2 ? "0" : "1";
     return ElasticQueryBuilder.multiMatchQuery(
         query,
         fields,
         es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields,
         es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
         String.valueOf(DEFAULT_TIE_BREAKER),
-        "1");
+        fuzziness);
   }
 
   private es.co.elastic.clients.elasticsearch._types.query_dsl.Query createStandardNonFuzzyQueryV2(
