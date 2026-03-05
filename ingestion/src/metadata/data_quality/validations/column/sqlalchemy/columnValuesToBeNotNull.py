@@ -54,6 +54,7 @@ class ColumnValuesToBeNotNullValidator(
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
@@ -92,6 +93,7 @@ class ColumnValuesToBeNotNullValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                top_n=top_n,
             )
 
             for row in result_rows:

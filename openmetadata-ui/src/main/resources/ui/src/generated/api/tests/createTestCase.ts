@@ -56,6 +56,11 @@ export interface CreateTestCase {
      */
     testDefinition: string;
     /**
+     * Number of top dimension values to show before grouping the rest as Others. Controls the
+     * cardinality of dimensional test results. Defaults to 5 when not specified.
+     */
+    topDimensions?: number;
+    /**
      * If the test definition supports it, use dynamic assertion to evaluate the test case.
      */
     useDynamicAssertion?: boolean;

@@ -15,6 +15,7 @@ package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import io.micrometer.core.instrument.Timer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,6 +41,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.CompositeProgressListen
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.DefaultRecreateHandler;
@@ -339,6 +341,13 @@ public class DistributedSearchIndexExecutor {
           "Job must be in RUNNING state to execute. Current: " + currentJob.getStatus());
     }
 
+    ReindexingMetrics metrics = ReindexingMetrics.getInstance();
+    Timer.Sample timerSample = null;
+    if (metrics != null) {
+      metrics.recordJobStarted();
+      timerSample = metrics.startJobTimer();
+    }
+
     // Mark this job as being coordinated by this server (prevents participant from joining)
     COORDINATED_JOBS.add(jobId);
     LOG.debug("Marked job {} as coordinated by this server", jobId);
@@ -511,6 +520,19 @@ public class DistributedSearchIndexExecutor {
       // Final stats broadcast and cleanup
       statsAggregator.forceUpdate();
       statsAggregator.stop();
+
+      if (metrics != null && timerSample != null) {
+        SearchIndexJob finalJob = coordinator.getJob(jobId).orElse(null);
+        IndexJobStatus finalStatus = finalJob != null ? finalJob.getStatus() : null;
+        if (finalStatus == IndexJobStatus.COMPLETED
+            || finalStatus == IndexJobStatus.COMPLETED_WITH_ERRORS) {
+          metrics.recordJobCompleted(timerSample);
+        } else if (finalStatus == IndexJobStatus.STOPPED) {
+          metrics.recordJobStopped(timerSample);
+        } else {
+          metrics.recordJobFailed(timerSample);
+        }
+      }
 
       // Flush and close failure recorder
       if (failureRecorder != null) {
