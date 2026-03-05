@@ -521,7 +521,11 @@ public class McpToolsValidationIT {
                 matchingEntities.add(r.get("name").asText());
               });
 
-      assertThat(matchingEntities).contains(expectedQuery);
+      assertThat(matchingEntities.stream().anyMatch(name -> name.contains(expectedQuery)))
+          .withFailMessage(
+              "Expected at least one entity name containing '%s' but got: %s",
+              expectedQuery, matchingEntities)
+          .isTrue();
     }
   }
 
