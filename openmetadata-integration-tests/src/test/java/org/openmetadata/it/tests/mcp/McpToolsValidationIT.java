@@ -4,12 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,8 +15,6 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.openmetadata.it.auth.JwtAuthProvider;
-import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -41,12 +33,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.service.Entity;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class McpToolsValidationIT {
-
-  private static final HttpClient HTTP_CLIENT =
-      HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  private static String authToken;
+public class McpToolsValidationIT extends McpTestBase {
 
   private static Table testTable;
   private static DatabaseSchema testSchema;
@@ -54,10 +41,7 @@ public class McpToolsValidationIT {
 
   @BeforeAll
   static void setUp() throws Exception {
-    authToken =
-        "Bearer "
-            + JwtAuthProvider.tokenFor(
-                "admin@open-metadata.org", "admin@open-metadata.org", new String[] {"admin"}, 3600);
+    initAuth();
     createTestEntities();
   }
 
@@ -129,74 +113,10 @@ public class McpToolsValidationIT {
     post("glossaries", createGlossary, Glossary.class);
   }
 
-  private static <T> T post(String path, Object body, Class<T> responseType) throws Exception {
-    String baseUrl = TestSuiteBootstrap.getBaseUrl();
-    String jsonBody = OBJECT_MAPPER.writeValueAsString(body);
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(baseUrl + "/api/v1/" + path))
-            .header("Content-Type", "application/json")
-            .header("Authorization", authToken)
-            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-            .timeout(Duration.ofSeconds(30))
-            .build();
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    if (response.statusCode() != 200 && response.statusCode() != 201) {
-      throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
-    }
-    return OBJECT_MAPPER.readValue(response.body(), responseType);
-  }
-
-  private static void delete(String path) throws Exception {
-    String baseUrl = TestSuiteBootstrap.getBaseUrl();
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(baseUrl + "/api/v1/" + path))
-            .header("Authorization", authToken)
-            .DELETE()
-            .timeout(Duration.ofSeconds(30))
-            .build();
-    HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-  }
-
-  private String getMcpUrl(String path) {
-    return TestSuiteBootstrap.getBaseUrl() + path;
-  }
-
   private JsonNode executeToolCall(Map<String, Object> toolCallRequest) throws Exception {
-    String requestBody = OBJECT_MAPPER.writeValueAsString(toolCallRequest);
-
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(getMcpUrl("/mcp")))
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json, text/event-stream")
-            .header("Authorization", authToken)
-            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-            .timeout(Duration.ofSeconds(30))
-            .build();
-
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    assertThat(response.statusCode()).isEqualTo(200);
-    assertThat(response.body()).isNotNull();
-
-    String jsonContent = extractJsonFromResponse(response.body());
-    JsonNode responseJson = OBJECT_MAPPER.readTree(jsonContent);
+    JsonNode responseJson = executeMcpRequest(toolCallRequest);
     assertThat(responseJson.has("result")).isTrue();
-
     return responseJson.get("result");
-  }
-
-  private static String extractJsonFromResponse(String responseBody) {
-    if (responseBody.startsWith("id:") || responseBody.startsWith("data:")) {
-      String[] lines = responseBody.split("\n");
-      for (String line : lines) {
-        if (line.startsWith("data:")) {
-          return line.substring(5).trim();
-        }
-      }
-    }
-    return responseBody;
   }
 
   @Test
@@ -458,22 +378,18 @@ public class McpToolsValidationIT {
 
     Table deletionTestTable = post("tables", createDeletionTestTable, Table.class);
 
-    // Verify active table has deleted field set to false
     Map<String, Object> searchActive =
         McpTestUtils.createSearchMetadataToolCall(deletionTestTableName, 5, Entity.TABLE);
     JsonNode activeResult = executeToolCall(searchActive);
     validateDeletedFieldPresence(activeResult, false);
 
-    // Soft-delete the table
     delete("tables/" + deletionTestTable.getId());
 
-    // Search with includeDeleted=true should return deleted table with deleted=true
     Map<String, Object> searchWithDeleted =
         createSearchToolCallWithDeletedParam(deletionTestTableName, 5, Entity.TABLE, true);
     JsonNode deletedResult = executeToolCall(searchWithDeleted);
     validateDeletedFieldPresence(deletedResult, true);
 
-    // Default search should exclude deleted entities
     Map<String, Object> searchDefault =
         McpTestUtils.createSearchMetadataToolCall(deletionTestTableName, 5, Entity.TABLE);
     JsonNode defaultResult = executeToolCall(searchDefault);
