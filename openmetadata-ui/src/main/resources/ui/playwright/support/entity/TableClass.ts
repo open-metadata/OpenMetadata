@@ -86,7 +86,7 @@ export class TableClass extends EntityClass {
     this.type = 'Table';
     this.childrenTabId = 'schema';
 
-    const serviceName = name ?? `pw-database-service-${uuid()}`;
+    const serviceName = `pw-database-service-${uuid()}`;
     const databaseName = `pw-database-${uuid()}`;
     const schemaName = `pw-database-schema-${uuid()}`;
 
@@ -217,7 +217,7 @@ export class TableClass extends EntityClass {
     ];
 
     this.entity = {
-      name: `pw-table-${fullUuid()}`,
+      name: name ?? `pw-table-${fullUuid()}`,
       displayName: `pw table ${fullUuid()}`,
       description: 'description',
       columns: this.children,

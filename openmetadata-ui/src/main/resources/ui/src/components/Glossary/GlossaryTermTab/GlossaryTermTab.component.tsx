@@ -152,7 +152,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState(true);
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
@@ -164,6 +164,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     ...statusDropdownSelection,
   ]);
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
+  const [totalTermsCount, setTotalTermsCount] = useState<number>(0);
 
   const { paging, handlePagingChange } = usePaging(PAGE_SIZE_LARGE);
   const [loadingChildren, setLoadingChildren] = useState<
@@ -273,19 +274,23 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       let data;
       let pagingResponse: Paging | undefined;
 
+      const isStatusFilterActive = !selectedStatus.includes('all');
+      const entityStatusParam = isStatusFilterActive
+        ? selectedStatus.filter((s) => s !== 'all').join(',')
+        : undefined;
+
       // Use search API if search term is present
       if (searchTerm) {
         const currentOffset = loadMore ? searchPaging.offset : 0;
-        const response = await searchGlossaryTermsPaginated(
-          searchTerm,
-          undefined,
-          activeGlossary?.fullyQualifiedName,
-          undefined,
-          undefined,
-          PAGE_SIZE_LARGE,
-          currentOffset,
-          'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount'
-        );
+        const response = await searchGlossaryTermsPaginated({
+          q: searchTerm,
+          glossaryFqn: activeGlossary?.fullyQualifiedName,
+          limit: PAGE_SIZE_LARGE,
+          offset: currentOffset,
+          fields:
+            'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
+          entityStatus: entityStatusParam,
+        });
         data = response.data;
         pagingResponse = response.paging;
 
@@ -305,7 +310,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         const response = await getFirstLevelGlossaryTermsPaginated(
           activeGlossary?.fullyQualifiedName || '',
           PAGE_SIZE_LARGE,
-          loadMore ? paging.after : undefined
+          loadMore ? paging.after : undefined,
+          entityStatusParam
         );
         data = response.data;
         pagingResponse = response.paging;
@@ -320,6 +326,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
       if (!data || !Array.isArray(data)) {
         return;
+      }
+
+      if (data.length === 0 && isStatusFilterActive) {
+        const countResponse = await getFirstLevelGlossaryTermsPaginated(
+          activeGlossary?.fullyQualifiedName || '',
+          0
+        );
+        setTotalTermsCount(countResponse.paging?.total ?? 0);
+      } else {
+        setTotalTermsCount(data.length);
       }
 
       const newTerms = data as ModifiedGlossary[];
@@ -663,7 +679,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             newStatus
           );
 
-          setGlossaryChildTerms(updatedTerms);
+          if (
+            !selectedStatus.includes('all') &&
+            !selectedStatus.includes(newStatus)
+          ) {
+            setGlossaryChildTerms(
+              updatedTerms.filter(
+                (term) => term.fullyQualifiedName !== glossaryTermFqn
+              )
+            );
+          } else {
+            setGlossaryChildTerms(updatedTerms);
+          }
 
           // remove resolved task from term task threads
           if (termTaskThreads[glossaryTermFqn]) {
@@ -681,7 +708,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         showErrorToast(error as AxiosError);
       }
     },
-    [expandedRowKeys, glossaryChildTerms, termTaskThreads]
+    [expandedRowKeys, glossaryChildTerms, selectedStatus, termTaskThreads]
   );
 
   const handleApproveGlossaryTerm = useCallback(
@@ -988,22 +1015,19 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const handleCheckboxChange = useCallback(
     (key: string, checked: boolean) => {
-      const setCheckedList = setStatusDropdownSelection;
-
       const optionsToUse = GLOSSARY_TERM_STATUS_OPTIONS;
 
       if (key === 'all') {
         if (checked) {
-          const newCheckedList = [
+          setStatusDropdownSelection([
             'all',
             ...optionsToUse.map((option) => option.value),
-          ];
-          setCheckedList(newCheckedList);
+          ]);
         } else {
-          setCheckedList([]);
+          setStatusDropdownSelection([]);
         }
       } else {
-        setCheckedList((prev: string[]) => {
+        setStatusDropdownSelection((prev: string[]) => {
           const newCheckedList = checked
             ? [...prev, key]
             : prev.filter((item) => item !== key);
@@ -1020,7 +1044,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         });
       }
     },
-    [columns, setStatusDropdownSelection]
+    [setStatusDropdownSelection]
   );
 
   const handleStatusSelectionDropdownSave = () => {
@@ -1052,6 +1076,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     expandableKeys,
     setExpandedRowKeys,
     showErrorToast,
+    selectedStatus,
   ]);
 
   const isAllExpanded = useMemo(() => {
@@ -1430,16 +1455,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return [];
     }
 
-    const filtered = glossaryTerms.filter((term) => {
-      const matchesStatus = selectedStatus.includes(
-        term.entityStatus as string
-      );
-
-      return matchesStatus;
-    });
-
-    return processTermsWithLoadMore(filtered);
-  }, [glossaryTerms, selectedStatus, processTermsWithLoadMore]);
+    return processTermsWithLoadMore(glossaryTerms);
+  }, [glossaryTerms, processTermsWithLoadMore]);
 
   useEffect(() => {
     if (!tableContainerRef.current) {
@@ -1448,39 +1465,41 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setContainerWidth(tableContainerRef.current.offsetWidth);
   }, []);
 
-  // Trigger new fetch when search term changes
+  // Trigger new fetch when search term or status filter changes
   useEffect(() => {
     if (
       activeGlossary &&
       previousGlossaryFQN === activeGlossary?.fullyQualifiedName
     ) {
-      // Only fetch if we're on the same glossary (not switching glossaries)
-      // Reset search pagination when search term changes
       if (searchTerm) {
         setSearchPaging({ offset: 0, total: undefined, hasMore: true });
       }
       fetchAllTerms();
     }
-  }, [searchTerm]);
+  }, [searchTerm, selectedStatus]);
 
-  // Check if this is due to search returning no results
+  // Check if this is due to search or filter returning no results
   const isSearchActive = Boolean(searchTerm && searchTerm.trim().length > 0);
+  const isStatusFilterActive = !selectedStatus.includes('all');
   const hasNoTerms = isEmpty(glossaryTerms);
 
   const glossaryPlaceholderText = useMemo(() => {
     if (isSearchActive && searchTerm) {
       return `No Glossary Term found for "${searchTerm}"`;
     }
-    if (isSearchActive) {
+    if (isSearchActive || isStatusFilterActive) {
       return 'No Glossary Term found';
     }
 
     return 'No Glossary Terms';
-  }, [isSearchActive, searchTerm]);
+  }, [isSearchActive, isStatusFilterActive, searchTerm]);
 
-  // Special case: if there are truly no terms in the glossary at all (not just search results)
-  // and no search is active, show the full placeholder
-  if (hasNoTerms && !isSearchActive && !isTableLoading) {
+  if (
+    hasNoTerms &&
+    !isSearchActive &&
+    totalTermsCount === 0 &&
+    !isTableLoading
+  ) {
     return (
       <div className="h-full" ref={tableContainerRef}>
         <ErrorPlaceHolder
