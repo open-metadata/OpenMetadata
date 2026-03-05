@@ -18,7 +18,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -39,7 +41,16 @@ public class EntityLifecycleEventDispatcher {
 
   private EntityLifecycleEventDispatcher() {
     this.handlers = new ArrayList<>();
-    this.asyncExecutor = Executors.newFixedThreadPool(50, Thread.ofVirtual().factory());
+    ThreadPoolExecutor pool =
+        new ThreadPoolExecutor(
+            50,
+            50,
+            60L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(),
+            Thread.ofVirtual().name("lifecycle-async-", 0).factory());
+    pool.allowCoreThreadTimeOut(true);
+    this.asyncExecutor = pool;
   }
 
   public static EntityLifecycleEventDispatcher getInstance() {

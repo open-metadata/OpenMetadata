@@ -1042,6 +1042,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
+    eioOptions.setMaxTimeoutThreadPoolSize(8);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
     FilterHolder socketAddressFilterHolder = new FilterHolder();
     socketAddressFilterHolder.setFilter(socketAddressFilter);

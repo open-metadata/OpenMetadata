@@ -20,8 +20,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -52,9 +54,20 @@ public class ElasticSearchBulkSink implements BulkSink {
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
   private static final int MAX_CONCURRENT_DOC_BUILDS = 50;
-  private static final ExecutorService DOC_BUILD_EXECUTOR =
-      Executors.newFixedThreadPool(
-          MAX_CONCURRENT_DOC_BUILDS, Thread.ofVirtual().name("es-doc-build-", 0).factory());
+  private static final ExecutorService DOC_BUILD_EXECUTOR = createDocBuildExecutor();
+
+  private static ExecutorService createDocBuildExecutor() {
+    ThreadPoolExecutor pool =
+        new ThreadPoolExecutor(
+            MAX_CONCURRENT_DOC_BUILDS,
+            MAX_CONCURRENT_DOC_BUILDS,
+            60L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(),
+            Thread.ofVirtual().name("es-doc-build-", 0).factory());
+    pool.allowCoreThreadTimeOut(true);
+    return pool;
+  }
 
   private final ElasticSearchClient searchClient;
   protected final SearchRepository searchRepository;

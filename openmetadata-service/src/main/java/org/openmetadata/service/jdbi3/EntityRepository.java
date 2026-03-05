@@ -136,7 +136,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -301,10 +302,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .build(new EntityLoaderWithId());
 
   private static final int MAX_CONCURRENT_FIELD_FETCHES = 50;
-  private static final ExecutorService FIELD_FETCH_EXECUTOR =
-      Executors.newFixedThreadPool(
-          MAX_CONCURRENT_FIELD_FETCHES,
-          java.lang.Thread.ofVirtual().name("field-fetch-", 0).factory());
+  private static final ExecutorService FIELD_FETCH_EXECUTOR = createFieldFetchExecutor();
+
+  private static ExecutorService createFieldFetchExecutor() {
+    ThreadPoolExecutor pool =
+        new ThreadPoolExecutor(
+            MAX_CONCURRENT_FIELD_FETCHES,
+            MAX_CONCURRENT_FIELD_FETCHES,
+            60L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(),
+            java.lang.Thread.ofVirtual().name("field-fetch-", 0).factory());
+    pool.allowCoreThreadTimeOut(true);
+    return pool;
+  }
 
   private static final LoadingCache<String, Integer> COUNT_CACHE =
       CacheBuilder.newBuilder()
