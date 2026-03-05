@@ -313,40 +313,45 @@ public class DistributedJobStatsAggregator {
     }
     stats.setEntityStats(entityStats);
 
+    // Server stats can overcount on recovery (crashed server's flushed stats + recovering server's
+    // stats for re-read records). Partition-level processedCount is the ground truth, so cap
+    // server stats to prevent reader/process/sink success exceeding what was actually processed.
+    long partitionTruth = job.getProcessedRecords();
+
     StepStats readerStats = new StepStats();
     readerStats.setTotalRecords(safeToInt(job.getTotalRecords()));
     if (serverStatsAggr != null) {
-      readerStats.setSuccessRecords(safeToInt(serverStatsAggr.readerSuccess()));
+      readerStats.setSuccessRecords(
+          safeToInt(Math.min(serverStatsAggr.readerSuccess(), partitionTruth)));
       readerStats.setFailedRecords(safeToInt(serverStatsAggr.readerFailed()));
       readerStats.setWarningRecords(safeToInt(serverStatsAggr.readerWarnings()));
     } else {
-      readerStats.setSuccessRecords(safeToInt(job.getProcessedRecords()));
+      readerStats.setSuccessRecords(safeToInt(partitionTruth));
       readerStats.setFailedRecords(0);
       readerStats.setWarningRecords(0);
     }
     stats.setReaderStats(readerStats);
 
-    // Process stats - building search index documents from entities
     StepStats processStats = new StepStats();
     if (serverStatsAggr != null) {
-      long processTotal = serverStatsAggr.processSuccess() + serverStatsAggr.processFailed();
+      long processSuccess = Math.min(serverStatsAggr.processSuccess(), partitionTruth);
+      long processTotal = processSuccess + serverStatsAggr.processFailed();
       processStats.setTotalRecords(safeToInt(processTotal));
-      processStats.setSuccessRecords(safeToInt(serverStatsAggr.processSuccess()));
+      processStats.setSuccessRecords(safeToInt(processSuccess));
       processStats.setFailedRecords(safeToInt(serverStatsAggr.processFailed()));
     } else {
-      // Fallback: assume all read records were processed successfully
-      processStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
-      processStats.setSuccessRecords(safeToInt(job.getProcessedRecords()));
+      processStats.setTotalRecords(safeToInt(partitionTruth));
+      processStats.setSuccessRecords(safeToInt(partitionTruth));
       processStats.setFailedRecords(0);
     }
     stats.setProcessStats(processStats);
 
-    // Sink stats - writing to search index (only includes successfully processed docs)
     StepStats sinkStats = new StepStats();
     if (serverStatsAggr != null) {
-      long sinkTotal = serverStatsAggr.sinkSuccess() + serverStatsAggr.sinkFailed();
+      long sinkSuccess = Math.min(serverStatsAggr.sinkSuccess(), partitionTruth);
+      long sinkTotal = sinkSuccess + serverStatsAggr.sinkFailed();
       sinkStats.setTotalRecords(safeToInt(sinkTotal));
-      sinkStats.setSuccessRecords(safeToInt(serverStatsAggr.sinkSuccess()));
+      sinkStats.setSuccessRecords(safeToInt(sinkSuccess));
       sinkStats.setFailedRecords(safeToInt(serverStatsAggr.sinkFailed()));
     } else {
       sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));

@@ -202,6 +202,9 @@ public class PartitionCalculator {
 
     for (int i = 0; i < numPartitions; i++) {
       long rangeStart = (long) i * adjustedPartitionSize;
+      if (rangeStart >= totalCount) {
+        break;
+      }
       long rangeEnd = Math.min(rangeStart + adjustedPartitionSize, totalCount);
       long estimatedCount = rangeEnd - rangeStart;
 
