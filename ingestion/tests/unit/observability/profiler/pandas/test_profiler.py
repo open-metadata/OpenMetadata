@@ -33,7 +33,6 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     ColumnProfilerConfig,
     DataType,
-    Histogram,
     Table,
     TableProfile,
     TableProfilerConfig,
@@ -256,18 +255,15 @@ class ProfilerTest(TestCase):
             thirdQuartile=31.5,
             interQuartileRange=1.0,
             nonParametricSkew=0.0,
-            histogram=Histogram(
-                boundaries=["30.000 to 31.260", "31.260 and up"], frequencies=[3, 1]
-            ),
         )
 
     def test_cardinality_distribution(self):
         """
         Check cardinality distribution computation for pandas
         """
-        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
-        count = Metrics.COUNT.value
-        distinct_count = Metrics.DISTINCT_COUNT.value
+        cardinality_dist = Metrics.cardinalityDistribution.value
+        count = Metrics.valuesCount.value
+        distinct_count = Metrics.distinctCount.value
 
         res = (
             Profiler(
@@ -281,7 +277,7 @@ class ProfilerTest(TestCase):
         )
 
         # Test with string column that has repeated values
-        name_cardinality = res.get("name")[Metrics.CARDINALITY_DISTRIBUTION.name]
+        name_cardinality = res.get("name")[Metrics.cardinalityDistribution.name]
 
         assert name_cardinality
         assert "categories" in name_cardinality
@@ -298,9 +294,9 @@ class ProfilerTest(TestCase):
         """
         Check cardinality distribution when all values are distinct for pandas
         """
-        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
-        count = Metrics.COUNT.value
-        distinct_count = Metrics.DISTINCT_COUNT.value
+        cardinality_dist = Metrics.cardinalityDistribution.value
+        count = Metrics.valuesCount.value
+        distinct_count = Metrics.distinctCount.value
 
         res = (
             Profiler(
@@ -315,9 +311,7 @@ class ProfilerTest(TestCase):
 
         # Test with fullname column - it has repeated values ("John Doe", "Jone Doe" appear twice each)
         # but since it's a string column, it should return a distribution
-        fullname_cardinality = res.get("fullname")[
-            Metrics.CARDINALITY_DISTRIBUTION.name
-        ]
+        fullname_cardinality = res.get("fullname")[Metrics.cardinalityDistribution.name]
 
         # Should return a distribution for string columns with repeated values
         assert fullname_cardinality is not None
@@ -329,9 +323,9 @@ class ProfilerTest(TestCase):
         """
         Check cardinality distribution with unsupported data types for pandas
         """
-        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
-        count = Metrics.COUNT.value
-        distinct_count = Metrics.DISTINCT_COUNT.value
+        cardinality_dist = Metrics.cardinalityDistribution.value
+        count = Metrics.valuesCount.value
+        distinct_count = Metrics.distinctCount.value
 
         res = (
             Profiler(
@@ -345,7 +339,7 @@ class ProfilerTest(TestCase):
         )
 
         # Test with integer column (not concatenable)
-        age_cardinality = res.get("age")[Metrics.CARDINALITY_DISTRIBUTION.name]
+        age_cardinality = res.get("age")[Metrics.cardinalityDistribution.name]
 
         # Should return None for unsupported types
         assert age_cardinality is None
@@ -356,9 +350,9 @@ class ProfilerTest(TestCase):
         when not building the profiler with all the
         required ingredients
         """
-        like = add_props(expression="J%")(Metrics.LIKE_COUNT.value)
-        count = Metrics.COUNT.value
-        like_ratio = Metrics.LIKE_RATIO.value
+        like = add_props(expression="J%")(Metrics.likeCount.value)
+        count = Metrics.valuesCount.value
+        like_ratio = Metrics.likeRatio.value
 
         # This should run properly
         Profiler(
@@ -392,7 +386,7 @@ class ProfilerTest(TestCase):
             struct_col = Column(sqa_types.SQAStruct)
 
         profiler = Profiler(
-            Metrics.COUNT.value,
+            Metrics.valuesCount.value,
             profiler_interface=self.datalake_profiler_interface,
         )
 
@@ -401,7 +395,7 @@ class ProfilerTest(TestCase):
     def test__check_profile_and_handle(self):
         """test _check_profile_and_handle returns as expected"""
         profiler = Profiler(
-            Metrics.COUNT.value,
+            Metrics.valuesCount.value,
             profiler_interface=self.datalake_profiler_interface,
         )
 

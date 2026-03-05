@@ -151,7 +151,7 @@ class MetricsTest(TestCase):
         """
         Check the Count metric
         """
-        count = Metrics.COUNT.value
+        count = Metrics.valuesCount.value
         profiler = Profiler(
             count,
             profiler_interface=self.sqa_profiler_interface,
@@ -159,13 +159,13 @@ class MetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # Note how we can get the result value by passing the metrics name
-        assert res.get(User.name.name).get(Metrics.COUNT.name) == 3
+        assert res.get(User.name.name).get(Metrics.valuesCount.name) == 3
 
     def test_min(self):
         """
         Check the Min metric
         """
-        min_age = Metrics.MIN.value
+        min_age = Metrics.min.value
         profiler = Profiler(
             min_age,
             profiler_interface=self.sqa_profiler_interface,
@@ -173,36 +173,36 @@ class MetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # Note how we can get the result value by passing the metrics name
-        assert res.get(User.age.name).get(Metrics.MIN.name) == 30
-        assert res.get(User.comments.name).get(Metrics.MIN.name) == 11
+        assert res.get(User.age.name).get(Metrics.min.name) == 30
+        assert res.get(User.comments.name).get(Metrics.min.name) == 11
 
     def test_std(self):
         """
         Check STD metric
         """
-        std_age = Metrics.STDDEV.value
+        std_age = Metrics.stddev.value
         profiler = Profiler(
             std_age,
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.5
+        assert res.get(User.age.name).get(Metrics.stddev.name) == 0.5
 
     def test_earliest_time(self):
         """
         Check Earliest Time Metric
         """
-        earliest_time = Metrics.MIN.value
+        earliest_time = Metrics.min.value
         profiler = Profiler(
             earliest_time,
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        assert res.get(User.dob.name).get(Metrics.MIN.name) == datetime.datetime(
+        assert res.get(User.dob.name).get(Metrics.min.name) == datetime.datetime(
             1982, 2, 2
         )
-        assert res.get(User.tob.name).get(Metrics.MIN.name) == datetime.time(9, 3, 25)
-        assert res.get(User.doe.name).get(Metrics.MIN.name) == datetime.date(
+        assert res.get(User.tob.name).get(Metrics.min.name) == datetime.time(9, 3, 25)
+        assert res.get(User.doe.name).get(Metrics.min.name) == datetime.date(
             2009, 11, 11
         )
 
@@ -210,17 +210,17 @@ class MetricsTest(TestCase):
         """
         Check Latest Time Metric
         """
-        latest_time = Metrics.MAX.value
+        latest_time = Metrics.max.value
         profiler = Profiler(
             latest_time,
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        assert res.get(User.dob.name).get(Metrics.MAX.name) == datetime.datetime(
+        assert res.get(User.dob.name).get(Metrics.max.name) == datetime.datetime(
             1992, 5, 17
         )
-        assert res.get(User.tob.name).get(Metrics.MAX.name) == datetime.time(11, 2, 32)
-        assert res.get(User.doe.name).get(Metrics.MAX.name) == datetime.date(
+        assert res.get(User.tob.name).get(Metrics.max.name) == datetime.time(11, 2, 32)
+        assert res.get(User.doe.name).get(Metrics.max.name) == datetime.date(
             2020, 1, 12
         )
 
@@ -228,24 +228,24 @@ class MetricsTest(TestCase):
         """
         Check null count
         """
-        null_count = Metrics.NULL_COUNT.value
+        null_count = Metrics.nullCount.value
         profiler = Profiler(
             null_count,
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
 
-        assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 2
+        assert res.get(User.nickname.name).get(Metrics.nullCount.name) == 2
 
     def test_null_ratio(self):
         """
         Check composed metric run
         """
-        count = Metrics.COUNT.value
-        null_count = Metrics.NULL_COUNT.value
+        count = Metrics.valuesCount.value
+        null_count = Metrics.nullCount.value
 
         # Build the ratio based on the other two metrics
-        null_ratio = Metrics.NULL_RATIO.value
+        null_ratio = Metrics.nullProportion.value
 
         profiler = Profiler(
             count,
@@ -255,7 +255,7 @@ class MetricsTest(TestCase):
         )
         res = profiler.compute_metrics()._column_results
         assert (
-            str(round(res.get(User.nickname.name).get(Metrics.NULL_RATIO.name), 2))
+            str(round(res.get(User.nickname.name).get(Metrics.nullProportion.name), 2))
             == "0.67"
         )
 
@@ -298,11 +298,11 @@ class MetricsTest(TestCase):
         ]
         sqa_profiler_interface.session.add_all(data)
         sqa_profiler_interface.session.commit()
-        count = Metrics.COUNT.value
-        null_count = Metrics.NULL_COUNT.value
+        count = Metrics.valuesCount.value
+        null_count = Metrics.nullCount.value
 
         # Build the ratio based on the other two metrics
-        null_ratio = Metrics.NULL_RATIO.value
+        null_ratio = Metrics.nullProportion.value
         profiler = Profiler(
             count,
             null_count,
@@ -312,13 +312,13 @@ class MetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         assert (
-            res.get(NonNumericNumbers.float_col.name).get(Metrics.NULL_COUNT.name) == 2
+            res.get(NonNumericNumbers.float_col.name).get(Metrics.nullCount.name) == 2
         )
         assert (
             str(
                 round(
                     res.get(NonNumericNumbers.float_col.name).get(
-                        Metrics.NULL_RATIO.name
+                        Metrics.nullProportion.name
                     ),
                     2,
                 )
@@ -330,25 +330,25 @@ class MetricsTest(TestCase):
         """
         Check Table Metric run
         """
-        row_count = Metrics.ROW_COUNT.value
+        row_count = Metrics.rowCount.value
         profiler = Profiler(
             row_count,
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
-        assert res.get(Metrics.ROW_COUNT.name) == 3
+        assert res.get(Metrics.rowCount.name) == 3
 
     def test_table_column_count(self):
         """
         Check Column Count metric
         """
-        col_count = add_props(table=User)(Metrics.COLUMN_COUNT.value)
+        col_count = add_props(table=User)(Metrics.columnCount.value)
         profiler = Profiler(
             col_count,
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
-        assert res.get(Metrics.COLUMN_COUNT.name) == 10
+        assert res.get(Metrics.columnCount.name) == 10
 
     def test_avg(self):
         """
@@ -356,7 +356,7 @@ class MetricsTest(TestCase):
         """
 
         # Integer
-        avg = Metrics.MEAN.value
+        avg = Metrics.mean.value
         res = (
             Profiler(
                 avg,
@@ -366,10 +366,10 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.MEAN.name] == 30.5
+        assert res.get(User.age.name)[Metrics.mean.name] == 30.5
 
         # String
-        avg = Metrics.MEAN.value
+        avg = Metrics.mean.value
         res = (
             Profiler(
                 avg,
@@ -379,10 +379,10 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.MEAN.name] == 4.0
+        assert res.get(User.name.name)[Metrics.mean.name] == 4.0
 
         # Text
-        avg = Metrics.MEAN.value
+        avg = Metrics.mean.value
         res = (
             Profiler(
                 avg,
@@ -392,15 +392,15 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.comments.name)[Metrics.MEAN.name] == 15.0
+        assert res.get(User.comments.name)[Metrics.mean.name] == 15.0
 
     def test_duplicate_count(self):
         """
         Check composed duplicate count
         """
-        count = Metrics.COUNT.value
-        unique = Metrics.DISTINCT_COUNT.value
-        dup_count = Metrics.DUPLICATE_COUNT.value
+        count = Metrics.valuesCount.value
+        unique = Metrics.distinctCount.value
+        dup_count = Metrics.duplicateCount.value
         res = (
             Profiler(
                 count,
@@ -412,20 +412,20 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.DUPLICATE_COUNT.name] == 0
+        assert res.get(User.age.name)[Metrics.duplicateCount.name] == 0
 
     def test_histogram(self):
         """
         Check histogram computation
         """
 
-        hist = Metrics.HISTOGRAM.value
-        count = Metrics.COUNT.value
-        min = Metrics.MIN.value
-        max = Metrics.MAX.value
-        first_quartile = Metrics.FIRST_QUARTILE.value
-        third_quartile = Metrics.THIRD_QUARTILE.value
-        iqr = Metrics.IQR.value
+        hist = Metrics.histogram.value
+        count = Metrics.valuesCount.value
+        min = Metrics.min.value
+        max = Metrics.max.value
+        first_quartile = Metrics.firstQuartile.value
+        third_quartile = Metrics.thirdQuartile.value
+        iqr = Metrics.interQuartileRange.value
 
         res = (
             Profiler(
@@ -442,9 +442,9 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        age_histogram = res.get(User.age.name)[Metrics.HISTOGRAM.name]
-        id_histogram = res.get(User.id.name)[Metrics.HISTOGRAM.name]
-        comments_histogram = res.get(User.comments.name)[Metrics.HISTOGRAM.name]
+        age_histogram = res.get(User.age.name)[Metrics.histogram.name]
+        id_histogram = res.get(User.id.name)[Metrics.histogram.name]
+        comments_histogram = res.get(User.comments.name)[Metrics.histogram.name]
 
         assert age_histogram
         assert len(age_histogram["frequencies"]) == 1
@@ -456,9 +456,9 @@ class MetricsTest(TestCase):
         """
         Check cardinality distribution computation
         """
-        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
-        count = Metrics.COUNT.value
-        distinct_count = Metrics.DISTINCT_COUNT.value
+        cardinality_dist = Metrics.cardinalityDistribution.value
+        count = Metrics.valuesCount.value
+        distinct_count = Metrics.distinctCount.value
 
         res = (
             Profiler(
@@ -472,9 +472,7 @@ class MetricsTest(TestCase):
         )
 
         # Test with string column that has repeated values (name column has "John" twice)
-        name_cardinality = res.get(User.name.name)[
-            Metrics.CARDINALITY_DISTRIBUTION.name
-        ]
+        name_cardinality = res.get(User.name.name)[Metrics.cardinalityDistribution.name]
 
         assert name_cardinality
         assert "categories" in name_cardinality
@@ -500,9 +498,9 @@ class MetricsTest(TestCase):
         This test verifies the logic works correctly by checking that with non-unique data,
         we don't get the allValuesUnique flag.
         """
-        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
-        count = Metrics.COUNT.value
-        distinct_count = Metrics.DISTINCT_COUNT.value
+        cardinality_dist = Metrics.cardinalityDistribution.value
+        count = Metrics.valuesCount.value
+        distinct_count = Metrics.distinctCount.value
 
         res = (
             Profiler(
@@ -517,9 +515,7 @@ class MetricsTest(TestCase):
 
         # The name column has: ["John", "Jane", "John"] - not all distinct
         # So it should return a normal cardinality distribution, not the allValuesUnique flag
-        name_cardinality = res.get(User.name.name)[
-            Metrics.CARDINALITY_DISTRIBUTION.name
-        ]
+        name_cardinality = res.get(User.name.name)[Metrics.cardinalityDistribution.name]
 
         assert name_cardinality is not None
         # Should have categories (distribution), not allValuesUnique flag
@@ -532,9 +528,9 @@ class MetricsTest(TestCase):
 
         The email column has all unique values, so it should trigger the allValuesUnique flag.
         """
-        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
-        count = Metrics.COUNT.value
-        distinct_count = Metrics.DISTINCT_COUNT.value
+        cardinality_dist = Metrics.cardinalityDistribution.value
+        count = Metrics.valuesCount.value
+        distinct_count = Metrics.distinctCount.value
 
         res = (
             Profiler(
@@ -550,7 +546,7 @@ class MetricsTest(TestCase):
         # email column has all unique values: ["john1@example.com", "jane@example.com", "john2@example.com"]
         # Count: 3, DistinctCount: 3
         email_cardinality = res.get(User.email.name)[
-            Metrics.CARDINALITY_DISTRIBUTION.name
+            Metrics.cardinalityDistribution.name
         ]
 
         # Should return the allValuesUnique flag
@@ -563,9 +559,9 @@ class MetricsTest(TestCase):
         """
         Check cardinality distribution with unsupported data types
         """
-        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
-        count = Metrics.COUNT.value
-        distinct_count = Metrics.DISTINCT_COUNT.value
+        cardinality_dist = Metrics.cardinalityDistribution.value
+        count = Metrics.valuesCount.value
+        distinct_count = Metrics.distinctCount.value
 
         res = (
             Profiler(
@@ -579,7 +575,7 @@ class MetricsTest(TestCase):
         )
 
         # Test with integer column (not concatenable)
-        age_cardinality = res.get(User.age.name)[Metrics.CARDINALITY_DISTRIBUTION.name]
+        age_cardinality = res.get(User.age.name)[Metrics.cardinalityDistribution.name]
 
         # Should return None for unsupported types
         assert age_cardinality is None
@@ -612,9 +608,9 @@ class MetricsTest(TestCase):
             43200,
         )
 
-        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
-        count = Metrics.COUNT.value
-        distinct_count = Metrics.DISTINCT_COUNT.value
+        cardinality_dist = Metrics.cardinalityDistribution.value
+        count = Metrics.valuesCount.value
+        distinct_count = Metrics.distinctCount.value
 
         res = (
             Profiler(
@@ -629,7 +625,7 @@ class MetricsTest(TestCase):
 
         # Should return None for empty table
         name_cardinality = res.get(EmptyUser.name.name)[
-            Metrics.CARDINALITY_DISTRIBUTION.name
+            Metrics.cardinalityDistribution.name
         ]
         assert name_cardinality is None
 
@@ -639,7 +635,7 @@ class MetricsTest(TestCase):
         """
         # In sqlite, LIKE is insensitive by default, so we just check here
         # that the metrics runs correctly rather than the implementation logic.
-        like = add_props(expression="J%")(Metrics.LIKE_COUNT.value)
+        like = add_props(expression="J%")(Metrics.likeCount.value)
         res = (
             Profiler(
                 like,
@@ -649,9 +645,9 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.LIKE_COUNT.name] == 3
+        assert res.get(User.name.name)[Metrics.likeCount.name] == 3
 
-        like = add_props(expression="Jo%")(Metrics.LIKE_COUNT.value)
+        like = add_props(expression="Jo%")(Metrics.likeCount.value)
         res = (
             Profiler(
                 like,
@@ -661,13 +657,13 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.LIKE_COUNT.name] == 2
+        assert res.get(User.name.name)[Metrics.likeCount.name] == 2
 
     def test_ilike_count(self):
         """
         Check ILIKE count: case-insensitive LIKE
         """
-        ilike = add_props(expression="j%")(Metrics.ILIKE_COUNT.value)
+        ilike = add_props(expression="j%")(Metrics.iLikeCount.value)
         res = (
             Profiler(
                 ilike,
@@ -677,9 +673,9 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.ILIKE_COUNT.name] == 3
+        assert res.get(User.name.name)[Metrics.iLikeCount.name] == 3
 
-        ilike = add_props(expression="ja%")(Metrics.ILIKE_COUNT.value)
+        ilike = add_props(expression="ja%")(Metrics.iLikeCount.value)
         res = (
             Profiler(
                 ilike,
@@ -689,15 +685,15 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.ILIKE_COUNT.name] == 1
+        assert res.get(User.name.name)[Metrics.iLikeCount.name] == 1
 
     def test_like_ratio(self):
         """
         Check LIKE ratio
         """
-        like = add_props(expression="J%")(Metrics.LIKE_COUNT.value)
-        count = Metrics.COUNT.value
-        like_ratio = Metrics.LIKE_RATIO.value
+        like = add_props(expression="J%")(Metrics.likeCount.value)
+        count = Metrics.valuesCount.value
+        like_ratio = Metrics.likeRatio.value
         res = (
             Profiler(
                 like,
@@ -709,7 +705,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.LIKE_RATIO.name] == 1.0
+        assert res.get(User.name.name)[Metrics.likeRatio.name] == 1.0
 
     def test_ilike_ratio(self):
         """
@@ -717,9 +713,9 @@ class MetricsTest(TestCase):
         """
         # In sqlite, LIKE is insensitive by default, so we just check here
         # that the metrics runs correctly rather than the implementation logic.
-        ilike = add_props(expression="J%")(Metrics.ILIKE_COUNT.value)
-        count = Metrics.COUNT.value
-        ilike_ratio = Metrics.ILIKE_RATIO.value
+        ilike = add_props(expression="J%")(Metrics.iLikeCount.value)
+        count = Metrics.valuesCount.value
+        ilike_ratio = Metrics.iLikeRatio.value
         res = (
             Profiler(
                 ilike,
@@ -731,13 +727,13 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.ILIKE_RATIO.name] == 1.0
+        assert res.get(User.name.name)[Metrics.iLikeRatio.name] == 1.0
 
     def test_max(self):
         """
         Check MAX metric
         """
-        _max = Metrics.MAX.value
+        _max = Metrics.max.value
 
         res = (
             Profiler(
@@ -748,15 +744,15 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.MAX.name] == 31
-        assert res.get(User.name.name).get(Metrics.MAX.name) == 4
+        assert res.get(User.age.name)[Metrics.max.name] == 31
+        assert res.get(User.name.name).get(Metrics.max.name) == 4
 
     def test_min_length(self):
         """
         Check MIN_LENGTH metric
         """
 
-        min_length = Metrics.MIN_LENGTH.value
+        min_length = Metrics.minLength.value
 
         # Integer
         res = (
@@ -768,7 +764,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name).get(Metrics.MIN_LENGTH.name) is None
+        assert res.get(User.age.name).get(Metrics.minLength.name) is None
 
         # String
         res = (
@@ -780,7 +776,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.MIN_LENGTH.name] == 4
+        assert res.get(User.name.name)[Metrics.minLength.name] == 4
 
         # Text
         res = (
@@ -792,13 +788,13 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.comments.name)[Metrics.MIN_LENGTH.name] == 11
+        assert res.get(User.comments.name)[Metrics.minLength.name] == 11
 
     def test_max_length(self):
         """
         Check MAX_LENGTH metric
         """
-        max_length = Metrics.MAX_LENGTH.value
+        max_length = Metrics.maxLength.value
 
         # Integer
         res = (
@@ -810,7 +806,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name).get(Metrics.MAX_LENGTH.name) is None
+        assert res.get(User.age.name).get(Metrics.maxLength.name) is None
 
         # String
         res = (
@@ -822,7 +818,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.MAX_LENGTH.name] == 4
+        assert res.get(User.name.name)[Metrics.maxLength.name] == 4
 
         # Text
         res = (
@@ -834,13 +830,13 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.comments.name)[Metrics.MAX_LENGTH.name] == 19
+        assert res.get(User.comments.name)[Metrics.maxLength.name] == 19
 
     def test_sum(self):
         """
         Check SUM Metric
         """
-        _sum = Metrics.SUM.value
+        _sum = Metrics.sum.value
 
         res = (
             Profiler(
@@ -851,7 +847,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.SUM.name] == 61
+        assert res.get(User.age.name)[Metrics.sum.name] == 61
 
         res = (
             Profiler(
@@ -862,13 +858,13 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name).get(Metrics.SUM.name) == 12
+        assert res.get(User.name.name).get(Metrics.sum.name) == 12
 
     def test_unique_count(self):
         """
         Check Unique Count metric
         """
-        unique_count = Metrics.UNIQUE_COUNT.value
+        unique_count = Metrics.uniqueCount.value
         res = (
             Profiler(
                 unique_count,
@@ -878,15 +874,15 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 1
+        assert res.get(User.name.name)[Metrics.uniqueCount.name] == 1
 
     def test_unique_ratio(self):
         """
         Check Unique Count metric
         """
-        count = Metrics.COUNT.value
-        unique_count = Metrics.UNIQUE_COUNT.value
-        unique_ratio = Metrics.UNIQUE_RATIO.value
+        count = Metrics.valuesCount.value
+        unique_count = Metrics.uniqueCount.value
+        unique_ratio = Metrics.uniqueProportion.value
         res = (
             Profiler(
                 count,
@@ -899,14 +895,15 @@ class MetricsTest(TestCase):
         )
 
         assert (
-            str(round(res.get(User.name.name)[Metrics.UNIQUE_RATIO.name], 2)) == "0.33"
+            str(round(res.get(User.name.name)[Metrics.uniqueProportion.name], 2))
+            == "0.33"
         )
 
     def test_distinct_count(self):
         """
         Check Distinct Count Metric
         """
-        count = Metrics.DISTINCT_COUNT.value
+        count = Metrics.distinctCount.value
         res = (
             Profiler(
                 count,
@@ -916,15 +913,15 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.DISTINCT_COUNT.name] == 2.0
+        assert res.get(User.name.name)[Metrics.distinctCount.name] == 2.0
 
     def test_distinct_ratio(self):
         """
         Check Distinct Ratio Metric
         """
-        count = Metrics.COUNT.value
-        distinct_count = Metrics.DISTINCT_COUNT.value
-        distinct_ratio = Metrics.DISTINCT_RATIO.value
+        count = Metrics.valuesCount.value
+        distinct_count = Metrics.distinctCount.value
+        distinct_ratio = Metrics.distinctProportion.value
         res = (
             Profiler(
                 count,
@@ -937,7 +934,7 @@ class MetricsTest(TestCase):
         )
 
         assert (
-            str(round(res.get(User.name.name)[Metrics.DISTINCT_RATIO.name], 2))
+            str(round(res.get(User.name.name)[Metrics.distinctProportion.name], 2))
             == "0.67"
         )
 
@@ -946,7 +943,7 @@ class MetricsTest(TestCase):
         Check Count In Set metric
         """
 
-        set_count = add_props(values=["John"])(Metrics.COUNT_IN_SET.value)
+        set_count = add_props(values=["John"])(Metrics.countInSet.value)
         res = (
             Profiler(
                 set_count,
@@ -956,9 +953,9 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 2.0
+        assert res.get(User.name.name)[Metrics.countInSet.name] == 2.0
 
-        set_count = add_props(values=["John", "Jane"])(Metrics.COUNT_IN_SET.value)
+        set_count = add_props(values=["John", "Jane"])(Metrics.countInSet.value)
         res = (
             Profiler(
                 set_count,
@@ -968,7 +965,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 3
+        assert res.get(User.name.name)[Metrics.countInSet.name] == 3
 
     def test_histogram_empty(self):
         """
@@ -1002,7 +999,7 @@ class MetricsTest(TestCase):
             43200,
         )
 
-        hist = Metrics.HISTOGRAM.value
+        hist = Metrics.histogram.value
         res = (
             Profiler(
                 hist,
@@ -1030,9 +1027,7 @@ class MetricsTest(TestCase):
 
         for expression, expected in test_cases:
             with self.subTest(expression=expression, expected=expected):
-                not_like = add_props(expression=expression)(
-                    Metrics.NOT_LIKE_COUNT.value
-                )
+                not_like = add_props(expression=expression)(Metrics.notLikeCount.value)
                 res = (
                     Profiler(
                         not_like,
@@ -1042,14 +1037,14 @@ class MetricsTest(TestCase):
                     ._column_results
                 )
 
-                assert res.get(User.name.name)[Metrics.NOT_LIKE_COUNT.name] == expected
+                assert res.get(User.name.name)[Metrics.notLikeCount.name] == expected
 
     def test_median(self):
         """
         Check MEDIAN
         """
 
-        median = Metrics.MEDIAN.value
+        median = Metrics.median.value
         res = (
             Profiler(
                 median,
@@ -1059,15 +1054,15 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 30
-        assert res.get(User.comments.name)[Metrics.MEDIAN.name] == 11
+        assert res.get(User.age.name)[Metrics.median.name] == 30
+        assert res.get(User.comments.name)[Metrics.median.name] == 11
 
     def test_first_quartile(self):
         """
         Check first quartile
         """
 
-        first_quartile = Metrics.FIRST_QUARTILE.value
+        first_quartile = Metrics.firstQuartile.value
         res = (
             Profiler(
                 first_quartile,
@@ -1077,15 +1072,15 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.FIRST_QUARTILE.name] == 30
-        assert res.get(User.comments.name)[Metrics.FIRST_QUARTILE.name] == 11
+        assert res.get(User.age.name)[Metrics.firstQuartile.name] == 30
+        assert res.get(User.comments.name)[Metrics.firstQuartile.name] == 11
 
     def test_third_quartile(self):
         """
         Check third quartile
         """
 
-        third_quartile = Metrics.THIRD_QUARTILE.value
+        third_quartile = Metrics.thirdQuartile.value
         res = (
             Profiler(
                 third_quartile,
@@ -1095,14 +1090,14 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.THIRD_QUARTILE.name] == 31
-        assert res.get(User.comments.name)[Metrics.THIRD_QUARTILE.name] == 19
+        assert res.get(User.age.name)[Metrics.thirdQuartile.name] == 31
+        assert res.get(User.comments.name)[Metrics.thirdQuartile.name] == 19
 
     def test_iqr(self):
         """Check IQR metric"""
-        iqr = Metrics.IQR.value
-        first_quartile = Metrics.FIRST_QUARTILE.value
-        third_quartile = Metrics.THIRD_QUARTILE.value
+        iqr = Metrics.interQuartileRange.value
+        first_quartile = Metrics.firstQuartile.value
+        third_quartile = Metrics.thirdQuartile.value
         res = (
             Profiler(
                 first_quartile,
@@ -1114,8 +1109,8 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.IQR.name] == 1
-        assert res.get(User.comments.name)[Metrics.IQR.name] == 8
+        assert res.get(User.age.name)[Metrics.interQuartileRange.name] == 1
+        assert res.get(User.comments.name)[Metrics.interQuartileRange.name] == 8
 
     def test_sum_function(self):
         """Check overwritten sum function"""
@@ -1224,5 +1219,6 @@ class MetricsTest(TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
+        cls.sqa_profiler_interface.close()
         os.remove(cls.db_path)
         return super().tearDownClass()

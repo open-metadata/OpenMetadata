@@ -14,6 +14,7 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.core.UriInfo;
@@ -25,11 +26,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 class RestUtilTest extends OpenMetadataApplicationTest {
@@ -268,5 +273,89 @@ class RestUtilTest extends OpenMetadataApplicationTest {
         "{\"name\":\"sqlExpression\",\"value\":\"SELECT customer_id FROM DUAL WHERE lifetime_value < 0;\"}",
         result.get(0));
     assertEquals("{\"name\":\"threshold\",\"value\":\"10\"}", result.get(1));
+  }
+
+  @Test
+  void testGetOMBaseURL_stripsTrailingSlash() {
+    SystemRepository systemRepository = Entity.getSystemRepository();
+    Settings originalSetting =
+        systemRepository.getConfigWithKey(
+            SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
+    OpenMetadataBaseUrlConfiguration originalConfig =
+        (OpenMetadataBaseUrlConfiguration) originalSetting.getConfigValue();
+    String originalUrl = originalConfig.getOpenMetadataUrl();
+
+    try {
+      OpenMetadataBaseUrlConfiguration trailingSlashConfig =
+          new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl("http://localhost:8585/");
+      systemRepository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
+              .withConfigValue(trailingSlashConfig));
+
+      String result = EmailUtil.getOMBaseURL();
+      assertEquals("http://localhost:8585", result);
+      assertFalse(result.endsWith("/"));
+    } finally {
+      systemRepository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
+              .withConfigValue(originalConfig));
+    }
+  }
+
+  @Test
+  void testGetOMBaseURL_noTrailingSlashUnchanged() {
+    SystemRepository systemRepository = Entity.getSystemRepository();
+    Settings originalSetting =
+        systemRepository.getConfigWithKey(
+            SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
+    OpenMetadataBaseUrlConfiguration originalConfig =
+        (OpenMetadataBaseUrlConfiguration) originalSetting.getConfigValue();
+
+    try {
+      OpenMetadataBaseUrlConfiguration noSlashConfig =
+          new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl("http://localhost:8585");
+      systemRepository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
+              .withConfigValue(noSlashConfig));
+
+      String result = EmailUtil.getOMBaseURL();
+      assertEquals("http://localhost:8585", result);
+    } finally {
+      systemRepository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
+              .withConfigValue(originalConfig));
+    }
+  }
+
+  @Test
+  void testGetOMBaseURL_stripsMultipleTrailingSlashes() {
+    SystemRepository systemRepository = Entity.getSystemRepository();
+    Settings originalSetting =
+        systemRepository.getConfigWithKey(
+            SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
+    OpenMetadataBaseUrlConfiguration originalConfig =
+        (OpenMetadataBaseUrlConfiguration) originalSetting.getConfigValue();
+
+    try {
+      OpenMetadataBaseUrlConfiguration multiSlashConfig =
+          new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl("http://localhost:8585///");
+      systemRepository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
+              .withConfigValue(multiSlashConfig));
+
+      String result = EmailUtil.getOMBaseURL();
+      assertEquals("http://localhost:8585", result);
+      assertFalse(result.endsWith("/"));
+    } finally {
+      systemRepository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
+              .withConfigValue(originalConfig));
+    }
   }
 }
