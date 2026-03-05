@@ -33,6 +33,11 @@ export interface Application {
      */
     ingestionPipelineFQN?: string;
     /**
+     * Name of the ingestion runner executing this workflow. Set at dispatch time by the
+     * execution environment.
+     */
+    ingestionRunnerName?: string;
+    /**
      * Unique identifier of pipeline run, used to identify the current pipeline run
      */
     pipelineRunId?: string;
