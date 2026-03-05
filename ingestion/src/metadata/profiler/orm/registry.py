@@ -75,6 +75,7 @@ class PythonDialects(Enum):
     Impala = "impala"
     IbmDbSa = "ibm_db_sa"
     Ibmi = "ibmi"
+    Informix = "informix"
     MariaDB = "mariadb"
     MSSQL = "mssql"
     MySQL = "mysql"

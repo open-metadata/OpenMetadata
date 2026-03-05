@@ -49,6 +49,7 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.Oracle)
 @compiles(LenFn, Dialects.IbmDbSa)
 @compiles(LenFn, Dialects.Db2)
+@compiles(LenFn, Dialects.Informix)
 @compiles(LenFn, Dialects.Hana)
 @compiles(LenFn, Dialects.Druid)
 @compiles(LenFn, Dialects.Doris)

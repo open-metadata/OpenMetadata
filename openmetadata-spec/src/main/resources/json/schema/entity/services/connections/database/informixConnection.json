@@ -64,6 +64,16 @@
       "type": "string",
       "default": "informix"
     },
+    "sslMode": {
+      "title": "SSL Mode",
+      "description": "SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL without certificate verification, or 'verify-ca' to validate the server certificate against the provided CA certificate.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL Configuration details. Provide the CA certificate to validate the Informix server certificate. Paste the PEM content directly or upload the certificate file.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
