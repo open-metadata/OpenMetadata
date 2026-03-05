@@ -1,3 +1,9 @@
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json, '$.sourceConfig.config.computeMetrics')
+WHERE JSON_EXTRACT(json, '$.sourceConfig.config.computeMetrics') IS NOT NULL
+AND pipelineType = 'profiler';
+
+
 -- Migrate existing glossary term RELATED_TO relationships to include relationType
 -- For backward compatibility, existing relations without a relationType are set to "relatedTo"
 

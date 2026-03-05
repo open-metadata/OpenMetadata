@@ -542,3 +542,33 @@ class TestOMetaESAPI:
                     sort_order="invalid",
                 )
             )
+
+    def test_search(self, metadata, es_service, es_schema):
+        for name in [f"Table {i}" for i in range(5)]:
+            metadata.create_or_update(
+                data=get_create_entity(
+                    entity=Table,
+                    name=EntityName(name),
+                    reference=es_schema.fullyQualifiedName,
+                )
+            )
+
+        # Searching by an almost exact match has the highest rank.
+        assets = list(
+            metadata.paginate_es(
+                entity=Table, search_query="table 2", sort_field="_score"
+            )
+        )
+        returned_table_names = [
+            asset.name.root for asset in assets if asset.name.root.startswith("Table ")
+        ]
+        assert returned_table_names[0] == "Table 2"
+
+        # Searching by a value that doesn't exist returns an empty set of results.
+        assets = list(
+            metadata.paginate_es(
+                entity=Table, search_query="N0NExistent", sort_field="_score"
+            )
+        )
+        returned_table_names = [asset.name.root for asset in assets]
+        assert returned_table_names == []

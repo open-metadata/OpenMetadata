@@ -95,9 +95,11 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -110,10 +112,11 @@ public class TeamRepository extends EntityRepository<Team> {
   static final String PARENTS_FIELD = "parents";
   static final String USERS_FIELD = "users";
   static final String TEAM_UPDATE_FIELDS =
-      "profile,users,defaultRoles,parents,children,policies,teamType,email,domains";
+      "profile,users,defaultRoles,defaultPersona,parents,children,policies,teamType,email,domains";
   static final String TEAM_PATCH_FIELDS =
-      "profile,users,defaultRoles,parents,children,policies,teamType,email,domains";
+      "profile,users,defaultRoles,defaultPersona,parents,children,policies,teamType,email,domains";
   private static final String DEFAULT_ROLES = "defaultRoles";
+  private static final String DEFAULT_PERSONA = "defaultPersona";
   private Team organization = null;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -130,6 +133,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     this.fieldFetchers.put("users", this::fetchAndSetUsers);
     this.fieldFetchers.put("defaultRoles", this::fetchAndSetDefaultRoles);
+    this.fieldFetchers.put("defaultPersona", this::fetchAndSetDefaultPersona);
     this.fieldFetchers.put("parents", this::fetchAndSetParents);
     this.fieldFetchers.put("policies", this::fetchAndSetPolicies);
     this.fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
@@ -149,6 +153,8 @@ public class TeamRepository extends EntityRepository<Team> {
         fields.contains(DEFAULT_ROLES) ? getDefaultRoles(team) : team.getDefaultRoles());
     team.setInheritedRoles(
         fields.contains(DEFAULT_ROLES) ? getInheritedRoles(team) : team.getInheritedRoles());
+    team.setDefaultPersona(
+        fields.contains(DEFAULT_PERSONA) ? getDefaultPersona(team) : team.getDefaultPersona());
     team.setParents(fields.contains(PARENTS_FIELD) ? getParents(team) : team.getParents());
     team.setPolicies(fields.contains("policies") ? getPolicies(team) : team.getPolicies());
     team.setChildrenCount(
@@ -165,6 +171,7 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setOwns(fields.contains("owns") ? team.getOwns() : null);
     team.setDefaultRoles(fields.contains(DEFAULT_ROLES) ? team.getDefaultRoles() : null);
     team.setInheritedRoles(fields.contains(DEFAULT_ROLES) ? team.getInheritedRoles() : null);
+    team.setDefaultPersona(fields.contains(DEFAULT_PERSONA) ? team.getDefaultPersona() : null);
     team.setParents(fields.contains(PARENTS_FIELD) ? team.getParents() : null);
     team.setPolicies(fields.contains("policies") ? team.getPolicies() : null);
     if (!fields.contains("childrenCount")) {
@@ -226,6 +233,34 @@ public class TeamRepository extends EntityRepository<Team> {
     for (Team team : teams) {
       List<EntityReference> roleRefs = teamToRoles.get(team.getId());
       team.setDefaultRoles(roleRefs != null ? roleRefs : new ArrayList<>());
+    }
+  }
+
+  private void fetchAndSetDefaultPersona(List<Team> teams, Fields fields) {
+    if (!fields.contains(DEFAULT_PERSONA) || teams == null || teams.isEmpty()) {
+      return;
+    }
+
+    List<String> teamIds = teams.stream().map(Team::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> personaRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(teamIds, Relationship.HAS.ordinal(), TEAM, Entity.PERSONA);
+
+    Map<UUID, EntityReference> teamToPersona = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : personaRecords) {
+      UUID teamId = UUID.fromString(record.getFromId());
+      EntityReference personaRef =
+          Entity.getEntityReferenceById(
+              Entity.PERSONA, UUID.fromString(record.getToId()), Include.ALL);
+      if (!Boolean.TRUE.equals(personaRef.getDeleted())) {
+        teamToPersona.put(teamId, personaRef);
+      }
+    }
+
+    for (Team team : teams) {
+      team.setDefaultPersona(teamToPersona.get(team.getId()));
     }
   }
 
@@ -374,7 +409,6 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void restorePatchAttributes(Team original, Team updated) {
-    // Patch can't make changes to following fields. Ignore the changes
     super.restorePatchAttributes(original, updated);
     updated.withInheritedRoles(original.getInheritedRoles());
   }
@@ -387,6 +421,7 @@ public class TeamRepository extends EntityRepository<Team> {
     validateUsers(team.getUsers());
     validateRoles(team.getDefaultRoles());
     validatePolicies(team.getPolicies());
+    validateDefaultPersona(team);
   }
 
   public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request) {
@@ -456,22 +491,29 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     List<Team> allTeams = listAll(getFields("id,fullyQualifiedName"), new ListFilter(null));
-    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
 
+    // Build team ID -> FQN mapping
+    Map<String, String> teamIdToFqn = new HashMap<>();
     for (Team team : allTeams) {
-      InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), 0, 0);
+      teamIdToFqn.put(team.getId().toString(), team.getFullyQualifiedName());
+    }
 
-      Integer count =
-          inheritedFieldEntitySearch.getCountForField(
-              query,
-              () -> {
-                LOG.warn(
-                    "Search fallback for team {} asset count. Returning 0.",
-                    team.getFullyQualifiedName());
-                return 0;
-              });
+    // Single ES aggregation query filtered by owners.type=team (excludes users)
+    String queryFilter = QueryFilterBuilder.buildTeamAssetsCountFilter();
+    Map<String, Integer> ownerIdCounts =
+        inheritedFieldEntitySearch.getAggregatedCountsByField(
+            "owners.id", queryFilter, EntityBuilderConstant.MAX_AGGREGATE_SIZE);
 
-      teamAssetCounts.put(team.getFullyQualifiedName(), count);
+    // Map team IDs to FQNs
+    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
+    for (Team team : allTeams) {
+      teamAssetCounts.put(team.getFullyQualifiedName(), 0);
+    }
+    for (Map.Entry<String, Integer> entry : ownerIdCounts.entrySet()) {
+      String teamFqn = teamIdToFqn.get(entry.getKey());
+      if (teamFqn != null) {
+        teamAssetCounts.put(teamFqn, entry.getValue());
+      }
     }
 
     return teamAssetCounts;
@@ -481,11 +523,13 @@ public class TeamRepository extends EntityRepository<Team> {
   public void storeEntity(Team team, boolean update) {
     List<EntityReference> users = team.getUsers();
     List<EntityReference> defaultRoles = team.getDefaultRoles();
+    EntityReference defaultPersona = team.getDefaultPersona();
     List<EntityReference> parents = team.getParents();
     List<EntityReference> policies = team.getPolicies();
 
     team.withUsers(null)
         .withDefaultRoles(null)
+        .withDefaultPersona(null)
         .withParents(null)
         .withPolicies(null)
         .withInheritedRoles(null);
@@ -494,6 +538,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     team.withUsers(users)
         .withDefaultRoles(defaultRoles)
+        .withDefaultPersona(defaultPersona)
         .withParents(parents)
         .withPolicies(policies);
   }
@@ -506,11 +551,13 @@ public class TeamRepository extends EntityRepository<Team> {
     for (Team team : entities) {
       List<EntityReference> users = team.getUsers();
       List<EntityReference> defaultRoles = team.getDefaultRoles();
+      EntityReference defaultPersona = team.getDefaultPersona();
       List<EntityReference> parents = team.getParents();
       List<EntityReference> policies = team.getPolicies();
 
       team.withUsers(null)
           .withDefaultRoles(null)
+          .withDefaultPersona(null)
           .withParents(null)
           .withPolicies(null)
           .withInheritedRoles(null);
@@ -520,6 +567,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
       team.withUsers(users)
           .withDefaultRoles(defaultRoles)
+          .withDefaultPersona(defaultPersona)
           .withParents(parents)
           .withPolicies(policies);
     }
@@ -537,6 +585,7 @@ public class TeamRepository extends EntityRepository<Team> {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Team::getId).toList();
     deleteFromMany(ids, Entity.TEAM, Relationship.HAS, Entity.ROLE);
+    deleteFromMany(ids, Entity.TEAM, Relationship.HAS, Entity.PERSONA);
     deleteToMany(ids, Entity.TEAM, Relationship.PARENT_OF, Entity.TEAM);
     deleteFromMany(ids, Entity.TEAM, Relationship.PARENT_OF, Entity.TEAM);
   }
@@ -561,6 +610,10 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     for (EntityReference policy : listOrEmpty(team.getPolicies())) {
       addRelationship(team.getId(), policy.getId(), TEAM, POLICY, Relationship.HAS);
+    }
+    if (team.getDefaultPersona() != null) {
+      addRelationship(
+          team.getId(), team.getDefaultPersona().getId(), TEAM, Entity.PERSONA, Relationship.HAS);
     }
   }
 
@@ -771,6 +824,11 @@ public class TeamRepository extends EntityRepository<Team> {
     return findTo(team.getId(), TEAM, Relationship.HAS, Entity.ROLE);
   }
 
+  private EntityReference getDefaultPersona(Team team) {
+    List<EntityReference> personas = findTo(team.getId(), TEAM, Relationship.HAS, Entity.PERSONA);
+    return personas.isEmpty() ? null : personas.get(0);
+  }
+
   private List<EntityReference> getParents(Team team) {
     List<EntityReference> parents = findFrom(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
     if (organization != null
@@ -928,6 +986,17 @@ public class TeamRepository extends EntityRepository<Team> {
         throw new IllegalArgumentException(invalidChild(team.getName(), team.getTeamType(), child));
       }
     }
+  }
+
+  private void validateDefaultPersona(Team team) {
+    if (team.getDefaultPersona() == null) {
+      return;
+    }
+    if (!GROUP.equals(team.getTeamType())) {
+      throw new IllegalArgumentException(
+          "Default persona can only be set for teams of type Group.");
+    }
+    Entity.getEntityReferenceById(Entity.PERSONA, team.getDefaultPersona().getId(), NON_DELETED);
   }
 
   private void validateSingleParent(Team team, List<EntityReference> parentRefs) {
@@ -1247,6 +1316,7 @@ public class TeamRepository extends EntityRepository<Team> {
       recordChange("email", original.getEmail(), updated.getEmail());
       updateUsers(original, updated);
       updateDefaultRoles(original, updated);
+      updateDefaultPersona(original, updated);
       updateParents(original, updated);
       updateChildren(original, updated);
       updatePolicies(original, updated);
@@ -1268,6 +1338,28 @@ public class TeamRepository extends EntityRepository<Team> {
           false);
 
       updatedTeam.setUserCount(updatedUsers.size());
+    }
+
+    private void updateDefaultPersona(Team origTeam, Team updatedTeam) {
+      EntityReference origPersona = origTeam.getDefaultPersona();
+      EntityReference updatedPersona = updatedTeam.getDefaultPersona();
+      if (updatedPersona != null && !GROUP.equals(updatedTeam.getTeamType())) {
+        throw new IllegalArgumentException(
+            "Default persona can only be set for teams of type Group.");
+      }
+      UUID origId = origPersona != null ? origPersona.getId() : null;
+      UUID updatedId = updatedPersona != null ? updatedPersona.getId() : null;
+      if (Objects.equals(origId, updatedId)) {
+        return;
+      }
+      if (origPersona != null) {
+        deleteFrom(origTeam.getId(), TEAM, Relationship.HAS, Entity.PERSONA);
+      }
+      if (updatedPersona != null) {
+        addRelationship(
+            origTeam.getId(), updatedPersona.getId(), TEAM, Entity.PERSONA, Relationship.HAS);
+      }
+      recordChange(DEFAULT_PERSONA, origPersona, updatedPersona, true);
     }
 
     private void updateDefaultRoles(Team origTeam, Team updatedTeam) {

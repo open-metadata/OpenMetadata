@@ -28,6 +28,8 @@ class NonParametricSkew(ComposedMetric):
     Return the non parametric skew of a column
     """
 
+    schema_metric_type = MetricType.nonParametricSkew
+
     @classmethod
     def name(cls):
         return MetricType.nonParametricSkew.value

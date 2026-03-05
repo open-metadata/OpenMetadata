@@ -57,6 +57,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   isTeamDeleted,
   handleTeamSearch,
   isTeamBasicDataLoading,
+  teamAssetCounts,
 }) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -133,22 +134,24 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         title: t('label.entity-count', {
           entity: t('label.asset'),
         }),
-        dataIndex: 'owns',
+        dataIndex: 'fullyQualifiedName',
         width: 120,
         key: 'owns',
-        render: (owns: Team['owns']) =>
+        render: (fullyQualifiedName: string) =>
           isFetchingAllTeamAdvancedDetails ? (
             <Skeleton
               active={isFetchingAllTeamAdvancedDetails}
               paragraph={{ rows: 0 }}
             />
           ) : (
-            owns?.length ?? 0
+            <Typography.Text data-testid="team-asset-count">
+              {teamAssetCounts?.[fullyQualifiedName] ?? 0}
+            </Typography.Text>
           ),
       },
       ...descriptionTableObject<Team>({ width: 300 }),
     ];
-  }, [data, isFetchingAllTeamAdvancedDetails, onTeamExpand]);
+  }, [data, isFetchingAllTeamAdvancedDetails, onTeamExpand, teamAssetCounts]);
 
   const handleTableHover = useCallback(
     (value: boolean) => setIsTableHovered(value),

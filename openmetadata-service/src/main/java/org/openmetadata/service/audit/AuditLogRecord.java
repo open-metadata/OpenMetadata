@@ -26,6 +26,7 @@ public class AuditLogRecord {
   private String entityFQN;
   private String entityFQNHash;
   private String eventJson;
+  private String searchText;
   private Long createdAt;
 
   public enum ActorType {

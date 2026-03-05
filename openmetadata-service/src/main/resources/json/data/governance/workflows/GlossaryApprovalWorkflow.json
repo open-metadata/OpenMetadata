@@ -11,7 +11,7 @@
     "config": {
       "entityTypes": ["glossaryTerm"],
       "events": ["Created", "Updated"],
-      "exclude": ["reviewers"],
+      "exclude": [],
       "filter": {}
     },
     "output": ["relatedEntity", "updatedBy"]
@@ -136,7 +136,9 @@
       "displayName": "Create User Approval Task",
       "config": {
         "assignees": {
-          "addReviewers": true
+          "addReviewers": true,
+          "addOwners": false,
+          "candidates": []
         },
         "approvalThreshold": 1,
         "rejectionThreshold": 1
@@ -178,7 +180,9 @@
       "displayName": "Review Changes for Updates",
       "config": {
         "assignees": {
-          "addReviewers": true
+          "addReviewers": true,
+          "addOwners": false,
+          "candidates": []
         },
         "approvalThreshold": 1,
         "rejectionThreshold": 1

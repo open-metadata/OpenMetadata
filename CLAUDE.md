@@ -223,6 +223,11 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Use `assert x is None` instead of `self.assertIsNone(x)`
 - Use `assert "text" in string` instead of `self.assertIn("text", string)`
 
+### Python Ingestion Connector Guidelines
+- **Keep connector-specific logic in connector-specific files**, not in generic/shared files like `builders.py`
+- Example: Redshift IAM auth should be in `ingestion/src/metadata/ingestion/source/database/redshift/connection.py`, not in `ingestion/src/metadata/ingestion/connections/builders.py`
+- This keeps the codebase modular and prevents generic utilities from becoming cluttered with connector-specific edge cases
+
 ### Testing Philosophy
 - **Test real behavior, not mock wiring** - if a test requires mocking 3+ classes just to verify a method call, it's testing the wrong thing
 - **Prefer integration tests** over heavily-mocked unit tests. This project has full integration test infrastructure (OpenMetadataApplicationTest, Docker containers, real OpenSearch). Use it.

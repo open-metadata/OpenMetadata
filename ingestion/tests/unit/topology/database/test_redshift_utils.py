@@ -92,6 +92,142 @@ class TestRedshiftUtils(unittest.TestCase):
             result, "CREATE VIEW test_schema.test_view AS SELECT * FROM table1 "
         )
 
+    def test_materialized_view_definition_with_create(self):
+        """Test that view definition with CREATE MATERIALIZED VIEW is not modified"""
+        self.mock_view.view_definition = (
+            "CREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
+        )
+
+        result = get_view_definition(
+            self.mock_self,
+            self.mock_connection,
+            "test_view",
+            schema="test_schema",
+        )
+
+        self.assertEqual(
+            result,
+            "CREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1",
+        )
+
+    def test_materialized_view_definition_without_create(self):
+        """Test that materialized view definition without CREATE gets CREATE VIEW prepended"""
+        self.mock_view.view_definition = (
+            "SELECT * FROM table1 JOIN table2 ON table1.id = table2.id"
+        )
+
+        result = get_view_definition(
+            self.mock_self,
+            self.mock_connection,
+            "test_view",
+            schema="test_schema",
+        )
+
+        self.assertEqual(
+            result,
+            "CREATE VIEW test_schema.test_view AS SELECT * FROM table1 JOIN table2 ON table1.id = table2.id",
+        )
+
+    def test_materialized_view_definition_removes_schema_binding(self):
+        """Test that WITH NO SCHEMA BINDING is removed from materialized view"""
+        self.mock_view.view_definition = "CREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1 WITH NO SCHEMA BINDING"
+
+        result = get_view_definition(
+            self.mock_self,
+            self.mock_connection,
+            "test_view",
+            schema="test_schema",
+        )
+
+        self.assertEqual(
+            result,
+            "CREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1 ",
+        )
+
+    def test_materialized_view_with_comment_before_create(self):
+        """Test materialized view definition with SQL comment before CREATE MATERIALIZED VIEW"""
+        self.mock_view.view_definition = "/* some comment */\n\tCREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
+
+        result = get_view_definition(
+            self.mock_self,
+            self.mock_connection,
+            "test_view",
+            schema="test_schema",
+        )
+
+        self.assertEqual(
+            result,
+            "/* some comment */\n\tCREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1",
+        )
+
+    def test_view_definition_with_create_or_replace_view(self):
+        """Test that view definition with CREATE OR REPLACE VIEW is not modified"""
+        self.mock_view.view_definition = (
+            "CREATE OR REPLACE VIEW test_schema.test_view AS SELECT * FROM table1"
+        )
+
+        result = get_view_definition(
+            self.mock_self,
+            self.mock_connection,
+            "test_view",
+            schema="test_schema",
+        )
+
+        self.assertEqual(
+            result,
+            "CREATE OR REPLACE VIEW test_schema.test_view AS SELECT * FROM table1",
+        )
+
+    def test_materialized_view_definition_with_create_or_replace(self):
+        """Test that definition with CREATE OR REPLACE MATERIALIZED VIEW is not modified"""
+        self.mock_view.view_definition = "CREATE OR REPLACE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
+
+        result = get_view_definition(
+            self.mock_self,
+            self.mock_connection,
+            "test_view",
+            schema="test_schema",
+        )
+
+        self.assertEqual(
+            result,
+            "CREATE OR REPLACE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1",
+        )
+
+    def test_external_view_definition_with_create(self):
+        """Test that view definition with CREATE EXTERNAL VIEW is not modified"""
+        self.mock_view.view_definition = (
+            "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1"
+        )
+
+        result = get_view_definition(
+            self.mock_self,
+            self.mock_connection,
+            "test_view",
+            schema="test_schema",
+        )
+
+        self.assertEqual(
+            result,
+            "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1",
+        )
+
+    def test_external_view_definition_removes_schema_binding(self):
+        """Test that WITH NO SCHEMA BINDING is removed from external view"""
+        self.mock_view.view_definition = "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1 WITH NO SCHEMA BINDING"
+
+        result = get_view_definition(
+            self.mock_self,
+            self.mock_connection,
+            "test_view",
+            schema="test_schema",
+        )
+
+        self.assertEqual(
+            result,
+            "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1 ",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

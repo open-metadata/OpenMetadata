@@ -1,3 +1,8 @@
+UPDATE ingestion_pipeline_entity
+SET json = (json::jsonb #- '{sourceConfig,config,computeMetrics}')::json
+WHERE json::jsonb -> 'sourceConfig' -> 'config' -> 'computeMetrics' IS NOT NULL
+AND pipelineType = 'profiler';
+
 -- Migrate existing glossary term RELATED_TO relationships to include relationType
 -- For backward compatibility, existing relations without a relationType are set to "relatedTo"
 

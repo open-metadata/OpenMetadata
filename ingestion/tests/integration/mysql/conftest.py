@@ -3,7 +3,7 @@ import uuid
 from subprocess import CalledProcessError
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from testcontainers.mysql import MySqlContainer
 
 from _openmetadata_testutils.helpers.docker import try_bind
@@ -46,12 +46,18 @@ def mysql_container(tmp_path_factory):
                     returncode=res[0], cmd=res, output=res[1].decode("utf-8")
                 )
         engine = create_engine(container.get_connection_url())
-        engine.execute(
-            "ALTER TABLE employees ADD COLUMN last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-        )
-        engine.execute(
-            "UPDATE employees SET last_update = hire_date + INTERVAL FLOOR(1 + RAND() * 500000) SECOND"
-        )
+        with engine.connect() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE employees ADD COLUMN last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                )
+            )
+            conn.execute(
+                text(
+                    "UPDATE employees SET last_update = hire_date + INTERVAL FLOOR(1 + RAND() * 500000) SECOND"
+                )
+            )
+            conn.commit()
         engine.dispose()
         assert_dangling_connections(container, 1)
         yield container
@@ -62,7 +68,7 @@ def mysql_container(tmp_path_factory):
 def assert_dangling_connections(container, max_connections):
     engine = create_engine(container.get_connection_url())
     with engine.connect() as conn:
-        result = conn.execute("SHOW PROCESSLIST")
+        result = conn.execute(text("SHOW PROCESSLIST"))
     processes = result.fetchall()
     # Count all connections except system processes (Daemon, Binlog Dump)
     # Note: We include Sleep connections as they are still open connections

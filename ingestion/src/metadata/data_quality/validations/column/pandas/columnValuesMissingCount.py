@@ -25,10 +25,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesMissingCount import (
     BaseColumnValuesMissingCountValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
@@ -64,6 +61,7 @@ class ColumnValuesMissingCountValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
@@ -92,19 +90,19 @@ class ColumnValuesMissingCountValidator(
             dfs = self.runner
 
             metric_expressions = {
-                Metrics.NULL_MISSING_COUNT.name: Metrics.NULL_MISSING_COUNT(
+                Metrics.nullMissingCount.name: Metrics.nullMissingCount(
                     column
                 ).get_pandas_computation(),
-                Metrics.ROW_COUNT.name: Metrics.ROW_COUNT().get_pandas_computation(),
+                Metrics.rowCount.name: Metrics.rowCount().get_pandas_computation(),
             }
 
             missing_values = test_params.get(self.MISSING_VALUE_MATCH)
             missing_values_expected_count = test_params.get(self.MISSING_COUNT_VALUE, 0)
 
             if missing_values:
-                metric_expressions[Metrics.COUNT_IN_SET.name] = add_props(
+                metric_expressions[Metrics.countInSet.name] = add_props(
                     values=missing_values
-                )(Metrics.COUNT_IN_SET.value)(column).get_pandas_computation()
+                )(Metrics.countInSet.value)(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
@@ -132,11 +130,11 @@ class ColumnValuesMissingCountValidator(
                 total_missing_count = sum(
                     metric.aggregate_accumulator(agg[metric_name])
                     for metric_name, metric in metric_expressions.items()
-                    if metric_name != Metrics.ROW_COUNT.name
+                    if metric_name != Metrics.rowCount.name
                 )
                 total_rows = metric_expressions[
-                    Metrics.ROW_COUNT.name
-                ].aggregate_accumulator(agg[Metrics.ROW_COUNT.name])
+                    Metrics.rowCount.name
+                ].aggregate_accumulator(agg[Metrics.rowCount.name])
 
                 # Calculate initial deviation (will be recalculated for "Others")
                 deviation = abs(total_missing_count - missing_values_expected_count)
@@ -176,7 +174,7 @@ class ColumnValuesMissingCountValidator(
                 results_df = aggregate_others_statistical_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
-                    top_n=DEFAULT_TOP_DIMENSIONS,
+                    top_n=top_n,
                     agg_functions={
                         self.TOTAL_MISSING_COUNT: "sum",  # Sum actual missing counts
                         DIMENSION_TOTAL_COUNT_KEY: "sum",

@@ -15,7 +15,7 @@ import re
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
-from sqlalchemy import sql
+from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_redshift.dialect import (
@@ -190,20 +190,35 @@ class RedshiftSource(
             (self.context.get().database, schema_name, table_name)
         )
 
-    def get_partition_details(self) -> None:
+    def get_partition_details(self, schema_name: Optional[str] = None) -> None:
         """
-        Populate partition details
+        Populate partition details for the given schema (or all schemas if None).
         """
         try:
             self.partition_details.clear()
-            results = self.connection.execute(
-                statement=REDSHIFT_PARTITION_DETAILS
-            ).fetchall()
+            query = REDSHIFT_PARTITION_DETAILS
+            if schema_name:
+                query += f" AND \"schema\" = '{schema_name}'"
+            results = self.connection.execute(statement=query).fetchall()
             for row in results:
                 self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
         except Exception as exe:
             logger.debug(traceback.format_exc())
             logger.debug(f"Failed to fetch partition details due: {exe}")
+
+    def _clear_reflection_cache(self) -> None:
+        """Clear the SQLAlchemy inspector's info_cache to release
+        cached column / relation data from prior schemas.
+
+        This prevents unbounded memory growth when ingesting many
+        schemas, since _get_schema_column_info, get_columns, and
+        _get_all_relation_info all use @reflection.cache.
+        """
+        try:
+            if hasattr(self.inspector, "info_cache"):
+                self.inspector.info_cache.clear()
+        except Exception as exc:
+            logger.debug(f"Failed to clear reflection cache: {exc}")
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -211,6 +226,11 @@ class RedshiftSource(
         """
         Handle custom table types
         """
+        # Clear cached column / relation data from prior schemas to
+        # prevent unbounded memory growth (issue #20649)
+        self._clear_reflection_cache()
+
+        self.get_partition_details(schema_name)
         self._set_constraint_details(schema_name)
 
         result = self.connection.execute(
@@ -294,9 +314,12 @@ class RedshiftSource(
 
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
-        results = self.engine.execute(
-            REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name)
-        ).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(
+                text(
+                    REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name)
+                )
+            ).all()
         self.external_location_map = {
             (database_name, row.schemaname, row.tablename): row.location
             for row in results
@@ -305,7 +328,6 @@ class RedshiftSource(
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:
             configured_db = self.config.serviceConnection.root.config.database
-            self.get_partition_details()
             self._set_incremental_table_processor(configured_db)
             self.set_external_location_map(configured_db)
             yield configured_db
@@ -331,7 +353,6 @@ class RedshiftSource(
 
                 try:
                     self.set_inspector(database_name=new_database)
-                    self.get_partition_details()
                     self._set_incremental_table_processor(new_database)
                     self.set_external_location_map(new_database)
                     yield new_database
@@ -403,7 +424,7 @@ class RedshiftSource(
                 )
             ).all()
             for row in results:
-                stored_procedure = RedshiftStoredProcedure.model_validate(dict(row))
+                stored_procedure = RedshiftStoredProcedure.model_validate(row._asdict())
                 if self.is_stored_procedure_filtered(stored_procedure.name):
                     continue
                 yield stored_procedure
@@ -527,6 +548,15 @@ class RedshiftSource(
             {"schema": schema_name},
         )
 
+        # Track which FK constraint definitions have already been extracted per
+        # table.  The query joins pg_constraint to pg_attribute via
+        # ANY(t.conkey), so a FK spanning N columns produces N identical rows
+        # (same condef, same conkey).  Without deduplication, _extract_fkeys
+        # would be called N times and append N identical dicts to the fkey list.
+        seen_fkey_codefs: dict[str, set[str]] = {}
+
+        database = self.connection.engine.url.database
+
         for row in rows or []:
             schema_table_name = f"{row.schema}.{row.table_name}"
             schema_table_constraints = self.constraint_details.setdefault(
@@ -536,10 +566,14 @@ class RedshiftSource(
                 pkey = schema_table_constraints.setdefault("pkey", set())
                 pkey.add(row.column_name)
             if row.constraint_type == "f":
+                seen = seen_fkey_codefs.setdefault(schema_table_name, set())
+                if row.condef in seen:
+                    continue
+                seen.add(row.condef)
                 fkey_constraint = {
                     "key": row.conkey,
                     "condef": row.condef,
-                    "database": self.connection.engine.url.database,
+                    "database": database,
                 }
                 extracted_fkey = self._extract_fkeys(fkey_constraint)
                 fkey: list[dict[str, str]] = schema_table_constraints.setdefault(

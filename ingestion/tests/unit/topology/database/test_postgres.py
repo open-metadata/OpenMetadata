@@ -399,27 +399,30 @@ class PostgresUnitTest(TestCase):
         mock_result_func = MagicMock()
         mock_result_func.all.return_value = []
 
-        mock_engine.execute.side_effect = [mock_result_proc, mock_result_func]
+        mock_conn = MagicMock()
+        mock_conn.execute.side_effect = [mock_result_proc, mock_result_func]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         results = list(self.postgres_source.get_stored_procedures())
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
 
-    @patch("sqlalchemy.engine.base.Engine")
-    def test_get_version_info(self, engine):
-        # outdated with a switch to get_server_version_num instead of get_+server_version
-        # engine.execute.return_value = [["15.3 (Debian 15.3-1.pgdg110+1)"]]
-        # self.assertEqual("15.3", get_postgres_version(engine))
+    def test_get_version_info(self):
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
-        engine.execute.return_value = [["110016"]]
-        self.assertEqual("110016", get_postgres_version(engine))
+        mock_conn.execute.return_value.all.return_value = [["110016"]]
+        self.assertEqual("110016", get_postgres_version(mock_engine))
 
-        engine.execute.return_value = [["90624"]]
-        self.assertEqual("90624", get_postgres_version(engine))
+        mock_conn.execute.return_value.all.return_value = [["90624"]]
+        self.assertEqual("90624", get_postgres_version(mock_engine))
 
-        engine.execute.return_value = [[]]
-        self.assertIsNone(get_postgres_version(engine))
+        mock_conn.execute.return_value.all.return_value = [[]]
+        self.assertIsNone(get_postgres_version(mock_engine))
 
     @patch("sqlalchemy.engine.base.Engine")
     @patch(

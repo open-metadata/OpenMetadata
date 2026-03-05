@@ -3,9 +3,11 @@ package org.openmetadata.sdk.fluent.wrappers;
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Tables;
@@ -242,6 +244,51 @@ public class FluentTable {
   public FluentTable withColumns(List<Column> columns) {
     table.setColumns(columns);
     modified = true;
+    return this;
+  }
+
+  /**
+   * Add or replace sample data for this table.
+   */
+  public FluentTable addSampleData(TableData sampleData) {
+    if (table.getId() == null) {
+      throw new IllegalStateException("Table must have an ID to add sample data");
+    }
+    if (modified) {
+      save();
+    }
+    this.table = client.tables().updateSampleData(table.getId().toString(), sampleData);
+    modified = false;
+    return this;
+  }
+
+  /**
+   * Add or update a custom metric for this table.
+   */
+  public FluentTable addCustomMetric(CustomMetric customMetric) {
+    if (table.getId() == null) {
+      throw new IllegalStateException("Table must have an ID to add custom metrics");
+    }
+    if (modified) {
+      save();
+    }
+    this.table = client.tables().updateCustomMetric(table.getId().toString(), customMetric);
+    modified = false;
+    return this;
+  }
+
+  /**
+   * Refresh this table with sample data from the API.
+   */
+  public FluentTable refreshSampleData() {
+    if (table.getId() == null) {
+      throw new IllegalStateException("Table must have an ID to retrieve sample data");
+    }
+    if (modified) {
+      save();
+    }
+    this.table = client.tables().getSampleData(table.getId().toString());
+    modified = false;
     return this;
   }
 

@@ -756,7 +756,7 @@ class SourceConnectionTest(TestCase):
         expected_url = "redshift+psycopg2://username:strong_password@cluster.name.region.redshift.amazonaws.com:5439/dev"
         redshift_conn_obj = RedshiftConnection(
             username="username",
-            password="strong_password",
+            authType=BasicAuth(password="strong_password"),
             hostPort="cluster.name.region.redshift.amazonaws.com:5439",
             scheme=RedshiftScheme.redshift_psycopg2,
             database="dev",
@@ -932,7 +932,7 @@ class SourceConnectionTest(TestCase):
         expected_args = {}
         redshift_conn_obj = RedshiftConnection(
             username="user",
-            password=None,
+            authType=BasicAuth(password=None),
             hostPort="localhost:443",
             database="tiny",
             connectionArguments=None,
@@ -944,7 +944,7 @@ class SourceConnectionTest(TestCase):
         expected_args = {"user": "user-to-be-impersonated"}
         redshift_conn_obj = RedshiftConnection(
             username="user",
-            password=None,
+            authType=BasicAuth(password=None),
             hostPort="localhost:443",
             database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
