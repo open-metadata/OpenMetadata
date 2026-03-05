@@ -475,7 +475,36 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.warn("Seed data load failed: {}", se.getMessage());
     }
 
+    registerMcpServerIfAvailable();
+
     LOG.info("OpenMetadata application started on port {}", APP.getLocalPort());
+  }
+
+  private void registerMcpServerIfAvailable() {
+    try {
+      // Reset ApplicationContext to pick up apps created by seed data loading
+      java.lang.reflect.Field instanceField = ApplicationContext.class.getDeclaredField("instance");
+      instanceField.setAccessible(true);
+      instanceField.set(null, null);
+      ApplicationContext.initialize();
+
+      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
+        LOG.info("McpApplication not found, skipping MCP server registration");
+        return;
+      }
+
+      OpenMetadataApplication application = (OpenMetadataApplication) APP.getApplication();
+      java.lang.reflect.Method method =
+          OpenMetadataApplication.class.getDeclaredMethod(
+              "registerMCPServer",
+              OpenMetadataApplicationConfig.class,
+              io.dropwizard.core.setup.Environment.class);
+      method.setAccessible(true);
+      method.invoke(application, APP.getConfiguration(), APP.getEnvironment());
+      LOG.info("MCP server registered successfully");
+    } catch (Exception e) {
+      LOG.info("MCP server registration skipped: {}", e.getMessage());
+    }
   }
 
   private OpenMetadataApplicationConfig readTestAppConfig(String path)
