@@ -5584,8 +5584,9 @@ public interface CollectionDAO {
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) "
-                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata)",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata) "
+                + "ON DUPLICATE KEY UPDATE labelType = VALUES(labelType), state = VALUES(state), reason = VALUES(reason), metadata = VALUES(metadata)",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
@@ -5951,96 +5952,52 @@ public interface CollectionDAO {
   interface UsageDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
-                + "VALUES (:date, :id, :entityType, 0, 0, 0)",
+            "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
+                + "SELECT :date, :id, :entityType, :count1, "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 6 DAY)), "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 29 DAY))"
+                + "ON DUPLICATE KEY UPDATE count7 = count7 - count1 + :count1, count30 = count30 - count1 + :count1, count1 = :count1",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
-                + "VALUES ((:date :: date), :id, :entityType, 0, 0, 0) "
-                + "ON CONFLICT (usageDate, id) DO NOTHING",
+                + "SELECT (:date :: date), :id, :entityType, :count1, "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '6 days')), "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '29 days'))"
+                + "ON CONFLICT (usageDate, id) DO UPDATE SET count7 = entity_usage.count7 - entity_usage.count1 + :count1,"
+                + "count30 = entity_usage.count30 - entity_usage.count1 + :count1, count1 = :count1",
         connectionType = POSTGRES)
-    void ensureUsageRow(
-        @Bind("date") String date, @BindUUID("id") UUID id, @Bind("entityType") String entityType);
-
-    @ConnectionAwareSqlUpdate(
-        value = "UPDATE entity_usage SET count1 = :count1 WHERE usageDate = :date AND id = :id",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_usage SET count1 = :count1 WHERE usageDate = (:date :: date) AND id = :id",
-        connectionType = POSTGRES)
-    void replaceUsageCount(
-        @Bind("date") String date, @BindUUID("id") UUID id, @Bind("count1") int count1);
-
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_usage SET count1 = count1 + :count1 WHERE usageDate = :date AND id = :id",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_usage SET count1 = count1 + :count1 WHERE usageDate = (:date :: date) AND id = :id",
-        connectionType = POSTGRES)
-    void incrementUsageCount(
-        @Bind("date") String date, @BindUUID("id") UUID id, @Bind("count1") int count1);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id "
-                + "AND usageDate >= :date - INTERVAL 6 DAY AND usageDate <= :date",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id "
-                + "AND usageDate >= (:date :: date) - INTERVAL '6 days' AND usageDate <= (:date :: date)",
-        connectionType = POSTGRES)
-    int getRollingCount7(@Bind("date") String date, @BindUUID("id") UUID id);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id "
-                + "AND usageDate >= :date - INTERVAL 29 DAY AND usageDate <= :date",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id "
-                + "AND usageDate >= (:date :: date) - INTERVAL '29 days' AND usageDate <= (:date :: date)",
-        connectionType = POSTGRES)
-    int getRollingCount30(@Bind("date") String date, @BindUUID("id") UUID id);
-
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_usage SET count7 = :count7, count30 = :count30 "
-                + "WHERE usageDate = :date AND id = :id",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE entity_usage SET count7 = :count7, count30 = :count30 "
-                + "WHERE usageDate = (:date :: date) AND id = :id",
-        connectionType = POSTGRES)
-    void updateRollingUsage(
+    void insertOrReplaceCount(
         @Bind("date") String date,
         @BindUUID("id") UUID id,
-        @Bind("count7") int count7,
-        @Bind("count30") int count30);
+        @Bind("entityType") String entityType,
+        @Bind("count1") int count1);
 
-    default void recomputeRollingUsage(String date, UUID id) {
-      int count7 = getRollingCount7(date, id);
-      int count30 = getRollingCount30(date, id);
-      updateRollingUsage(date, id, count7, count30);
-    }
-
-    default void insertOrReplaceCount(String date, UUID id, String entityType, int count1) {
-      ensureUsageRow(date, id, entityType);
-      replaceUsageCount(date, id, count1);
-      recomputeRollingUsage(date, id);
-    }
-
-    default void insertOrUpdateCount(String date, UUID id, String entityType, int count1) {
-      ensureUsageRow(date, id, entityType);
-      incrementUsageCount(date, id, count1);
-      recomputeRollingUsage(date, id);
-    }
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
+                + "SELECT :date, :id, :entityType, :count1, "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 6 DAY)), "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= :date - "
+                + "INTERVAL 29 DAY)) "
+                + "ON DUPLICATE KEY UPDATE count1 = count1 + :count1, count7 = count7 + :count1, count30 = count30 + :count1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_usage (usageDate, id, entityType, count1, count7, count30) "
+                + "SELECT (:date :: date), :id, :entityType, :count1, "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '6 days')), "
+                + "(:count1 + (SELECT COALESCE(SUM(count1), 0) FROM entity_usage WHERE id = :id AND usageDate >= (:date :: date) - INTERVAL '29 days')) "
+                + "ON CONFLICT (usageDate, id) DO UPDATE SET count1 = entity_usage.count1 + :count1, count7 = entity_usage.count7 + :count1, count30 = entity_usage.count30 + :count1",
+        connectionType = POSTGRES)
+    void insertOrUpdateCount(
+        @Bind("date") String date,
+        @BindUUID("id") UUID id,
+        @Bind("entityType") String entityType,
+        @Bind("count1") int count1);
 
     @ConnectionAwareSqlQuery(
         value =
