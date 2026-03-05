@@ -90,7 +90,9 @@ from metadata.ingestion.source.database.redshift.utils import (
     _get_pg_column_info,
     _get_schema_column_info,
     _load_domains,
+    _redshift_initialize,
     get_columns,
+    get_multi_columns,
     get_redshift_columns,
     get_table_comment,
     get_view_definition,
@@ -122,8 +124,10 @@ STANDARD_TABLE_TYPES = {
 # pylint: disable=protected-access
 RedshiftDialectMixin._get_column_info = _get_column_info
 RedshiftDialectMixin._get_schema_column_info = _get_schema_column_info
+RedshiftDialectMixin.initialize = _redshift_initialize
 RedshiftDialectMixin._load_domains = _load_domains
 RedshiftDialectMixin.get_columns = get_columns
+RedshiftDialectMixin.get_multi_columns = get_multi_columns
 PGDialect._get_column_info = _get_pg_column_info
 RedshiftDialect.get_all_table_comments = get_all_table_comments
 RedshiftDialect.get_table_comment = get_table_comment
