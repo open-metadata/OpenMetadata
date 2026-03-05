@@ -53,6 +53,7 @@ class ColumnValueMeanToBeBetweenValidator(
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for mean with proper weighted aggregation
 
@@ -97,6 +98,7 @@ class ColumnValueMeanToBeBetweenValidator(
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
                 failed_count_builder=failed_count_builder,
+                top_n=top_n,
             )
 
             for row in result_rows:

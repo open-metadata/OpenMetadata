@@ -26,10 +26,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesSumToBeBetween import (
     BaseColumnValuesSumToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
@@ -62,6 +59,7 @@ class ColumnValuesSumToBeBetweenValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for max with proper aggregation
 
@@ -160,7 +158,7 @@ class ColumnValuesSumToBeBetweenValidator(
                         DIMENSION_FAILED_COUNT_KEY: "sum",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                     },
-                    top_n=DEFAULT_TOP_DIMENSIONS,
+                    top_n=top_n,
                     violation_metrics=[Metrics.sum.name],
                     violation_predicate=checker.violates_pandas,
                 )

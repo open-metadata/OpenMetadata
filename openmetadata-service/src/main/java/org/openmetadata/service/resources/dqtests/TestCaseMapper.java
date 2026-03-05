@@ -21,6 +21,7 @@ public class TestCaseMapper implements EntityMapper<TestCase, CreateTestCase> {
         .withComputePassedFailedRowCount(create.getComputePassedFailedRowCount())
         .withUseDynamicAssertion(create.getUseDynamicAssertion())
         .withDimensionColumns(create.getDimensionColumns())
+        .withTopDimensions(create.getTopDimensions())
         .withEntityFQN(entityLink.getFullyQualifiedFieldValue())
         .withTestDefinition(getEntityReference(Entity.TEST_DEFINITION, create.getTestDefinition()))
         .withTags(create.getTags())

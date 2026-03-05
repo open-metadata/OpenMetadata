@@ -111,7 +111,8 @@ class ColumnValuesToBeUniqueValidator(
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
-        test_params: Optional[dict] = None,
+        test_params: Optional[dict],
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for uniqueness using two-pass approach
 
@@ -172,6 +173,7 @@ class ColumnValuesToBeUniqueValidator(
                 metric_expressions=metric_expressions,
                 others_source_builder=self._get_others_source_builder(value_counts_cte),
                 others_metric_expressions_builder=self._get_others_metric_expressions_builder(),
+                top_n=top_n,
             )
 
             for row in result_rows:
