@@ -26,10 +26,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValueMedianToBeBetween import (
     BaseColumnValueMedianToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
@@ -63,6 +60,7 @@ class ColumnValueMedianToBeBetweenValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for median with proper weighted aggregation
 
@@ -191,7 +189,7 @@ class ColumnValueMedianToBeBetweenValidator(
                     },
                     final_metric_calculators={Metrics.median.name: recalculate_median},
                     exclude_from_final=["RAW_MEDIAN_ARRAYS", Metrics.valuesCount.name],
-                    top_n=DEFAULT_TOP_DIMENSIONS,
+                    top_n=top_n,
                     violation_metrics=[Metrics.median.name],
                     violation_predicate=checker.violates_pandas,
                 )

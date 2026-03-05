@@ -139,7 +139,7 @@ export const mockExternalApplicationData = {
   allowConfiguration: true,
   system: false,
   appConfiguration: {},
-  preview: false,
+  enabled: true,
   pipelines: [
     {
       id: 'ecc41d34-1479-4ac0-84d1-1d05c951a5c0',
