@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import {
   ECustomizedDataAssets,
@@ -186,9 +186,8 @@ test.describe('Persona customize UI tab', async () => {
     test.slow();
 
     const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
-    await adminPage.goBack();
+    await settingClick(adminPage, GlobalSettingOptions.PERSONA);
     await personaListResponse;
-    await adminPage.waitForLoadState('networkidle');
     await navigateToPersonaWithPagination(
       adminPage,
       navigationPersona.data.name,
