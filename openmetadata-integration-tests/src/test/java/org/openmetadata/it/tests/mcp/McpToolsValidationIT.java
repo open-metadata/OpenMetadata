@@ -247,12 +247,8 @@ public class McpToolsValidationIT {
         McpTestUtils.createPatchEntityToolCall(
             "table", testTable.getFullyQualifiedName(), patchJson);
 
-    try {
-      JsonNode result = executeToolCall(toolCall);
-      validatePatchEntityResponse(result, testTable.getFullyQualifiedName());
-    } catch (Exception e) {
-      // patch_entity may fail due to entity state, but the tool should be accessible
-    }
+    JsonNode result = executeToolCall(toolCall);
+    validatePatchEntityResponse(result, testTable.getFullyQualifiedName());
   }
 
   @Test
@@ -261,12 +257,8 @@ public class McpToolsValidationIT {
     Map<String, Object> toolCall =
         McpTestUtils.createGetLineageToolCall("table", testTable.getFullyQualifiedName(), 2, 2);
 
-    try {
-      JsonNode result = executeToolCall(toolCall);
-      validateLineageResponse(result, testTable.getFullyQualifiedName());
-    } catch (Exception e) {
-      // lineage may not exist for test entity, but the tool should be accessible
-    }
+    JsonNode result = executeToolCall(toolCall);
+    validateLineageResponse(result, testTable.getFullyQualifiedName());
   }
 
   @Test
@@ -529,7 +521,7 @@ public class McpToolsValidationIT {
                 matchingEntities.add(r.get("name").asText());
               });
 
-      matchingEntities.contains(expectedQuery);
+      assertThat(matchingEntities).contains(expectedQuery);
     }
   }
 
