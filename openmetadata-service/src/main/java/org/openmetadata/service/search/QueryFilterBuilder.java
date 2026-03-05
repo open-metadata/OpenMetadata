@@ -80,6 +80,25 @@ public class QueryFilterBuilder {
     return serializeQuery(queryFilter);
   }
 
+  public static String buildTeamAssetsCountFilter() {
+    ObjectNode queryFilter = MAPPER.createObjectNode();
+    ObjectNode queryNode = queryFilter.putObject(QUERY_KEY);
+    ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
+    ArrayNode mustArray = boolNode.putArray(MUST_KEY);
+
+    // Filter to only include assets owned by teams (not users)
+    ObjectNode ownerTypeNode = MAPPER.createObjectNode();
+    ownerTypeNode.putObject(TERM_KEY).put("owners.type", "team");
+    mustArray.add(ownerTypeNode);
+
+    // Exclude deleted assets
+    ObjectNode deletedNode = MAPPER.createObjectNode();
+    deletedNode.putObject(TERM_KEY).put(DELETED_KEY, false);
+    mustArray.add(deletedNode);
+
+    return serializeQuery(queryFilter);
+  }
+
   public static String buildOwnerAssetsFilter(InheritedFieldQuery query) {
     ObjectNode queryFilter = MAPPER.createObjectNode();
     ObjectNode queryNode = queryFilter.putObject(QUERY_KEY);
