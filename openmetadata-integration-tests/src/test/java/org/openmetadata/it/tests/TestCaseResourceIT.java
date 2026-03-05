@@ -7,9 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -1508,19 +1510,18 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
           .create();
     }
 
-    // Wait for search indexing
-    try {
-      Thread.sleep(2000);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
-
-    // List test cases (search needs special endpoint)
-    ListResponse<TestCase> results = client.testCases().list(new ListParams().setLimit(100));
-
-    // Verify at least 5 were created
-    assertNotNull(results);
-    assertTrue(results.getData().size() >= 5, "Should have at least 5 test cases");
+    Awaitility.await("Wait for test cases to be listed")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              ListResponse<TestCase> results =
+                  client.testCases().list(new ListParams().setLimit(100));
+              assertNotNull(results);
+              assertTrue(results.getData().size() >= 5, "Should have at least 5 test cases");
+            });
   }
 
   @Test

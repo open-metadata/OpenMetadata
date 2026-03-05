@@ -131,7 +131,7 @@ export const mockDataInsightApplication = {
   allowConfiguration: false,
   system: false,
   appConfiguration: {},
-  preview: false,
+  enabled: true,
   appSchedule: {
     scheduleTimeline: 'Custom',
     cronExpression: '0 0 * * *',

@@ -273,6 +273,82 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return listWithOffset(offset, filter, limitParam, startTs, endTs, latest, false);
   }
 
+  public ResultList<T> listAfterKeyset(
+      ListFilter filter,
+      int limitParam,
+      long afterTs,
+      String afterFQNHash,
+      int cachedTotal,
+      boolean skipErrors) {
+    List<EntityTimeSeriesDAO.TimeSeriesRow> rows =
+        timeSeriesDao.listAfterKeyset(filter, limitParam + 1, afterTs, afterFQNHash);
+    return buildKeysetResultList(rows, limitParam, cachedTotal, skipErrors);
+  }
+
+  public ResultList<T> listAfterKeyset(
+      ListFilter filter,
+      int limitParam,
+      Long startTs,
+      Long endTs,
+      long afterTs,
+      String afterFQNHash,
+      int cachedTotal,
+      boolean skipErrors) {
+    if (startTs != null && endTs != null) {
+      return listAfterKeysetWithRange(
+          filter, limitParam, startTs, endTs, afterTs, afterFQNHash, cachedTotal, skipErrors);
+    }
+    return listAfterKeyset(filter, limitParam, afterTs, afterFQNHash, cachedTotal, skipErrors);
+  }
+
+  public ResultList<T> listAfterKeysetWithRange(
+      ListFilter filter,
+      int limitParam,
+      long startTs,
+      long endTs,
+      long afterTs,
+      String afterFQNHash,
+      int cachedTotal,
+      boolean skipErrors) {
+    List<EntityTimeSeriesDAO.TimeSeriesRow> rows =
+        timeSeriesDao.listAfterKeysetWithRange(
+            filter, limitParam + 1, startTs, endTs, afterTs, afterFQNHash);
+    return buildKeysetResultList(rows, limitParam, cachedTotal, skipErrors);
+  }
+
+  @SuppressWarnings("unchecked")
+  private ResultList<T> buildKeysetResultList(
+      List<EntityTimeSeriesDAO.TimeSeriesRow> rows,
+      int limitParam,
+      int cachedTotal,
+      boolean skipErrors) {
+    if (limitParam <= 0 || rows.isEmpty()) {
+      return getResultList(new ArrayList<>(), null, null, cachedTotal);
+    }
+
+    EntityTimeSeriesDAO.KeysetPage page = EntityTimeSeriesDAO.KeysetPage.from(rows, limitParam);
+    Map<String, List<?>> entityListMap = getEntityList(page.jsons(), skipErrors);
+    List<T> entityList = (List<T>) entityListMap.get("entityList");
+    List<EntityError> errors = new ArrayList<>();
+    if (skipErrors) {
+      errors = (List<EntityError>) entityListMap.get("errors");
+    }
+
+    if (!errors.isEmpty()) {
+      return getResultList(entityList, null, page.afterCursor(), cachedTotal, errors);
+    }
+    return getResultList(entityList, null, page.afterCursor(), cachedTotal);
+  }
+
+  public String getCursorAtOffset(ListFilter filter, int offset) {
+    EntityTimeSeriesDAO.TimeSeriesRow row = timeSeriesDao.getCursorAtOffset(filter, offset);
+    if (row == null) {
+      return null;
+    }
+    return RestUtil.encodeCursor(
+        EntityTimeSeriesDAO.TimeSeriesCursor.format(row.timestamp(), row.entityFQNHash()));
+  }
+
   public T getLatestRecord(String recordFQN) {
     String jsonRecord = timeSeriesDao.getLatestRecord(recordFQN);
     if (jsonRecord == null) {

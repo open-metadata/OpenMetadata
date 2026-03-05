@@ -21,6 +21,7 @@ import {
   Col,
   Drawer,
   Form,
+  InputNumber,
   Row,
   Select,
   Space,
@@ -791,6 +792,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           value.testLevel === TestLevel.COLUMN_DIMENSION
             ? value.dimensionColumns
             : undefined,
+        topDimensions:
+          value.testLevel === TestLevel.COLUMN_DIMENSION
+            ? value.topDimensions
+            : undefined,
         description: isEmpty(value.description) ? undefined : value.description,
         tags: [...(value.tags ?? []), ...(value.glossaryTerms ?? [])],
         ...testCaseClassBase.getCreateTestCaseObject(
@@ -950,6 +955,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     form.setFieldsValue({
       selectedColumn: undefined,
       dimensionColumns: undefined,
+      topDimensions: undefined,
     });
   }, [selectedTable, table, tablesCache, fetchSelectedTableData, form]);
 
@@ -977,6 +983,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
 
     // Reset dimensionColumns when selectedColumn changes
     form.setFieldValue('dimensionColumns', undefined);
+    form.setFieldValue('topDimensions', undefined);
   }, [
     selectedColumn,
     selectedTableData,
@@ -1187,6 +1194,19 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 placeholder={t('label.select-entity', {
                   entity: t('label.dimension-plural'),
                 })}
+              />
+            </Form.Item>
+          )}
+          {testLevelFieldValue === TestLevel.COLUMN_DIMENSION && (
+            <Form.Item
+              label={t('label.top-dimension-plural')}
+              name="topDimensions">
+              <InputNumber
+                className="w-full"
+                id="root/topDimensions"
+                max={50}
+                min={1}
+                placeholder="5"
               />
             </Form.Item>
           )}

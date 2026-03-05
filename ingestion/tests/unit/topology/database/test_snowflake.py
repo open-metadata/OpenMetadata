@@ -14,7 +14,7 @@ snowflake unit tests
 """
 # pylint: disable=line-too-long
 from unittest import TestCase
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import sqlalchemy.types as sqltypes
 
@@ -520,9 +520,13 @@ class SnowflakeUnitTest(TestCase):
                     SCHEMA_NAME="TEST_SCHEMA", TAG_NAME="SCHEMA_TAG", TAG_VALUE="VALUE"
                 ),
             ]
-            mock_execute = Mock()
-            mock_execute.all.return_value = mock_schema_tags
-            source.engine.execute = Mock(return_value=mock_execute)
+            mock_conn = MagicMock()
+            mock_conn.execute.return_value.all.return_value = mock_schema_tags
+            source.engine = MagicMock()
+            source.engine.connect.return_value.__enter__ = MagicMock(
+                return_value=mock_conn
+            )
+            source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
             source.set_schema_tags_map("TEST_DATABASE")
             self.assertEqual(len(source.schema_tags_map["TEST_SCHEMA"]), 1)
@@ -583,7 +587,7 @@ class SnowflakeUnitTest(TestCase):
         )
 
         call_args = mock_connection.execute.call_args
-        executed_query_case1 = call_args[0][0]
+        executed_query_case1 = str(call_args[0][0])
 
         self.assertIn("COALESCE(IS_TRANSIENT, 'NO') != 'YES'", executed_query_case1)
         self.assertNotIn("TABLE_TYPE != 'VIEW'", executed_query_case1)
@@ -601,7 +605,7 @@ class SnowflakeUnitTest(TestCase):
         )
 
         call_args = mock_connection.execute.call_args
-        executed_query_case2 = call_args[0][0]
+        executed_query_case2 = str(call_args[0][0])
 
         self.assertIn("TABLE_TYPE != 'VIEW'", executed_query_case2)
         self.assertNotIn("COALESCE(IS_TRANSIENT, 'NO') != 'YES'", executed_query_case2)
@@ -619,11 +623,12 @@ class SnowflakeUnitTest(TestCase):
         source.context.get().__dict__["database"] = "test_db"
         source.context.get().__dict__["database_schema"] = "test_schema"
 
-        mock_engine = Mock()
+        mock_engine = MagicMock()
         source.engine = mock_engine
 
-        # Mock rows - fields aliased in SnowflakeStoredProcedure
-        row1 = {
+        # Mock rows as objects with _asdict() to mimic SQLAlchemy Row
+        row1 = MagicMock()
+        row1._asdict.return_value = {
             "NAME": "sp_include",
             "OWNER": "owner",
             "LANGUAGE": "SQL",
@@ -632,7 +637,8 @@ class SnowflakeUnitTest(TestCase):
             "COMMENT": "comment",
             "PROCEDURE_TYPE": "PROCEDURE",
         }
-        row2 = {
+        row2 = MagicMock()
+        row2._asdict.return_value = {
             "NAME": "sp_exclude",
             "OWNER": "owner",
             "LANGUAGE": "SQL",
@@ -642,7 +648,10 @@ class SnowflakeUnitTest(TestCase):
             "PROCEDURE_TYPE": "PROCEDURE",
         }
 
-        mock_engine.execute.return_value.all.return_value = [row1, row2]
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [row1, row2]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         results = list(source.get_stored_procedures())
 
@@ -674,9 +683,13 @@ class SnowflakeUnitTest(TestCase):
                     TAG_VALUE="123",
                 ),
             ]
-            mock_execute = Mock()
-            mock_execute.all.return_value = mock_schema_tags
-            source.engine.execute = Mock(return_value=mock_execute)
+            mock_conn = MagicMock()
+            mock_conn.execute.return_value.all.return_value = mock_schema_tags
+            source.engine = MagicMock()
+            source.engine.connect.return_value.__enter__ = MagicMock(
+                return_value=mock_conn
+            )
+            source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
             source.set_schema_tags_map("TEST_DATABASE")
             # Only the tag with a value should be stored

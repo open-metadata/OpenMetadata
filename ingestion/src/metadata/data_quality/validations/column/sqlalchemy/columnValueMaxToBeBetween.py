@@ -52,6 +52,7 @@ class ColumnValueMaxToBeBetweenValidator(
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for max with proper aggregation
 
@@ -72,18 +73,18 @@ class ColumnValueMaxToBeBetweenValidator(
         dimension_results = []
 
         try:
-            row_count_expr = Metrics.ROW_COUNT().fn()
-            max_expr = Metrics.MAX(column).fn()
+            row_count_expr = Metrics.rowCount().fn()
+            max_expr = Metrics.max(column).fn()
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                Metrics.MAX.name: max_expr,
+                Metrics.max.name: max_expr,
             }
 
             failed_count_builder = (
                 lambda cte, row_count_expr: self._get_validation_checker(
                     test_params
                 ).build_agg_level_violation_sqa(
-                    [getattr(cte.c, Metrics.MAX.name)], row_count_expr
+                    [getattr(cte.c, Metrics.max.name)], row_count_expr
                 )
             )
 
@@ -96,16 +97,17 @@ class ColumnValueMaxToBeBetweenValidator(
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
                 failed_count_builder=failed_count_builder,
+                top_n=top_n,
             )
 
             for row in result_rows:
-                max_value = row.get(Metrics.MAX.name)
+                max_value = row.get(Metrics.max.name)
 
                 if max_value is None:
                     continue
 
                 metric_values = {
-                    Metrics.MAX.name: max_value,
+                    Metrics.max.name: max_value,
                 }
 
                 evaluation = self._evaluate_test_condition(metric_values, test_params)

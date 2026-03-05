@@ -17,6 +17,10 @@ import {
   NAME_VALIDATION_ERROR,
 } from '../constant/common';
 import { toastNotification } from './common';
+import {
+  ObservabilityFeature,
+  selectAddObservabilityFeature,
+} from './dataQuality';
 
 type CustomMetricDetails = {
   page: Page;
@@ -68,7 +72,7 @@ export const createCustomMetric = async ({
     })
     .click();
   await page.locator('[data-testid="profiler-add-table-test-btn"]').click();
-  await page.locator('[data-testid="custom-metric"]').click();
+  await selectAddObservabilityFeature(page, ObservabilityFeature.CUSTOM_METRIC);
 
   const customMetricResponse = page.waitForResponse(
     '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all*'
@@ -95,7 +99,7 @@ export const createCustomMetric = async ({
 
   // Click on create custom metric button
   await page.click('[data-testid="profiler-add-table-test-btn"]');
-  await page.click('[data-testid="custom-metric"]');
+  await page.getByRole('menuitemradio', { name: 'Custom metric' }).click();
   await page.click('[data-testid="submit-button"]');
 
   await validateForm(page, isColumnMetric);
@@ -124,7 +128,7 @@ export const createCustomMetric = async ({
   // verify the created custom metric
   await expect(page).toHaveURL(/profiler/);
 
-  await expect(page.getByRole('heading', { name: metric.name })).toBeVisible();
+  await expect(page.getByTestId(`${metric.name}-title`)).toBeVisible();
 };
 
 export const deleteCustomMetric = async ({
@@ -136,14 +140,12 @@ export const deleteCustomMetric = async ({
   metric: CustomMetricDetails['metric'];
   isColumnMetric?: boolean;
 }) => {
-  await page
-    .getByRole('heading', { name: metric.name })
-    .scrollIntoViewIfNeeded();
+  await page.getByTestId(`${metric.name}-title`).scrollIntoViewIfNeeded();
 
-  await expect(page.getByRole('heading', { name: metric.name })).toBeVisible();
+  await expect(page.getByTestId(`${metric.name}-title`)).toBeVisible();
 
   await page.click(`[data-testid="${metric.name}-custom-metrics-menu"]`);
-  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await page.getByRole('menuitemradio', { name: 'Delete' }).click();
 
   await expect(page.locator('.ant-modal-header')).toContainText(metric.name);
 
