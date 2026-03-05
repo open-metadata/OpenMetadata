@@ -634,7 +634,9 @@ export const useAssetSelectionContent = ({
         />
       )}
 
-      {infoBannerText && <Alert showIcon message={infoBannerText} type="info" />}
+      {infoBannerText && (
+        <Alert showIcon message={infoBannerText} type="info" />
+      )}
 
       <div className="d-flex items-center gap-3">
         <div className="flex-1">

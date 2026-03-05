@@ -30,7 +30,8 @@ import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
-import { highlightSearchText } from '../../../utils/EntityUtils';
+import { TableColumnSearchSource } from '../../../interface/search.interface';
+import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
@@ -41,6 +42,7 @@ import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
+import { SourceType } from '../../SearchedData/SearchedData.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
@@ -74,6 +76,64 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const { tab } = useRequiredParams<{ tab: string }>();
     const { isTourOpen } = useTourProvider();
     const otherDetails = useMemo(() => {
+      if (source?.entityType === EntityType.TABLE_COLUMN) {
+        const columnSource = source as TableColumnSearchSource;
+        const columnDetails: ExtraInfo[] = [];
+
+        if (columnSource.dataType) {
+          columnDetails.push({
+            key: t('label.type'),
+            value: (
+              <Typography.Text className="font-medium">
+                {columnSource.dataTypeDisplay ?? columnSource.dataType}
+              </Typography.Text>
+            ),
+          });
+        }
+
+        if (columnSource.table) {
+          columnDetails.push({
+            key: t('label.table'),
+            value: (
+              <Link
+                className="text-primary no-underline truncate w-max-13 d-inline-block"
+                title={getEntityName(columnSource.table)}
+                to={searchClassBase.getEntityLink({
+                  ...columnSource.table,
+                  entityType: EntityType.TABLE,
+                } as SourceType)}>
+                {getEntityName(columnSource.table)}
+              </Link>
+            ),
+          });
+        }
+
+        if (columnSource.constraint) {
+          columnDetails.push({
+            key: t('label.constraint'),
+            value: (
+              <Typography.Text className="font-medium">
+                {columnSource.constraint}
+              </Typography.Text>
+            ),
+          });
+        }
+
+        columnDetails.push({
+          key: 'Owner',
+          value: (
+            <OwnerLabel
+              avatarSize={18}
+              isCompactView={false}
+              owners={(columnSource?.owners as EntityReference[]) ?? []}
+              showLabel={false}
+            />
+          ),
+        });
+
+        return columnDetails;
+      }
+
       const tierValue = isString(source.tier)
         ? source.tier
         : source.tier && (
@@ -83,24 +143,31 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             />
           );
 
-      const _otherDetails: ExtraInfo[] = [
-        ...(source?.domains && source.domains.length > 0
+      const shouldShowDomainField = !searchClassBase
+        .getListOfEntitiesWithoutDomain()
+        .includes(source?.entityType ?? '');
+
+      const emptyDomainInfo: ExtraInfo[] = shouldShowDomainField
+        ? [
+            {
+              key: 'Domain',
+              value: '',
+            },
+          ]
+        : [];
+
+      const domainInfo: ExtraInfo[] =
+        source?.domains && source.domains.length > 0
           ? [
               {
                 key: 'Domains',
                 value: <DomainDisplay domains={source.domains} />,
               },
             ]
-          : !searchClassBase
-              .getListOfEntitiesWithoutDomain()
-              .includes(source?.entityType ?? '')
-          ? [
-              {
-                key: 'Domain',
-                value: '',
-              },
-            ]
-          : []),
+          : emptyDomainInfo;
+
+      const _otherDetails: ExtraInfo[] = [
+        ...domainInfo,
 
         {
           key: 'Owner',
@@ -114,16 +181,16 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           ),
         },
 
-        ...(!searchClassBase
+        ...(searchClassBase
           .getListOfEntitiesWithoutTier()
           .includes((source?.entityType ?? '') as EntityType)
-          ? [
+          ? []
+          : [
               {
                 key: 'Tier',
                 value: tierValue,
               },
-            ]
-          : []),
+            ]),
 
         ...('usageSummary' in source
           ? [
@@ -160,6 +227,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           if (source.style?.iconURL) {
             return (
               <img
+                alt={source.entityType}
                 className="align-middle m-r-xs object-contain"
                 data-testid="icon"
                 height={24}
@@ -169,7 +237,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             );
           }
 
-          return;
+          return null;
         }
 
         return (
@@ -179,7 +247,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         );
       }
 
-      return;
+      return null;
     }, [source, showEntityIcon]);
 
     const entityLink = useMemo(
@@ -341,7 +409,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             {matches.map((data, i) => (
               <span className="m-l-xs" key={uniqueId()}>
                 {`${data.value} ${t('label.in-lowercase')} 
-                ${startCase(data.key)}${i !== matches.length - 1 ? ',' : ''}`}
+                ${startCase(data.key)}${i === matches.length - 1 ? '' : ','}`}
               </span>
             ))}
           </div>

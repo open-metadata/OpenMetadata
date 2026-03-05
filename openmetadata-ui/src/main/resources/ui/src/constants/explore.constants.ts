@@ -84,6 +84,26 @@ export const tagSortingFields = [
   },
 ];
 
+export const columnSortingFields: SortingField[] = [
+  {
+    name: 'label.data-type',
+    value: 'dataType',
+  },
+  {
+    name: 'label.table',
+    value: 'table.name.keyword',
+  },
+  {
+    name: 'label.name',
+    value: 'displayName.keyword',
+  },
+  { name: 'label.relevance', value: '_score' },
+  {
+    name: 'label.last-updated',
+    value: 'updatedAt',
+  },
+];
+
 export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'owner.displayName',
   'tags.tagFQN',

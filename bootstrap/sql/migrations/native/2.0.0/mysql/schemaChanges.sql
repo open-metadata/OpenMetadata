@@ -1,0 +1,2 @@
+-- Add tableColumn search settings configuration for column search support
+-- No schema changes required - this migration updates search settings via Java code

@@ -71,6 +71,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
               String resource = invocation.getArgument(0);
               return resource.toLowerCase();
             });
+    when(mockSearchRepository.getChildIndexAliases(anyString()))
+        .thenReturn(Collections.emptyList());
     Entity.setSearchRepository(mockSearchRepository);
 
     mockSubjectContext = mock(SubjectContext.class);
@@ -1320,6 +1322,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -1373,6 +1377,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -1414,6 +1420,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -1424,5 +1432,65 @@ class ElasticSearchRBACConditionEvaluatorTest {
           generatedQuery.contains("must_not") && generatedQuery.contains("match_all"),
           "Query should result in match_nothing since user doesn't have Admin role");
     }
+  }
+
+  @Test
+  void testAllowOnTableIncludesChildAliasesInIndexFilter() {
+    SearchRepository mockRepo = mock(SearchRepository.class);
+    when(mockRepo.getIndexOrAliasName(anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+    when(mockRepo.getChildIndexAliases(anyString())).thenReturn(Collections.emptyList());
+    when(mockRepo.getChildIndexAliases("table")).thenReturn(List.of("column"));
+    Entity.setSearchRepository(mockRepo);
+
+    setupMockPolicies(
+        List.of(""),
+        "ALLOW",
+        List.of(List.of("table")),
+        List.of(List.of(MetadataOperation.VIEW_ALL)));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[?(@.terms._index[?(@ == 'table')])]",
+        "Allow policy should include 'table' in _index filter");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[?(@.terms._index[?(@ == 'column')])]",
+        "Allow policy should include 'column' (child of table) in _index filter");
+  }
+
+  @Test
+  void testDenyOnTableIncludesChildAliasesInIndexFilter() {
+    SearchRepository mockRepo = mock(SearchRepository.class);
+    when(mockRepo.getIndexOrAliasName(anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+    when(mockRepo.getChildIndexAliases(anyString())).thenReturn(Collections.emptyList());
+    when(mockRepo.getChildIndexAliases("table")).thenReturn(List.of("column"));
+    Entity.setSearchRepository(mockRepo);
+
+    setupMockPolicies(
+        List.of(""),
+        "DENY",
+        List.of(List.of("table")),
+        List.of(List.of(MetadataOperation.VIEW_ALL)));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[*].bool.must[?(@.terms._index[?(@ == 'table')])]",
+        "Deny policy should include 'table' in must_not _index filter");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[*].bool.must[?(@.terms._index[?(@ == 'column')])]",
+        "Deny policy should include 'column' (child of table) in must_not _index filter");
   }
 }

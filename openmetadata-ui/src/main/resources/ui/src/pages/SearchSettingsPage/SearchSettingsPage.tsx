@@ -128,9 +128,9 @@ const SearchSettingsPage = () => {
           ...searchConfig,
           globalSettings: {
             ...searchConfig.globalSettings,
-            ...(enabled !== undefined
-              ? { [field ?? 'enableAccessControl']: enabled }
-              : { [field as PropertyKey]: value }),
+            ...(enabled === undefined
+              ? { [field as PropertyKey]: value }
+              : { [field ?? 'enableAccessControl']: enabled }),
           },
         },
       };

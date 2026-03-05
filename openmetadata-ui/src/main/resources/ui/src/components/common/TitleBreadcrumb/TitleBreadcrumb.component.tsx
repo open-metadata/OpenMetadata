@@ -123,7 +123,10 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                 ) : null}
                 {index < titleLinks.length - 1 && !noLink ? (
                   <>
-                    <Link className={classes} to={link.url}>
+                    <Link
+                      className={classes}
+                      style={{ maxWidth }}
+                      to={link.url}>
                       {link.name}
                     </Link>
                     {useCustomArrow ? (

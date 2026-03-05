@@ -40,6 +40,7 @@ export const ENTITY_PATH_TO_SEARCH_INDEX: Record<string, SearchIndex> = {
   file: SearchIndex.FILE_SEARCH_INDEX,
   spreadsheet: SearchIndex.SPREADSHEET_SEARCH_INDEX,
   worksheet: SearchIndex.WORKSHEET_SEARCH_INDEX,
+  tableColumn: SearchIndex.COLUMN,
 };
 
 export const globalSettings: Property[] = [
