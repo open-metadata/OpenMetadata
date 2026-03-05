@@ -482,9 +482,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               .locator('[data-testid="tag-select-search-bar"]')
               .fill('PersonalData.SpecialCategory');
             await searchTag;
-            await waitForAllLoadersToDisappear(page);
 
             const tagOption = page.getByTitle('SpecialCategory');
+            await tagOption.waitFor({ state: 'visible' });
             await tagOption.click();
 
             const updateResponse = page.waitForResponse(
@@ -603,9 +603,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await searchBar.fill(
               EntityDataClass.glossaryTerm1.responseData.displayName
             );
-
-            // Wait for loader to disappear after search
-            await waitForAllLoadersToDisappear(page);
 
             // Wait for term option to be visible before clicking
             const termOption = page.locator('.ant-list-item').filter({
