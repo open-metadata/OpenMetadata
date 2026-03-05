@@ -235,6 +235,22 @@ public class DistributedJobStatsAggregator {
       IndexJobStatus currentStatus = job.getStatus();
       IndexJobStatus previousStatus = lastNotifiedStatus.get();
 
+      // Set distributed metadata on context so listeners can include it in broadcasts
+      if (jobContext instanceof DistributedJobContext distributedContext) {
+        if (job.getServerStats() != null && !job.getServerStats().isEmpty()) {
+          distributedContext.setDistributedMetadata("serverStats", job.getServerStats());
+          distributedContext.setDistributedMetadata("serverCount", job.getServerStats().size());
+        }
+        if (serverStats != null) {
+          distributedContext.setDistributedMetadata("aggregatedServerStats", serverStats);
+        }
+        distributedContext.setDistributedMetadata("distributedJobId", job.getId().toString());
+        distributedContext.setDistributedMetadata("progressPercent", job.getProgressPercent());
+        if (job.getEntityStats() != null) {
+          distributedContext.setDistributedMetadata("entityTypeCount", job.getEntityStats().size());
+        }
+      }
+
       // Always notify progress updates
       progressListener.onProgressUpdate(stats, jobContext);
 
