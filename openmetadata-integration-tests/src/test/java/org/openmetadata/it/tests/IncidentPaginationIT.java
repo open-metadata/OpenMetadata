@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
@@ -76,42 +77,54 @@ public class IncidentPaginationIT {
       createIncidentStatus(testCase);
     }
 
+    waitForDataIndexed();
+  }
+
+  private void waitForDataIndexed() throws Exception {
+    String firstFqn = testCases.get(0).getFullyQualifiedName();
+    final Instant[] lastRecreation = {Instant.MIN};
+
     await()
         .atMost(Duration.ofMinutes(3))
         .pollInterval(Duration.ofSeconds(5))
         .until(
             () -> {
               try {
-                ListParams params =
-                    new ListParams().withLimit(TEST_DATA_SIZE + 10).withLatest(true);
-                ListResponse<TestCaseResolutionStatus> response =
-                    client.testCaseResolutionStatuses().searchList(params);
-                return response.getPaging().getTotal() >= TEST_DATA_SIZE;
-              } catch (Exception e) {
-                return false;
-              }
-            });
-
-    String firstFqn = testCases.get(0).getFullyQualifiedName();
-    await()
-        .atMost(Duration.ofMinutes(2))
-        .pollInterval(Duration.ofSeconds(3))
-        .until(
-            () -> {
-              try {
-                ListParams params =
+                ListParams filteredParams =
                     new ListParams()
                         .withLimit(PAGE_SIZE)
                         .withOffset(0)
                         .withLatest(true)
                         .addFilter("testCaseFQN", firstFqn);
-                ListResponse<TestCaseResolutionStatus> response =
-                    client.testCaseResolutionStatuses().searchList(params);
-                return response.getData().size() == 1;
+                ListResponse<TestCaseResolutionStatus> filteredResponse =
+                    client.testCaseResolutionStatuses().searchList(filteredParams);
+                if (filteredResponse.getData().size() == 1) {
+                  ListParams globalParams =
+                      new ListParams().withLimit(TEST_DATA_SIZE + 10).withLatest(true);
+                  ListResponse<TestCaseResolutionStatus> globalResponse =
+                      client.testCaseResolutionStatuses().searchList(globalParams);
+                  return globalResponse.getPaging().getTotal() >= TEST_DATA_SIZE;
+                }
+                // Data not found — may have been lost during a concurrent search index rebuild.
+                // Re-create incident statuses at most once per minute to trigger re-indexing.
+                if (Duration.between(lastRecreation[0], Instant.now()).toSeconds() > 60) {
+                  recreateIncidentStatuses();
+                  lastRecreation[0] = Instant.now();
+                }
+                return false;
               } catch (Exception e) {
                 return false;
               }
             });
+  }
+
+  private void recreateIncidentStatuses() {
+    for (TestCase testCase : testCases) {
+      try {
+        createIncidentStatus(testCase);
+      } catch (Exception ignored) {
+      }
+    }
   }
 
   @Test
