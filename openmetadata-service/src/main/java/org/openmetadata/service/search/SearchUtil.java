@@ -80,16 +80,25 @@ public class SearchUtil {
   public static boolean isServiceIndex(String indexName) {
     return switch (indexName) {
       case "api_service_search_index",
+          Entity.API_SERVICE,
           "mlmodel_service_search_index",
+          "mlModelService",
           "database_service_search_index",
+          Entity.DATABASE_SERVICE,
           "messaging_service_index",
+          Entity.MESSAGING_SERVICE,
           "dashboard_service_index",
+          Entity.DASHBOARD_SERVICE,
           "pipeline_service_index",
+          Entity.PIPELINE_SERVICE,
           "storage_service_index",
+          Entity.STORAGE_SERVICE,
           "search_service_index",
+          Entity.SEARCH_SERVICE,
           "security_service_index",
           "metadata_service_index",
-          "drive_service_index" -> true;
+          "drive_service_index",
+          Entity.DRIVE_SERVICE -> true;
       default -> false;
     };
   }

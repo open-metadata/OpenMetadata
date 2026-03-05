@@ -38,7 +38,10 @@ import {
   SearchSuggestions,
 } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { EntityType, FqnPart } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
+import {
+  SearchIndex,
+  SEARCH_INDEX_PHYSICAL_NAME,
+} from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import { ElasticsearchQuery } from './QueryBuilderUtils';
@@ -283,11 +286,14 @@ export const filterOptionsByIndex = (
   options: Array<Option>,
   searchIndex: SearchIndex,
   maxItemsPerType = 5
-) =>
-  options
-    .filter((option) => option._index.includes(searchIndex))
+) => {
+  const physicalName = SEARCH_INDEX_PHYSICAL_NAME[searchIndex];
+
+  return options
+    .filter((option) => physicalName && option._index === physicalName)
     .map((option) => option._source)
     .slice(0, maxItemsPerType);
+};
 
 export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
   const commonAssets: Record<string, EntityType> = {
