@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import { useTheme } from '@mui/material';
-import { Tag } from 'antd';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useCanvasEdgeRenderer } from '../../../hooks/useCanvasEdgeRenderer';
+import { useCanvasMouseEvents } from '../../../hooks/useCanvasMouseEvents';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { calculateEdgeMidpoints } from '../../../utils/EdgeMidpointUtils';
 import { clearEdgeStyleCache } from '../../../utils/EdgeStyleUtils';
 import { isPlaywrightEnv } from '../../../utils/PlaywrightUtils';
-import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
-import { getAbsolutePosition } from './PipelineEdgeButtons.component';
+import { getAbsolutePosition } from '../../../utils/ViewportUtils';
+import { CanvasButtonPopover } from './CanvasButtonPopover.component';
 
 export interface CanvasEdgeRendererProps {
   dqHighlightedEdges: Set<string>;
@@ -55,6 +55,8 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   >(null);
   const getButtonAtPointRef = useRef<typeof getButtonAtPoint | null>(null);
   const setHoveredButtonRef = useRef<typeof setHoveredButton | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isOverPopoverRef = useRef(false);
 
   useEffect(() => {
     onEdgeClickRef.current = onEdgeClick;
@@ -140,13 +142,17 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     return edges.find((edge) => edge.id === hoveredButton.edgeId);
   }, [hoveredButton, edges]);
 
-  const hoveredButtonPosition = useMemo(() => {
-    if (!hoveredButton) {
-      return null;
-    }
-
-    return getAbsolutePosition(hoveredButton.x, hoveredButton.y, viewport);
-  }, [hoveredButton, viewport]);
+  const { handleClick, handleMouseMove, handleMouseLeave } =
+    useCanvasMouseEvents({
+      containerRef,
+      getEdgeAtPointRef,
+      getButtonAtPointRef,
+      setHoveredButtonRef,
+      onEdgeClickRef,
+      onEdgeHoverRef,
+      hoverTimeoutRef,
+      isOverPopoverRef,
+    });
 
   // Attach listeners to the ReactFlow pane element — it sits on top of the
   // canvas and captures all pointer events before they reach us.
@@ -168,65 +174,6 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       return;
     }
 
-    const handleClick = (event: Event) => {
-      const mouseEvent = event as MouseEvent;
-      const rect = container.getBoundingClientRect();
-
-      const buttonData = getButtonAtPointRef.current?.(
-        mouseEvent.clientX,
-        mouseEvent.clientY,
-        rect
-      );
-
-      if (buttonData && mouseEvent.currentTarget === mouseEvent.target) {
-        onEdgeClickRef.current?.(buttonData.edge, mouseEvent);
-
-        return;
-      }
-
-      const edge = getEdgeAtPointRef.current?.(
-        mouseEvent.clientX,
-        mouseEvent.clientY,
-        rect
-      );
-
-      if (edge && mouseEvent.currentTarget === mouseEvent.target) {
-        onEdgeClickRef.current?.(edge, mouseEvent);
-      }
-    };
-
-    const handleMouseMove = (event: Event) => {
-      const mouseEvent = event as MouseEvent;
-      const rect = container.getBoundingClientRect();
-
-      const buttonData = getButtonAtPointRef.current?.(
-        mouseEvent.clientX,
-        mouseEvent.clientY,
-        rect
-      );
-
-      if (buttonData) {
-        setHoveredButtonRef.current?.(buttonData.button);
-        onEdgeHoverRef.current?.(null);
-
-        return;
-      }
-
-      setHoveredButtonRef.current?.(null);
-
-      const edge = getEdgeAtPointRef.current?.(
-        mouseEvent.clientX,
-        mouseEvent.clientY,
-        rect
-      );
-      onEdgeHoverRef.current?.(edge as Edge);
-    };
-
-    const handleMouseLeave = () => {
-      onEdgeHoverRef.current?.(null);
-      setHoveredButtonRef.current?.(null);
-    };
-
     pane.addEventListener('click', handleClick);
     pane.addEventListener('mousemove', handleMouseMove);
     pane.addEventListener('mouseleave', handleMouseLeave);
@@ -236,25 +183,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       pane.removeEventListener('mousemove', handleMouseMove);
       pane.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [isEditMode]);
-
-  const getPipelineStatusClass = (executionStatus?: string): string => {
-    if (!executionStatus) {
-      return '';
-    }
-
-    switch (executionStatus) {
-      case 'Successful':
-        return 'green';
-      case 'Failed':
-        return 'red';
-      case 'Pending':
-      case 'Skipped':
-        return 'amber';
-      default:
-        return '';
-    }
-  };
+  }, [isEditMode, handleClick, handleMouseMove, handleMouseLeave]);
 
   return (
     <div
@@ -291,37 +220,19 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
           />
         ) : null
       )}
-      {hoveredButton && hoveredEdge && hoveredButtonPosition && !isEditMode && (
-        <div
-          key={`popover-${hoveredButton.edgeId}`}
-          style={{
-            ...hoveredButtonPosition,
-            pointerEvents: 'none',
-            zIndex: 1000,
-          }}>
-          <EntityPopOverCard
-            defaultOpen
-            entityFQN={
-              hoveredEdge.data?.edge?.pipeline?.fullyQualifiedName ?? ''
-            }
-            entityType={hoveredEdge.data?.edge?.pipelineEntityType ?? ''}
-            extraInfo={
-              hoveredEdge.data?.edge?.pipeline?.pipelineStatus && (
-                <Tag
-                  className={getPipelineStatusClass(
-                    hoveredEdge.data.edge.pipeline.pipelineStatus
-                      .executionStatus
-                  )}>
-                  {
-                    hoveredEdge.data.edge.pipeline.pipelineStatus
-                      .executionStatus
-                  }
-                </Tag>
-              )
-            }>
-            <div style={{ width: '36px', height: '36px' }} />
-          </EntityPopOverCard>
-        </div>
+      {hoveredButton && hoveredEdge && !isEditMode && (
+        <CanvasButtonPopover
+          hoverTimeoutRef={hoverTimeoutRef}
+          hoveredButton={hoveredButton}
+          hoveredEdge={hoveredEdge}
+          isOverPopoverRef={isOverPopoverRef}
+          viewport={viewport}
+          onMouseLeave={() => {
+            isOverPopoverRef.current = false;
+            setHoveredButton(null);
+            onEdgeHoverRef.current?.(null);
+          }}
+        />
       )}
     </div>
   );
