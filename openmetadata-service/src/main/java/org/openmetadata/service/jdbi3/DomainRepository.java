@@ -271,6 +271,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Transaction
+  @Override
   protected BulkOperationResult bulkAssetsOperation(
       UUID entityId,
       String fromEntity,

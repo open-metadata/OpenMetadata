@@ -571,6 +571,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Transaction
+  @Override
   protected BulkOperationResult bulkAssetsOperation(
       UUID entityId,
       String fromEntity,
