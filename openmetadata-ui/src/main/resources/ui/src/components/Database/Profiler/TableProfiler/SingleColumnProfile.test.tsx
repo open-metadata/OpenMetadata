@@ -122,12 +122,6 @@ jest.mock('../../../Tag/TagsViewer/TagsViewer', () => {
   };
 });
 
-jest.mock('../../../common/DataPill/DataPill.styled', () => ({
-  DataPill: ({ children }: { children: React.ReactNode }) => (
-    <span data-testid="data-pill">{children}</span>
-  ),
-}));
-
 jest.mock('./ColumnSummary', () => {
   return function MockColumnSummary() {
     return <div data-testid="column-summary">Column Summary</div>;

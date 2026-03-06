@@ -175,6 +175,21 @@ public class McpSdkUpgradeTest {
   }
 
   @Test
+  void testServerCapabilitiesDoNotAdvertiseLogging() {
+    // The stateless MCP server has no handler for logging/setLevel.
+    // Advertising logging capability causes spec-compliant clients (e.g. VSCode)
+    // to call logging/setLevel, which fails with MethodNotFound.
+    McpSchema.ServerCapabilities capabilities =
+        McpSchema.ServerCapabilities.builder()
+            .tools(true)
+            .prompts(true)
+            .resources(true, true)
+            .build();
+
+    assertThat(capabilities.logging()).isNull();
+  }
+
+  @Test
   void testMcpUtilsGetPromptsLoadsPrompts() {
     // Test that McpUtils.getPrompts loads prompts from JSON file
     List<McpSchema.Prompt> prompts = McpUtils.getPrompts("json/data/mcp/prompts.json");
