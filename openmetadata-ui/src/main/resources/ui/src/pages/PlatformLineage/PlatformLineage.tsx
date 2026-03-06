@@ -69,7 +69,10 @@ import {
   getViewportForLineageExport,
 } from '../../utils/EntityLineageUtils';
 import { getOperationPermissions } from '../../utils/PermissionsUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
@@ -138,7 +141,7 @@ const PlatformLineage = () => {
         ];
 
         const response = await searchQuery({
-          query: value,
+          query: escapeESReservedCharacters(value),
           searchIndex: searchIndices,
           pageSize: PAGE_SIZE_BASE,
           queryFilter: getLineageEntityExclusionFilter(),
@@ -248,7 +251,8 @@ const PlatformLineage = () => {
             placement="top"
             title={t('label.export-as-type', {
               type: t('label.png-uppercase'),
-            })}>
+            })}
+          >
             <StyledIconButton size="large" onClick={handleExport}>
               <DownloadIcon />
             </StyledIconButton>
@@ -256,7 +260,8 @@ const PlatformLineage = () => {
           <StyledIconButton
             data-testid="lineage-config"
             size="large"
-            onClick={handleSettingsClick}>
+            onClick={handleSettingsClick}
+          >
             <SettingsOutlined />
           </StyledIconButton>
           <Tooltip
@@ -266,7 +271,8 @@ const PlatformLineage = () => {
               isFullScreen
                 ? t('label.exit-full-screen')
                 : t('label.full-screen-view')
-            }>
+            }
+          >
             <StyledIconButton
               size="large"
               onClick={() =>
@@ -276,7 +282,8 @@ const PlatformLineage = () => {
                     [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
                   }),
                 })
-              }>
+              }
+            >
               {isFullScreen ? <Minimize02 /> : <Expand05 />}
             </StyledIconButton>
           </Tooltip>

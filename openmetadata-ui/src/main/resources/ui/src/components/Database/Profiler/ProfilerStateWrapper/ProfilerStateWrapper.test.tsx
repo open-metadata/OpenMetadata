@@ -14,6 +14,10 @@ import { render, screen } from '@testing-library/react';
 import '../../../../test/unit/mocks/mui.mock';
 import ProfilerStateWrapper from './ProfilerStateWrapper.component';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Skeleton: () => <div data-testid="skeleton">Loading...</div>,
+}));
+
 // Mock ProfilerLatestValue component
 jest.mock('../ProfilerLatestValue/ProfilerLatestValue', () => {
   return jest.fn(() => (
@@ -90,7 +94,8 @@ describe('ProfilerStateWrapper', () => {
       <ProfilerStateWrapper
         isLoading={isLoading}
         profilerLatestValueProps={profilerLatestValueProps}
-        title={title}>
+        title={title}
+      >
         <div>
           <h1>Custom Header</h1>
           <p>Custom Paragraph</p>
