@@ -928,5 +928,5 @@ export const normalizeToArray = <T,>(value: T | T[]): T[] => {
     return value;
   }
 
-  return value ? [value] : [];
+  return value != null ? [value] : [];
 };

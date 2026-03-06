@@ -182,12 +182,16 @@ describe('Tests for CommonUtils', () => {
       expect(normalizeToArray('hello')).toEqual(['hello']);
     });
 
-    it('should return an empty array for an empty string', () => {
-      expect(normalizeToArray('')).toEqual([]);
+    it('should wrap an empty string in an array', () => {
+      expect(normalizeToArray('')).toEqual(['']);
     });
 
-    it('should return an empty array for 0', () => {
-      expect(normalizeToArray(0)).toEqual([]);
+    it('should wrap 0 in an array', () => {
+      expect(normalizeToArray(0)).toEqual([0]);
+    });
+
+    it('should wrap false in an array', () => {
+      expect(normalizeToArray(false)).toEqual([false]);
     });
 
     it('should wrap a non-empty number in an array', () => {
