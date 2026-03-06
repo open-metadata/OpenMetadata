@@ -74,7 +74,7 @@ const Lineage = ({
     onColumnEdgeRemove,
     dqHighlightedEdges,
   } = useLineageProvider();
-  const { isEditMode, setIsCreatingEdge } = useLineageStore();
+  const { isEditMode, setIsCreatingEdge, isDQEnabled } = useLineageStore();
 
   const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault();
@@ -134,6 +134,11 @@ const Lineage = ({
   const memoizedEdgeTypes = useMemo(() => ({}), []);
 
   const memoizedEdges = useMemo(() => [], []);
+  const memoizedDQHighlightedEdges = useMemo(
+    () =>
+      isDQEnabled ? dqHighlightedEdges ?? new Set<string>() : new Set<string>(),
+    [dqHighlightedEdges, isDQEnabled]
+  );
 
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.
@@ -202,7 +207,7 @@ const Lineage = ({
 
                 {/* Canvas based edge rendering to prevent DOM from becoming heavy */}
                 <CanvasLayerWrapper
-                  dqHighlightedEdges={dqHighlightedEdges ?? new Set<string>()}
+                  dqHighlightedEdges={memoizedDQHighlightedEdges}
                   hoverEdge={hoveredEdge}
                   onEdgeClick={handleCanvasEdgeClick}
                   onEdgeHover={handleCanvasEdgeHover}

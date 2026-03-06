@@ -36,8 +36,8 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
   onMouseLeave,
 }) => {
   const position = getAbsolutePosition(
-    hoveredButton.x,
-    hoveredButton.y,
+    hoveredButton.x - hoveredButton.width / 2,
+    hoveredButton.y - hoveredButton.height / 2,
     viewport
   );
 
