@@ -292,13 +292,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         if (onColumnsUpdate) {
           onColumnsUpdate(response.data);
         }
-      } catch {
-        // Fallback to existing data if fetch fails
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       } finally {
         setIsColumnDataLoading(false);
       }
     }
-  }, [column?.fullyQualifiedName, isOpen, entityType, tableFqn]);
+  }, [column?.fullyQualifiedName, isOpen, entityType, tableFqn, onColumnsUpdate]);
 
   const handleNestedColumnClick = useCallback(
     (nestedColumn: Column) => {
