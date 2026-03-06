@@ -60,17 +60,19 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private final ClientAuthenticator clientAuthenticator;
 
-  private final BearerAuthenticator bearerAuthenticator;
+  private volatile BearerAuthenticator bearerAuthenticator;
 
   private final ObjectMapper objectMapper;
 
-  private final URI resourceMetadataUrl;
+  private volatile URI resourceMetadataUrl;
 
   private final JwtFilter jwtFilter;
 
   private volatile List<String> allowedOrigins;
 
   private final OAuthAuthorizationServerProvider authProvider;
+
+  private final String mcpEndpoint;
 
   // In-memory rate limiter for client registration: max 10 registrations per IP per hour.
   // NOTE: MCP spec (RFC 7591) requires open client registration, so authentication is not applied.
@@ -103,6 +105,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     super(objectMapper, mcpEndpoint, contextExtractor);
     this.objectMapper = objectMapper;
     this.authProvider = authProvider;
+    this.mcpEndpoint = mcpEndpoint;
     LOG.info("Initializing OAuth transport with base URL: {}", baseUrl);
 
     // Create authenticators with audience validation
@@ -122,6 +125,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     metadata.setGrantTypesSupported(List.of("authorization_code", "refresh_token"));
     metadata.setTokenEndpointAuthMethodsSupported(List.of("client_secret_post"));
     metadata.setCodeChallengeMethodsSupported(List.of("S256"));
+    metadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
+    metadata.setRevocationEndpointAuthMethodsSupported(List.of("client_secret_post"));
 
     // Create Protected Resource metadata (RFC 9728) - MCP requirement
     this.resourceMetadataUrl =
@@ -162,10 +167,48 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       org.openmetadata.schema.api.security.AuthenticationConfiguration authConfig,
       org.openmetadata.schema.api.security.AuthorizerConfiguration authzConfig,
       org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig) {
-    if (mcpConfig != null && mcpConfig.getAllowedOrigins() != null) {
-      updateAllowedOrigins(mcpConfig.getAllowedOrigins());
-      LOG.info("Updated CORS origins from configuration reload: {}", mcpConfig.getAllowedOrigins());
+    if (mcpConfig != null) {
+      if (mcpConfig.getAllowedOrigins() != null) {
+        updateAllowedOrigins(mcpConfig.getAllowedOrigins());
+        LOG.info(
+            "Updated CORS origins from configuration reload: {}", mcpConfig.getAllowedOrigins());
+      }
+      if (mcpConfig.getBaseUrl() != null && !mcpConfig.getBaseUrl().isEmpty()) {
+        rebuildMetadata(mcpConfig.getBaseUrl());
+      }
     }
+  }
+
+  private void rebuildMetadata(String baseUrl) {
+    LOG.info("Rebuilding OAuth metadata with new base URL: {}", baseUrl);
+    List<String> supportedScopes = getSupportedScopesForProvider();
+
+    OAuthMetadata newMetadata = new OAuthMetadata();
+    newMetadata.setIssuer(URI.create(baseUrl + mcpEndpoint));
+    newMetadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
+    newMetadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
+    newMetadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
+    newMetadata.setScopesSupported(supportedScopes);
+    newMetadata.setResponseTypesSupported(List.of("code"));
+    newMetadata.setGrantTypesSupported(List.of("authorization_code", "refresh_token"));
+    newMetadata.setTokenEndpointAuthMethodsSupported(List.of("client_secret_post"));
+    newMetadata.setCodeChallengeMethodsSupported(List.of("S256"));
+    newMetadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
+    newMetadata.setRevocationEndpointAuthMethodsSupported(List.of("client_secret_post"));
+    metadataHandler.updateMetadata(newMetadata);
+
+    ProtectedResourceMetadata newResourceMetadata = new ProtectedResourceMetadata();
+    newResourceMetadata.setResource(URI.create(baseUrl + mcpEndpoint));
+    newResourceMetadata.setAuthorizationServers(List.of(URI.create(baseUrl + mcpEndpoint)));
+    newResourceMetadata.setScopesSupported(supportedScopes);
+    newResourceMetadata.setResourceDocumentation(URI.create(baseUrl + "/docs"));
+    protectedResourceMetadataHandler.updateMetadata(newResourceMetadata);
+
+    this.resourceMetadataUrl =
+        URI.create(baseUrl + mcpEndpoint + "/.well-known/oauth-protected-resource");
+    this.bearerAuthenticator = new BearerAuthenticator(authProvider, baseUrl);
+
+    LOG.info("OAuth metadata rebuilt with base URL: {}", baseUrl);
   }
 
   /**
@@ -385,6 +428,16 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       // Handle other POST requests using the parent class
       super.doPost(request, response);
     }
+  }
+
+  public void handleMetadata(HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
+    handleMetadataRequest(request, response);
+  }
+
+  public void handleProtectedResourceMetadata(
+      HttpServletRequest request, HttpServletResponse response) throws IOException {
+    handleProtectedResourceMetadataRequest(request, response);
   }
 
   private void handleMetadataRequest(HttpServletRequest request, HttpServletResponse response)

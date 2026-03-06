@@ -5,12 +5,9 @@ import io.dropwizard.jetty.MutableServletContextHandler;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
-import jakarta.servlet.DispatcherType;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.jetty.ee10.servlet.FilterHolder;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
@@ -177,14 +174,18 @@ public class McpServer implements McpServerProvider {
       contextHandler.addServlet(ssoCallbackHolder, "/mcp/callback");
       LOG.info("Registered SSO callback endpoint at /mcp/callback");
 
-      // Add well-known filter at root level for OAuth discovery (RFC 8414)
-      OAuthWellKnownFilter wellKnownFilter = new OAuthWellKnownFilter();
-      contextHandler.addFilter(
-          new FilterHolder(wellKnownFilter),
-          "/*",
-          EnumSet.of(DispatcherType.REQUEST, DispatcherType.FORWARD));
-
-      LOG.info("OAuth well-known endpoints configured at root level for RFC 8414 discovery");
+      // Register well-known filter via Dropwizard's environment.servlets() API.
+      // This must use addFilter (not servlet registration) because the OpenMetadataAssetServlet
+      // at "/*" treats all extension-less paths as SPA routes and serves index.html,
+      // intercepting /.well-known/* before any exact-path servlet can handle it.
+      // Filters registered via environment.servlets() run BEFORE any servlet processing.
+      jakarta.servlet.FilterRegistration.Dynamic wellKnownFilter =
+          environment
+              .servlets()
+              .addFilter("oauth-well-known", new OAuthWellKnownFilter(statelessOauthTransport));
+      wellKnownFilter.addMappingForUrlPatterns(
+          java.util.EnumSet.of(jakarta.servlet.DispatcherType.REQUEST), false, "/.well-known/*");
+      LOG.info("OAuth well-known filter registered for /.well-known/* discovery paths");
     } catch (Exception ex) {
       LOG.error("Error adding stateless transport", ex);
     }

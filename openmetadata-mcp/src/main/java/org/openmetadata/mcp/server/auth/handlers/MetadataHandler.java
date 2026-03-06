@@ -8,9 +8,13 @@ import org.openmetadata.mcp.auth.OAuthMetadata;
  */
 public class MetadataHandler {
 
-  private final OAuthMetadata metadata;
+  private volatile OAuthMetadata metadata;
 
   public MetadataHandler(OAuthMetadata metadata) {
+    this.metadata = metadata;
+  }
+
+  public void updateMetadata(OAuthMetadata metadata) {
     this.metadata = metadata;
   }
 

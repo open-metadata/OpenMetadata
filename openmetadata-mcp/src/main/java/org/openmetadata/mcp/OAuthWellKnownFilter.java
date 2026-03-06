@@ -9,13 +9,21 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 
 /**
- * Filter to handle OAuth well-known endpoints at the root level.
- * Redirects requests to the appropriate MCP servlet endpoint.
+ * Filter to handle OAuth well-known endpoints at the root level. Directly delegates to the MCP
+ * transport provider's metadata handlers instead of forwarding, because the asset servlet's SPA
+ * routing intercepts forwarded requests.
  */
 @Slf4j
 public class OAuthWellKnownFilter implements Filter {
+
+  private final OAuthHttpStatelessServerTransportProvider transport;
+
+  public OAuthWellKnownFilter(OAuthHttpStatelessServerTransportProvider transport) {
+    this.transport = transport;
+  }
 
   @Override
   public void doFilter(
@@ -26,38 +34,22 @@ public class OAuthWellKnownFilter implements Filter {
     HttpServletResponse response = (HttpServletResponse) servletResponse;
     String path = request.getRequestURI();
 
-    LOG.debug("OAuthWellKnownFilter processing request: {}", path);
-
-    // Handle OAuth Authorization Server metadata discovery per RFC 8414
-    if (path.equals("/.well-known/oauth-authorization-server/mcp")
-        || path.equals("/.well-known/oauth-authorization-server")) {
-      // Forward to the MCP servlet's metadata endpoint
-      request
-          .getRequestDispatcher("/mcp/.well-known/oauth-authorization-server")
-          .forward(request, response);
+    if (path.equals("/.well-known/oauth-authorization-server")
+        || path.equals("/.well-known/oauth-authorization-server/mcp")
+        || path.equals("/.well-known/openid-configuration")
+        || path.equals("/.well-known/openid-configuration/mcp")) {
+      LOG.debug("Serving OAuth authorization server metadata for: {}", path);
+      transport.handleMetadata(request, response);
       return;
     }
 
-    if (path.equals("/.well-known/oauth-protected-resource/mcp")
-        || path.equals("/.well-known/oauth-protected-resource")) {
-      // Forward to the MCP servlet's metadata endpoint
-      request
-          .getRequestDispatcher("/mcp/.well-known/oauth-protected-resource")
-          .forward(request, response);
+    if (path.equals("/.well-known/oauth-protected-resource")
+        || path.equals("/.well-known/oauth-protected-resource/mcp")) {
+      LOG.debug("Serving OAuth protected resource metadata for: {}", path);
+      transport.handleProtectedResourceMetadata(request, response);
       return;
     }
 
-    // Handle OpenID Connect discovery (optional, but some clients try this)
-    if (path.equals("/.well-known/openid-configuration/mcp")
-        || path.equals("/.well-known/openid-configuration")) {
-      // Forward to the MCP servlet's metadata endpoint (same as OAuth)
-      request
-          .getRequestDispatcher("/mcp/.well-known/oauth-authorization-server")
-          .forward(request, response);
-      return;
-    }
-
-    // Continue with the filter chain for other requests
     filterChain.doFilter(servletRequest, servletResponse);
   }
 }

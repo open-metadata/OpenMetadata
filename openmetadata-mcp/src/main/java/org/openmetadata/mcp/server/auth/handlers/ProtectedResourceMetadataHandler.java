@@ -8,9 +8,13 @@ import org.openmetadata.mcp.auth.ProtectedResourceMetadata;
  */
 public class ProtectedResourceMetadataHandler {
 
-  private final ProtectedResourceMetadata metadata;
+  private volatile ProtectedResourceMetadata metadata;
 
   public ProtectedResourceMetadataHandler(ProtectedResourceMetadata metadata) {
+    this.metadata = metadata;
+  }
+
+  public void updateMetadata(ProtectedResourceMetadata metadata) {
     this.metadata = metadata;
   }
 
