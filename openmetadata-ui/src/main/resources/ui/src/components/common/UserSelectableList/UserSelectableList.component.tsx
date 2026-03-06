@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SmartToyOutlined } from '@mui/icons-material';
 import { Button, Popover, Tooltip } from 'antd';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
@@ -29,7 +30,9 @@ import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
+import { UserTag } from '../UserTag/UserTag.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
 
@@ -46,6 +49,7 @@ export const UserSelectableList = ({
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const botUserIds = useRef<Set<string>>(new Set());
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -60,10 +64,17 @@ export const UserSelectableList = ({
           searchIndex: SearchIndex.USER,
         });
 
-        const data = getEntityReferenceListFromEntities(
-          formatUsersResponse(res.hits.hits),
-          EntityType.USER
-        );
+        const users = formatUsersResponse(res.hits.hits);
+
+        if (includeBot) {
+          users.forEach((user) => {
+            if (user.isBot) {
+              botUserIds.current.add(user.id);
+            }
+          });
+        }
+
+        const data = getEntityReferenceListFromEntities(users, EntityType.USER);
 
         if (filterCurrentUser) {
           const user = data.find((user) => user.id === currentUser?.id);
@@ -83,6 +94,15 @@ export const UserSelectableList = ({
           after: after ?? undefined,
           ...(includeBot ? {} : { isBot: false }),
         });
+
+        if (includeBot) {
+          data.forEach((user) => {
+            if (user.isBot) {
+              botUserIds.current.add(user.id);
+            }
+          });
+        }
+
         const filterData = getEntityReferenceListFromEntities(
           data,
           EntityType.USER
@@ -113,11 +133,33 @@ export const UserSelectableList = ({
     [onUpdate]
   );
 
+  const botTagRenderer = useCallback(
+    (item: EntityReference) => (
+      <div className="d-flex items-center gap-2">
+        {botUserIds.current.has(item.id) && (
+          <Tooltip title={t('label.bot')}>
+            <SmartToyOutlined
+              data-testid="bot-indicator"
+              style={{ fontSize: 16, color: '#757575' }}
+            />
+          </Tooltip>
+        )}
+        <UserTag
+          avatarType="outlined"
+          id={item.name ?? ''}
+          name={getEntityName(item)}
+        />
+      </div>
+    ),
+    []
+  );
+
   return (
     <Popover
       destroyTooltipOnHide
       content={
         <SelectableList
+          customTagRenderer={includeBot ? botTagRenderer : undefined}
           fetchOptions={fetchOptions}
           multiSelect={multiSelect}
           searchPlaceholder={t('label.search-for-type', {
