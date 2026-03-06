@@ -28,9 +28,12 @@ import SupersetIngestionClass from '../../support/entity/ingestion/SupersetInges
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
+  getApiContext,
   INVALID_NAMES,
   redirectToHomePage,
 } from '../../utils/common';
+import { visitServiceDetailsPage } from '../../utils/service';
+import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const table = new TableClass();
@@ -201,3 +204,182 @@ test.describe('Service Ingestion Pagination', () => {
     await validateIngestionPipelineLimitSize;
   });
 });
+
+const TOTAL_RUNS = 5;
+const mysqlService = new MysqlIngestionClass({
+  shouldTestConnection: false,
+  shouldAddIngestion: false,
+});
+let metadataPipeline: { id: string; name: string; fullyQualifiedName: string };
+
+test.describe.serial(
+  'Agent Run History - Last 5 Runs Visible',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  () => {
+    test.beforeEach('Navigate to database services', async ({ page }) => {
+      await redirectToHomePage(page);
+      await settingClick(
+        page,
+        mysqlService.category as unknown as SettingOptionsType
+      );
+    });
+
+    test('Create MySQL service and ingest metadata', async ({ page }) => {
+      test.slow();
+      await mysqlService.createService(page);
+
+      const { apiContext } = await getApiContext(page);
+
+      const serviceResponse = await apiContext
+        .get(
+          `/api/v1/services/databaseServices/name/${encodeURIComponent(
+            mysqlService.getServiceName()
+          )}`
+        )
+        .then((res) => res.json());
+
+      const createPipelineResponse = await apiContext.post(
+        '/api/v1/services/ingestionPipelines',
+        {
+          data: {
+            airflowConfig: {},
+            loggerLevel: 'INFO',
+            name: `${mysqlService.getServiceName()}-metadata`,
+            pipelineType: 'metadata',
+            service: {
+              id: serviceResponse.id,
+              type: 'databaseService',
+            },
+            sourceConfig: {
+              config: {
+                type: 'DatabaseMetadata',
+              },
+            },
+          },
+        }
+      );
+
+      expect(createPipelineResponse.status()).toBe(201);
+      const createdPipeline = await createPipelineResponse.json();
+
+      await apiContext.post(
+        `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
+      );
+
+      metadataPipeline = {
+        id: createdPipeline.id,
+        name: createdPipeline.name,
+        fullyQualifiedName: createdPipeline.fullyQualifiedName,
+      };
+    });
+
+    /**
+     * Tests that all 5 run statuses are visible in the UI after running
+     * the metadata agent 5 times.
+     * @description Validates the fix for #25800 — agent status shows true last 5 runs
+     */
+    test('Run metadata agent 5 times and verify all run statuses are visible', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext } = await getApiContext(page);
+
+      const pipeline = metadataPipeline;
+
+      expect(pipeline).toBeDefined();
+
+      for (let i = 0; i < TOTAL_RUNS; i++) {
+        await test.step(`Trigger and wait for run ${i + 1}`, async () => {
+          await expect
+            .poll(
+              async () => {
+                const triggerResponse = await apiContext.post(
+                  `/api/v1/services/ingestionPipelines/trigger/${encodeURIComponent(
+                    pipeline.id
+                  )}`
+                );
+
+                return triggerResponse.status();
+              },
+              {
+                message: `Wait for pipeline trigger to succeed for run ${
+                  i + 1
+                }`,
+                timeout: 60_000,
+                intervals: [5_000, 10_000],
+              }
+            )
+            .toBe(200);
+
+          await expect
+            .poll(
+              async () => {
+                try {
+                  const statusResponse = await makeRetryRequest({
+                    url: `/api/v1/services/ingestionPipelines/${encodeURIComponent(
+                      pipeline.fullyQualifiedName
+                    )}/pipelineStatus?limit=1`,
+                    page,
+                  });
+
+                  return statusResponse.data[0]?.pipelineState;
+                } catch {
+                  return 'running';
+                }
+              },
+              {
+                message: `Wait for run ${i + 1} to complete`,
+                timeout: 180_000,
+                intervals: [30_000, 15_000, 5_000],
+              }
+            )
+            .toEqual(expect.stringMatching(/(success|failed|partialSuccess)/));
+        });
+      }
+
+      await test.step(
+        'Verify all 5 run statuses are visible in the UI',
+        async () => {
+          await visitServiceDetailsPage(
+            page,
+            {
+              type: mysqlService.category,
+              name: mysqlService.getServiceName(),
+            },
+            false,
+            false
+          );
+          await page.waitForSelector('[data-testid="data-assets-header"]');
+          await page.getByTestId('agents').click();
+
+          const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+          if (await metadataTab.isVisible()) {
+            await metadataTab.click();
+          }
+
+          await page
+            .getByLabel('agents')
+            .getByTestId('loader')
+            .waitFor({ state: 'detached' });
+
+          const pipelineRow = page.locator(
+            `[data-row-key*="${pipeline.name}"]`
+          );
+
+          await expect(pipelineRow).toBeVisible();
+
+          const runStatusBadges = pipelineRow.getByTestId('pipeline-status');
+
+          await expect(runStatusBadges).toHaveCount(TOTAL_RUNS);
+
+          const latestBadge = runStatusBadges.last();
+
+          await expect(latestBadge).toContainText(
+            /(Success|Failed|PartialSuccess)/i
+          );
+        }
+      );
+    });
+  }
+);
