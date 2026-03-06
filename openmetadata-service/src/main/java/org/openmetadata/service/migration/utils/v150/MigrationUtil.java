@@ -326,7 +326,7 @@ public class MigrationUtil {
                 List.of(
                     new LineChartMetric()
                         .withFormula(
-                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")))
+                            "(count(k='id.keyword',q='ownerName: *')/count(k='id.keyword'))*100")))
             .withGroupBy("entityType.keyword")
             .withExcludeGroups(excludeList));
 
@@ -349,7 +349,7 @@ public class MigrationUtil {
                 List.of(
                     new LineChartMetric()
                         .withFormula(
-                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")))
+                            "(count(k='id.keyword',q='ownerName: *')/count(k='id.keyword'))*100")))
             .withGroupBy("service.name.keyword"));
 
     // total data assets by tier
@@ -388,7 +388,7 @@ public class MigrationUtil {
                 List.of(
                     new SummaryChartMetric()
                         .withFormula(
-                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
+                            "(count(k='id.keyword',q='ownerName: *')/count(k='id.keyword'))*100")
                         .withFilter(exclude_tags_filter))));
 
     // total data assets with tier summary card
@@ -421,7 +421,7 @@ public class MigrationUtil {
                 List.of(
                     new LineChartMetric()
                         .withFormula(
-                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
+                            "(count(k='id.keyword',q='ownerName: *')/count(k='id.keyword'))*100")
                         .withFilter(exclude_tags_filter))));
     ;
 
@@ -442,7 +442,7 @@ public class MigrationUtil {
             .withMetrics(
                 List.of(
                     new LineChartMetric()
-                        .withFormula("count(k='id.keyword',q='owners.name.keyword: *')")
+                        .withFormula("count(k='id.keyword',q='ownerName: *')")
                         .withFilter(exclude_tags_filter))));
   }
 }

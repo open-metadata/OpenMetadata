@@ -87,9 +87,7 @@ public class QueryFilterBuilder {
     ArrayNode mustArray = boolNode.putArray(MUST_KEY);
 
     // Filter to only include assets owned by teams (not users)
-    ObjectNode ownerTypeNode = MAPPER.createObjectNode();
-    ownerTypeNode.putObject(TERM_KEY).put("owners.type", "team");
-    mustArray.add(ownerTypeNode);
+    addNestedTermCondition(mustArray, "owners", "owners.type", "team");
 
     // Exclude deleted assets
     ObjectNode deletedNode = MAPPER.createObjectNode();
@@ -179,6 +177,17 @@ public class QueryFilterBuilder {
     ObjectNode matchNode = MAPPER.createObjectNode();
     matchNode.putObject(MATCH_KEY).put(fieldPath, fieldValue);
     mustArray.add(matchNode);
+  }
+
+  private static void addNestedTermCondition(
+      ArrayNode mustArray, String path, String fieldPath, String fieldValue) {
+    ObjectNode nestedNode = MAPPER.createObjectNode();
+    ObjectNode nestedInner = nestedNode.putObject("nested");
+    nestedInner.put("path", path);
+    ObjectNode termNode = MAPPER.createObjectNode();
+    termNode.putObject(TERM_KEY).put(fieldPath, fieldValue);
+    nestedInner.set(QUERY_KEY, termNode);
+    mustArray.add(nestedNode);
   }
 
   private static void addNestedMatchCondition(

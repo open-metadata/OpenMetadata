@@ -272,12 +272,12 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[1].bool.should[0].bool.must_not[?(@.term['owners.id'])]",
+        "$.bool.must[1].bool.should[0].bool.must_not[?(@.nested.query.term['owners.id'])]",
         "owners.id in must_not");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[1].bool.should[1].bool.must_not[?(@.exists.field=='owners.id')]",
+        "$.bool.must[1].bool.should[1].bool.must_not[?(@.nested.query.exists.field=='owners.id')]",
         "no owner must_not clause");
 
     ObjectMapper objectMapper = new ObjectMapper();
@@ -453,7 +453,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.must[?(@.nested.query.term['owners.id'].value=='"
+            + mockUser.getId().toString()
+            + "')]",
         "owner.id");
     assertFieldExists(
         jsonContext,
@@ -557,7 +559,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.must_not[0].bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal");
     assertFieldExists(
-        jsonContext, "$.bool.must_not[0].bool.should[?(@.term['owners.id'])]", "owners.id");
+        jsonContext,
+        "$.bool.must_not[0].bool.should[?(@.nested.query.term['owners.id'])]",
+        "owners.id");
   }
 
   @Test
@@ -674,7 +678,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "must_not for matchAnyTag 'Restricted'");
 
     assertFieldExists(
-        jsonContext, "$.bool.should[?(@.bool.must[?(@.term['owners.id'])])]", "owners.id");
+        jsonContext,
+        "$.bool.should[?(@.bool.must[?(@.nested.query.term['owners.id'])])]",
+        "owners.id");
   }
 
   @Test
@@ -771,7 +777,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     // Ownership (isOwner condition) should be in `should`
     assertFieldExists(
-        jsonContext, "$.bool.must[1].bool.should[?(@.term['owners.id'])]", "owners.id");
+        jsonContext,
+        "$.bool.must[1].bool.should[?(@.nested.query.term['owners.id'])]",
+        "owners.id");
   }
 
   @Test
@@ -792,7 +800,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "must_not for hasDomain");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.must[?(@.nested.query.term['owners.id'].value=='"
+            + mockUser.getId().toString()
+            + "')]",
         "owners.id");
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
   }
@@ -1098,16 +1108,16 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['owners.id'].value=='" + userId + "')]",
+        "$.bool.should[?(@.nested.query.term['owners.id'].value=='" + userId + "')]",
         "The query should allow resources where the user is the owner");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['owners.id'].value=='" + teamId1 + "')]",
+        "$.bool.should[?(@.nested.query.term['owners.id'].value=='" + teamId1 + "')]",
         "The query should allow resources where TeamA is the owner");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['owners.id'].value=='" + teamId2 + "')]",
+        "$.bool.should[?(@.nested.query.term['owners.id'].value=='" + teamId2 + "')]",
         "The query should allow resources where TeamB is the owner");
   }
 
