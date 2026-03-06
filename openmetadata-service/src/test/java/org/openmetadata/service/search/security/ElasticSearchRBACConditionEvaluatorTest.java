@@ -453,7 +453,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.nested.query.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.must[?(@.nested.query.term['owners.id'].value=='"
+            + mockUser.getId().toString()
+            + "')]",
         "owner.id");
     assertFieldExists(
         jsonContext,
@@ -557,7 +559,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.must_not[0].bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal");
     assertFieldExists(
-        jsonContext, "$.bool.must_not[0].bool.should[?(@.nested.query.term['owners.id'])]", "owners.id");
+        jsonContext,
+        "$.bool.must_not[0].bool.should[?(@.nested.query.term['owners.id'])]",
+        "owners.id");
   }
 
   @Test
@@ -674,7 +678,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "must_not for matchAnyTag 'Restricted'");
 
     assertFieldExists(
-        jsonContext, "$.bool.should[?(@.bool.must[?(@.nested.query.term['owners.id'])])]", "owners.id");
+        jsonContext,
+        "$.bool.should[?(@.bool.must[?(@.nested.query.term['owners.id'])])]",
+        "owners.id");
   }
 
   @Test
@@ -771,7 +777,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     // Ownership (isOwner condition) should be in `should`
     assertFieldExists(
-        jsonContext, "$.bool.must[1].bool.should[?(@.nested.query.term['owners.id'])]", "owners.id");
+        jsonContext,
+        "$.bool.must[1].bool.should[?(@.nested.query.term['owners.id'])]",
+        "owners.id");
   }
 
   @Test
@@ -792,7 +800,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "must_not for hasDomain");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.nested.query.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.must[?(@.nested.query.term['owners.id'].value=='"
+            + mockUser.getId().toString()
+            + "')]",
         "owners.id");
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
   }
