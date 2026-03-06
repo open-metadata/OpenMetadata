@@ -149,14 +149,7 @@ public class HtmlTemplates {
               <h1>Welcome to OpenMetadata</h1>
               <p class="subtitle">%s is requesting access to your account</p>
               %s
-              <form method="POST" action="/mcp/authorize">
-                  <input type="hidden" name="client_id" value="%s">
-                  <input type="hidden" name="redirect_uri" value="%s">
-                  <input type="hidden" name="state" value="%s">
-                  <input type="hidden" name="code_challenge" value="%s">
-                  <input type="hidden" name="scopes" value="%s">
-                  <input type="hidden" name="response_type" value="code">
-                  <input type="hidden" name="code_challenge_method" value="S256">
+              <form method="POST" action="/mcp/login">
                   <input type="hidden" name="csrf_token" value="%s">
 
                   <label for="username">Email <span class="required">*</span></label>
@@ -342,15 +335,7 @@ public class HtmlTemplates {
       </html>
       """;
 
-  public static String generateLoginForm(
-      String clientName,
-      String errorMessage,
-      String clientId,
-      String redirectUri,
-      String state,
-      String codeChallenge,
-      String scopes,
-      String csrfToken) {
+  public static String generateLoginForm(String clientName, String errorMessage, String csrfToken) {
 
     String errorHtml =
         errorMessage != null && !errorMessage.isEmpty()
@@ -358,23 +343,9 @@ public class HtmlTemplates {
             : "";
 
     String safeClientName = escapeHtml(clientName != null ? clientName : "An application");
-    String safeClientId = escapeHtml(clientId != null ? clientId : "");
-    String safeRedirectUri = escapeHtml(redirectUri != null ? redirectUri : "");
-    String safeState = escapeHtml(state != null ? state : "");
-    String safeCodeChallenge = escapeHtml(codeChallenge != null ? codeChallenge : "");
-    String safeScopes = escapeHtml(scopes != null ? scopes : "");
     String safeCsrfToken = escapeHtml(csrfToken != null ? csrfToken : "");
 
-    return String.format(
-        LOGIN_FORM_TEMPLATE,
-        safeClientName,
-        errorHtml,
-        safeClientId,
-        safeRedirectUri,
-        safeState,
-        safeCodeChallenge,
-        safeScopes,
-        safeCsrfToken);
+    return String.format(LOGIN_FORM_TEMPLATE, safeClientName, errorHtml, safeCsrfToken);
   }
 
   private static final String SSO_SUCCESS_TEMPLATE =

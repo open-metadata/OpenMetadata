@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -31,7 +30,6 @@ import org.openmetadata.mcp.auth.exception.AuthorizeException;
 import org.openmetadata.mcp.auth.exception.RegistrationException;
 import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
-import org.openmetadata.mcp.server.auth.html.HtmlTemplates;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
@@ -43,12 +41,10 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.auth.BasicAuthenticator;
-import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
@@ -85,10 +81,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   private static final String SESSION_MCP_REDIRECT_URI = "mcp.redirect.uri";
   private static final String SESSION_MCP_STATE = "mcp.state";
   private static final String SESSION_MCP_SCOPES = "mcp.scopes";
-  private static final String SESSION_MCP_LOGIN_ERROR = "mcp.login.error";
-  private static final String SESSION_MCP_CSRF_TOKEN = "mcp.csrf.token";
-  private static final String SESSION_MCP_AUTH_METHOD = "mcp.auth.method";
-
   private static final int AUTH_CODE_EXPIRY_SECONDS = 600;
   private static final long JWT_EXPIRY_SECONDS = 3600L;
   private static final long REFRESH_TOKEN_EXPIRY_DAYS = 30L;
@@ -122,6 +114,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     this.revocationHandler = new RevocationHandler(tokenRepository);
 
     LOG.info("Initialized UserSSOOAuthProvider with unified auth (SSO + Basic Auth)");
+  }
+
+  public BasicAuthenticator getBasicAuthenticator() {
+    return basicAuthenticator;
   }
 
   /**
@@ -398,220 +394,46 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     try {
       LOG.info("Starting Basic Auth authorization flow for client: {}", client.getClientId());
 
-      HttpSession session = getHttpSession(currentRequest.get(), true);
-
-      session.setAttribute(SESSION_MCP_PKCE_CHALLENGE, params.getCodeChallenge());
-      session.setAttribute(SESSION_MCP_PKCE_METHOD, "S256");
-      session.setAttribute(SESSION_MCP_CLIENT_ID, client.getClientId());
-      session.setAttribute(SESSION_MCP_REDIRECT_URI, params.getRedirectUri().toString());
-      session.setAttribute(SESSION_MCP_STATE, params.getState());
-      session.setAttribute(
-          SESSION_MCP_SCOPES,
-          params.getScopes() != null ? String.join(" ", params.getScopes()) : "");
-      session.setAttribute(SESSION_MCP_AUTH_METHOD, "basic");
-
-      LOG.debug("Stored PKCE parameters in session for Basic Auth: {}", session.getId());
-
-      if ("POST".equalsIgnoreCase(currentRequest.get().getMethod())) {
-        return handleBasicAuthLogin(client, params, session);
-      } else {
-        return displayLoginForm(session, client);
+      // Validate redirect URI against registered URIs
+      URI validatedRedirectUri;
+      try {
+        validatedRedirectUri = client.validateRedirectUri(params.getRedirectUri());
+      } catch (Exception e) {
+        LOG.error(
+            "Redirect URI validation failed for client {}: {}",
+            client.getClientId(),
+            e.getMessage());
+        throw new AuthorizeException(
+            "invalid_request",
+            "Redirect URI '" + params.getRedirectUri() + "' is not registered for this client.");
       }
+
+      // Store PKCE params in DB (same as SSO flow — survives cross-domain redirects)
+      List<String> scopes =
+          params.getScopes() != null ? params.getScopes() : List.of("openid", "profile", "email");
+      String authRequestId =
+          pendingAuthRepository.createPendingRequest(
+              client.getClientId(),
+              params.getCodeChallenge(),
+              "S256",
+              validatedRedirectUri.toString(),
+              params.getState(),
+              scopes,
+              null,
+              null,
+              null);
+
+      LOG.debug("Created pending auth request for Basic Auth: {}", authRequestId);
+
+      // Return redirect URL — MCP client opens this in user's browser
+      String loginUrl = getBaseUrl() + "/mcp/login?auth_request_id=" + authRequestId;
+      return CompletableFuture.completedFuture(loginUrl);
 
     } catch (AuthorizeException e) {
       throw e;
     } catch (Exception e) {
       LOG.error("Basic Auth authorization failed for client: {}", client.getClientId(), e);
       throw new AuthorizeException("authorization_failed", e.getMessage());
-    }
-  }
-
-  private CompletableFuture<String> displayLoginForm(
-      HttpSession session, OAuthClientInformation client) throws AuthorizeException {
-    try {
-      String errorMessage = (String) session.getAttribute(SESSION_MCP_LOGIN_ERROR);
-      session.removeAttribute(SESSION_MCP_LOGIN_ERROR);
-
-      // Generate cryptographically secure CSRF token (32 bytes = 256 bits)
-      String csrfToken = generateSecureToken(32);
-      session.setAttribute(SESSION_MCP_CSRF_TOKEN, csrfToken);
-
-      String clientId = (String) session.getAttribute(SESSION_MCP_CLIENT_ID);
-      String redirectUri = (String) session.getAttribute(SESSION_MCP_REDIRECT_URI);
-      String state = (String) session.getAttribute(SESSION_MCP_STATE);
-      String codeChallenge = (String) session.getAttribute(SESSION_MCP_PKCE_CHALLENGE);
-      String scopes = (String) session.getAttribute(SESSION_MCP_SCOPES);
-
-      String html =
-          HtmlTemplates.generateLoginForm(
-              client.getClientName(),
-              errorMessage,
-              clientId,
-              redirectUri,
-              state,
-              codeChallenge,
-              scopes,
-              csrfToken);
-
-      currentResponse.get().setContentType("text/html; charset=UTF-8");
-      currentResponse.get().setStatus(HttpServletResponse.SC_OK);
-      currentResponse.get().getWriter().write(html);
-
-      LOG.debug("Displayed login form for client: {}", client.getClientId());
-      return CompletableFuture.completedFuture("LOGIN_FORM_DISPLAYED");
-
-    } catch (IOException e) {
-      LOG.error("Failed to display login form", e);
-      throw new AuthorizeException("server_error", "Failed to display login form");
-    }
-  }
-
-  private CompletableFuture<String> handleBasicAuthLogin(
-      OAuthClientInformation client, AuthorizationParams params, HttpSession session)
-      throws AuthorizeException {
-    String password = null;
-    try {
-      String submittedCsrfToken = currentRequest.get().getParameter("csrf_token");
-      String sessionCsrfToken = (String) session.getAttribute(SESSION_MCP_CSRF_TOKEN);
-
-      session.removeAttribute(SESSION_MCP_CSRF_TOKEN);
-
-      // Use timing-safe comparison to prevent timing attacks on CSRF tokens
-      byte[] expectedBytes =
-          sessionCsrfToken != null
-              ? sessionCsrfToken.getBytes(StandardCharsets.UTF_8)
-              : new byte[0];
-      byte[] providedBytes =
-          submittedCsrfToken != null
-              ? submittedCsrfToken.getBytes(StandardCharsets.UTF_8)
-              : new byte[0];
-      if (!MessageDigest.isEqual(expectedBytes, providedBytes)) {
-        LOG.warn("CSRF token mismatch during Basic Auth login");
-        throw new AuthorizeException("invalid_request", "CSRF token validation failed");
-      }
-
-      String usernameOrEmail = currentRequest.get().getParameter("username");
-      password = currentRequest.get().getParameter("password");
-
-      if (usernameOrEmail == null
-          || usernameOrEmail.isEmpty()
-          || password == null
-          || password.isEmpty()) {
-        session.setAttribute(SESSION_MCP_LOGIN_ERROR, "Username and password are required");
-        return displayLoginForm(session, client);
-      }
-
-      String email = usernameOrEmail;
-      String userName = usernameOrEmail;
-
-      if (!usernameOrEmail.contains("@")) {
-        try {
-          User userByName =
-              Entity.getEntityByName(Entity.USER, usernameOrEmail, "", Include.NON_DELETED);
-          if (userByName != null) {
-            email = userByName.getEmail();
-            userName = userByName.getName();
-            LOG.debug("Resolved username {} to email {}", usernameOrEmail, email);
-          }
-        } catch (Exception e) {
-          LOG.debug("Could not find user by username: {}", usernameOrEmail);
-        }
-      }
-
-      try {
-        basicAuthenticator.checkIfLoginBlocked(email);
-      } catch (AuthenticationException e) {
-        LOG.warn("Login blocked for user");
-        session.setAttribute(SESSION_MCP_LOGIN_ERROR, e.getMessage());
-        return displayLoginForm(session, client);
-      }
-
-      try {
-        LOG.debug("Attempting basic auth login");
-        User user = basicAuthenticator.lookUserInProvider(email, password);
-        LOG.debug("User lookup successful");
-        basicAuthenticator.validatePassword(email, password, user);
-        LOG.debug("Password validation successful");
-
-        LoginAttemptCache.getInstance().recordSuccessfulLogin(email);
-        LOG.debug("Successful login for user: {}, reset failed login counter", userName);
-
-        String codeChallenge = (String) session.getAttribute(SESSION_MCP_PKCE_CHALLENGE);
-        String redirectUri = (String) session.getAttribute(SESSION_MCP_REDIRECT_URI);
-        String state = (String) session.getAttribute(SESSION_MCP_STATE);
-        String scopesStr = (String) session.getAttribute(SESSION_MCP_SCOPES);
-
-        regenerateSession(session);
-
-        List<String> scopes =
-            scopesStr != null && !scopesStr.isEmpty()
-                ? List.of(scopesStr.split(" "))
-                : List.of("openid", "profile", "email");
-
-        String authCode =
-            generateAuthorizationCode(
-                user.getName(),
-                client.getClientId(),
-                codeChallenge,
-                URI.create(redirectUri),
-                scopes);
-
-        LOG.debug("Generated authorization code for basic auth user");
-
-        return displayAuthorizationCode(authCode, redirectUri, state);
-
-      } catch (AuthenticationException e) {
-        LOG.warn("Basic Auth login failed");
-        try {
-          basicAuthenticator.recordFailedLoginAttempt(email, email);
-        } catch (Exception recordEx) {
-          LOG.error("Failed to record login attempt for security tracking", recordEx);
-          throw new AuthorizeException(
-              "server_error", "Unable to process login attempt - please try again later");
-        }
-        session.setAttribute(SESSION_MCP_LOGIN_ERROR, "Invalid username or password");
-        return displayLoginForm(session, client);
-      }
-
-    } catch (AuthorizeException e) {
-      throw e;
-    } catch (Exception e) {
-      LOG.error("Basic Auth login processing failed", e);
-      throw new AuthorizeException("server_error", "Login processing failed");
-    } finally {
-      password = null;
-    }
-  }
-
-  private CompletableFuture<String> displayAuthorizationCode(
-      String authCode, String redirectUri, String state) throws AuthorizeException {
-    try {
-      if (redirectUri == null || redirectUri.isEmpty()) {
-        throw new AuthorizeException("server_error", "Redirect URI not found");
-      }
-
-      Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("code", authCode);
-      if (state != null && !state.isEmpty()) {
-        queryParams.put("state", state);
-      }
-      String redirectUrl = UriUtils.constructRedirectUri(redirectUri, queryParams);
-
-      LOG.info("Redirecting to client redirect_uri with authorization code");
-
-      // TODO: Future Enhancement - Show success page before redirect
-      // Instead of direct redirect, could display a success page with:
-      // - OpenMetadata branding and confirmation message
-      // - "Authentication Successful" with checkmarks
-      // - Auto-redirect after 2-3 seconds to client callback URL
-      // Challenge: Success page shows before OAuth flow completes on client side,
-      // which may be confusing. Consider showing success only after client confirms.
-
-      return CompletableFuture.completedFuture(redirectUrl);
-
-    } catch (Exception e) {
-      LOG.error("Failed to redirect with authorization code", e);
-      throw new AuthorizeException("server_error", "Failed to complete authorization");
     }
   }
 
@@ -724,7 +546,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       newSession.removeAttribute(SESSION_MCP_REDIRECT_URI);
       newSession.removeAttribute(SESSION_MCP_STATE);
       newSession.removeAttribute(SESSION_MCP_SCOPES);
-      newSession.removeAttribute(SESSION_MCP_AUTH_METHOD);
     }
 
     LOG.info("Redirecting to client with authorization code: {}", redirectUri);
@@ -1161,6 +982,15 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
     String tokenString = token.toString();
     return revocationHandler.revokeToken(tokenString, null);
+  }
+
+  public String createAuthorizationCode(
+      String userName,
+      String clientId,
+      String codeChallenge,
+      URI redirectUri,
+      List<String> scopes) {
+    return generateAuthorizationCode(userName, clientId, codeChallenge, redirectUri, scopes);
   }
 
   private String generateAuthorizationCode(

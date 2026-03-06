@@ -110,12 +110,6 @@ public class AuthorizationHandler {
                           } else if ("SSO_REDIRECT_INITIATED".equals(result)) {
                             // SSO redirect was already sent by provider - return empty response
                             return new AuthorizationResponse(null, false, null);
-                          } else if ("LOGIN_FORM_DISPLAYED".equals(result)) {
-                            // Basic Auth login form already rendered - return empty response
-                            return new AuthorizationResponse(null, false, null);
-                          } else if ("CODE_DISPLAYED".equals(result)) {
-                            // Basic Auth code display already rendered - return empty response
-                            return new AuthorizationResponse(null, false, null);
                           } else {
                             // Authorization code - construct callback URL
                             Map<String, String> queryParams = new HashMap<>();

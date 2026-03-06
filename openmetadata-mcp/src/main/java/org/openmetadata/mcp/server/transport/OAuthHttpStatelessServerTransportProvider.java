@@ -74,6 +74,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private final String mcpEndpoint;
 
+  private volatile org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet
+      basicAuthLoginServlet;
+
   // In-memory rate limiter for client registration: max 10 registrations per IP per hour.
   // NOTE: MCP spec (RFC 7591) requires open client registration, so authentication is not applied.
   // Rate limiting is the primary mitigation against abuse. This in-memory implementation is
@@ -152,10 +155,15 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     this.allowedOrigins = allowedOrigins;
 
-    // Register as configuration change listener for dynamic CORS updates (Issue #10)
+    // Register as configuration change listener for dynamic CORS updates
     SecurityConfigurationManager.getInstance().addConfigurationChangeListener(this);
     LOG.info(
         "OAuth transport initialized with base URL: {}, CORS origins: {}", baseUrl, allowedOrigins);
+  }
+
+  public void setBasicAuthLoginServlet(
+      org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet servlet) {
+    this.basicAuthLoginServlet = servlet;
   }
 
   /**
@@ -310,6 +318,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       handleProtectedResourceMetadataRequest(request, response);
     } else if (path.equals("/mcp/authorize")) {
       handleAuthorizeRequest(request, response);
+    } else if (path.equals("/mcp/login") && basicAuthLoginServlet != null) {
+      basicAuthLoginServlet.doGet(request, response);
     } else {
       // Handle other GET requests using the parent class
       super.doGet(request, response);
@@ -424,6 +434,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       handleRegistrationRequest(request, response);
     } else if (path.equals("/mcp/revoke")) {
       handleRevocationRequest(request, response);
+    } else if (path.equals("/mcp/login") && basicAuthLoginServlet != null) {
+      basicAuthLoginServlet.doPost(request, response);
     } else {
       // Handle other POST requests using the parent class
       super.doPost(request, response);

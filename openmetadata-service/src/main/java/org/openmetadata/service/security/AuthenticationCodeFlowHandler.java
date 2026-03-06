@@ -340,19 +340,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       String requestedRedirectUri = req.getParameter(REDIRECT_URI_KEY);
 
       // Determine Google callback URL and final redirect URI based on the flow:
-      // 1. MCP OAuth flow: requestedRedirectUri is a full URL (e.g.,
-      // https://ngrok-url/mcp/callback)
+      // 1. MCP OAuth flow: requestedRedirectUri contains /mcp/callback
       //    - Use the full URL for Google OAuth callback
       //    - MCP handles its own final redirect
-      // 2. Web login flow: requestedRedirectUri is a relative path (e.g., /auth/callback)
+      // 2. Web login flow: any other redirect URI (relative path or absolute URL like
+      //    http://localhost:8585/auth/callback from the frontend)
       //    - Use the YAML-configured callback URL for Google OAuth
-      //    - Store the relative path for final redirect to frontend
+      //    - Store the redirect path for final redirect to frontend
       String ssoCallbackUrl;
       String finalRedirectUri;
 
-      if (requestedRedirectUri != null
-          && (requestedRedirectUri.startsWith("http://")
-              || requestedRedirectUri.startsWith("https://"))) {
+      if (requestedRedirectUri != null && requestedRedirectUri.contains("/mcp/callback")) {
         ssoCallbackUrl = requestedRedirectUri;
         finalRedirectUri = requestedRedirectUri;
         LOG.debug("MCP OAuth flow detected - using provided callback URL");
