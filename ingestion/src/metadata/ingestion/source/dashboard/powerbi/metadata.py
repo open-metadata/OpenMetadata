@@ -71,6 +71,7 @@ from metadata.ingestion.source.dashboard.powerbi.constants import (
     RDL_REPORT_FORMAT,
     RDL_REPORTS_PREFIX,
     SNOWFLAKE_QUERY_EXPRESSION_KW,
+    SQL_LINE_COMMENT_PATTERN,
 )
 from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
     parse_databricks_native_query_source,
@@ -1027,7 +1028,9 @@ class PowerbiSource(DashboardServiceSource):
             cleaned_expression = re.sub(
                 r"/\*.*?\*/", "", source_expression, flags=re.DOTALL
             )
-            cleaned_expression = re.sub(r"//[^\n]*", "", cleaned_expression)
+            cleaned_expression = re.sub(
+                SQL_LINE_COMMENT_PATTERN, "", cleaned_expression
+            )
 
             # Extract the project from BillingProject parameter
             billing_match = re.search(r'BillingProject="([^"]+)"', cleaned_expression)
@@ -1048,7 +1051,7 @@ class PowerbiSource(DashboardServiceSource):
             sql_query = sql_query.replace("#(lf)", "\n")
             sql_query = sql_query.replace("#(tab)", "\t")
             sql_query = re.sub(r"--[^\n]*", "", sql_query)
-            sql_query = re.sub(r"//[^\n]*", "", sql_query)
+            sql_query = re.sub(SQL_LINE_COMMENT_PATTERN, "", sql_query)
             sql_query = re.sub(r"\s+", " ", sql_query).strip()
 
             logger.debug(f"Extracted BigQuery SQL query: {sql_query[:200]}")
@@ -1243,7 +1246,7 @@ class PowerbiSource(DashboardServiceSource):
             parser_query = parser_query.replace("#(lf)", "\n")
 
             # 3. Remove SQL comments that might cause issues (// style comments)
-            parser_query = re.sub(r"//[^\n]*", "", parser_query)
+            parser_query = re.sub(SQL_LINE_COMMENT_PATTERN, "", parser_query)
 
             # 4. Clean up excessive whitespace
             parser_query = re.sub(r"\s+", " ", parser_query).strip()

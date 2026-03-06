@@ -46,3 +46,5 @@ RDL_REPORTS_PREFIX = "rdlreports"
 # =============================================================================
 
 MAX_PROJECT_FILTER_SIZE = 10
+
+SQL_LINE_COMMENT_PATTERN = r"//[^\n]*"
