@@ -31,6 +31,7 @@ import { AGGREGATE_PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
+import { normalizeToArray } from '../../../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceListFromEntities,
@@ -179,11 +180,7 @@ export const PersonaSelectableList = ({
 
   const handleChange = useCallback(
     (selectedPersonas: string | string[]) => {
-      const selectedArr = Array.isArray(selectedPersonas)
-        ? selectedPersonas
-        : selectedPersonas
-        ? [selectedPersonas]
-        : [];
+      const selectedArr = normalizeToArray(selectedPersonas);
 
       const selectedPersonasList = selectOptions.filter(
         (persona) =>
@@ -245,7 +242,7 @@ export const PersonaSelectableList = ({
                   {t('label.plus-count-more', { count: omittedValues.length })}
                 </span>
               )}
-              mode={!isDefaultPersona ? 'multiple' : undefined}
+              mode={isDefaultPersona ? undefined : 'multiple'}
               open={isDropdownOpen}
               options={selectOptions?.map((persona) => ({
                 label: getEntityName(persona),

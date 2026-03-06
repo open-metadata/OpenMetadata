@@ -922,3 +922,11 @@ export const calculatePercentage = (
 export const isLinearGradient = (color: string) => {
   return color.toLowerCase().includes('linear-gradient');
 };
+
+export const normalizeToArray = <T,>(value: T | T[]): T[] => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  return value ? [value] : [];
+};
