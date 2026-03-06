@@ -122,6 +122,20 @@ Oracle stores unquoted identifiers in UPPERCASE (e.g. `CREATE TABLE EMPLOYEES` �
 $$
 
 $$section
+### Only All Table $(id="onlyAllTable")
+
+When enabled, restricts table metadata queries to use only the `ALL_TABLE` instead of the `DBA_TABLE`.
+
+Oracle provides two sets of data Tables:
+- `DBA_TABLE` — contain metadata for all objects in the database, but require DBA privileges to query.
+- `ALL_TABLE` — contain metadata for all objects the current user has access to, and do not require elevated privileges.
+
+**Disabled (default):** The connector attempts to use `DBA_TABLE` for broader metadata coverage.
+
+**Enabled:** Use this if the Oracle user configured for ingestion does not have DBA privileges and encounters permission errors during metadata ingestion.
+$$
+
+$$section
 ### Database Name $(id="databaseName")
 In OpenMetadata, the Database Service hierarchy works as follows:
 ```
