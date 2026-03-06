@@ -30,6 +30,7 @@ import {
 import type {
   ColumnType,
   FilterValue,
+  SortOrder,
   SorterResult,
   TableCurrentDataSource,
   TablePaginationConfig,
@@ -86,6 +87,7 @@ const TableV2 = <T extends object>(
     customPaginationProps,
     entityType,
     defaultVisibleColumns,
+    'data-testid': dataTestId,
     ...rest
   }: TableV2Props<T>,
   ref: Ref<HTMLDivElement> | null | undefined
@@ -383,19 +385,37 @@ const TableV2 = <T extends object>(
 
   // ─── Column title resolver ────────────────────────────────────────────────
 
-  const resolveColumnTitle = useCallback((col: ColumnType<T>): ReactNode => {
-    if (typeof col.title === 'function') {
-      return (col.title as (props: Record<string, unknown>) => ReactNode)({});
-    }
+  const resolveColumnTitle = useCallback(
+    (col: ColumnType<T>): ReactNode => {
+      if (typeof col.title === 'function') {
+        const sortedColumn = propsColumns.find(
+          (c) => (c as ColumnType<T>).sortOrder
+        ) as ColumnType<T> | undefined;
 
-    return col.title as ReactNode;
-  }, []);
+        return (
+          col.title as (props: {
+            sortOrder?: SortOrder;
+            sortColumn?: ColumnType<T>;
+            filters?: Record<string, FilterValue | null>;
+          }) => ReactNode
+        )({
+          sortOrder: col.sortOrder ?? null,
+          sortColumn: sortedColumn,
+          filters: {},
+        });
+      }
+
+      return col.title as ReactNode;
+    },
+    [propsColumns]
+  );
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div
       className={classNames('table-container', rest.containerClassName)}
+      data-testid={dataTestId}
       ref={ref}>
       <div
         className={classNames('p-x-md', {
@@ -552,6 +572,7 @@ const TableV2 = <T extends object>(
                       ? rest.rowClassName(record, actualIndex, 0)
                       : rest.rowClassName
                   }
+                  data-row-key={getRowKey(record, actualIndex)}
                   id={getRowKey(record, actualIndex)}
                   key={getRowKey(record, actualIndex)}>
                   {propsColumns.map((col, colIdx) => {

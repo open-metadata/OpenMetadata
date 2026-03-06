@@ -79,7 +79,7 @@ export const createBot = async (page: Page) => {
   ).toBeVisible();
 
   await expect(
-    page.getByRole('cell', { name: BOT_DETAILS.description })
+    page.getByRole('gridcell', { name: BOT_DETAILS.description })
   ).toBeVisible();
 
   // Get created bot
