@@ -1752,13 +1752,11 @@ class PowerBIUnitTest(TestCase):
         assert child_column.displayName == long_column_name
 
     @pytest.mark.order(30)
-    def test_parse_dataflow_sql_source_pattern1_inline_query(self):
+    def test_parse_sql_source_pattern1_inline_query(self):
         """
         Pattern 1: Sql.Database("server", "db", [Query = "SQL"])
         """
-        result = self.powerbi._parse_dataflow_sql_source(
-            MOCK_DATAFLOW_INLINE_QUERY_BLOCK
-        )
+        result = self.powerbi._parse_sql_source(MOCK_DATAFLOW_INLINE_QUERY_BLOCK)
         assert result is not None
         assert len(result) >= 1
         table_info = result[0]
@@ -1767,13 +1765,11 @@ class PowerBIUnitTest(TestCase):
         assert table_info["table"] == "v_FactUnitePurchases"
 
     @pytest.mark.order(31)
-    def test_parse_dataflow_sql_source_pattern2_native_query(self):
+    def test_parse_sql_source_pattern2_native_query(self):
         """
         Pattern 2: Value.NativeQuery(Source, "SQL") with Sql.Database source
         """
-        result = self.powerbi._parse_dataflow_sql_source(
-            MOCK_DATAFLOW_NATIVE_QUERY_BLOCK
-        )
+        result = self.powerbi._parse_sql_source(MOCK_DATAFLOW_NATIVE_QUERY_BLOCK)
         assert result is not None
         assert len(result) >= 1
         table_info = result[0]
@@ -1781,13 +1777,11 @@ class PowerBIUnitTest(TestCase):
         assert table_info["table"] == "AccountSalesForceProperties"
 
     @pytest.mark.order(32)
-    def test_parse_dataflow_sql_source_pattern3_catalog_access(self):
+    def test_parse_sql_source_pattern3_catalog_access(self):
         """
         Pattern 3: Sql.Database("server", "db") + Source{[Schema="x", Item="y"]}[Data]
         """
-        result = self.powerbi._parse_dataflow_sql_source(
-            MOCK_DATAFLOW_CATALOG_ACCESS_BLOCK
-        )
+        result = self.powerbi._parse_sql_source(MOCK_DATAFLOW_CATALOG_ACCESS_BLOCK)
         assert result is not None
         assert len(result) == 1
         assert result[0] == {
@@ -1797,19 +1791,19 @@ class PowerBIUnitTest(TestCase):
         }
 
     @pytest.mark.order(33)
-    def test_parse_dataflow_sql_source_non_sql(self):
+    def test_parse_sql_source_non_sql(self):
         """
         Non-SQL sources (PowerPlatform.Dataflows) should return None
         """
-        result = self.powerbi._parse_dataflow_sql_source(MOCK_DATAFLOW_NON_SQL_BLOCK)
+        result = self.powerbi._parse_sql_source(MOCK_DATAFLOW_NON_SQL_BLOCK)
         assert result is None
 
     @pytest.mark.order(34)
-    def test_parse_dataflow_sql_source_computed_query(self):
+    def test_parse_sql_source_computed_query(self):
         """
         Computed queries without Sql.Database should return None
         """
-        result = self.powerbi._parse_dataflow_sql_source(MOCK_DATAFLOW_COMPUTED_BLOCK)
+        result = self.powerbi._parse_sql_source(MOCK_DATAFLOW_COMPUTED_BLOCK)
         assert result is None
 
     @pytest.mark.order(35)
@@ -2148,7 +2142,7 @@ class PowerBIUnitTest(TestCase):
         assert result[0]["tables"][0]["schema"] == "dbo"
 
     @pytest.mark.order(46)
-    def test_parse_dataflow_sql_source_multiple_databases(self):
+    def test_parse_sql_source_multiple_databases(self):
         """
         Test M expression with Sql.Database pointing to a different database
         than the inline query references
@@ -2165,7 +2159,7 @@ class PowerBIUnitTest(TestCase):
             "in\n"
             '  #"Changed column type";\r\n'
         )
-        result = self.powerbi._parse_dataflow_sql_source(block)
+        result = self.powerbi._parse_sql_source(block)
         assert result is not None
         tables = [t["table"] for t in result]
         assert "DimAccounts" in tables

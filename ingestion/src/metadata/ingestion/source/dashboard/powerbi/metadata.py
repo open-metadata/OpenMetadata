@@ -1438,12 +1438,14 @@ class PowerbiSource(DashboardServiceSource):
             if not source_expression:
                 logger.debug(f"No source expression found for table: {table.name}")
                 return None
+
             # parse snowflake source
             table_info_list = self._parse_snowflake_source(
                 source_expression, datamodel_entity
             )
             if isinstance(table_info_list, List):
                 return table_info_list
+
             # parse redshift source
             table_info_list = self._parse_redshift_source(source_expression)
             if isinstance(table_info_list, List):
@@ -1460,6 +1462,12 @@ class PowerbiSource(DashboardServiceSource):
             table_info_list = self._parse_databricks_source(
                 source_expression, datamodel_entity
             )
+            if isinstance(table_info_list, List):
+                return table_info_list
+
+            # parse generic Sql.Database source
+            # (inline query, native query, catalog access)
+            table_info_list = self._parse_sql_source(source_expression)
             if isinstance(table_info_list, List):
                 return table_info_list
 
@@ -1816,7 +1824,7 @@ class PowerbiSource(DashboardServiceSource):
             ):
                 continue
 
-            table_info_list = self._parse_dataflow_sql_source(block)
+            table_info_list = self._parse_sql_source(block)
             if table_info_list:
                 sql_query = None
                 for table_info in table_info_list:
@@ -1831,7 +1839,7 @@ class PowerbiSource(DashboardServiceSource):
                 )
         return results
 
-    def _parse_dataflow_sql_source(self, m_expression: str) -> Optional[List[dict]]:
+    def _parse_sql_source(self, m_expression: str) -> Optional[List[dict]]:
         """
         Parse a Power Query M expression block from a dataflow document to extract
         database table references. Handles:
@@ -1846,7 +1854,7 @@ class PowerbiSource(DashboardServiceSource):
             # Pattern 1: Sql.Database with inline Query parameter
             # e.g. Sql.Database("dwsql", "dw_integration", [Query = "SELECT ..."])
             inline_query_match = re.search(
-                r'Sql\.Database\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*\[Query\s*=\s*"(.*?)"',
+                r'Sql\.Database\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*\[Query\s*=\s*"((?:[^"]|"")*)"',
                 m_expression,
                 re.DOTALL,
             )
@@ -1859,7 +1867,7 @@ class PowerbiSource(DashboardServiceSource):
             # Pattern 2: Value.NativeQuery with Sql.Database Source
             # e.g. Value.NativeQuery(Source, "SELECT ... FROM schema.table")
             native_query_match = re.search(
-                r'Value\.NativeQuery\(\s*\w+\s*,\s*"(.*?)"',
+                r'Value\.NativeQuery\(\s*\w+\s*,\s*"((?:[^"]|"")*)"',
                 m_expression,
                 re.DOTALL,
             )
@@ -2042,13 +2050,18 @@ class PowerbiSource(DashboardServiceSource):
                         and prefix_database_name.lower() != database_name.lower()
                     ):
                         continue
-
-                    fqn_search_string = build_es_fqn_search_string(
-                        service_name=prefix_service_name or "*",
-                        table_name=prefix_table_name or table_name,
-                        schema_name=prefix_schema_name or schema_name,
-                        database_name=prefix_database_name or database_name,
-                    )
+                    try:
+                        fqn_search_string = build_es_fqn_search_string(
+                            service_name=prefix_service_name or "*",
+                            table_name=prefix_table_name or table_name,
+                            schema_name=prefix_schema_name or schema_name,
+                            database_name=prefix_database_name or database_name,
+                        )
+                    except ValueError:
+                        logger.debug(
+                            f"Skipping table '{table_name}' with invalid FQN characters"
+                        )
+                        continue
                     table_entity = self.metadata.search_in_any_service(
                         entity_type=Table,
                         fqn_search_string=fqn_search_string,
