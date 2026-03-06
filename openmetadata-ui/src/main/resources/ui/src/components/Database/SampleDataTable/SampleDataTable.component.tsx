@@ -320,7 +320,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       <TableComponent
         columns={sampleData?.columns}
         data-testid="sample-data-table"
-        dataSource={sampleData?.rows}
+        dataSource={sampleData?.rows?.slice(0, rowLimit)}
         pagination={false}
         rowKey="name"
         scroll={{ y: 'calc(100vh - 160px)' }}
