@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.datacontract.odcs.odcsDataContract import 
     ODCSDataContract,
 )
 from metadata.generated.schema.type.basic import Uuid
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
 
@@ -162,7 +162,7 @@ class OMetaDataContractMixin:
         return None
 
     def get_data_contract_by_entity_id(
-        self, entity_id: Uuid, entity_type: str
+        self, entity_id: Uuid, entity_type: str, nullable: bool = True
     ) -> Optional[DataContract]:
         """
         Get the effective data contract for an entity
@@ -170,9 +170,10 @@ class OMetaDataContractMixin:
         Args:
             entity_id: UUID of the entity
             entity_type: Type of the entity (e.g., 'table', 'topic')
+            nullable: If True, return None on 404. If False, raise on 404.
 
         Returns:
-            DataContract if successful, None otherwise
+            DataContract if found, None if not found and nullable=True
         """
         try:
             resp = self.client.get(
@@ -181,11 +182,17 @@ class OMetaDataContractMixin:
             )
             if resp:
                 return DataContract(**resp)
-        except Exception as err:
+        except APIError as err:
+            if err.code == 404 and nullable:
+                return None
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error getting data contract by entity id {model_str(entity_id)}: {err}"
+            logger.debug(
+                "GET DataContract for entity %s. Error %s - %s",
+                model_str(entity_id),
+                err.status_code,
+                err,
             )
+            raise err
         return None
 
     def delete_data_contract_result(
@@ -470,18 +477,12 @@ class OMetaDataContractMixin:
         """
         Validate a data contract for an entity
         """
-        try:
-            resp = self.client.post(
-                f"{self.get_suffix(DataContract)}/entity/validate"
-                f"?entityId={model_str(entity_id)}&entityType={entity_type}"
-            )
-            if resp:
-                return DataContractResult(**resp)
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error validating data contract for entity {model_str(entity_id)}: {err}"
-            )
+        resp = self.client.post(
+            f"{self.get_suffix(DataContract)}/entity/validate"
+            f"?entityId={model_str(entity_id)}&entityType={entity_type}"
+        )
+        if resp:
+            return DataContractResult(**resp)
         return None
 
     def validate_data_contract_request(
@@ -490,16 +491,12 @@ class OMetaDataContractMixin:
         """
         Validate a CreateDataContract request without creating
         """
-        try:
-            resp = self.client.post(
-                f"{self.get_suffix(DataContract)}/validate",
-                data=create_request.model_dump_json(),
-            )
-            if resp:
-                return DataContractResult(**resp)
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error validating data contract request: {err}")
+        resp = self.client.post(
+            f"{self.get_suffix(DataContract)}/validate",
+            data=create_request.model_dump_json(),
+        )
+        if resp:
+            return DataContractResult(**resp)
         return None
 
     def validate_data_contract_request_yaml(self, yaml_content: str) -> Optional[Any]:
