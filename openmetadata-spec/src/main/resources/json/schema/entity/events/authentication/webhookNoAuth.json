@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/events/webhookNoAuth.json",
-  "title": "None",
+  "title": "WebhookNoAuth",
   "description": "No authentication.",
   "type": "object",
   "properties": {

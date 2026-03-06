@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.NotificationFilterOperation;
@@ -1540,7 +1541,11 @@ public class EventSubscriptionResourceIT
         new Webhook()
             .withEndpoint(URI.create("http://localhost:8585/api/v1/test/slack/test"))
             .withReceivers(new HashSet<>())
-            .withSecretKey("slackTest");
+                .withAuthType(
+                    new WebhookBearerAuth()
+                        .withType(WebhookBearerAuth.Type.BEARER)
+                            .withSecretKey("slackTest")
+                );
 
     return List.of(
         new SubscriptionDestination()
@@ -1555,7 +1560,10 @@ public class EventSubscriptionResourceIT
         new Webhook()
             .withEndpoint(URI.create("http://localhost:8585/api/v1/test/msteams/test"))
             .withReceivers(new HashSet<>())
-            .withSecretKey("msTeamsTest");
+            .withAuthType(
+                new WebhookBearerAuth()
+                    .withType(WebhookBearerAuth.Type.BEARER)
+                    .withSecretKey("msTeamsTest"));
 
     return List.of(
         new SubscriptionDestination()
