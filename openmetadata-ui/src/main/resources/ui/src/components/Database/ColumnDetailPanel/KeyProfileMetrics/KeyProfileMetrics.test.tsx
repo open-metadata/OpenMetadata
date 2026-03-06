@@ -25,6 +25,16 @@ import {
 } from '../../../../generated/entity/data/table';
 import { KeyProfileMetrics } from './KeyProfileMetrics.component';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: ({
+    children,
+    title,
+  }: React.PropsWithChildren<{ title?: string }>) => (
+    <div title={title}>{children}</div>
+  ),
+  TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
+}));
+
 const mockGetTableColumnsByFQN = jest.fn();
 
 jest.mock('../../../../rest/tableAPI', () => ({
