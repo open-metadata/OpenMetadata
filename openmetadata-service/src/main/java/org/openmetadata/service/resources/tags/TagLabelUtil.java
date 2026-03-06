@@ -335,6 +335,33 @@ public class TagLabelUtil {
     }
   }
 
+  public static List<TagLabel> mergeTagsWithIncomingPrecedence(
+      List<TagLabel> existingTags, List<TagLabel> incomingTags) {
+    if (nullOrEmpty(incomingTags)) {
+      return new ArrayList<>(listOrEmpty(existingTags));
+    }
+    Set<String> incomingParents =
+        listOrEmpty(incomingTags).stream()
+            .map(t -> FullyQualifiedName.getParentFQN(t.getTagFQN()))
+            .collect(Collectors.toSet());
+
+    List<TagLabel> result = new ArrayList<>();
+    for (TagLabel existing : listOrEmpty(existingTags)) {
+      String existingParent = FullyQualifiedName.getParentFQN(existing.getTagFQN());
+      if (mutuallyExclusive(existing) && incomingParents.contains(existingParent)) {
+        continue;
+      }
+      result.add(existing);
+    }
+    Set<String> resultFQNs = result.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+    for (TagLabel incoming : incomingTags) {
+      if (!resultFQNs.contains(incoming.getTagFQN())) {
+        result.add(incoming);
+      }
+    }
+    return result;
+  }
+
   public static void checkDisabledTags(List<TagLabel> tagLabels) {
     if (nullOrEmpty(tagLabels)) {
       return;
