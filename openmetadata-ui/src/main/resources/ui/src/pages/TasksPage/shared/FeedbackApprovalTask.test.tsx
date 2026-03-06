@@ -25,6 +25,31 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: ReactNode;
     'data-testid'?: string;
   }) => <span data-testid={testId}>{children}</span>,
+  Grid: Object.assign(
+    ({
+      children,
+      'data-testid': testId,
+      className,
+    }: {
+      children: ReactNode;
+      'data-testid'?: string;
+      className?: string;
+    }) => (
+      <div className={className} data-testid={testId}>
+        {children}
+      </div>
+    ),
+    {
+      Item: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    }
+  ),
+  Typography: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children: ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={testId}>{children}</div>,
 }));
 
 jest.mock(
