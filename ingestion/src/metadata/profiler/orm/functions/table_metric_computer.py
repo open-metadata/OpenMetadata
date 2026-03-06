@@ -695,9 +695,7 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                "InformixTableMetricComputer: COUNT(*) literal-bind failed"
-            )
+            logger.warning("InformixTableMetricComputer: COUNT(*) literal-bind failed")
             raise
 
 
