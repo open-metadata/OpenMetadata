@@ -17,6 +17,7 @@ import {
   CanvasButton,
   createCanvasButton,
   drawCanvasButton,
+  ECanvasButtonType,
   isPointInButton,
 } from '../utils/CanvasButtonUtils';
 import {
@@ -306,7 +307,7 @@ export function useCanvasEdgeRenderer({
           cachedPathData.edgeCenterX,
           cachedPathData.edgeCenterY,
           edge.id,
-          hasPipeline ? 'pipeline' : 'function',
+          hasPipeline ? ECanvasButtonType.Pipeline : ECanvasButtonType.Function,
           edgeDetails?.pipeline?.pipelineStatus?.executionStatus,
           isPipelineRootNode
         );
@@ -372,9 +373,12 @@ export function useCanvasEdgeRenderer({
 
   const getEdgeAtPoint = useCallback(
     (clientX: number, clientY: number, containerRect: DOMRect): Edge | null => {
+      // Convert screen coordinates to flow-space (same coordinate space the
+      // paths were drawn in, before the viewport transform was applied).
       const x = (clientX - containerRect.left - viewport.x) / viewport.zoom;
       const y = (clientY - containerRect.top - viewport.y) / viewport.zoom;
 
+      // Ensure we have a scratch canvas context for isPointInStroke.
       if (!hitTestCtxRef.current) {
         const offscreen = new OffscreenCanvas(1, 1);
         hitTestCtxRef.current = offscreen.getContext(

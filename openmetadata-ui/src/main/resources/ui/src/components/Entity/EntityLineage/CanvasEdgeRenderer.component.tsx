@@ -17,6 +17,7 @@ import { useLineageProvider } from '../../../context/LineageProvider/LineageProv
 import { useCanvasEdgeRenderer } from '../../../hooks/useCanvasEdgeRenderer';
 import { useCanvasMouseEvents } from '../../../hooks/useCanvasMouseEvents';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { ECanvasButtonType } from '../../../utils/CanvasButtonUtils';
 import { calculateEdgeMidpoints } from '../../../utils/EdgeMidpointUtils';
 import { clearEdgeStyleCache } from '../../../utils/EdgeStyleUtils';
 import { isPlaywrightEnv } from '../../../utils/PlaywrightUtils';
@@ -221,7 +222,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
         ) : null
       )}
       {hoveredButton &&
-        hoveredButton.type === 'pipeline' &&
+        hoveredButton.type === ECanvasButtonType.Pipeline &&
         hoveredEdge &&
         !isEditMode && (
           <CanvasButtonPopover

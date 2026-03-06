@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CANVAS_BUTTON_COLORS } from '../constants/Color.constants';
 import { StatusType } from '../generated/entity/data/pipeline';
+
+export enum ECanvasButtonType {
+  Pipeline = 'pipeline',
+  Function = 'function',
+}
 
 export interface CanvasButton {
   x: number;
@@ -18,7 +24,7 @@ export interface CanvasButton {
   width: number;
   height: number;
   edgeId: string;
-  type: 'pipeline' | 'function';
+  type: ECanvasButtonType;
   executionStatus?: StatusType;
   isPipelineRootNode?: boolean;
 }
@@ -40,21 +46,27 @@ export function isPointInButton(
   );
 }
 
-function getStatusColor(executionStatus?: StatusType): string {
+interface StatusColors {
+  border: string;
+  background: string;
+  icon: string;
+}
+
+function getStatusColors(executionStatus?: StatusType): StatusColors {
   if (!executionStatus) {
-    return '#6B7280';
+    return CANVAS_BUTTON_COLORS.DEFAULT;
   }
 
   switch (executionStatus) {
     case StatusType.Successful:
-      return '#10B981';
+      return CANVAS_BUTTON_COLORS.SUCCESS;
     case StatusType.Failed:
-      return '#EF4444';
+      return CANVAS_BUTTON_COLORS.FAILED;
     case StatusType.Pending:
     case StatusType.Skipped:
-      return '#F59E0B';
+      return CANVAS_BUTTON_COLORS.PENDING;
     default:
-      return '#6B7280';
+      return CANVAS_BUTTON_COLORS.DEFAULT;
   }
 }
 
@@ -124,13 +136,19 @@ export function drawCanvasButton(
 ) {
   ctx.save();
 
-  const statusColor = isDQEnabled
-    ? getStatusColor(button.executionStatus)
-    : isHovered
-    ? '#2e90f9'
-    : '#EAECF5';
-  const borderColor = isHovered ? '#2e90f9' : statusColor;
-  const bgColor = '#FFFFFF';
+  const statusColors = isDQEnabled
+    ? getStatusColors(button.executionStatus)
+    : CANVAS_BUTTON_COLORS.DEFAULT;
+
+  const borderColor = isHovered
+    ? CANVAS_BUTTON_COLORS.HOVER.border
+    : statusColors.border;
+  const bgColor = isHovered
+    ? CANVAS_BUTTON_COLORS.HOVER.background
+    : statusColors.background;
+  const iconColor = isHovered
+    ? CANVAS_BUTTON_COLORS.HOVER.icon
+    : statusColors.icon;
 
   ctx.fillStyle = bgColor;
   ctx.strokeStyle = borderColor;
@@ -177,7 +195,7 @@ export function drawCanvasButton(
 
   if (button.isPipelineRootNode && button.executionStatus) {
     const pulseRadius = halfWidth + 2;
-    ctx.strokeStyle = statusColor;
+    ctx.strokeStyle = statusColors.border;
     ctx.lineWidth = 2;
     ctx.globalAlpha = 0.6;
     ctx.beginPath();
@@ -185,8 +203,6 @@ export function drawCanvasButton(
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
-
-  const iconColor = isHovered ? '#3B82F6' : '#374151';
 
   if (button.type === 'pipeline') {
     drawPipelineIcon(ctx, button.x, button.y, ICON_SIZE, iconColor);
@@ -201,7 +217,7 @@ export function createCanvasButton(
   x: number,
   y: number,
   edgeId: string,
-  type: 'pipeline' | 'function',
+  type: ECanvasButtonType,
   executionStatus?: StatusType,
   isPipelineRootNode?: boolean
 ): CanvasButton {
