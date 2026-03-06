@@ -24,7 +24,7 @@ import { sidebarClick } from './sidebar';
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
   isContractStatusNotVisible?: boolean
-): Promise<string | undefined> => {
+): Promise<object | undefined> => {
   const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
   await page.getByTestId('save-contract-btn').click();
   const response = await saveContractResponse;
@@ -48,7 +48,8 @@ export const saveAndTriggerDataContractValidation = async (
   });
 
   await page.getByTestId('contract-run-now-button').click();
-  await runNowResponse;
+  // Use validate response to get the resultId of the newly triggered execution.
+  const runNowData = await (await runNowResponse).json();
 
   await page.reload();
 
@@ -57,7 +58,8 @@ export const saveAndTriggerDataContractValidation = async (
     state: 'detached',
   });
 
-  return responseData;
+  // Prefer validate response; fall back to save response if latestResult is missing.
+  return 'latestResult' in runNowData ? runNowData : responseData;
 };
 
 export const validateDataContractInsideBundleTestSuites = async (
@@ -73,10 +75,19 @@ export const validateDataContractInsideBundleTestSuites = async (
 
   await page.waitForLoadState('networkidle');
 
+  const bundleSuitesResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
+      response.request().method() === 'GET' &&
+      response.status() === 200
+  );
+
   await page
     .locator('.ant-radio-button-wrapper')
     .filter({ hasText: 'Bundle Suites' })
     .click();
+
+  await bundleSuitesResponse;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
 };
@@ -490,4 +501,23 @@ export const importOdcsViaDropdown = async (
 
   await page.getByTestId('import-button').click();
   // await importResponse;
+};
+
+export const importOMViaDropdown = async (
+  page: Page,
+  yamlContent: string,
+  filename: string
+): Promise<void> => {
+  await page.getByTestId('add-contract-button').click();
+
+  await page.getByTestId('import-openmetadata-contract-button').click();
+
+  const fileInput = page.getByTestId('file-upload-input');
+  await fileInput.setInputFiles({
+    name: filename,
+    mimeType: 'application/yaml',
+    buffer: Buffer.from(yamlContent),
+  });
+
+  await page.getByTestId('import-button').click();
 };

@@ -181,8 +181,11 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   private void createIndexInternal(String indexName, String indexMappingContent)
       throws IOException {
     if (indexMappingContent != null && !indexMappingContent.isEmpty()) {
+      // Transform mapping content for OpenSearch compatibility (e.g., flattened -> flat_object)
+      String transformedContent = OsUtils.enrichIndexMappingForOpenSearch(indexMappingContent);
+
       // Parse the mapping content
-      JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+      JsonNode rootNode = JsonUtils.readTree(transformedContent);
       JsonNode mappingsNode = rootNode.get("mappings");
       JsonNode settingsNode = rootNode.get("settings");
 
@@ -396,6 +399,70 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       }
     } catch (Exception e) {
       LOG.error("Failed to remove aliases {} from index {} due to", aliases, indexName, e);
+    }
+  }
+
+  @Override
+  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot swap aliases.");
+      return false;
+    }
+    if (aliases == null || aliases.isEmpty()) {
+      LOG.debug("No aliases to swap for index {}", newIndex);
+      return true;
+    }
+    if (oldIndices == null) {
+      oldIndices = new HashSet<>();
+    }
+
+    Set<String> finalOldIndices = oldIndices;
+    try {
+      UpdateAliasesRequest request =
+          UpdateAliasesRequest.of(
+              updateBuilder -> {
+                // First, remove aliases from all old indices
+                for (String oldIndex : finalOldIndices) {
+                  for (String alias : aliases) {
+                    updateBuilder.actions(
+                        actionBuilder ->
+                            actionBuilder.remove(
+                                removeBuilder -> removeBuilder.index(oldIndex).alias(alias)));
+                  }
+                }
+                // Then, add aliases to the new index
+                for (String alias : aliases) {
+                  updateBuilder.actions(
+                      actionBuilder ->
+                          actionBuilder.add(addBuilder -> addBuilder.index(newIndex).alias(alias)));
+                }
+                return updateBuilder;
+              });
+
+      UpdateAliasesResponse response = client.indices().updateAliases(request);
+
+      if (response.acknowledged()) {
+        LOG.info(
+            "Atomically swapped aliases {} from indices {} to index {}",
+            aliases,
+            finalOldIndices,
+            newIndex);
+        return true;
+      } else {
+        LOG.warn(
+            "Alias swap from indices {} to index {} was not acknowledged",
+            finalOldIndices,
+            newIndex);
+        return false;
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to swap aliases {} from indices {} to index {}",
+          aliases,
+          finalOldIndices,
+          newIndex,
+          e);
+      return false;
     }
   }
 

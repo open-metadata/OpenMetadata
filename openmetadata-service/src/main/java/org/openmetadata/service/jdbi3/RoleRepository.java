@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.POLICIES;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -200,11 +201,35 @@ public class RoleRepository extends EntityRepository<Role> {
    */
   @Override
   public void storeEntity(Role role, boolean update) {
-    // Don't store policy. Build it on the fly based on relationships
     List<EntityReference> policies = role.getPolicies();
     role.withPolicies(null);
     store(role, update);
     role.withPolicies(policies);
+  }
+
+  @Override
+  public void storeEntities(List<Role> entities) {
+    List<Role> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Role role : entities) {
+      List<EntityReference> policies = role.getPolicies();
+      role.withPolicies(null);
+
+      String jsonCopy = gson.toJson(role);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Role.class));
+
+      role.withPolicies(policies);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Role> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Role::getId).toList();
+    deleteFromMany(ids, Entity.ROLE, Relationship.HAS, Entity.POLICY);
   }
 
   @Override

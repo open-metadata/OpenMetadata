@@ -48,4 +48,8 @@ export const SUBSCRIPTION_WEBHOOK_OPTIONS = [
     label: 'label.g-chat',
     value: SUBSCRIPTION_WEBHOOK.G_CHAT,
   },
+  {
+    label: 'label.webhook',
+    value: SUBSCRIPTION_WEBHOOK.GENERIC,
+  },
 ];

@@ -24,6 +24,9 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     DataflowEntityAttribute,
     DataflowExportResponse,
     Dataset,
+    Datasource,
+    DatasourceConnectionDetails,
+    PowerBiColumns,
     PowerBIDashboard,
     PowerBIReport,
     PowerBiTable,
@@ -133,6 +136,205 @@ MOCK_DATABRICKS_NATIVE_INVALID_EXP = """let
     Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind=  "Database"]}[Data], null, [EnableFolding=true])
 in
     Source"""
+
+MOCK_BIGQUERY_DIRECT_EXP = """let
+    Source = GoogleBigQuery.Database([BillingProject="my-gcp-project"]),
+    project = Source{[Name="my-gcp-project"]}[Data],
+    dataset = project{[Name="my_dataset",Kind="Schema"]}[Data],
+    table = dataset{[Name="my_table",Kind="Table"]}[Data]
+in
+    table"""
+
+EXPECTED_BIGQUERY_DIRECT_RESULT = [
+    {"database": "my-gcp-project", "schema": "my_dataset", "table": "my_table"}
+]
+
+MOCK_BIGQUERY_DIRECT_VIEW_EXP = """let
+    Source = GoogleBigQuery.Database([BillingProject="my-gcp-project"]),
+    project = Source{[Name="my-gcp-project"]}[Data],
+    dataset = project{[Name="analytics",Kind="Schema"]}[Data],
+    view = dataset{[Name="daily_stats",Kind="View"]}[Data]
+in
+    view"""
+
+EXPECTED_BIGQUERY_DIRECT_VIEW_RESULT = [
+    {"database": "my-gcp-project", "schema": "analytics", "table": "daily_stats"}
+]
+
+MOCK_BIGQUERY_NATIVE_QUERY_EXP = (
+    "let\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="my-gcp-project"])'
+    '{[Name="my-gcp-project"]}[Data], '
+    '"SELECT p.id, p.name#(lf)'
+    "FROM `my_dataset.products` AS p#(lf)"
+    'JOIN `my_dataset.categories` AS c ON p.category_id = c.id", '
+    "null, [EnableFolding=true])\n"
+    "in\n"
+    "    Source"
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_RESULT = [
+    {"database": "my-gcp-project", "schema": "my_dataset", "table": "categories"},
+    {"database": "my-gcp-project", "schema": "my_dataset", "table": "products"},
+]
+
+MOCK_BIGQUERY_NATIVE_QUERY_WITH_COMMENTS_EXP = (
+    "let\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[UseStorageApi=false, BillingProject="my-gcp-project"])'
+    '{[Name="my-gcp-project"]}[Data], '
+    '"WITH cte AS (#(lf)'
+    "SELECT id, name#(lf)"
+    "FROM `dataset_a.table_one` t1 -- main table#(lf)"
+    "JOIN `dataset_b.table_two` t2 ON t1.id = t2.fk_id#(tab)#(lf)"
+    ")#(lf)"
+    'SELECT * FROM cte", '
+    "null, [EnableFolding=true])\n"
+    "in\n"
+    "    Source"
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_WITH_COMMENTS_RESULT = [
+    {"database": "my-gcp-project", "schema": "dataset_a", "table": "table_one"},
+    {"database": "my-gcp-project", "schema": "dataset_b", "table": "table_two"},
+]
+
+MOCK_BIGQUERY_NATIVE_QUERY_MULTI_CTE_EXP = (
+    "let\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="prod-project"])'
+    '{[Name="prod-project"]}[Data], '
+    '"WITH staging AS (#(lf)'
+    "SELECT id FROM `raw_data.events`#(lf)"
+    "),#(lf)"
+    "agg AS (#(lf)"
+    "SELECT id FROM staging#(lf)"
+    "JOIN `analytics.dimensions` d ON staging.id = d.event_id#(lf)"
+    ")#(lf)"
+    "SELECT * FROM agg#(lf)"
+    'JOIN `reporting.summary` s ON agg.id = s.id", '
+    "null, [EnableFolding=true])\n"
+    "in\n"
+    "    Source"
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_MULTI_CTE_RESULT = [
+    {"database": "prod-project", "schema": "analytics", "table": "dimensions"},
+    {"database": "prod-project", "schema": "raw_data", "table": "events"},
+    {"database": "prod-project", "schema": "reporting", "table": "summary"},
+]
+
+MOCK_BIGQUERY_INVALID_EXP = """let
+    Source = SomeOther.Database("not-bigquery"),
+    table = Source{[Name="test"]}[Data]
+in
+    table"""
+
+MOCK_BIGQUERY_NATIVE_QUERY_WITH_TRANSFORMS_EXP = (
+    "let\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="my-project"])'
+    '{[Name="my-project"]}[Data], '
+    '"SELECT id, name FROM `sales.orders`", '
+    "null, [EnableFolding=true]),\n"
+    '    #"Replaced Value" = Table.ReplaceValue(Source,"old","new",'
+    'Replacer.ReplaceText,{"name"}),\n'
+    '    #"Changed Type" = Table.TransformColumnTypes('
+    '#"Replaced Value",{{"id", type text}})\n'
+    "in\n"
+    '    #"Changed Type"'
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_WITH_TRANSFORMS_RESULT = [
+    {"database": "my-project", "schema": "sales", "table": "orders"}
+]
+
+MOCK_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_EXP = (
+    "let\n"
+    "/*Original source*/\n"
+    "//    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="my-gcp-project"])'
+    '{[Name="my-gcp-project"]}[Data], '
+    '"SELECT * FROM DW_PowerBI.View_MRS_Business_Performance", '
+    "null, [EnableFolding=true]),\n"
+    "\n"
+    "/*New source - with weeks*/\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="my-gcp-project", '
+    "UseStorageApi=false])"
+    '{[Name="my-gcp-project"]}[Data], '
+    '"with migrated as #(lf)(#(lf)#(lf)'
+    "  SELECT distinct  en.Master_Account_Holder_ID,#(lf)"
+    "case when #(lf)"
+    "          count( distinct case when Financial_institution_ID "
+    "like '%STRIPE%' then 'STRIPE' else 'Payfac' end) > 1#(lf)"
+    "          then 1 else 0 end as migrated_to_stripe,#(lf)"
+    "max(case when Financial_institution_ID like '%STRIPE%' "
+    "then 1 else 0 end ) ind_stripe#(lf)"
+    "FROM DW_Main.View_Fact_MRS_Billing_Postings bp#(lf)"
+    "left join `my-gcp-project."
+    "DW_Main.View_Dim_Entities` en#(lf)"
+    "on en.Entity_ID=bp.Merchant_ID#(lf)"
+    "WHERE 1=1#(lf)"
+    "AND bp.Posting_Type_Name='OPERATION' and "
+    "bp.Posting_Sub_Type_Name='DEBIT'#(lf)"
+    "and bp.Merchant_ID IS NOT NULL#(lf)"
+    "-- and bp.Merchant_ID in (63501474, 65499418)#(lf)"
+    "and bp.Billing_Amount_USD>1--------------new 24.04.2024#(lf)"
+    '--and bp.Financial_institution_ID in (""STRIPEUSEP"",'
+    '""STRIPEHKEP"")#(lf)'
+    "--AND entity_id = 90728196#(lf)"
+    "--and Master_Account_Holder_ID = '001Nv00000HXfp9IAD'#(lf)"
+    "group by all#(lf)"
+    "having count( distinct case when Financial_institution_ID "
+    "like '%STRIPE%' then 'STRIPE' else 'Payfac' end) > 1#(lf)"
+    "          #(lf)#(lf)"
+    ")#(lf)#(lf)#(lf)"
+    "select *#(lf)"
+    ",case when a.Master_Account_ID=m.Master_Account_Holder_ID "
+    "then 1 else 0 end as ind_migrated#(lf)"
+    ",case when      DATE_TRUNC(DATE_SUB(CURRENT_DATE(), "
+    "INTERVAL 1 MONTH), MONTH)=Month_first_date then  1 else 0 "
+    "end as Last_month#(lf)"
+    ",case when      DATE_TRUNC(CURRENT_DATE(), MONTH)<>"
+    "Month_first_date and extract(quarter from  Month_first_date)"
+    "=extract(quarter from  CURRENT_DATE()) and extract(year from "
+    " Month_first_date)=extract(year from  CURRENT_DATE()) then "
+    " 1 else 0 end as Last_FULL_Q#(lf)"
+    ",case when     DATE_TRUNC(CURRENT_DATE(), MONTH)<>"
+    "Month_first_date  and extract(year from  Month_first_date)"
+    "=extract(year from  CURRENT_DATE()) then  1 else 0 end as "
+    "Last_FULL_Y#(lf)from `DA_Business_Analytics_VIEWS_Manual."
+    "View_NEW_MRS_check` a#(lf)"
+    "left join migrated m #(lf)"
+    'on a.Master_Account_ID=m.Master_Account_Holder_ID", '
+    "null, [EnableFolding=true]),\n"
+    '    #"Added Custom" = Table.AddColumn(Source, "Monthyear", '
+    "each Date.StartOfMonth([DayDate])),\n"
+    '    #"Changed Type1" = Table.TransformColumnTypes('
+    '#"Added Custom",{{"Monthyear", type date}})\n'
+    "in\n"
+    '    #"Changed Type1"'
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_RESULT = [
+    {
+        "database": "my-gcp-project",
+        "schema": "DA_Business_Analytics_VIEWS_Manual",
+        "table": "View_NEW_MRS_check",
+    },
+    {
+        "database": "my-gcp-project",
+        "schema": "DW_Main",
+        "table": "View_Fact_MRS_Billing_Postings",
+    },
+    {
+        "database": "my-gcp-project",
+        "schema": "my-gcp-project.DW_Main",
+        "table": "View_Dim_Entities",
+    },
+]
 
 mock_config = {
     "source": {
@@ -382,6 +584,63 @@ class PowerBIUnitTest(TestCase):
             MOCK_DATABRICKS_NATIVE_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL
         )
         self.assertIsNone(result)
+
+        # Test with valid BigQuery direct navigation source
+        table = PowerBiTable(name="test_table")
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_DIRECT_EXP, MOCK_DASHBOARD_DATA_MODEL, table
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_DIRECT_RESULT)
+
+        # Test with BigQuery direct navigation source (View)
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_DIRECT_VIEW_EXP, MOCK_DASHBOARD_DATA_MODEL, table
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_DIRECT_VIEW_RESULT)
+
+        # Test with BigQuery Value.NativeQuery source
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL, table
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_RESULT)
+
+        # Test with BigQuery NativeQuery containing SQL comments and #(tab)
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_WITH_COMMENTS_EXP,
+            MOCK_DASHBOARD_DATA_MODEL,
+            table,
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_WITH_COMMENTS_RESULT)
+
+        # Test with BigQuery NativeQuery with multiple CTEs
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_MULTI_CTE_EXP,
+            MOCK_DASHBOARD_DATA_MODEL,
+            table,
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_MULTI_CTE_RESULT)
+
+        # Test with non-BigQuery expression returns None
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL, table
+        )
+        self.assertIsNone(result)
+
+        # Test with BigQuery NativeQuery followed by Table transforms
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_WITH_TRANSFORMS_EXP,
+            MOCK_DASHBOARD_DATA_MODEL,
+            table,
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_WITH_TRANSFORMS_RESULT)
+
+        # Test with BigQuery NativeQuery containing block comments and commented-out source
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_EXP,
+            MOCK_DASHBOARD_DATA_MODEL,
+            table,
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_RESULT)
 
     @pytest.mark.order(2)
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_reference_by_email")
@@ -933,35 +1192,36 @@ class PowerBIUnitTest(TestCase):
     @pytest.mark.order(17)
     def test_paginate_project_filter_pattern_includes_under_limit(self):
         """
-        Test _paginate_project_filter_pattern with include filters under the limit (20)
-        Should return a single batch with all include filters
+        Test _paginate_project_filter_pattern with include filters = 15
+        Should return two batches
         """
         includes = [f"workspace{i}" for i in range(15)]
         filter_pattern = FilterPattern(includes=includes)
 
         result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
 
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].includes, includes)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].includes, includes[:10])
 
     @pytest.mark.order(18)
     def test_paginate_project_filter_pattern_includes_at_limit(self):
         """
         Test _paginate_project_filter_pattern with exactly 20 include filters
-        Should return a single batch
+        Should return two batches
         """
         includes = [f"workspace{i}" for i in range(20)]
         filter_pattern = FilterPattern(includes=includes)
 
         result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
 
-        self.assertEqual(len(result), 1)
-        self.assertEqual(len(result[0].includes), 20)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(len(result[0].includes), 10)
+        self.assertEqual(len(result[1].includes), 10)
 
     @pytest.mark.order(19)
     def test_paginate_project_filter_pattern_includes_over_limit(self):
         """
-        Test _paginate_project_filter_pattern with include filters over the limit (20)
+        Test _paginate_project_filter_pattern with include filters over the limit = 45
         Should paginate into multiple batches
         """
         includes = [f"workspace{i}" for i in range(45)]
@@ -969,13 +1229,11 @@ class PowerBIUnitTest(TestCase):
 
         result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
 
-        self.assertEqual(len(result), 3)
-        self.assertEqual(len(result[0].includes), 20)
-        self.assertEqual(len(result[1].includes), 20)
-        self.assertEqual(len(result[2].includes), 5)
-        self.assertEqual(result[0].includes, includes[:20])
-        self.assertEqual(result[1].includes, includes[20:40])
-        self.assertEqual(result[2].includes, includes[40:45])
+        self.assertEqual(len(result), 5)
+        self.assertEqual(len(result[0].includes), 10)
+        self.assertEqual(len(result[4].includes), 5)
+        self.assertEqual(result[1].includes, includes[10:20])
+        self.assertEqual(result[4].includes, includes[40:45])
 
     @pytest.mark.order(20)
     def test_paginate_project_filter_pattern_with_includes_and_excludes(self):
@@ -989,9 +1247,9 @@ class PowerBIUnitTest(TestCase):
 
         result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
 
-        self.assertEqual(len(result), 2)
-        self.assertEqual(len(result[0].includes), 20)
-        self.assertEqual(len(result[1].includes), 5)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(len(result[0].includes), 10)
+        self.assertEqual(len(result[2].includes), 5)
         self.assertEqual(result[0].excludes, excludes)
         self.assertEqual(result[1].excludes, excludes)
 
@@ -1020,9 +1278,10 @@ class PowerBIUnitTest(TestCase):
 
         result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
 
-        self.assertEqual(len(result), 5)
-        for i in range(4):
-            self.assertEqual(len(result[i].includes), 20)
+        self.assertEqual(len(result), 10)
+        for i in range(9):
+            self.assertEqual(len(result[i].includes), 10)
+        self.assertEqual(len(result[9].includes), 10)
         total_includes = sum(len(batch.includes) for batch in result)
         self.assertEqual(total_includes, 100)
 
@@ -1225,3 +1484,106 @@ class PowerBIUnitTest(TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].name.root, "EmptyTable")
         self.assertEqual(len(result[0].children), 0)
+
+    @pytest.mark.order(28)
+    def test_get_dataset_ids_from_report_datasources(self):
+        """
+        Test that _get_dataset_ids_from_report_datasources extracts dataset IDs
+        from the report datasources API response by parsing the
+        connectionDetails.database field with pattern sobe_wowvirtualserver-{DATASET_ID}
+        """
+        from unittest.mock import MagicMock, PropertyMock
+
+        mock_api_client = MagicMock()
+        self.powerbi.client = MagicMock()
+        self.powerbi.client.api_client = mock_api_client
+
+        mock_context = MagicMock()
+        mock_context.workspace.id = "test-workspace-id"
+
+        with patch.object(
+            type(self.powerbi), "context", new_callable=PropertyMock
+        ) as mock_ctx:
+            mock_ctx.return_value.get.return_value = mock_context
+
+            mock_api_client.fetch_report_datasources.return_value = [
+                Datasource(
+                    name="TestDatasource",
+                    datasourceType="AnalysisServices",
+                    connectionDetails=DatasourceConnectionDetails(
+                        server="pbiazure://api.powerbi.com/",
+                        database="sobe_wowvirtualserver-45812303-926b-49b3-9eb2-8c8209acfaa2",
+                    ),
+                    datasourceId="3bb310b9-daee-4442-aa3a-f344038e17d8",
+                    gatewayId="1ce5fe9c-93eb-410e-8cb8-05ec0b7f3ac6",
+                ),
+            ]
+
+            result = self.powerbi._get_dataset_ids_from_report_datasources(
+                report_id="test-report-id"
+            )
+
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0], "45812303-926b-49b3-9eb2-8c8209acfaa2")
+            mock_api_client.fetch_report_datasources.assert_called_once_with(
+                group_id="test-workspace-id", report_id="test-report-id"
+            )
+
+            mock_api_client.fetch_report_datasources.return_value = [
+                Datasource(
+                    name="NoDB",
+                    datasourceType="Web",
+                    connectionDetails=DatasourceConnectionDetails(
+                        server="https://example.com",
+                        database=None,
+                    ),
+                ),
+            ]
+
+            result = self.powerbi._get_dataset_ids_from_report_datasources(
+                report_id="test-report-id"
+            )
+            self.assertEqual(result, [])
+
+            mock_api_client.fetch_report_datasources.return_value = None
+            result = self.powerbi._get_dataset_ids_from_report_datasources(
+                report_id="test-report-id"
+            )
+            self.assertEqual(result, [])
+
+    @pytest.mark.order(29)
+    def test_column_name_truncated_when_exceeding_max_length(self):
+        """
+        Test that column names longer than 256 characters are truncated
+        and the full name is preserved in displayName
+        """
+        long_column_name = "A" * 300
+        long_table_name = "B" * 300
+        dataset = Dataset(
+            id="test-dataset-id",
+            name="test-dataset",
+            tables=[
+                PowerBiTable(
+                    name=long_table_name,
+                    columns=[
+                        PowerBiColumns(
+                            name=long_column_name,
+                            dataType="string",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        result = self.powerbi._get_column_info(dataset)
+
+        assert len(result) == 1
+        table_column = result[0]
+        assert len(table_column.name.root) == 256
+        assert table_column.name.root == long_table_name[:256]
+        assert table_column.displayName == long_table_name
+
+        child_column = table_column.children[0]
+        assert len(child_column.name.root) == 256
+        assert child_column.name.root == long_column_name[:256]
+        assert child_column.displayName == long_column_name

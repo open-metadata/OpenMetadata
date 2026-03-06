@@ -64,6 +64,7 @@ import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.ee10.servlet.ServletMapping;
 import org.eclipse.jetty.ee10.servlet.SessionHandler;
 import org.eclipse.jetty.ee10.websocket.server.config.JettyWebSocketServletContainerInitializer;
+import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.http.UriCompliance;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -105,6 +106,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
@@ -128,7 +130,9 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.resources.system.DiagnosticsResource;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthCallbackServlet;
@@ -165,6 +169,7 @@ import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.swagger.SwaggerBundle;
 import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CustomParameterNameProvider;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.quartz.SchedulerException;
@@ -242,19 +247,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Metrics initialization now handled by MicrometerBundle
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    // Initialize the MigrationValidationClient, used in the Settings Repository
+    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setEntityRelationshipRepository(
         new EntityRelationshipRepository(Entity.getCollectionDAO()));
+    Entity.setSystemRepository(new SystemRepository());
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
-    // Initialize bulk operation executor for bounded concurrent processing
+    // Initialize bulk operation executor
     BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
 
-    initializeSearchRepository(catalogConfig);
-    // Initialize the MigrationValidationClient, used in the Settings Repository
-    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
-    // as first step register all the repositories
+    // Phase 1: Core search infrastructure (needed by repositories)
+    initializeCoreSearchInfrastructure(catalogConfig);
+
+    // as first step register all the repositories (now they can access SearchRepository)
     Entity.initializeRepositories(catalogConfig, jdbi);
     auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
     Entity.setAuditLogRepository(auditLogRepository);
@@ -267,8 +275,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize Workflow Handler
     WorkflowHandler.initialize(catalogConfig);
 
-    // Init Settings Cache after repositories
+    // Init Settings Cache after repositories and Fernet (needed for database access and encryption)
     SettingsCache.initialize(catalogConfig);
+
+    // Phase 2: Advanced search features (after settings are available)
+    initializeAdvancedSearchFeatures();
+
+    // Phase 3: Vector search (embeddings + vector index)
+    Entity.getSearchRepository().initializeVectorSearchService();
 
     SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
 
@@ -428,8 +442,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     SessionCookieConfig cookieConfig =
         Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
     cookieConfig.setHttpOnly(true);
-    cookieConfig.setSecure(
-        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie());
+    boolean isSecure =
+        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie();
+    cookieConfig.setSecure(isSecure);
+
+    if (isSecure) {
+      sessionHandler.setSameSite(HttpCookie.SameSite.NONE);
+    }
 
     // Get session expiry - use OIDC config if available, otherwise default
     int sessionExpiry = 604800; // Default 7 days in seconds
@@ -531,23 +550,46 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  protected void initializeSearchRepository(OpenMetadataApplicationConfig config) {
-    // initialize Search Repository, all repositories use SearchRepository this line should always
-    // before initializing repository
+  /**
+   * Phase 1: Initialize core search infrastructure without advanced features.
+   * This creates the basic SearchRepository and SearchClient but defers
+   * lineage builders that depend on settings.
+   */
+  protected void initializeCoreSearchInfrastructure(OpenMetadataApplicationConfig config) {
     Integer databaseMaxSize = config.getDataSourceFactory().getMaxSize();
     LOG.info(
-        "AUTO-TUNE INIT: Initializing SearchRepository with database max pool size: {}",
+        "Phase 1: Initializing core search infrastructure with database max pool size: {}",
         databaseMaxSize);
+
     SearchRepository searchRepository =
-        new SearchRepository(
+        SearchRepositoryFactory.createSearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
     Entity.setSearchRepository(searchRepository);
 
-    // Initialize RDF if enabled
+    // Initialize RDF if enabled (core infrastructure)
     RdfConfiguration rdfConfig = config.getRdfConfiguration();
     if (rdfConfig != null && rdfConfig.getEnabled() != null && rdfConfig.getEnabled()) {
       RdfUpdater.initialize(rdfConfig);
       LOG.info("RDF knowledge graph support initialized");
+    }
+
+    LOG.info("Core search infrastructure initialization completed");
+  }
+
+  /**
+   * Phase 2: Initialize advanced search features that depend on settings.
+   * This includes lineage builders and other components that require
+   * database settings to be available.
+   */
+  protected void initializeAdvancedSearchFeatures() {
+    LOG.info("Phase 2: Initializing advanced search features");
+
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    if (searchRepository != null) {
+      searchRepository.initializeLineageComponents();
+      LOG.info("Advanced search features initialization completed");
+    } else {
+      LOG.warn("SearchRepository not found during advanced features initialization");
     }
   }
 
@@ -952,6 +994,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
             limits);
     environment.jersey().register(new AuditLogResource(authorizer, auditLogRepository));
+    environment.jersey().register(new DiagnosticsResource(authorizer));
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 
@@ -1066,8 +1109,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EventPubSub.shutdown();
-      AppScheduler.shutDown();
       EventSubscriptionScheduler.shutDown();
+      AsyncService.getInstance().shutdown();
+      AppScheduler.shutDown();
       LOG.info("Stopping the application");
     }
   }

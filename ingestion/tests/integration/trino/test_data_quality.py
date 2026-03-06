@@ -137,7 +137,7 @@ def test_table_diff(
     test_suite_config = {
         "source": {
             "type": "trino",
-            "serviceName": "MyTestSuite",
+            "serviceName": f"MyTestSuite_{db_service.name.root}",
             "sourceConfig": {
                 "config": {
                     "type": TestSuiteConfigType.TestSuite,

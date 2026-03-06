@@ -10,7 +10,7 @@
       "description": "The template body to validate",
       "type": "string",
       "minLength": 1,
-      "maxLength": 10240
+      "maxLength": 65536
     },
     "templateSubject": {
       "description": "The template subject line to validate",

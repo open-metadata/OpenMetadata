@@ -20,15 +20,44 @@ import {
 
 export { LearningResourceStatus, ResourceCategory, ResourceType };
 
-export const MAX_VISIBLE_TAGS = 3;
-export const MAX_VISIBLE_CONTEXTS = 3;
+export const MAX_VISIBLE_TAGS = 2;
+export const MAX_VISIBLE_CONTEXTS = 2;
 export const DEFAULT_PAGE_SIZE = 10;
 
+export const MAX_CHAIN_PAGES = 25;
+
 export const RESOURCE_TYPE_VALUES = [
-  ResourceType.Article,
   ResourceType.Video,
   ResourceType.Storylane,
 ];
+
+export const YOUTUBE_VIDEO_HOSTNAMES = [
+  'youtube.com',
+  'www.youtube.com',
+  'm.youtube.com',
+  'youtu.be',
+];
+
+export const VIMEO_VIDEO_HOSTNAMES = [
+  'vimeo.com',
+  'www.vimeo.com',
+  'player.vimeo.com',
+];
+
+const VIDEO_HOSTNAMES = [...YOUTUBE_VIDEO_HOSTNAMES, ...VIMEO_VIDEO_HOSTNAMES];
+
+export const isVideoUrl = (url: string | undefined): boolean => {
+  if (!url || typeof url !== 'string') {
+    return false;
+  }
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+
+    return VIDEO_HOSTNAMES.some((h) => h === hostname);
+  } catch {
+    return false;
+  }
+};
 
 export interface ResourceTypeOption {
   value: ResourceType;
@@ -56,8 +85,8 @@ export const CATEGORIES: CategoryOption[] = [
 ];
 
 export const LEARNING_RESOURCE_STATUSES = [
-  LearningResourceStatus.Draft,
   LearningResourceStatus.Active,
+  LearningResourceStatus.Draft,
   LearningResourceStatus.Deprecated,
 ];
 
@@ -85,7 +114,7 @@ export const LEARNING_PAGE_IDS = {
   TEST_SUITE: 'testSuite',
   INCIDENT_MANAGER: 'incidentManager',
   PROFILER_CONFIGURATION: 'profilerConfiguration',
-  RULES_LIBRARY: 'rulesLibrary',
+  TEST_LIBRARY: 'testLibrary',
   EXPLORE: 'explore',
   TABLE: 'table',
   DASHBOARD: 'dashboard',
@@ -101,7 +130,7 @@ export const LEARNING_PAGE_IDS = {
   DATABASE_SCHEMA: 'databaseSchema',
   HOME_PAGE: 'homePage',
   MY_DATA: 'myData',
-  WORKFLOWS: 'workflows',
+  WORKFLOWS: 'governanceWorkflows',
   AUTOMATIONS: 'automations',
   KNOWLEDGE_CENTER: 'knowledgeCenter',
   SQL_STUDIO: 'sqlStudio',
@@ -146,7 +175,7 @@ export const PAGE_IDS: PageIdOption[] = [
     value: LEARNING_PAGE_IDS.PROFILER_CONFIGURATION,
     label: 'Profiler Configuration',
   },
-  { value: LEARNING_PAGE_IDS.RULES_LIBRARY, label: 'Rules Library' },
+  { value: LEARNING_PAGE_IDS.TEST_LIBRARY, label: 'Test Library' },
   { value: LEARNING_PAGE_IDS.EXPLORE, label: 'Explore' },
   { value: LEARNING_PAGE_IDS.TABLE, label: 'Table' },
   { value: LEARNING_PAGE_IDS.DASHBOARD, label: 'Dashboard' },

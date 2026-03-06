@@ -217,6 +217,18 @@ class ColumnTypeParser:
         "CIDR": "CIDR",
         "INET": "INET",
         "TSRANGE": "DATETIMERANGE",
+        # DB2
+        "XMLVARCHAR": "XML",
+        "XMLCLOB": "XML",
+        "XMLFILE": "XML",
+        "TIMESTMP": "TIMESTAMP",
+        "LONGVARCHAR": "VARCHAR",
+        "GRAPHIC": "CHAR",
+        "VARGRAPHIC": "VARCHAR",
+        "LONGVARGRAPHIC": "VARCHAR",
+        "DBCLOB": "CLOB",
+        "DECFLOAT": "DOUBLE",
+        "CHARACTER": "CHAR",
         # ORACLE
         "BINARY_DOUBLE": "DOUBLE",
         "BINARY_FLOAT": "FLOAT",

@@ -30,6 +30,7 @@ import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLef
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -705,6 +706,16 @@ const TagsPage = () => {
                   noWrap
                   className="self-center m-b-0 tag-category"
                   data-testid="tag-name"
+                  sx={{
+                    fontWeight:
+                      currentClassification?.name === category.name
+                        ? theme.typography.fontWeightBold
+                        : 'inherit',
+                    color:
+                      currentClassification?.name === category.name
+                        ? 'primary.main'
+                        : 'inherit',
+                  }}
                   title={getEntityName(category)}
                   variant="body2">
                   {getEntityName(category)}
@@ -768,6 +779,7 @@ const TagsPage = () => {
   return (
     <div>
       <ResizableLeftPanels
+        showLearningIcon
         className="content-height-with-resizable-panel"
         firstPanel={{
           className: 'content-resizable-panel-container',
@@ -776,6 +788,8 @@ const TagsPage = () => {
           children: leftPanelLayout,
           title: t('label.classification-plural'),
         }}
+        learningPageId={LEARNING_PAGE_IDS.CLASSIFICATION}
+        learningTitle={t('label.classification-plural')}
         pageTitle={getEntityName(currentClassification)}
         secondPanel={{
           children: (

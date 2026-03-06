@@ -51,6 +51,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -794,7 +795,8 @@ public class FeedRepository {
                     FullyQualifiedName.buildHash(user.getFullyQualifiedName()),
                     teamNames,
                     Relationship.MENTIONED_IN.ordinal(),
-                    " where true ");
+                    " where true ",
+                    Map.of());
       } else {
         mentions = 0;
         // team is not supported
@@ -899,9 +901,10 @@ public class FeedRepository {
     // No filters are enabled. Listing all the threads
     if (link == null && userId == null) {
       // Get one extra result used for computing before cursor
-      List<String> jsons = dao.feedDAO().list(limit + 1, filter.getCondition());
+      List<String> jsons =
+          dao.feedDAO().list(limit + 1, filter.getCondition(), filter.getQueryParams());
       threads = JsonUtils.readObjects(jsons, Thread.class);
-      total = dao.feedDAO().listCount(filter.getCondition());
+      total = dao.feedDAO().listCount(filter.getCondition(), filter.getQueryParams());
     } else {
       // Either one or both the filters are enabled. We don't support both the filters together.
       // If both are not null, entity link takes precedence
@@ -1358,12 +1361,19 @@ public class FeedRepository {
     List<String> jsons =
         dao.feedDAO()
             .listTasksAssigned(
-                userTeamJsonPostgres, userTeamJsonMysql, limit, filter.getCondition());
+                userTeamJsonPostgres,
+                userTeamJsonMysql,
+                limit,
+                filter.getCondition(),
+                filter.getQueryParams());
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount =
         dao.feedDAO()
             .listCountTasksAssignedTo(
-                userTeamJsonPostgres, userTeamJsonMysql, filter.getCondition(false));
+                userTeamJsonPostgres,
+                userTeamJsonMysql,
+                filter.getCondition(false),
+                filter.getQueryParams());
     return new FilteredThreads(threads, totalCount);
   }
 
@@ -1405,21 +1415,35 @@ public class FeedRepository {
     List<String> jsons =
         dao.feedDAO()
             .listTasksOfUser(
-                userTeamJsonPostgres, userTeamJsonMysql, username, limit, filter.getCondition());
+                userTeamJsonPostgres,
+                userTeamJsonMysql,
+                username,
+                limit,
+                filter.getCondition(),
+                filter.getQueryParams());
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount =
         dao.feedDAO()
             .listCountTasksOfUser(
-                userTeamJsonPostgres, userTeamJsonMysql, username, filter.getCondition(false));
+                userTeamJsonPostgres,
+                userTeamJsonMysql,
+                username,
+                filter.getCondition(false),
+                filter.getQueryParams());
     return new FilteredThreads(threads, totalCount);
   }
 
   /** Return the tasks created by the user. */
   private FilteredThreads getTasksAssignedBy(FeedFilter filter, UUID userId, int limit) {
     String username = Entity.getEntityReferenceById(Entity.USER, userId, ALL).getName();
-    List<String> jsons = dao.feedDAO().listTasksAssigned(username, limit, filter.getCondition());
+    List<String> jsons =
+        dao.feedDAO()
+            .listTasksAssigned(username, limit, filter.getCondition(), filter.getQueryParams());
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
-    int totalCount = dao.feedDAO().listCountTasksAssignedBy(username, filter.getCondition(false));
+    int totalCount =
+        dao.feedDAO()
+            .listCountTasksAssignedBy(
+                username, filter.getCondition(false), filter.getQueryParams());
     return new FilteredThreads(threads, totalCount);
   }
 
@@ -1432,10 +1456,14 @@ public class FeedRepository {
     // and threads created by or replied to by the user
     List<String> teamIds = getTeamIds(userId);
     List<String> jsons =
-        dao.feedDAO().listThreadsByOwner(userId, teamIds, limit, filter.getCondition());
+        dao.feedDAO()
+            .listThreadsByOwner(
+                userId, teamIds, limit, filter.getCondition(), filter.getQueryParams());
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount =
-        dao.feedDAO().listCountThreadsByOwner(userId, teamIds, filter.getCondition(false));
+        dao.feedDAO()
+            .listCountThreadsByOwner(
+                userId, teamIds, filter.getCondition(false), filter.getQueryParams());
     return new FilteredThreads(threads, totalCount);
   }
 
@@ -1463,7 +1491,8 @@ public class FeedRepository {
                 userName,
                 teamNameHash,
                 filterRelation,
-                filter.getCondition());
+                filter.getCondition(),
+                filter.getQueryParams());
 
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
 
@@ -1488,7 +1517,8 @@ public class FeedRepository {
                 teamNamesHash,
                 limit,
                 Relationship.MENTIONED_IN.ordinal(),
-                filter.getCondition());
+                filter.getCondition(),
+                filter.getQueryParams());
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount =
         dao.feedDAO()
@@ -1496,7 +1526,8 @@ public class FeedRepository {
                 userNameHash,
                 teamNamesHash,
                 Relationship.MENTIONED_IN.ordinal(),
-                filter.getCondition(false));
+                filter.getCondition(false),
+                filter.getQueryParams());
     return new FilteredThreads(threads, totalCount);
   }
 
@@ -1522,22 +1553,35 @@ public class FeedRepository {
     List<String> jsons =
         dao.feedDAO()
             .listThreadsByFollows(
-                userId, teamIds, limit, Relationship.FOLLOWS.ordinal(), filter.getCondition());
+                userId,
+                teamIds,
+                limit,
+                Relationship.FOLLOWS.ordinal(),
+                filter.getCondition(),
+                filter.getQueryParams());
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount =
         dao.feedDAO()
             .listCountThreadsByFollows(
-                userId, teamIds, Relationship.FOLLOWS.ordinal(), filter.getCondition());
+                userId,
+                teamIds,
+                Relationship.FOLLOWS.ordinal(),
+                filter.getCondition(),
+                filter.getQueryParams());
     return new FilteredThreads(threads, totalCount);
   }
 
   private FilteredThreads getThreadsByOwnerOrFollows(FeedFilter filter, UUID userId, int limit) {
     List<String> teamIds = getTeamIds(userId);
     List<String> jsons =
-        dao.feedDAO().listThreadsByOwnerOrFollows(userId, teamIds, limit, filter.getCondition());
+        dao.feedDAO()
+            .listThreadsByOwnerOrFollows(
+                userId, teamIds, limit, filter.getCondition(), filter.getQueryParams());
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount =
-        dao.feedDAO().listCountThreadsByOwnerOrFollows(userId, teamIds, filter.getCondition());
+        dao.feedDAO()
+            .listCountThreadsByOwnerOrFollows(
+                userId, teamIds, filter.getCondition(), filter.getQueryParams());
     return new FilteredThreads(threads, totalCount);
   }
 

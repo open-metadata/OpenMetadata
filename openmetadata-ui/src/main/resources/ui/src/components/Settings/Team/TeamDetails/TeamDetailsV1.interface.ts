@@ -43,7 +43,7 @@ export interface TeamDetailsProp {
     parentTeam?: string,
     updateChildNode?: boolean
   ) => void;
-
+  teamAssetCounts?: Record<string, number>;
   isTeamBasicDataLoading: boolean;
 }
 

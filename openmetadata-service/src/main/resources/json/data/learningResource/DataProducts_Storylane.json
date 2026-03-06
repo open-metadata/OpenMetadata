@@ -1,0 +1,14 @@
+{
+  "name": "Data Products",
+  "description": "Learn how data products allow you to combine various data asset objects into logical groupings for different audiences",
+  "resourceType": "Storylane",
+  "categories": ["DataGovernance"],
+  "source": {
+    "url": "https://collate.storylane.io/share/j0wymvyulzo5"
+  },
+  "contexts": [
+    {"pageId": "dataProduct"},
+    {"pageId": "domain"}
+  ],
+  "status": "Active"
+}

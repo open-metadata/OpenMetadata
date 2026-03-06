@@ -12,8 +12,8 @@
  */
 
 import { Typography } from 'antd';
-import { first, isEmpty, isUndefined } from 'lodash';
-import { ReactElement, useMemo, useRef, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { ReactElement, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,
@@ -23,7 +23,6 @@ import {
   LegendProps,
   Line,
   LineProps,
-  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -36,9 +35,6 @@ import { ReactComponent as FilterPlaceHolderIcon } from '../../../../assets/svg/
 import {
   GREEN_3,
   GREEN_3_OPACITY,
-  RED_3,
-  RED_3_OPACITY,
-  YELLOW_2,
 } from '../../../../constants/Color.constants';
 import {
   DEFAULT_CHART_OPACITY,
@@ -50,29 +46,34 @@ import {
   TABLE_FRESHNESS_KEY,
 } from '../../../../constants/TestSuite.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import {
-  Thread,
-  ThreadTaskStatus,
-} from '../../../../generated/entity/feed/thread';
-import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
+import { updateActiveChartFilter } from '../../../../utils/ChartUtils';
 import {
-  axisTickFormatter,
-  updateActiveChartFilter,
-} from '../../../../utils/ChartUtils';
-import { prepareChartData } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
+  formatTestSummaryYAxis,
+  getStatusDotColor,
+  prepareChartData,
+} from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import {
-  convertSecondsToHumanReadableFormat,
-  formatDateTime,
+  DATE_TIME_12_HOUR_FORMAT,
+  formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { LineChartRef } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
+import {
+  STATUS_DOT_RADIUS,
+  STATUS_DOT_SIZE,
+  TEST_SUMMARY_CHART_MARGIN,
+  TOOLTIP_EDGE_THRESHOLD,
+  TOOLTIP_OFFSET_DEFAULT,
+  TOOLTIP_OFFSET_NEAR_EDGE,
+} from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
 function TestSummaryGraph({
   testCaseName,
+  testCaseFqn,
   testCaseParameterValue,
   testCaseResults,
   selectedTimeRange,
@@ -93,18 +94,19 @@ function TestSummaryGraph({
     const chartContainer =
       lineChartContainer?.container?.getBoundingClientRect();
 
-    // if tooltip is near the right edge of the chart, reduce edge offset
     return chartMouseEvent?.chartX &&
-      chartMouseEvent.chartX + 200 > chartContainer?.width
-      ? -20
-      : -200;
-  }, [chartRef, chartMouseEvent]);
+      chartMouseEvent.chartX + TOOLTIP_EDGE_THRESHOLD >
+        (chartContainer?.width ?? 0)
+      ? TOOLTIP_OFFSET_NEAR_EDGE
+      : TOOLTIP_OFFSET_DEFAULT;
+  }, [chartMouseEvent]);
 
   const { chartData, isFreshnessTest } = useMemo(() => {
     const data = prepareChartData({
       testCaseParameterValue: testCaseParameterValue ?? [],
       testCaseResults,
       entityThread,
+      testCaseFqn,
     });
     setShowAILearningBanner(data.showAILearningBanner);
     const isFreshnessTest = data.information.some(
@@ -112,33 +114,7 @@ function TestSummaryGraph({
     );
 
     return { chartData: data, isFreshnessTest };
-  }, [testCaseResults, entityThread, testCaseParameterValue]);
-
-  const incidentData = useMemo(() => {
-    const data = chartData.data ?? [];
-
-    const issueData = entityThread.map((task) => {
-      const failedRows = data.filter(
-        (chart) => task.task?.testCaseResolutionStatusId === chart.incidentId
-      );
-      const x2 =
-        task.task?.status === ThreadTaskStatus.Closed
-          ? task.task?.closedAt
-          : undefined;
-
-      return {
-        x1: first(failedRows)?.name,
-        x2,
-        task,
-      };
-    });
-
-    return issueData as {
-      x1?: string | number;
-      x2?: string | number;
-      task: Thread;
-    }[];
-  }, [entityThread, chartData]);
+  }, [testCaseResults, entityThread, testCaseParameterValue, testCaseFqn]);
 
   const customLegendPayLoad = useMemo(() => {
     const legendPayload: Payload[] = chartData?.information.map((info) => ({
@@ -149,21 +125,10 @@ function TestSummaryGraph({
       inactive: !(activeKeys.length === 0 || activeKeys.includes(info.label)),
     }));
 
-    legendPayload.push({
-      value: t('label.incident'),
-      dataKey: 'Incident',
-      type: 'rect',
-      color: RED_3,
-    } as Payload);
-
     return legendPayload;
-  }, [chartData?.information, activeKeys, t]);
+  }, [chartData?.information, activeKeys]);
 
   const handleLegendClick: LegendProps['onClick'] = (event) => {
-    if (event.dataKey === 'Incident') {
-      return;
-    }
-
     setActiveKeys((prevActiveKeys) =>
       updateActiveChartFilter(event.dataKey, prevActiveKeys)
     );
@@ -176,31 +141,33 @@ function TestSummaryGraph({
     setActiveMouseHoverKey('');
   };
 
-  // Todo: need to find better approach to create dynamic scale for graph, need to work with @TeddyCr for the same!
-  const formatYAxis = (value: number) => {
-    return testDefinitionName === TABLE_DATA_TO_BE_FRESH || isFreshnessTest
-      ? // table freshness value is in seconds from Python/backend, use dedicated seconds converter
-        convertSecondsToHumanReadableFormat(value, 2)
-      : axisTickFormatter(value);
-  };
+  const useFreshnessFormat =
+    testDefinitionName === TABLE_DATA_TO_BE_FRESH || isFreshnessTest;
+  const formatYAxis = useCallback(
+    (value: number) => formatTestSummaryYAxis(value, useFreshnessFormat),
+    [useFreshnessFormat]
+  );
 
-  const updatedDot: LineProps['dot'] = (props): ReactElement<SVGElement> => {
+  const renderStatusDot: LineProps['dot'] = (
+    props
+  ): ReactElement<SVGElement> => {
     const { cx = 0, cy = 0, payload } = props;
-    let fill = payload.status === TestCaseStatus.Success ? GREEN_3 : undefined;
-
-    if (isUndefined(fill)) {
-      fill = payload.status === TestCaseStatus.Failed ? RED_3 : YELLOW_2;
-    }
+    const fill = getStatusDotColor(payload.status);
 
     return (
       <svg
         fill="none"
-        height={8}
-        width={8}
-        x={cx - 4}
+        height={STATUS_DOT_SIZE}
+        width={STATUS_DOT_SIZE}
+        x={cx - STATUS_DOT_RADIUS}
         xmlns="http://www.w3.org/2000/svg"
-        y={cy - 4}>
-        <circle cx={4} cy={4} fill={fill} r={4} />
+        y={cy - STATUS_DOT_RADIUS}>
+        <circle
+          cx={STATUS_DOT_RADIUS}
+          cy={STATUS_DOT_RADIUS}
+          fill={fill}
+          r={STATUS_DOT_RADIUS}
+        />
       </svg>
     );
   };
@@ -251,22 +218,23 @@ function TestSummaryGraph({
       minHeight={minHeight ?? 400}>
       <ComposedChart
         data={chartData.data}
-        margin={{
-          top: 16,
-          bottom: 16,
-          right: 40,
-        }}
+        margin={TEST_SUMMARY_CHART_MARGIN}
         ref={chartRef}
         onMouseMove={(e) => {
           setChartMouseEvent(e);
         }}>
         <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
         <XAxis
+          angle={-45}
           dataKey="name"
           domain={['auto', 'auto']}
           padding={{ left: 8, right: 8 }}
           scale="time"
-          tickFormatter={formatDateTime}
+          textAnchor="end"
+          tick={{ fontSize: 12 }}
+          tickFormatter={(date) =>
+            formatDateTimeLong(date, DATE_TIME_12_HOUR_FORMAT)
+          }
           type="number"
         />
         <YAxis
@@ -277,7 +245,17 @@ function TestSummaryGraph({
           width={80}
         />
         <Tooltip
-          content={<TestSummaryCustomTooltip />}
+          content={({ active, payload }) => (
+            <TestSummaryCustomTooltip
+              active={active}
+              payload={
+                payload as
+                  | Array<{ payload: Record<string, unknown> }>
+                  | undefined
+              }
+              testCaseFqn={chartData?.testCaseFqn}
+            />
+          )}
           offset={tooltipOffset}
           position={{ y: 100 }}
           wrapperStyle={{ pointerEvents: 'auto' }}
@@ -285,6 +263,7 @@ function TestSummaryGraph({
         {referenceArea}
         <Legend
           payload={customLegendPayLoad}
+          wrapperStyle={{ bottom: 2 }}
           onClick={handleLegendClick}
           onMouseEnter={handleLegendMouseEnter}
           onMouseLeave={handleLegendMouseLeave}
@@ -302,7 +281,7 @@ function TestSummaryGraph({
         {chartData?.information?.map((info) => (
           <Line
             dataKey={info.label}
-            dot={updatedDot}
+            dot={renderStatusDot}
             hide={
               activeKeys.length && info.label !== activeMouseHoverKey
                 ? !activeKeys.includes(info.label)
@@ -318,17 +297,6 @@ function TestSummaryGraph({
             type="monotone"
           />
         ))}
-
-        {incidentData.length > 0 &&
-          incidentData.map((data) => (
-            <ReferenceArea
-              fill={RED_3_OPACITY}
-              ifOverflow="extendDomain"
-              key={data.task.id}
-              x1={data.x1}
-              x2={data.x2}
-            />
-          ))}
       </ComposedChart>
     </ResponsiveContainer>
   );

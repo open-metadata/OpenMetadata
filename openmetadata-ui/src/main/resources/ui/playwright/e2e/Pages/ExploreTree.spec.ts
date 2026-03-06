@@ -12,11 +12,13 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { DATA_ASSETS } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
@@ -43,6 +45,7 @@ import {
   testCopyLinkButton,
   updateDisplayNameForEntity,
   validateCopiedLinkFormat,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
   Bucket,
@@ -65,7 +68,7 @@ test.beforeEach(async ({ page }) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
 });
 
-test.describe('Explore Tree scenarios', () => {
+test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('Explore Tree', async ({ page }) => {
     await test.step('Check the explore tree', async () => {
       await page.waitForLoadState('networkidle');
@@ -160,6 +163,91 @@ test.describe('Explore Tree scenarios', () => {
         await expect(
           page.getByTestId('search-dropdown-Data Assets')
         ).toContainText('Data Assets: metric');
+      }
+    );
+  });
+
+  test('Verify Tags navigation via Governance tree and breadcrumb renders page correctly', async ({
+    page,
+  }) => {
+    await test.step('Expand Governance node in explore tree', async () => {
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('explore-tree-title-Governance')
+      ).toBeVisible();
+
+      await page
+        .locator('.ant-tree-treenode', {
+          has: page.getByTestId('explore-tree-title-Governance'),
+        })
+        .locator('.ant-tree-switcher')
+        .click();
+    });
+
+    await test.step('Click on Tags under Governance', async () => {
+      await expect(page.getByTestId('explore-tree-title-Tags')).toBeVisible();
+
+      const tagsSearchRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=dataAsset*'
+      );
+      await page.getByTestId('explore-tree-title-Tags').click();
+      const tagsSearchResponse = await tagsSearchRes;
+
+      expect(tagsSearchResponse.status()).toBe(200);
+    });
+
+    await test.step(
+      'Click parent classification breadcrumb from a tag result',
+      async () => {
+        await waitForAllLoadersToDisappear(page);
+        const classificationBreadcrumb = page
+          .locator('[data-testid="breadcrumb-link"] a[href*="/tags/"]')
+          .first();
+
+        await expect(classificationBreadcrumb).toBeVisible();
+        await expect(classificationBreadcrumb).toBeEnabled();
+
+        const classificationsRes = page.waitForResponse(
+          '/api/v1/classifications*'
+        );
+        const tagsTableRes = page.waitForResponse('/api/v1/tags*');
+
+        await classificationBreadcrumb.click();
+
+        const classificationResponse = await classificationsRes;
+        const tagsTableResponse = await tagsTableRes;
+
+        expect(classificationResponse.status()).toBe(200);
+        expect(tagsTableResponse.status()).toBe(200);
+      }
+    );
+
+    await test.step(
+      'Verify full Tags page renders with left panel, table and headers',
+      async () => {
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('side-panel-classification')
+        ).not.toHaveCount(0);
+
+        await expect(page.getByTestId('tags-container')).toBeVisible();
+
+        await expect(page.getByTestId('table')).toBeVisible();
+
+        // Verify all table column headers are correct
+        const headers = await page
+          .locator('.ant-table-thead > tr > .ant-table-cell')
+          .allTextContents();
+
+        expect(headers).toEqual([
+          'Enabled',
+          'Tag',
+          'Display Name',
+          'Description',
+          'Actions',
+        ]);
       }
     );
   });
@@ -285,11 +373,12 @@ test.describe('Explore Tree scenarios', () => {
   });
 });
 
-test.describe('Explore page', () => {
+test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   const table = new TableClass();
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
   const dashboard = new DashboardClass();
+  const chart = new ChartClass();
   const storedProcedure = new StoredProcedureClass();
   const pipeline = new PipelineClass();
   const container = new ContainerClass();
@@ -319,6 +408,7 @@ test.describe('Explore page', () => {
     await glossary.create(apiContext);
     await glossaryTerm.create(apiContext);
     await dashboard.create(apiContext);
+    await chart.create(apiContext);
     await storedProcedure.create(apiContext);
     await pipeline.create(apiContext);
     await container.create(apiContext);
@@ -348,6 +438,7 @@ test.describe('Explore page', () => {
     await glossaryTerm.delete(apiContext);
     await glossary.delete(apiContext);
     await dashboard.delete(apiContext);
+    await chart.delete(apiContext);
     await storedProcedure.delete(apiContext);
     await pipeline.delete(apiContext);
     await container.delete(apiContext);
@@ -400,6 +491,81 @@ test.describe('Explore page', () => {
 
   test('Check listing of entities when index is all', async ({ page }) => {
     await validateBucketsForIndex(page, 'all');
+  });
+
+  test('Verify charts are visible in explore tree', async ({ page }) => {
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const serviceName = dashboard.serviceResponseData.name;
+
+    const dashboardNode = page.getByTestId('explore-tree-title-Dashboards');
+    await expect(dashboardNode).toBeVisible();
+
+    const dashboardNodeClickResponse = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/api/v1/search/query') &&
+        resp.url().includes('index=dataAsset') &&
+        resp.url().includes('query_filter')
+    );
+
+    await page.getByTestId('explore-tree-title-Dashboards').click();
+
+    await dashboardNodeClickResponse;
+
+    await page
+      .locator('.ant-tree-treenode', {
+        has: page.getByTestId('explore-tree-title-Dashboards'),
+      })
+      .locator('.ant-tree-switcher')
+      .click();
+
+    const supersetNode = page.getByTestId('explore-tree-title-superset');
+    await expect(supersetNode).toBeVisible();
+
+    await page
+      .locator('.ant-tree-treenode', {
+        has: page.getByTestId('explore-tree-title-superset'),
+      })
+      .locator('.ant-tree-switcher')
+      .click();
+
+    const dashboardServiceNode = page.getByTestId(
+      `explore-tree-title-${serviceName}`
+    );
+    await expect(dashboardServiceNode).toBeVisible();
+
+    await page
+      .locator('.ant-tree-treenode', {
+        has: page.getByTestId(`explore-tree-title-${serviceName}`),
+      })
+      .locator('.ant-tree-switcher')
+      .click();
+
+    const chartsNode = page.getByTestId('explore-tree-title-chart');
+    await expect(chartsNode).toBeVisible();
+    await expect(chartsNode).toContainText('Charts');
+
+    const searchInput = page.getByTestId('searchBox');
+    await searchInput.click();
+    await searchInput.clear();
+    await searchInput.fill(dashboard.chartsResponseData.name);
+    await searchInput.press('Enter');
+
+    const searchResults = page.getByTestId('search-results');
+    const chartCard = searchResults.getByTestId(
+      `table-data-card_${dashboard.chartsResponseData.fullyQualifiedName}`
+    );
+
+    await expect(chartCard).toBeVisible();
+
+    const exploreLeftPanel = page.getByTestId('explore-left-panel');
+    await expect(exploreLeftPanel).toBeVisible();
+
+    const chartsTab = page.getByTestId('charts-tab');
+    await expect(chartsTab).toBeVisible();
+    await expect(chartsTab).toContainText('Charts');
   });
 
   DATA_ASSETS.forEach((asset) => {
@@ -505,7 +671,11 @@ test.describe('Explore page', () => {
     await expect(sidePanel).not.toBeVisible();
 
     // Verify URL does not contain the column part
-    await expect(page).toHaveURL(new RegExp(`/searchIndex/${searchIndex.entityResponseData?.['fullyQualifiedName']}$`));
+    await expect(page).toHaveURL(
+      new RegExp(
+        `/searchIndex/${searchIndex.entityResponseData?.['fullyQualifiedName']}$`
+      )
+    );
   });
 
   test('Copy field link should have valid URL format for APIEndpoint', async ({
@@ -543,6 +713,10 @@ test.describe('Explore page', () => {
     await expect(sidePanel).not.toBeVisible();
 
     // Verify URL does not contain the column part
-    await expect(page).toHaveURL(new RegExp(`/apiEndpoint/${apiEndpoint.entityResponseData?.['fullyQualifiedName']}$`));
+    await expect(page).toHaveURL(
+      new RegExp(
+        `/apiEndpoint/${apiEndpoint.entityResponseData?.['fullyQualifiedName']}$`
+      )
+    );
   });
 });

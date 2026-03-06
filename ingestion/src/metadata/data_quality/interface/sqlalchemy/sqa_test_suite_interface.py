@@ -16,7 +16,6 @@ supporting sqlalchemy abstraction layer
 
 from typing import Union
 
-from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.data_quality.builders.validator_builder import (
@@ -76,11 +75,11 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         )
 
     @property
-    def dataset(self) -> Union[DeclarativeMeta, AliasedClass]:
+    def dataset(self) -> Union[type, AliasedClass]:
         """_summary_
 
         Returns:
-            Union[DeclarativeMeta, AliasedClass]: _description_
+            Union[type, AliasedClass]: _description_
         """
         if not self.sampler:
             raise RuntimeError(

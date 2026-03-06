@@ -765,11 +765,7 @@ class DBTCloudUnitTest(TestCase):
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
             self.assertEqual(
-                len(list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))), 1
-            )
-
-            self.assertIsNotNone(
-                list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))[0].left
+                len(list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))), 0
             )
 
     def test_error_handling_in_lineage(self):

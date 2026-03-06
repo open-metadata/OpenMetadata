@@ -17,9 +17,11 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
+import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +55,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
@@ -78,6 +81,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
+  private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
@@ -154,17 +158,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Batch fetch service references for all pipelines
     Map<UUID, EntityReference> serviceRefs = batchFetchServices(pipelines);
 
-    // Set service field for all pipelines
+    // Batch fetch latest pipeline statuses if requested
+    Map<String, PipelineStatus> statusMap = Map.of();
+    if (fields.contains("pipelineStatuses")) {
+      statusMap = batchFetchLatestPipelineStatuses(pipelines);
+    }
+
     for (IngestionPipeline pipeline : pipelines) {
+      if (fields.contains("pipelineStatuses")) {
+        String fqnHash = FullyQualifiedName.buildHash(pipeline.getFullyQualifiedName());
+        pipeline.setPipelineStatuses(statusMap.get(fqnHash));
+      }
       EntityReference serviceRef = serviceRefs.get(pipeline.getId());
-      pipeline.setPipelineStatuses(
-          fields.contains("pipelineStatuses")
-              ? getLatestPipelineStatus(pipeline)
-              : pipeline.getPipelineStatuses());
       if (serviceRef != null) {
         pipeline.withService(serviceRef);
       } else {
-        // Service is guaranteed to exist, so fetch it individually if batch fetch missed it
         LOG.warn(
             "Service not found in batch fetch for pipeline: {} (id: {}). Fetching individually.",
             pipeline.getName(),
@@ -180,6 +188,24 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         }
       }
     }
+  }
+
+  private Map<String, PipelineStatus> batchFetchLatestPipelineStatuses(
+      List<IngestionPipeline> pipelines) {
+    List<String> fqnHashes =
+        pipelines.stream()
+            .map(p -> FullyQualifiedName.buildHash(p.getFullyQualifiedName()))
+            .toList();
+    Map<String, String> jsonMap =
+        getLatestExtensionFromTimeSeriesBatch(fqnHashes, PIPELINE_STATUS_EXTENSION);
+    Map<String, PipelineStatus> result = new HashMap<>();
+    for (Map.Entry<String, String> entry : jsonMap.entrySet()) {
+      PipelineStatus status = JsonUtils.readValue(entry.getValue(), PipelineStatus.class);
+      if (status != null) {
+        result.put(entry.getKey(), status);
+      }
+    }
+    return result;
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<IngestionPipeline> pipelines) {
@@ -220,6 +246,140 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     EntityReference entityReference =
         Entity.getEntityReference(ingestionPipeline.getService(), Include.NON_DELETED);
     ingestionPipeline.setService(entityReference);
+  }
+
+  protected boolean requiresRedeployment(IngestionPipeline original, IngestionPipeline updated) {
+    if (hasScheduleChanged(original, updated)) {
+      LOG.debug("Pipeline '{}' requires redeployment: schedule changed", updated.getName());
+      return true;
+    }
+
+    if (!Objects.equals(original.getEnabled(), updated.getEnabled())) {
+      LOG.debug(
+          "Pipeline '{}' requires redeployment: enabled changed from {} to {}",
+          updated.getName(),
+          original.getEnabled(),
+          updated.getEnabled());
+      return true;
+    }
+
+    if (hasSourceConfigChanged(original, updated)) {
+      LOG.debug("Pipeline '{}' requires redeployment: sourceConfig changed", updated.getName());
+      return true;
+    }
+
+    if (!Objects.equals(original.getLoggerLevel(), updated.getLoggerLevel())) {
+      LOG.debug(
+          "Pipeline '{}' requires redeployment: loggerLevel changed from {} to {}",
+          updated.getName(),
+          original.getLoggerLevel(),
+          updated.getLoggerLevel());
+      return true;
+    }
+
+    return false;
+  }
+
+  boolean hasScheduleChanged(IngestionPipeline original, IngestionPipeline updated) {
+    String originalSchedule =
+        original.getAirflowConfig() != null
+            ? original.getAirflowConfig().getScheduleInterval()
+            : null;
+    String updatedSchedule =
+        updated.getAirflowConfig() != null
+            ? updated.getAirflowConfig().getScheduleInterval()
+            : null;
+    return !Objects.equals(originalSchedule, updatedSchedule);
+  }
+
+  boolean hasSourceConfigChanged(IngestionPipeline original, IngestionPipeline updated) {
+    if (original.getSourceConfig() == null && updated.getSourceConfig() == null) {
+      return false;
+    }
+    if (original.getSourceConfig() == null || updated.getSourceConfig() == null) {
+      return true;
+    }
+    String originalJson = JsonUtils.pojoToJson(original.getSourceConfig());
+    String updatedJson = JsonUtils.pojoToJson(updated.getSourceConfig());
+    return !originalJson.equals(updatedJson);
+  }
+
+  protected void deployPipelineBeforeUpdate(IngestionPipeline ingestionPipeline) {
+    IngestionPipeline decrypted = buildIngestionPipelineDecrypted(ingestionPipeline);
+
+    // Restore service reference lost during JSON round-trip (service is a relationship,
+    // not stored in the entity JSON). Fall back to fetching from the relationships table.
+    if (decrypted.getService() == null) {
+      EntityReference serviceRef =
+          ingestionPipeline.getService() != null
+              ? ingestionPipeline.getService()
+              : getContainer(ingestionPipeline.getId());
+      if (serviceRef == null) {
+        throw new IllegalStateException(
+            String.format(
+                "Cannot deploy pipeline '%s': no service reference found. "
+                    + "The pipeline may have a broken service relationship.",
+                ingestionPipeline.getName()));
+      }
+      decrypted.setService(serviceRef);
+    }
+
+    OpenMetadataConnection openMetadataServerConnection =
+        new org.openmetadata.service.util.OpenMetadataConnectionBuilder(
+                openMetadataApplicationConfig, decrypted)
+            .build();
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    decrypted.setOpenMetadataServerConnection(
+        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+
+    ServiceEntityInterface service =
+        Entity.getEntity(decrypted.getService(), "", Include.NON_DELETED);
+
+    if (isS3LogStorageEnabled() && getLogStorageConfiguration().getEnabled()) {
+      decrypted.setEnableStreamableLogs(true);
+    }
+
+    PipelineServiceClientResponse deployResponse = deployIngestionPipeline(decrypted, service);
+
+    if (deployResponse.getCode() != 200) {
+      String errorContext = extractErrorContext(deployResponse.getReason());
+      throw new PipelineServiceClientException(
+          String.format("Deployment failed: %s. Changes not saved.", errorContext));
+    }
+
+    LOG.info(
+        "Pipeline '{}' deployed successfully to {} with response: {}",
+        decrypted.getName(),
+        deployResponse.getPlatform(),
+        deployResponse.getReason());
+  }
+
+  String extractErrorContext(String message) {
+    if (message == null || message.isEmpty()) {
+      return "runner unavailable";
+    }
+
+    if (message.contains("WebSocket is inactive") || message.contains("WebSocket")) {
+      return "runner not connected";
+    }
+
+    if (message.contains("Connection refused")) {
+      return "connection refused";
+    }
+
+    if (message.contains("timeout") || message.contains("timed out")) {
+      return "connection timeout";
+    }
+
+    if (message.contains("Failed to delete CRON")) {
+      return "cannot update workflow";
+    }
+
+    if (message.length() > 50) {
+      return "deployment error";
+    }
+
+    return message;
   }
 
   @Transaction
@@ -263,6 +423,50 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
+  public void storeEntities(List<IngestionPipeline> entities) {
+    List<IngestionPipeline> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+
+    for (IngestionPipeline ingestionPipeline : entities) {
+      EntityReference service = ingestionPipeline.getService();
+      OpenMetadataConnection openmetadataConnection =
+          ingestionPipeline.getOpenMetadataServerConnection();
+
+      if (secretsManager != null) {
+        secretsManager.encryptIngestionPipeline(ingestionPipeline);
+        openmetadataConnection =
+            secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
+      }
+
+      EntityReference processingEngine = ingestionPipeline.getProcessingEngine();
+
+      ingestionPipeline
+          .withService(null)
+          .withOpenMetadataServerConnection(null)
+          .withProcessingEngine(null);
+
+      String jsonCopy = gson.toJson(ingestionPipeline);
+      entitiesToStore.add(gson.fromJson(jsonCopy, IngestionPipeline.class));
+
+      ingestionPipeline
+          .withService(service)
+          .withOpenMetadataServerConnection(openmetadataConnection)
+          .withProcessingEngine(processingEngine);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<IngestionPipeline> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(IngestionPipeline::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteFromMany(ids, entityType, Relationship.USES, null);
+  }
+
+  @Override
   public void storeRelationships(IngestionPipeline ingestionPipeline) {
     addServiceRelationship(ingestionPipeline, ingestionPipeline.getService());
     if (ingestionPipeline.getIngestionRunner() != null) {
@@ -297,7 +501,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     // Delete deployed pipeline in the Pipeline Service Client
-    pipelineServiceClient.deletePipeline(entity);
+    if (pipelineServiceClient != null) {
+      pipelineServiceClient.deletePipeline(entity);
+    } else {
+      LOG.debug(
+          "Skipping pipeline service delete for '{}' because pipeline service client is not configured.",
+          entity.getFullyQualifiedName());
+    }
     // Clean pipeline status
     daoCollection
         .entityExtensionTimeSeriesDao()
@@ -411,26 +621,61 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public ResultList<PipelineStatus> listPipelineStatus(
       String ingestionPipelineFQN, Long startTs, Long endTs) {
+    return listPipelineStatus(ingestionPipelineFQN, startTs, endTs, null);
+  }
+
+  public ResultList<PipelineStatus> listPipelineStatus(
+      String ingestionPipelineFQN, Long startTs, Long endTs, Integer limit) {
     IngestionPipeline ingestionPipeline =
         getByName(null, ingestionPipelineFQN, getFields("service"));
+    Integer effectiveLimit = resolvePipelineStatusLimit(startTs, endTs, limit);
+    Long effectiveStartTs = Optional.ofNullable(startTs).orElse(Long.MIN_VALUE);
+    Long effectiveEndTs = Optional.ofNullable(endTs).orElse(Long.MAX_VALUE);
+    List<String> jsonResults;
+    if (effectiveLimit != null) {
+      jsonResults =
+          getResultsFromAndToTimestampsWithLimit(
+              ingestionPipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              effectiveStartTs,
+              effectiveEndTs,
+              EntityTimeSeriesDAO.OrderBy.DESC,
+              effectiveLimit);
+    } else {
+      jsonResults =
+          getResultsFromAndToTimestamps(
+              ingestionPipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              effectiveStartTs,
+              effectiveEndTs);
+    }
     List<PipelineStatus> pipelineStatusList =
-        JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(
-                ingestionPipeline.getFullyQualifiedName(),
-                PIPELINE_STATUS_EXTENSION,
-                startTs,
-                endTs),
-            PipelineStatus.class);
+        JsonUtils.readObjects(jsonResults, PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
     if (pipelineServiceClient != null) {
       allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
     }
     allPipelineStatusList.addAll(pipelineStatusList);
+    allPipelineStatusList.sort(
+        Comparator.comparing(
+            PipelineStatus::getTimestamp, Comparator.nullsLast(Comparator.reverseOrder())));
+
+    if (effectiveLimit != null && allPipelineStatusList.size() > effectiveLimit) {
+      allPipelineStatusList = new ArrayList<>(allPipelineStatusList.subList(0, effectiveLimit));
+    }
+
     return new ResultList<>(
         allPipelineStatusList,
-        String.valueOf(startTs),
-        String.valueOf(endTs),
+        startTs != null ? String.valueOf(startTs) : null,
+        endTs != null ? String.valueOf(endTs) : null,
         allPipelineStatusList.size());
+  }
+
+  private Integer resolvePipelineStatusLimit(Long startTs, Long endTs, Integer limit) {
+    if (limit != null) {
+      return limit;
+    }
+    return startTs == null && endTs == null ? DEFAULT_RECENT_RUN_LIMIT : null;
   }
 
   /* Get the status of the external application by converting the configuration so that it can be
@@ -526,6 +771,50 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
       updateEnableStreamableLogs(
           original.getEnableStreamableLogs(), updated.getEnableStreamableLogs());
+
+      deployIfRequired(original, updated);
+    }
+
+    private void deployIfRequired(IngestionPipeline original, IngestionPipeline updated) {
+      if (!requiresRedeployment(original, updated)) {
+        return;
+      }
+
+      if (!Boolean.TRUE.equals(original.getDeployed())) {
+        LOG.debug(
+            "Pipeline '{}' requires redeployment but was never deployed. Skipping automatic redeployment.",
+            updated.getName());
+        return;
+      }
+
+      if (pipelineServiceClient == null) {
+        LOG.warn(
+            "Pipeline '{}' requires redeployment but pipeline service client is not configured. Skipping deployment.",
+            updated.getName());
+        return;
+      }
+
+      LOG.info(
+          "Pipeline '{}' requires redeployment due to configuration changes. Deploying before DB update.",
+          updated.getName());
+
+      try {
+        deployPipelineBeforeUpdate(updated);
+        LOG.info(
+            "Successfully deployed pipeline '{}'. Proceeding with DB update.", updated.getName());
+      } catch (PipelineServiceClientException e) {
+        LOG.error(
+            "Failed to deploy pipeline '{}' before update. Aborting DB update to maintain consistency.",
+            updated.getName(),
+            e);
+        throw e;
+      } catch (Exception e) {
+        LOG.error(
+            "Unexpected error deploying pipeline '{}' before update. Aborting DB update.",
+            updated.getName(),
+            e);
+        throw new PipelineServiceClientException("Deployment failed. Changes not saved.");
+      }
     }
 
     protected void updateProcessingEngine(IngestionPipeline original, IngestionPipeline updated) {

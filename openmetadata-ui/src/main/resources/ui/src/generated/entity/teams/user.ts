@@ -79,6 +79,10 @@ export interface User {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Personas inherited through membership in teams that have set a team default persona.
+     */
+    inheritedPersonas?: EntityReference[];
+    /**
      * Roles that a user is inheriting through membership in teams that have set team default
      * roles.
      */
@@ -303,8 +307,13 @@ export interface SsoClientConfig {
      */
     debugMode?: boolean;
     idp?:       Idp;
-    security?:  Security;
-    sp?:        SP;
+    /**
+     * Ordered list of SAML attribute names to check for display name. First available attribute
+     * wins. Defaults to common OIDC/SAML attribute names.
+     */
+    samlDisplayNameAttributes?: string[];
+    security?:                  Security;
+    sp?:                        SP;
 }
 
 /**

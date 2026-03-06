@@ -26,10 +26,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToMatchRegex import (
     BaseColumnValuesToMatchRegexValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_pandas,
@@ -63,7 +60,7 @@ class ColumnValuesToMatchRegexValidator(
                 self.runner, mtr, column, **kwargs
             )
 
-        return res.get(Metrics.COUNT.name), res.get(Metrics.REGEX_COUNT.name)
+        return res.get(Metrics.valuesCount.name), res.get(Metrics.regexCount.name)
 
     def _execute_dimensional_validation(
         self,
@@ -71,6 +68,7 @@ class ColumnValuesToMatchRegexValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
@@ -99,17 +97,17 @@ class ColumnValuesToMatchRegexValidator(
             regex = test_params[BaseColumnValuesToMatchRegexValidator.REGEX]
 
             dfs = self.runner
-            regex_count_impl = add_props(expression=regex)(Metrics.REGEX_COUNT.value)(
+            regex_count_impl = add_props(expression=regex)(Metrics.regexCount.value)(
                 column
             ).get_pandas_computation()
-            count_impl = Metrics.COUNT(column).get_pandas_computation()
-            row_count_impl = Metrics.ROW_COUNT().get_pandas_computation()
+            count_impl = Metrics.valuesCount(column).get_pandas_computation()
+            row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.COUNT.name: count_impl.create_accumulator(),
-                    Metrics.REGEX_COUNT.name: regex_count_impl.create_accumulator(),
-                    Metrics.ROW_COUNT.name: row_count_impl.create_accumulator(),
+                    Metrics.valuesCount.name: count_impl.create_accumulator(),
+                    Metrics.regexCount.name: regex_count_impl.create_accumulator(),
+                    Metrics.rowCount.name: row_count_impl.create_accumulator(),
                 }
             )
 
@@ -121,32 +119,34 @@ class ColumnValuesToMatchRegexValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.COUNT.name
+                        Metrics.valuesCount.name
                     ] = count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.COUNT.name],
+                        dimension_aggregates[dimension_value][Metrics.valuesCount.name],
                         group_df,
                     )
                     dimension_aggregates[dimension_value][
-                        Metrics.REGEX_COUNT.name
+                        Metrics.regexCount.name
                     ] = regex_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.REGEX_COUNT.name],
+                        dimension_aggregates[dimension_value][Metrics.regexCount.name],
                         group_df,
                     )
                     dimension_aggregates[dimension_value][
-                        Metrics.ROW_COUNT.name
+                        Metrics.rowCount.name
                     ] = row_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.ROW_COUNT.name],
+                        dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
                 regex_count = regex_count_impl.aggregate_accumulator(
-                    agg[Metrics.REGEX_COUNT.name]
+                    agg[Metrics.regexCount.name]
                 )
-                count_value = count_impl.aggregate_accumulator(agg[Metrics.COUNT.name])
+                count_value = count_impl.aggregate_accumulator(
+                    agg[Metrics.valuesCount.name]
+                )
                 row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.ROW_COUNT.name]
+                    agg[Metrics.rowCount.name]
                 )
 
                 failed_count = count_value - regex_count
@@ -154,9 +154,9 @@ class ColumnValuesToMatchRegexValidator(
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.COUNT.name: row_count,
-                        Metrics.REGEX_COUNT.name: regex_count,
-                        Metrics.ROW_COUNT.name: row_count,
+                        Metrics.valuesCount.name: row_count,
+                        Metrics.regexCount.name: regex_count,
+                        Metrics.rowCount.name: row_count,
                         DIMENSION_TOTAL_COUNT_KEY: row_count,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -174,7 +174,7 @@ class ColumnValuesToMatchRegexValidator(
                 results_df = aggregate_others_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
-                    top_n=DEFAULT_TOP_DIMENSIONS,
+                    top_n=top_n,
                 )
 
                 for row_dict in results_df.to_dict("records"):

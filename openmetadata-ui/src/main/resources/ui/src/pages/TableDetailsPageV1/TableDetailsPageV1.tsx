@@ -873,9 +873,11 @@ const TableDetailsPageV1: React.FC = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateTablesVotes(id, data);
-      const details = await getTableDetailsByFQN(tableFqn, {
-        fields: defaultFields,
-      });
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      const details = await getTableDetailsByFQN(tableFqn, { fields });
       setTableDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

@@ -147,6 +147,51 @@ class SigV4RequestSigningInterceptorTest {
     assertTrue(request.containsHeader("Authorization"));
   }
 
+  @Test
+  void testInterceptorExcludesTransferEncodingFromSignedHeaders() throws Exception {
+    BasicHttpEntityEnclosingRequest request =
+        new BasicHttpEntityEnclosingRequest("POST", "/_bulk?refresh=false");
+    String bulkBody = "{\"index\":{\"_index\":\"test\"}}\n{\"field\":\"value\"}\n";
+    request.setEntity(new StringEntity(bulkBody, StandardCharsets.UTF_8));
+    request.addHeader("Transfer-Encoding", "chunked");
+    HttpContext context = createHttpContext("search.eu-west-3.es.amazonaws.com", 443, "https");
+
+    interceptor.process(request, context);
+
+    assertTrue(request.containsHeader("Authorization"));
+    String authHeader = request.getFirstHeader("Authorization").getValue();
+    String signedHeadersPart = authHeader.substring(authHeader.indexOf("SignedHeaders="));
+    assertFalse(
+        signedHeadersPart.toLowerCase().contains("transfer-encoding"),
+        "transfer-encoding should NOT be in SignedHeaders to avoid AWS SigV4 mismatch errors");
+  }
+
+  @Test
+  void testBulkRequestWithChunkedEncodingSucceeds() throws Exception {
+    BasicHttpEntityEnclosingRequest request =
+        new BasicHttpEntityEnclosingRequest("POST", "/_bulk?refresh=false");
+    String bulkBody =
+        "{\"index\":{\"_index\":\"table_search_index\",\"_id\":\"123\"}}\n"
+            + "{\"id\":\"123\",\"name\":\"test_table\",\"deleted\":false}\n";
+    request.setEntity(new StringEntity(bulkBody, StandardCharsets.UTF_8));
+    request.addHeader("Transfer-Encoding", "chunked");
+    request.addHeader("Content-Type", "application/x-ndjson");
+    HttpContext context =
+        createHttpContext("vpc-saas-test-engg.eu-west-3.es.amazonaws.com", 443, "https");
+
+    SigV4RequestSigningInterceptor euInterceptor =
+        new SigV4RequestSigningInterceptor(credentialsProvider, Region.EU_WEST_3, "es");
+    euInterceptor.process(request, context);
+
+    assertTrue(request.containsHeader("Authorization"));
+    assertTrue(request.containsHeader("X-Amz-Date"));
+    String authHeader = request.getFirstHeader("Authorization").getValue();
+    assertTrue(authHeader.contains("eu-west-3"));
+    assertFalse(
+        authHeader.toLowerCase().contains("transfer-encoding"),
+        "Bulk reindex requests must not sign transfer-encoding header");
+  }
+
   private HttpContext createHttpContext(String hostname, int port, String scheme) {
     HttpContext context = new BasicHttpContext();
     context.setAttribute("http.target_host", new HttpHost(hostname, port, scheme));

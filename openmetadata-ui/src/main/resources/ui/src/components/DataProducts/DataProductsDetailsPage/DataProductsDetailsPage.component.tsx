@@ -54,6 +54,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { Style } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -76,7 +77,11 @@ import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBas
 import { getDomainContainerStyles } from '../../../utils/DomainPageStyles';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityFeedLink, getEntityName } from '../../../utils/EntityUtils';
+import {
+  getEntityFeedLink,
+  getEntityName,
+  getEntityVoteStatus,
+} from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
@@ -104,6 +109,8 @@ import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/Asse
 import { DomainTabs } from '../../Domain/DomainPage.interface';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
+import Voting from '../../Entity/Voting/Voting.component';
+import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -123,6 +130,7 @@ const DataProductsDetailsPage = ({
   isFollowing,
   isFollowingLoading,
   handleFollowingClick,
+  onUpdateVote,
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -296,6 +304,20 @@ const DataProductsDetailsPage = ({
       deleteDataProductPermission: dataProductPermission.Delete,
     };
   }, [dataProductPermission, isVersionsView]);
+
+  const { currentUser } = useApplicationStore();
+
+  const voteStatus = useMemo(
+    () => getEntityVoteStatus(currentUser?.id ?? '', dataProduct.votes),
+    [dataProduct.votes, currentUser?.id]
+  );
+
+  const handleVoteChange = useCallback(
+    async (data: VotingDataProps) => {
+      await onUpdateVote?.(data, dataProduct.id);
+    },
+    [onUpdateVote, dataProduct.id]
+  );
 
   const fetchDataProductAssets = async () => {
     if (dataProduct) {
@@ -757,6 +779,14 @@ const DataProductsDetailsPage = ({
 
               <ButtonGroup className="spaced" size="small">
                 {dataContractLatestResultButton}
+
+                {onUpdateVote && (
+                  <Voting
+                    voteStatus={voteStatus}
+                    votes={dataProduct.votes}
+                    onUpdateVote={handleVoteChange}
+                  />
+                )}
 
                 {dataProduct?.version && (
                   <Tooltip

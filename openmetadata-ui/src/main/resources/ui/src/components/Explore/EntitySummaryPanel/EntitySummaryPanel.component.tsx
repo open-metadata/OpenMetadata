@@ -15,7 +15,7 @@ import { CloseOutlined } from '@mui/icons-material';
 import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
+import { compare, Operation as FastJsonPatchOperation } from 'fast-json-patch';
 import { get, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +30,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { EntityReference } from '../../../generated/entity/type';
+import { EntityReference, Type } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
@@ -96,6 +96,7 @@ import {
   patchTableDetails,
 } from '../../../rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
@@ -107,13 +108,12 @@ import {
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
 import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
@@ -121,7 +121,10 @@ import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
-import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
+import {
+  EntitySummaryPanelProps,
+  SearchSourceDetails,
+} from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
 
 export default function EntitySummaryPanel({
@@ -151,8 +154,8 @@ export default function EntitySummaryPanel({
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
-  const [entityData, setEntityData] = useState<any>(null);
-  const [entityTypeDetail, setEntityTypeDetail] = useState<any>(null);
+  const [entityData, setEntityData] = useState<EntityData | null>(null);
+  const [entityTypeDetail, setEntityTypeDetail] = useState<Type | undefined>();
   const [isEntityDataLoading, setIsEntityDataLoading] = useState(false);
   const [isEntityTypeLoading, setIsEntityTypeLoading] = useState(false);
   const [lineageData, setLineageData] = useState<LineageData | null>(null);
@@ -166,7 +169,7 @@ export default function EntitySummaryPanel({
   }, [entityDetails?.details?.id]);
 
   const entityType = useMemo(() => {
-    return get(entityDetails, 'details.entityType') as EntityType;
+    return get(entityDetails, 'details.entityType');
   }, [entityDetails]);
 
   const fetchResourcePermission = async (entityFqn: string) => {
@@ -183,103 +186,96 @@ export default function EntitySummaryPanel({
     }
   };
   // Memoize the entity fetch map to avoid recreating it on every render
-  const entityFetchMap = useMemo(() => {
+  const entityFetchMap = useMemo<
+    Record<string, (fqn: string) => Promise<object>>
+  >(() => {
     const commonFields = 'owners,domains,tags,extension';
     const domainFields = 'owners,tags,extension';
 
     return {
-      [EntityType.TABLE]: (fqn: string) =>
+      [EntityType.TABLE]: (fqn) =>
         getTableDetailsByFQN(fqn, { fields: commonFields }),
-      [EntityType.TOPIC]: (fqn: string) =>
-        getTopicByFqn(fqn, { fields: commonFields }),
-      [EntityType.DASHBOARD]: (fqn: string) =>
+      [EntityType.TOPIC]: (fqn) => getTopicByFqn(fqn, { fields: commonFields }),
+      [EntityType.DASHBOARD]: (fqn) =>
         getDashboardByFqn(fqn, { fields: commonFields }),
-      [EntityType.PIPELINE]: (fqn: string) =>
+      [EntityType.PIPELINE]: (fqn) =>
         getPipelineByFqn(fqn, { fields: commonFields }),
-      [EntityType.MLMODEL]: (fqn: string) =>
+      [EntityType.MLMODEL]: (fqn) =>
         getMlModelByFQN(fqn, { fields: commonFields }),
-      [EntityType.DATABASE]: (fqn: string) =>
+      [EntityType.DATABASE]: (fqn) =>
         getDatabaseDetailsByFQN(fqn, { fields: commonFields }),
-      [EntityType.DATABASE_SCHEMA]: (fqn: string) =>
+      [EntityType.DATABASE_SCHEMA]: (fqn) =>
         getDatabaseSchemaDetailsByFQN(fqn, { fields: commonFields }),
-      [EntityType.DASHBOARD_DATA_MODEL]: (fqn: string) =>
+      [EntityType.DASHBOARD_DATA_MODEL]: (fqn) =>
         getDataModelByFqn(fqn, { fields: commonFields }),
-      [EntityType.SEARCH_INDEX]: (fqn: string) =>
+      [EntityType.SEARCH_INDEX]: (fqn) =>
         getSearchIndexDetailsByFQN(fqn, { fields: commonFields }),
-      [EntityType.STORED_PROCEDURE]: (fqn: string) =>
+      [EntityType.STORED_PROCEDURE]: (fqn) =>
         getStoredProceduresByFqn(fqn, { fields: commonFields }),
-      [EntityType.CONTAINER]: (fqn: string) =>
+      [EntityType.CONTAINER]: (fqn) =>
         getContainerByFQN(fqn, { fields: commonFields }),
-      [EntityType.GLOSSARY_TERM]: (fqn: string) =>
+      [EntityType.GLOSSARY_TERM]: (fqn) =>
         getGlossaryTermByFQN(fqn, { fields: commonFields }),
-      [EntityType.CHART]: (fqn: string) =>
-        getChartByFqn(fqn, { fields: commonFields }),
-      [EntityType.METRIC]: (fqn: string) =>
+      [EntityType.CHART]: (fqn) => getChartByFqn(fqn, { fields: commonFields }),
+      [EntityType.METRIC]: (fqn) =>
         getMetricByFqn(fqn, { fields: commonFields }),
-      [EntityType.API_ENDPOINT]: (fqn: string) =>
+      [EntityType.API_ENDPOINT]: (fqn) =>
         getApiEndPointByFQN(fqn, { fields: commonFields }),
-      [EntityType.API_COLLECTION]: (fqn: string) =>
+      [EntityType.API_COLLECTION]: (fqn) =>
         getApiCollectionByFQN(fqn, { fields: commonFields }),
-      [EntityType.DIRECTORY]: (fqn: string) =>
+      [EntityType.DIRECTORY]: (fqn) =>
         getDriveAssetByFqn(fqn, EntityType.DIRECTORY, commonFields),
-      [EntityType.FILE]: (fqn: string) =>
+      [EntityType.FILE]: (fqn) =>
         getDriveAssetByFqn(fqn, EntityType.FILE, commonFields),
-      [EntityType.SPREADSHEET]: (fqn: string) =>
+      [EntityType.SPREADSHEET]: (fqn) =>
         getDriveAssetByFqn(fqn, EntityType.SPREADSHEET, commonFields),
-      [EntityType.WORKSHEET]: (fqn: string) =>
+      [EntityType.WORKSHEET]: (fqn) =>
         getDriveAssetByFqn(fqn, EntityType.WORKSHEET, commonFields),
-      [EntityType.DATA_PRODUCT]: (fqn: string) =>
+      [EntityType.DATA_PRODUCT]: (fqn) =>
         getDataProductByName(fqn, { fields: commonFields }),
-      [EntityType.DOMAIN]: (fqn: string) =>
+      [EntityType.DOMAIN]: (fqn) =>
         getDomainByName(fqn, { fields: domainFields }),
-    } as Record<string, (fqn: string) => Promise<unknown>>;
+    };
   }, []);
 
-  const entityUpdateMap = useMemo(() => {
+  const entityUpdateMap = useMemo<
+    Record<
+      string,
+      (id: string, data: FastJsonPatchOperation[]) => Promise<object>
+    >
+  >(() => {
     return {
-      [EntityType.TABLE]: (id: string, data: any) =>
-        patchTableDetails(id, data),
-      [EntityType.TOPIC]: (id: string, data: any) =>
-        patchTopicDetails(id, data),
-      [EntityType.DASHBOARD]: (id: string, data: any) =>
-        patchDashboardDetails(id, data),
-      [EntityType.PIPELINE]: (id: string, data: any) =>
-        patchPipelineDetails(id, data),
-      [EntityType.MLMODEL]: (id: string, data: any) =>
-        patchMlModelDetails(id, data),
-      [EntityType.DATABASE]: (id: string, data: any) =>
-        patchDatabaseDetails(id, data),
-      [EntityType.DATABASE_SCHEMA]: (id: string, data: any) =>
+      [EntityType.TABLE]: (id, data) => patchTableDetails(id, data),
+      [EntityType.TOPIC]: (id, data) => patchTopicDetails(id, data),
+      [EntityType.DASHBOARD]: (id, data) => patchDashboardDetails(id, data),
+      [EntityType.PIPELINE]: (id, data) => patchPipelineDetails(id, data),
+      [EntityType.MLMODEL]: (id, data) => patchMlModelDetails(id, data),
+      [EntityType.DATABASE]: (id, data) => patchDatabaseDetails(id, data),
+      [EntityType.DATABASE_SCHEMA]: (id, data) =>
         patchDatabaseSchemaDetails(id, data),
-      [EntityType.DASHBOARD_DATA_MODEL]: (id: string, data: any) =>
+      [EntityType.DASHBOARD_DATA_MODEL]: (id, data) =>
         patchDataModelDetails(id, data),
-      [EntityType.SEARCH_INDEX]: (id: string, data: any) =>
+      [EntityType.SEARCH_INDEX]: (id, data) =>
         patchSearchIndexDetails(id, data),
-      [EntityType.STORED_PROCEDURE]: (id: string, data: any) =>
+      [EntityType.STORED_PROCEDURE]: (id, data) =>
         patchStoredProceduresDetails(id, data),
-      [EntityType.CONTAINER]: (id: string, data: any) =>
-        patchContainerDetails(id, data),
-      [EntityType.GLOSSARY_TERM]: (id: string, data: any) =>
-        patchGlossaryTerm(id, data),
-      [EntityType.CHART]: (id: string, data: any) =>
-        patchChartDetails(id, data),
-      [EntityType.METRIC]: (id: string, data: any) => patchMetric(id, data),
-      [EntityType.API_ENDPOINT]: (id: string, data: any) =>
-        patchApiEndPoint(id, data),
-      [EntityType.API_COLLECTION]: (id: string, data: any) =>
-        patchApiCollection(id, data),
-      [EntityType.DIRECTORY]: (id: string, data: any) =>
+      [EntityType.CONTAINER]: (id, data) => patchContainerDetails(id, data),
+      [EntityType.GLOSSARY_TERM]: (id, data) => patchGlossaryTerm(id, data),
+      [EntityType.CHART]: (id, data) => patchChartDetails(id, data),
+      [EntityType.METRIC]: (id, data) => patchMetric(id, data),
+      [EntityType.API_ENDPOINT]: (id, data) => patchApiEndPoint(id, data),
+      [EntityType.API_COLLECTION]: (id, data) => patchApiCollection(id, data),
+      [EntityType.DIRECTORY]: (id, data) =>
         patchDriveAssetDetails(id, data, EntityType.DIRECTORY),
-      [EntityType.FILE]: (id: string, data: any) =>
+      [EntityType.FILE]: (id, data) =>
         patchDriveAssetDetails(id, data, EntityType.FILE),
-      [EntityType.SPREADSHEET]: (id: string, data: any) =>
+      [EntityType.SPREADSHEET]: (id, data) =>
         patchDriveAssetDetails(id, data, EntityType.SPREADSHEET),
-      [EntityType.WORKSHEET]: (id: string, data: any) =>
+      [EntityType.WORKSHEET]: (id, data) =>
         patchDriveAssetDetails(id, data, EntityType.WORKSHEET),
-      [EntityType.DATA_PRODUCT]: (id: string, data: any) =>
-        patchDataProduct(id, data),
-      [EntityType.DOMAIN]: (id: string, data: any) => patchDomains(id, data),
-    } as Record<string, (id: string, data: any) => Promise<unknown>>;
+      [EntityType.DATA_PRODUCT]: (id, data) => patchDataProduct(id, data),
+      [EntityType.DOMAIN]: (id, data) => patchDomains(id, data),
+    };
   }, []);
 
   const fetchEntityData = useCallback(async () => {
@@ -290,15 +286,36 @@ export default function EntitySummaryPanel({
     setIsEntityDataLoading(true);
     try {
       const fqn = entityDetails.details.fullyQualifiedName;
-      let entityPromise: Promise<any> | null = null;
+      let entityPromise: Promise<object> | null = null;
 
       const fetchFn = entityFetchMap[entityType];
       if (fetchFn) {
         entityPromise = fetchFn(fqn);
+      } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+        entityPromise = entityUtilClassBase.getEntityByFqn(
+          entityType,
+          fqn,
+          'owners,domains,tags'
+        );
+      } else {
+        entityPromise = entityUtilClassBase.getEntityByFqn(
+          entityType,
+          fqn,
+          'owners,domains,tags,extension'
+        );
       }
 
       if (entityPromise) {
-        const data = await entityPromise;
+        const data = (await entityPromise) as {
+          description?: string;
+          displayName?: string;
+          service?: EntityReference;
+          owners?: EntityReference[];
+          domains?: EntityReference[];
+          tags?: TagLabel[];
+          dataProducts?: EntityReference[];
+        };
+        const searchDetails: SearchSourceDetails = entityDetails.details;
         // Merge API data with essential fields from entityDetails.details
         const mergedData = {
           ...data,
@@ -307,24 +324,23 @@ export default function EntitySummaryPanel({
           fullyQualifiedName: entityDetails.details.fullyQualifiedName,
           id: entityDetails.details.id,
           description: data.description ?? entityDetails.details.description,
-          displayName: entityDetails.details.displayName,
+          displayName: data.displayName,
           name: entityDetails.details.name,
           deleted: entityDetails.details.deleted,
-          serviceType: (entityDetails.details as any).serviceType,
+          serviceType: searchDetails.serviceType,
           service: data.service ?? entityDetails.details.service,
           // Prefer canonical data; fallback to search result if missing
           owners: data.owners ?? [],
           domains: data.domains ?? [],
           tags: data.tags ?? [],
-          dataProducts:
-            data.dataProducts ?? (entityDetails.details as any).dataProducts,
-          tier: (entityDetails.details as any).tier,
-          columnNames: (entityDetails.details as any).columnNames,
-          database: (entityDetails.details as any).database,
-          databaseSchema: (entityDetails.details as any).databaseSchema,
-          tableType: (entityDetails.details as any).tableType,
+          dataProducts: data.dataProducts ?? searchDetails.dataProducts,
+          tier: searchDetails.tier,
+          columnNames: searchDetails.columnNames,
+          database: searchDetails.database,
+          databaseSchema: searchDetails.databaseSchema,
+          tableType: searchDetails.tableType,
         };
-        setEntityData(mergedData);
+        setEntityData(mergedData as EntityData);
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -402,10 +418,13 @@ export default function EntitySummaryPanel({
       if (onEntityUpdate) {
         onEntityUpdate(updatedData);
       } else {
-        setEntityData((prev: EntityData) => ({
-          ...(prev || entityDetails.details),
-          ...updatedData,
-        }));
+        setEntityData(
+          (prev) =>
+            ({
+              ...(prev ?? entityDetails.details),
+              ...updatedData,
+            } as EntityData)
+        );
       }
     },
     [entityDetails.details, onEntityUpdate]
@@ -426,11 +445,62 @@ export default function EntitySummaryPanel({
   );
 
   const handleTagsUpdate = useCallback(
-    (updatedTags: TagLabel[]) => {
-      // TagsSection already includes all tags (glossary, tier, and classification)
-      updateEntityData({ tags: updatedTags });
+    async (updatedTags: TagLabel[]) => {
+      if (onEntityUpdate) {
+        onEntityUpdate({ tags: updatedTags });
+
+        return updatedTags;
+      }
+
+      const baseData = entityData ?? entityDetails.details;
+      const jsonPatch = compare(baseData, {
+        ...baseData,
+        tags: updatedTags,
+      });
+
+      if (isEmpty(jsonPatch)) {
+        return updatedTags;
+      }
+
+      try {
+        const apiFunc =
+          entityUpdateMap[entityType] ??
+          entityUtilClassBase.getEntityPatchAPI(entityType);
+        if (apiFunc && id) {
+          const res = await apiFunc(id, jsonPatch);
+          setEntityData(
+            (prev) =>
+              ({
+                ...(prev ?? entityDetails.details),
+                ...(res as Partial<EntityData>),
+              } as EntityData)
+          );
+
+          showSuccessToast(
+            t('server.update-entity-success', {
+              entity: t('label.tag-plural'),
+            })
+          );
+
+          return (res as EntityData).tags;
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        throw error;
+      }
+
+      return undefined;
     },
-    [updateEntityData]
+    [
+      onEntityUpdate,
+      entityData,
+      entityDetails.details,
+      entityType,
+      id,
+      entityUpdateMap,
+      t,
+    ]
   );
 
   const handleTierUpdate = useCallback(
@@ -456,11 +526,61 @@ export default function EntitySummaryPanel({
 
   const handleGlossaryTermsUpdate = useCallback(
     async (updatedTags: TagLabel[]) => {
-      // The child component (`GlossaryTermsSection`) now handles the API call.
-      // We just need to update the parent's state with the new tags.
-      updateEntityData({ tags: updatedTags });
+      if (onEntityUpdate) {
+        onEntityUpdate({ tags: updatedTags });
+
+        return updatedTags;
+      }
+
+      const baseData = entityData ?? entityDetails.details;
+      const jsonPatch = compare(baseData, {
+        ...baseData,
+        tags: updatedTags,
+      });
+
+      if (isEmpty(jsonPatch)) {
+        return updatedTags;
+      }
+
+      try {
+        const apiFunc =
+          entityUpdateMap[entityType] ??
+          entityUtilClassBase.getEntityPatchAPI(entityType);
+        if (apiFunc && id) {
+          const res = await apiFunc(id, jsonPatch);
+          setEntityData(
+            (prev) =>
+              ({
+                ...(prev ?? entityDetails.details),
+                ...(res as Partial<EntityData>),
+              } as EntityData)
+          );
+
+          showSuccessToast(
+            t('server.update-entity-success', {
+              entity: t('label.glossary-term-plural'),
+            })
+          );
+
+          return (res as EntityData).tags;
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        throw error;
+      }
+
+      return undefined;
     },
-    [updateEntityData]
+    [
+      onEntityUpdate,
+      entityData,
+      entityDetails.details,
+      entityType,
+      id,
+      entityUpdateMap,
+      t,
+    ]
   );
 
   const handleDescriptionUpdate = useCallback(
@@ -468,6 +588,13 @@ export default function EntitySummaryPanel({
       updateEntityData({ description: updatedDescription });
     },
     [updateEntityData]
+  );
+
+  const handleDisplayNameUpdate = useCallback(
+    (updatedDisplayName: string) => {
+      updateEntityData({ displayName: updatedDisplayName });
+    },
+    [entityData, updateEntityData]
   );
 
   const handleExtensionUpdate = useCallback(
@@ -486,13 +613,18 @@ export default function EntitySummaryPanel({
         }
 
         try {
-          const apiFunc = entityUpdateMap[entityType];
+          const apiFunc =
+            entityUpdateMap[entityType] ??
+            entityUtilClassBase.getEntityPatchAPI(entityType);
           if (apiFunc && id) {
             const res = await apiFunc(id, jsonPatch);
-            setEntityData((prev: EntityData) => ({
-              ...(prev || entityDetails.details),
-              ...(res as Partial<EntityData>),
-            }));
+            setEntityData(
+              (prev) =>
+                ({
+                  ...(prev ?? entityDetails.details),
+                  ...(res as Partial<EntityData>),
+                } as EntityData)
+            );
           }
         } catch (error) {
           showErrorToast(error as AxiosError);
@@ -561,40 +693,6 @@ export default function EntitySummaryPanel({
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
     [entityPermissions]
   );
-
-  const summaryComponent = useMemo(() => {
-    if (isPermissionLoading) {
-      return <Loader />;
-    }
-    if (!viewPermission) {
-      return (
-        <ErrorPlaceHolder
-          className="border-none h-min-80"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.data-asset'),
-          })}
-          size={SIZE.MEDIUM}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
-      );
-    }
-    const type = (get(entityDetails, 'details.entityType') ??
-      EntityType.TABLE) as EntityType;
-    const entity = entityDetails.details;
-
-    return (
-      <DataAssetSummaryPanel
-        componentType={tab === NAV_OPTIONS.lineage ? tab : NAV_OPTIONS.explore}
-        dataAsset={
-          entity as SearchedDataProps['data'][number]['_source'] & {
-            dataProducts: DataProduct[];
-          }
-        }
-        entityType={type}
-        highlights={highlights}
-      />
-    );
-  }, [tab, entityDetails, viewPermission, isPermissionLoading]);
 
   const summaryComponentV1 = useMemo(() => {
     if (isPermissionLoading) {
@@ -690,24 +788,64 @@ export default function EntitySummaryPanel({
   };
 
   const renderTabContent = () => {
+    if (isPermissionLoading) {
+      return <Loader />;
+    }
+
+    if (!viewPermission) {
+      return (
+        <>
+          {!isSideDrawer && (
+            <EntityTitleSection
+              className="title-section"
+              entityDetails={entityDetails.details}
+              entityDisplayName={entityData?.displayName}
+              entityLink={entityLink}
+              entityType={entityType}
+              hasEditPermission={getPrioritizedEditPermission(
+                entityPermissions,
+                Operation.EditDisplayName
+              )}
+              onDisplayNameUpdate={handleDisplayNameUpdate}
+            />
+          )}
+          <ErrorPlaceHolder
+            className="border-none h-min-80"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.data-asset'),
+            })}
+            size={SIZE.MEDIUM}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
+        </>
+      );
+    }
     switch (activeTab) {
       case EntityRightPanelTab.OVERVIEW:
         return (
           <>
-            {viewPermission && !isSideDrawer && (
+            {!isSideDrawer && (
               <EntityTitleSection
                 className="title-section"
                 entityDetails={entityDetails.details}
+                entityDisplayName={entityData?.displayName}
                 entityLink={entityLink}
+                entityType={entityType}
+                hasEditPermission={getPrioritizedEditPermission(
+                  entityPermissions,
+                  Operation.EditDisplayName
+                )}
+                onDisplayNameUpdate={handleDisplayNameUpdate}
               />
             )}
+
             <div className="overview-tab-content">{summaryComponentV1}</div>
           </>
         );
       case EntityRightPanelTab.SCHEMA:
         return (
           <>
-            {viewPermission && !isSideDrawer && (
+            {!isSideDrawer && (
               <EntityTitleSection
                 className="title-section"
                 entityDetails={entityDetails.details}
@@ -727,11 +865,17 @@ export default function EntitySummaryPanel({
       case EntityRightPanelTab.LINEAGE:
         return (
           <>
-            {viewPermission && !isSideDrawer && (
+            {!isSideDrawer && (
               <EntityTitleSection
                 className="title-section"
                 entityDetails={entityDetails.details}
                 entityLink={entityLink}
+                entityType={entityType}
+                hasEditPermission={getPrioritizedEditPermission(
+                  entityPermissions,
+                  Operation.EditDisplayName
+                )}
+                onDisplayNameUpdate={handleDisplayNameUpdate}
               />
             )}
             <div className="entity-summary-panel-tab-content">
@@ -742,7 +886,7 @@ export default function EntitySummaryPanel({
       case EntityRightPanelTab.DATA_QUALITY:
         return (
           <>
-            {viewPermission && !isSideDrawer && (
+            {!isSideDrawer && (
               <EntityTitleSection
                 className="title-section"
                 entityDetails={entityDetails.details}
@@ -751,14 +895,16 @@ export default function EntitySummaryPanel({
             )}
             <DataQualityTab
               entityFQN={entityDetails.details.fullyQualifiedName || ''}
-              entityType={entityType}
+              hasViewTests={
+                entityPermissions.ViewTests || entityPermissions.ViewAll
+              }
             />
           </>
         );
       case EntityRightPanelTab.CUSTOM_PROPERTIES: {
         return (
           <>
-            {viewPermission && !isSideDrawer && (
+            {!isSideDrawer && (
               <EntityTitleSection
                 className="title-section"
                 entityDetails={entityDetails.details}
@@ -766,7 +912,10 @@ export default function EntitySummaryPanel({
               />
             )}
             <CustomPropertiesSection
-              entityData={entityData}
+              emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
+                entityType
+              )}
+              entityData={entityData ?? undefined}
               entityDetails={entityDetails}
               entityType={entityType}
               entityTypeDetail={entityTypeDetail}
@@ -785,7 +934,7 @@ export default function EntitySummaryPanel({
         );
       }
       default:
-        return summaryComponent;
+        return null;
     }
   };
 
@@ -802,9 +951,16 @@ export default function EntitySummaryPanel({
           <EntityTitleSection
             className="drawer-title-section"
             entityDetails={entityDetails.details}
+            entityDisplayName={entityData?.displayName}
             entityLink={entityLink}
+            entityType={entityType}
+            hasEditPermission={getPrioritizedEditPermission(
+              entityPermissions,
+              Operation.EditDisplayName
+            )}
             testId="entity-header-title"
             tooltipPlacement="bottomLeft"
+            onDisplayNameUpdate={handleDisplayNameUpdate}
           />
           <Button
             aria-label={t('label.close')}

@@ -18,6 +18,7 @@ import {
   Form,
   FormProps,
   Input,
+  InputNumber,
   Select,
   Space,
 } from 'antd';
@@ -305,6 +306,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
             ...(value.glossaryTerms ?? []),
           ],
       dimensionColumns: value.dimensionColumns || undefined,
+      topDimensions: value.topDimensions ?? undefined,
     };
 
     const jsonPatch = compare(testCase, updatedTestCase);
@@ -357,6 +359,13 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         };
       }
 
+      if (param?.dataType === TestDataType.Boolean) {
+        return {
+          ...acc,
+          [curr.name || '']: curr.value === 'true',
+        };
+      }
+
       return {
         ...acc,
         [curr.name || '']: curr.value,
@@ -401,6 +410,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         'computePassedFailedRowCount',
         'useDynamicAssertion',
         'dimensionColumns',
+        'topDimensions',
       ]);
 
       form.setFieldsValue({
@@ -470,7 +480,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
           {errorMessage && (
             <div className="floating-error-alert">
               <AlertBar
-                defafultExpand
+                defaultExpand
                 className="h-full custom-alert-description"
                 message={errorMessage}
                 type="error"
@@ -506,6 +516,19 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
                       id="root/dimensionColumns"
                       mode="multiple"
                       options={dimensionColumnOptions}
+                    />
+                  </Form.Item>
+                )}
+                {isColumn && (
+                  <Form.Item
+                    label={t('label.top-dimension-plural')}
+                    name="topDimensions">
+                    <InputNumber
+                      className="w-full"
+                      id="root/topDimensions"
+                      max={50}
+                      min={1}
+                      placeholder="5"
                     />
                   </Form.Item>
                 )}

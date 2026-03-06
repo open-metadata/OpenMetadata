@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -150,6 +151,32 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
+  public void storeEntities(List<Domain> entities) {
+    List<Domain> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Domain entity : entities) {
+      EntityReference parent = entity.getParent();
+
+      entity.withParent(null);
+
+      String jsonCopy = gson.toJson(entity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Domain.class));
+
+      entity.withParent(parent);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Domain> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Domain::getId).toList();
+    deleteToMany(ids, Entity.DOMAIN, Relationship.CONTAINS, Entity.DOMAIN);
+  }
+
+  @Override
   public void storeRelationships(Domain entity) {
     if (entity.getParent() != null) {
       addRelationship(
@@ -172,14 +199,15 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
-  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
+  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request, String userName) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true, userName);
   }
 
-  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+  public BulkOperationResult bulkRemoveAssets(
+      String domainName, BulkAssets request, String userName) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false, userName);
   }
 
   public ResultList<EntityReference> getDomainAssets(UUID domainId, int limit, int offset) {
@@ -249,7 +277,8 @@ public class DomainRepository extends EntityRepository<Domain> {
       String fromEntity,
       Relationship relationship,
       BulkAssets request,
-      boolean isAdd) {
+      boolean isAdd,
+      String userName) {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
@@ -282,8 +311,10 @@ public class DomainRepository extends EntityRepository<Domain> {
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
               entityInterface.getVersion(), isAdd, request.getAssets(), null);
+      String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
       ChangeEvent changeEvent =
-          getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
+          getChangeEvent(
+              entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     }
 

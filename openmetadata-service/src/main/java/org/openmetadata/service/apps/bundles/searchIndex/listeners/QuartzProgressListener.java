@@ -5,6 +5,8 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET
 import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -15,6 +17,7 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.apps.bundles.searchIndex.QuartzOrchestratorContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
@@ -29,17 +32,29 @@ import org.quartz.JobExecutionContext;
 public class QuartzProgressListener implements ReindexingProgressListener {
 
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000;
+  private static final long DB_UPDATE_INTERVAL_MS = 5000;
+  private static final int ERROR_THRESHOLD = 3;
 
   private final JobExecutionContext jobExecutionContext;
   private final EventPublisherJob jobData;
   private final App app;
+  private final Function<JobExecutionContext, AppRunRecord> jobRecordProvider;
+  private final QuartzOrchestratorContext.StatusPusher statusPusher;
   private volatile long lastWebSocketUpdate = 0;
+  private volatile long lastDbUpdate = 0;
+  private final AtomicInteger pendingErrors = new AtomicInteger(0);
 
   public QuartzProgressListener(
-      JobExecutionContext jobExecutionContext, EventPublisherJob jobData, App app) {
+      JobExecutionContext jobExecutionContext,
+      EventPublisherJob jobData,
+      App app,
+      Function<JobExecutionContext, AppRunRecord> jobRecordProvider,
+      QuartzOrchestratorContext.StatusPusher statusPusher) {
     this.jobExecutionContext = jobExecutionContext;
     this.jobData = jobData;
     this.app = app;
+    this.jobRecordProvider = jobRecordProvider;
+    this.statusPusher = statusPusher;
   }
 
   @Override
@@ -79,6 +94,11 @@ public class QuartzProgressListener implements ReindexingProgressListener {
     }
     lastWebSocketUpdate = currentTime;
 
+    if (pendingErrors.get() > 0) {
+      pendingErrors.set(0);
+      jobData.setStatus(EventPublisherJob.Status.RUNNING);
+    }
+
     jobData.setStats(stats);
     sendUpdates(false);
   }
@@ -90,9 +110,12 @@ public class QuartzProgressListener implements ReindexingProgressListener {
 
   @Override
   public void onError(String entityType, IndexingError error, Stats currentStats) {
-    jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+    int errorCount = pendingErrors.incrementAndGet();
     jobData.setFailure(error);
     jobData.setStats(currentStats);
+    if (errorCount >= ERROR_THRESHOLD) {
+      jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+    }
     sendUpdates(true);
   }
 
@@ -155,40 +178,79 @@ public class QuartzProgressListener implements ReindexingProgressListener {
           .getJobDataMap()
           .put(WEBSOCKET_STATUS_CHANNEL, SEARCH_INDEX_JOB_BROADCAST_CHANNEL);
 
-      updateRecordToDbAndNotify();
+      updateRecordAndNotify(force);
     } catch (Exception ex) {
-      LOG.error("Failed to send updated stats with WebSocket", ex);
+      LOG.error("Failed to send updated stats", ex);
     }
   }
 
-  private void updateRecordToDbAndNotify() {
-    AppRunRecord appRecord = createAppRunRecord();
+  private void updateRecordAndNotify(boolean forceDbUpdate) {
+    AppRunRecord appRecord = getUpdatedAppRunRecord();
 
+    persistToDb(appRecord, forceDbUpdate);
+    broadcastViaWebSocket(appRecord);
+  }
+
+  private void persistToDb(AppRunRecord appRecord, boolean force) {
+    if (statusPusher == null) {
+      return;
+    }
+    long currentTime = System.currentTimeMillis();
+    if (!force && currentTime - lastDbUpdate < DB_UPDATE_INTERVAL_MS) {
+      return;
+    }
+    lastDbUpdate = currentTime;
+    try {
+      statusPusher.push(jobExecutionContext, appRecord, true);
+    } catch (Exception ex) {
+      LOG.error("Failed to persist app run record to database", ex);
+    }
+  }
+
+  private void broadcastViaWebSocket(AppRunRecord appRecord) {
     if (WebSocketManager.getInstance() != null) {
       String messageJson = JsonUtils.pojoToJson(appRecord);
       WebSocketManager.getInstance()
           .broadCastMessageToAll(SEARCH_INDEX_JOB_BROADCAST_CHANNEL, messageJson);
-      LOG.debug("Broad-casted job updates via WebSocket. Status: {}", appRecord.getStatus());
     }
   }
 
-  private AppRunRecord createAppRunRecord() {
-    AppRunRecord appRecord = new AppRunRecord();
-    appRecord.setAppId(app != null ? app.getId() : null);
-    appRecord.setStartTime(jobData.getTimestamp());
+  private AppRunRecord getUpdatedAppRunRecord() {
+    AppRunRecord appRecord = readExistingRecord();
     appRecord.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
+
+    if (jobData.getStats() != null) {
+      SuccessContext ctx = appRecord.getSuccessContext();
+      if (ctx == null) {
+        ctx = new SuccessContext();
+      }
+      ctx.withAdditionalProperty("stats", jobData.getStats());
+      appRecord.setSuccessContext(ctx);
+    }
 
     if (jobData.getFailure() != null) {
       appRecord.setFailureContext(
           new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
     }
 
-    if (jobData.getStats() != null) {
-      appRecord.setSuccessContext(
-          new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
-    }
-
     return appRecord;
+  }
+
+  private AppRunRecord readExistingRecord() {
+    if (jobRecordProvider != null) {
+      try {
+        AppRunRecord existing = jobRecordProvider.apply(jobExecutionContext);
+        if (existing != null) {
+          return existing;
+        }
+      } catch (Exception ex) {
+        LOG.debug("Could not read existing job record from context", ex);
+      }
+    }
+    AppRunRecord fallback = new AppRunRecord();
+    fallback.setAppId(app != null ? app.getId() : null);
+    fallback.setStartTime(jobData.getTimestamp());
+    return fallback;
   }
 
   /** Get the current job data for external access */

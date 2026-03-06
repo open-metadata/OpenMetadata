@@ -95,7 +95,13 @@
         }
       },
       "fullyQualifiedName": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          }
+        }
       },
       "fqnParts": {
         "type": "keyword"
@@ -313,7 +319,16 @@
         "null_value": 0
       },
       "votes": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "upVotes": {
+            "type": "integer"
+          },
+          "downVotes": {
+            "type": "integer"
+          }
+        }
       },
       "descriptionStatus": {
         "type": "keyword"

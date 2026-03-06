@@ -91,13 +91,14 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
   private final TeamMapper mapper = new TeamMapper();
   static final String FIELDS =
-      "owners,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domains";
+      "owners,profile,users,owns,defaultRoles,defaultPersona,parents,children,policies,userCount,childrenCount,domains";
 
   @Override
   public Team addHref(UriInfo uriInfo, Team team) {
     super.addHref(uriInfo, team);
     Entity.withHref(uriInfo, team.getUsers());
     Entity.withHref(uriInfo, team.getDefaultRoles());
+    Entity.withHref(uriInfo, team.getDefaultPersona());
     Entity.withHref(uriInfo, team.getOwns());
     Entity.withHref(uriInfo, team.getParents());
     Entity.withHref(uriInfo, team.getPolicies());
@@ -111,7 +112,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation(
-        "profile,owns,defaultRoles,parents,children,policies,userCount,childrenCount",
+        "profile,owns,defaultRoles,defaultPersona,parents,children,policies,userCount,childrenCount",
         MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS);
   }
@@ -436,7 +437,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+    return Response.ok()
+        .entity(
+            repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()))
+        .build();
   }
 
   @PUT
@@ -465,7 +469,11 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
+    return Response.ok()
+        .entity(
+            repository.bulkRemoveAssets(
+                name, request, securityContext.getUserPrincipal().getName()))
+        .build();
   }
 
   @GET
@@ -705,8 +713,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Operation(
       operationId = "getCsvDocumentation",
       summary = "Get CSV documentation for team import/export")
-  public String getCsvDocumentation(
-      @Context SecurityContext securityContext, @PathParam("name") String name) {
+  public String getCsvDocumentation(@Context SecurityContext securityContext) {
     return JsonUtils.pojoToJson(TeamCsv.DOCUMENTATION);
   }
 

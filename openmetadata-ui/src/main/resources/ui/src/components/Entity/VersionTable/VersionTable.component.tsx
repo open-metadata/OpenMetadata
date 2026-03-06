@@ -58,12 +58,12 @@ function VersionTable<T extends Column | SearchIndexField>({
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const data = useMemo(() => {
-    if (!searchText) {
-      return makeData<T>(columns);
-    } else {
+    if (searchText) {
       const searchCols = searchInColumns<T>(columns, searchText);
 
       return makeData<T>(searchCols);
+    } else {
+      return makeData<T>(columns);
     }
   }, [searchText, columns]);
 
@@ -128,15 +128,25 @@ function VersionTable<T extends Column | SearchIndexField>({
       });
 
       return (
-        <div className="d-inline-flex flex-column hover-icon-group w-full">
-          <div className="d-inline-flex">
-            {deletedConstraintIcon}
-            {addedConstraintIcon}
-            <RichTextEditorPreviewerV1 markdown={name} />
+        <div
+          className="d-inline-flex flex-column hover-icon-group vertical-align-inherit"
+          style={{ maxWidth: '80%' }}>
+          <div className="d-inline-flex items-start gap-1 flex-column">
+            <div className="d-inline-flex items-baseline">
+              {deletedConstraintIcon}
+              {addedConstraintIcon}
+              <span className="break-word">
+                <RichTextEditorPreviewerV1 markdown={name} />
+              </span>
+            </div>
+            {isEmpty(record.displayName) ? null : (
+              <span className="break-word">
+                <RichTextEditorPreviewerV1
+                  markdown={record.displayName ?? ''}
+                />
+              </span>
+            )}
           </div>
-          {!isEmpty(record.displayName) ? (
-            <RichTextEditorPreviewerV1 markdown={record.displayName ?? ''} />
-          ) : null}
         </div>
       );
     },
@@ -252,7 +262,9 @@ function VersionTable<T extends Column | SearchIndexField>({
   }, []);
 
   useEffect(() => {
-    setExpandedRowKeys(getAllRowKeysByKeyName<T>(columns ?? [], 'name'));
+    setExpandedRowKeys(
+      getAllRowKeysByKeyName<T>(columns ?? [], 'fullyQualifiedName')
+    );
   }, [columns]);
 
   return (
@@ -273,7 +285,7 @@ function VersionTable<T extends Column | SearchIndexField>({
         emptyText: <FilterTablePlaceHolder />,
       }}
       pagination={false}
-      rowKey="name"
+      rowKey="fullyQualifiedName"
       scroll={TABLE_SCROLL_VALUE}
       searchProps={searchProps}
       size="small"

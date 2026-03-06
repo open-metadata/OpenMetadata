@@ -176,14 +176,19 @@ public class WebAnalyticsWorkflow {
       throws SearchIndexException {
     Optional<String> error = Optional.empty();
 
-    while (!source.isDone().get()) {
-      ResultList<WebAnalyticEventData> resultList = source.readNext(null);
+    String keysetCursor = null;
+    while (true) {
       try {
+        ResultList<WebAnalyticEventData> resultList = source.readNextKeyset(keysetCursor);
+        keysetCursor = resultList.getPaging().getAfter();
         if (!resultList.getData().isEmpty()) {
           webAnalyticsEntityViewProcessor.process(resultList, contextData);
           webAnalyticsUserActivityProcessor.process(resultList, contextData);
         }
         source.updateStats(resultList.getData().size(), 0);
+        if (keysetCursor == null) {
+          break;
+        }
       } catch (SearchIndexException ex) {
         source.updateStats(
             ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
@@ -191,6 +196,7 @@ public class WebAnalyticsWorkflow {
             Optional.of(
                 String.format("Failed processing events from %s: %s", source.getName(), ex));
         workflowStats.addFailure(error.get());
+        break;
       } finally {
         updateWorkflowStats(source.getName(), source.getStats());
       }

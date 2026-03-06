@@ -56,7 +56,7 @@ export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
-export const LINEAGE_CHILD_ITEMS_PER_PAGE = 5;
+export const LINEAGE_CHILD_ITEMS_PER_PAGE = 10;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
@@ -305,7 +305,7 @@ export const ROUTES = {
   OBSERVABILITY_ALERT_DETAILS_WITH_TAB: `/observability/alert/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
   EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
-  RULES_LIBRARY: '/rules-library',
+  TEST_LIBRARY: '/test-library',
 
   // Notification Alerts
   NOTIFICATIONS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,

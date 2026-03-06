@@ -74,6 +74,6 @@
       "type": "string"
     }
   },
-  "required": ["name", "description","entityType", "testPlatforms"],
+  "required": ["name", "entityType", "testPlatforms"],
   "additionalProperties": false
 }
