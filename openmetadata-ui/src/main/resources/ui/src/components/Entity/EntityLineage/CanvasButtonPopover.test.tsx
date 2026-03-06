@@ -14,7 +14,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { Edge, Viewport } from 'reactflow';
 import { StatusType } from '../../../generated/entity/data/pipeline';
-import { CanvasButton } from '../../../utils/CanvasButtonUtils';
+import {
+  CanvasButton,
+  ECanvasButtonType,
+} from '../../../utils/CanvasButtonUtils';
 import { CanvasButtonPopover } from './CanvasButtonPopover.component';
 
 jest.mock('../../common/PopOverCard/EntityPopOverCard', () => ({
@@ -60,7 +63,7 @@ describe('CanvasButtonPopover', () => {
     width: 36,
     height: 36,
     edgeId: 'edge-1',
-    type: 'pipeline',
+    type: ECanvasButtonType.Pipeline,
     executionStatus: StatusType.Successful,
   };
 
@@ -107,8 +110,8 @@ describe('CanvasButtonPopover', () => {
 
     expect(popover).toHaveStyle({
       position: 'absolute',
-      left: '150px',
-      top: '150px',
+      left: '132px',
+      top: '132px',
     });
   });
 
