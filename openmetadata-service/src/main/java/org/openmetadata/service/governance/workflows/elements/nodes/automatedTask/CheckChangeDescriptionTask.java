@@ -41,7 +41,7 @@ public class CheckChangeDescriptionTask implements NodeInterface {
     ServiceTask checkChangeDescriptionTask =
         getCheckChangeDescriptionServiceTask(
             subProcessId,
-            nodeDefinition.getConfig() != null
+            nodeDefinition.getConfig() != null && nodeDefinition.getConfig().getCondition() != null
                 ? nodeDefinition.getConfig().getCondition().value()
                 : "OR",
             nodeDefinition.getConfig() != null
