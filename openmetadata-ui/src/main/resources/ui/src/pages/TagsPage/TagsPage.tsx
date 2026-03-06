@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Button } from '@openmetadata/ui-core-components';
+import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -685,7 +685,7 @@ const TagsPage = () => {
             {classifications.map((category: Classification) => (
               <button
                 className={classNames(
-                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss w-streach',
+                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
                   {
                     activeCategory:
                       currentClassification?.name === category.name,
@@ -695,32 +695,30 @@ const TagsPage = () => {
                 key={category.name}
                 onClick={() => onClickClassifications(category)}
               >
-                <div className="prose">
-                  <p
-                    className={classNames(
-                      'tw:self-center tw:m-b-0 tag-category tw:truncate tw:text-sm',
-                      {
-                        'tw:font-bold tw:text-brand-600':
-                          currentClassification?.name === category.name,
-                      }
-                    )}
-                    data-testid="tag-name"
-                    title={getEntityName(category)}
-                  >
-                    {getEntityName(category)}
-                    {category.disabled && (
-                      <Badge
-                        className="m-l-xs"
-                        color="gray"
-                        data-testid="disabled"
-                        size="sm"
-                        type="pill-color"
-                      >
-                        {t('label.disabled')}
-                      </Badge>
-                    )}
-                  </p>
-                </div>
+                <Typography
+                  as="p"
+                  className={classNames(
+                    'tw:self-center tw:m-b-0 tw:truncate tw:text-sm',
+                    {
+                      'tw:font-bold tw:text-brand-600':
+                        currentClassification?.name === category.name,
+                    }
+                  )}
+                  data-testid="tag-name"
+                  title={getEntityName(category)}
+                >
+                  {getEntityName(category)}
+                  {category.disabled && (
+                    <Badge
+                      color="gray"
+                      data-testid="disabled"
+                      size="sm"
+                      type="pill-color"
+                    >
+                      {t('label.disabled')}
+                    </Badge>
+                  )}
+                </Typography>
 
                 {getCountBadge(
                   category.termCount,
@@ -751,9 +749,9 @@ const TagsPage = () => {
   if (error) {
     return (
       <ErrorPlaceHolder>
-        <div className="prose">
-          <p className="tw:text-center tw:m-auto">{error}</p>
-        </div>
+        <Typography as="p" className="tw:text-center tw:m-auto">
+          {error}
+        </Typography>
       </ErrorPlaceHolder>
     );
   }

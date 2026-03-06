@@ -59,9 +59,9 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
             onClose={close}
           >
             <Typography
-              as="h6"
+              as="h2"
               className="tw:text-lg tw:font-semibold"
-              data-testid="form-heading"
+              data-testid="drawer-heading"
             >
               {tagsFormHeader}
             </Typography>

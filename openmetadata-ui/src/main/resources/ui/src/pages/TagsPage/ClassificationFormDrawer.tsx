@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, SlideoutMenu } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  SlideoutMenu,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsForm from './TagsForm';
@@ -50,14 +54,13 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
             data-testid="drawer-header"
             onClose={close}
           >
-            <div className="tw:prose">
-              <h6
-                className="tw:text-lg tw:font-semibold"
-                data-testid="form-heading"
-              >
-                {t('label.adding-new-classification')}
-              </h6>
-            </div>
+            <Typography
+              as="h2"
+              className="tw:text-lg tw:font-semibold"
+              data-testid="drawer-heading"
+            >
+              {t('label.adding-new-classification')}
+            </Typography>
           </SlideoutMenu.Header>
 
           <SlideoutMenu.Content>
