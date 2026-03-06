@@ -28,8 +28,7 @@ public class MigrationUtil {
       try {
         DataInsightCustomChart chart =
             repository.getByName(null, chartName, EntityUtil.Fields.EMPTY_FIELDS);
-        String json =
-            org.openmetadata.schema.utils.JsonUtils.pojoToJson(chart.getChartDetails());
+        String json = org.openmetadata.schema.utils.JsonUtils.pojoToJson(chart.getChartDetails());
         if (json.contains(OLD_FIELD)) {
           String updatedJson = json.replace(OLD_FIELD, NEW_FIELD);
           Object updatedDetails =
@@ -38,8 +37,11 @@ public class MigrationUtil {
           chart.setChartDetails(updatedDetails);
           repository.prepareInternal(chart, false);
           repository.getDao().update(chart);
-          LOG.info("Updated chart formula for '{}': replaced '{}' with '{}'",
-              chartName, OLD_FIELD, NEW_FIELD);
+          LOG.info(
+              "Updated chart formula for '{}': replaced '{}' with '{}'",
+              chartName,
+              OLD_FIELD,
+              NEW_FIELD);
         }
       } catch (Exception ex) {
         LOG.warn("Could not update chart '{}': {}", chartName, ex.getMessage());
