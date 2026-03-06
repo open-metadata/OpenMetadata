@@ -22,11 +22,17 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import {
+  TEST_CASE_STATUS_FILTER_OPTIONS,
+  TEST_CASE_STATUS_LABELS,
+  TEST_CASE_TYPE_OPTION,
+} from '../../../constants/profiler.constant';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { TestCase } from '../../../generated/tests/testCase';
+import { TestCaseType } from '../../../enums/TestSuite.enum';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
@@ -39,7 +45,16 @@ import { replacePlus } from '../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
+import AddTestCaseListFilters from './AddTestCaseListFilters.component';
+import { AddTestCaseListFilterKey } from './AddTestCaseListFilters.constants';
+import {
+  filterTestCasesByTableAndColumn,
+  getColumnFilterOptions,
+  getSelectedOptionsFromKeys,
+  getTableFilterOptions,
+} from './AddTestCaseList.utils';
 
 export const AddTestCaseList = ({
   onCancel,
@@ -59,6 +74,80 @@ export const AddTestCaseList = ({
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<
+    TestCaseStatus | undefined
+  >();
+  const [filterTestType, setFilterTestType] = useState<TestCaseType>(
+    TestCaseType.all
+  );
+  const [filterTables, setFilterTables] = useState<string[]>([]);
+  const [filterColumns, setFilterColumns] = useState<string[]>([]);
+
+  const statusOptions = useMemo<SearchDropdownOption[]>(
+    () =>
+      TEST_CASE_STATUS_FILTER_OPTIONS.map((o) => ({
+        key: o.value,
+        label: o.label,
+      })),
+    []
+  );
+
+  const testTypeOptions = useMemo<SearchDropdownOption[]>(
+    () =>
+      TEST_CASE_TYPE_OPTION.map((o) => ({
+        key: o.value,
+        label: o.label,
+      })),
+    []
+  );
+
+  const tableOptions = useMemo(() => getTableFilterOptions(items), [items]);
+
+  const columnOptions = useMemo(() => getColumnFilterOptions(items), [items]);
+
+  const statusSelectedKeys = useMemo<SearchDropdownOption[]>(
+    () =>
+      filterStatus != null
+        ? [{ key: filterStatus, label: TEST_CASE_STATUS_LABELS[filterStatus] }]
+        : [],
+    [filterStatus]
+  );
+
+  const testTypeSelectedKeys = useMemo<SearchDropdownOption[]>(
+    () =>
+      filterTestType !== TestCaseType.all
+        ? [
+            {
+              key: filterTestType,
+              label:
+                TEST_CASE_TYPE_OPTION.find((o) => o.value === filterTestType)
+                  ?.label ?? '',
+            },
+          ]
+        : [],
+    [filterTestType]
+  );
+
+  const tableSelectedKeys = useMemo(
+    () =>
+      getSelectedOptionsFromKeys(filterTables, tableOptions, getNameFromFQN),
+    [filterTables, tableOptions]
+  );
+
+  const columnSelectedKeys = useMemo(
+    () =>
+      getSelectedOptionsFromKeys(
+        filterColumns,
+        columnOptions,
+        (key) => key.split('::').pop() ?? '--'
+      ),
+    [filterColumns, columnOptions]
+  );
+
+  const filteredItems = useMemo(
+    () => filterTestCasesByTableAndColumn(items, filterTables, filterColumns),
+    [items, filterTables, filterColumns]
+  );
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -75,11 +164,17 @@ export const AddTestCaseList = ({
       try {
         setIsLoading(true);
         const globalSearch = searchText ? `*${searchText}*` : WILD_CARD_CHAR;
+        const q = filters ? `${globalSearch} && ${filters}` : globalSearch;
 
         const testCaseResponse = await getListTestCaseBySearch({
-          q: filters ? `${globalSearch} && ${filters}` : globalSearch,
+          q,
           limit: PAGE_SIZE_MEDIUM,
           offset: (page - 1) * PAGE_SIZE_MEDIUM,
+          ...(filterStatus && { testCaseStatus: filterStatus }),
+          ...(filterTestType &&
+            filterTestType !== TestCaseType.all && {
+              testCaseType: filterTestType,
+            }),
           ...(testCaseParams ?? {}),
         });
 
@@ -107,7 +202,7 @@ export const AddTestCaseList = ({
         setIsLoading(false);
       }
     },
-    [selectedTest]
+    [filters, selectedTest, testCaseParams, filterStatus, filterTestType]
   );
 
   const handleSubmit = async () => {
@@ -170,10 +265,14 @@ export const AddTestCaseList = ({
   };
   useEffect(() => {
     fetchTestCases({ searchText: searchTerm });
-  }, [searchTerm]);
+  }, [searchTerm, filterStatus, filterTestType, fetchTestCases]);
 
   const renderList = useMemo(() => {
-    if (!isLoading && isEmpty(items)) {
+    const listSource =
+      filterTables.length > 0 || filterColumns.length > 0
+        ? filteredItems
+        : items;
+    if (!isLoading && isEmpty(listSource)) {
       return (
         <Col span={24}>
           <Space align="center" className="w-full" direction="vertical">
@@ -193,7 +292,7 @@ export const AddTestCaseList = ({
               indicator: <Loader />,
             }}>
             <VirtualList
-              data={items}
+              data={listSource}
               height={500}
               itemKey="id"
               onScroll={onScroll}>
@@ -257,7 +356,71 @@ export const AddTestCaseList = ({
         </Col>
       );
     }
-  }, [items, selectedItems, isLoading]);
+  }, [
+    items,
+    filteredItems,
+    filterTables,
+    filterColumns,
+    selectedItems,
+    isLoading,
+  ]);
+
+  const handleFilterChange = useCallback(
+    (values: SearchDropdownOption[], searchKey: AddTestCaseListFilterKey) => {
+      switch (searchKey) {
+        case 'status': {
+          setFilterStatus(values[0]?.key as TestCaseStatus | undefined);
+
+          break;
+        }
+        case 'testType': {
+          setFilterTestType(
+            (values[0]?.key ?? TestCaseType.all) as TestCaseType
+          );
+
+          break;
+        }
+        case 'table': {
+          setFilterTables(values.map((o) => o.key));
+
+          break;
+        }
+        case 'column': {
+          setFilterColumns(values.map((o) => o.key));
+
+          break;
+        }
+      }
+    },
+    []
+  );
+
+  const noopSearch = useCallback(() => {}, []);
+
+  const filterOptions = useMemo(
+    () => ({
+      status: statusOptions,
+      testType: testTypeOptions,
+      table: tableOptions,
+      column: columnOptions,
+    }),
+    [statusOptions, testTypeOptions, tableOptions, columnOptions]
+  );
+
+  const filterSelectedKeys = useMemo(
+    () => ({
+      status: statusSelectedKeys,
+      testType: testTypeSelectedKeys,
+      table: tableSelectedKeys,
+      column: columnSelectedKeys,
+    }),
+    [
+      statusSelectedKeys,
+      testTypeSelectedKeys,
+      tableSelectedKeys,
+      columnSelectedKeys,
+    ]
+  );
 
   return (
     <Row gutter={[0, 16]}>
@@ -271,6 +434,14 @@ export const AddTestCaseList = ({
           })}
           searchValue={searchTerm}
           onSearch={handleSearch}
+        />
+      </Col>
+      <Col span={24}>
+        <AddTestCaseListFilters
+          filterOptions={filterOptions}
+          filterSelectedKeys={filterSelectedKeys}
+          onChange={handleFilterChange}
+          onSearch={noopSearch}
         />
       </Col>
       {renderList}

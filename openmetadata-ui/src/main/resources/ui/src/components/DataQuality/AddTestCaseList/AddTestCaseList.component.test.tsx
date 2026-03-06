@@ -93,6 +93,68 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest.fn().mockReturnValue('/path/to/entity'),
 }));
 
+jest.mock('./AddTestCaseListFilters.component', () => ({
+  __esModule: true,
+  default: function MockAddTestCaseListFilters({
+    onChange,
+  }: {
+    onChange: (values: { key: string; label: string }[], searchKey: string) => void;
+  }) {
+    return (
+      <div data-testid="add-test-case-list-filters">
+        <button
+          data-testid="filter-status-success"
+          type="button"
+          onClick={() =>
+            onChange([{ key: 'Success', label: 'Success' }], 'status')
+          }>
+          Apply status Success
+        </button>
+        <button
+          data-testid="filter-test-type-table"
+          type="button"
+          onClick={() =>
+            onChange([{ key: 'table', label: 'Table' }], 'testType')
+          }>
+          Apply testType table
+        </button>
+        <button
+          data-testid="filter-table"
+          type="button"
+          onClick={() =>
+            onChange(
+              [
+                {
+                  key: '<#E::table::sample.table>',
+                  label: 'sample.table',
+                },
+              ],
+              'table'
+            )
+          }>
+          Apply table filter
+        </button>
+        <button
+          data-testid="filter-column"
+          type="button"
+          onClick={() =>
+            onChange(
+              [
+                {
+                  key: '<#E::table::sample.table::columns::id>::<#E::table::sample.table::columns::id>',
+                  label: 'id',
+                },
+              ],
+              'column'
+            )
+          }>
+          Apply column filter
+        </button>
+      </div>
+    );
+  },
+}));
+
 const mockGetListTestCaseBySearch =
   getListTestCaseBySearch as jest.MockedFunction<
     typeof getListTestCaseBySearch
@@ -296,9 +358,10 @@ describe('AddTestCaseList', () => {
       };
 
       await act(async () => {
-        render(
-          <AddTestCaseList {...mockProps} testCaseParams={testCaseParams} />
-        );
+        renderWithRouter({
+          ...mockProps,
+          testCaseParams,
+        });
       });
 
       await waitFor(() => {
@@ -308,6 +371,138 @@ describe('AddTestCaseList', () => {
           offset: 0,
           ...testCaseParams,
         });
+      });
+    });
+  });
+
+  describe('Filters', () => {
+    it('renders filter section', async () => {
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      expect(
+        screen.getByTestId('add-test-case-list-filters')
+      ).toBeInTheDocument();
+    });
+
+    it('calls API with testCaseStatus when status filter is applied', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            q: '*',
+            limit: 25,
+            offset: 0,
+          })
+        );
+      });
+
+      mockGetListTestCaseBySearch.mockClear();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-status-success'));
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            q: '*',
+            limit: 25,
+            offset: 0,
+            testCaseStatus: 'Success',
+          })
+        );
+      });
+    });
+
+    it('calls API with testCaseType when test type filter is applied', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalled();
+      });
+
+      mockGetListTestCaseBySearch.mockClear();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-test-type-table'));
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            q: '*',
+            limit: 25,
+            offset: 0,
+            testCaseType: 'table',
+          })
+        );
+      });
+    });
+
+    it('filters list by table selection (client-side)', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
+        expect(screen.getByTestId('test_case_3')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-table'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
+        expect(screen.queryByTestId('test_case_3')).not.toBeInTheDocument();
+      });
+    });
+
+    it('filters list by column selection (client-side)', async () => {
+      mockGetListTestCaseBySearch.mockResolvedValue({
+        data: mockTestCases,
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        renderWithRouter(mockProps);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test_case_2')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-column'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test_case_2')).toBeInTheDocument();
+        expect(screen.queryByTestId('test_case_1')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('test_case_3')).not.toBeInTheDocument();
       });
     });
   });
