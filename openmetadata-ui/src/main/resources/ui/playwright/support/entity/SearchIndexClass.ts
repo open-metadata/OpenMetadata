@@ -166,7 +166,7 @@ export class SearchIndexClass extends EntityClass {
     this.entityResponseData = await entityResponse.json();
 
     this.childrenSelectorId =
-      this.entityResponseData.fields[0].fullyQualifiedName ?? '';
+      this.entityResponseData.fields?.[0]?.fullyQualifiedName ?? '';
 
     return {
       service: serviceResponse.body,
