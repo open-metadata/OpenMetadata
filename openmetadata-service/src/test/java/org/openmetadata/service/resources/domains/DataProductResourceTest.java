@@ -92,7 +92,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
       DataProductRepository repository =
           (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
       BulkAssets addTable1 = new BulkAssets().withAssets(List.of(TEST_TABLE1.getEntityReference()));
-      repository.bulkAddAssets(product.getFullyQualifiedName(), addTable1);
+      repository.bulkAddAssets(product.getFullyQualifiedName(), addTable1, null);
       entityInDataProduct(TEST_TABLE1, product, true); // Table1 is part of data product
 
       TopicResourceTest topicTest = new TopicResourceTest();
@@ -101,20 +101,20 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
 
       // Add topic asset using bulk API
       BulkAssets addTopic = new BulkAssets().withAssets(List.of(topic.getEntityReference()));
-      repository.bulkAddAssets(product.getFullyQualifiedName(), addTopic);
+      repository.bulkAddAssets(product.getFullyQualifiedName(), addTopic, null);
       entityInDataProduct(topic, product, true); // topic is part of data product
 
       // Remove topic asset using bulk API
       BulkAssets removeTopic = new BulkAssets().withAssets(List.of(topic.getEntityReference()));
-      repository.bulkRemoveAssets(product.getFullyQualifiedName(), removeTopic);
+      repository.bulkRemoveAssets(product.getFullyQualifiedName(), removeTopic, null);
       entityInDataProduct(topic, product, false); // topic is not part of data product
 
       // Add topic back using bulk API
-      repository.bulkAddAssets(product.getFullyQualifiedName(), addTopic);
+      repository.bulkAddAssets(product.getFullyQualifiedName(), addTopic, null);
       entityInDataProduct(topic, product, true); // topic is part of data product
 
       // Remove topic again using bulk API
-      repository.bulkRemoveAssets(product.getFullyQualifiedName(), removeTopic);
+      repository.bulkRemoveAssets(product.getFullyQualifiedName(), removeTopic, null);
       entityInDataProduct(topic, product, false); // topic is not part of data product
     } finally {
       // Re-enable the rule for other tests
@@ -242,7 +242,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
 
       // Test bulk add operation
       BulkOperationResult result =
-          dataProductRepository.bulkAddAssets(product.getFullyQualifiedName(), bulkAssets);
+          dataProductRepository.bulkAddAssets(product.getFullyQualifiedName(), bulkAssets, null);
       assertEquals(ApiStatus.SUCCESS, result.getStatus());
       assertEquals(3, result.getNumberOfRowsProcessed());
       assertEquals(3, result.getNumberOfRowsPassed());
@@ -267,7 +267,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
               .withAssets(List.of(dashboard.getEntityReference(), topic.getEntityReference()));
 
       result =
-          dataProductRepository.bulkRemoveAssets(product.getFullyQualifiedName(), removeAssets);
+          dataProductRepository.bulkRemoveAssets(
+              product.getFullyQualifiedName(), removeAssets, null);
       assertEquals(ApiStatus.SUCCESS, result.getStatus());
       assertEquals(2, result.getNumberOfRowsProcessed());
       assertEquals(2, result.getNumberOfRowsPassed());

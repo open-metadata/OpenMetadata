@@ -5047,7 +5047,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     org.openmetadata.schema.type.api.BulkAssets bulkAssets =
         new org.openmetadata.schema.type.api.BulkAssets()
             .withAssets(List.of(table.getEntityReference()));
-    dataProductRepository.bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets);
+    dataProductRepository.bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets, null);
 
     // Step 5.5: Create metric with reviewers
     CreateMetric createMetric =
@@ -5579,7 +5579,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     org.openmetadata.schema.type.api.BulkAssets bulkAssets2 =
         new org.openmetadata.schema.type.api.BulkAssets()
             .withAssets(List.of(table.getEntityReference()));
-    dataProductRepository2.bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets2);
+    dataProductRepository2.bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets2, null);
 
     // Wait for workflow to process and auto-approve
     // Adding extra time to handle potential duplicate workflow executions
