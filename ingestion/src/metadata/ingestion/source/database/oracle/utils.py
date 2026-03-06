@@ -37,6 +37,10 @@ from metadata.utils.sqlalchemy_utils import (
 )
 
 
+def get_table_prefix_from_connection(service_connection) -> str:
+    return "DBA" if getattr(service_connection, "useDBATable", False) else "ALL"
+
+
 def _get_table_prefix(self) -> str:
     return getattr(self, "table_prefix", "DBA")
 

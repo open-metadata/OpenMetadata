@@ -67,6 +67,7 @@ from metadata.ingestion.source.database.oracle.utils import (
     get_table_comment,
     get_table_comment_preserve_case,
     get_table_names,
+    get_table_prefix_from_connection,
     get_view_definition,
     get_view_definition_preserve_case,
     get_view_names,
@@ -119,9 +120,7 @@ class OracleSource(CommonDbSourceService):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
         dialect = self.engine.dialect
-        dialect.table_prefix = (
-            "ALL" if getattr(self.service_connection, "onlyAllTable", False) else "DBA"
-        )
+        dialect.table_prefix = get_table_prefix_from_connection(self.service_connection)
         if getattr(self.service_connection, "preserveIdentifierCase", False):
             dialect.normalize_name = types.MethodType(normalize_name, dialect)
             dialect.denormalize_name = types.MethodType(denormalize_name, dialect)
