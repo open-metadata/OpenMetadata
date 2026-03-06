@@ -668,7 +668,6 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         """
         try:
             self._set_table_and_schema_name()
-            logger.info("◆◆COLLATE-IFX◆◆ table_metric_computer.py InformixTableMetricComputer.compute() called for table: %s", getattr(self, '_table_name', '?'))
 
             # SELECT COUNT(*) with literal_binds=True → no ? placeholders.
             # The table reference (schema.table) is part of the FROM clause,
@@ -696,11 +695,10 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
 
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.debug(
-                "InformixTableMetricComputer: COUNT(*) literal-bind failed, "
-                "falling back to base implementation"
+            logger.warning(
+                "InformixTableMetricComputer: COUNT(*) literal-bind failed"
             )
-            return super().compute()
+            raise
 
 
 class VerticaTableMetricComputer(BaseTableMetricComputer):

@@ -52,6 +52,9 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
     ImpalaType,
 )
+from metadata.generated.schema.entity.services.connections.database.informixConnection import (
+    InformixType,
+)
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBType,
 )
@@ -90,9 +93,6 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 )
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     DatabricksType as UnityCatalogType,
-)
-from metadata.generated.schema.entity.services.connections.database.informixConnection import (
-    InformixType,
 )
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaType,

@@ -48,6 +48,17 @@ export interface InformixConnection {
      */
     serverName: string;
     /**
+     * SSL Configuration details. Provide the CA certificate to validate the Informix server
+     * certificate. Paste the PEM content directly or upload the certificate file.
+     */
+    sslConfig?: Config;
+    /**
+     * SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL
+     * without certificate verification, or 'verify-ca' to validate the server certificate
+     * against the provided CA certificate.
+     */
+    sslMode?: SSLMode;
+    /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?: FilterPattern;
@@ -98,6 +109,45 @@ export interface FilterPattern {
  */
 export enum InformixScheme {
     Informix = "informix",
+}
+
+/**
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
+ * SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL
+ * without certificate verification, or 'verify-ca' to validate the server certificate
+ * against the provided CA certificate.
+ *
+ * SSL Mode to connect to database.
+ */
+export enum SSLMode {
+    Allow = "allow",
+    Disable = "disable",
+    Prefer = "prefer",
+    Require = "require",
+    VerifyCA = "verify-ca",
+    VerifyFull = "verify-full",
 }
 
 /**
