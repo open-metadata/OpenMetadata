@@ -325,8 +325,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       entityFqn,
       incomingMap,
       outgoingMap,
-      isColumnLevelLineage,
-      undefined
+      isColumnLevelLineage
     );
   }, [
     cachedEdgesAndMaps,
@@ -1497,7 +1496,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         if (selectedEdge?.id) {
           updateEdge(selectedEdge.id, (edge) => ({
             ...edge,
-            animated: isEmpty(pipelineData) ? false : true,
+            animated: !isEmpty(pipelineData),
             data: {
               ...edge.data,
               edge: {
@@ -1885,33 +1884,33 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   }, [dataQualityLineage, edges, dqHighlightedEdges]);
 
-  const breadcrumbs = useMemo(
-    () =>
-      entity
-        ? [
-            ...getEntityBreadcrumbs(entity, entityType, isFullScreen),
-            {
-              name: t('label.lineage'),
-              url: '',
-              activeTitle: true,
-            },
-          ]
-        : platformView
-        ? [
-            {
-              name: '',
-              icon: <Home02 size={12} />,
-              url: '/',
-              activeTitle: true,
-            },
-            {
-              name: t('label.lineage'),
-              url: '',
-            },
-          ]
-        : [],
-    [entity, isFullScreen, entityType]
-  );
+  const breadcrumbs = useMemo(() => {
+    const platformBreadcrumbs = platformView
+      ? [
+          {
+            name: '',
+            icon: <Home02 size={12} />,
+            url: '/',
+            activeTitle: true,
+          },
+          {
+            name: t('label.lineage'),
+            url: '',
+          },
+        ]
+      : [];
+
+    return entity
+      ? [
+          ...getEntityBreadcrumbs(entity, entityType, isFullScreen),
+          {
+            name: t('label.lineage'),
+            url: '',
+            activeTitle: true,
+          },
+        ]
+      : platformBreadcrumbs;
+  }, [entity, isFullScreen, entityType]);
 
   // flush store values
   useEffect(() => {

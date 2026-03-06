@@ -67,9 +67,7 @@ export function useCanvasEdgeRenderer({
   const edgeHitPathsRef = useRef<EdgeHitEntry[]>([]);
   const canvasButtonsRef = useRef<CanvasButtonHitData[]>([]);
   const hoveredButtonRef = useRef<CanvasButton | null>(null);
-  const [hoveredButton, setHoveredButtonState] = useState<CanvasButton | null>(
-    null
-  );
+  const [hoveredButton, setHoveredButton] = useState<CanvasButton | null>(null);
   const hitTestCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const edgePathCacheRef = useRef<
     WeakMap<
@@ -420,9 +418,14 @@ export function useCanvasEdgeRenderer({
     });
   }, []);
 
-  const setHoveredButton = useCallback((button: CanvasButton | null) => {
-    hoveredButtonRef.current = button;
-    setHoveredButtonState(button);
+  const onSetHoveredButton = useCallback((button: CanvasButton | null) => {
+    if (
+      hoveredButtonRef.current?.edgeId !== button?.edgeId ||
+      hoveredButtonRef.current?.type !== button?.type
+    ) {
+      hoveredButtonRef.current = button;
+      setHoveredButton(button);
+    }
   }, []);
 
   useEffect(() => {
@@ -463,7 +466,7 @@ export function useCanvasEdgeRenderer({
     visibleEdgesRef,
     getEdgeAtPoint,
     getButtonAtPoint,
-    setHoveredButton,
+    setHoveredButton: onSetHoveredButton,
     hoveredButton,
   };
 }

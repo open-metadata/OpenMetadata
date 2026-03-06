@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Tag } from 'antd';
-import React, { MutableRefObject } from 'react';
+import React, { MutableRefObject, useCallback } from 'react';
 import { Edge, Viewport } from 'reactflow';
 import { CanvasButton } from '../../../utils/CanvasButtonUtils';
 import { getPipelineStatusClass } from '../../../utils/PipelineStatusUtils';
@@ -41,25 +41,28 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
     viewport
   );
 
+  const handleMouseEnter = useCallback(() => {
+    isOverPopoverRef.current = true;
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+  }, []);
+
   const pipelineData = hoveredEdge.data?.edge?.pipeline;
   const pipelineStatus = pipelineData?.pipelineStatus;
 
   return (
-    <div
+    <button
       key={`popover-${hoveredButton.edgeId}`}
       style={{
         ...position,
         pointerEvents: 'all',
         zIndex: 1000,
       }}
-      onMouseEnter={() => {
-        isOverPopoverRef.current = true;
-        if (hoverTimeoutRef.current) {
-          clearTimeout(hoverTimeoutRef.current);
-          hoverTimeoutRef.current = null;
-        }
-      }}
-      onMouseLeave={onMouseLeave}>
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       <EntityPopOverCard
         defaultOpen
         entityFQN={pipelineData?.fullyQualifiedName ?? ''}
@@ -67,15 +70,15 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
         extraInfo={
           pipelineStatus && (
             <Tag
-              className={getPipelineStatusClass(
-                pipelineStatus.executionStatus
-              )}>
+              className={getPipelineStatusClass(pipelineStatus.executionStatus)}
+            >
               {pipelineStatus.executionStatus}
             </Tag>
           )
-        }>
+        }
+      >
         <div style={{ width: '36px', height: '36px' }} />
       </EntityPopOverCard>
-    </div>
+    </button>
   );
 };
