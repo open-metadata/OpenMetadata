@@ -106,7 +106,6 @@ public class SecurityConfigurationManager {
           SettingsCache.getSetting(AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class);
       currentAuthzConfig =
           SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class);
-      currentMcpConfig = SettingsCache.getSetting(MCP_CONFIGURATION, MCPConfiguration.class);
       LOG.info(
           "Loaded security configuration from database - provider: {}",
           currentAuthConfig != null ? currentAuthConfig.getProvider() : "null");
@@ -115,11 +114,15 @@ public class SecurityConfigurationManager {
           "Failed to load configuration from database, falling back to YAML: {}", e.getMessage());
       currentAuthConfig = config.getAuthenticationConfiguration();
       currentAuthzConfig = config.getAuthorizerConfiguration();
-      currentMcpConfig = config.getMcpConfiguration();
       LOG.info(
           "Using security configuration from YAML - provider: {}",
           currentAuthConfig != null ? currentAuthConfig.getProvider() : "null");
     }
+
+    // MCP config is optional — load separately so its absence doesn't affect auth config
+    currentMcpConfig =
+        SettingsCache.getSettingOrDefault(
+            MCP_CONFIGURATION, config.getMcpConfiguration(), MCPConfiguration.class);
   }
 
   public SecurityConfiguration getCurrentSecurityConfig() {
@@ -143,7 +146,8 @@ public class SecurityConfigurationManager {
           SettingsCache.getSetting(AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class);
       currentAuthzConfig =
           SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class);
-      currentMcpConfig = SettingsCache.getSetting(MCP_CONFIGURATION, MCPConfiguration.class);
+      currentMcpConfig =
+          SettingsCache.getSettingOrDefault(MCP_CONFIGURATION, null, MCPConfiguration.class);
 
       OpenMetadataApplicationConfig appConfig = this.config;
       appConfig.setAuthenticationConfiguration(currentAuthConfig);

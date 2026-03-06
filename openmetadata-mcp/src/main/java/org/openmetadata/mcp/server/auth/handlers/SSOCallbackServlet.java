@@ -82,6 +82,7 @@ public class SSOCallbackServlet extends HttpServlet {
   private final McpPendingAuthRequestRepository pendingAuthRepository;
   private final SSOAuthMechanism.SsoServiceType ssoServiceType;
   private final Object callbackUrlLock = new Object();
+  private volatile IdTokenValidator idTokenValidator;
 
   public SSOCallbackServlet(
       UserSSOOAuthProvider userSSOProvider,
@@ -137,6 +138,17 @@ public class SSOCallbackServlet extends HttpServlet {
       LOG.warn("Failed to get principal domain from config: {}", e.getMessage());
     }
     return "";
+  }
+
+  private IdTokenValidator getIdTokenValidator() {
+    if (idTokenValidator == null) {
+      synchronized (this) {
+        if (idTokenValidator == null) {
+          idTokenValidator = createIdTokenValidator();
+        }
+      }
+    }
+    return idTokenValidator;
   }
 
   private IdTokenValidator createIdTokenValidator() {
@@ -265,7 +277,7 @@ public class SSOCallbackServlet extends HttpServlet {
       // This protects against pac4j misconfiguration or bugs that skip signature verification.
       JWTClaimsSet claimsSet;
       try {
-        claimsSet = createIdTokenValidator().validateAndDecode(idToken.serialize());
+        claimsSet = getIdTokenValidator().validateAndDecode(idToken.serialize());
         LOG.debug("ID token signature validated successfully in standard SSO flow");
       } catch (IdTokenValidator.IdTokenValidationException e) {
         LOG.error(
@@ -348,7 +360,7 @@ public class SSOCallbackServlet extends HttpServlet {
     // Validate ID token signature using JWKS public keys (SECURITY FIX)
     JWTClaimsSet claimsSet;
     try {
-      claimsSet = createIdTokenValidator().validateAndDecode(idTokenString);
+      claimsSet = getIdTokenValidator().validateAndDecode(idTokenString);
       LOG.info(
           "ID token signature validated successfully for auth request: {}. Issuer: {}, Subject: {}",
           authRequestId,
