@@ -13,7 +13,7 @@
 import { Skeleton } from 'antd';
 import classNames from 'classnames';
 import { TestSummary } from '../../../../generated/tests/testCase';
-import './test-suite-summary-widget.less';
+
 const TestSuiteSummaryWidget = ({
   summary,
   isLoading,
