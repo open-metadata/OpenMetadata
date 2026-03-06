@@ -97,11 +97,16 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         Test connection. This can be executed either as part
         of a metadata workflow or during an Automation Workflow
         """
-
+        table_prefix = (
+            "ALL" if getattr(self.service_connection, "onlyAllTable", False) else "DBA"
+        )
+        self.client.dialect.table_prefix = table_prefix
         test_conn_queries = {
-            "CheckAccess": CHECK_ACCESS_TO_ALL,
-            "PackageAccess": TEST_ORACLE_GET_STORED_PACKAGES,
-            "GetMaterializedViews": TEST_MATERIALIZED_VIEWS,
+            "CheckAccess": CHECK_ACCESS_TO_ALL.format(prefix=table_prefix),
+            "PackageAccess": TEST_ORACLE_GET_STORED_PACKAGES.format(
+                prefix=table_prefix
+            ),
+            "GetMaterializedViews": TEST_MATERIALIZED_VIEWS.format(prefix=table_prefix),
             "GetQueryHistory": TEST_QUERY_HISTORY,
         }
 

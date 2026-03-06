@@ -118,8 +118,11 @@ class OracleSource(CommonDbSourceService):
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
+        dialect = self.engine.dialect
+        dialect.table_prefix = (
+            "ALL" if getattr(self.service_connection, "onlyAllTable", False) else "DBA"
+        )
         if getattr(self.service_connection, "preserveIdentifierCase", False):
-            dialect = self.engine.dialect
             dialect.normalize_name = types.MethodType(normalize_name, dialect)
             dialect.denormalize_name = types.MethodType(denormalize_name, dialect)
             dialect.get_table_comment = types.MethodType(
@@ -188,9 +191,10 @@ class OracleSource(CommonDbSourceService):
         schema = self.context.get().database_schema
         if not getattr(self.service_connection, "preserveIdentifierCase", False):
             schema = schema.upper()
+        prefix = getattr(self.engine.dialect, "table_prefix", "DBA")
         with self.engine.connect() as conn:
             results: FetchObjectList = conn.execute(
-                text(query.format(schema=schema))
+                text(query.format(schema=schema, prefix=prefix))
             ).all()
         results = self.process_result(data=results)
         for row in results.items():
