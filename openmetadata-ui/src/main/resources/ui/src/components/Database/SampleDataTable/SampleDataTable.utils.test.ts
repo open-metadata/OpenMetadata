@@ -13,7 +13,6 @@
 
 import {
   buildSampleDataCSVContent,
-  downloadSampleDataCSV,
   stringifySampleDataValue,
 } from './SampleDataTable.utils';
 
@@ -130,70 +129,5 @@ describe('buildSampleDataCSVContent', () => {
     const csv = buildSampleDataCSVContent(columns, [], 10);
 
     expect(csv).toBe('');
-  });
-});
-
-describe('downloadSampleDataCSV', () => {
-  const mockLink = {
-    href: '',
-    download: '',
-    style: { visibility: '' },
-    click: jest.fn(),
-  };
-  let mockCreateObjectURL: jest.Mock;
-  let mockRevokeObjectURL: jest.Mock;
-
-  beforeEach(() => {
-    mockCreateObjectURL = jest.fn().mockReturnValue('blob:mock-url');
-    mockRevokeObjectURL = jest.fn();
-    // JSDOM does not implement URL.createObjectURL/revokeObjectURL — assign directly
-    global.URL.createObjectURL = mockCreateObjectURL;
-    global.URL.revokeObjectURL = mockRevokeObjectURL;
-
-    jest
-      .spyOn(document, 'createElement')
-      .mockReturnValue(mockLink as unknown as HTMLElement);
-    jest.spyOn(document.body, 'appendChild').mockImplementation(jest.fn());
-    jest.spyOn(document.body, 'removeChild').mockImplementation(jest.fn());
-    mockLink.click.mockClear();
-    mockLink.href = '';
-    mockLink.download = '';
-    mockLink.style.visibility = '';
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it('creates an anchor element and triggers a click', () => {
-    downloadSampleDataCSV('a,b\n1,2', 'test.csv');
-
-    expect(document.createElement).toHaveBeenCalledWith('a');
-    expect(mockLink.click).toHaveBeenCalledTimes(1);
-  });
-
-  it('sets the correct download filename', () => {
-    downloadSampleDataCSV('a,b\n1,2', 'my_export.csv');
-
-    expect(mockLink.download).toBe('my_export.csv');
-  });
-
-  it('hides the link element', () => {
-    downloadSampleDataCSV('a,b\n1,2', 'test.csv');
-
-    expect(mockLink.style.visibility).toBe('hidden');
-  });
-
-  it('appends and removes the link from the DOM', () => {
-    downloadSampleDataCSV('a,b\n1,2', 'test.csv');
-
-    expect(document.body.appendChild).toHaveBeenCalledWith(mockLink);
-    expect(document.body.removeChild).toHaveBeenCalledWith(mockLink);
-  });
-
-  it('revokes the object URL after download to prevent memory leaks', () => {
-    downloadSampleDataCSV('a,b\n1,2', 'test.csv');
-
-    expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
   });
 });

@@ -11,22 +11,14 @@
  *  limitations under the License.
  */
 
-import { isObject } from 'lodash';
+import { isObject, toString as lodashToString } from 'lodash';
 import { unparse } from 'papaparse';
 import { SampleDataType } from './SampleData.interface';
 
 export const ROW_LIMIT_OPTIONS = [10, 100, 1000];
 
-export const stringifySampleDataValue = (value: SampleDataType): string => {
-  if (value === null || value === undefined) {
-    return '';
-  }
-  if (isObject(value)) {
-    return JSON.stringify(value);
-  }
-
-  return String(value);
-};
+export const stringifySampleDataValue = (value: SampleDataType): string =>
+  isObject(value) ? JSON.stringify(value) : lodashToString(value);
 
 export const buildSampleDataCSVContent = (
   columnNames: string[],
@@ -46,21 +38,4 @@ export const buildSampleDataCSVContent = (
     header: true,
     newline: '\n',
   });
-};
-
-export const downloadSampleDataCSV = (
-  csvContent: string,
-  fileName: string
-): void => {
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-
-  link.href = URL.createObjectURL(blob);
-  link.download = fileName;
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-
-  URL.revokeObjectURL(link.href);
-  document.body.removeChild(link);
 };

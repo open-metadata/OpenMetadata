@@ -37,6 +37,7 @@ import {
   getEntityDeleteMessage,
   Transi18next,
 } from '../../../utils/CommonUtils';
+import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -52,7 +53,6 @@ import {
 } from './SampleData.interface';
 import {
   buildSampleDataCSVContent,
-  downloadSampleDataCSV,
   ROW_LIMIT_OPTIONS,
 } from './SampleDataTable.utils';
 
@@ -99,7 +99,11 @@ const SampleDataTable: FC<SampleDataProps> = ({
       rowLimit
     );
 
-    downloadSampleDataCSV(csvContent, `sample_data_${rowLimit}_rows.csv`);
+    downloadFile(
+      csvContent,
+      `sample_data_${rowLimit}_rows.csv`,
+      'text/csv;charset=utf-8;'
+    );
   }, [sampleData, rowLimit]);
 
   const getSampleDataWithType = (table: Table) => {
