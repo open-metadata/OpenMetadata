@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Grid } from '@openmetadata/ui-core-components';
 import { Form } from 'antd';
 import { castArray } from 'lodash';
 import { Suspense, useEffect, useMemo } from 'react';
@@ -277,9 +278,8 @@ const TagsForm = ({
   return (
     <EntityAttachmentProvider
       entityFqn={initialValues?.fullyQualifiedName}
-      entityType={
-        isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
-      }>
+      entityType={isClassification ? EntityType.CLASSIFICATION : EntityType.TAG}
+    >
       <Form
         className="tags-form"
         data-testid="tags-form"
@@ -288,30 +288,29 @@ const TagsForm = ({
         layout="vertical"
         name="tags"
         validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSave}>
-        {/* Name and Display Name row */}
-        <div className="tw:grid tw:grid-cols-2 tw:gap-4">
-          <div>{getField(nameField)}</div>
-          <div>{getField(displayNameField)}</div>
-        </div>
+        onFinish={handleSave}
+      >
+        <Grid colGap="4">
+          <Grid.Item span={12}>{getField(nameField)}</Grid.Item>
+          <Grid.Item span={12}>{getField(displayNameField)}</Grid.Item>
+        </Grid>
 
-        {/* Icon and Color row */}
         {!isClassification && (
-          <div className="tw:flex tw:gap-2">
-            <div>{getField(iconField)}</div>
-            <div className="tw:ml-auto tw:min-w-0">{getField(colorField)}</div>
-          </div>
+          <Grid colGap="4">
+            <Grid.Item span={4}>{getField(iconField)}</Grid.Item>
+            <Grid.Item span={20}>{getField(colorField)}</Grid.Item>
+          </Grid>
         )}
 
-        {/* Remaining fields */}
         {generateFormFields(formFields)}
         <div className="tw:mb-6">
           {showMutuallyExclusive && getField(mutuallyExclusiveField)}
         </div>
 
-        {/* Owner and Domain fields */}
-        <div className="m-t-xss">{getField(ownerField)}</div>
-        <div className="m-t-xss">{getField(domainField)}</div>
+        <Grid>
+          <Grid.Item>{getField(ownerField)}</Grid.Item>
+          <Grid.Item>{getField(domainField)}</Grid.Item>
+        </Grid>
 
         {/* Auto Classification fields */}
         {autoClassificationComponent && (

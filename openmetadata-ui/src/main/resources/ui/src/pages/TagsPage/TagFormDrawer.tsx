@@ -53,16 +53,8 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
     >
       {({ close }) => (
         <>
-          <SlideoutMenu.Header
-            className="tw:flex tw:items-center"
-            data-testid="drawer-header"
-            onClose={close}
-          >
-            <Typography
-              as="h2"
-              className="tw:text-lg tw:font-semibold"
-              data-testid="drawer-heading"
-            >
+          <SlideoutMenu.Header data-testid="drawer-header" onClose={close}>
+            <Typography as="h4" data-testid="drawer-heading">
               {tagsFormHeader}
             </Typography>
           </SlideoutMenu.Header>

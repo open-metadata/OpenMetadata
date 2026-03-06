@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { BadgeWithDot } from '@openmetadata/ui-core-components';
+import {
+  BadgeWithDot,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   Clock,
   CpuChip02,
@@ -85,111 +89,135 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
   }
 
   return (
-    <div
-      className="feedback-approval-task tw:flex tw:flex-col tw:gap-4 tw:-mt-1.5"
-      data-testid="feedback-approval-task">
+    <Grid
+      className="tw:-mt-1.5"
+      colGap="4"
+      data-testid="feedback-approval-task"
+      rowGap="4"
+    >
       {recognizerName && (
-        <div className="tw:flex tw:items-start tw:gap-3">
-          <div className="prose tw:flex-[0_0_32%] tw:max-w-[32%]">
-            <p className="tw:flex tw:items-center tw:gap-2 tw:text-grey-muted tw:min-w-0">
-              <CpuChip02 className="tw:text-grey-muted tw:shrink-0" size={16} />
+        <>
+          <Grid.Item span={8}>
+            <Typography
+              as="p"
+              className="tw:flex tw:items-center tw:text-gray-700 tw:gap-2"
+            >
+              <CpuChip02 className="tw:shrink-0 tw:text-gray-500" size={16} />
               {t('label.recognizer')}
-            </p>
-          </div>
-          <div className="prose">
-            <p className="tw:text-grey-muted">{recognizerName}</p>
-          </div>
-        </div>
+            </Typography>
+          </Grid.Item>
+          <Grid.Item span={16}>
+            <Typography as="p" className="tw:text-gray-700">
+              {recognizerName}
+            </Typography>
+          </Grid.Item>
+        </>
       )}
 
-      <div className="tw:flex tw:items-start tw:gap-3">
-        <div className="prose tw:flex-[0_0_32%] tw:max-w-[32%]">
-          <p className="tw:flex tw:items-center tw:gap-2 tw:text-grey-muted tw:min-w-0">
-            <Flag04 className="tw:text-grey-muted tw:shrink-0" size={16} />
-            {t('label.feedback-type')}
-          </p>
-        </div>
+      <Grid.Item span={8}>
+        <Typography
+          as="p"
+          className="tw:flex tw:items-center tw:gap-2 tw:text-gray-700 tw:min-w-0"
+        >
+          <Flag04 className="tw:shrink-0 tw:text-gray-500" size={16} />
+          {t('label.feedback-type')}
+        </Typography>
+      </Grid.Item>
+      <Grid.Item span={16}>
         <BadgeWithDot color="error" size="sm" type="pill-color">
           {feedbackTypeLabel}
         </BadgeWithDot>
-      </div>
+      </Grid.Item>
 
       {feedback.userComments && (
-        <div className="tw:flex tw:items-start tw:gap-3">
-          <div className="prose tw:flex-[0_0_32%] tw:max-w-[32%]">
-            <p className="tw:flex tw:items-center tw:gap-2 tw:text-grey-muted tw:min-w-0">
+        <>
+          <Grid.Item span={8}>
+            <Typography
+              as="p"
+              className="tw:flex tw:items-center tw:gap-2 tw:text-gray-700 tw:min-w-0"
+            >
               <MessageTextSquare01
-                className="tw:text-grey-muted tw:shrink-0"
+                className="tw:shrink-0 tw:text-gray-500"
                 size={16}
               />
               {t('label.comment-plural')}
-            </p>
-          </div>
-          <RichTextEditorPreviewerNew
-            className="text-grey-700 tw:text-xs"
-            markdown={feedback.userComments}
-            maxLength={100}
-          />
-        </div>
+            </Typography>
+          </Grid.Item>
+          <Grid.Item span={16}>
+            <RichTextEditorPreviewerNew
+              className="text-grey-700 tw:text-xs"
+              markdown={feedback.userComments}
+              maxLength={100}
+            />
+          </Grid.Item>
+        </>
       )}
 
       {feedback.createdBy && (
-        <div className="tw:flex tw:items-start tw:gap-3">
-          <div className="prose tw:flex-[0_0_32%] tw:max-w-[32%]">
-            <p className="tw:flex tw:items-center tw:gap-2 tw:text-grey-muted tw:min-w-0">
-              <UsersRight
-                className="tw:text-grey-muted tw:shrink-0"
-                size={16}
-              />
+        <>
+          <Grid.Item span={8}>
+            <Typography
+              as="p"
+              className="tw:flex tw:items-center tw:gap-2 tw:text-gray-700 tw:min-w-0"
+            >
+              <UsersRight className="tw:shrink-0 tw:text-gray-500" size={16} />
               {t('label.submitted-by')}
-            </p>
-          </div>
-          <UserPopOverCard
-            showUserName
-            displayName={getEntityName(feedback.createdBy)}
-            profileWidth={22}
-            userName={feedback.createdBy.name || '-'}
-          />
-        </div>
+            </Typography>
+          </Grid.Item>
+          <Grid.Item span={16}>
+            <UserPopOverCard
+              showUserName
+              displayName={getEntityName(feedback.createdBy)}
+              profileWidth={22}
+              userName={feedback.createdBy.name || '-'}
+            />
+          </Grid.Item>
+        </>
       )}
 
       {feedback.createdAt && (
-        <div className="tw:flex tw:items-start tw:gap-3">
-          <div className="prose tw:flex-[0_0_32%] tw:max-w-[32%]">
-            <p className="tw:flex tw:items-center tw:gap-2 tw:text-grey-muted tw:min-w-0">
-              <Clock className="tw:text-grey-muted tw:shrink-0" size={16} />
+        <>
+          <Grid.Item span={8}>
+            <Typography
+              as="p"
+              className="tw:flex tw:items-center tw:gap-2 tw:text-gray-700 tw:min-w-0"
+            >
+              <Clock className="tw:shrink-0 tw:text-gray-500" size={16} />
               {t('label.submitted-on')}
-            </p>
-          </div>
-          <div className="prose">
-            <p className="tw:text-grey-muted tw:text-xs">
+            </Typography>
+          </Grid.Item>
+          <Grid.Item span={16}>
+            <Typography as="p" className="tw:text-gray-700">
               {formatDateTime(feedback.createdAt)}
-            </p>
-          </div>
-        </div>
+            </Typography>
+          </Grid.Item>
+        </>
       )}
 
       {entityLinkData && (
-        <div className="tw:flex tw:items-start tw:gap-3">
-          <div className="prose tw:flex-[0_0_32%] tw:max-w-[32%]">
-            <p className="tw:flex tw:items-center tw:gap-2 tw:text-grey-muted tw:min-w-0">
-              <Database01
-                className="tw:text-grey-muted tw:shrink-0"
-                size={16}
-              />
+        <>
+          <Grid.Item span={8}>
+            <Typography
+              as="p"
+              className="tw:flex tw:items-center tw:gap-2 tw:text-gray-700 tw:min-w-0"
+            >
+              <Database01 className="tw:shrink-0 tw:text-gray-500" size={16} />
               {t('label.entity-link')}
-            </p>
-          </div>
-          <Link to={entityLinkData.entityPath}>
-            <div className="prose">
-              <p className="tw:text-primary tw:text-xs tw:font-medium tw:break-all">
+            </Typography>
+          </Grid.Item>
+          <Grid.Item span={16}>
+            <Link to={entityLinkData.entityPath}>
+              <Typography
+                as="p"
+                className="tw:text-primary tw:font-medium tw:break-all"
+              >
                 {entityLinkData.entityName}
-              </p>
-            </div>
-          </Link>
-        </div>
+              </Typography>
+            </Link>
+          </Grid.Item>
+        </>
       )}
-    </div>
+    </Grid>
   );
 };
 

@@ -660,7 +660,7 @@ const TagsPage = () => {
             className="p-y-xs d-flex flex-col"
             data-testid="data-summary-container"
           >
-            <div className="tw:w-full p-x-sm m-b-sm tw:flex tw:flex-col tw:gap-2">
+            <div className="p-x-sm m-b-sm">
               {createClassificationPermission && (
                 <Button
                   className="tw:w-full"
@@ -685,7 +685,7 @@ const TagsPage = () => {
             {classifications.map((category: Classification) => (
               <button
                 className={classNames(
-                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
+                  'align-center cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
                   {
                     activeCategory:
                       currentClassification?.name === category.name,
@@ -697,13 +697,10 @@ const TagsPage = () => {
               >
                 <Typography
                   as="p"
-                  className={classNames(
-                    'tw:self-center tw:m-b-0 tw:truncate tw:text-sm',
-                    {
-                      'tw:font-bold tw:text-brand-600':
-                        currentClassification?.name === category.name,
-                    }
-                  )}
+                  className={classNames('tw:truncate', {
+                    'tw:font-bold tw:text-brand-600':
+                      currentClassification?.name === category.name,
+                  })}
                   data-testid="tag-name"
                   title={getEntityName(category)}
                 >

@@ -79,10 +79,18 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     <button
       data-testid={testId}
       disabled={isDisabled || isLoading}
-      onClick={onClick}>
+      onClick={onClick}
+    >
       {children}
     </button>
   ),
+  Typography: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={testId}>{children}</div>,
 }));
 
 const mockForm = {
@@ -121,7 +129,7 @@ describe('TagFormDrawer', () => {
     render(<TagFormDrawer {...defaultProps} />);
 
     expect(screen.getByTestId('tag-form-drawer')).toBeInTheDocument();
-    expect(screen.getByTestId('form-heading')).toHaveTextContent('Add Tag');
+    expect(screen.getByTestId('drawer-heading')).toHaveTextContent('Add Tag');
   });
 
   it('should not render drawer when open is false', () => {

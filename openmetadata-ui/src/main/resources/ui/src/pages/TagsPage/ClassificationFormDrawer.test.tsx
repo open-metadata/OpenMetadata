@@ -79,10 +79,18 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     <button
       data-testid={testId}
       disabled={isDisabled || isLoading}
-      onClick={onClick}>
+      onClick={onClick}
+    >
       {children}
     </button>
   ),
+  Typography: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={testId}>{children}</div>,
 }));
 
 const mockForm = {
@@ -117,7 +125,7 @@ describe('ClassificationFormDrawer', () => {
     expect(
       screen.getByTestId('classification-form-drawer')
     ).toBeInTheDocument();
-    expect(screen.getByTestId('form-heading')).toHaveTextContent(
+    expect(screen.getByTestId('drawer-heading')).toHaveTextContent(
       'label.adding-new-classification'
     );
   });
