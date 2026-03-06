@@ -53,6 +53,7 @@ import {
 import {
   buildSampleDataCSVContent,
   downloadSampleDataCSV,
+  ROW_LIMIT_OPTIONS,
 } from './SampleDataTable.utils';
 
 const SampleDataTable: FC<SampleDataProps> = ({
@@ -180,7 +181,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
         />
       ),
       key: 'export-button',
-      onClick: (e) => {
+      onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
         e.domEvent.stopPropagation();
         setShowActions(false);
         exportToCSV();
@@ -264,7 +265,8 @@ const SampleDataTable: FC<SampleDataProps> = ({
         'h-70vh overflow-hidden': isTourPage,
       })}
       data-testid="sample-data"
-      id="sampleDataDetails">
+      id="sampleDataDetails"
+    >
       <Space className="m-y-xss justify-between w-full">
         <Space>
           <Typography.Text className="text-grey-muted">
@@ -274,10 +276,17 @@ const SampleDataTable: FC<SampleDataProps> = ({
             className="w-28"
             data-testid="row-limit-select"
             value={rowLimit}
-            onChange={setRowLimit}>
-            <Select.Option value={10}>10</Select.Option>
-            <Select.Option value={100}>100</Select.Option>
-            <Select.Option value={1000}>1000</Select.Option>
+            onChange={setRowLimit}
+          >
+            {ROW_LIMIT_OPTIONS.map((limit) => (
+              <Select.Option
+                data-testid={`row-limit-option-${limit}`}
+                key={limit}
+                value={limit}
+              >
+                {limit}
+              </Select.Option>
+            ))}
           </Select>
         </Space>
         <Dropdown
@@ -289,16 +298,19 @@ const SampleDataTable: FC<SampleDataProps> = ({
           overlayStyle={{ width: '350px' }}
           placement="bottomRight"
           trigger={['click']}
-          onOpenChange={setShowActions}>
+          onOpenChange={setShowActions}
+        >
           <Tooltip
             placement="topLeft"
             title={t('label.manage-entity', {
               entity: t('label.sample-data'),
-            })}>
+            })}
+          >
             <Button
               className="flex-center px-1.5"
               data-testid="sample-data-manage-button"
-              onClick={() => setShowActions(true)}>
+              onClick={() => setShowActions(true)}
+            >
               <IconDropdown className="anticon self-center " />
             </Button>
           </Tooltip>

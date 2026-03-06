@@ -15,6 +15,8 @@ import { isObject } from 'lodash';
 import { unparse } from 'papaparse';
 import { SampleDataType } from './SampleData.interface';
 
+export const ROW_LIMIT_OPTIONS = [10, 100, 1000];
+
 export const stringifySampleDataValue = (value: SampleDataType): string => {
   if (value === null || value === undefined) {
     return '';
