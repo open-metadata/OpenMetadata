@@ -93,7 +93,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         for attempt in range(max_retries):
             try:
                 self.engine.dispose()
-                with self.engine.connect() as connection:
+                with self.engine.begin() as connection:
                     connection.execute(text(self.drop_view_query))
                     connection.execute(text(self.drop_table_query))
                 break

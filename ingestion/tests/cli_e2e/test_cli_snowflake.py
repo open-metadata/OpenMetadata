@@ -101,12 +101,12 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        with cls.engine.connect() as connection:
+        with cls.engine.begin() as connection:
             for stmt in cls.teardown_sql_statements:
                 connection.execute(text(stmt))
 
     def setUp(self) -> None:
-        with self.engine.connect() as connection:
+        with self.engine.begin() as connection:
             for sql_statements in self.prepare_snowflake_e2e:
                 connection.execute(text(sql_statements))
 
@@ -132,18 +132,16 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         )
 
     def create_table_and_view(self) -> None:
-        with self.engine.connect() as connection:
+        with self.engine.begin() as connection:
             connection.execute(text(self.create_table_query))
             for insert_query in self.insert_data_queries:
                 connection.execute(text(insert_query))
             connection.execute(text(self.create_view_query))
-            connection.close()
 
     def delete_table_and_view(self) -> None:
-        with self.engine.connect() as connection:
+        with self.engine.begin() as connection:
             connection.execute(text(self.drop_view_query))
             connection.execute(text(self.drop_table_query))
-            connection.close()
 
     def delete_table_rows(self) -> None:
         SQACommonMethods.run_delete_queries(self)

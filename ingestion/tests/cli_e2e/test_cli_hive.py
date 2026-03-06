@@ -78,7 +78,7 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     def setUp(self) -> None:
-        with self.engine.connect() as connection:
+        with self.engine.begin() as connection:
             for sql_statements in self.prepare_e2e:
                 connection.execute(text(sql_statements))
 
