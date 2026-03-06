@@ -13,11 +13,6 @@
 import { expect, Page, Response } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 
-export enum ObservabilityFeature {
-  TEST_CASE = 'Test case',
-  CUSTOM_METRIC = 'Custom Metric',
-}
-
 export const clickUpdateButton = async (page: Page) => {
   const updateTestCaseResponse = page.waitForResponse(
     (response: Response) =>
@@ -28,13 +23,6 @@ export const clickUpdateButton = async (page: Page) => {
   const response = await updateTestCaseResponse;
 
   expect(response.status()).toBe(200);
-};
-
-export const selectAddObservabilityFeature = async (
-  page: Page,
-  featureName: ObservabilityFeature
-) => {
-  await page.getByRole('menuitemradio', { name: featureName }).click();
 };
 
 export const clickEditTestCaseButton = async (
@@ -94,6 +82,6 @@ export const visitCreateTestCasePanelFromEntityPage = async (
   const testCaseDoc = page.waitForResponse(
     '/locales/en-US/OpenMetadata/TestCaseForm.md'
   );
-  await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
+  await page.getByRole('menuitemradio', { name: 'Test case' }).click();
   await testCaseDoc;
 };

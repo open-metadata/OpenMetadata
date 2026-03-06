@@ -10,51 +10,87 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ArrowRight } from '@untitledui/icons';
+import { Button, Chip, Grid, useTheme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
 import { ReactComponent as NoDataIcon } from '../../../../../assets/svg/ticket-with-check.svg';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
 import './no-profiler-banner.less';
 
 const NoProfilerBanner = () => {
+  const theme = useTheme();
   const { t } = useTranslation();
   const profilerDocsLink =
     documentationLinksClassBase.getDocsURLS()
       .DATA_QUALITY_PROFILER_WORKFLOW_DOCS;
 
   return (
-    <div
-      className="no-profiler-banner-container tw:flex tw:items-center tw:gap-4"
+    <Grid
+      container
+      className="no-profiler-banner-container"
       data-testid="no-profiler-placeholder"
+      spacing={4}
     >
-      <div className="tw:shrink-0">
-        <div className="tw:flex tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-border-secondary tw:bg-primary">
-          <NoDataIcon />
-        </div>
-      </div>
+      <Grid size="auto">
+        <Chip
+          color="secondary"
+          icon={<NoDataIcon />}
+          sx={{
+            backgroundColor: theme.palette.allShades.white,
+            height: '40px',
+            width: '40px',
+            borderRadius: '8px',
+            '.MuiChip-icon': {
+              m: 0,
+            },
+          }}
+          variant="outlined"
+        />
+      </Grid>
 
-      <div className="tw:grow">
+      <Grid size={9}>
         <p className="profiler-title" data-testid="profiler-title">
           {t('message.no-profiler-title')}
         </p>
         <p className="profiler-description" data-testid="profiler-description">
           {t('message.no-profiler-message')}
         </p>
-      </div>
+      </Grid>
 
-      <div className="tw:flex tw:shrink-0 tw:items-center tw:justify-end">
+      <Grid
+        size="grow"
+        sx={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+        }}
+      >
         <a
-          className="tw:font-semibold tw:text-brand-600 tw:flex tw:items-center tw:gap-1"
           data-testid="documentation-link"
           href={profilerDocsLink}
           rel="noreferrer"
           target="_blank"
           title="data quality observability profiler workflow"
         >
-          {t('label.learn-more')} <ArrowRight className="tw:size-4" />
+          <Button
+            endIcon={<RightArrowIcon />}
+            sx={(theme) => ({
+              color: theme.palette.primary.main,
+              fontWeight: 600,
+              '.MuiButton-endIcon>svg': {
+                width: '12px',
+                height: '12px',
+              },
+              '&:hover': {
+                color: theme.palette.primary.main,
+              },
+            })}
+          >
+            {t('label.learn-more')}
+          </Button>
         </a>
-      </div>
-    </div>
+      </Grid>
+    </Grid>
   );
 };
 

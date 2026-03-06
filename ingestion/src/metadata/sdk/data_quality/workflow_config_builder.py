@@ -218,7 +218,6 @@ class WorkflowConfigBuilder:
             ingestionPipelineFQN=None,
             pipelineRunId=None,
             enableStreamableLogs=self.enable_streamable_logs,
-            ingestionRunnerName=None,
         )
 
         return config

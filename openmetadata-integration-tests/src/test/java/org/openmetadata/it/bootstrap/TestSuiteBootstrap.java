@@ -475,35 +475,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.warn("Seed data load failed: {}", se.getMessage());
     }
 
-    registerMcpServerIfAvailable();
-
     LOG.info("OpenMetadata application started on port {}", APP.getLocalPort());
-  }
-
-  private void registerMcpServerIfAvailable() {
-    try {
-      // ApplicationContext was initialized before seed data loaded, so it missed McpApplication.
-      // Reinitialize to pick up apps created by seed data loading.
-      ApplicationContext.reinitialize();
-
-      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
-        LOG.info("McpApplication not found, skipping MCP server registration");
-        return;
-      }
-
-      // registerMCPServer is protected, so we use reflection from the test bootstrap
-      OpenMetadataApplication application = (OpenMetadataApplication) APP.getApplication();
-      java.lang.reflect.Method method =
-          OpenMetadataApplication.class.getDeclaredMethod(
-              "registerMCPServer",
-              OpenMetadataApplicationConfig.class,
-              io.dropwizard.core.setup.Environment.class);
-      method.setAccessible(true);
-      method.invoke(application, APP.getConfiguration(), APP.getEnvironment());
-      LOG.info("MCP server registered successfully");
-    } catch (Exception e) {
-      LOG.info("MCP server registration skipped: {}", e.getMessage());
-    }
   }
 
   private OpenMetadataApplicationConfig readTestAppConfig(String path)
@@ -584,8 +556,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void configurePipelineServiceClient(OpenMetadataApplicationConfig config) {
+    PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
+
     if (kubeConfigYaml != null) {
-      PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
+      // K3s was started - configure K8s pipeline client
       LOG.info("Configuring K8sPipelineClient for pipeline operations");
       pipelineConfig.setEnabled(true);
       pipelineConfig.setClassName(
@@ -600,11 +574,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       params.setAdditionalProperty("serviceAccountName", "default");
       params.setAdditionalProperty("imagePullPolicy", "IfNotPresent");
       pipelineConfig.setParameters(params);
-      config.setPipelineServiceClientConfiguration(pipelineConfig);
     } else {
+      // No K3s - disable pipeline service client
+      pipelineConfig.setEnabled(false);
       LOG.info("Pipeline service client disabled (K8s not enabled)");
-      config.getPipelineServiceClientConfiguration().setEnabled(false);
     }
+
+    config.setPipelineServiceClientConfiguration(pipelineConfig);
   }
 
   private void configureRdf(OpenMetadataApplicationConfig config) {

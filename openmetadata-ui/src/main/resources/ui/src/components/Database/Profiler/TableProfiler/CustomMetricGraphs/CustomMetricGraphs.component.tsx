@@ -10,8 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { DotsVertical } from '@untitledui/icons';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import {
+  Box,
+  Grid,
+  IconButton,
+  Menu,
+  MenuItem,
+  Stack,
+  useTheme,
+} from '@mui/material';
 import { Form, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
@@ -27,11 +35,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import {
-  BLUE_600,
-  BLUE_CHART_AREA_FILL,
-  CHART_CURSOR_STROKE,
-} from '../../../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
@@ -68,6 +71,7 @@ const CustomMetricGraphs = ({
   isLoading,
   customMetrics,
 }: CustomMetricGraphsProps) => {
+  const theme = useTheme();
   const { t } = useTranslation();
   const [form] = Form.useForm<CustomMetric>();
   const {
@@ -84,7 +88,9 @@ const CustomMetricGraphs = ({
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
+  const [anchorEl, setAnchorEl] = useState<Record<string, HTMLElement | null>>(
+    {}
+  );
 
   const renderHorizontalGridLine = useMemo(
     () => createHorizontalGridLineRenderer(),
@@ -166,8 +172,7 @@ const CustomMetricGraphs = ({
     setSelectedMetrics(
       customMetrics?.find((metric) => metric.name === metricName)
     );
-    setOpenMenuKey(null);
-
+    setAnchorEl((prev) => ({ ...prev, [metricName]: null }));
     switch (key) {
       case MenuOptions.EDIT:
         setIsEditModalVisible(true);
@@ -182,18 +187,26 @@ const CustomMetricGraphs = ({
     }
   };
 
+  const handleMenuOpen = (
+    event: React.MouseEvent<HTMLElement>,
+    metricName: string
+  ) => {
+    setAnchorEl((prev) => ({ ...prev, [metricName]: event.currentTarget }));
+  };
+
+  const handleMenuClose = (metricName: string) => {
+    setAnchorEl((prev) => ({ ...prev, [metricName]: null }));
+  };
+
   return (
-    <div
-      className="tw:flex tw:flex-col tw:gap-8"
-      data-testid="custom-metric-graph-container"
-    >
+    <Stack data-testid="custom-metric-graph-container" spacing="30px">
       {toPairs(customMetricsGraphData).map(([key, metric]) => {
         const metricDetails = customMetrics?.find(
           (metric) => metric.name === key
         );
 
         return isUndefined(metricDetails) ? null : (
-          <div key={key}>
+          <Box key={key}>
             <ProfilerStateWrapper
               data-testid={`${key}-custom-metrics`}
               isLoading={isLoading}
@@ -203,45 +216,65 @@ const CustomMetricGraphs = ({
                     latestValue: last(metric)?.[key] ?? '--',
                     title: t('label.count'),
                     dataKey: key,
-                    color: BLUE_600,
+                    color: theme.palette.allShades.blue[500],
                   },
                 ],
                 extra:
                   editPermission || deletePermission ? (
-                    <Dropdown.Root
-                      isOpen={openMenuKey === key}
-                      onOpenChange={(isOpen) =>
-                        setOpenMenuKey(isOpen ? key : null)
-                      }
-                    >
-                      <Button
-                        color="secondary"
+                    <>
+                      <IconButton
                         data-testid={`${key}-custom-metrics-menu`}
-                        iconLeading={DotsVertical}
-                        size="sm"
-                      />
-                      <Dropdown.Popover className="tw:w-max">
-                        <Dropdown.Menu items={items}>
-                          {(item) => (
-                            <Dropdown.Item
-                              id={item.key}
-                              isDisabled={item.disabled}
-                              label={item.label}
-                              onAction={() => handleMenuClick(item.key, key)}
-                            />
-                          )}
-                        </Dropdown.Menu>
-                      </Dropdown.Popover>
-                    </Dropdown.Root>
+                        size="small"
+                        sx={{
+                          color: theme.palette.grey[800],
+                        }}
+                        onClick={(e) => handleMenuOpen(e, key)}
+                      >
+                        <MoreVertIcon fontSize="small" />
+                      </IconButton>
+                      <Menu
+                        anchorEl={anchorEl[key]}
+                        anchorOrigin={{
+                          vertical: 'bottom',
+                          horizontal: 'right',
+                        }}
+                        open={Boolean(anchorEl[key])}
+                        sx={{
+                          '.MuiPaper-root': {
+                            width: 'max-content',
+                          },
+                        }}
+                        transformOrigin={{
+                          vertical: 'top',
+                          horizontal: 'right',
+                        }}
+                        onClose={() => handleMenuClose(key)}
+                      >
+                        {items.map((item) => (
+                          <MenuItem
+                            disabled={item.disabled}
+                            key={item.key}
+                            onClick={() => handleMenuClick(item.key, key)}
+                          >
+                            {item.label}
+                          </MenuItem>
+                        ))}
+                      </Menu>
+                    </>
                   ) : undefined,
               }}
               title={key}
             >
-              <div>
+              <Box>
                 {isEmpty(metric) ? (
-                  <div className="tw:flex tw:h-full tw:w-full tw:items-center tw:justify-center">
+                  <Grid
+                    alignItems="middle"
+                    className="h-full w-full"
+                    display="flex"
+                    justifyContent="center"
+                  >
                     <ErrorPlaceHolder className="mt-0-important" />
-                  </div>
+                  </Grid>
                 ) : (
                   <ResponsiveContainer
                     className="custom-legend"
@@ -287,7 +320,7 @@ const CustomMetricGraphs = ({
                           />
                         }
                         cursor={{
-                          stroke: CHART_CURSOR_STROKE,
+                          stroke: theme.palette.grey[200],
                           strokeDasharray: '3 3',
                         }}
                       />
@@ -295,22 +328,22 @@ const CustomMetricGraphs = ({
                       <Line
                         dataKey={key}
                         name={key}
-                        stroke={BLUE_600}
+                        stroke={theme.palette.allShades.blue[500]}
                         type="monotone"
                       />
                       <Area
                         dataKey={key}
-                        fill={BLUE_CHART_AREA_FILL}
+                        fill={theme.palette.allShades.blue[50]}
                         name={key}
-                        stroke={BLUE_600}
+                        stroke={theme.palette.allShades.blue[500]}
                         type="monotone"
                       />
                     </ComposedChart>
                   </ResponsiveContainer>
                 )}
-              </div>
+              </Box>
             </ProfilerStateWrapper>
-          </div>
+          </Box>
         );
       })}
       <DeleteWidgetModal
@@ -346,7 +379,7 @@ const CustomMetricGraphs = ({
           />
         </Modal>
       )}
-    </div>
+    </Stack>
   );
 };
 

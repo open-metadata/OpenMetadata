@@ -199,15 +199,14 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
-  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request, String userName) {
+  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true, userName);
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
   }
 
-  public BulkOperationResult bulkRemoveAssets(
-      String domainName, BulkAssets request, String userName) {
+  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false, userName);
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
   }
 
   public ResultList<EntityReference> getDomainAssets(UUID domainId, int limit, int offset) {
@@ -277,8 +276,7 @@ public class DomainRepository extends EntityRepository<Domain> {
       String fromEntity,
       Relationship relationship,
       BulkAssets request,
-      boolean isAdd,
-      String userName) {
+      boolean isAdd) {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
@@ -311,10 +309,8 @@ public class DomainRepository extends EntityRepository<Domain> {
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
               entityInterface.getVersion(), isAdd, request.getAssets(), null);
-      String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
       ChangeEvent changeEvent =
-          getChangeEvent(
-              entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
+          getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     }
 

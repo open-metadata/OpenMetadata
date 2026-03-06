@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
+import { Box, Card, Divider, Typography, useTheme } from '@mui/material';
 import { isUndefined } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,14 +26,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import {
-  CHART_BLUE_1,
-  COLOR_GREY_300,
-  COLOR_GREY_400,
-  GRAY_600,
-  GREY_100,
-  GREY_200,
-} from '../../../constants/Color.constants';
+import { CHART_BLUE_1 } from '../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { ColumnProfile } from '../../../generated/entity/data/table';
 import {
@@ -43,6 +35,7 @@ import {
   tooltipFormatter,
 } from '../../../utils/ChartUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { DataPill } from '../../common/DataPill/DataPill.styled';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 
 export interface CardinalityDistributionChartProps {
@@ -57,6 +50,7 @@ const CardinalityDistributionChart = ({
   data,
   noDataPlaceholderText,
 }: CardinalityDistributionChartProps) => {
+  const theme = useTheme();
   const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -77,9 +71,18 @@ const CardinalityDistributionChart = ({
   const renderPlaceholder = useMemo(
     () => (placeholderText: string | React.ReactNode) =>
       (
-        <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full tw:min-h-87.5">
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            width: '100%',
+            minHeight: 350,
+          }}
+        >
           <ErrorPlaceHolder placeholderText={placeholderText} />
-        </div>
+        </Box>
       ),
     []
   );
@@ -99,28 +102,67 @@ const CardinalityDistributionChart = ({
       const data = payload[0].payload;
 
       return (
-        <div className="tw:bg-primary tw:rounded-md tw:shadow-md tw:p-2.5">
-          <p className="tw:text-primary tw:font-medium tw:text-xs">
+        <Card
+          sx={{
+            p: '10px',
+            bgcolor: theme.palette.allShades.white,
+          }}
+        >
+          <Typography
+            sx={{
+              color: theme.palette.allShades.gray[900],
+              fontWeight: theme.typography.fontWeightMedium,
+              fontSize: theme.typography.pxToRem(12),
+            }}
+          >
             {data.name}
-          </p>
-          <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
-          <div className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm">
-            <span className="tw:text-tertiary tw:text-[11px]">
+          </Typography>
+          <Divider
+            sx={{
+              my: 2,
+              borderStyle: 'dashed',
+              borderColor: theme.palette.allShades.gray[300],
+            }}
+          />
+          <Box className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+            <Typography
+              sx={(theme) => ({
+                color: theme.palette.allShades.gray[700],
+                fontSize: theme.typography.pxToRem(11),
+              })}
+            >
               {t('label.count')}
-            </span>
-            <span className="tw:text-primary tw:font-medium tw:text-[11px]">
+            </Typography>
+            <Typography
+              sx={(theme) => ({
+                color: theme.palette.allShades.gray[900],
+                fontWeight: theme.typography.fontWeightMedium,
+                fontSize: theme.typography.pxToRem(11),
+              })}
+            >
               {tooltipFormatter(data.count)}
-            </span>
-          </div>
-          <div className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm">
-            <span className="tw:text-tertiary tw:text-[11px]">
+            </Typography>
+          </Box>
+          <Box className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+            <Typography
+              sx={(theme) => ({
+                color: theme.palette.allShades.gray[700],
+                fontSize: theme.typography.pxToRem(11),
+              })}
+            >
               {t('label.percentage')}
-            </span>
-            <span className="tw:text-primary tw:font-medium tw:text-[11px]">
+            </Typography>
+            <Typography
+              sx={(theme) => ({
+                color: theme.palette.allShades.gray[900],
+                fontWeight: theme.typography.fontWeightMedium,
+                fontSize: theme.typography.pxToRem(11),
+              })}
+            >
               {`${data.percentage}%`}
-            </span>
-          </div>
-        </div>
+            </Typography>
+          </Box>
+        </Card>
       );
     }
 
@@ -163,10 +205,10 @@ const CardinalityDistributionChart = ({
           dy={4}
           fill={
             isSelected
-              ? CHART_BLUE_1
+              ? theme.palette.primary.main
               : isHighlighted
-              ? COLOR_GREY_400
-              : GRAY_600
+              ? theme.palette.grey[400]
+              : theme.palette.grey[700]
           }
           fontSize={12}
           fontWeight={isSelected ? 600 : 400}
@@ -184,7 +226,14 @@ const CardinalityDistributionChart = ({
   };
 
   return (
-    <div className="tw:flex tw:w-full" data-testid="chart-container">
+    <Box
+      data-testid="chart-container"
+      sx={{
+        display: 'flex',
+        width: '100%',
+        gap: 0,
+      }}
+    >
       {bothAllUnique
         ? renderPlaceholder(allValuesUniqueMessage)
         : dataEntries.map(([key, columnProfile], index) => {
@@ -212,46 +261,48 @@ const CardinalityDistributionChart = ({
 
             const containerHeight = Math.max(350, graphData.length * 30);
 
-            const colClassName = classNames(
-              'tw:min-w-0 tw:flex tw:flex-col tw:pt-2 tw:pb-2',
-              showSingleGraph
-                ? 'tw:flex-1 tw:basis-full tw:px-4'
-                : 'tw:flex-1 tw:basis-1/2 tw:px-6',
-              {
-                'tw:border-r tw:border-border-secondary':
-                  !showSingleGraph && index === 0,
-              }
-            );
-
             return (
-              <div className={colClassName} key={key}>
+              <Box
+                key={key}
+                sx={{
+                  flex: showSingleGraph ? '1 1 100%' : '1 1 50%',
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  px: showSingleGraph ? 4 : 6,
+                  py: 2,
+                  borderRight:
+                    !showSingleGraph && index === 0
+                      ? `1px solid ${theme.palette.grey[200]}`
+                      : 'none',
+                }}
+              >
                 {isAllUnique ? (
                   renderPlaceholder(allValuesUniqueMessage)
                 ) : (
                   <>
-                    <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
-                      <Badge
-                        className="tw:font-semibold"
-                        color="gray"
-                        data-testid="date"
-                        size="lg"
-                        type="color"
-                      >
-                        {graphDate}
-                      </Badge>
-                      <Badge
-                        className="tw:font-semibold"
-                        color="gray"
-                        data-testid="cardinality-tag"
-                        size="lg"
-                        type="color"
-                      >
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mb: 5,
+                      }}
+                    >
+                      <DataPill data-testid="date">{graphDate}</DataPill>
+                      <DataPill data-testid="cardinality-tag">
                         {`${t('label.total-entity', {
                           entity: t('label.category-plural'),
                         })}: ${cardinalityData.categories?.length || 0}`}
-                      </Badge>
-                    </div>
-                    <div className="tw:flex-1 tw:min-h-87.5 tw:overflow-x-hidden">
+                      </DataPill>
+                    </Box>
+                    <Box
+                      sx={{
+                        flex: 1,
+                        minHeight: 350,
+                        overflowX: 'hidden',
+                      }}
+                    >
                       <ResponsiveContainer
                         debounce={200}
                         height={containerHeight}
@@ -259,7 +310,7 @@ const CardinalityDistributionChart = ({
                         width="100%"
                       >
                         <BarChart
-                          className="tw:w-full"
+                          className="w-full"
                           data={graphData}
                           layout="vertical"
                         >
@@ -292,8 +343,8 @@ const CardinalityDistributionChart = ({
                           <Tooltip
                             content={renderTooltip}
                             cursor={{
-                              fill: GREY_100,
-                              stroke: GREY_200,
+                              fill: theme.palette.grey[100],
+                              stroke: theme.palette.grey[200],
                               strokeDasharray: '3 3',
                             }}
                           />
@@ -314,9 +365,9 @@ const CardinalityDistributionChart = ({
                                   cursor="pointer"
                                   fill={
                                     isSelected
-                                      ? CHART_BLUE_1
+                                      ? theme.palette.primary.main
                                       : isHighlighted
-                                      ? COLOR_GREY_300
+                                      ? theme.palette.grey[300]
                                       : CHART_BLUE_1
                                   }
                                   key={`cell-${entry.name}`}
@@ -330,13 +381,13 @@ const CardinalityDistributionChart = ({
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
-                    </div>
+                    </Box>
                   </>
                 )}
-              </div>
+              </Box>
             );
           })}
-    </div>
+    </Box>
   );
 };
 

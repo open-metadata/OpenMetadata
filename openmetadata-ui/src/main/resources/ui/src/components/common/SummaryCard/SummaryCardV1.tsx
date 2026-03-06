@@ -10,23 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
+import { Box, Card, Skeleton, Typography, useTheme } from '@mui/material';
 import { ReactNode } from 'react';
 import { ReactComponent as AddItemIcon } from '../../../assets/svg/add-item-icon.svg';
 
 const SummaryCardV1 = ({
-  extra,
-  icon,
   isLoading,
   title,
   value,
+  icon,
+  extra,
 }: {
-  extra?: ReactNode;
-  icon?: SvgComponent;
   isLoading: boolean;
   title: ReactNode;
   value: string | number;
+  icon?: SvgComponent;
+  extra?: ReactNode;
 }) => {
+  const theme = useTheme();
+
   if (isLoading) {
     return <Skeleton height={100} variant="rounded" width={210} />;
   }
@@ -34,26 +36,69 @@ const SummaryCardV1 = ({
   const Icon = icon ?? AddItemIcon;
 
   return (
-    <div>
-      <div className="tw:flex tw:w-full tw:min-w-52 tw:items-center tw:gap-4 tw:rounded-lg tw:border tw:border-secondary tw:px-5 tw:py-4 tw:shadow-xs">
+    <Box>
+      <Card
+        sx={{
+          borderRadius: '8px',
+          border: `1px solid ${theme.palette.grey[200]}`,
+          boxShadow: '0 4px 3px 0 rgba(235, 239, 250, 0.25)',
+          minWidth: '210px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 3,
+          p: '16px 20px',
+          width: '100%',
+        }}
+        variant="outlined"
+      >
         <Icon height={40} width={40} />
-        <div>
-          <p className="tw:m-0 tw:text-lg tw:font-semibold tw:text-primary">
+        <Box>
+          <Typography
+            sx={{
+              color: theme.palette.grey[900],
+              fontSize: '18px',
+              fontWeight: 600,
+            }}
+            variant="h6"
+          >
             {value}
-          </p>
-          <p className="tw:m-0 tw:text-sm tw:font-medium tw:text-secondary">
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: '14px',
+              fontWeight: 500,
+              color: theme.palette.grey[700],
+            }}
+          >
             {title}
-          </p>
-        </div>
-      </div>
+          </Typography>
+        </Box>
+      </Card>
       {extra && (
-        <div className="tw:mx-4 tw:rounded-b-lg tw:bg-secondary tw:px-2 tw:py-2">
-          <p className="tw:m-0 tw:text-[10px] tw:font-medium tw:text-primary">
+        <Box
+          sx={{
+            mt: 0,
+            mx: 2,
+            px: 2,
+            py: 1,
+            background: theme.palette.allShades.blueGray[50],
+            borderRadius: '0 0 8px 8px',
+            boxShadow: '0 4px 3px 0 rgba(235, 239, 250, 0.10)',
+            border: 'none',
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: 10,
+              color: theme.palette.grey[900],
+              fontWeight: theme.typography.fontWeightMedium,
+            }}
+          >
             {extra}
-          </p>
-        </div>
+          </Typography>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 };
 

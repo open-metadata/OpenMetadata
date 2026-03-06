@@ -27,11 +27,6 @@ public class ApplicationContext {
     return instance;
   }
 
-  public static void reinitialize() {
-    instance = null;
-    initialize();
-  }
-
   public static void initialize() {
     if (instance != null) {
       return;

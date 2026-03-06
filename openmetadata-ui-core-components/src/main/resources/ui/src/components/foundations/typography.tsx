@@ -32,7 +32,7 @@ const quoteStyles: Record<TypographyQuoteVariant, string> = {
 
 export const Typography = (props: TypographyProps) => {
     const {
-        as: Component,
+        as: Component = "div",
         quoteVariant = "default",
         className,
         children,
@@ -40,15 +40,16 @@ export const Typography = (props: TypographyProps) => {
     } = props;
 
     return (
-        <div {...(!Component ? otherProps : {})} className={cx("prose", quoteStyles[quoteVariant])}>
-            {Component ? (
-                <Component {...otherProps} className={className}>
-                    {children}
-                </Component>
-            ) : (
-                children
+        <Component
+            {...otherProps}
+            className={cx(
+                "prose",
+                quoteStyles[quoteVariant],
+                className,
             )}
-        </div>
+        >
+            {children}
+        </Component>
     );
 };
 

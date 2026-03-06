@@ -56,7 +56,6 @@ import {
   searchTeam,
   softDeleteTeam,
   verifyAssetsInTeamsPage,
-  verifyTeamListingAssetCount,
 } from '../../utils/team';
 
 const id = uuid();
@@ -505,9 +504,7 @@ test.describe('Teams Page', () => {
 
       // Should not find the organization team
       await searchTeam(page, 'Organization', { expectNotFound: true });
-      await searchTeam(page, 'OrganizationSearchTest', {
-        expectEmptyResults: true,
-      });
+      await searchTeam(page, 'OrganizationSearchTest', { expectEmptyResults: true });
     } finally {
       await team1.delete(apiContext);
       await team2.delete(apiContext);
@@ -608,10 +605,10 @@ test.describe('Teams Page', () => {
       await addTeamOwnerToEntity(page, table3, team3);
       await addTeamOwnerToEntity(page, table4, team4);
 
-      await verifyTeamListingAssetCount(page, team1, 1);
-      await verifyTeamListingAssetCount(page, team2, 1);
-      await verifyTeamListingAssetCount(page, team3, 1);
-      await verifyTeamListingAssetCount(page, team4, 1);
+      await verifyAssetsInTeamsPage(page, table1, team1, 1);
+      await verifyAssetsInTeamsPage(page, table2, team2, 1);
+      await verifyAssetsInTeamsPage(page, table3, team3, 1);
+      await verifyAssetsInTeamsPage(page, table4, team4, 1);
     } finally {
       await table1.delete(apiContext);
       await table2.delete(apiContext);

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Divider } from '@mui/material';
 import { Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -73,7 +74,12 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         type="success"
         onClick={() => onFilterChange?.('success')}
       />
-      <div className="stat-card-vertical-divider" />
+      <Divider
+        flexItem
+        className="stat-card-vertical-divider"
+        orientation="vertical"
+        variant="middle"
+      />
       <DataQualityStatCard
         count={abortedTests}
         isActive={activeFilter === 'aborted'}
@@ -81,7 +87,12 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         type="aborted"
         onClick={() => onFilterChange?.('aborted')}
       />
-      <div className="stat-card-vertical-divider" />
+      <Divider
+        flexItem
+        className="stat-card-vertical-divider"
+        orientation="vertical"
+        variant="middle"
+      />
       <DataQualityStatCard
         count={failedTests}
         isActive={activeFilter === 'failed'}
@@ -108,9 +119,13 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
       onEdit={onEdit}
     >
       {totalTests === 0 ? (
-        <div className="data-quality-section">
-          <span className="no-data-placeholder">{t('label.no-tests-run')}</span>
-        </div>
+        <>
+          <div className="data-quality-section">
+            <span className="no-data-placeholder">
+              {t('label.no-tests-run')}
+            </span>
+          </div>
+        </>
       ) : (
         <div className="data-quality-content">
           <div className="data-quality-header" />

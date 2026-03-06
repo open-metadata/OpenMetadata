@@ -61,8 +61,6 @@ export * from "./base/select/popover";
 export * from "./base/select/select-item";
 export * from "./base/select/select-native";
 export * from "./base/form/form";
-export * from "./base/divider/divider";
-export * from "./base/grid/grid";
 export * from "./base/form/hook-form";
 export * from "./base/progress-indicators/progress-circles";
 export * from "./base/progress-indicators/progress-indicators";

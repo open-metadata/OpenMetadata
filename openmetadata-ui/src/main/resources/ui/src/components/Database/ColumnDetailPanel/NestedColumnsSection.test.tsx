@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { Column } from '../../../generated/entity/data/table';
 import { DataType } from '../../../generated/tests/testDefinition';
 import { NestedColumnsSection } from './NestedColumnsSection';
@@ -293,7 +293,10 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('Simple Column'));
+      const columnLink = screen.getByText('Simple Column');
+      const clickable =
+        columnLink.closest('[role="button"]') || columnLink.parentElement;
+      (clickable as HTMLElement)?.click();
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(mockFlatColumn);
@@ -307,7 +310,10 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('Nested Struct'));
+      const parentLink = screen.getByText('Nested Struct');
+      const clickable =
+        parentLink.closest('[role="button"]') || parentLink.parentElement;
+      (clickable as HTMLElement)?.click();
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(mockNestedColumn);
@@ -321,7 +327,10 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('Field 1'));
+      const childLink = screen.getByText('Field 1');
+      const clickable =
+        childLink.closest('[role="button"]') || childLink.parentElement;
+      (clickable as HTMLElement)?.click();
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
@@ -337,7 +346,10 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('Level 3'));
+      const deepLink = screen.getByText('Level 3');
+      const clickable =
+        deepLink.closest('[role="button"]') || deepLink.parentElement;
+      (clickable as HTMLElement)?.click();
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
@@ -353,9 +365,21 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('Nested Struct'));
-      fireEvent.click(screen.getByText('Field 1'));
-      fireEvent.click(screen.getByText('Field 2'));
+      const nestedStructLink = screen.getByText('Nested Struct');
+      const clickable1 =
+        nestedStructLink.closest('[role="button"]') ||
+        nestedStructLink.parentElement;
+      (clickable1 as HTMLElement)?.click();
+
+      const field1Link = screen.getByText('Field 1');
+      const clickable2 =
+        field1Link.closest('[role="button"]') || field1Link.parentElement;
+      (clickable2 as HTMLElement)?.click();
+
+      const field2Link = screen.getByText('Field 2');
+      const clickable3 =
+        field2Link.closest('[role="button"]') || field2Link.parentElement;
+      (clickable3 as HTMLElement)?.click();
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(3);
     });
@@ -513,7 +537,10 @@ describe('NestedColumnsSection', () => {
       );
 
       // Click on deep nested field
-      fireEvent.click(screen.getByText('Deep Field'));
+      const deepFieldLink = screen.getByText('Deep Field');
+      const clickable =
+        deepFieldLink.closest('[role="button"]') || deepFieldLink.parentElement;
+      (clickable as HTMLElement)?.click();
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
@@ -565,7 +592,11 @@ describe('NestedColumnsSection', () => {
       );
 
       // Click on intermediate nested level (not leaf node)
-      fireEvent.click(screen.getByText('Nested Level 1'));
+      const nestedLevel1Link = screen.getByText('Nested Level 1');
+      const clickable1 =
+        nestedLevel1Link.closest('[role="button"]') ||
+        nestedLevel1Link.parentElement;
+      (clickable1 as HTMLElement)?.click();
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
@@ -575,7 +606,11 @@ describe('NestedColumnsSection', () => {
       jest.clearAllMocks();
 
       // Click on deeper intermediate level
-      fireEvent.click(screen.getByText('Nested Level 2'));
+      const nestedLevel2Link = screen.getByText('Nested Level 2');
+      const clickable2 =
+        nestedLevel2Link.closest('[role="button"]') ||
+        nestedLevel2Link.parentElement;
+      (clickable2 as HTMLElement)?.click();
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
@@ -592,7 +627,10 @@ describe('NestedColumnsSection', () => {
       );
 
       // Click on metadata timestamp field
-      fireEvent.click(screen.getByText('Created At'));
+      const createdAtLink = screen.getByText('Created At');
+      const clickable =
+        createdAtLink.closest('[role="button"]') || createdAtLink.parentElement;
+      (clickable as HTMLElement)?.click();
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(

@@ -69,10 +69,7 @@ import {
   getViewportForLineageExport,
 } from '../../utils/EntityLineageUtils';
 import { getOperationPermissions } from '../../utils/PermissionsUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../utils/StringsUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
@@ -141,7 +138,7 @@ const PlatformLineage = () => {
         ];
 
         const response = await searchQuery({
-          query: escapeESReservedCharacters(value),
+          query: value,
           searchIndex: searchIndices,
           pageSize: PAGE_SIZE_BASE,
           queryFilter: getLineageEntityExclusionFilter(),

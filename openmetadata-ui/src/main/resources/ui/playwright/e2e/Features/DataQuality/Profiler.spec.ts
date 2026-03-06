@@ -206,7 +206,6 @@ test.describe(
       'Admin role can access profiler and view test case graphs',
       PLAYWRIGHT_INGESTION_TAG_OBJ,
       async ({ page }) => {
-        test.slow();
         await validateProfilerAccessForRole(page, table, createdTestCase);
       }
     );
@@ -219,7 +218,6 @@ test.describe(
       'Data consumer role can access profiler and view test case graphs',
       PLAYWRIGHT_INGESTION_TAG_OBJ,
       async ({ dataConsumerPage }) => {
-        test.slow();
         await validateProfilerAccessForRole(
           dataConsumerPage,
           table,
@@ -236,7 +234,6 @@ test.describe(
       'Data steward role can access profiler and view test case graphs',
       PLAYWRIGHT_INGESTION_TAG_OBJ,
       async ({ dataStewardPage }) => {
-        test.slow();
         await validateProfilerAccessForRole(
           dataStewardPage,
           table,

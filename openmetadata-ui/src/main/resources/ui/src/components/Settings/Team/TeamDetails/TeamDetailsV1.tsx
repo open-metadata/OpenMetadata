@@ -127,7 +127,6 @@ const TeamDetailsV1 = ({
   isFetchingAdvancedDetails,
   isFetchingAllTeamAdvancedDetails,
   isTeamBasicDataLoading,
-  teamAssetCounts,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -680,7 +679,6 @@ const TeamDetailsV1 = ({
         isTeamDeleted={isTeamDeleted}
         searchTerm={searchTerm}
         showDeletedTeam={showDeletedTeam}
-        teamAssetCounts={teamAssetCounts}
         onShowDeletedTeamChange={onShowDeletedTeamChange}
         onTeamExpand={onTeamExpand}
       />

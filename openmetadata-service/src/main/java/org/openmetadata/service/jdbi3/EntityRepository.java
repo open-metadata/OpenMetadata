@@ -4390,17 +4390,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Relationship relationship,
       BulkAssets request,
       boolean isAdd) {
-    return bulkAssetsOperation(entityId, fromEntity, relationship, request, isAdd, null);
-  }
-
-  @Transaction
-  protected BulkOperationResult bulkAssetsOperation(
-      UUID entityId,
-      String fromEntity,
-      Relationship relationship,
-      BulkAssets request,
-      boolean isAdd,
-      String userName) {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
@@ -4432,10 +4421,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
               entityInterface.getVersion(), isAdd, request.getAssets(), null);
-      String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
       ChangeEvent changeEvent =
-          getChangeEvent(
-              entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
+          getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     }
 
@@ -4457,15 +4444,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected ChangeEvent getChangeEvent(
       EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
-    return getChangeEvent(updated, change, entityType, prevVersion, updated.getUpdatedBy());
-  }
-
-  protected ChangeEvent getChangeEvent(
-      EntityInterface updated,
-      ChangeDescription change,
-      String entityType,
-      Double prevVersion,
-      String userName) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEntity(updated)
@@ -4474,7 +4452,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .withEntityType(entityType)
         .withEntityId(updated.getId())
         .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
-        .withUserName(userName)
+        .withUserName(updated.getUpdatedBy())
         .withTimestamp(System.currentTimeMillis())
         .withCurrentVersion(updated.getVersion())
         .withPreviousVersion(prevVersion);

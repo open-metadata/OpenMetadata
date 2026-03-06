@@ -40,10 +40,6 @@ import {
   visitDataQualityTab,
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
-import {
-  ObservabilityFeature,
-  selectAddObservabilityFeature,
-} from '../../../utils/dataQuality';
 
 const table1 = new TableClass();
 const table2 = new TableClass();
@@ -177,7 +173,7 @@ test.describe(
       await visitDataQualityTab(page, table1);
 
       await page.click('[data-testid="profiler-add-table-test-btn"]');
-      await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
+      await page.getByRole('menuitemradio', { name: 'Test case' }).click();
 
       /**
        * Step: Create table test case
@@ -381,7 +377,7 @@ test.describe(
 
       await visitDataQualityTab(page, table1);
       await page.click('[data-testid="profiler-add-table-test-btn"]');
-      await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
+      await page.getByRole('menuitemradio', { name: 'Test case' }).click();
       await page
         .getByTestId('select-table-card')
         .getByText('Column Level')

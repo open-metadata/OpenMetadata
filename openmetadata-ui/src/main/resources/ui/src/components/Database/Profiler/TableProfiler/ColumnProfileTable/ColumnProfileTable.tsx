@@ -154,8 +154,8 @@ const ColumnProfileTable = () => {
         width: 200,
         render: (dataTypeDisplay: string) => {
           return (
-            <Typography>
-              <span className="break-word">{dataTypeDisplay || 'N/A'}</span>
+            <Typography as="span" className="break-word">
+              {dataTypeDisplay || 'N/A'}
             </Typography>
           );
         },

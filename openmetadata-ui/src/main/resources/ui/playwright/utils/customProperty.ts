@@ -1152,9 +1152,7 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   // 1. Navigate and Open Column Detail Panel
   await page.goto(`/table/${columnFqn}`);
   await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
   const sidePanel = page.locator('.column-detail-panel-container');
   await expect(sidePanel).toBeVisible();
 
@@ -1199,15 +1197,16 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
     propertyName
   );
 
-  const getTableData = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/tables/name/') &&
-      !response.url().includes('/columns') &&
-      response.url().includes('extension')
+  // 5. Reload Page
+  const getColumnDetails = page.waitForResponse(
+    '/api/v1/tables/name/*/columns?*fields=*extension*'
+  );
+  const getTableColumnTypes = page.waitForResponse(
+    '/api/v1/metadata/types/name/tableColumn*'
   );
   await page.reload();
-  const tableResponse = await getTableData;
-  expect(tableResponse.status()).toBe(200);
+  await getTableColumnTypes;
+  await getColumnDetails;
 
   await page.waitForSelector(
     '.column-detail-panel-container [data-testid="custom-properties-tab"]',
@@ -1252,21 +1251,21 @@ export const updateCustomPropertyInRightPanel = async (data: {
     await waitForAllLoadersToDisappear(page);
   }
 
-  // Scope everything to the panel container to avoid matching stray elements
-  // elsewhere on the Explore page when tests run in parallel.
-  const panelContainer = page.locator('.entity-summary-panel-container');
-  const searchContainer = panelContainer.getByTestId('search-bar-container');
-  await expect(searchContainer).toBeVisible();
-  await searchContainer.getByRole('textbox').fill(propertyName);
+  const searchContainer = page.getByTestId('search-bar-container');
+  if (await searchContainer.isVisible()) {
+    await searchContainer.getByTestId('searchbar').fill(propertyName);
+  }
 
   // Since the search is client side, can't wait on APIs and names are unique,
   // waiting for only single custom property card to be visible
-  // to ensure stability of the next click operations.
+  // to ensure stability of the next click operations
   await expect(
-    panelContainer.getByTestId('custom-property-right-panel-card')
+    page.getByTestId('custom-property-right-panel-card')
   ).toHaveCount(1);
 
-  const container = panelContainer.getByTestId(propertyName);
+  const container = page
+    .locator('.entity-summary-panel-container')
+    .getByTestId(propertyName);
 
   await expect(container.getByTestId('property-name')).toContainText(
     propertyName

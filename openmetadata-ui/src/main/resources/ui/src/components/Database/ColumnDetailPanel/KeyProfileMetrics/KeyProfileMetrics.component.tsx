@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
-import { HelpCircle } from '@untitledui/icons';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import { Box, Chip, Stack, Tooltip, Typography, useTheme } from '@mui/material';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +31,7 @@ export const KeyProfileMetrics = ({
   tableFqn,
 }: KeyProfileMetricsProps) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState<ColumnProfile | undefined>(undefined);
 
@@ -71,51 +72,122 @@ export const KeyProfileMetrics = ({
     [profile, t]
   );
 
-  const sectionClassName =
-    'tw:border-b-[0.6px] tw:border-tertiary tw:-mt-2 tw:pb-4 tw:px-4';
-  const titleClassName = 'tw:text-[13px] tw:font-semibold tw:mb-1.5';
-
   if (isLoading) {
     return (
-      <div className={sectionClassName}>
-        <p className={titleClassName}>{t('label.key-profile-metric-plural')}</p>
-        <div className="tw:flex tw:items-center tw:justify-center tw:p-3">
+      <Box
+        sx={{
+          borderBottom: `0.6px solid ${theme.palette.allShades.gray[100]}`,
+          marginTop: theme.spacing(-2),
+          paddingBottom: theme.spacing(4),
+          paddingX: theme.spacing(4),
+        }}
+      >
+        <Typography
+          sx={{
+            fontSize: theme.typography.pxToRem(13),
+            fontWeight: 600,
+            marginBottom: theme.spacing(1.5),
+          }}
+        >
+          {t('label.key-profile-metric-plural')}
+        </Typography>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: theme.spacing(3),
+          }}
+        >
           <Loader size="small" />
-        </div>
-      </div>
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div className={sectionClassName}>
-      <p className={titleClassName}>{t('label.key-profile-metric-plural')}</p>
-      <div className="tw:flex tw:flex-nowrap tw:gap-2">
+    <Box
+      sx={{
+        borderBottom: `0.6px solid ${theme.palette.allShades.gray[100]}`,
+        marginTop: theme.spacing(-2),
+        paddingBottom: theme.spacing(4),
+        paddingX: theme.spacing(4),
+      }}
+    >
+      <Typography
+        sx={{
+          fontSize: theme.typography.pxToRem(13),
+          fontWeight: 600,
+          marginBottom: theme.spacing(1.5),
+        }}
+      >
+        {t('label.key-profile-metric-plural')}
+      </Typography>
+      <Stack direction="row" flexWrap="nowrap" gap={2}>
         {metrics.map((metric) => (
-          <div
-            className="tw:flex-1 tw:rounded-lg tw:bg-secondary tw:p-2"
+          <Chip
             data-testid={`key-profile-metric-${metric.label}`}
             key={metric.label}
-          >
-            <div className="tw:flex tw:flex-col tw:gap-1">
-              <div className="tw:flex tw:items-center tw:gap-1">
-                <span className="tw:text-xs tw:font-medium tw:text-tertiary">
-                  {metric.label}
-                </span>
-                {metric.tooltip && (
-                  <Tooltip placement="top" title={metric.tooltip}>
-                    <TooltipTrigger>
-                      <HelpCircle className="tw:size-2.5 tw:text-tertiary" />
-                    </TooltipTrigger>
-                  </Tooltip>
-                )}
-              </div>
-              <span className="tw:text-md tw:font-semibold tw:text-primary">
-                {metric.value}
-              </span>
-            </div>
-          </div>
+            label={
+              <Stack
+                spacing={0.5}
+                sx={{ padding: theme.spacing(1), width: '100%' }}
+              >
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: theme.spacing(0.5),
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: theme.typography.pxToRem(12),
+                      color: theme.palette.allShades.gray[600],
+                      fontWeight: 500,
+                    }}
+                  >
+                    {metric.label}
+                  </Typography>
+                  {metric.tooltip && (
+                    <Tooltip placement="top" title={metric.tooltip}>
+                      <HelpOutlineIcon
+                        sx={{
+                          fontSize: theme.typography.pxToRem(10),
+                          color: theme.palette.allShades.gray[600],
+                        }}
+                      />
+                    </Tooltip>
+                  )}
+                </Box>
+                <Typography
+                  sx={{
+                    fontSize: theme.typography.pxToRem(16),
+                    fontWeight: 600,
+                    color: theme.palette.allShades.gray[900],
+                  }}
+                >
+                  {metric.value}
+                </Typography>
+              </Stack>
+            }
+            sx={{
+              flex: 1,
+              height: 'auto',
+              backgroundColor: theme.palette.allShades.gray[50],
+              borderRadius: theme.spacing(1),
+              border: 'none',
+              padding: theme.spacing(1),
+              '& .MuiChip-label': {
+                padding: 0,
+                overflow: 'visible',
+                width: '100%',
+              },
+            }}
+            variant="filled"
+          />
         ))}
-      </div>
-    </div>
+      </Stack>
+    </Box>
   );
 };

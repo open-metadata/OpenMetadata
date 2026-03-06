@@ -337,10 +337,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok()
-        .entity(
-            repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()))
-        .build();
+    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
   }
 
   @PUT
@@ -369,11 +366,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok()
-        .entity(
-            repository.bulkRemoveAssets(
-                name, request, securityContext.getUserPrincipal().getName()))
-        .build();
+    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
   @PATCH

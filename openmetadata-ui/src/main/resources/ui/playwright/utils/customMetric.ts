@@ -17,10 +17,6 @@ import {
   NAME_VALIDATION_ERROR,
 } from '../constant/common';
 import { toastNotification } from './common';
-import {
-  ObservabilityFeature,
-  selectAddObservabilityFeature,
-} from './dataQuality';
 
 type CustomMetricDetails = {
   page: Page;
@@ -72,7 +68,7 @@ export const createCustomMetric = async ({
     })
     .click();
   await page.locator('[data-testid="profiler-add-table-test-btn"]').click();
-  await selectAddObservabilityFeature(page, ObservabilityFeature.CUSTOM_METRIC);
+  await page.getByRole('menuitemradio', { name: 'Custom metric' }).click();
 
   const customMetricResponse = page.waitForResponse(
     '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all*'
@@ -128,7 +124,7 @@ export const createCustomMetric = async ({
   // verify the created custom metric
   await expect(page).toHaveURL(/profiler/);
 
-  await expect(page.getByTestId(`${metric.name}-title`)).toBeVisible();
+  await expect(page.getByRole('heading', { name: metric.name })).toBeVisible();
 };
 
 export const deleteCustomMetric = async ({
@@ -140,12 +136,14 @@ export const deleteCustomMetric = async ({
   metric: CustomMetricDetails['metric'];
   isColumnMetric?: boolean;
 }) => {
-  await page.getByTestId(`${metric.name}-title`).scrollIntoViewIfNeeded();
+  await page
+    .getByRole('heading', { name: metric.name })
+    .scrollIntoViewIfNeeded();
 
-  await expect(page.getByTestId(`${metric.name}-title`)).toBeVisible();
+  await expect(page.getByRole('heading', { name: metric.name })).toBeVisible();
 
   await page.click(`[data-testid="${metric.name}-custom-metrics-menu"]`);
-  await page.getByRole('menuitemradio', { name: 'Delete' }).click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
 
   await expect(page.locator('.ant-modal-header')).toContainText(metric.name);
 

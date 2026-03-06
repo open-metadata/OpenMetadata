@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Card, Divider, Stack, Typography } from '@mui/material';
 import { t } from 'i18next';
 import {
   isArray,
@@ -384,7 +385,7 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
     displayDateInHeader = true,
   } = props;
 
-  if (active && payload?.length) {
+  if (active && payload && payload.length) {
     // we need to check if the xAxis is a date or not.
     const timestamp = displayDateInHeader
       ? dateTimeFormatter(payload[0].payload[timeStampKey] || 0)
@@ -393,45 +394,68 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
     const payloadValue = uniqBy(payload, 'dataKey');
 
     return (
-      <div className="tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:shadow-md tw:p-2.5">
-        <p className="tw:m-0 tw:text-primary tw:font-medium tw:text-xs">
+      <Card
+        sx={(theme) => ({
+          p: '10px',
+          bgcolor: theme.palette.allShades.white,
+        })}
+      >
+        <Typography
+          sx={(theme) => ({
+            color: theme.palette.allShades.gray[900],
+            fontWeight: theme.typography.fontWeightMedium,
+            fontSize: theme.typography.pxToRem(12),
+          })}
+        >
           {timestamp}
-        </p>
-        <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
-        <div className="tw:flex tw:flex-col tw:gap-1">
+        </Typography>
+        <Divider
+          sx={(theme) => ({
+            my: 2,
+            borderStyle: 'dashed',
+            borderColor: theme.palette.allShades.gray[300],
+          })}
+        />
+        <Stack spacing={1}>
           {payloadValue.map((entry, index) => {
             const value = entry.value;
 
             return (
-              <div
-                className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm"
+              <Box
+                className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
                 key={`item-${index}`}
               >
-                <span className="tw:flex tw:items-center">
-                  <Surface
-                    className="tw:mr-2"
-                    height={14}
-                    version="1.1"
-                    width={4}
-                  >
+                <span className="flex items-center">
+                  <Surface className="mr-2" height={14} version="1.1" width={4}>
                     <rect fill={entry.color} height="14" rx="2" width="4" />
                   </Surface>
-                  <span className="tw:text-tertiary tw:text-[11px]">
+                  <Typography
+                    sx={(theme) => ({
+                      color: theme.palette.allShades.gray[700],
+                      fontSize: theme.typography.pxToRem(11),
+                    })}
+                  >
                     {transformLabel
                       ? startCase(entry.name ?? (entry.dataKey as string))
                       : entry.name ?? (entry.dataKey as string)}
-                  </span>
+                  </Typography>
                 </span>
-                <span className="tw:font-medium tw:text-primary tw:text-[11px]">
+                <Typography
+                  sx={(theme) => ({
+                    color: theme.palette.allShades.gray[900],
+                    fontWeight: theme.typography.fontWeightMedium,
+                    fontSize: theme.typography.pxToRem(11),
+                  })}
+                >
                   {valueFormatter
                     ? valueFormatter(value, entry.name ?? entry.dataKey)
                     : getEntryFormattedValue(value, isPercentage)}
-                </span>
-              </div>
+                </Typography>
+              </Box>
             );
           })}
-        </div>
-      </div>
+        </Stack>
+      </Card>
     );
   }
 
