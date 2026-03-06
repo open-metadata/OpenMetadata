@@ -13,9 +13,12 @@
 Glue pipeline source to extract metadata
 """
 
+import re
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
+from urllib.parse import urlparse
 
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -55,6 +58,10 @@ from metadata.ingestion.source.pipeline.gluepipeline.models import (
     JobNodeResponse,
     S3Source,
     S3Target,
+)
+from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
+    ScriptLineageResult,
+    parse_glue_script,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
@@ -110,6 +117,8 @@ class GluepipelineSource(PipelineServiceSource):
         self.task_id_mapping = {}
         self.job_name_list = set()
         self.glue = self.connection
+        self._s3_client = None
+        self._glue_connection_cache: Dict[str, Optional[dict]] = {}
 
     @classmethod
     def create(
@@ -179,9 +188,21 @@ class GluepipelineSource(PipelineServiceSource):
                 downstream_tasks.append(self.task_id_mapping[edges["DestinationId"]])
         return downstream_tasks
 
+    @property
+    def s3_client(self):
+        if self._s3_client is None:
+            self._s3_client = AWSClient(
+                self.service_connection.awsConfig
+            ).get_s3_client()
+        return self._s3_client
+
     def get_lineage_details(self, job) -> Optional[dict]:
         """
-        Get the Lineage Details of the pipeline
+        Get the Lineage Details of the pipeline.
+
+        First tries to parse Visual ETL CodeGenConfigurationNodes.
+        Falls back to downloading and parsing the job script for
+        GlueContext/Spark lineage patterns.
         """
         lineage_details = {"sources": [], "targets": []}
         try:
@@ -189,61 +210,17 @@ class GluepipelineSource(PipelineServiceSource):
                 self.glue.get_job(JobName=job)
             ).Job
             if job_details and job_details.config_nodes:
-                nodes = job_details.config_nodes
-                for _, node in nodes.items():
-                    for key, entity in node.items():
-                        table_model, storage_model = None, None
-                        if key in TABLE_MODEL_MAP:
-                            table_model = TABLE_MODEL_MAP[key].model_validate(entity)
-                        elif "Catalog" in key:
-                            table_model = CatalogSource.model_validate(entity)
-                        elif key in STORAGE_MODEL_MAP:
-                            storage_model = STORAGE_MODEL_MAP[key].model_validate(
-                                entity
-                            )
-                        if table_model:
-                            for db_service_name in self.get_db_service_names():
-                                table_entity = self.metadata.get_entity_reference(
-                                    entity=Table,
-                                    fqn=fqn.build(
-                                        metadata=self.metadata,
-                                        entity_type=Table,
-                                        table_name=table_model.table_name,
-                                        database_name=table_model.database_name,
-                                        schema_name=table_model.schema_name,
-                                        service_name=db_service_name,
-                                    ),
-                                )
-                                if table_entity:
-                                    if key.endswith("Source"):
-                                        lineage_details["sources"].append(table_entity)
-                                    else:
-                                        lineage_details["targets"].append(table_entity)
-                                    break
-                        if storage_model:
-                            for path in storage_model.Paths or [storage_model.Path]:
-                                container = self.metadata.es_search_container_by_path(
-                                    full_path=path
-                                )
-                                if container and container[0]:
-                                    storage_entity = EntityReference(
-                                        id=container[0].id,
-                                        type="container",
-                                        name=container[0].name.root,
-                                        fullyQualifiedName=container[
-                                            0
-                                        ].fullyQualifiedName.root,
-                                    )
-                                    if storage_entity:
-                                        if key.endswith("Source"):
-                                            lineage_details["sources"].append(
-                                                storage_entity
-                                            )
-                                        else:
-                                            lineage_details["targets"].append(
-                                                storage_entity
-                                            )
-                                        break
+                self._extract_visual_etl_lineage(
+                    job_details.config_nodes, lineage_details
+                )
+            elif (
+                job_details
+                and job_details.command
+                and job_details.command.ScriptLocation
+            ):
+                self._extract_script_lineage(
+                    job_details.command.ScriptLocation, lineage_details
+                )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -251,6 +228,230 @@ class GluepipelineSource(PipelineServiceSource):
                 f"Failed to get lineage details for job : {job} due to : {exc}"
             )
         return lineage_details
+
+    def _extract_visual_etl_lineage(self, config_nodes: dict, lineage_details: dict):
+        for _, node in config_nodes.items():
+            for key, entity in node.items():
+                table_model, storage_model = None, None
+                if key in TABLE_MODEL_MAP:
+                    table_model = TABLE_MODEL_MAP[key].model_validate(entity)
+                elif "Catalog" in key:
+                    table_model = CatalogSource.model_validate(entity)
+                elif key in STORAGE_MODEL_MAP:
+                    storage_model = STORAGE_MODEL_MAP[key].model_validate(entity)
+                if table_model:
+                    for db_service_name in self.get_db_service_names() or ["*"]:
+                        table_entity = self.metadata.get_entity_reference(
+                            entity=Table,
+                            fqn=fqn.build(
+                                metadata=self.metadata,
+                                entity_type=Table,
+                                table_name=table_model.table_name,
+                                database_name=table_model.database_name,
+                                schema_name=table_model.schema_name,
+                                service_name=db_service_name,
+                            ),
+                        )
+                        if table_entity:
+                            if key.endswith("Source"):
+                                lineage_details["sources"].append(table_entity)
+                            else:
+                                lineage_details["targets"].append(table_entity)
+                            break
+                if storage_model:
+                    for path in storage_model.Paths or [storage_model.Path]:
+                        container = self.metadata.es_search_container_by_path(
+                            full_path=path
+                        )
+                        if container and container[0]:
+                            storage_entity = EntityReference(
+                                id=container[0].id,
+                                type="container",
+                                name=container[0].name.root,
+                                fullyQualifiedName=container[
+                                    0
+                                ].fullyQualifiedName.root,
+                            )
+                            if storage_entity:
+                                if key.endswith("Source"):
+                                    lineage_details["sources"].append(storage_entity)
+                                else:
+                                    lineage_details["targets"].append(storage_entity)
+                                break
+
+    def _extract_script_lineage(
+        self, script_location: str, lineage_details: dict
+    ):
+        script_content = self._download_s3_script(script_location)
+        if not script_content:
+            return
+
+        result = parse_glue_script(script_content)
+        if not result.has_lineage:
+            logger.debug(f"No lineage found in script: {script_location}")
+            return
+
+        self._resolve_s3_entities(result.s3_sources, lineage_details, "sources")
+        self._resolve_s3_entities(result.s3_targets, lineage_details, "targets")
+        self._resolve_catalog_entities(
+            result.catalog_sources, lineage_details, "sources"
+        )
+        self._resolve_catalog_entities(
+            result.catalog_targets, lineage_details, "targets"
+        )
+        self._resolve_jdbc_entities(result.jdbc_sources, lineage_details, "sources")
+        self._resolve_jdbc_entities(result.jdbc_targets, lineage_details, "targets")
+
+    def _download_s3_script(self, s3_uri: str) -> Optional[str]:
+        try:
+            parsed = urlparse(s3_uri)
+            bucket = parsed.netloc
+            key = parsed.path.lstrip("/")
+            if not bucket or not key:
+                logger.warning(f"Invalid S3 URI for script: {s3_uri}")
+                return None
+            response = self.s3_client.get_object(Bucket=bucket, Key=key)
+            return response["Body"].read().decode("utf-8")
+        except Exception as exc:
+            logger.warning(f"Failed to download script from {s3_uri}: {exc}")
+            logger.debug(traceback.format_exc())
+            return None
+
+    def _resolve_s3_entities(
+        self, paths: List[str], lineage_details: dict, direction: str
+    ):
+        for path in paths:
+            try:
+                # Normalize: try both with and without trailing slash
+                normalized = path.rstrip("/")
+                container = self.metadata.es_search_container_by_path(
+                    full_path=normalized
+                )
+                if not container or not container[0]:
+                    container = self.metadata.es_search_container_by_path(
+                        full_path=normalized + "/"
+                    )
+                if container and container[0]:
+                    storage_entity = EntityReference(
+                        id=container[0].id,
+                        type="container",
+                        name=container[0].name.root,
+                        fullyQualifiedName=container[0].fullyQualifiedName.root,
+                    )
+                    lineage_details[direction].append(storage_entity)
+                else:
+                    logger.warning(
+                        f"Could not find container entity for S3 path: {path}. "
+                        "Ensure the S3 storage service has been ingested."
+                    )
+            except Exception as exc:
+                logger.debug(f"Failed to resolve S3 path {path}: {exc}")
+
+    def _resolve_catalog_entities(
+        self, refs: list, lineage_details: dict, direction: str
+    ):
+        for ref in refs:
+            for db_service_name in self.get_db_service_names() or ["*"]:
+                try:
+                    table_entity = self.metadata.get_entity_reference(
+                        entity=Table,
+                        fqn=fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Table,
+                            table_name=ref.table,
+                            database_name=ref.database,
+                            schema_name=None,
+                            service_name=db_service_name,
+                        ),
+                    )
+                    if table_entity:
+                        lineage_details[direction].append(table_entity)
+                        break
+                except Exception as exc:
+                    logger.debug(
+                        f"Failed to resolve catalog ref {ref.database}.{ref.table} "
+                        f"in service {db_service_name}: {exc}"
+                    )
+
+    def _resolve_jdbc_entities(
+        self, refs: list, lineage_details: dict, direction: str
+    ):
+        for ref in refs:
+            database_name = ref.database
+            table_name = ref.table
+            schema_name = None
+
+            if ref.connection_name:
+                conn_info = self._resolve_glue_connection(ref.connection_name)
+                if conn_info:
+                    database_name = database_name or conn_info.get("database")
+                    schema_name = conn_info.get("schema")
+
+            if ref.jdbc_url:
+                parsed = self._parse_jdbc_url(ref.jdbc_url)
+                if parsed:
+                    database_name = database_name or parsed.get("database")
+                    schema_name = schema_name or parsed.get("schema")
+
+            if not table_name:
+                continue
+
+            for db_service_name in self.get_db_service_names() or ["*"]:
+                try:
+                    table_entity = self.metadata.get_entity_reference(
+                        entity=Table,
+                        fqn=fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Table,
+                            table_name=table_name,
+                            database_name=database_name,
+                            schema_name=schema_name,
+                            service_name=db_service_name,
+                        ),
+                    )
+                    if table_entity:
+                        lineage_details[direction].append(table_entity)
+                        break
+                except Exception as exc:
+                    logger.debug(
+                        f"Failed to resolve JDBC ref {table_name} "
+                        f"in service {db_service_name}: {exc}"
+                    )
+
+    def _resolve_glue_connection(self, connection_name: str) -> Optional[dict]:
+        if connection_name in self._glue_connection_cache:
+            return self._glue_connection_cache[connection_name]
+
+        try:
+            response = self.glue.get_connection(
+                Name=connection_name, HidePassword=True
+            )
+            props = response.get("Connection", {}).get("ConnectionProperties", {})
+            jdbc_url = props.get("JDBC_CONNECTION_URL", "")
+            result = self._parse_jdbc_url(jdbc_url)
+            self._glue_connection_cache[connection_name] = result
+            return result
+        except Exception as exc:
+            logger.debug(
+                f"Failed to resolve Glue connection '{connection_name}': {exc}"
+            )
+            self._glue_connection_cache[connection_name] = None
+            return None
+
+    @staticmethod
+    def _parse_jdbc_url(jdbc_url: str) -> Optional[dict]:
+        if not jdbc_url:
+            return None
+        # jdbc:redshift://host:port/database
+        # jdbc:postgresql://host:port/database
+        # jdbc:mysql://host:port/database
+        match = re.match(
+            r"jdbc:\w+://[^/]+/([^?;]+)", jdbc_url
+        )
+        if match:
+            db_name = match.group(1)
+            return {"database": db_name, "schema": None}
+        return None
 
     def yield_pipeline_status(
         self, pipeline_details: Any

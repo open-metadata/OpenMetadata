@@ -70,8 +70,25 @@ class S3Target(BaseModel):
     Paths: Optional[str] = None
 
 
+class JobCommand(BaseModel):
+    Name: Optional[str] = None
+    ScriptLocation: Optional[str] = None
+    PythonVersion: Optional[str] = None
+
+
+class JobConnections(BaseModel):
+    Connections: Optional[List[str]] = None
+
+
 class JobNodes(BaseModel):
-    config_nodes: Optional[dict] = Field(alias="CodeGenConfigurationNodes")
+    config_nodes: Optional[dict] = Field(
+        default=None, alias="CodeGenConfigurationNodes"
+    )
+    command: Optional[JobCommand] = Field(default=None, alias="Command")
+    connections: Optional[JobConnections] = Field(default=None, alias="Connections")
+    default_arguments: Optional[dict] = Field(
+        default=None, alias="DefaultArguments"
+    )
 
 
 class JobNodeResponse(BaseModel):

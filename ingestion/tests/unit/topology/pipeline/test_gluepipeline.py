@@ -289,3 +289,122 @@ class GluePipelineUnitTest(TestCase):
     def test_pipelines(self):
         pipeline = list(self.gluepipeline.yield_pipeline(EXPECTED_JOB_DETAILS))[0].right
         assert pipeline == EXPECTED_CREATED_PIPELINES
+
+    def test_resolve_s3_entities_trailing_slash(self):
+        """Verify S3 path normalization: trailing slash is stripped before search"""
+        from unittest.mock import MagicMock
+
+        mock_container = MagicMock()
+        mock_container.id = "b3ec0db9-f017-46ec-89cb-d0324b888295"
+        mock_container.name.root = "parquet"
+        mock_container.fullyQualifiedName.root = "local_s3.bucket.parquet"
+
+        mock_metadata = MagicMock()
+        mock_metadata.es_search_container_by_path.return_value = [mock_container]
+        self.gluepipeline.metadata = mock_metadata
+
+        lineage_details = {"sources": [], "targets": []}
+        self.gluepipeline._resolve_s3_entities(
+            ["s3://collate-glue-connector-test/glue-sample-data/parquet/"],
+            lineage_details,
+            "sources",
+        )
+
+        # First call should be with the trailing slash stripped
+        first_call_path = mock_metadata.es_search_container_by_path.call_args_list[0][
+            1
+        ]["full_path"]
+        assert (
+            first_call_path
+            == "s3://collate-glue-connector-test/glue-sample-data/parquet"
+        )
+        assert len(lineage_details["sources"]) == 1
+        assert lineage_details["sources"][0].type == "container"
+
+    def test_resolve_s3_entities_fallback_with_slash(self):
+        """Verify fallback: if normalized path fails, tries with trailing slash"""
+        from unittest.mock import MagicMock
+
+        mock_container = MagicMock()
+        mock_container.id = "b3ec0db9-f017-46ec-89cb-d0324b888295"
+        mock_container.name.root = "parquet"
+        mock_container.fullyQualifiedName.root = "local_s3.bucket.parquet"
+
+        mock_metadata = MagicMock()
+        # First call (no slash) returns empty, second call (with slash) returns match
+        mock_metadata.es_search_container_by_path.side_effect = [
+            [],
+            [mock_container],
+        ]
+        self.gluepipeline.metadata = mock_metadata
+
+        lineage_details = {"sources": [], "targets": []}
+        self.gluepipeline._resolve_s3_entities(
+            ["s3://bucket/path/"],
+            lineage_details,
+            "sources",
+        )
+
+        mock_search = mock_metadata.es_search_container_by_path
+        assert mock_search.call_count == 2
+        assert mock_search.call_args_list[0][1]["full_path"] == "s3://bucket/path"
+        assert mock_search.call_args_list[1][1]["full_path"] == "s3://bucket/path/"
+        assert len(lineage_details["sources"]) == 1
+
+    def test_resolve_jdbc_entities_wildcard_fallback(self):
+        """When dbServiceNames is empty, use wildcard '*' to search all services"""
+        from unittest.mock import MagicMock
+
+        from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
+            JDBCRef,
+        )
+
+        mock_table_ref = EntityReference(
+            id="85811038-099a-11ed-861d-0242ac120002",
+            type="table",
+            name="customer_sample",
+        )
+
+        mock_metadata = MagicMock()
+        mock_metadata.get_entity_reference.return_value = mock_table_ref
+        self.gluepipeline.metadata = mock_metadata
+
+        lineage_details = {"sources": [], "targets": []}
+        jdbc_ref = JDBCRef(
+            connection_name="Redshift - Jdbc connection",
+            database="dev",
+            table="customer_sample",
+        )
+        self.gluepipeline._resolve_jdbc_entities(
+            [jdbc_ref], lineage_details, "targets"
+        )
+
+        assert len(lineage_details["targets"]) == 1
+        assert lineage_details["targets"][0].name == "customer_sample"
+
+    def test_resolve_catalog_entities_wildcard_fallback(self):
+        """When dbServiceNames is empty, catalog resolution also uses wildcard"""
+        from unittest.mock import MagicMock
+
+        from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
+            CatalogRef,
+        )
+
+        mock_table_ref = EntityReference(
+            id="85811038-099a-11ed-861d-0242ac120002",
+            type="table",
+            name="my_table",
+        )
+
+        mock_metadata = MagicMock()
+        mock_metadata.get_entity_reference.return_value = mock_table_ref
+        self.gluepipeline.metadata = mock_metadata
+
+        lineage_details = {"sources": [], "targets": []}
+        catalog_ref = CatalogRef(database="my_database", table="my_table")
+        self.gluepipeline._resolve_catalog_entities(
+            [catalog_ref], lineage_details, "sources"
+        )
+
+        assert len(lineage_details["sources"]) == 1
+        assert lineage_details["sources"][0].name == "my_table"
