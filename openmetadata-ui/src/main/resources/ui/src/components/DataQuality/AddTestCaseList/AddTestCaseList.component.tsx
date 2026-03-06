@@ -107,24 +107,24 @@ export const AddTestCaseList = ({
 
   const statusSelectedKeys = useMemo<SearchDropdownOption[]>(
     () =>
-      filterStatus != null
-        ? [{ key: filterStatus, label: TEST_CASE_STATUS_LABELS[filterStatus] }]
-        : [],
+      filterStatus == null
+        ? []
+        : [{ key: filterStatus, label: TEST_CASE_STATUS_LABELS[filterStatus] }],
     [filterStatus]
   );
 
   const testTypeSelectedKeys = useMemo<SearchDropdownOption[]>(
     () =>
-      filterTestType !== TestCaseType.all
-        ? [
+      filterTestType === TestCaseType.all
+        ? []
+        : [
             {
               key: filterTestType,
               label:
                 TEST_CASE_TYPE_OPTION.find((o) => o.value === filterTestType)
                   ?.label ?? '',
             },
-          ]
-        : [],
+          ],
     [filterTestType]
   );
 
@@ -166,7 +166,7 @@ export const AddTestCaseList = ({
         const globalSearch = searchText ? `*${searchText}*` : WILD_CARD_CHAR;
         const q = filters ? `${globalSearch} && ${filters}` : globalSearch;
 
-        const testCaseResponse = await getListTestCaseBySearch({
+        const requestParams = {
           q,
           limit: PAGE_SIZE_MEDIUM,
           offset: (page - 1) * PAGE_SIZE_MEDIUM,
@@ -175,8 +175,11 @@ export const AddTestCaseList = ({
             filterTestType !== TestCaseType.all && {
               testCaseType: filterTestType,
             }),
-          ...(testCaseParams ?? {}),
-        });
+        };
+        if (testCaseParams) {
+          Object.assign(requestParams, testCaseParams);
+        }
+        const testCaseResponse = await getListTestCaseBySearch(requestParams);
 
         setTotalCount(testCaseResponse.paging.total ?? 0);
         if (selectedTest) {
@@ -184,7 +187,7 @@ export const AddTestCaseList = ({
             const selectedItemsMap = new Map();
             pre?.forEach((item) => selectedItemsMap.set(item.id, item));
             testCaseResponse.data.forEach((hit) => {
-              if (selectedTest.find((test) => hit.name === test)) {
+              if (selectedTest.some((test) => hit.name === test)) {
                 selectedItemsMap.set(hit.id ?? '', hit);
               }
             });
