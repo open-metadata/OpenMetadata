@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,8 +17,8 @@ import { useTranslation } from 'react-i18next';
 import SearchDropdown from '../../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import {
-  ADD_TEST_CASE_LIST_FILTERS,
   AddTestCaseListFilterKey,
+  ADD_TEST_CASE_LIST_FILTERS,
 } from './AddTestCaseListFilters.constants';
 import { AddTestCaseListFiltersProps } from './AddTestCaseListFilters.interface';
 

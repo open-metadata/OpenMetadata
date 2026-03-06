@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,7 +18,8 @@ export const ADD_TEST_CASE_LIST_FILTER_KEYS = [
   'column',
 ] as const;
 
-export type AddTestCaseListFilterKey = (typeof ADD_TEST_CASE_LIST_FILTER_KEYS)[number];
+export type AddTestCaseListFilterKey =
+  (typeof ADD_TEST_CASE_LIST_FILTER_KEYS)[number];
 
 export interface AddTestCaseListFilterConfig {
   searchKey: AddTestCaseListFilterKey;

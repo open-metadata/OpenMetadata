@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,10 +16,10 @@ import { AddTestCaseListFilterKey } from './AddTestCaseListFilters.constants';
 
 export interface AddTestCaseListFiltersProps {
   filterOptions: Record<AddTestCaseListFilterKey, SearchDropdownOption[]>;
-  filterSelectedKeys: Record<
-    AddTestCaseListFilterKey,
-    SearchDropdownOption[]
-  >;
-  onChange: (values: SearchDropdownOption[], searchKey: AddTestCaseListFilterKey) => void;
+  filterSelectedKeys: Record<AddTestCaseListFilterKey, SearchDropdownOption[]>;
+  onChange: (
+    values: SearchDropdownOption[],
+    searchKey: AddTestCaseListFilterKey
+  ) => void;
   onSearch: (searchText: string, searchKey: string) => void;
 }

@@ -98,7 +98,10 @@ jest.mock('./AddTestCaseListFilters.component', () => ({
   default: function MockAddTestCaseListFilters({
     onChange,
   }: {
-    onChange: (values: { key: string; label: string }[], searchKey: string) => void;
+    onChange: (
+      values: { key: string; label: string }[],
+      searchKey: string
+    ) => void;
   }) {
     return (
       <div data-testid="add-test-case-list-filters">
@@ -107,7 +110,8 @@ jest.mock('./AddTestCaseListFilters.component', () => ({
           type="button"
           onClick={() =>
             onChange([{ key: 'Success', label: 'Success' }], 'status')
-          }>
+          }
+        >
           Apply status Success
         </button>
         <button
@@ -115,7 +119,8 @@ jest.mock('./AddTestCaseListFilters.component', () => ({
           type="button"
           onClick={() =>
             onChange([{ key: 'table', label: 'Table' }], 'testType')
-          }>
+          }
+        >
           Apply testType table
         </button>
         <button
@@ -131,7 +136,8 @@ jest.mock('./AddTestCaseListFilters.component', () => ({
               ],
               'table'
             )
-          }>
+          }
+        >
           Apply table filter
         </button>
         <button
@@ -147,7 +153,8 @@ jest.mock('./AddTestCaseListFilters.component', () => ({
               ],
               'column'
             )
-          }>
+          }
+        >
           Apply column filter
         </button>
       </div>

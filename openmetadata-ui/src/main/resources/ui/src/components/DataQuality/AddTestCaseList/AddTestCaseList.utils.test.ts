@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -143,7 +143,11 @@ describe('AddTestCaseList.utils', () => {
 
     it('uses getDefaultLabel for keys not in options', () => {
       expect(
-        getSelectedOptionsFromKeys(['k1', 'missing'], options, (k) => `fallback-${k}`)
+        getSelectedOptionsFromKeys(
+          ['k1', 'missing'],
+          options,
+          (k) => `fallback-${k}`
+        )
       ).toEqual([
         { key: 'k1', label: 'Label 1' },
         { key: 'missing', label: 'fallback-missing' },
@@ -155,25 +159,23 @@ describe('AddTestCaseList.utils', () => {
     const items = [mockTableCase, mockColumnCase1, mockColumnCase2];
 
     it('returns all items when no filters applied', () => {
-      expect(
-        filterTestCasesByTableAndColumn(items, [], [])
-      ).toHaveLength(3);
+      expect(filterTestCasesByTableAndColumn(items, [], [])).toHaveLength(3);
     });
 
     it('filters by table when filterTables is non-empty', () => {
       const tableKey = mockTableCase.entityLink!;
 
-      expect(
-        filterTestCasesByTableAndColumn(items, [tableKey], [])
-      ).toEqual([mockTableCase]);
+      expect(filterTestCasesByTableAndColumn(items, [tableKey], [])).toEqual([
+        mockTableCase,
+      ]);
     });
 
     it('filters by column when filterColumns is non-empty', () => {
       const columnKey = `${mockColumnCase1.entityLink!}::col1`;
 
-      expect(
-        filterTestCasesByTableAndColumn(items, [], [columnKey])
-      ).toEqual([mockColumnCase1]);
+      expect(filterTestCasesByTableAndColumn(items, [], [columnKey])).toEqual([
+        mockColumnCase1,
+      ]);
     });
 
     it('excludes table-only test cases when filtering by column', () => {

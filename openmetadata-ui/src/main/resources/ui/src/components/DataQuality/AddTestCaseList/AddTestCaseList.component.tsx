@@ -22,13 +22,13 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import {
   TEST_CASE_STATUS_FILTER_OPTIONS,
   TEST_CASE_STATUS_LABELS,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
-import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { TestCaseType } from '../../../enums/TestSuite.enum';
@@ -47,14 +47,14 @@ import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
-import AddTestCaseListFilters from './AddTestCaseListFilters.component';
-import { AddTestCaseListFilterKey } from './AddTestCaseListFilters.constants';
 import {
   filterTestCasesByTableAndColumn,
   getColumnFilterOptions,
   getSelectedOptionsFromKeys,
   getTableFilterOptions,
 } from './AddTestCaseList.utils';
+import AddTestCaseListFilters from './AddTestCaseListFilters.component';
+import { AddTestCaseListFilterKey } from './AddTestCaseListFilters.constants';
 
 export const AddTestCaseList = ({
   onCancel,
@@ -290,12 +290,14 @@ export const AddTestCaseList = ({
             loading={{
               spinning: isLoading,
               indicator: <Loader />,
-            }}>
+            }}
+          >
             <VirtualList
               data={listSource}
               height={500}
               itemKey="id"
-              onScroll={onScroll}>
+              onScroll={onScroll}
+            >
               {(test) => {
                 const tableFqn = getEntityFQN(test.entityLink);
                 const tableName = getNameFromFQN(tableFqn);
@@ -305,12 +307,14 @@ export const AddTestCaseList = ({
                   <Space
                     className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
                     direction="vertical"
-                    onClick={() => handleCardClick(test)}>
+                    onClick={() => handleCardClick(test)}
+                  >
                     <Space className="justify-between w-full">
                       <Typography.Paragraph
                         className="m-0 font-medium text-base w-max-500"
                         data-testid={test.name}
-                        ellipsis={{ tooltip: true }}>
+                        ellipsis={{ tooltip: true }}
+                      >
                         {getEntityName(test)}
                       </Typography.Paragraph>
 
@@ -321,7 +325,8 @@ export const AddTestCaseList = ({
                     </Space>
                     <Typography.Paragraph
                       className="m-0 w-max-500"
-                      ellipsis={{ tooltip: true }}>
+                      ellipsis={{ tooltip: true }}
+                    >
                       {getEntityName(test.testDefinition)}
                     </Typography.Paragraph>
                     <Typography.Paragraph className="m-0">
@@ -332,7 +337,8 @@ export const AddTestCaseList = ({
                           tableFqn,
                           EntityTabs.PROFILER
                         )}
-                        onClick={(e) => e.stopPropagation()}>
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {tableName}
                       </Link>
                     </Typography.Paragraph>
@@ -448,7 +454,8 @@ export const AddTestCaseList = ({
       {showButton && (
         <Col
           className="d-flex justify-end items-center p-y-xss gap-4"
-          span={24}>
+          span={24}
+        >
           <Button data-testid="cancel" type="link" onClick={onCancel}>
             {cancelText ?? t('label.cancel')}
           </Button>
@@ -456,7 +463,8 @@ export const AddTestCaseList = ({
             data-testid="submit"
             loading={isLoading}
             type="primary"
-            onClick={handleSubmit}>
+            onClick={handleSubmit}
+          >
             {submitText ?? t('label.create')}
           </Button>
         </Col>

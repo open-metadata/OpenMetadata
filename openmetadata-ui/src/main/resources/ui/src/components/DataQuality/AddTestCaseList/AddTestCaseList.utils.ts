@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -77,9 +77,7 @@ export function filterTestCasesByTableAndColumn(
   let result = items;
   if (filterTables.length > 0) {
     const tableSet = new Set(filterTables);
-    result = result.filter((tc) =>
-      tableSet.has(getEntityFQN(tc.entityLink))
-    );
+    result = result.filter((tc) => tableSet.has(getEntityFQN(tc.entityLink)));
   }
   if (filterColumns.length > 0) {
     const columnSet = new Set(filterColumns);
