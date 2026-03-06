@@ -96,8 +96,9 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
 const GridItem = ({ span = GRID_COLUMNS, start, className, children, style, ...props }: GridItemProps) => {
-  const clampedSpan = clamp(span, 1, GRID_COLUMNS);
   const clampedStart = start !== undefined ? clamp(start, 1, GRID_COLUMNS) : undefined;
+  const maxSpan = clampedStart !== undefined ? GRID_COLUMNS - clampedStart + 1 : GRID_COLUMNS;
+  const clampedSpan = clamp(span, 1, maxSpan);
 
   const gridColumn =
     clampedStart !== undefined

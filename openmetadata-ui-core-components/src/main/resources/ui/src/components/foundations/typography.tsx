@@ -39,17 +39,15 @@ export const Typography = (props: TypographyProps) => {
         ...otherProps
     } = props;
 
-    const inner = Component ? (
-        <Component {...otherProps} className={className}>
-            {children}
-        </Component>
-    ) : (
-        children
-    );
-
     return (
-        <div className={cx("prose", quoteStyles[quoteVariant])}>
-            {inner}
+        <div {...(!Component ? otherProps : {})} className={cx("prose", quoteStyles[quoteVariant])}>
+            {Component ? (
+                <Component {...otherProps} className={className}>
+                    {children}
+                </Component>
+            ) : (
+                children
+            )}
         </div>
     );
 };
