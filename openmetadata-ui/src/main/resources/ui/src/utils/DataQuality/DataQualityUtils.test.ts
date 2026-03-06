@@ -317,22 +317,32 @@ describe('DataQualityUtils', () => {
   });
 
   describe('buildMustEsFilterForOwner', () => {
-    it('should return filter for owner when isTestCaseResult is false', () => {
+    it('should return nested filter for owner when isTestCaseResult is false', () => {
       const ownerFqn = 'owner1';
       const expectedFilter = {
-        term: {
-          'owners.name': ownerFqn,
+        nested: {
+          path: 'owners',
+          query: {
+            term: {
+              'owners.name': ownerFqn,
+            },
+          },
         },
       };
 
       expect(buildMustEsFilterForOwner(ownerFqn)).toEqual(expectedFilter);
     });
 
-    it('should return filter for test case owner when isTestCaseResult is true', () => {
+    it('should return nested filter for test case owner when isTestCaseResult is true', () => {
       const ownerFqn = 'owner2';
       const expectedFilter = {
-        term: {
-          'testCase.owners.name': ownerFqn,
+        nested: {
+          path: 'testCase.owners',
+          query: {
+            term: {
+              'testCase.owners.name': ownerFqn,
+            },
+          },
         },
       };
 
