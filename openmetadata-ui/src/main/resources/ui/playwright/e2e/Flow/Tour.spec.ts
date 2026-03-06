@@ -71,9 +71,9 @@ const validateTourSteps = async (page: Page) => {
 
   expect(searchResponse.status()).toBe(200);
 
-  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('4', {
-    timeout: 1000,
-  });
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('4');
 
   // step 3
   await page.locator('[data-tour-elem="right-arrow"]').click();
