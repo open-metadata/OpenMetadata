@@ -19,12 +19,12 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.sdk.PipelineServiceClientInterface.TYPE_TO_TASK;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
-import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -59,7 +59,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -181,6 +180,10 @@ public class IngestionPipelineResource
     /* Required for serde */
   }
 
+  public static class PipelineStatusList extends ResultList<PipelineStatus> {
+    /* Required for serde */
+  }
+
   /**
    * Handle permissions based on the pipeline type
    */
@@ -227,7 +230,7 @@ public class IngestionPipelineResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class)))
+                    schema = @Schema(implementation = IngestionPipelineList.class)))
       })
   public ResultList<IngestionPipeline> list(
       @Context UriInfo uriInfo,
@@ -302,10 +305,6 @@ public class IngestionPipelineResource
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 
     for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {
-      if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
-        ingestionPipeline.setPipelineStatuses(
-            repository.getLatestPipelineStatus(ingestionPipeline));
-      }
       decryptOrNullify(securityContext, ingestionPipeline, false);
     }
     return ingestionPipelines;
@@ -444,9 +443,6 @@ public class IngestionPipelineResource
           String includeRelations) {
     IngestionPipeline ingestionPipeline =
         getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
-    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
-      ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
-    }
     decryptOrNullify(securityContext, ingestionPipeline, false);
     return ingestionPipeline;
   }
@@ -533,9 +529,6 @@ public class IngestionPipelineResource
           String includeRelations) {
     IngestionPipeline ingestionPipeline =
         getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
-    if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
-      ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
-    }
     decryptOrNullify(securityContext, ingestionPipeline, false);
     return ingestionPipeline;
   }
@@ -694,7 +687,10 @@ public class IngestionPipelineResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = PipelineServiceClientResponse.class)))
+                    array =
+                        @ArraySchema(
+                            schema =
+                                @Schema(implementation = PipelineServiceClientResponse.class))))
       })
   public List<PipelineServiceClientResponse> bulkDeployIngestion(
       @Context UriInfo uriInfo,
@@ -1166,7 +1162,8 @@ public class IngestionPipelineResource
       operationId = "listPipelineStatuses",
       summary = "List of pipeline status",
       description =
-          "Get a list of all the pipeline status for the given ingestion pipeline id, optionally filtered by  `startTs` and `endTs` of the profile. "
+          "Get a list of pipeline statuses for the given ingestion pipeline id. Optionally filter by `startTs` and `endTs`. "
+              + "When no time range is provided, the latest 5 runs are returned by default. "
               + "Use cursor-based pagination to limit the number of "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
@@ -1176,7 +1173,7 @@ public class IngestionPipelineResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class)))
+                    schema = @Schema(implementation = PipelineStatusList.class)))
       })
   public ResultList<PipelineStatus> listPipelineStatuses(
       @Context SecurityContext securityContext,
@@ -1188,16 +1185,20 @@ public class IngestionPipelineResource
       @Parameter(
               description = "Filter pipeline status after the given start timestamp",
               schema = @Schema(type = "number"))
-          @NonNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
               description = "Filter pipeline status before the given end timestamp",
               schema = @Schema(type = "number"))
-          @NonNull
           @QueryParam("endTs")
-          Long endTs) {
-    return repository.listPipelineStatus(fqn, startTs, endTs);
+          Long endTs,
+      @Parameter(
+              description = "Maximum number of pipeline statuses to return",
+              schema = @Schema(type = "integer"))
+          @Min(1)
+          @QueryParam("limit")
+          Integer limit) {
+    return repository.listPipelineStatus(fqn, startTs, endTs, limit);
   }
 
   @GET
@@ -1213,7 +1214,7 @@ public class IngestionPipelineResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class)))
+                    schema = @Schema(implementation = PipelineStatus.class)))
       })
   public PipelineStatus getPipelineStatus(
       @Context UriInfo uriInfo,
