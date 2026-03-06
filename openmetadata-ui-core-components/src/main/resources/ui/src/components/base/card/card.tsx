@@ -22,7 +22,7 @@ export const Card = ({ className, children, ...props }: CardProps) => {
     <div
       {...props}
       className={cx(
-        "tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:relative tw:rounded-xl tw:ring-1 tw:ring-inset tw:ring-secondary tw:bg-primary",
+        "tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:relative tw:overflow-hidden tw:rounded-xl tw:ring-1 tw:ring-inset tw:ring-secondary tw:bg-primary",
         className,
       )}
     >
