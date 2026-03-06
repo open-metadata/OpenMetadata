@@ -1541,11 +1541,10 @@ public class EventSubscriptionResourceIT
         new Webhook()
             .withEndpoint(URI.create("http://localhost:8585/api/v1/test/slack/test"))
             .withReceivers(new HashSet<>())
-                .withAuthType(
-                    new WebhookBearerAuth()
-                        .withType(WebhookBearerAuth.Type.BEARER)
-                            .withSecretKey("slackTest")
-                );
+            .withAuthType(
+                new WebhookBearerAuth()
+                    .withType(WebhookBearerAuth.Type.BEARER)
+                    .withSecretKey("slackTest"));
 
     return List.of(
         new SubscriptionDestination()
