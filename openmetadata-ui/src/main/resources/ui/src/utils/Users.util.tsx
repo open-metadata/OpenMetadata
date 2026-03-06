@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag } from 'antd';
+import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
+import { ReactComponent as BotIcon } from '../assets/svg/bot-profile.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import { ERROR_MESSAGE, NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -46,7 +47,16 @@ export const commonUserDetailColumns = (
     dataIndex: 'username',
     key: 'username',
     ellipsis: { showTitle: false },
-    render: (_, record) => userCellRenderer(record),
+    render: (_, record) => (
+      <Space size={4}>
+        {userCellRenderer(record)}
+        {record.isBot && (
+          <Tooltip title={t('label.bot')}>
+            <BotIcon data-testid="bot-icon" height={16} width={16} />
+          </Tooltip>
+        )}
+      </Space>
+    ),
   },
   {
     title: t('label.name'),
@@ -76,7 +86,8 @@ export const commonUserDetailColumns = (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}
+              >
                 {getEntityName(team)}
               </Link>
             ))}
@@ -89,14 +100,16 @@ export const commonUserDetailColumns = (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                        to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}
+                      >
                         {getEntityName(team)}
                       </Link>
                     ))}
                   </Space>
                 }
                 overlayClassName="w-40"
-                trigger="click">
+                trigger="click"
+              >
                 <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
                   listLength - LIST_CAP
                 } more`}</Tag>
@@ -128,7 +141,8 @@ export const commonUserDetailColumns = (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}
+              >
                 {getEntityName(role)}
               </Link>
             ))}
@@ -141,14 +155,16 @@ export const commonUserDetailColumns = (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}
+                      >
                         {getEntityName(role)}
                       </Link>
                     ))}
                   </Space>
                 }
                 overlayClassName="w-40"
-                trigger="click">
+                trigger="click"
+              >
                 <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
                   listLength - LIST_CAP
                 } more`}</Tag>

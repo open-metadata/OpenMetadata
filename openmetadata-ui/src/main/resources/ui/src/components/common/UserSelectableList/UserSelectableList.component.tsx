@@ -28,7 +28,6 @@ import { formatUsersResponse } from '../../../utils/APIUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getTermQuery } from '../../../utils/SearchUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
@@ -53,7 +52,6 @@ export const UserSelectableList = ({
           query: searchText,
           pageNumber: 1,
           pageSize: PAGE_SIZE_MEDIUM,
-          queryFilter: getTermQuery({ isBot: 'false' }),
           searchIndex: SearchIndex.USER,
         });
 
@@ -78,7 +76,6 @@ export const UserSelectableList = ({
         const { data, paging } = await getUsers({
           limit: PAGE_SIZE_MEDIUM,
           after: after ?? undefined,
-          isBot: false,
         });
         const filterData = getEntityReferenceListFromEntities(
           data,
@@ -131,11 +128,13 @@ export const UserSelectableList = ({
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}
-      {...popoverProps}>
+      {...popoverProps}
+    >
       {children ?? (
         <Tooltip
           placement="topRight"
-          title={hasPermission ? '' : t(NO_PERMISSION_FOR_ACTION)}>
+          title={hasPermission ? '' : t(NO_PERMISSION_FOR_ACTION)}
+        >
           <Button
             className="p-0 flex-center"
             data-testid="add-user"
