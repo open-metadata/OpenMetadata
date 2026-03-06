@@ -123,11 +123,9 @@ describe('MUITagSuggestion', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      expect(screen.getByText('Personal')).toBeInTheDocument();
+      expect(screen.getByText('PII')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Personal')).toBeInTheDocument();
-    expect(screen.getByText('PII')).toBeInTheDocument();
   });
 
   it('should search by name and render all matching options from server', async () => {
@@ -198,11 +196,9 @@ describe('MUITagSuggestion', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      expect(screen.getByText('Jest 1')).toBeInTheDocument();
+      expect(screen.getByText('Testing 1')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Jest 1')).toBeInTheDocument();
-    expect(screen.getByText('Testing 1')).toBeInTheDocument();
 
     mockGetTags.mockClear();
 
@@ -243,12 +239,10 @@ describe('MUITagSuggestion', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      expect(screen.getByText('Personal')).toBeInTheDocument();
+      expect(screen.getByText('PII')).toBeInTheDocument();
+      expect(screen.getByText('Sensitive')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Personal')).toBeInTheDocument();
-    expect(screen.getByText('PII')).toBeInTheDocument();
-    expect(screen.getByText('Sensitive')).toBeInTheDocument();
   });
 
   it('should call onChange when a tag is selected', async () => {
@@ -263,7 +257,9 @@ describe('MUITagSuggestion', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('tag-option-PersonalData.Personal')
+      ).toBeInTheDocument();
     });
 
     const option = screen.getByTestId('tag-option-PersonalData.Personal');
