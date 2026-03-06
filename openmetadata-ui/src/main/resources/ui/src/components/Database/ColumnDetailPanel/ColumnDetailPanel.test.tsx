@@ -674,6 +674,10 @@ describe('ColumnDetailPanel', () => {
         />
       );
 
+      await waitFor(() => {
+        expect(getByTestId('tags-section')).toBeInTheDocument();
+      });
+
       const updateButton = getByTestId('update-tags');
       fireEvent.click(updateButton);
 
@@ -693,6 +697,10 @@ describe('ColumnDetailPanel', () => {
           onColumnFieldUpdate={onColumnFieldUpdate}
         />
       );
+
+      await waitFor(() => {
+        expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
+      });
 
       const updateButton = getByTestId('update-glossary-terms');
       fireEvent.click(updateButton);

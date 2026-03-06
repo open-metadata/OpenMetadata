@@ -23,6 +23,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     DataflowEntity,
     DataflowEntityAttribute,
     DataflowExportResponse,
+    DataflowMashup,
     Dataset,
     Datasource,
     DatasourceConnectionDetails,
@@ -136,6 +137,367 @@ MOCK_DATABRICKS_NATIVE_INVALID_EXP = """let
     Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind=  "Database"]}[Data], null, [EnableFolding=true])
 in
     Source"""
+
+MOCK_BIGQUERY_DIRECT_EXP = """let
+    Source = GoogleBigQuery.Database([BillingProject="my-gcp-project"]),
+    project = Source{[Name="my-gcp-project"]}[Data],
+    dataset = project{[Name="my_dataset",Kind="Schema"]}[Data],
+    table = dataset{[Name="my_table",Kind="Table"]}[Data]
+in
+    table"""
+
+EXPECTED_BIGQUERY_DIRECT_RESULT = [
+    {"database": "my-gcp-project", "schema": "my_dataset", "table": "my_table"}
+]
+
+MOCK_BIGQUERY_DIRECT_VIEW_EXP = """let
+    Source = GoogleBigQuery.Database([BillingProject="my-gcp-project"]),
+    project = Source{[Name="my-gcp-project"]}[Data],
+    dataset = project{[Name="analytics",Kind="Schema"]}[Data],
+    view = dataset{[Name="daily_stats",Kind="View"]}[Data]
+in
+    view"""
+
+EXPECTED_BIGQUERY_DIRECT_VIEW_RESULT = [
+    {"database": "my-gcp-project", "schema": "analytics", "table": "daily_stats"}
+]
+
+MOCK_BIGQUERY_NATIVE_QUERY_EXP = (
+    "let\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="my-gcp-project"])'
+    '{[Name="my-gcp-project"]}[Data], '
+    '"SELECT p.id, p.name#(lf)'
+    "FROM `my_dataset.products` AS p#(lf)"
+    'JOIN `my_dataset.categories` AS c ON p.category_id = c.id", '
+    "null, [EnableFolding=true])\n"
+    "in\n"
+    "    Source"
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_RESULT = [
+    {"database": "my-gcp-project", "schema": "my_dataset", "table": "categories"},
+    {"database": "my-gcp-project", "schema": "my_dataset", "table": "products"},
+]
+
+MOCK_BIGQUERY_NATIVE_QUERY_WITH_COMMENTS_EXP = (
+    "let\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[UseStorageApi=false, BillingProject="my-gcp-project"])'
+    '{[Name="my-gcp-project"]}[Data], '
+    '"WITH cte AS (#(lf)'
+    "SELECT id, name#(lf)"
+    "FROM `dataset_a.table_one` t1 -- main table#(lf)"
+    "JOIN `dataset_b.table_two` t2 ON t1.id = t2.fk_id#(tab)#(lf)"
+    ")#(lf)"
+    'SELECT * FROM cte", '
+    "null, [EnableFolding=true])\n"
+    "in\n"
+    "    Source"
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_WITH_COMMENTS_RESULT = [
+    {"database": "my-gcp-project", "schema": "dataset_a", "table": "table_one"},
+    {"database": "my-gcp-project", "schema": "dataset_b", "table": "table_two"},
+]
+
+MOCK_BIGQUERY_NATIVE_QUERY_MULTI_CTE_EXP = (
+    "let\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="prod-project"])'
+    '{[Name="prod-project"]}[Data], '
+    '"WITH staging AS (#(lf)'
+    "SELECT id FROM `raw_data.events`#(lf)"
+    "),#(lf)"
+    "agg AS (#(lf)"
+    "SELECT id FROM staging#(lf)"
+    "JOIN `analytics.dimensions` d ON staging.id = d.event_id#(lf)"
+    ")#(lf)"
+    "SELECT * FROM agg#(lf)"
+    'JOIN `reporting.summary` s ON agg.id = s.id", '
+    "null, [EnableFolding=true])\n"
+    "in\n"
+    "    Source"
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_MULTI_CTE_RESULT = [
+    {"database": "prod-project", "schema": "analytics", "table": "dimensions"},
+    {"database": "prod-project", "schema": "raw_data", "table": "events"},
+    {"database": "prod-project", "schema": "reporting", "table": "summary"},
+]
+
+MOCK_BIGQUERY_INVALID_EXP = """let
+    Source = SomeOther.Database("not-bigquery"),
+    table = Source{[Name="test"]}[Data]
+in
+    table"""
+
+MOCK_BIGQUERY_NATIVE_QUERY_WITH_TRANSFORMS_EXP = (
+    "let\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="my-project"])'
+    '{[Name="my-project"]}[Data], '
+    '"SELECT id, name FROM `sales.orders`", '
+    "null, [EnableFolding=true]),\n"
+    '    #"Replaced Value" = Table.ReplaceValue(Source,"old","new",'
+    'Replacer.ReplaceText,{"name"}),\n'
+    '    #"Changed Type" = Table.TransformColumnTypes('
+    '#"Replaced Value",{{"id", type text}})\n'
+    "in\n"
+    '    #"Changed Type"'
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_WITH_TRANSFORMS_RESULT = [
+    {"database": "my-project", "schema": "sales", "table": "orders"}
+]
+
+MOCK_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_EXP = (
+    "let\n"
+    "/*Original source*/\n"
+    "//    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="my-gcp-project"])'
+    '{[Name="my-gcp-project"]}[Data], '
+    '"SELECT * FROM DW_PowerBI.View_MRS_Business_Performance", '
+    "null, [EnableFolding=true]),\n"
+    "\n"
+    "/*New source - with weeks*/\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="my-gcp-project", '
+    "UseStorageApi=false])"
+    '{[Name="my-gcp-project"]}[Data], '
+    '"with migrated as #(lf)(#(lf)#(lf)'
+    "  SELECT distinct  en.Master_Account_Holder_ID,#(lf)"
+    "case when #(lf)"
+    "          count( distinct case when Financial_institution_ID "
+    "like '%STRIPE%' then 'STRIPE' else 'Payfac' end) > 1#(lf)"
+    "          then 1 else 0 end as migrated_to_stripe,#(lf)"
+    "max(case when Financial_institution_ID like '%STRIPE%' "
+    "then 1 else 0 end ) ind_stripe#(lf)"
+    "FROM DW_Main.View_Fact_MRS_Billing_Postings bp#(lf)"
+    "left join `my-gcp-project."
+    "DW_Main.View_Dim_Entities` en#(lf)"
+    "on en.Entity_ID=bp.Merchant_ID#(lf)"
+    "WHERE 1=1#(lf)"
+    "AND bp.Posting_Type_Name='OPERATION' and "
+    "bp.Posting_Sub_Type_Name='DEBIT'#(lf)"
+    "and bp.Merchant_ID IS NOT NULL#(lf)"
+    "-- and bp.Merchant_ID in (63501474, 65499418)#(lf)"
+    "and bp.Billing_Amount_USD>1--------------new 24.04.2024#(lf)"
+    '--and bp.Financial_institution_ID in (""STRIPEUSEP"",'
+    '""STRIPEHKEP"")#(lf)'
+    "--AND entity_id = 90728196#(lf)"
+    "--and Master_Account_Holder_ID = '001Nv00000HXfp9IAD'#(lf)"
+    "group by all#(lf)"
+    "having count( distinct case when Financial_institution_ID "
+    "like '%STRIPE%' then 'STRIPE' else 'Payfac' end) > 1#(lf)"
+    "          #(lf)#(lf)"
+    ")#(lf)#(lf)#(lf)"
+    "select *#(lf)"
+    ",case when a.Master_Account_ID=m.Master_Account_Holder_ID "
+    "then 1 else 0 end as ind_migrated#(lf)"
+    ",case when      DATE_TRUNC(DATE_SUB(CURRENT_DATE(), "
+    "INTERVAL 1 MONTH), MONTH)=Month_first_date then  1 else 0 "
+    "end as Last_month#(lf)"
+    ",case when      DATE_TRUNC(CURRENT_DATE(), MONTH)<>"
+    "Month_first_date and extract(quarter from  Month_first_date)"
+    "=extract(quarter from  CURRENT_DATE()) and extract(year from "
+    " Month_first_date)=extract(year from  CURRENT_DATE()) then "
+    " 1 else 0 end as Last_FULL_Q#(lf)"
+    ",case when     DATE_TRUNC(CURRENT_DATE(), MONTH)<>"
+    "Month_first_date  and extract(year from  Month_first_date)"
+    "=extract(year from  CURRENT_DATE()) then  1 else 0 end as "
+    "Last_FULL_Y#(lf)from `DA_Business_Analytics_VIEWS_Manual."
+    "View_NEW_MRS_check` a#(lf)"
+    "left join migrated m #(lf)"
+    'on a.Master_Account_ID=m.Master_Account_Holder_ID", '
+    "null, [EnableFolding=true]),\n"
+    '    #"Added Custom" = Table.AddColumn(Source, "Monthyear", '
+    "each Date.StartOfMonth([DayDate])),\n"
+    '    #"Changed Type1" = Table.TransformColumnTypes('
+    '#"Added Custom",{{"Monthyear", type date}})\n'
+    "in\n"
+    '    #"Changed Type1"'
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_RESULT = [
+    {
+        "database": "my-gcp-project",
+        "schema": "DA_Business_Analytics_VIEWS_Manual",
+        "table": "View_NEW_MRS_check",
+    },
+    {
+        "database": "my-gcp-project",
+        "schema": "DW_Main",
+        "table": "View_Fact_MRS_Billing_Postings",
+    },
+    {
+        "database": "my-gcp-project",
+        "schema": "my-gcp-project.DW_Main",
+        "table": "View_Dim_Entities",
+    },
+]
+
+# =============================================================================
+# Dataflow M Document Test Data
+# =============================================================================
+
+# Pattern 1: Sql.Database with inline Query parameter
+MOCK_DATAFLOW_INLINE_QUERY_BLOCK = (
+    "BookToBill_Unite = let\n"
+    '  Source = Sql.Database("dwsql", "dw_integration", '
+    '[Query = "  SELECT [AccountID]#(lf)      ,[ProductID]#(lf)'
+    "  FROM [DW_Integration].[DataWarehouse].[v_FactUnitePurchases]#(lf)"
+    '  where IsDeleted = 0", EnableCrossDatabaseFolding = true]),\n'
+    '  #"Changed column type" = Table.TransformColumnTypes(Source, '
+    '{{"CycleStartDate", type date}})\n'
+    "in\n"
+    '  #"Changed column type";\r\n'
+)
+
+# Pattern 2: Value.NativeQuery with Sql.Database source
+MOCK_DATAFLOW_NATIVE_QUERY_BLOCK = (
+    "AccountSalesForceProperties = let\n"
+    '    Source = Sql.Database("dwsql", "operationaldatastore"),\n'
+    "    AccountSalesForceProperties =\n"
+    "        Value.NativeQuery(\n"
+    "            Source,\n"
+    '            "\n'
+    "            SELECT\n"
+    "                AccountID,\n"
+    "                SalesForceBroadVertical\n"
+    "            FROM Snowflake.AccountSalesForceProperties\n"
+    '            "\n'
+    "        )\n"
+    "in\n"
+    "    AccountSalesForceProperties;\r\n"
+)
+
+# Pattern 3: Sql.Database with Schema/Item catalog access
+MOCK_DATAFLOW_CATALOG_ACCESS_BLOCK = (
+    "Accounts = let\n"
+    '  Source = Sql.Database("dwsql", "dw_datawarehouse"),\n'
+    '  dbo_DimAccounts = Source{[Schema = "dbo", Item = "DimAccounts"]}[Data],\n'
+    '  #"Removed Other Columns" = Table.SelectColumns(dbo_DimAccounts, '
+    '{"AccountKey", "AccountID"})\n'
+    "in\n"
+    '  #"Removed Other Columns";\r\n'
+)
+
+# Non-SQL source (PowerPlatform.Dataflows) - should be skipped
+MOCK_DATAFLOW_NON_SQL_BLOCK = (
+    '#"Channel Group Mapping(Sharepoint)" = let\r\n'
+    "  Source = PowerPlatform.Dataflows([]),\r\n"
+    '  #"Navigation 1" = Source{[Id = "Workspaces"]}[Data]\r\n'
+    "in\r\n"
+    '  #"Navigation 1";\r\n'
+)
+
+# Computed query (no Sql.Database) - should be skipped
+MOCK_DATAFLOW_COMPUTED_BLOCK = (
+    '#"AOP by MRR" = let\n'
+    '  Source = #"AOP by MRR(Sharepoint)",\n'
+    '  #"Changed Type1" = Table.TransformColumnTypes(Source, '
+    '{{"Month", type date}})\n'
+    "in\n"
+    '  #"Changed Type1";\r\n'
+)
+
+# No let block - should be skipped
+MOCK_DATAFLOW_NO_LET_BLOCK = (
+    "UTC_to_PST = let\n"
+    "  Query = (datetimecolumn as datetime) =>\n"
+    "let\n"
+    "  date = DateTime.Date(datetimecolumn)\n"
+    "in\n"
+    "  date;\r\n"
+)
+
+# Full M document combining multiple patterns
+MOCK_DATAFLOW_FULL_DOCUMENT = (
+    "section Section1;\r\n"
+    "shared "
+    + MOCK_DATAFLOW_CATALOG_ACCESS_BLOCK
+    + "shared "
+    + MOCK_DATAFLOW_INLINE_QUERY_BLOCK
+    + "shared "
+    + MOCK_DATAFLOW_NON_SQL_BLOCK
+    + "shared "
+    + MOCK_DATAFLOW_COMPUTED_BLOCK
+    + "shared "
+    + MOCK_DATAFLOW_NATIVE_QUERY_BLOCK
+)
+
+MOCK_DATAFLOW_QUERIES_METADATA = {
+    "Accounts": {"queryId": "q1", "queryName": "Accounts", "loadEnabled": True},
+    "BookToBill_Unite": {
+        "queryId": "q2",
+        "queryName": "BookToBill_Unite",
+        "loadEnabled": True,
+    },
+    "Channel Group Mapping(Sharepoint)": {
+        "queryId": "q3",
+        "queryName": "Channel Group Mapping(Sharepoint)",
+    },
+    "AOP by MRR": {"queryId": "q4", "queryName": "AOP by MRR", "loadEnabled": True},
+    "AccountSalesForceProperties": {
+        "queryId": "q5",
+        "queryName": "AccountSalesForceProperties",
+        "loadEnabled": True,
+    },
+}
+
+MOCK_DATAFLOW_EXPORT = DataflowExportResponse(
+    name="DimensionTables",
+    description="Test dataflow",
+    version="1.0",
+    entities=[
+        DataflowEntity(
+            name="Accounts",
+            description="",
+            attributes=[
+                DataflowEntityAttribute(name="AccountKey", dataType="int64"),
+                DataflowEntityAttribute(name="AccountID", dataType="int64"),
+            ],
+        ),
+        DataflowEntity(
+            name="BookToBill_Unite",
+            description="",
+            attributes=[
+                DataflowEntityAttribute(name="AccountID", dataType="int64"),
+                DataflowEntityAttribute(name="ProductID", dataType="int64"),
+            ],
+        ),
+        DataflowEntity(
+            name="AccountSalesForceProperties",
+            description="",
+            attributes=[
+                DataflowEntityAttribute(name="AccountID", dataType="int64"),
+                DataflowEntityAttribute(
+                    name="SalesForceBroadVertical", dataType="string"
+                ),
+            ],
+        ),
+    ],
+    **{
+        "pbi:mashup": DataflowMashup(
+            document=MOCK_DATAFLOW_FULL_DOCUMENT,
+            queriesMetadata=MOCK_DATAFLOW_QUERIES_METADATA,
+        )
+    },
+)
+
+# Dataflow export with no mashup
+MOCK_DATAFLOW_EXPORT_NO_MASHUP = DataflowExportResponse(
+    name="EmptyDataflow",
+    entities=[],
+)
+
+# Dataflow export with empty document
+MOCK_DATAFLOW_EXPORT_EMPTY_DOC = DataflowExportResponse(
+    name="EmptyDocDataflow",
+    entities=[],
+    **{"pbi:mashup": DataflowMashup(document="", queriesMetadata={})},
+)
 
 mock_config = {
     "source": {
@@ -385,6 +747,63 @@ class PowerBIUnitTest(TestCase):
             MOCK_DATABRICKS_NATIVE_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL
         )
         self.assertIsNone(result)
+
+        # Test with valid BigQuery direct navigation source
+        table = PowerBiTable(name="test_table")
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_DIRECT_EXP, MOCK_DASHBOARD_DATA_MODEL, table
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_DIRECT_RESULT)
+
+        # Test with BigQuery direct navigation source (View)
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_DIRECT_VIEW_EXP, MOCK_DASHBOARD_DATA_MODEL, table
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_DIRECT_VIEW_RESULT)
+
+        # Test with BigQuery Value.NativeQuery source
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL, table
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_RESULT)
+
+        # Test with BigQuery NativeQuery containing SQL comments and #(tab)
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_WITH_COMMENTS_EXP,
+            MOCK_DASHBOARD_DATA_MODEL,
+            table,
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_WITH_COMMENTS_RESULT)
+
+        # Test with BigQuery NativeQuery with multiple CTEs
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_MULTI_CTE_EXP,
+            MOCK_DASHBOARD_DATA_MODEL,
+            table,
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_MULTI_CTE_RESULT)
+
+        # Test with non-BigQuery expression returns None
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL, table
+        )
+        self.assertIsNone(result)
+
+        # Test with BigQuery NativeQuery followed by Table transforms
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_WITH_TRANSFORMS_EXP,
+            MOCK_DASHBOARD_DATA_MODEL,
+            table,
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_WITH_TRANSFORMS_RESULT)
+
+        # Test with BigQuery NativeQuery containing block comments and commented-out source
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_EXP,
+            MOCK_DASHBOARD_DATA_MODEL,
+            table,
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_RESULT)
 
     @pytest.mark.order(2)
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_reference_by_email")
@@ -1331,3 +1750,416 @@ class PowerBIUnitTest(TestCase):
         assert len(child_column.name.root) == 256
         assert child_column.name.root == long_column_name[:256]
         assert child_column.displayName == long_column_name
+
+    @pytest.mark.order(30)
+    def test_parse_sql_source_pattern1_inline_query(self):
+        """
+        Pattern 1: Sql.Database("server", "db", [Query = "SQL"])
+        """
+        result = self.powerbi._parse_sql_source(MOCK_DATAFLOW_INLINE_QUERY_BLOCK)
+        assert result is not None
+        assert len(result) >= 1
+        table_info = result[0]
+        assert table_info["database"] == "DW_Integration"
+        assert table_info["schema"] == "DataWarehouse"
+        assert table_info["table"] == "v_FactUnitePurchases"
+
+    @pytest.mark.order(31)
+    def test_parse_sql_source_pattern2_native_query(self):
+        """
+        Pattern 2: Value.NativeQuery(Source, "SQL") with Sql.Database source
+        """
+        result = self.powerbi._parse_sql_source(MOCK_DATAFLOW_NATIVE_QUERY_BLOCK)
+        assert result is not None
+        assert len(result) >= 1
+        table_info = result[0]
+        assert table_info["database"] == "operationaldatastore"
+        assert table_info["table"] == "AccountSalesForceProperties"
+
+    @pytest.mark.order(32)
+    def test_parse_sql_source_pattern3_catalog_access(self):
+        """
+        Pattern 3: Sql.Database("server", "db") + Source{[Schema="x", Item="y"]}[Data]
+        """
+        result = self.powerbi._parse_sql_source(MOCK_DATAFLOW_CATALOG_ACCESS_BLOCK)
+        assert result is not None
+        assert len(result) == 1
+        assert result[0] == {
+            "database": "dw_datawarehouse",
+            "schema": "dbo",
+            "table": "DimAccounts",
+        }
+
+    @pytest.mark.order(33)
+    def test_parse_sql_source_non_sql(self):
+        """
+        Non-SQL sources (PowerPlatform.Dataflows) should return None
+        """
+        result = self.powerbi._parse_sql_source(MOCK_DATAFLOW_NON_SQL_BLOCK)
+        assert result is None
+
+    @pytest.mark.order(34)
+    def test_parse_sql_source_computed_query(self):
+        """
+        Computed queries without Sql.Database should return None
+        """
+        result = self.powerbi._parse_sql_source(MOCK_DATAFLOW_COMPUTED_BLOCK)
+        assert result is None
+
+    @pytest.mark.order(35)
+    def test_parse_dataflow_m_document_full(self):
+        """
+        Test full M document parsing with loadEnabled filtering.
+        Should extract: Accounts (pattern 3), BookToBill_Unite (pattern 1),
+        AccountSalesForceProperties (pattern 2).
+        Should skip: Channel Group Mapping(Sharepoint) (no loadEnabled),
+        AOP by MRR (computed, no Sql.Database).
+        """
+        result = self.powerbi._parse_dataflow_m_document(MOCK_DATAFLOW_EXPORT)
+        assert result is not None
+        entity_names = [r["entity_name"] for r in result]
+
+        assert "Accounts" in entity_names
+        assert "BookToBill_Unite" in entity_names
+        assert "AccountSalesForceProperties" in entity_names
+        assert "Channel Group Mapping(Sharepoint)" not in entity_names
+        assert "AOP by MRR" not in entity_names
+
+        accounts_entry = next(r for r in result if r["entity_name"] == "Accounts")
+        assert accounts_entry["tables"][0]["schema"] == "dbo"
+        assert accounts_entry["tables"][0]["table"] == "DimAccounts"
+        assert accounts_entry["sql"] is None
+
+        booktobill_entry = next(
+            r for r in result if r["entity_name"] == "BookToBill_Unite"
+        )
+        assert booktobill_entry["tables"][0]["database"] == "DW_Integration"
+        assert booktobill_entry["sql"] is not None
+
+    @pytest.mark.order(36)
+    def test_parse_dataflow_m_document_no_mashup(self):
+        """
+        Dataflow export with no mashup should return empty list
+        """
+        result = self.powerbi._parse_dataflow_m_document(MOCK_DATAFLOW_EXPORT_NO_MASHUP)
+        assert result == []
+
+    @pytest.mark.order(37)
+    def test_parse_dataflow_m_document_empty_document(self):
+        """
+        Dataflow export with empty document should return empty list
+        """
+        result = self.powerbi._parse_dataflow_m_document(MOCK_DATAFLOW_EXPORT_EMPTY_DOC)
+        assert result == []
+
+    @pytest.mark.order(38)
+    def test_parse_dataflow_m_document_load_enabled_filtering(self):
+        """
+        Test that entities without loadEnabled=true are filtered out
+        """
+        doc = "section Section1;\r\n" "shared " + MOCK_DATAFLOW_CATALOG_ACCESS_BLOCK
+        queries_metadata_disabled = {
+            "Accounts": {
+                "queryId": "q1",
+                "queryName": "Accounts",
+                "loadEnabled": False,
+            },
+        }
+        export = DataflowExportResponse(
+            name="TestDataflow",
+            entities=[],
+            **{
+                "pbi:mashup": DataflowMashup(
+                    document=doc,
+                    queriesMetadata=queries_metadata_disabled,
+                )
+            },
+        )
+        result = self.powerbi._parse_dataflow_m_document(export)
+        assert result == []
+
+    @pytest.mark.order(39)
+    def test_extract_tables_from_sql_with_powerbi_special_chars(self):
+        """
+        Test SQL extraction with PowerBI special characters #(lf), #(tab), ""
+        """
+        result = self.powerbi._extract_tables_from_sql(
+            "SELECT [AccountID]#(lf)FROM [DW_Integration].[DataWarehouse].[v_FactUnitePurchases]#(lf)where IsDeleted = 0",
+            "dw_integration",
+            "dwsql",
+        )
+        assert result is not None
+        assert len(result) >= 1
+        tables = [t["table"] for t in result]
+        assert "v_FactUnitePurchases" in tables
+
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_empty(self):
+        """
+        Test SQL extraction with empty SQL
+        """
+        result = self.powerbi._extract_tables_from_sql("", "db", "server")
+        assert result is None
+
+    @pytest.mark.order(41)
+    def test_create_dataflow_table_lineage(self):
+        """
+        Test end-to-end dataflow table lineage creation
+        """
+        from unittest.mock import MagicMock
+
+        mock_table_entity = MagicMock()
+        mock_table_entity.id = uuid.uuid4()
+        mock_table_entity.fullyQualifiedName = (
+            "sql_service.dw_datawarehouse.dbo.DimAccounts"
+        )
+        mock_table_entity.columns = [
+            Column(
+                name="AccountKey",
+                dataType=DataType.INT,
+                fullyQualifiedName="sql_service.dw_datawarehouse.dbo.DimAccounts.AccountKey",
+            ),
+        ]
+
+        mock_datamodel_entity = DashboardDataModel(
+            name="test_dataflow_id",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataFlow.value,
+            columns=[
+                Column(
+                    name="Accounts",
+                    dataType=DataType.TABLE,
+                    children=[
+                        Column(
+                            name="AccountKey",
+                            dataType=DataType.INT,
+                            fullyQualifiedName="service.test_dataflow_id.Accounts.AccountKey",
+                        ),
+                        Column(
+                            name="AccountID",
+                            dataType=DataType.INT,
+                            fullyQualifiedName="service.test_dataflow_id.Accounts.AccountID",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        mock_datamodel = Dataflow(
+            name="DimensionTables",
+            objectId="test_dataflow_id",
+        )
+
+        with patch.object(
+            self.powerbi.metadata,
+            "search_in_any_service",
+            return_value=mock_table_entity,
+        ) as mock_search, patch.object(
+            self.powerbi, "_get_add_lineage_request"
+        ) as mock_lineage_request:
+            mock_lineage_request.return_value = MagicMock()
+
+            results = list(
+                self.powerbi.create_dataflow_table_lineage(
+                    datamodel=mock_datamodel,
+                    datamodel_entity=mock_datamodel_entity,
+                    dataflow_export=MOCK_DATAFLOW_EXPORT,
+                    db_service_prefix=None,
+                )
+            )
+
+            assert len(results) > 0
+            assert mock_search.call_count >= 1
+            assert mock_lineage_request.call_count >= 1
+
+    @pytest.mark.order(42)
+    def test_create_dataflow_table_lineage_no_parsed_entities(self):
+        """
+        Test that lineage creation returns empty when no entities are parsed
+        """
+        mock_datamodel = Dataflow(
+            name="EmptyDataflow",
+            objectId="empty_id",
+        )
+        mock_datamodel_entity = DashboardDataModel(
+            name="empty_id",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataFlow.value,
+            columns=[],
+        )
+
+        results = list(
+            self.powerbi.create_dataflow_table_lineage(
+                datamodel=mock_datamodel,
+                datamodel_entity=mock_datamodel_entity,
+                dataflow_export=MOCK_DATAFLOW_EXPORT_NO_MASHUP,
+                db_service_prefix=None,
+            )
+        )
+        assert results == []
+
+    @pytest.mark.order(43)
+    def test_get_dataflow_column_lineage(self):
+        """
+        Test column lineage matching between database table and dataflow entity
+        """
+        from unittest.mock import MagicMock
+
+        mock_table_entity = MagicMock()
+        mock_table_entity.columns = [
+            Column(
+                name="AccountKey",
+                dataType=DataType.INT,
+                fullyQualifiedName="service.db.schema.DimAccounts.AccountKey",
+            ),
+            Column(
+                name="AccountID",
+                dataType=DataType.INT,
+                fullyQualifiedName="service.db.schema.DimAccounts.AccountID",
+            ),
+            Column(
+                name="UnmatchedCol",
+                dataType=DataType.VARCHAR,
+                fullyQualifiedName="service.db.schema.DimAccounts.UnmatchedCol",
+            ),
+        ]
+
+        mock_datamodel_entity = DashboardDataModel(
+            name="test_dataflow_id",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataFlow.value,
+            columns=[
+                Column(
+                    name="Accounts",
+                    dataType=DataType.TABLE,
+                    children=[
+                        Column(
+                            name="AccountKey",
+                            dataType=DataType.INT,
+                            fullyQualifiedName="svc.test_dataflow_id.Accounts.AccountKey",
+                        ),
+                        Column(
+                            name="AccountID",
+                            dataType=DataType.INT,
+                            fullyQualifiedName="svc.test_dataflow_id.Accounts.AccountID",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        result = self.powerbi._get_dataflow_column_lineage(
+            table_entity=mock_table_entity,
+            datamodel_entity=mock_datamodel_entity,
+            entity_name="Accounts",
+            entity_attributes=["AccountKey", "AccountID"],
+        )
+
+        assert len(result) == 2
+        assert all(isinstance(cl, ColumnLineage) for cl in result)
+        from_cols = [cl.fromColumns[0].root for cl in result]
+        assert "service.db.schema.DimAccounts.AccountKey" in from_cols
+        assert "service.db.schema.DimAccounts.AccountID" in from_cols
+
+    @pytest.mark.order(44)
+    def test_get_dataflow_column_lineage_no_matches(self):
+        """
+        Test column lineage when no columns match
+        """
+        from unittest.mock import MagicMock
+
+        mock_table_entity = MagicMock()
+        mock_table_entity.columns = [
+            Column(
+                name="SomeOtherCol",
+                dataType=DataType.INT,
+                fullyQualifiedName="service.db.schema.Table.SomeOtherCol",
+            ),
+        ]
+
+        mock_datamodel_entity = DashboardDataModel(
+            name="test_dataflow_id",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataFlow.value,
+            columns=[
+                Column(
+                    name="Accounts",
+                    dataType=DataType.TABLE,
+                    children=[
+                        Column(
+                            name="AccountKey",
+                            dataType=DataType.INT,
+                            fullyQualifiedName="svc.test_dataflow_id.Accounts.AccountKey",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        result = self.powerbi._get_dataflow_column_lineage(
+            table_entity=mock_table_entity,
+            datamodel_entity=mock_datamodel_entity,
+            entity_name="Accounts",
+            entity_attributes=["AccountKey"],
+        )
+
+        assert result == []
+
+    @pytest.mark.order(45)
+    def test_parse_dataflow_m_document_quoted_entity_names(self):
+        """
+        Test that quoted entity names like #"Channel Categories" are parsed correctly
+        """
+        doc = (
+            "section Section1;\r\n"
+            'shared #"Channel Categories" = let\n'
+            '  Source = Sql.Database("dwsql", "dw_datawarehouse"),\n'
+            '  dbo_DimChannels = Source{[Schema = "dbo", Item = "DimChannels"]}[Data]\n'
+            "in\n"
+            "  dbo_DimChannels;\r\n"
+        )
+        queries_metadata = {
+            "Channel Categories": {
+                "queryId": "q1",
+                "queryName": "Channel Categories",
+                "loadEnabled": True,
+            },
+        }
+        export = DataflowExportResponse(
+            name="TestDataflow",
+            entities=[],
+            **{
+                "pbi:mashup": DataflowMashup(
+                    document=doc,
+                    queriesMetadata=queries_metadata,
+                )
+            },
+        )
+        result = self.powerbi._parse_dataflow_m_document(export)
+        assert len(result) == 1
+        assert result[0]["entity_name"] == "Channel Categories"
+        assert result[0]["tables"][0]["table"] == "DimChannels"
+        assert result[0]["tables"][0]["schema"] == "dbo"
+
+    @pytest.mark.order(46)
+    def test_parse_sql_source_multiple_databases(self):
+        """
+        Test M expression with Sql.Database pointing to a different database
+        than the inline query references
+        """
+        block = (
+            "CustomerMapping = let\n"
+            '  Source = Sql.Database("dwsql", "dw_datawarehouse", '
+            '[Query = ";WITH A as (SELECT [CustomerID] '
+            "FROM [DW_DataWarehouse].[dbo].[DimAccounts] "
+            'GROUP BY [CustomerID]) SELECT CustomerID FROM A"'
+            ", CreateNavigationProperties = false]),\n"
+            '  #"Changed column type" = Table.TransformColumnTypes(Source, '
+            '{{"CustomerCreateDate", type date}})\n'
+            "in\n"
+            '  #"Changed column type";\r\n'
+        )
+        result = self.powerbi._parse_sql_source(block)
+        assert result is not None
+        tables = [t["table"] for t in result]
+        assert "DimAccounts" in tables

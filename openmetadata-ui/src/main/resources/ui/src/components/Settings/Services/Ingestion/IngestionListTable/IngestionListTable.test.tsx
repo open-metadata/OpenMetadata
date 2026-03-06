@@ -21,7 +21,10 @@ import {
   mockIngestionListTableProps,
 } from '../../../../../mocks/IngestionListTable.mock';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
-import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
+import {
+  deleteIngestionPipelineById,
+  getRunHistoryForPipeline,
+} from '../../../../../rest/ingestionPipelineAPI';
 import IngestionListTable from './IngestionListTable';
 
 const mockGetEntityPermissionByFqn = jest.fn();
@@ -69,7 +72,8 @@ jest.mock('./PipelineActions/PipelineActions', () =>
           id: 'id',
           name: 'name',
           state: 'waiting',
-        })}>
+        })}
+      >
         handleDeleteSelection
       </button>
     </div>
@@ -320,6 +324,16 @@ describe('Ingestion', () => {
       2,
       'ingestionPipeline',
       mockIngestionData.fullyQualifiedName
+    );
+    expect(getRunHistoryForPipeline).toHaveBeenNthCalledWith(
+      1,
+      mockESIngestionData.fullyQualifiedName,
+      { limit: 5 }
+    );
+    expect(getRunHistoryForPipeline).toHaveBeenNthCalledWith(
+      2,
+      mockIngestionData.fullyQualifiedName,
+      { limit: 5 }
     );
   });
 });
