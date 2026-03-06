@@ -1521,12 +1521,18 @@ class PowerbiSource(DashboardServiceSource):
                         )
                         return
 
-                    fqn_search_string = build_es_fqn_search_string(
-                        service_name=prefix_service_name or "*",
-                        table_name=(prefix_table_name or table_name),
-                        schema_name=(prefix_schema_name or schema_name),
-                        database_name=(prefix_database_name or database_name),
-                    )
+                    try:
+                        fqn_search_string = build_es_fqn_search_string(
+                            service_name=prefix_service_name or "*",
+                            table_name=(prefix_table_name or table_name),
+                            schema_name=(prefix_schema_name or schema_name),
+                            database_name=(prefix_database_name or database_name),
+                        )
+                    except ValueError:
+                        logger.debug(
+                            f"Skipping table '{table_name}' with invalid FQN characters"
+                        )
+                        continue
                     table_entity = self.metadata.search_in_any_service(
                         entity_type=Table,
                         fqn_search_string=fqn_search_string,
