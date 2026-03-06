@@ -10,13 +10,13 @@ from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata as _OMeta
 
 JsonDict: TypeAlias = dict[str, Any]
-UuidLike: TypeAlias = str | UUID
+UuidLike: TypeAlias = str | UUID | _basic.Uuid
 
 OMetaClient: TypeAlias = _OMeta[BaseModel, BaseModel]
 
 
 def ensure_uuid(value: UuidLike) -> _basic.Uuid:
-    """Convert any UUID-like value to the schema Uuid type, safely handling basic.Uuid inputs."""
+    """Convert any UUID-like value to the schema Uuid type."""
     if isinstance(value, _basic.Uuid):
         return value
     if isinstance(value, UUID):
