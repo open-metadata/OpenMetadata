@@ -116,8 +116,7 @@ const App: FC = () => {
               <ErrorBoundary>
                 <AntDConfigProvider>
                   <UntitledUIThemeProvider
-                    brandColors={applicationConfig?.customTheme}
-                  >
+                    brandColors={applicationConfig?.customTheme}>
                     <ThemeProvider theme={muiTheme}>
                       <GlobalStyles styles={{ html: { fontSize: '14px' } }} />
                       <SnackbarProvider
@@ -133,8 +132,7 @@ const App: FC = () => {
                           horizontal: 'right',
                         }}
                         autoHideDuration={6000}
-                        maxSnack={3}
-                      >
+                        maxSnack={3}>
                         <AuthProvider childComponentType={AppRouter}>
                           <TourProvider>
                             <WebAnalyticsProvider>

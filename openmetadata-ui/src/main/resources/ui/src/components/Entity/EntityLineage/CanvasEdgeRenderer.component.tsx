@@ -178,8 +178,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     <div
       className="lineage-canvas-container"
       ref={containerRef}
-      style={{ pointerEvents: 'none' }}
-    >
+      style={{ pointerEvents: 'none' }}>
       <canvas
         ref={canvasRef}
         style={{ position: 'absolute', top: 0, left: 0 }}

@@ -79,8 +79,7 @@ const CustomPropertiesSection = ({
         <ErrorPlaceHolderNew
           className="text-grey-14"
           icon={<AddPlaceHolderIcon height={100} width={100} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
-        >
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <div className="p-t-md text-justify no-data-placeholder">
             <Transi18next
               i18nKey="message.no-custom-properties-entity"
@@ -112,8 +111,7 @@ const CustomPropertiesSection = ({
       <div className="lineage-items-list">
         <ErrorPlaceHolderNew
           className="text-grey-14 permission-error-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        >
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}>
           <Transi18next
             i18nKey="message.no-access-placeholder"
             renderElement={<span />}

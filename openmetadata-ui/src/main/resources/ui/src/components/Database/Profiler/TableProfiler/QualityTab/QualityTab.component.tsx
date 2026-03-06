@@ -381,8 +381,7 @@ export const QualityTab = () => {
             <Tabs
               className="tw:w-max"
               selectedKey={qualityTab}
-              onSelectionChange={handleTabChange}
-            >
+              onSelectionChange={handleTabChange}>
               <Tabs.List size="sm" type="button-border">
                 {tabs.map(({ label, key }) => (
                   <Tabs.Item id={key} key={key}>

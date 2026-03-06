@@ -121,18 +121,15 @@ const ActivityFeedCardNew = ({
         <UserPopOverCard
           showUserName
           showUserProfile={false}
-          userName={feed.createdBy as string}
-        >
+          userName={feed.createdBy as string}>
           <Link
             className="break-all text-body header-link"
             data-testid="entity-link"
-            to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}
-          >
+            to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
             <span
               className={classNames('text-sm', {
                 'max-one-line': !showThread,
-              })}
-            >
+              })}>
               {feed?.entityRef
                 ? getEntityName(feed.entityRef)
                 : entityDisplayName(entityType, entityFQN)}
@@ -146,8 +143,7 @@ const ActivityFeedCardNew = ({
           <div
             className={classNames('text-sm flex-center gap-1', {
               'max-one-line': !showThread,
-            })}
-          >
+            })}>
             {searchClassBase.getEntityIcon(entityType ?? '') && (
               <span className="w-4 h-4 d-inline-flex align-middle">
                 {searchClassBase.getEntityIcon(entityType ?? '')}
@@ -156,8 +152,7 @@ const ActivityFeedCardNew = ({
             <Link
               className="break-word text-sm header-link"
               data-testid="entity-link"
-              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}
-            >
+              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
               <span>
                 {feed?.entityRef
                   ? getEntityName(feed.entityRef)
@@ -179,12 +174,10 @@ const ActivityFeedCardNew = ({
     <Tooltip
       color="white"
       overlayClassName="timestamp-tooltip"
-      title={formatDateTime(post.postTs)}
-    >
+      title={formatDateTime(post.postTs)}>
       <Typography.Text
         className="feed-card-header-v2-timestamp"
-        data-testid="timestamp"
-      >
+        data-testid="timestamp">
         {getRelativeTime(post.postTs)}
       </Typography.Text>
     </Tooltip>
@@ -238,8 +231,7 @@ const ActivityFeedCardNew = ({
           { 'activity-feed-reply-card': isPost },
           { 'active-card is-active': isActive }
         )}
-        data-testid="feed-card-v2-sidebar"
-      >
+        data-testid="feed-card-v2-sidebar">
         <Space align="start" className="w-full">
           <div className="flex gap-2 w-full">
             <div className="flex-center flex-col">
@@ -261,21 +253,18 @@ const ActivityFeedCardNew = ({
                       'header-container-card': !showThread,
                       'header-container-right-panel': showThread,
                     }
-                  )}
-                >
+                  )}>
                   <div
                     className={classNames('mr-2', {
                       'activity-feed-user-name': !isPost,
                       'reply-card-user-name': isPost,
-                    })}
-                  >
+                    })}>
                     <UserPopOverCard
                       className={classNames('mr-2', {
                         'activity-feed-user-name': !isPost,
                         'reply-card-user-name': isPost,
                       })}
-                      userName={feed.createdBy ?? ''}
-                    >
+                      userName={feed.createdBy ?? ''}>
                       <Link to={getUserPath(feed.createdBy ?? '')}>
                         {getEntityName(user)}
                       </Link>
@@ -296,12 +285,10 @@ const ActivityFeedCardNew = ({
                       ' items-center':
                         showThread &&
                         feed.entityRef?.type !== EntityType.CONTAINER,
-                    })}
-                  >
+                    })}>
                     <Typography.Text
                       className="card-style-feed-header text-sm"
-                      data-testid="headerText"
-                    >
+                      data-testid="headerText">
                       {feedHeaderText}
                     </Typography.Text>
 
@@ -352,8 +339,7 @@ const ActivityFeedCardNew = ({
         { 'activity-feed-reply-card': isPost },
         { 'active-card is-active': isActive }
       )}
-      data-testid="feed-card-v2-sidebar"
-    >
+      data-testid="feed-card-v2-sidebar">
       <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space
@@ -361,8 +347,7 @@ const ActivityFeedCardNew = ({
               'items-center': !showThread,
               'items-start':
                 showThread && feed.entityRef?.type === EntityType.CONTAINER,
-            })}
-          >
+            })}>
             <UserPopOverCard userName={feed.createdBy ?? ''}>
               <div className="d-flex items-center">
                 <ProfilePicture
@@ -378,21 +363,18 @@ const ActivityFeedCardNew = ({
                   'header-container-card': !showThread,
                   'header-container-right-panel': showThread,
                 })}
-                size={0}
-              >
+                size={0}>
                 <Typography.Text
                   className={classNames('mr-2', {
                     'activity-feed-user-name': !isPost,
                     'reply-card-user-name': isPost,
-                  })}
-                >
+                  })}>
                   <UserPopOverCard
                     className={classNames('mr-2', {
                       'activity-feed-user-name': !isPost,
                       'reply-card-user-name': isPost,
                     })}
-                    userName={feed.createdBy ?? ''}
-                  >
+                    userName={feed.createdBy ?? ''}>
                     <Link to={getUserPath(feed.createdBy ?? '')}>
                       {getEntityName(user)}
                     </Link>
@@ -413,12 +395,10 @@ const ActivityFeedCardNew = ({
                     ' items-center':
                       showThread &&
                       feed.entityRef?.type !== EntityType.CONTAINER,
-                  })}
-                >
+                  })}>
                   <Typography.Text
                     className="card-style-feed-header text-sm"
-                    data-testid="headerText"
-                  >
+                    data-testid="headerText">
                     {feedHeaderText}
                   </Typography.Text>
 

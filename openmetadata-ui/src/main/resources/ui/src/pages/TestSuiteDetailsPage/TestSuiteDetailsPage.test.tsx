@@ -61,8 +61,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         className={className}
         data-testid="dialog"
         role="dialog"
-        {...props}
-      >
+        {...props}>
         {children}
       </div>
     ),
@@ -152,8 +151,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
               key={item.id}
               role="tab"
               type="button"
-              onClick={() => onSelectionChange?.(item.id)}
-            >
+              onClick={() => onSelectionChange?.(item.id)}>
               {item.label}
             </button>
           ))}
@@ -252,8 +250,7 @@ jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
       Description.component
       <button
         data-testid="edit-description-btn"
-        onClick={() => onDescriptionUpdate('Updated description')}
-      >
+        onClick={() => onDescriptionUpdate('Updated description')}>
         Edit Description
       </button>
     </div>
@@ -267,8 +264,9 @@ jest.mock(
         DataQualityTab.component
         <button
           data-testid="update-test-btn"
-          onClick={() => onTestUpdate?.({ id: 'test-1', name: 'updated-test' })}
-        >
+          onClick={() =>
+            onTestUpdate?.({ id: 'test-1', name: 'updated-test' })
+          }>
           Update Test
         </button>
       </div>
@@ -314,8 +312,7 @@ jest.mock(
           <span data-testid="entity-display-name">{displayName}</span>
           <button
             data-testid="edit-display-name-btn"
-            onClick={() => onEditDisplayName?.({ displayName: 'New Name' })}
-          >
+            onClick={() => onEditDisplayName?.({ displayName: 'New Name' })}>
             Edit Name
           </button>
         </div>
@@ -329,8 +326,7 @@ jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => {
         DomainLabel.component
         <button
           data-testid="update-domain-btn"
-          onClick={() => onUpdate?.({ id: 'new-domain', type: 'domain' })}
-        >
+          onClick={() => onUpdate?.({ id: 'new-domain', type: 'domain' })}>
           Update Domain
         </button>
       </div>
@@ -344,8 +340,7 @@ jest.mock('../../components/common/OwnerLabel/OwnerLabel.component', () => ({
       OwnerLabel.component
       <button
         data-testid="update-owner-btn"
-        onClick={() => onUpdate?.([{ id: 'new-owner', type: 'user' }])}
-      >
+        onClick={() => onUpdate?.([{ id: 'new-owner', type: 'user' }])}>
         Update Owner
       </button>
     </div>
@@ -377,8 +372,7 @@ jest.mock(
         AddTestCaseList.component
         <button
           data-testid="submit-test-cases-btn"
-          onClick={() => onSubmit(mockTestCases)}
-        >
+          onClick={() => onSubmit(mockTestCases)}>
           Submit
         </button>
         <button data-testid="cancel-test-cases-btn" onClick={onCancel}>

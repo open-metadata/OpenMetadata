@@ -203,8 +203,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
               className={`description-text ${
                 isExpanded ? 'expanded' : 'collapsed'
               }`}
-              ref={containerRef}
-            >
+              ref={containerRef}>
               <RichTextEditorPreviewerV1
                 enableSeeMoreVariant={false}
                 isDescriptionExpanded={isExpanded}
@@ -215,8 +214,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
               <button
                 className="show-more-button"
                 type="button"
-                onClick={toggleExpanded}
-              >
+                onClick={toggleExpanded}>
                 {isExpanded ? t('label.show-less') : t('label.show-more')}
               </button>
             )}

@@ -95,8 +95,7 @@ jest.mock('antd', () => {
           className={className}
           data-span={span}
           data-testid="col"
-          {...props}
-        >
+          {...props}>
           {children}
         </div>
       )),
@@ -107,8 +106,7 @@ jest.mock('antd', () => {
           className={className}
           data-gutter={gutter}
           data-testid="row"
-          {...props}
-        >
+          {...props}>
           {children}
         </div>
       )),
@@ -135,8 +133,7 @@ jest.mock('antd', () => {
             className={className}
             data-ellipsis={ellipsis}
             data-testid="typography-text"
-            {...props}
-          >
+            {...props}>
             {children}
           </span>
         )),
@@ -146,8 +143,7 @@ jest.mock('antd', () => {
           <p
             className={className}
             data-testid="typography-paragraph"
-            {...props}
-          >
+            {...props}>
             {children}
           </p>
         )),
@@ -167,8 +163,7 @@ jest.mock('../../../common/DataQualitySection', () => {
             data-testid={`test-${test.type}`}
             key={index}
             role="button"
-            onClick={() => onFilterChange?.(test.type)}
-          >
+            onClick={() => onFilterChange?.(test.type)}>
             {test.count}
           </div>
         ))}

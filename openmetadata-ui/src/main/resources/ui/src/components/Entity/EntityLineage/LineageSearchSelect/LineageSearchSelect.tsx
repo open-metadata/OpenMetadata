@@ -79,8 +79,7 @@ const LineageSearchSelect = () => {
           label: (
             <div
               className="d-flex items-center gap-1"
-              data-testid={`option-${column.fullyQualifiedName}`}
-            >
+              data-testid={`option-${column.fullyQualifiedName}`}>
               <div className="d-flex items-center gap-1">
                 <img
                   alt={node.serviceType}

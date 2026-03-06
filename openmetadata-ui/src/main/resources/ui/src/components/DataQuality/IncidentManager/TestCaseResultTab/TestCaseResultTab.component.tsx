@@ -76,8 +76,7 @@ function ParameterTooltipText({
       overlayClassName="test-case-result-tooltip"
       placement="bottomLeft"
       showArrow={false}
-      title={title}
-    >
+      title={title}>
       <span className={className}>{title}</span>
     </Tooltip>
   );
@@ -295,8 +294,7 @@ const TestCaseResultTab = () => {
         value: (
           <label
             className="parameter-value-text tw:inline-flex"
-            data-testid="dynamic-assertion"
-          >
+            data-testid="dynamic-assertion">
             <StarIcon aria-hidden className="tw:h-3 tw:w-3 tw:mr-1 tw:mt-1" />{' '}
             {t('label.dynamic-assertion')}
           </label>
@@ -356,8 +354,7 @@ const TestCaseResultTab = () => {
                           ? 'parameter-row-cell parameter-row-cell--full'
                           : 'parameter-row-cell parameter-row-cell--half'
                       }
-                      key={item.label ?? ''}
-                    >
+                      key={item.label ?? ''}>
                       <div className="parameter-row-cell-content">
                         {item.label && (
                           <ParameterTooltipText
@@ -443,13 +440,11 @@ const TestCaseResultTab = () => {
   return (
     <div
       className="p-md test-case-result-tab tw:grid tw:w-full tw:grid-cols-12 tw:gap-2.5"
-      data-testid="test-case-result-tab-container"
-    >
+      data-testid="test-case-result-tab-container">
       <div
         className={`transition-all-200ms ${
           isTabExpanded ? 'tw:col-span-9' : 'tw:col-span-12'
-        }`}
-      >
+        }`}>
         <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
           <div className="tw:w-full">
             <DescriptionV1
@@ -468,8 +463,7 @@ const TestCaseResultTab = () => {
                 <div className="tw:mb-4 tw:flex tw:flex-row tw:items-center tw:gap-1">
                   <Typography
                     as="span"
-                    className="parameter-title tw:text-body"
-                  >
+                    className="parameter-title tw:text-body">
                     {t('label.parameter')}
                   </Typography>
                   {hasEditPermission &&
@@ -501,14 +495,12 @@ const TestCaseResultTab = () => {
                 <div
                   className="sql-expression-container"
                   data-testid="sql-expression-container"
-                  key={param.name}
-                >
+                  key={param.name}>
                   <div className="tw:flex tw:w-full tw:flex-col tw:gap-1">
                     <div className="tw:flex tw:flex-row tw:items-center tw:gap-1">
                       <Typography
                         as="span"
-                        className="parameter-title tw:text-body"
-                      >
+                        className="parameter-title tw:text-body">
                         {startCase(param.name)}
                       </Typography>
                       {hasEditPermission && (

@@ -77,8 +77,7 @@ const DimensionalityHeatmap = ({
   return (
     <div
       aria-label={t('label.dimensionality')}
-      className="dimensionality-heatmap tw:w-full"
-    >
+      className="dimensionality-heatmap tw:w-full">
       <div className="dimensionality-heatmap__layout tw:flex">
         <div className="dimensionality-heatmap__labels-column tw:shrink-0">
           <div className="dimensionality-heatmap__header-corner" />
@@ -97,23 +96,20 @@ const DimensionalityHeatmap = ({
               aria-label={`${t('label.scroll')} ${t('label.left')}`}
               className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--left tw:cursor-pointer tw:outline-focus-ring"
               type="button"
-              onClick={handleScrollLeft}
-            >
+              onClick={handleScrollLeft}>
               <RightArrowIcon />
             </button>
           )}
 
           <div
             className="dimensionality-heatmap__scroll-container tw:overflow-auto"
-            ref={containerRef}
-          >
+            ref={containerRef}>
             <div className="dimensionality-heatmap__header-row tw:flex">
               {dateRange.map((date) => (
                 <div
                   aria-label={getDateLabel(date)}
                   className="dimensionality-heatmap__header-cell"
-                  key={date}
-                >
+                  key={date}>
                   {getDateLabel(date)}
                 </div>
               ))}
@@ -122,16 +118,14 @@ const DimensionalityHeatmap = ({
             {heatmapData.map((row) => (
               <div
                 className="dimensionality-heatmap__data-row tw:flex"
-                key={`row-${row.dimensionValue}`}
-              >
+                key={`row-${row.dimensionValue}`}>
                 {row.cells.map((cell) => (
                   <Tooltip
                     key={`${cell.dimensionValue}-${cell.date}`}
                     overlayClassName="dimensionality-heatmap-cell-tooltip"
                     placement="top"
                     showArrow={false}
-                    title={<HeatmapCellTooltip cell={cell} />}
-                  >
+                    title={<HeatmapCellTooltip cell={cell} />}>
                     <div
                       aria-label={`${cell.dimensionValue}, ${getDateLabel(
                         cell.date
@@ -149,8 +143,7 @@ const DimensionalityHeatmap = ({
               aria-label={`${t('label.view')} ${t('label.more')}`}
               className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--right tw:cursor-pointer tw:outline-focus-ring"
               type="button"
-              onClick={handleScrollRight}
-            >
+              onClick={handleScrollRight}>
               <RightArrowIcon />
             </button>
           )}

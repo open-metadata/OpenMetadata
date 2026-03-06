@@ -342,8 +342,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     <div
       className={containerClass}
       data-testid={`lineage-node-${fullyQualifiedName}`}
-      style={{ width: NODE_WIDTH }}
-    >
+      style={{ width: NODE_WIDTH }}>
       {isRootNode && (
         <div className="lineage-node-badge-container">
           <div className="lineage-node-badge" />

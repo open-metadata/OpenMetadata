@@ -93,8 +93,7 @@ const ActivityFeedActions = ({
         className="feed-actions"
         data-testid="feed-actions"
         dir={dir}
-        size={12}
-      >
+        size={12}>
         {!isPost && (
           <Icon
             className="toolbar-button"

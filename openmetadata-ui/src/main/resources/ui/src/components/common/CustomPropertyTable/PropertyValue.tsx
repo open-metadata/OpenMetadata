@@ -255,16 +255,14 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               form: formId,
             }}
             onCancel={onHideInput}
-            onSave={noop}
-          >
+            onSave={noop}>
             <Form
               id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { enumValues: string | string[] }) =>
                 onInputSave(values.enumValues)
-              }
-            >
+              }>
               <Form.Item name="enumValues" style={commonStyle}>
                 <Select
                   allowClear
@@ -303,8 +301,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               form: formId,
             }}
             onCancel={onHideInput}
-            onSave={noop}
-          >
+            onSave={noop}>
             <Form
               id={formId}
               initialValues={initialValues}
@@ -315,8 +312,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     ? values.dateTimeValue.toFormat(format)
                     : values.dateTimeValue // If date is cleared and set undefined
                 );
-              }}
-            >
+              }}>
               <Form.Item name="dateTimeValue" style={commonStyle}>
                 <DatePicker
                   allowClear
@@ -354,8 +350,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               form: formId,
             }}
             onCancel={onHideInput}
-            onSave={noop}
-          >
+            onSave={noop}>
             <Form
               id={formId}
               initialValues={initialValues}
@@ -365,8 +360,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 onInputSave(
                   values.time ? values.time.format(format) : values.time // If time is cleared and set undefined
                 );
-              }}
-            >
+              }}>
               <Form.Item name="time" style={commonStyle}>
                 <TimePicker
                   allowClear
@@ -398,8 +392,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               form: formId,
             }}
             onCancel={onHideInput}
-            onSave={noop}
-          >
+            onSave={noop}>
             <Form
               id={formId}
               initialValues={initialValues}
@@ -407,8 +400,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: { email: string }) => {
                 onInputSave(values.email);
-              }}
-            >
+              }}>
               <Form.Item
                 name="email"
                 rules={[
@@ -418,8 +410,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     type: 'email',
                   },
                 ]}
-                style={commonStyle}
-              >
+                style={commonStyle}>
                 <Input
                   allowClear
                   data-testid="email-input"
@@ -449,8 +440,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               form: formId,
             }}
             onCancel={onHideInput}
-            onSave={noop}
-          >
+            onSave={noop}>
             <Form
               id={formId}
               initialValues={initialValues}
@@ -461,8 +451,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     ? toNumber(values.timestamp)
                     : values.timestamp // If timestamp is cleared and set undefined
                 );
-              }}
-            >
+              }}>
               <Form.Item
                 name="timestamp"
                 rules={[
@@ -471,8 +460,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
-                style={commonStyle}
-              >
+                style={commonStyle}>
                 <Input
                   allowClear
                   data-testid="timestamp-input"
@@ -505,8 +493,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               form: formId,
             }}
             onCancel={onHideInput}
-            onSave={noop}
-          >
+            onSave={noop}>
             <Form
               id={formId}
               initialValues={initialValues}
@@ -523,8 +510,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     isUndefined
                   ) as TimeIntervalType
                 );
-              }}
-            >
+              }}>
               <Form.Item
                 name="start"
                 rules={[
@@ -533,8 +519,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
-                style={{ ...commonStyle, marginBottom: '16px' }}
-              >
+                style={{ ...commonStyle, marginBottom: '16px' }}>
                 <Input
                   allowClear
                   data-testid="start-input"
@@ -552,8 +537,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
-                style={commonStyle}
-              >
+                style={commonStyle}>
                 <Input
                   allowClear
                   data-testid="end-input"
@@ -585,8 +569,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               form: formId,
             }}
             onCancel={onHideInput}
-            onSave={noop}
-          >
+            onSave={noop}>
             <Form
               id={formId}
               initialValues={initialValues}
@@ -594,8 +577,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: { duration: string }) => {
                 onInputSave(values.duration);
-              }}
-            >
+              }}>
               <Form.Item name="duration" style={commonStyle}>
                 <Input
                   allowClear
@@ -626,8 +608,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               form: formId,
             }}
             onCancel={onHideInput}
-            onSave={noop}
-          >
+            onSave={noop}>
             <Form
               id={formId}
               initialValues={initialValues}
@@ -635,8 +616,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: { sqlQuery: string }) => {
                 onInputSave(values.sqlQuery);
-              }}
-            >
+              }}>
               <Form.Item name="sqlQuery" style={commonStyle} trigger="onChange">
                 <SchemaEditor
                   className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
@@ -703,8 +683,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               form: formId,
             }}
             onCancel={onHideInput}
-            onSave={noop}
-          >
+            onSave={noop}>
             <Form
               id={formId}
               initialValues={initialValues}
@@ -729,8 +708,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   initialOptions
                 );
                 onInputSave(reference as EntityReference);
-              }}
-            >
+              }}>
               <Form.Item name="entityReference" style={commonStyle}>
                 <DataAssetAsyncSelectList
                   initialOptions={initialOptions}
@@ -809,8 +787,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               form: formId,
             }}
             onCancel={onHideInput}
-            onSave={noop}
-          >
+            onSave={noop}>
             <Form
               id={formId}
               initialValues={initialValues}
@@ -824,8 +801,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     : {}),
                 };
                 onInputSave(hyperlinkData);
-              }}
-            >
+              }}>
               <Form.Item
                 name="url"
                 rules={[
@@ -839,8 +815,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     validator: validateSafeUrl,
                   },
                 ]}
-                style={{ ...commonStyle, marginBottom: '16px' }}
-              >
+                style={{ ...commonStyle, marginBottom: '16px' }}>
                 <Input
                   allowClear
                   data-testid="hyperlink-url-input"
@@ -876,8 +851,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       to={entityUtilClassBase.getEntityLink(
         item.type,
         item.fullyQualifiedName ?? item.name ?? ''
-      )}
-    >
+      )}>
       <div className="entity-icon m-r-xs">
         {['user', 'team'].includes(item.type) ? (
           <ProfilePicture
@@ -893,8 +867,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       </div>
       <Typography.Text
         className="text-left text-primary truncate w-max-full"
-        ellipsis={{ tooltip: true }}
-      >
+        ellipsis={{ tooltip: true }}>
         {getEntityName(item)}
       </Typography.Text>
     </Link>
@@ -921,8 +894,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             {isArray(value) ? (
               <div
                 className="w-max-full d-flex gap-2 flex-wrap"
-                data-testid="enum-value"
-              >
+                data-testid="enum-value">
                 {value.map((val) => (
                   <Tooltip key={val} title={val} trigger="hover">
                     <Tag className="enum-key-tag">{val}</Tag>
@@ -960,8 +932,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 <div
                   className="entity-reference-list-item flex items-center justify-between"
                   data-testid={getEntityName(item)}
-                  key={item.id}
-                >
+                  key={item.id}>
                   {getEntityRefLinkValue(item)}
                 </div>
               );
@@ -993,8 +964,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         return (
           <div
             className="d-flex justify-center flex-wrap gap-2 py-2"
-            data-testid="time-interval-value"
-          >
+            data-testid="time-interval-value">
             <div className="d-flex flex-column gap-2 items-center">
               <StartTimeIcon height={30} width={30} />
               <Typography.Text className="property-value">{`${t(
@@ -1065,8 +1035,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             data-testid="hyperlink-value"
             href={safeHref}
             rel="noopener noreferrer"
-            target="_blank"
-          >
+            target="_blank">
             {hyperlinkValue.displayText || hyperlinkValue.url}
           </Typography.Link>
         );
@@ -1085,8 +1054,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         return (
           <Typography.Text
             className="break-all text-grey-body property-value"
-            data-testid="value"
-          >
+            data-testid="value">
             {value}
           </Typography.Text>
         );
@@ -1155,8 +1123,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       <div className="d-flex items-center gap-1">
         <Typography.Text
           className="text-grey-body property-name"
-          data-testid="property-name"
-        >
+          data-testid="property-name">
           {getEntityName(property)}
           {propertyCountSuffix}
         </Typography.Text>
@@ -1164,8 +1131,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           <Tooltip
             destroyTooltipOnHide
             placement="top"
-            title={getTextFromHtmlString(property.description)}
-          >
+            title={getTextFromHtmlString(property.description)}>
             <InfoCircleOutlined
               className="custom-property-description-icon"
               data-testid="custom-property-description-icon"
@@ -1184,8 +1150,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           {
             'items-center': !isExpanded,
           }
-        )}
-      >
+        )}>
         <div
           className="value-container"
           data-testid="property-value"
@@ -1196,16 +1161,14 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               AUTO_HEIGHT_TYPES.includes(propertyType.name || '')
                 ? 'auto'
                 : '32px',
-          }}
-        >
+          }}>
           {showInput ? getPropertyInput() : getValueElement()}
           {hasEditPermissions && !showInput && (
             <Tooltip
               placement="left"
               title={t('label.edit-entity', {
                 entity: getEntityName(property),
-              })}
-            >
+              })}>
               <Icon
                 component={EditIconComponent}
                 data-testid={`edit-icon${
@@ -1248,8 +1211,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     return (
       <div
         className="custom-property-card custom-property-card-right-panel"
-        data-testid="custom-property-right-panel-card"
-      >
+        data-testid="custom-property-right-panel-card">
         {customPropertyElement}
       </div>
     );
@@ -1258,8 +1220,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   return (
     <Card
       className="w-full custom-property-card"
-      data-testid={`custom-property-${propertyName}-card`}
-    >
+      data-testid={`custom-property-${propertyName}-card`}>
       {customPropertyElement}
     </Card>
   );

@@ -169,14 +169,12 @@ const DummyChildrenComponent = () => {
       </button>
       <button
         data-testid="edge-click"
-        onClick={() => onEdgeClick(MOCK_EDGE as Edge)}
-      >
+        onClick={() => onEdgeClick(MOCK_EDGE as Edge)}>
         On Edge Click
       </button>
       <button
         data-testid="column-enter"
-        onClick={() => onColumnMouseEnter('column')}
-      >
+        onClick={() => onColumnMouseEnter('column')}>
         On Column Enter
       </button>
       <button data-testid="openConfirmationModal">

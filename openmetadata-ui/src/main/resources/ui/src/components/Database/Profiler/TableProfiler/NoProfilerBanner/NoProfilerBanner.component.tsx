@@ -25,8 +25,7 @@ const NoProfilerBanner = () => {
   return (
     <div
       className="no-profiler-banner-container tw:flex tw:items-center tw:gap-4"
-      data-testid="no-profiler-placeholder"
-    >
+      data-testid="no-profiler-placeholder">
       <div className="tw:shrink-0">
         <div className="tw:flex tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-border-secondary tw:bg-primary">
           <NoDataIcon />
@@ -49,8 +48,7 @@ const NoProfilerBanner = () => {
           href={profilerDocsLink}
           rel="noreferrer"
           target="_blank"
-          title="data quality observability profiler workflow"
-        >
+          title="data quality observability profiler workflow">
           {t('label.learn-more')} <ArrowRight className="tw:size-4" />
         </a>
       </div>

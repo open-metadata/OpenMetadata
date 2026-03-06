@@ -224,8 +224,7 @@ function CustomizeMyData({
           className="p-box customise-my-data"
           pageTitle={t('label.customize-entity', {
             entity: t('label.landing-page'),
-          })}
-        >
+          })}>
           <CustomizablePageHeader
             disableSave={disableSave}
             personaName={getEntityName(personaDetails)}
@@ -269,8 +268,7 @@ function CustomizeMyData({
               maxRows={maxRows}
               preventCollision={false}
               rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
-              onLayoutChange={handleLayoutUpdate}
-            >
+              onLayoutChange={handleLayoutUpdate}>
               {widgets}
             </ReactGridLayout>
           </div>

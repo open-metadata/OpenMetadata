@@ -200,8 +200,7 @@ const TableProfilerChart = ({
       className={classNames('tw:flex tw:flex-col', {
         'tw:gap-[30px]': !isProfilingEnabled,
       })}
-      data-testid="table-profiler-chart-container"
-    >
+      data-testid="table-profiler-chart-container">
       {showHeader && (
         <>
           {!isSummaryLoading && !isProfilingEnabled && <NoProfilerBanner />}
@@ -222,8 +221,7 @@ const TableProfilerChart = ({
       )}
       <div
         className="tw:flex tw:flex-col tw:gap-[30px]"
-        data-testid="table-profiler-chart-metrics"
-      >
+        data-testid="table-profiler-chart-metrics">
         <div data-testid="row-metrics">
           <ProfilerDetailsCard
             chartCollection={rowCountMetrics}
@@ -241,8 +239,7 @@ const TableProfilerChart = ({
             profilerLatestValueProps={{
               information: operationMetrics.information,
             }}
-            title={t('label.volume-change')}
-          >
+            title={t('label.volume-change')}>
             <CustomBarChart
               chartCollection={operationMetrics}
               name="operationMetrics"

@@ -161,8 +161,7 @@ function TestSummaryGraph({
         width={STATUS_DOT_SIZE}
         x={cx - STATUS_DOT_RADIUS}
         xmlns="http://www.w3.org/2000/svg"
-        y={cy - STATUS_DOT_RADIUS}
-      >
+        y={cy - STATUS_DOT_RADIUS}>
         <circle
           cx={STATUS_DOT_RADIUS}
           cy={STATUS_DOT_RADIUS}
@@ -199,8 +198,7 @@ function TestSummaryGraph({
             data-testid="no-search-image"
           />
         }
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
-      >
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph style={{ marginBottom: '0' }}>
           {t('message.no-test-result-for-days', {
             days: selectedTimeRange,
@@ -217,16 +215,14 @@ function TestSummaryGraph({
     <ResponsiveContainer
       className="bg-white custom-test-summary-graph"
       id={`${testCaseName}_graph`}
-      minHeight={minHeight ?? 400}
-    >
+      minHeight={minHeight ?? 400}>
       <ComposedChart
         data={chartData.data}
         margin={TEST_SUMMARY_CHART_MARGIN}
         ref={chartRef}
         onMouseMove={(e) => {
           setChartMouseEvent(e);
-        }}
-      >
+        }}>
         <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
         <XAxis
           angle={-45}

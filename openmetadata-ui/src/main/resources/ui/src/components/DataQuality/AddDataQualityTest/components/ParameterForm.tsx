@@ -107,8 +107,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           getPopupContainer={getPopupContainer}
           placeholder={`${t('label.please-select-entity', {
             entity: label,
-          })}`}
-        >
+          })}`}>
           {data.optionValues.map((value) => (
             <Select.Option key={value}>{value}</Select.Option>
           ))}
@@ -228,8 +227,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             <Form.List
               initialValue={[{ value: undefined }]}
               key={data.name}
-              name={data.name || ''}
-            >
+              name={data.name || ''}>
               {(fields, { add, remove }) => (
                 <Form.Item
                   key={data.name}
@@ -246,8 +244,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                     </>
                   }
                   name={data.name}
-                  tooltip={data.description}
-                >
+                  tooltip={data.description}>
                   {fields.map(({ key, name, ...restField }) => (
                     <div className="d-flex w-full" key={key}>
                       <Form.Item
@@ -261,8 +258,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                               fieldText: label,
                             })}`,
                           },
-                        ]}
-                      >
+                        ]}>
                         {DynamicField ?? (
                           <Input
                             placeholder={`${t('message.enter-a-field', {
@@ -319,8 +315,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     ) : (
       <Form.Item
         {...commonFormItemProps}
-        label={data.name === 'sqlExpression' ? undefined : label}
-      >
+        label={data.name === 'sqlExpression' ? undefined : label}>
         {DynamicField ?? Field}
       </Form.Item>
     );

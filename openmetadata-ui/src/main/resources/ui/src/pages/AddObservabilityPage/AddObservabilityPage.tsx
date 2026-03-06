@@ -301,16 +301,14 @@ function AddObservabilityPage() {
                     resources: alert?.filteringRules?.resources,
                   }}
                   validateMessages={VALIDATION_MESSAGES}
-                  onFinish={handleSave}
-                >
+                  onFinish={handleSave}>
                   <Row gutter={[20, 20]}>
                     <Col span={24}>
                       <Form.Item
                         label={t('label.name')}
                         labelCol={{ span: 24 }}
                         name="displayName"
-                        rules={NAME_FIELD_RULES}
-                      >
+                        rules={NAME_FIELD_RULES}>
                         <Input placeholder={t('label.name')} />
                       </Form.Item>
                     </Col>
@@ -319,8 +317,7 @@ function AddObservabilityPage() {
                         label={t('label.description')}
                         labelCol={{ span: 24 }}
                         name="description"
-                        trigger="onTextChange"
-                      >
+                        trigger="onTextChange">
                         <RichTextEditor
                           data-testid="description"
                           initialValue={alert?.description}
@@ -413,8 +410,7 @@ function AddObservabilityPage() {
                         <Button
                           data-testid="cancel-button"
                           type="text"
-                          onClick={() => navigate(-1)}
-                        >
+                          onClick={() => navigate(-1)}>
                           {t('label.cancel')}
                         </Button>
 
@@ -435,8 +431,7 @@ function AddObservabilityPage() {
                           data-testid="save-button"
                           htmlType="submit"
                           loading={saving}
-                          type="primary"
-                        >
+                          type="primary">
                           {t('label.save')}
                         </Button>
                       </div>

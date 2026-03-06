@@ -104,8 +104,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
         style={{
           paddingLeft: `${level * 24}px`,
           paddingBottom: hasChildren ? '8px' : '0',
-        }}
-      >
+        }}>
         <div className="field-card-no-border">
           <FieldCard
             columnConstraint={column.constraint}
@@ -129,8 +128,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
               data-testid="expand-icon"
               size="small"
               type="link"
-              onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}
-            >
+              onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
               <Typography color={theme.palette.primary.main} variant="caption">
                 {isExpanded
                   ? t('label.show-less')
@@ -189,8 +187,7 @@ const NestedSchemaFieldCard: React.FC<{
         style={{
           paddingLeft: `${level * 24}px`,
           paddingBottom: hasChildren ? '8px' : '0',
-        }}
-      >
+        }}>
         <div className="field-card-no-border">
           <FieldCard
             dataType={field.dataType || 'Unknown'}
@@ -213,8 +210,7 @@ const NestedSchemaFieldCard: React.FC<{
               data-testid="expand-icon"
               size="small"
               type="link"
-              onClick={() => onToggleExpand(rowKey)}
-            >
+              onClick={() => onToggleExpand(rowKey)}>
               <Typography color={theme.palette.primary.main} variant="caption">
                 {isExpanded
                   ? t('label.show-less')
@@ -396,8 +392,7 @@ const SchemaFieldCardsV1: React.FC<{
         block
         loading={isLoading && currentPage > 1}
         type="link"
-        onClick={handleLoadMore}
-      >
+        onClick={handleLoadMore}>
         {t('label.show-more')}
       </Button>
     );

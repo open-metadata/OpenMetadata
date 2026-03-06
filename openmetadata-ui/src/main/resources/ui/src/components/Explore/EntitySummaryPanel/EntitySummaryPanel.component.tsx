@@ -945,8 +945,7 @@ export default function EntitySummaryPanel({
         lineage: panelPath === 'lineage',
         'glossary-term-assets-tab': panelPath === 'glossary-term-assets-tab',
       })}
-      data-testid="entity-summary-panel-container"
-    >
+      data-testid="entity-summary-panel-container">
       {isSideDrawer && (
         <div className="d-flex items-center justify-between">
           <EntityTitleSection
@@ -978,14 +977,12 @@ export default function EntitySummaryPanel({
           bordered={false}
           className={`summary-panel-container ${
             isSideDrawer ? 'drawer-summary-panel-container' : ''
-          }`}
-        >
+          }`}>
           <Card
             className={`content-area ${
               isSideDrawer ? 'drawer-content-area' : ''
             }`}
-            style={{ width: '100%', display: 'block' }}
-          >
+            style={{ width: '100%', display: 'block' }}>
             {renderTabContent()}
           </Card>
         </Card>

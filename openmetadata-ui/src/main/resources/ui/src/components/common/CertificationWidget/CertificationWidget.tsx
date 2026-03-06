@@ -61,8 +61,7 @@ const CertificationWidget = () => {
     <div className={classNames('d-flex items-center gap-2')}>
       <Typography.Text
         className="text-sm font-medium"
-        data-testid="certification-heading-name"
-      >
+        data-testid="certification-heading-name">
         {t('label.certification')}
       </Typography.Text>
       {canEdit && (
@@ -92,8 +91,7 @@ const CertificationWidget = () => {
         },
       }}
       onCertificationUpdate={handleCertificationUpdate}
-      onClose={() => setIsEditing(false)}
-    >
+      onClose={() => setIsEditing(false)}>
       <div data-testid="certification-label">
         {entity.certification ? (
           <CertificationTag showName certification={entity.certification} />

@@ -68,8 +68,7 @@ const InlineSeverity = ({
         color: severityColor.color,
         cursor: hasEditPermission && !isLoading ? 'pointer' : 'default',
       }}
-      type="button"
-    >
+      type="button">
       <Typography as="span" className="tw:px-0.5 tw:text-xs tw:font-medium">
         {label}
       </Typography>
@@ -98,8 +97,7 @@ const InlineSeverity = ({
               handleSeverityChange(
                 key === 'none' ? undefined : (key as Severities)
               )
-            }
-          >
+            }>
             <Dropdown.Item
               id="none"
               label={t('label.no-entity', { entity: t('label.severity') })}

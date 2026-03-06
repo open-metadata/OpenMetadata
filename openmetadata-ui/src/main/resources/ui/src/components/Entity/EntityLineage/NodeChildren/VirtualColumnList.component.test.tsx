@@ -40,8 +40,7 @@ jest.mock('../CustomNode.utils', () => ({
   }) => (
     <div
       className={className}
-      data-testid={`column-${column.fullyQualifiedName}`}
-    >
+      data-testid={`column-${column.fullyQualifiedName}`}>
       {column.name}
     </div>
   ),

@@ -164,8 +164,7 @@ const VirtualColumnList = ({
             data-testid="column-scroll-up"
             disabled={!canScrollUp}
             size="small"
-            onClick={handleUp}
-          >
+            onClick={handleUp}>
             <ChevronUp fontSize="small" />
           </StyledIconButton>
         </Stack>
@@ -189,8 +188,7 @@ const VirtualColumnList = ({
             data-testid="column-scroll-down"
             disabled={!canScrollDown}
             size="small"
-            onClick={handleDown}
-          >
+            onClick={handleDown}>
             <ChevronDown fontSize="small" />
           </StyledIconButton>
         </Stack>

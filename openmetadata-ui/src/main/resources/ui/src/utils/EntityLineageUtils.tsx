@@ -2040,8 +2040,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
               to={entityUtilClassBase.getEntityLink(
                 getEntityType(serviceType, record.fromEntityFQN),
                 record.fromEntityFQN
-              )}
-            >
+              )}>
               {renderCombined(record.fromEntityFQN, serviceType)}
             </Link>
           );
@@ -2063,8 +2062,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
               to={entityUtilClassBase.getEntityLink(
                 getEntityType(serviceType, record.toEntityFQN),
                 record.toEntityFQN
-              )}
-            >
+              )}>
               {renderCombined(record.toEntityFQN, serviceType)}
             </Link>
           );
@@ -2088,8 +2086,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
       render: (text: string) => (
         <Typography.Text
           data-testid={`lineage-column-${header}-${text}`}
-          ellipsis={{ tooltip: true }}
-        >
+          ellipsis={{ tooltip: true }}>
           {isEmpty(text) ? NO_DATA_PLACEHOLDER : text}
         </Typography.Text>
       ),

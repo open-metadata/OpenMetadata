@@ -221,8 +221,7 @@ jest.mock('reactflow', () => ({
             onDragOver(e);
           }
         }}
-        onDrop={onDrop}
-      >
+        onDrop={onDrop}>
         <div data-testid="react-flow-nodes">Nodes</div>
         <div data-testid="react-flow-edges">Edges</div>
         {children}

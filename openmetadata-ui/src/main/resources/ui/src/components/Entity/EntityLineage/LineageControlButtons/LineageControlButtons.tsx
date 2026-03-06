@@ -114,20 +114,17 @@ const LineageControlButtons: FC<{
           height: theme.spacing(4),
           width: theme.spacing(4),
         },
-      }}
-    >
+      }}>
       <Tooltip
         arrow
         placement="top"
-        title={t('label.lineage-view-option-plural')}
-      >
+        title={t('label.lineage-view-option-plural')}>
         <ToggleButton
           data-testid="fit-screen"
           value="fit-view"
           onClick={(event) =>
             setLineageViewOptionsAnchorEl(event.currentTarget)
-          }
-        >
+          }>
           <FitViewOptionsIcon />
         </ToggleButton>
       </Tooltip>
@@ -151,8 +148,7 @@ const LineageControlButtons: FC<{
           vertical: 'bottom',
           horizontal: 'right',
         }}
-        onClose={() => setLineageViewOptionsAnchorEl(null)}
-      >
+        onClose={() => setLineageViewOptionsAnchorEl(null)}>
         <MenuItem onClick={handleFitView}>
           <FitScreenIcon />
           {t('label.fit-to-screen')}
@@ -176,8 +172,7 @@ const LineageControlButtons: FC<{
           data-testid="toggle-mind-map"
           selected={miniMapVisible}
           value="mind-map"
-          onClick={onToggleMiniMap}
-        >
+          onClick={onToggleMiniMap}>
           <MapIcon />
         </ToggleButton>
       </Tooltip>
@@ -186,8 +181,7 @@ const LineageControlButtons: FC<{
         <ToggleButton
           data-testid="zoom-in"
           value="zoom-in"
-          onClick={handleZoomIn}
-        >
+          onClick={handleZoomIn}>
           <ZoomInIcon />
         </ToggleButton>
       </Tooltip>
@@ -196,8 +190,7 @@ const LineageControlButtons: FC<{
         <ToggleButton
           data-testid="zoom-out"
           value="zoom-out"
-          onClick={handleZoomOut}
-        >
+          onClick={handleZoomOut}>
           <ZoomOutIcon />
         </ToggleButton>
       </Tooltip>
@@ -209,15 +202,13 @@ const LineageControlButtons: FC<{
           isFullscreen
             ? t('label.exit-full-screen')
             : t('label.full-screen-view')
-        }
-      >
+        }>
         <ToggleButton
           data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
           selected={isFullscreen}
           size="large"
           value="full-screen"
-          onClick={toggleFullscreenView}
-        >
+          onClick={toggleFullscreenView}>
           {isFullscreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
         </ToggleButton>
       </Tooltip>

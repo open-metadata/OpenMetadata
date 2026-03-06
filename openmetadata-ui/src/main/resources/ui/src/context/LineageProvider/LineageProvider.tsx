@@ -1115,10 +1115,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         entityFqn
       );
 
-      const uniqueNodeMap = new Map<string, (typeof newNodes)[0]>();
+      const uniqueNodeMap = new Map<string, typeof newNodes[0]>();
       newNodes.forEach((n) => uniqueNodeMap.set(n.id, n));
 
-      const uniqueEdgeMap = new Map<string, (typeof newEdges)[0]>();
+      const uniqueEdgeMap = new Map<string, typeof newEdges[0]>();
       newEdges.forEach((e) => {
         const key = `${e.fromEntity.id}-${e.toEntity.id}`;
         uniqueEdgeMap.set(key, e);
@@ -1920,8 +1920,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           'full-screen-lineage': isFullScreen,
           'sidebar-collapsed': isFullScreen && preferences?.isSidebarCollapsed,
           'sidebar-expanded': isFullScreen && !preferences?.isSidebarCollapsed,
-        })}
-      >
+        })}>
         {isFullScreen && breadcrumbs.length > 0 && (
           <TitleBreadcrumb
             useCustomArrow
@@ -1945,8 +1944,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               },
             }}
             transitionDuration={300}
-            onClose={onCloseDrawer}
-          >
+            onClose={onCloseDrawer}>
             {selectedNode && (
               <EntitySummaryPanel
                 isSideDrawer
@@ -1987,8 +1985,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             onCancel={() => {
               setShowDeleteModal(false);
             }}
-            onOk={onRemove}
-          >
+            onOk={onRemove}>
             {getModalBodyText(selectedEdge as Edge)}
           </Modal>
         )}

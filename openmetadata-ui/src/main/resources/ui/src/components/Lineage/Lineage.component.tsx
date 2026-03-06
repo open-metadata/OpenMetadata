@@ -148,23 +148,20 @@ const Lineage = ({
           <div
             className={classNames('lineage-header', {
               'lineage-header-edit-mode': isEditMode,
-            })}
-          >
+            })}>
             <CustomControlsComponent
               deleted={Boolean(deleted)}
               hasEditAccess={hasEditAccess}
             />
           </div>
         )
-      }
-    >
+      }>
       {
         <div
           className="h-full relative lineage-container"
           data-testid="lineage-container"
           id="lineage-container" // ID is required for export PNG functionality
-          ref={reactFlowWrapper}
-        >
+          ref={reactFlowWrapper}>
           {init ? (
             <ReactFlowProvider>
               <ReactFlow
@@ -197,8 +194,7 @@ const Lineage = ({
                 onNodeDragStart={dragHandle}
                 onNodeDragStop={dragHandle}
                 onNodesChange={onNodesChange}
-                onPaneClick={onPaneClick}
-              >
+                onPaneClick={onPaneClick}>
                 <Background gap={12} size={1} />
                 {showMiniMap && (
                   <MiniMap pannable zoomable position="bottom-right" />
@@ -217,8 +213,7 @@ const Lineage = ({
                 {/* Render lineage layer to */}
                 <Panel
                   className={classNames({ 'edit-mode': isEditMode })}
-                  position="bottom-left"
-                >
+                  position="bottom-left">
                   <LineageLayers entity={entity} entityType={entityType} />
                 </Panel>
                 {/* Lineage control buttons */}

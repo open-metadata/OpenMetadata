@@ -108,8 +108,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
       return (
         <li
           className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-          key={`item-${key}`}
-        >
+          key={`item-${key}`}>
           <Typography as="span" className="flex items-center text-grey-muted">
             {startCase(key)}
           </Typography>
@@ -164,8 +163,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
               as="span"
               className="font-medium"
               data-testid="status"
-              style={{ color: statusColor }}
-            >
+              style={{ color: statusColor }}>
               {status}
             </Typography>
           </li>
@@ -174,19 +172,16 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
               <Typography
                 as="span"
-                className="flex items-center text-grey-muted"
-              >
+                className="flex items-center text-grey-muted">
                 {t('label.incident')}
               </Typography>
               <Typography
                 as="span"
                 className="font-medium"
-                data-testid="incident"
-              >
+                data-testid="incident">
                 <Link
                   className="tooltip-incident-link font-medium cursor-pointer"
-                  to={getTaskDetailPath(task)}
-                >
+                  to={getTaskDetailPath(task)}>
                   {`#${task.task.id}`}
                 </Link>
               </Typography>
@@ -197,23 +192,20 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
               <Typography
                 as="span"
-                className="flex items-center text-grey-muted"
-              >
+                className="flex items-center text-grey-muted">
                 {t('label.incident')}
               </Typography>
               <Typography
                 as="span"
                 className="font-medium"
-                data-testid="incident"
-              >
+                data-testid="incident">
                 {testCaseFqnProp ? (
                   <Link
                     className="tooltip-incident-link font-medium cursor-pointer"
                     to={getTestCaseDetailPagePath(
                       testCaseFqnProp,
                       TestCasePageTabs.ISSUES
-                    )}
-                  >
+                    )}>
                     {`#${incidentId}`}
                   </Link>
                 ) : (
@@ -227,15 +219,13 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
               <Typography
                 as="span"
-                className="flex items-center text-grey-muted"
-              >
+                className="flex items-center text-grey-muted">
                 {t('label.passed-rows')}
               </Typography>
               <Typography
                 as="span"
                 className="font-medium"
-                data-testid="rows-passed"
-              >
+                data-testid="rows-passed">
                 {`${formatNumberWithComma(passedRows)}/${formatNumberWithComma(
                   totalRows
                 )}`}
@@ -247,15 +237,13 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
               <Typography
                 as="span"
-                className="flex items-center text-grey-muted"
-              >
+                className="flex items-center text-grey-muted">
                 {t('label.failed-rows')}
               </Typography>
               <Typography
                 as="span"
                 className="font-medium"
-                data-testid="rows-failed"
-              >
+                data-testid="rows-failed">
                 {`${formatNumberWithComma(failedRows)}/${formatNumberWithComma(
                   totalRows
                 )}`}
@@ -271,15 +259,13 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
               <Typography
                 as="span"
-                className="flex items-center text-grey-muted"
-              >
+                className="flex items-center text-grey-muted">
                 {t('label.assignee')}
               </Typography>
               <Typography
                 as="span"
                 className="font-medium"
-                data-testid="assignee"
-              >
+                data-testid="assignee">
                 <OwnerLabel owners={task.task.assignees} />
               </Typography>
             </li>

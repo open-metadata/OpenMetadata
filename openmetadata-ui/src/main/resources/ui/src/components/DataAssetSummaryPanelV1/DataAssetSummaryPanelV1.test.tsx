@@ -196,8 +196,7 @@ jest.mock('../common/DescriptionSection/DescriptionSection', () => {
         data-testid="update-description-btn"
         onClick={() =>
           onDescriptionUpdate && onDescriptionUpdate('New description')
-        }
-      >
+        }>
         Update Description
       </button>
     </div>
@@ -210,8 +209,7 @@ jest.mock('../common/OverviewSection/OverviewSection', () => {
       {(entityInfoV1 || []).map((item: any, index: number) => (
         <div
           data-testid={`overview-item-${String(item.name).toLowerCase()}`}
-          key={index}
-        >
+          key={index}>
           {item.name} {item.value}
         </div>
       ))}

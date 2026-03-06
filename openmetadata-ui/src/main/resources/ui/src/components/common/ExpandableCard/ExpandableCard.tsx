@@ -72,8 +72,7 @@ const ExpandableCard = ({
           onClick={handleExpandClick}
         />
       }
-      {...restCardProps}
-    >
+      {...restCardProps}>
       {children}
     </Card>
   );

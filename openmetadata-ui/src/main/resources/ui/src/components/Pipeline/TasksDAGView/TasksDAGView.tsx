@@ -139,8 +139,7 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       onInit={(reactFlowInstance) => {
         onLoad(reactFlowInstance);
       }}
-      onNodesChange={onNodesChange}
-    >
+      onNodesChange={onNodesChange}>
       <Background gap={12} size={1} />
       <Controls
         className="task-dag-control-btn"

@@ -74,8 +74,7 @@ const TierWidget = () => {
     <div className={classNames('d-flex items-center gap-2')}>
       <Typography.Text
         className="text-sm font-medium"
-        data-testid="tier-heading-name"
-      >
+        data-testid="tier-heading-name">
         {t('label.tier')}
       </Typography.Text>
       {canEdit && (
@@ -121,8 +120,7 @@ const TierWidget = () => {
       }}
       tierCardClassName="tier-widget-popover"
       updateTier={handleTierUpdate}
-      onClose={() => setIsEditing(false)}
-    >
+      onClose={() => setIsEditing(false)}>
       <div data-testid="tier-selector-display">{tierDisplay}</div>
     </TierCard>
   ) : (

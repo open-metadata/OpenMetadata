@@ -144,8 +144,7 @@ const PipelineButton = React.memo<PipelineButtonProps>(
           pathData.edgeCenterX,
           pathData.edgeCenterY,
           viewport
-        )}
-      >
+        )}>
         {isEditMode ? (
           buttonElement
         ) : (
@@ -158,8 +157,7 @@ const PipelineButton = React.memo<PipelineButtonProps>(
                   {pipelineData.executionStatus}
                 </Tag>
               )
-            }
-          >
+            }>
             {buttonElement}
           </EntityPopOverCard>
         )}
@@ -236,8 +234,7 @@ const FunctionButton = React.memo<FunctionButtonProps>(
           pathData.edgeCenterX,
           pathData.edgeCenterY,
           viewport
-        )}
-      >
+        )}>
         {isEditMode ? (
           buttonElement
         ) : (
@@ -250,8 +247,7 @@ const FunctionButton = React.memo<FunctionButtonProps>(
                   {pipelineData.executionStatus}
                 </Tag>
               )
-            }
-          >
+            }>
             {buttonElement}
           </EntityPopOverCard>
         )}

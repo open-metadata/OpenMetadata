@@ -167,15 +167,13 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
       <div
         className="data-observability-tab-container"
         data-testid="table-profiler-container"
-        id="profilerDetails"
-      >
+        id="profilerDetails">
         <div className="tw:flex tw:items-center tw:justify-between">
           {isEmpty(activeColumnFqn) ? (
             <Tabs
               className="tw:w-auto"
               selectedKey={activeTab}
-              onSelectionChange={(key) => handleTabChange(String(key))}
-            >
+              onSelectionChange={(key) => handleTabChange(String(key))}>
               <Tabs.List type="button-border">
                 {tabOptions.map(({ label, key }) => (
                   <Tabs.Item
@@ -185,8 +183,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                         : ''
                     }
                     id={key}
-                    key={key}
-                  >
+                    key={key}>
                     <TabsLabel count={tabCounts?.[key]} id={key} name={label} />
                   </Tabs.Item>
                 ))}
@@ -206,8 +203,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                   ...searchData,
                   activeColumnFqn: undefined,
                 }),
-              }}
-            >
+              }}>
               <DropDownIcon className="transform-90" height={16} width={16} />
               {t(PAGE_HEADERS.COLUMN_PROFILE.header)}
             </Link>

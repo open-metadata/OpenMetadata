@@ -449,8 +449,7 @@ const NavBar = () => {
               placement="right"
               title={
                 isSidebarCollapsed ? t('label.expand') : t('label.collapse')
-              }
-            >
+              }>
               <Button
                 className="w-6 h-6 p-0 flex-center"
                 data-testid="sidebar-toggle"
@@ -483,8 +482,7 @@ const NavBar = () => {
                   selectedDomain={activeDomainEntityRef}
                   wrapInButton={false}
                   onCancel={() => setIsDomainDropdownOpen(false)}
-                  onUpdate={handleDomainChange}
-                >
+                  onUpdate={handleDomainChange}>
                   <Button
                     className={classNames(
                       'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium',
@@ -495,8 +493,7 @@ const NavBar = () => {
                     data-testid="domain-dropdown"
                     onClick={() =>
                       setIsDomainDropdownOpen(!isDomainDropdownOpen)
-                    }
-                  >
+                    }>
                     <DomainIcon
                       className="d-flex"
                       height={20}
@@ -521,13 +518,11 @@ const NavBar = () => {
                 onClick: handleLanguageChange,
               }}
               placement="bottomRight"
-              trigger={['click']}
-            >
+              trigger={['click']}>
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
                 data-testid="language-selector-button"
-                type="text"
-              >
+                type="text">
                 {language ? upperCase(language.split('-')[0]) : ''}{' '}
                 <DropDownIcon width={12} />
               </Button>
@@ -553,15 +548,13 @@ const NavBar = () => {
               }}
               placement="bottomRight"
               trigger={['click']}
-              onOpenChange={handleBellClick}
-            >
+              onOpenChange={handleBellClick}>
               <Button
                 className="flex-center"
                 icon={
                   <Badge
                     dot={hasTaskNotification || hasMentionNotification}
-                    offset={[-3, 3]}
-                  >
+                    offset={[-3, 3]}>
                     <IconBell data-testid="task-notifications" width={20} />
                   </Badge>
                 }
@@ -575,8 +568,7 @@ const NavBar = () => {
               }}
               overlayStyle={{ width: 175 }}
               placement="bottomRight"
-              trigger={['click']}
-            >
+              trigger={['click']}>
               <Button
                 className="flex-center"
                 data-testid="help-icon"
@@ -598,8 +590,7 @@ const NavBar = () => {
               type="link"
               onClick={() => {
                 navigate(0);
-              }}
-            >
+              }}>
               {t('label.refresh')}
             </Button>
           }

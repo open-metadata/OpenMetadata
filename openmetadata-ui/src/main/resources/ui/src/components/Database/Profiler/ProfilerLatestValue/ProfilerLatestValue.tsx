@@ -37,22 +37,19 @@ const ProfilerLatestValue = ({
   return (
     <div
       className="tw:flex tw:items-center tw:rounded-[10px] tw:bg-gray-50 tw:px-7.5 tw:py-4"
-      data-testid="data-summary-container"
-    >
+      data-testid="data-summary-container">
       <div className="tw:flex tw:grow tw:gap-20">
         {information.map((info) => (
           <div key={info.title}>
             <p
               className="tw:m-0 tw:mb-1 tw:break-all tw:pl-2 tw:text-[11px] tw:font-semibold tw:leading-3 tw:text-secondary"
               data-testid="title"
-              style={{ borderLeft: `4px solid ${info.color}` }}
-            >
+              style={{ borderLeft: `4px solid ${info.color}` }}>
               {info.title}
             </p>
             <p
               className="tw:m-0 tw:break-all tw:text-[17px] tw:font-bold tw:text-primary"
-              data-testid="value"
-            >
+              data-testid="value">
               {getLatestValue(info.latestValue)}
             </p>
             {info.extra && (
@@ -60,8 +57,7 @@ const ProfilerLatestValue = ({
                 <hr className="tw:my-2 tw:h-px tw:border-0 tw:border-t tw:border-dashed tw:border-border-primary" />
                 <p
                   className="tw:m-0 tw:break-all tw:text-[11px] tw:text-primary"
-                  data-testid="extra"
-                >
+                  data-testid="extra">
                   {info.extra}
                 </p>
               </>

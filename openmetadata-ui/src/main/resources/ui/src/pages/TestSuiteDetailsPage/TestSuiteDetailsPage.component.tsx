@@ -554,8 +554,7 @@ const TestSuiteDetailsPage = () => {
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(testSuite),
-      })}
-    >
+      })}>
       <div className="page-container tw:flex tw:w-full tw:flex-col">
         <div className="tw:w-full">
           <TitleBreadcrumb
@@ -582,8 +581,7 @@ const TestSuiteDetailsPage = () => {
                   color="primary"
                   data-testid="add-test-case-btn"
                   size="md"
-                  onPress={() => setIsTestCaseModalOpen(true)}
-                >
+                  onPress={() => setIsTestCaseModalOpen(true)}>
                   {t('label.add-entity', {
                     entity: t('label.test-case-plural'),
                   })}
@@ -639,13 +637,11 @@ const TestSuiteDetailsPage = () => {
         </div>
         <div
           className="test-suite-details-tabs-root tw:mt-3 tw:w-full tw:flex tw:flex-col"
-          data-testid="tabs-root"
-        >
+          data-testid="tabs-root">
           <Tabs
             className="test-suite-details-tabs tw:bg-transparent"
             selectedKey={activeTab}
-            onSelectionChange={(key) => setActiveTab(key as string)}
-          >
+            onSelectionChange={(key) => setActiveTab(key as string)}>
             <Tabs.List
               items={[
                 { id: EntityTabs.TEST_CASES, label: tabs.testCasesTab.label },
@@ -664,14 +660,12 @@ const TestSuiteDetailsPage = () => {
         <div className="tw:w-full">
           <ModalOverlay
             isOpen={isTestCaseModalOpen}
-            onOpenChange={setIsTestCaseModalOpen}
-          >
+            onOpenChange={setIsTestCaseModalOpen}>
             <Modal className="tw:max-w-2xl tw:rounded-xl">
               <Dialog className="tw:flex tw:max-h-[90vh] tw:w-full tw:flex-col tw:overflow-hidden tw:rounded-xl tw:bg-background-paper tw:p-6">
                 <Typography
                   as="h2"
-                  className="tw:mb-4 tw:text-lg tw:font-semibold tw:text-body"
-                >
+                  className="tw:mb-4 tw:text-lg tw:font-semibold tw:text-body">
                   {t('label.add-entity', {
                     entity: t('label.test-case-plural'),
                   })}

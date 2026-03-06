@@ -215,8 +215,7 @@ const ContractDetail: React.FC<{
               label: (
                 <div
                   className="contract-action-dropdown-item"
-                  data-testid="contract-edit-button"
-                >
+                  data-testid="contract-edit-button">
                   <EditIcon className="anticon" />
 
                   {t('label.edit')}
@@ -228,8 +227,7 @@ const ContractDetail: React.FC<{
               label: (
                 <div
                   className="contract-action-dropdown-item"
-                  data-testid="contract-run-now-button"
-                >
+                  data-testid="contract-run-now-button">
                   <RunIcon className="anticon" />
 
                   {t('label.run-now')}
@@ -241,8 +239,7 @@ const ContractDetail: React.FC<{
               label: (
                 <div
                   className="contract-action-dropdown-item"
-                  data-testid="import-openmetadata-contract-button"
-                >
+                  data-testid="import-openmetadata-contract-button">
                   <ImportIcon className="anticon" />
 
                   {t('label.import')}
@@ -254,8 +251,7 @@ const ContractDetail: React.FC<{
               label: (
                 <div
                   className="contract-action-dropdown-item"
-                  data-testid="import-odcs-contract-button"
-                >
+                  data-testid="import-odcs-contract-button">
                   <ImportIcon className="anticon" />
 
                   {t('label.import-odcs')}
@@ -269,8 +265,7 @@ const ContractDetail: React.FC<{
         label: (
           <div
             className="contract-action-dropdown-item"
-            data-testid="export-contract-button"
-          >
+            data-testid="export-contract-button">
             <ExportIcon className="anticon" />
 
             {t('label.export')}
@@ -282,8 +277,7 @@ const ContractDetail: React.FC<{
         label: (
           <div
             className="contract-action-dropdown-item"
-            data-testid="export-odcs-contract-button"
-          >
+            data-testid="export-odcs-contract-button">
             <ExportIcon className="anticon" />
 
             {t('label.export-odcs')}
@@ -307,8 +301,7 @@ const ContractDetail: React.FC<{
                     isInheritedContract
                       ? t('message.inherited-contract-cannot-be-deleted')
                       : undefined
-                  }
-                >
+                  }>
                   <DeleteIcon className="anticon" />
 
                   {t('label.delete')}
@@ -477,14 +470,12 @@ const ContractDetail: React.FC<{
           align="middle"
           className="w-full"
           gutter={[0, 4]}
-          justify="space-between"
-        >
+          justify="space-between">
           <Col span={20}>
             <div className="d-flex items-center gap-2">
               <Typography.Text
                 className="contract-title"
-                data-testid="contract-title"
-              >
+                data-testid="contract-title">
                 {getEntityName(contract)}
               </Typography.Text>
               {(contract as ContractWithInheritance & { inherited?: boolean })
@@ -492,8 +483,7 @@ const ContractDetail: React.FC<{
                 <Tooltip
                   title={t('label.inherited-entity', {
                     entity: t('label.contract'),
-                  })}
-                >
+                  })}>
                   <InheritIcon
                     className="inherit-icon cursor-pointer"
                     width={16}
@@ -519,8 +509,7 @@ const ContractDetail: React.FC<{
                 overlayClassName="contract-action-dropdown"
                 overlayStyle={{ width: 180 }}
                 placement="bottomRight"
-                trigger={['click']}
-              >
+                trigger={['click']}>
                 <Button
                   className="contract-action-button"
                   data-testid="manage-contract-actions"
@@ -537,8 +526,7 @@ const ContractDetail: React.FC<{
                 <div className="d-flex items-center">
                   <Typography.Text
                     className="contract-sub-header-title"
-                    data-testid="contract-created-by-label"
-                  >
+                    data-testid="contract-created-by-label">
                     {`${t('label.created-by')} : `}
                   </Typography.Text>
 
@@ -561,15 +549,13 @@ const ContractDetail: React.FC<{
                 <div className="d-flex items-center">
                   <Typography.Text
                     className="contract-sub-header-title"
-                    data-testid="contract-created-at-label"
-                  >
+                    data-testid="contract-created-at-label">
                     {`${t('label.created-at')} : `}
                   </Typography.Text>
 
                   <Typography.Text
                     className="contract-sub-header-value"
-                    data-testid="contract-created-at-value"
-                  >
+                    data-testid="contract-created-at-value">
                     {formatDateTime(contract.createdAt)}
                   </Typography.Text>
                 </div>
@@ -584,8 +570,7 @@ const ContractDetail: React.FC<{
             <div className="d-flex items-center">
               <Typography.Text
                 className="contract-sub-header-title"
-                data-testid="contract-version-label"
-              >
+                data-testid="contract-version-label">
                 {`${t('label.version')} : `}
               </Typography.Text>
 
@@ -601,8 +586,7 @@ const ContractDetail: React.FC<{
             <div className="d-flex items-center">
               <Typography.Text
                 className="contract-sub-header-title"
-                data-testid="contract-status-label"
-              >
+                data-testid="contract-status-label">
                 {`${t('label.status')} : `}
               </Typography.Text>
 
@@ -618,12 +602,10 @@ const ContractDetail: React.FC<{
 
             <div
               className="d-flex items-center"
-              data-testid="contract-owner-card"
-            >
+              data-testid="contract-owner-card">
               <Typography.Text
                 className="contract-sub-header-title"
-                data-testid="contract-status-label"
-              >
+                data-testid="contract-status-label">
                 {`${t('label.owner-plural')} : `}
               </Typography.Text>
 
@@ -654,8 +636,7 @@ const ContractDetail: React.FC<{
           icon={
             <EmptyContractIcon className="empty-contract-icon" height={140} />
           }
-          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
-        >
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
           <Typography.Paragraph className="m-t-md w-80" type="secondary">
             {t('message.no-contract-description')}
           </Typography.Paragraph>
@@ -679,8 +660,7 @@ const ContractDetail: React.FC<{
           icon={
             <EmptyContractIcon className="empty-contract-icon" height={140} />
           }
-          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
-        >
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
           <Typography.Paragraph className="m-t-md w-80" type="secondary">
             {t('message.create-contract-description')}
           </Typography.Paragraph>
@@ -697,8 +677,7 @@ const ContractDetail: React.FC<{
               id="add-contract-button"
               sx={{ marginTop: 2 }}
               variant="contained"
-              onClick={handleAddContractMenuOpen}
-            >
+              onClick={handleAddContractMenuOpen}>
               {t('label.add-entity', { entity: t('label.contract') })}
             </Button>
             <Menu
@@ -756,16 +735,14 @@ const ContractDetail: React.FC<{
                   },
                 },
               }}
-              onClose={handleAddContractMenuClose}
-            >
+              onClose={handleAddContractMenuClose}>
               {addContractActionsItems.map((item) => (
                 <MenuItem
                   data-testid={item.testId}
                   key={item.key}
                   onClick={() => handleAddContractAction(item.key as string)}
                   onMouseEnter={() => setHoveredAddContractItem(item.key)}
-                  onMouseLeave={() => setHoveredAddContractItem(null)}
-                >
+                  onMouseLeave={() => setHoveredAddContractItem(null)}>
                   <span className="contract-action-dropdown-item">
                     {item.icon}
                     {item.label}
@@ -794,8 +771,7 @@ const ContractDetail: React.FC<{
       <Card
         className="contract-card-container"
         style={{ marginBottom: 16 }}
-        title={renderDataContractHeader}
-      >
+        title={renderDataContractHeader}>
         {mode === DataContractMode.YAML ? (
           <ContractYaml contract={contract} />
         ) : (
@@ -848,8 +824,7 @@ const ContractDetail: React.FC<{
                 <Tooltip
                   title={t('label.inherited-entity', {
                     entity: t('label.terms-of-service'),
-                  })}
-                >
+                  })}>
                   <InheritIcon
                     className="inherit-icon cursor-pointer"
                     width={14}
@@ -885,8 +860,7 @@ const ContractDetail: React.FC<{
               <Col
                 className="contract-card-items"
                 data-testid="schema-table-card"
-                span={24}
-              >
+                span={24}>
                 <div className="contract-card-header-container">
                   <Typography.Text className="contract-card-header">
                     {t('label.schema')}
@@ -911,8 +885,7 @@ const ContractDetail: React.FC<{
                   <Tooltip
                     title={t('label.inherited-entity', {
                       entity: t('label.security'),
-                    })}
-                  >
+                    })}>
                     <InheritIcon
                       className="inherit-icon cursor-pointer"
                       width={14}
@@ -924,8 +897,7 @@ const ContractDetail: React.FC<{
                   <Col
                     className="contract-card-items"
                     data-testid="security-card"
-                    span={24}
-                  >
+                    span={24}>
                     <div className="contract-card-header-container">
                       <div className="d-flex items-center gap-1">
                         <Typography.Text className="contract-card-header">
@@ -946,8 +918,7 @@ const ContractDetail: React.FC<{
               <Col
                 className="contract-card-items"
                 data-testid="semantics-card"
-                span={24}
-              >
+                span={24}>
                 <div className="contract-card-header-container">
                   <Typography.Text className="contract-card-header">
                     {t('label.semantic-plural')}
@@ -968,8 +939,7 @@ const ContractDetail: React.FC<{
               <Col
                 className="contract-card-items"
                 data-testid="data-quality-card"
-                span={24}
-              >
+                span={24}>
                 <div className="contract-card-header-container">
                   <Typography.Text className="contract-card-header">
                     {t('label.quality')}
@@ -989,8 +959,7 @@ const ContractDetail: React.FC<{
               <Col
                 className="contract-card-items"
                 data-testid="schema-table-card"
-                span={24}
-              >
+                span={24}>
                 <div className="contract-card-header-container">
                   <Typography.Text className="contract-card-header">
                     {t('label.execution-history')}

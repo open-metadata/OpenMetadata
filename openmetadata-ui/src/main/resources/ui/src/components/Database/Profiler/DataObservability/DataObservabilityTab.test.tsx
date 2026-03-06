@@ -53,8 +53,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
           : className
       }
       id={id}
-      type="button"
-    >
+      type="button">
       {children}
     </button>
   );

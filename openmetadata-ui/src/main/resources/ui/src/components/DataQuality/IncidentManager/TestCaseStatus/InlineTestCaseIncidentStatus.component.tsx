@@ -401,8 +401,7 @@ const InlineTestCaseIncidentStatus = ({
             data-testid={option.name}
             selected={selectedAssignee?.id === option.value}
             sx={{ py: 1.5 }}
-            onClick={() => handleAssigneeSelect(user)}
-          >
+            onClick={() => handleAssigneeSelect(user)}>
             <UserTag
               avatarType="outlined"
               id={option.name ?? ''}
@@ -464,8 +463,7 @@ const InlineTestCaseIncidentStatus = ({
           vertical: 'top',
           horizontal: 'right',
         }}
-        onClose={handleCloseStatusMenu}
-      >
+        onClose={handleCloseStatusMenu}>
         {Object.values(TestCaseResolutionStatusTypes).map((status) => (
           <MenuItem
             key={status}
@@ -481,8 +479,7 @@ const InlineTestCaseIncidentStatus = ({
                 },
               },
             }}
-            onClick={() => handleStatusChange(status)}
-          >
+            onClick={() => handleStatusChange(status)}>
             {TEST_CASE_RESOLUTION_STATUS_LABELS[status]}
           </MenuItem>
         ))}
@@ -511,8 +508,7 @@ const InlineTestCaseIncidentStatus = ({
           vertical: 'top',
           horizontal: 'right',
         }}
-        onClose={handleCloseAllPopovers}
-      >
+        onClose={handleCloseAllPopovers}>
         <Box
           sx={{
             display: 'flex',
@@ -520,8 +516,7 @@ const InlineTestCaseIncidentStatus = ({
 
             gap: 2,
             p: 3,
-          }}
-        >
+          }}>
           <IconButton size="small" onClick={handleBackToStatusMenu}>
             <ArrowBackIcon />
           </IconButton>
@@ -533,8 +528,7 @@ const InlineTestCaseIncidentStatus = ({
             data-testid="cancel-assignee-popover-button"
             size="small"
             sx={ACTION_BUTTON_STYLES.cancel}
-            onClick={handleCloseAllPopovers}
-          >
+            onClick={handleCloseAllPopovers}>
             <CloseIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
           <IconButton
@@ -542,8 +536,7 @@ const InlineTestCaseIncidentStatus = ({
             disabled={!selectedAssignee || isLoading}
             size="small"
             sx={ACTION_BUTTON_STYLES.submit}
-            onClick={handleAssigneeSubmit}
-          >
+            onClick={handleAssigneeSubmit}>
             <CheckIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
         </Box>
@@ -586,16 +579,14 @@ const InlineTestCaseIncidentStatus = ({
           vertical: 'top',
           horizontal: 'right',
         }}
-        onClose={handleCloseAllPopovers}
-      >
+        onClose={handleCloseAllPopovers}>
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
             gap: 2,
             p: 3,
-          }}
-        >
+          }}>
           <IconButton size="small" onClick={handleBackToStatusMenu}>
             <ArrowBackIcon />
           </IconButton>
@@ -607,8 +598,7 @@ const InlineTestCaseIncidentStatus = ({
             data-testid="cancel-resolved-popover-button"
             size="small"
             sx={ACTION_BUTTON_STYLES.cancel}
-            onClick={handleCloseAllPopovers}
-          >
+            onClick={handleCloseAllPopovers}>
             <CloseIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
           <IconButton
@@ -616,8 +606,7 @@ const InlineTestCaseIncidentStatus = ({
             disabled={!selectedReason || !comment || isLoading}
             size="small"
             sx={ACTION_BUTTON_STYLES.submit}
-            onClick={handleResolvedSubmit}
-          >
+            onClick={handleResolvedSubmit}>
             <CheckIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
         </Box>

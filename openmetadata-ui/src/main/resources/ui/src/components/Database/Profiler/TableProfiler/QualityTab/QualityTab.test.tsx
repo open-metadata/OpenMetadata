@@ -141,8 +141,7 @@ jest.mock('../../../../common/NextPrevious/NextPrevious', () => {
       <p>NextPrevious.component</p>
       <button
         data-testid="next-btn"
-        onClick={() => pagingHandler({ cursorType: 'after', currentPage: 2 })}
-      >
+        onClick={() => pagingHandler({ cursorType: 'after', currentPage: 2 })}>
         Next
       </button>
     </div>
@@ -218,8 +217,7 @@ jest.mock('../../../../common/EntityPageInfos/ManageButton/ManageButton', () =>
       data-deleted={props.deleted}
       data-entity-id={props.entityId}
       data-entity-type={props.entityType}
-      data-testid="manage-button"
-    >
+      data-testid="manage-button">
       ManageButton
     </div>
   ))
