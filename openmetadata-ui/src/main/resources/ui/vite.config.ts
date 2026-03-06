@@ -115,7 +115,6 @@ export default defineConfig(({ mode }) => {
             path.resolve(__dirname, 'src'),
             path.resolve(__dirname, 'src/styles'),
           ],
-          rewriteUrls: 'all',
         },
       },
     },
@@ -144,6 +143,10 @@ export default defineConfig(({ mode }) => {
       copyPublicDir: true,
       sourcemap: false,
       minify: mode === 'production' ? 'esbuild' : false,
+      cssMinify: 'esbuild',
+      cssCodeSplit: true,
+      reportCompressedSize: false,
+      chunkSizeWarningLimit: 5000,
       rollupOptions: {
         output: {
           manualChunks: {
