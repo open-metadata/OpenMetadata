@@ -324,6 +324,71 @@ public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLea
     assertEquals(CreateLearningResource.Status.DEPRECATED.value(), updated.getStatus().value());
   }
 
+  @Test
+  void put_statusOnlyChange_persistsAfterGet(TestNamespace ns) {
+    CreateLearningResource request =
+        new CreateLearningResource()
+            .withName(ns.prefix("status-only-update"))
+            .withDescription("Status-only update persistence test")
+            .withResourceType(CreateLearningResource.ResourceType.ARTICLE)
+            .withCategories(List.of(ResourceCategory.DATA_GOVERNANCE))
+            .withStatus(CreateLearningResource.Status.DRAFT)
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/status-only")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("glossary")));
+
+    LearningResource resource = createEntity(request);
+    assertEquals(CreateLearningResource.Status.DRAFT.value(), resource.getStatus().value());
+
+    // Update ONLY the status field — no other changes
+    request.withStatus(CreateLearningResource.Status.ACTIVE);
+    LearningResource putResponse = getLearningResourceService().put(request);
+    assertEquals(CreateLearningResource.Status.ACTIVE.value(), putResponse.getStatus().value());
+
+    // Verify the change persisted by re-fetching via GET
+    LearningResource fetched = getEntity(resource.getId().toString());
+    assertEquals(
+        CreateLearningResource.Status.ACTIVE.value(),
+        fetched.getStatus().value(),
+        "Status should persist after a status-only PUT update");
+
+    // Verify version was bumped
+    assertTrue(
+        fetched.getVersion() > resource.getVersion(),
+        "Version should be incremented after status change");
+  }
+
+  @Test
+  void put_statusOnlyChange_recordsChangeDescription(TestNamespace ns) {
+    CreateLearningResource request =
+        new CreateLearningResource()
+            .withName(ns.prefix("status-change-history"))
+            .withDescription("Status change history test")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withStatus(CreateLearningResource.Status.DRAFT)
+            .withSource(
+                new LearningResourceSource()
+                    .withUrl(URI.create("https://example.com/status-history")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore")));
+
+    LearningResource resource = createEntity(request);
+
+    // Change only status from DRAFT to ACTIVE
+    request.withStatus(CreateLearningResource.Status.ACTIVE);
+    getLearningResourceService().put(request);
+
+    // Change only status from ACTIVE to DEPRECATED
+    request.withStatus(CreateLearningResource.Status.DEPRECATED);
+    getLearningResourceService().put(request);
+
+    // Verify version history has entries for the status changes
+    EntityHistory history = getVersionHistory(resource.getId());
+    assertTrue(
+        history.getVersions().size() >= 3,
+        "Should have at least 3 versions: create + 2 status updates");
+  }
+
   // ===================================================================
   // CONTEXT TESTS
   // ===================================================================
@@ -667,6 +732,482 @@ public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLea
 
     assertNotNull(response);
     assertTrue(response.getData().size() >= 2);
+  }
+
+  // ===================================================================
+  // FILTER TESTS
+  // ===================================================================
+
+  @Test
+  void test_listFilterByResourceType_single(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("rt-video"))
+            .withDescription("Video resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/rt-video")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("rt-article"))
+            .withDescription("Article resource")
+            .withResourceType(CreateLearningResource.ResourceType.ARTICLE)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/rt-article")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    ListResponse<LearningResource> response =
+        listEntities(new ListParams().setLimit(100).addFilter("resourceType", "Video"));
+
+    assertFalse(response.getData().isEmpty());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(
+                r ->
+                    r.getResourceType()
+                        .value()
+                        .equals(CreateLearningResource.ResourceType.VIDEO.value())));
+  }
+
+  @Test
+  void test_listFilterByResourceType_multiValue(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("rtm-video"))
+            .withDescription("Video resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/rtm-video")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("rtm-storylane"))
+            .withDescription("Storylane resource")
+            .withResourceType(CreateLearningResource.ResourceType.STORYLANE)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withSource(
+                new LearningResourceSource()
+                    .withUrl(URI.create("https://example.com/rtm-storylane")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("rtm-article"))
+            .withDescription("Article resource")
+            .withResourceType(CreateLearningResource.ResourceType.ARTICLE)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/rtm-article")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    ListResponse<LearningResource> response =
+        listEntities(new ListParams().setLimit(100).addFilter("resourceType", "Video,Storylane"));
+
+    assertFalse(response.getData().isEmpty());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(
+                r -> {
+                  String type = r.getResourceType().value();
+                  return type.equals(CreateLearningResource.ResourceType.VIDEO.value())
+                      || type.equals(CreateLearningResource.ResourceType.STORYLANE.value());
+                }));
+  }
+
+  @Test
+  void test_listFilterByStatus_single(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("st-active"))
+            .withDescription("Active resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withStatus(CreateLearningResource.Status.ACTIVE)
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/st-active")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("st-draft"))
+            .withDescription("Draft resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withStatus(CreateLearningResource.Status.DRAFT)
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/st-draft")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    ListResponse<LearningResource> response =
+        listEntities(new ListParams().setLimit(100).addFilter("status", "Active"));
+
+    assertFalse(response.getData().isEmpty());
+    assertTrue(response.getData().stream().allMatch(r -> r.getStatus().value().equals("Active")));
+  }
+
+  @Test
+  void test_listFilterByStatus_multiValue(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("stm-active"))
+            .withDescription("Active resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withStatus(CreateLearningResource.Status.ACTIVE)
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/stm-active")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("stm-draft"))
+            .withDescription("Draft resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withStatus(CreateLearningResource.Status.DRAFT)
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/stm-draft")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("stm-deprecated"))
+            .withDescription("Deprecated resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withStatus(CreateLearningResource.Status.DEPRECATED)
+            .withSource(
+                new LearningResourceSource()
+                    .withUrl(URI.create("https://example.com/stm-deprecated")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    ListResponse<LearningResource> response =
+        listEntities(new ListParams().setLimit(100).addFilter("status", "Active,Draft"));
+
+    assertFalse(response.getData().isEmpty());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(
+                r -> {
+                  String status = r.getStatus().value();
+                  return status.equals("Active") || status.equals("Draft");
+                }));
+  }
+
+  @Test
+  void test_listFilterByCategory_single(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("cat-gov"))
+            .withDescription("Governance resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DATA_GOVERNANCE))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/cat-gov")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("glossary"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("cat-obs"))
+            .withDescription("Observability resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.OBSERVABILITY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/cat-obs")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    ListResponse<LearningResource> response =
+        listEntities(new ListParams().setLimit(100).addFilter("category", "DataGovernance"));
+
+    assertFalse(response.getData().isEmpty());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(r -> r.getCategories().contains(ResourceCategory.DATA_GOVERNANCE)));
+  }
+
+  @Test
+  void test_listFilterByCategory_multiValue(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("catm-gov"))
+            .withDescription("Governance resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DATA_GOVERNANCE))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/catm-gov")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("glossary"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("catm-qual"))
+            .withDescription("Quality resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DATA_QUALITY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/catm-qual")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("dataQuality"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("catm-admin"))
+            .withDescription("Admin resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.ADMINISTRATION))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/catm-admin")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("settings"))));
+
+    ListResponse<LearningResource> response =
+        listEntities(
+            new ListParams().setLimit(100).addFilter("category", "DataGovernance,DataQuality"));
+
+    assertFalse(response.getData().isEmpty());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(
+                r ->
+                    r.getCategories().contains(ResourceCategory.DATA_GOVERNANCE)
+                        || r.getCategories().contains(ResourceCategory.DATA_QUALITY)));
+  }
+
+  @Test
+  void test_listFilterByPageId_single(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("pg-explore"))
+            .withDescription("Explore resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/pg-explore")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("pg-glossary"))
+            .withDescription("Glossary resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DATA_GOVERNANCE))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/pg-glossary")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("glossary"))));
+
+    ListResponse<LearningResource> response =
+        listEntities(new ListParams().setLimit(100).addFilter("pageId", "explore"));
+
+    assertFalse(response.getData().isEmpty());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(
+                r -> r.getContexts().stream().anyMatch(ctx -> "explore".equals(ctx.getPageId()))));
+  }
+
+  @Test
+  void test_listFilterByPageId_multiValue(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("pgm-explore"))
+            .withDescription("Explore resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/pgm-explore")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("pgm-glossary"))
+            .withDescription("Glossary resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DATA_GOVERNANCE))
+            .withSource(
+                new LearningResourceSource()
+                    .withUrl(URI.create("https://example.com/pgm-glossary")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("glossary"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("pgm-settings"))
+            .withDescription("Settings resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.ADMINISTRATION))
+            .withSource(
+                new LearningResourceSource()
+                    .withUrl(URI.create("https://example.com/pgm-settings")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("settings"))));
+
+    ListResponse<LearningResource> response =
+        listEntities(new ListParams().setLimit(100).addFilter("pageId", "explore,glossary"));
+
+    assertFalse(response.getData().isEmpty());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(
+                r ->
+                    r.getContexts().stream()
+                        .anyMatch(
+                            ctx ->
+                                "explore".equals(ctx.getPageId())
+                                    || "glossary".equals(ctx.getPageId()))));
+  }
+
+  @Test
+  void test_listFilterBySearch_matchesName(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("search-alpha-intro"))
+            .withDescription("Alpha resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withSource(
+                new LearningResourceSource()
+                    .withUrl(URI.create("https://example.com/search-alpha")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("search-beta-guide"))
+            .withDescription("Beta resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/search-beta")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    ListResponse<LearningResource> response =
+        listEntities(new ListParams().setLimit(100).addFilter("search", "alpha-intro"));
+
+    assertFalse(response.getData().isEmpty());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(r -> r.getName().toLowerCase().contains("alpha-intro")));
+  }
+
+  @Test
+  void test_listFilterBySearch_matchesDisplayName(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("search-dn-1"))
+            .withDisplayName("Getting Started Tutorial")
+            .withDescription("Getting started resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/search-dn-1")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("search-dn-2"))
+            .withDisplayName("Advanced Lineage Deep Dive")
+            .withDescription("Advanced resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DISCOVERY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/search-dn-2")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    ListResponse<LearningResource> response =
+        listEntities(new ListParams().setLimit(100).addFilter("search", "Getting Started"));
+
+    assertFalse(response.getData().isEmpty());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(
+                r -> {
+                  String name = r.getName().toLowerCase();
+                  String displayName =
+                      r.getDisplayName() != null ? r.getDisplayName().toLowerCase() : "";
+                  return name.contains("getting started")
+                      || displayName.contains("getting started");
+                }));
+  }
+
+  @Test
+  void test_listFilterBySearch_caseInsensitive(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("search-ci-resource"))
+            .withDisplayName("Data Quality Overview")
+            .withDescription("Case insensitive test")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DATA_QUALITY))
+            .withSource(
+                new LearningResourceSource().withUrl(URI.create("https://example.com/search-ci")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("dataQuality"))));
+
+    ListResponse<LearningResource> upperResponse =
+        listEntities(new ListParams().setLimit(100).addFilter("search", "DATA QUALITY"));
+    ListResponse<LearningResource> lowerResponse =
+        listEntities(new ListParams().setLimit(100).addFilter("search", "data quality"));
+
+    assertFalse(upperResponse.getData().isEmpty());
+    assertFalse(lowerResponse.getData().isEmpty());
+    assertEquals(upperResponse.getData().size(), lowerResponse.getData().size());
+  }
+
+  @Test
+  void test_listFilterCombined(TestNamespace ns) {
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("combo-video-gov"))
+            .withDescription("Video governance resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.DATA_GOVERNANCE))
+            .withStatus(CreateLearningResource.Status.ACTIVE)
+            .withSource(
+                new LearningResourceSource()
+                    .withUrl(URI.create("https://example.com/combo-video-gov")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("glossary"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("combo-article-gov"))
+            .withDescription("Article governance resource")
+            .withResourceType(CreateLearningResource.ResourceType.ARTICLE)
+            .withCategories(List.of(ResourceCategory.DATA_GOVERNANCE))
+            .withStatus(CreateLearningResource.Status.ACTIVE)
+            .withSource(
+                new LearningResourceSource()
+                    .withUrl(URI.create("https://example.com/combo-article-gov")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("glossary"))));
+
+    createEntity(
+        new CreateLearningResource()
+            .withName(ns.prefix("combo-video-obs"))
+            .withDescription("Video observability resource")
+            .withResourceType(CreateLearningResource.ResourceType.VIDEO)
+            .withCategories(List.of(ResourceCategory.OBSERVABILITY))
+            .withStatus(CreateLearningResource.Status.DRAFT)
+            .withSource(
+                new LearningResourceSource()
+                    .withUrl(URI.create("https://example.com/combo-video-obs")))
+            .withContexts(List.of(new LearningResourceContext().withPageId("explore"))));
+
+    ListResponse<LearningResource> response =
+        listEntities(
+            new ListParams()
+                .setLimit(100)
+                .addFilter("resourceType", "Video")
+                .addFilter("category", "DataGovernance")
+                .addFilter("status", "Active"));
+
+    assertFalse(response.getData().isEmpty());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(
+                r ->
+                    r.getResourceType()
+                            .value()
+                            .equals(CreateLearningResource.ResourceType.VIDEO.value())
+                        && r.getCategories().contains(ResourceCategory.DATA_GOVERNANCE)
+                        && r.getStatus().value().equals("Active")));
   }
 
   // ===================================================================

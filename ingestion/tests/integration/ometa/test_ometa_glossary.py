@@ -22,7 +22,6 @@ from metadata.generated.schema.api.data.createGlossaryTerm import (
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import (
@@ -38,7 +37,6 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.type.basic import (
-    Email,
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
@@ -53,6 +51,20 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.utils import fqn
 
+from ..integration_base import generate_name
+from .conftest import _safe_delete
+
+
+def _glossary_request(name=None):
+    """Create a glossary request with a unique name."""
+    if name is None:
+        name = generate_name()
+    return CreateGlossaryRequest(
+        name=name,
+        displayName=name.root if hasattr(name, "root") else str(name),
+        description=Markdown("Description of test glossary"),
+    )
+
 
 class TestOMetaGlossary:
     """
@@ -64,44 +76,24 @@ class TestOMetaGlossary:
         """
         Create a Glossary
         """
-        create_user_request = CreateUserRequest(
-            name=EntityName("test.user.1"),
-            email=Email(root="test.user.1@getcollate.io"),
+        user = create_user()
+
+        req = _glossary_request()
+        req.owners = EntityReferenceList(
+            root=[EntityReference(id=user.id, type="user")],
         )
 
-        user = create_user(create_user_request)
-
-        create_glossary_request = CreateGlossaryRequest(
-            name=EntityName("test-glossary"),
-            displayName="test-glossary",
-            description=Markdown("Description of test glossary"),
-            owners=EntityReferenceList(
-                root=[
-                    EntityReference(
-                        id=user.id,
-                        type="user",
-                    )
-                ],
-            ),
-        )
-
-        glossary = create_glossary(create_glossary_request)
+        glossary = create_glossary(req)
 
         assert glossary is not None
-        assert create_glossary_request.name == glossary.name
+        assert req.name == glossary.name
 
     def test_create_glossary_term(self, create_glossary, create_glossary_term):
         """
         Test the creation of a glossary term
         """
 
-        glossary = create_glossary(
-            CreateGlossaryRequest(
-                name=EntityName("test-glossary"),
-                displayName="test-glossary",
-                description=Markdown("Description of test glossary"),
-            )
-        )
+        glossary = create_glossary(_glossary_request())
 
         # Create Glossary Term without Parent
         create_glossary_term_1 = CreateGlossaryTermRequest(
@@ -140,13 +132,7 @@ class TestOMetaGlossary:
         """
         Update parent via PATCH
         """
-        glossary = create_glossary(
-            CreateGlossaryRequest(
-                name=EntityName("test-glossary"),
-                displayName="test-glossary",
-                description=Markdown("Description of test glossary"),
-            )
-        )
+        glossary = create_glossary(_glossary_request())
 
         # Create Glossary Term without Parent
         create_glossary_term_1 = CreateGlossaryTermRequest(
@@ -221,13 +207,7 @@ class TestOMetaGlossary:
         """
         Update related terms via PATCH
         """
-        glossary = create_glossary(
-            CreateGlossaryRequest(
-                name=EntityName("test-glossary"),
-                displayName="test-glossary",
-                description=Markdown("Description of test glossary"),
-            )
-        )
+        glossary = create_glossary(_glossary_request())
 
         create_glossary_term_1 = CreateGlossaryTermRequest(
             glossary=FullyQualifiedEntityName(glossary.name.root),
@@ -267,20 +247,9 @@ class TestOMetaGlossary:
         """
         Update reviewers via PATCH
         """
-        glossary = create_glossary(
-            CreateGlossaryRequest(
-                name=EntityName("test-glossary"),
-                displayName="test-glossary",
-                description=Markdown("Description of test glossary"),
-            )
-        )
+        glossary = create_glossary(_glossary_request())
 
-        user_1 = create_user(
-            CreateUserRequest(
-                name=EntityName("test.user.1"),
-                email=Email(root="test.user.1@getcollate.io"),
-            ),
-        )
+        user_1 = create_user()
 
         # Add Glossary Reviewer
         updated_glossary = deepcopy(glossary)
@@ -305,19 +274,9 @@ class TestOMetaGlossary:
         assert patched_glossary is not None
         assert len(patched_glossary.reviewers) == 0
 
-        user_2 = create_user(
-            CreateUserRequest(
-                name=EntityName("test.user.2"),
-                email=Email(root="test.user.2@getcollate.io"),
-            ),
-        )
+        user_2 = create_user()
 
-        user_3 = create_user(
-            CreateUserRequest(
-                name=EntityName("test.user.3"),
-                email=Email(root="test.user.3@getcollate.io"),
-            ),
-        )
+        user_3 = create_user()
 
         # Add Reviewers
         updated_glossary = deepcopy(patched_glossary)
@@ -331,15 +290,17 @@ class TestOMetaGlossary:
         # Remove one Glossary reviewer when there are many
         # delete user_3
         updated_glossary = deepcopy(patched_glossary)
-        updated_glossary.reviewers.pop(2)
+        updated_glossary.reviewers = [
+            r for r in updated_glossary.reviewers if r.id != user_3.id
+        ]
         patched_glossary = metadata.patch(
             entity=Glossary, source=patched_glossary, destination=updated_glossary
         )
 
         assert patched_glossary is not None
         assert len(patched_glossary.reviewers) == 2
-        assert patched_glossary.reviewers[0].id == user_1.id
-        assert patched_glossary.reviewers[1].id == user_2.id
+        reviewer_ids = {str(r.id.root) for r in patched_glossary.reviewers}
+        assert reviewer_ids == {str(user_1.id.root), str(user_2.id.root)}
 
         # Add GlossaryTerm Reviewer
         create_glossary_term_1 = CreateGlossaryTermRequest(
@@ -395,13 +356,7 @@ class TestOMetaGlossary:
         """
         Update synonyms via PATCH
         """
-        glossary = create_glossary(
-            CreateGlossaryRequest(
-                name=EntityName("test-glossary"),
-                displayName="test-glossary",
-                description=Markdown("Description of test glossary"),
-            )
-        )
+        glossary = create_glossary(_glossary_request())
 
         create_glossary_term_1 = CreateGlossaryTermRequest(
             glossary=FullyQualifiedEntityName(glossary.name.root),
@@ -466,13 +421,7 @@ class TestOMetaGlossary:
         """
         Update GlossaryTerm references via PATCH
         """
-        glossary = create_glossary(
-            CreateGlossaryRequest(
-                name=EntityName("test-glossary"),
-                displayName="test-glossary",
-                description=Markdown("Description of test glossary"),
-            )
-        )
+        glossary = create_glossary(_glossary_request())
 
         create_glossary_term_1 = CreateGlossaryTermRequest(
             glossary=FullyQualifiedEntityName(glossary.name.root),
@@ -548,13 +497,7 @@ class TestOMetaGlossary:
         self, metadata, create_glossary, create_glossary_term
     ):
         """We can get assets for a glossary term"""
-        glossary = create_glossary(
-            CreateGlossaryRequest(
-                name=EntityName("test-glossary"),
-                displayName="test-glossary",
-                description=Markdown("Description of test glossary"),
-            )
-        )
+        glossary = create_glossary(_glossary_request())
 
         create_glossary_term_1 = CreateGlossaryTermRequest(
             glossary=FullyQualifiedEntityName(glossary.name.root),
@@ -566,7 +509,7 @@ class TestOMetaGlossary:
 
         service: DashboardService = metadata.create_or_update(
             data=CreateDashboardServiceRequest(
-                name="test-service-dashboard-glossary-assets",
+                name=generate_name(),
                 serviceType=DashboardServiceType.Looker,
                 connection=DashboardConnection(
                     config=LookerConnection(
@@ -578,7 +521,7 @@ class TestOMetaGlossary:
 
         dashboard: Dashboard = metadata.create_or_update(
             CreateDashboardRequest(
-                name="test-dashboard-glossary-assets",
+                name=generate_name(),
                 service=service.fullyQualifiedName,
             )
         )
@@ -601,16 +544,18 @@ class TestOMetaGlossary:
             ),
         )
 
-        assets_response = metadata.get_glossary_term_assets(
-            glossary_term_1.fullyQualifiedName.root, limit=100
-        )
-        assert len(assets_response["data"]) >= 1
-        assert assets_response["data"][0]["id"] == str(dashboard.id.root)
-        assert assets_response["data"][0]["type"] == "dashboard"
-
-        metadata.delete(
-            entity=DashboardService,
-            entity_id=service.id,
-            recursive=True,
-            hard_delete=True,
-        )
+        try:
+            assets_response = metadata.get_glossary_term_assets(
+                glossary_term_1.fullyQualifiedName.root, limit=100
+            )
+            assert len(assets_response["data"]) >= 1
+            assert assets_response["data"][0]["id"] == str(dashboard.id.root)
+            assert assets_response["data"][0]["type"] == "dashboard"
+        finally:
+            _safe_delete(
+                metadata,
+                entity=DashboardService,
+                entity_id=service.id,
+                recursive=True,
+                hard_delete=True,
+            )

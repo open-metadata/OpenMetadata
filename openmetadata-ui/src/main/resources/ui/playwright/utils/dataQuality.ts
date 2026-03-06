@@ -13,6 +13,11 @@
 import { expect, Page, Response } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 
+export enum ObservabilityFeature {
+  TEST_CASE = 'Test case',
+  CUSTOM_METRIC = 'Custom Metric',
+}
+
 export const clickUpdateButton = async (page: Page) => {
   const updateTestCaseResponse = page.waitForResponse(
     (response: Response) =>
@@ -25,19 +30,33 @@ export const clickUpdateButton = async (page: Page) => {
   expect(response.status()).toBe(200);
 };
 
-export const clickEditTestCaseButton = async (page: Page, testCaseName: string) => {
+export const selectAddObservabilityFeature = async (
+  page: Page,
+  featureName: ObservabilityFeature
+) => {
+  await page.getByRole('menuitemradio', { name: featureName }).click();
+};
 
+export const clickEditTestCaseButton = async (
+  page: Page,
+  testCaseName: string
+) => {
   const testCaseDoc = page.waitForResponse(
     '/locales/en-US/OpenMetadata/TestCaseForm.md'
   );
-  const testDefinitionResponse = page.waitForResponse("/api/v1/dataQuality/testDefinitions/*")
+  const testDefinitionResponse = page.waitForResponse(
+    '/api/v1/dataQuality/testDefinitions/*'
+  );
   await page.getByTestId(`action-dropdown-${testCaseName}`).click();
   await page.getByTestId(`edit-${testCaseName}`).click();
   await testCaseDoc;
   await testDefinitionResponse;
 };
 
-export const clickCreateTestCaseButton = async (page: Page, testCaseName: string) => {
+export const clickCreateTestCaseButton = async (
+  page: Page,
+  testCaseName: string
+) => {
   const createTestCaseResponse = page.waitForResponse(
     (response: Response) =>
       response.url().includes('/api/v1/dataQuality/testCases') &&
@@ -57,11 +76,14 @@ export const clickCreateTestCaseButton = async (page: Page, testCaseName: string
   await expect(page.getByTestId(testCaseName)).toBeVisible();
 };
 
-export const visitCreateTestCasePanelFromEntityPage = async (page: Page, table: TableClass) => {
+export const visitCreateTestCasePanelFromEntityPage = async (
+  page: Page,
+  table: TableClass
+) => {
   await table.visitEntityPage(page);
   const profileResponse = page.waitForResponse(
     `/api/v1/tables/${encodeURIComponent(
-      table.entityResponseData?.['fullyQualifiedName']
+      table.entityResponseData?.['fullyQualifiedName'] ?? ''
     )}/tableProfile/latest?includeColumnProfile=false`
   );
   await page.getByText('Data Observability').click();
@@ -72,6 +94,6 @@ export const visitCreateTestCasePanelFromEntityPage = async (page: Page, table: 
   const testCaseDoc = page.waitForResponse(
     '/locales/en-US/OpenMetadata/TestCaseForm.md'
   );
-  await page.getByTestId('test-case').click();
+  await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
   await testCaseDoc;
-}
+};

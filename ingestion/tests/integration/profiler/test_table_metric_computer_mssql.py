@@ -13,12 +13,11 @@
 Integration tests for MSSQLTableMetricComputer against a real SQL Server database.
 """
 
-import sys
 from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import Column, Integer, String, create_engine, text
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from testcontainers.mssql import SqlServerContainer
 
 from metadata.generated.schema.entity.data.table import TableType
@@ -28,11 +27,9 @@ from metadata.profiler.orm.functions.table_metric_computer import (
 )
 from metadata.profiler.processor.runner import QueryRunner
 
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
 
-
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 class MetricComputerTestTable(Base):

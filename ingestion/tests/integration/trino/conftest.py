@@ -1,5 +1,6 @@
 import os.path
 import random
+import uuid
 from pathlib import Path
 from time import sleep
 
@@ -7,7 +8,7 @@ import docker
 import pandas as pd
 import pytest
 import testcontainers.core.network
-from sqlalchemy import create_engine, insert
+from sqlalchemy import create_engine, insert, text
 from sqlalchemy.engine import Engine, make_url
 from tenacity import retry, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
@@ -53,7 +54,12 @@ class TrinoContainer(DbContainer):
         super()._connect()
         engine = create_engine(self.get_connection_url())
         try:
-            retry(wait=wait_fixed(1), stop=stop_after_delay(120))(engine.execute)(
+
+            def _exec(sql):
+                with engine.connect() as conn:
+                    return conn.execute(text(sql))
+
+            retry(wait=wait_fixed(1), stop=stop_after_delay(120))(_exec)(
                 "select system.runtime.nodes.node_id from system.runtime.nodes"
             ).fetchall()
         finally:
@@ -117,13 +123,13 @@ class HiveMetaStoreContainer(DockerContainer):
         )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def docker_network():
     with testcontainers.core.network.Network() as network:
         yield network
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def trino_container(hive_metastore_container, minio_container, docker_network):
     container = (
         TrinoContainer(image="trinodb/trino:418")
@@ -141,7 +147,7 @@ def trino_container(hive_metastore_container, minio_container, docker_network):
         yield trino
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def mysql_container(docker_network):
     container = (
         MySqlContainer(
@@ -154,7 +160,7 @@ def mysql_container(docker_network):
         yield mysql
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def hive_metastore_container(mysql_container, minio_container, docker_network):
     with HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest").with_network(
         docker_network
@@ -172,7 +178,7 @@ def hive_metastore_container(mysql_container, minio_container, docker_network):
         yield hive
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def minio_container(docker_network):
     container = (
         MinioContainer().with_network(docker_network).with_network_aliases("minio")
@@ -183,12 +189,23 @@ def minio_container(docker_network):
         yield minio
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def create_test_data(trino_container):
     engine = create_engine(
         make_url(trino_container.get_connection_url()).set(database="minio")
     )
-    engine.execute(
+
+    def _execute_with_connect(sql):
+        with engine.connect() as conn:
+            result = conn.execute(text(sql))
+            conn.commit()
+            return result
+
+    retry(wait=wait_fixed(2), stop=stop_after_delay(60))(_execute_with_connect)(
+        "SELECT 1 FROM minio.information_schema.schemata LIMIT 1"
+    ).fetchall()
+
+    _execute_with_connect(
         "create schema minio.my_schema WITH (location = 's3a://hive-warehouse/')"
     )
     data_dir = os.path.dirname(__file__) + "/data"
@@ -196,14 +213,13 @@ def create_test_data(trino_container):
         file_path = Path(os.path.join(data_dir, file))
 
         if file_path.suffix == ".sql":
-            # Creating test data with complex fields with pandas breaks
             create_test_data_from_sql(engine, file_path)
         else:
             create_test_data_from_parquet(engine, file_path)
 
         sleep(1)
-        engine.execute("ANALYZE " + f'minio."my_schema"."{file_path.stem}"')
-    engine.execute(
+        _execute_with_connect("ANALYZE " + f'minio."my_schema"."{file_path.stem}"')
+    _execute_with_connect(
         "CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')"
     )
     return
@@ -232,10 +248,12 @@ def create_test_data_from_sql(engine: Engine, file_path: Path):
         sql = f.read()
 
     sql = sql.format(catalog="minio", schema="my_schema", table_name=file_path.stem)
-    for statement in sql.split(";"):
-        if statement.strip() == "":
-            continue
-        engine.execute(statement)
+    with engine.connect() as conn:
+        for statement in sql.split(";"):
+            if statement.strip() == "":
+                continue
+            conn.execute(text(statement))
+        conn.commit()
 
 
 def custom_insert(self, conn, keys: list[str], data_iter):
@@ -244,25 +262,27 @@ def custom_insert(self, conn, keys: list[str], data_iter):
     This is required becauase using trino with pd.to_sql in our setup us unreliable.
     """
     rowcount = 0
-    max_tries = 10
+    max_tries = 20
     try_num = 0
     data = [dict(zip(keys, row)) for row in data_iter]
     while rowcount != len(data):
         if try_num >= max_tries:
             raise RuntimeError(f"Failed to insert data after {max_tries} tries")
+        if try_num > 0:
+            sleep(min(try_num, 5))
         try_num += 1
         stmt = insert(self.table).values(data)
         conn.execute(stmt)
         rowcount = conn.execute(
-            "SELECT COUNT(*) FROM " + f'"{self.schema}"."{self.name}"'
+            text("SELECT COUNT(*) FROM " + f'"{self.schema}"."{self.name}"')
         ).scalar()
     return rowcount
 
 
 @pytest.fixture(scope="module")
-def create_service_request(trino_container, tmp_path_factory):
+def create_service_request(trino_container):
     return CreateDatabaseServiceRequest(
-        name="docker_test_" + tmp_path_factory.mktemp("trino").name,
+        name=f"docker_test_trino_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.Trino,
         connection=DatabaseConnection(
             config=TrinoConnection(

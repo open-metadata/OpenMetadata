@@ -20,10 +20,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
@@ -85,6 +87,9 @@ public class DistributedSearchIndexCoordinator {
   private final String serverId;
   private EntityCompletionTracker entityTracker;
 
+  /** Monotonic counter to guarantee unique claimedAt values across concurrent worker threads. */
+  private final AtomicLong claimCounter = new AtomicLong(0);
+
   public DistributedSearchIndexCoordinator(CollectionDAO collectionDAO) {
     this.collectionDAO = collectionDAO;
     this.partitionCalculator = new PartitionCalculator();
@@ -121,12 +126,20 @@ public class DistributedSearchIndexCoordinator {
    */
   public SearchIndexJob createJob(
       Set<String> entities, EventPublisherJob jobConfiguration, String createdBy) {
+    return createJob(entities, jobConfiguration, createdBy, null);
+  }
+
+  public SearchIndexJob createJob(
+      Set<String> entities,
+      EventPublisherJob jobConfiguration,
+      String createdBy,
+      ReindexingConfiguration reindexConfig) {
 
     UUID jobId = UUID.randomUUID();
     long now = System.currentTimeMillis();
 
-    // Calculate entity statistics
-    Map<String, Long> entityCounts = partitionCalculator.getEntityCounts(entities);
+    // Calculate entity statistics (with time-series date filtering if config is provided)
+    Map<String, Long> entityCounts = partitionCalculator.getEntityCounts(entities, reindexConfig);
     long totalRecords = entityCounts.values().stream().mapToLong(Long::longValue).sum();
 
     // Build entity stats map
@@ -183,6 +196,10 @@ public class DistributedSearchIndexCoordinator {
    * @return Updated job with partition information
    */
   public SearchIndexJob initializePartitions(UUID jobId) {
+    return initializePartitions(jobId, null);
+  }
+
+  public SearchIndexJob initializePartitions(UUID jobId, ReindexingConfiguration reindexConfig) {
     SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
 
@@ -196,9 +213,9 @@ public class DistributedSearchIndexCoordinator {
     // Get entity types from job configuration
     Set<String> entityTypes = Set.copyOf(job.getJobConfiguration().getEntities());
 
-    // Calculate partitions
+    // Calculate partitions (with date filtering for time series if config provided)
     List<SearchIndexPartition> partitions =
-        partitionCalculator.calculatePartitions(jobId, entityTypes);
+        partitionCalculator.calculatePartitions(jobId, entityTypes, reindexConfig);
 
     if (partitions.isEmpty()) {
       LOG.warn(
@@ -270,10 +287,22 @@ public class DistributedSearchIndexCoordinator {
       }
     }
 
+    // Reconcile totalRecords from actual partitions (accounts for time-series filtering)
+    long actualTotalRecords =
+        partitions.stream().mapToLong(SearchIndexPartition::getEstimatedCount).sum();
+    if (actualTotalRecords != job.getTotalRecords()) {
+      LOG.info(
+          "Reconciled totalRecords for job {}: {} → {} (after partition calculation)",
+          jobId,
+          job.getTotalRecords(),
+          actualTotalRecords);
+    }
+
     // Update job status
     SearchIndexJob updatedJob =
         job.toBuilder()
             .status(IndexJobStatus.READY)
+            .totalRecords(actualTotalRecords)
             .entityStats(updatedStats)
             .updatedAt(System.currentTimeMillis())
             .build();
@@ -313,7 +342,9 @@ public class DistributedSearchIndexCoordinator {
       return Optional.empty();
     }
 
-    long claimTime = System.currentTimeMillis();
+    // Ensure unique claimTime per call so concurrent claims on the same server are distinguishable.
+    // The counter suffix keeps values within normal epoch-millis range while preventing collisions.
+    long claimTime = uniqueClaimTime();
 
     // Atomically claim a partition - FOR UPDATE SKIP LOCKED ensures no race condition
     int claimed = partitionDAO.claimNextPartitionAtomic(jobId.toString(), serverId, claimTime);
@@ -322,9 +353,9 @@ public class DistributedSearchIndexCoordinator {
       return Optional.empty();
     }
 
-    // Fetch the partition we just claimed
+    // Fetch the partition we just claimed using the unique claimTime
     SearchIndexPartitionRecord record =
-        partitionDAO.findLatestClaimedPartition(jobId.toString(), serverId);
+        partitionDAO.findLatestClaimedPartition(jobId.toString(), serverId, claimTime);
     if (record == null) {
       LOG.warn("Claimed partition but couldn't find it - this shouldn't happen");
       return Optional.empty();
@@ -341,6 +372,18 @@ public class DistributedSearchIndexCoordinator {
         MAX_IN_FLIGHT_PARTITIONS_PER_SERVER);
 
     return Optional.of(partition);
+  }
+
+  /**
+   * Generates a unique claimedAt timestamp that stays close to real wall-clock time but never
+   * repeats, even when called concurrently from multiple worker threads. The counter suffix is
+   * added in the sub-millisecond range so stale-detection logic (which compares against
+   * System.currentTimeMillis()) continues to work correctly.
+   */
+  private long uniqueClaimTime() {
+    long millis = System.currentTimeMillis();
+    long seq = claimCounter.incrementAndGet() % 1000;
+    return millis + seq;
   }
 
   /**
@@ -674,11 +717,12 @@ public class DistributedSearchIndexCoordinator {
   }
 
   /**
-   * Check if a job should be marked as complete and update its status.
+   * Check if a job should be marked as complete and update its status. This method is idempotent —
+   * if the job is already in a terminal state, it returns immediately.
    *
    * @param jobId The job ID
    */
-  private void checkAndUpdateJobCompletion(UUID jobId) {
+  public void checkAndUpdateJobCompletion(UUID jobId) {
     SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
 

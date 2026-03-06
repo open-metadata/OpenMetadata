@@ -42,6 +42,7 @@ import {
   deleteUserFromTeam,
   getTeamByName,
   getTeams,
+  getTeamsAssetCounts,
   patchTeamDetail,
   updateUsersFromTeam,
 } from '../../rest/teamsAPI';
@@ -81,6 +82,9 @@ const TeamsPage = () => {
     useState<boolean>(true);
   const [isFetchAllTeamAdvancedDetails, setFetchAllTeamAdvancedDetails] =
     useState<boolean>(false);
+  const [teamAssetCounts, setTeamAssetCounts] = useState<
+    Record<string, number>
+  >({});
 
   const hasViewPermission = useMemo(
     () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
@@ -107,7 +111,7 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchAllTeamsBasicDetails = async (parentTeam?: string) => {
+  const fetchAllTeamsBasicDetails = useCallback(async (parentTeam?: string) => {
     setIsTeamBasicDataLoading(true);
     try {
       const { data } = await getTeams({
@@ -128,7 +132,16 @@ const TeamsPage = () => {
     } finally {
       setIsTeamBasicDataLoading(false);
     }
-  };
+  }, [showDeletedTeam]);
+
+  const fetchTeamAssetCounts = useCallback(async () => {
+    try {
+      const counts = await getTeamsAssetCounts();
+      setTeamAssetCounts(counts);
+    } catch {
+      // Silently fail - asset counts will show 0
+    }
+  }, []);
 
   const fetchAllTeamsAdvancedDetails = async (
     loading = true,
@@ -146,6 +159,7 @@ const TeamsPage = () => {
           TabSpecificField.CHILDREN_COUNT,
           TabSpecificField.OWNS,
           TabSpecificField.PARENTS,
+          TabSpecificField.DEFAULT_PERSONA,
         ],
       });
 
@@ -194,7 +208,7 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchAssets = async (selectedTeam: Team) => {
+  const fetchAssets = useCallback(async (selectedTeam: Team) => {
     if (selectedTeam.id && selectedTeam.teamType === TeamType.Group) {
       try {
         const res = await searchQuery({
@@ -210,7 +224,7 @@ const TeamsPage = () => {
         // Error
       }
     }
-  };
+  }, []);
 
   const fetchTeamBasicDetails = async (name: string, loadPage = false) => {
     setIsPageLoading(loadPage);
@@ -236,7 +250,7 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchTeamAdvancedDetails = async (name: string) => {
+  const fetchTeamAdvancedDetails = useCallback(async (name: string) => {
     setFetchingAdvancedDetails(true);
     try {
       const data = await getTeamByName(name, {
@@ -244,6 +258,7 @@ const TeamsPage = () => {
           TabSpecificField.USERS,
           TabSpecificField.USER_COUNT,
           TabSpecificField.DEFAULT_ROLES,
+          TabSpecificField.DEFAULT_PERSONA,
           TabSpecificField.POLICIES,
           TabSpecificField.CHILDREN_COUNT,
           TabSpecificField.DOMAINS,
@@ -258,12 +273,13 @@ const TeamsPage = () => {
     } finally {
       setFetchingAdvancedDetails(false);
     }
-  };
+  }, [fetchAssets]);
 
   const loadAdvancedDetails = useCallback(() => {
     fetchTeamAdvancedDetails(fqn);
     fetchAllTeamsBasicDetails(fqn);
-  }, [fqn]);
+    fetchTeamAssetCounts();
+  }, [fqn, fetchTeamAdvancedDetails, fetchAllTeamsBasicDetails, fetchTeamAssetCounts]);
 
   /**
    * Take Team data as input and create the team
@@ -543,6 +559,7 @@ const TeamsPage = () => {
         parentTeams={parentTeams}
         removeUserFromTeam={removeUserFromTeam}
         showDeletedTeam={showDeletedTeam}
+        teamAssetCounts={teamAssetCounts}
         updateTeamHandler={updateTeamHandler}
         onDescriptionUpdate={onDescriptionUpdate}
         onShowDeletedTeamChange={toggleShowDeletedTeam}

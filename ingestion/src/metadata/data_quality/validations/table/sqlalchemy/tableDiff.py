@@ -24,7 +24,7 @@ import sqlalchemy.types
 from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Column as SAColumn
 from sqlalchemy import literal, select
 from sqlalchemy.engine import make_url
@@ -80,10 +80,14 @@ SUPPORTED_DIALECTS = [
 class SchemaDiffResult(BaseModel):
     class Config:
         arbitrary_types_allowed = True
+        populate_by_name = True
 
     serviceType: str
     fullyQualifiedTableName: str
-    schema: Dict[str, Dict[str, str]]
+    schema_: Dict[str, Dict[str, str]] = Field(alias="schema")
+
+    def __str__(self):
+        return " ".join(f"{k}={v!r}" for k, v in self.model_dump(by_alias=True).items())
 
 
 class ColumnDiffResult(BaseModel):
@@ -260,8 +264,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             # Also exclude key columns since they are handled separately and should not be in extra_columns
             common_columns = list(
                 (
-                    set(column_diff.schemaTable1.schema.keys())
-                    & set(column_diff.schemaTable2.schema.keys())
+                    set(column_diff.schemaTable1.schema_.keys())
+                    & set(column_diff.schemaTable2.schema_.keys())
                 )
                 - set(column_diff.changed)
                 - set(self.runtime_params.table1.key_columns or [])
@@ -811,10 +815,10 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         return self._compute_row_count(self.runner, None)
 
     def get_total_row_count(self) -> Optional[int]:
-        row_count = Metrics.ROW_COUNT()
+        row_count = Metrics.rowCount()
         try:
             row = self.runner.select_first_from_table(row_count.fn())
-            return dict(row).get(Metrics.ROW_COUNT.name)
+            return row._asdict().get(Metrics.rowCount.name)
         except Exception as e:
             logger.error(f"Error getting row count: {e}")
             return None

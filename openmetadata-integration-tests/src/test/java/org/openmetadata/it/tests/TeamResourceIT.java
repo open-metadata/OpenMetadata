@@ -26,11 +26,18 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
@@ -947,6 +954,75 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
     assertThrows(
         Exception.class, () -> createEntity(createBu2), "Business Unit can only have one parent");
+  }
+
+  @Test
+  void test_getAllTeamsWithAssetsCount_includesInheritedOwnership(TestNamespace ns)
+      throws InterruptedException {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTeam createTeam =
+        new CreateTeam()
+            .withName(ns.prefix("teamWithAssets"))
+            .withTeamType(TeamType.GROUP)
+            .withDescription("Team for asset count test");
+
+    Team team = createEntity(createTeam);
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = createDatabase(ns, service);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("schemaForTeam"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    createSchema.setOwners(List.of(team.getEntityReference()));
+
+    DatabaseSchema schema = client.databaseSchemas().create(createSchema);
+
+    CreateTable createTable1 = new CreateTable();
+    createTable1.setName(ns.prefix("table1"));
+    createTable1.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable1.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    client.tables().create(createTable1);
+
+    CreateTable createTable2 = new CreateTable();
+    createTable2.setName(ns.prefix("table2"));
+    createTable2.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable2.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    client.tables().create(createTable2);
+
+    org.awaitility.Awaitility.await()
+        .atMost(30, java.util.concurrent.TimeUnit.SECONDS)
+        .pollInterval(1, java.util.concurrent.TimeUnit.SECONDS)
+        .until(
+            () -> {
+              java.util.Map<String, Integer> counts = client.teams().getAllTeamsWithAssetsCount();
+              Integer teamCount = counts.get(team.getFullyQualifiedName());
+              return teamCount != null && teamCount >= 3;
+            });
+
+    java.util.Map<String, Integer> assetsCount = client.teams().getAllTeamsWithAssetsCount();
+
+    assertNotNull(assetsCount);
+    assertEquals(
+        3,
+        assetsCount.get(team.getFullyQualifiedName()),
+        "Team should have 3 assets: 1 schema + 2 inherited tables");
+  }
+
+  private Database createDatabase(TestNamespace ns, DatabaseService service) {
+    CreateDatabase dbRequest = new CreateDatabase();
+    dbRequest.setName(ns.prefix("database"));
+    dbRequest.setService(service.getFullyQualifiedName());
+    return SdkClients.adminClient().databases().create(dbRequest);
   }
 
   private User createTestUser(TestNamespace ns, String suffix) {

@@ -461,6 +461,8 @@ export const BETA_SERVICES = [
   DatabaseServiceType.MicrosoftFabric,
   PipelineServiceType.MicrosoftFabricPipeline,
   DatabaseServiceType.BurstIQ,
+  DatabaseServiceType.StarRocks,
+  DriveServiceType.SFTP,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -492,6 +494,7 @@ export const ADVANCED_PROPERTIES = [
   'sampleDataCount',
   'threadCount',
   'timeoutSeconds',
+  'metrics',
   'sslConfig',
   'sslMode',
   'schemaRegistrySSL',

@@ -125,7 +125,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName().equals(TASKS_FIELD)) {
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals(TASKS_FIELD)) {
       TaskType taskType = threadContext.getThread().getTask().getType();
       if (EntityUtil.isDescriptionTask(taskType)) {
         return new TaskDescriptionWorkflow(threadContext);

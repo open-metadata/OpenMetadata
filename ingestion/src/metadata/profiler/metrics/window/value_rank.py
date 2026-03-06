@@ -14,6 +14,7 @@ ValueRank Metric definition
 """
 from sqlalchemy import column
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.value_rank import ValueRankFn
 
@@ -22,6 +23,8 @@ class ValueRank(StaticMetric):
     """
     Given a column rank it based on its value occurrences
     """
+
+    schema_metric_type = MetricType.valueRank
 
     @classmethod
     def name(cls):

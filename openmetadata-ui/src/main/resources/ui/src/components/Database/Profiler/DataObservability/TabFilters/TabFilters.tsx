@@ -10,21 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { KeyboardArrowDown } from '@mui/icons-material';
-import {
-  Box,
-  Button,
-  Menu,
-  MenuItem,
-  Stack,
-  Tooltip,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Button, Dropdown, Tooltip } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@untitledui/icons';
 import { isEmpty, isEqual, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
@@ -32,6 +23,7 @@ import {
   DEFAULT_RANGE_DATA,
   DEFAULT_SELECTED_RANGE,
 } from '../../../../../constants/profiler.constant';
+import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
@@ -45,7 +37,6 @@ import {
   getEntityDetailsPath,
 } from '../../../../../utils/RouterUtils';
 import MuiDatePickerMenu from '../../../../common/MuiDatePickerMenu/MuiDatePickerMenu';
-import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from '../../TableProfiler/ColumnPickerMenu';
@@ -55,7 +46,6 @@ import { useTableProfiler } from '../../TableProfiler/TableProfilerProvider';
 const TabFilters = () => {
   const { isTourOpen } = useTourProvider();
   const location = useCustomLocation();
-  const theme = useTheme();
   const { subTab: activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
     useParams<{ subTab: ProfilerTabPath }>();
 
@@ -91,16 +81,7 @@ const TabFilters = () => {
     };
   }, [location.search, activeTab, isTourOpen]);
 
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
-
-  const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const {
     permissions,
@@ -110,24 +91,49 @@ const TabFilters = () => {
     table,
   } = useTableProfiler();
 
+  const { permissions: globalPermissions } = usePermissionProvider();
+
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn: datasetFQN } = useFqn();
   const editDataProfile =
     permissions &&
     getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
+  const createTestCasePermission =
+    permissions?.CreateTests || globalPermissions?.testCase?.Create || false;
 
   const handleTestCaseClick = () => {
     onTestCaseDrawerOpen(formType as TestLevel);
-    handleMenuClose();
+    setIsMenuOpen(false);
   };
 
   const handleCustomMetricClick = () => {
     navigate(
       getAddCustomMetricPath(formType as ProfilerDashboardType, datasetFQN)
     );
-    handleMenuClose();
+    setIsMenuOpen(false);
   };
+
+  const addMenuItems = [
+    ...(createTestCasePermission
+      ? [
+          {
+            id: 'test-case',
+            label: t('label.test-case'),
+            onAction: handleTestCaseClick,
+          },
+        ]
+      : []),
+    ...(editDataProfile
+      ? [
+          {
+            id: 'custom-metric',
+            label: t('label.custom-metric'),
+            onAction: handleCustomMetricClick,
+          },
+        ]
+      : []),
+  ];
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     const updatedFilter = pick(value, ['startTs', 'endTs', 'key', 'title']);
@@ -180,27 +186,18 @@ const TabFilters = () => {
   };
 
   return (
-    <Stack
-      alignItems="center"
-      direction="row"
-      justifyContent="flex-end"
-      spacing={5}>
+    <div className="tw:flex tw:items-center tw:justify-end tw:gap-5">
       {!isEmpty(activeColumnFqn) && (
-        <Box alignItems="center" display="flex" gap={2}>
-          <Typography
-            sx={{
-              color: theme.palette.grey[900],
-              fontSize: theme.typography.pxToRem(13),
-              fontWeight: 500,
-            }}>
+        <div className="tw:flex tw:items-center tw:gap-2">
+          <span className="tw:text-sm tw:font-medium tw:text-primary">
             {`${t('label.column')}:`}
-          </Typography>
+          </span>
           <ColumnPickerMenu
             activeColumnFqn={activeColumnFqn}
             columns={table?.columns || []}
             handleChange={updateActiveColumnFqn}
           />
-        </Box>
+        </div>
       )}
 
       {[
@@ -209,81 +206,63 @@ const TabFilters = () => {
         ProfilerTabPath.OVERVIEW,
         ProfilerTabPath.INCIDENTS,
       ].includes(activeTab) && isEmpty(activeColumnFqn) ? null : (
-        <Box alignItems="center" display="flex" gap={2}>
-          <Typography
-            sx={{
-              color: theme.palette.grey[900],
-              fontSize: theme.typography.pxToRem(13),
-              fontWeight: 500,
-            }}>
+        <div className="tw:flex tw:items-center tw:gap-2">
+          <span className="tw:text-sm tw:font-medium tw:text-primary">
             {`${t('label.date')}:`}
-          </Typography>
+          </span>
           <MuiDatePickerMenu
             showSelectedCustomRange
             defaultDateRange={dateRangeObject}
             handleDateRangeChange={handleDateRangeChange}
             size="small"
           />
-        </Box>
+        </div>
       )}
 
-      {editDataProfile && !isTableDeleted && (
+      {!isTableDeleted && (
         <>
-          <LimitWrapper resource="dataQuality">
-            <>
+          {(editDataProfile || createTestCasePermission) && (
+            <LimitWrapper resource="dataQuality">
+              <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <Button
+                  color="primary"
+                  data-testid="profiler-add-table-test-btn"
+                  iconTrailing={<ChevronDown className="tw:size-4" />}
+                  size="sm">
+                  {t('label.add')}
+                </Button>
+                <Dropdown.Popover className="tw:w-max">
+                  <Dropdown.Menu items={addMenuItems}>
+                    {(item: {
+                      id: string;
+                      label: string;
+                      onAction: () => void;
+                    }) => (
+                      <Dropdown.Item
+                        id={item.id}
+                        label={item.label}
+                        onAction={item.onAction}
+                      />
+                    )}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
+            </LimitWrapper>
+          )}
+          {editDataProfile && (
+            <Tooltip placement="top" title={t('label.setting-plural')}>
               <Button
-                data-testid="profiler-add-table-test-btn"
-                endIcon={<KeyboardArrowDown />}
-                sx={{ height: '32px' }}
-                variant="contained"
-                onClick={handleMenuClick}>
-                {t('label.add')}
+                color="secondary"
+                data-testid="profiler-setting-btn"
+                size="sm"
+                onClick={onSettingButtonClick}>
+                <SettingIcon />
               </Button>
-              <Menu
-                anchorEl={anchorEl}
-                anchorOrigin={{
-                  vertical: 'bottom',
-                  horizontal: 'right',
-                }}
-                open={open}
-                sx={{
-                  '.MuiPaper-root': {
-                    width: 'max-content',
-                  },
-                }}
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                onClose={handleMenuClose}>
-                <MenuItem onClick={handleTestCaseClick}>
-                  <TabsLabel id="test-case" name={t('label.test-case')} />
-                </MenuItem>
-                <MenuItem onClick={handleCustomMetricClick}>
-                  <TabsLabel
-                    id="custom-metric"
-                    name={t('label.custom-metric')}
-                  />
-                </MenuItem>
-              </Menu>
-            </>
-          </LimitWrapper>
-          <Tooltip placement="top" title={t('label.setting-plural')}>
-            <Button
-              color="primary"
-              data-testid="profiler-setting-btn"
-              sx={{
-                minWidth: '36px',
-                height: '32px',
-              }}
-              variant="outlined"
-              onClick={onSettingButtonClick}>
-              <SettingIcon />
-            </Button>
-          </Tooltip>
+            </Tooltip>
+          )}
         </>
       )}
-    </Stack>
+    </div>
   );
 };
 

@@ -12,6 +12,7 @@
  */
 import { expect, test } from '@playwright/test';
 import { DELETE_TERM } from '../../constant/common';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
   redirectToHomePage,
@@ -37,110 +38,116 @@ const teamNames = [
   groupTeamName,
 ];
 
-test.describe('Add Nested Teams and Test TeamsSelectable', () => {
-  test.slow(true);
+test.describe(
+  'Add Nested Teams and Test TeamsSelectable',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    test.slow(true);
 
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
 
-    const getOrganizationResponse = page.waitForResponse(
-      '/api/v1/teams/name/*'
-    );
-    const permissionResponse = page.waitForResponse(
-      '/api/v1/permissions/team/name/*'
-    );
-
-    await settingClick(page, GlobalSettingOptions.TEAMS);
-    await permissionResponse;
-    await getOrganizationResponse;
-  });
-
-  test('Add teams in hierarchy', async ({ page }) => {
-    for (const [index, teamName] of teamNames.entries()) {
       const getOrganizationResponse = page.waitForResponse(
         '/api/v1/teams/name/*'
       );
-      await addTeamHierarchy(page, getNewTeamDetails(teamName), index, true);
-      await getOrganizationResponse;
-
-      // Asserting the added values
       const permissionResponse = page.waitForResponse(
         '/api/v1/permissions/team/name/*'
       );
-      await page.getByRole('link', { name: teamName }).click();
+
+      await settingClick(page, GlobalSettingOptions.TEAMS);
       await permissionResponse;
-    }
-  });
+      await getOrganizationResponse;
+    });
 
-  test('Check hierarchy in Add User page', async ({ page }) => {
-    // Clicking on users
-    await settingClick(page, GlobalSettingOptions.USERS);
+    test('Add teams in hierarchy', async ({ page }) => {
+      for (const [index, teamName] of teamNames.entries()) {
+        const getOrganizationResponse = page.waitForResponse(
+          '/api/v1/teams/name/*'
+        );
+        await addTeamHierarchy(page, getNewTeamDetails(teamName), index, true);
+        await getOrganizationResponse;
 
-    // Click on add user button
-    const teamHierarchyResponse = page.waitForResponse(
-      '/api/v1/teams/hierarchy?isJoinable=false'
-    );
-    await page.locator('[data-testid="add-user"]').click();
-    await teamHierarchyResponse;
+        // Asserting the added values
+        const permissionResponse = page.waitForResponse(
+          '/api/v1/permissions/team/name/*'
+        );
+        await page.getByRole('link', { name: teamName }).click();
+        await permissionResponse;
+      }
+    });
 
-    // Enter team name
-    await page.click('[data-testid="team-select"]');
-    await page.keyboard.type(businessTeamName);
+    test('Check hierarchy in Add User page', async ({ page }) => {
+      // Clicking on users
+      await settingClick(page, GlobalSettingOptions.USERS);
 
-    for (const teamName of teamNames) {
-      const dropdown = page.locator('.ant-tree-select-dropdown');
-
-      await expect(dropdown).toContainText(teamName);
-      await expect(dropdown.getByText(teamName)).toHaveCount(1);
-    }
-
-    for (const teamName of teamNames) {
-      await expect(page.getByTestId('team-select')).toBeVisible();
-
-      await page.click('[data-testid="team-select"]');
-      await page.keyboard.type(teamName);
-
-      await expect(page.locator('.ant-tree-select-dropdown')).toContainText(
-        teamName
+      // Click on add user button
+      const teamHierarchyResponse = page.waitForResponse(
+        '/api/v1/teams/hierarchy?isJoinable=false'
       );
-    }
-  });
+      await page.locator('[data-testid="add-user"]').click();
+      await teamHierarchyResponse;
 
-  test('Delete Parent Team', async ({ page }) => {
-    await settingClick(page, GlobalSettingOptions.TEAMS);
+      // Enter team name
+      await page.click('[data-testid="team-select"]');
+      await page.keyboard.type(businessTeamName);
 
-    await page.getByRole('link', { name: businessTeamName }).click();
+      for (const teamName of teamNames) {
+        const dropdown = page.locator('.ant-tree-select-dropdown');
 
-    await page.click('[data-testid="manage-button"]');
+        await expect(dropdown).toContainText(teamName);
+        await expect(dropdown.getByText(teamName)).toHaveCount(1);
+      }
 
-    await page.click('[data-testid="delete-button-title"]');
+      for (const teamName of teamNames) {
+        await expect(page.getByTestId('team-select')).toBeVisible();
 
-    await expect(page.locator('.ant-modal-header')).toContainText(
-      businessTeamName
-    );
+        await page.click('[data-testid="team-select"]');
+        await page.keyboard.type(teamName);
 
-    await page.click(`[data-testid="hard-delete-option"]`);
+        await expect(page.locator('.ant-tree-select-dropdown')).toContainText(
+          teamName
+        );
+      }
+    });
 
-    await expect(page.locator('[data-testid="confirm-button"]')).toBeDisabled();
+    test('Delete Parent Team', async ({ page }) => {
+      await settingClick(page, GlobalSettingOptions.TEAMS);
 
-    await page
-      .locator('[data-testid="confirmation-text-input"]')
-      .fill(DELETE_TERM);
+      await page.getByRole('link', { name: businessTeamName }).click();
 
-    const deleteResponse = page.waitForResponse(
-      `/api/v1/teams/*?hardDelete=true&recursive=true`
-    );
+      await page.click('[data-testid="manage-button"]');
 
-    await expect(
-      page.locator('[data-testid="confirm-button"]')
-    ).not.toBeDisabled();
+      await page.click('[data-testid="delete-button-title"]');
 
-    await page.click('[data-testid="confirm-button"]');
-    await deleteResponse;
+      await expect(page.locator('.ant-modal-header')).toContainText(
+        businessTeamName
+      );
 
-    await toastNotification(
-      page,
-      `"${businessTeamName}" deleted successfully!`
-    );
-  });
-});
+      await page.click(`[data-testid="hard-delete-option"]`);
+
+      await expect(
+        page.locator('[data-testid="confirm-button"]')
+      ).toBeDisabled();
+
+      await page
+        .locator('[data-testid="confirmation-text-input"]')
+        .fill(DELETE_TERM);
+
+      const deleteResponse = page.waitForResponse(
+        `/api/v1/teams/*?hardDelete=true&recursive=true`
+      );
+
+      await expect(
+        page.locator('[data-testid="confirm-button"]')
+      ).not.toBeDisabled();
+
+      await page.click('[data-testid="confirm-button"]');
+      await deleteResponse;
+
+      await toastNotification(
+        page,
+        `"${businessTeamName}" deleted successfully!`
+      );
+    });
+  }
+);

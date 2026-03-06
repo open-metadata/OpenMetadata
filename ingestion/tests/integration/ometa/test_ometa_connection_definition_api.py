@@ -15,53 +15,35 @@ OpenMetadata API initialization
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     ExtraHeaders,
-    OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
     TestConnectionDefinition,
 )
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-server_config = OpenMetadataConnection(
-    hostPort="http://localhost:8585/api",
-    authProvider="openmetadata",
-    securityConfig=OpenMetadataJWTClientConfig(
-        jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-    ),
-)
-metadata = OpenMetadata(server_config)
 
-
-def test_init_ometa():
-    assert metadata.health_check()
-
-
-def test_get_connection_def():
+class TestOMetaConnectionDefinitionAPI:
     """
-    Test Connection Definitions can only be GET
+    Connection Definition API integration tests.
+    Tests health check, connection definition retrieval, and extra headers.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
     """
-    res: TestConnectionDefinition = metadata.get_by_name(
-        entity=TestConnectionDefinition, fqn="Mysql.testConnectionDefinition"
-    )
-    assert len(res.steps) == 5
-    assert res.name.root == "Mysql"
 
+    def test_init_ometa(self, metadata):
+        assert metadata.health_check()
 
-def test_init_ometa_with_extra_headers():
-    config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-        ),
-        extraHeaders=ExtraHeaders(
-            {
-                "User-Agent": "OpenMetadata Python Client",  # dummy
-            }
-        ),
-    )
-    client = OpenMetadata(config)
-    assert client.health_check()
+    def test_get_connection_def(self, metadata):
+        """Test Connection Definitions can only be GET"""
+        res: TestConnectionDefinition = metadata.get_by_name(
+            entity=TestConnectionDefinition, fqn="Mysql.testConnectionDefinition"
+        )
+        assert len(res.steps) == 5
+        assert res.name.root == "Mysql"
+
+    def test_init_ometa_with_extra_headers(self, metadata):
+        config = metadata.config.model_copy(deep=True)
+        config.extraHeaders = ExtraHeaders({"User-Agent": "OpenMetadata Python Client"})
+        client = OpenMetadata(config)
+        assert client.health_check()

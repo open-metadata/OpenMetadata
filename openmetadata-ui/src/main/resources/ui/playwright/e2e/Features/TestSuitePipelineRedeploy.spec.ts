@@ -38,15 +38,6 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await afterAction();
   });
 
-  test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
-
-    await table1.delete(apiContext);
-    await table2.delete(apiContext);
-
-    await afterAction();
-  });
-
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -69,17 +60,18 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await expect(page.getByRole('button', { name: 'Re Deploy' })).toBeEnabled();
 
-    const redeployResponse = page.waitForRequest(
-      (request) =>
-        request.url().includes('/api/v1/services/ingestionPipelines/deploy') &&
-        request.method() === 'POST'
+    const redeployResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/services/ingestionPipelines/deploy') &&
+        response.request().method() === 'POST' &&
+        response.status() === 200
     );
     await page.getByRole('button', { name: 'Re Deploy' }).click();
     await redeployResponse;
 
-    await expect(
-      page.getByText('Pipelines Re Deploy Successfully')
-    ).toBeVisible();
+    await expect(page.getByTestId('alert-bar')).toHaveText(
+      /Pipelines Re Deploy Successfully/i
+    );
   });
 
   // TODO: Add test to verify the re-deployed pipelines for Database, Dashboard and other entities

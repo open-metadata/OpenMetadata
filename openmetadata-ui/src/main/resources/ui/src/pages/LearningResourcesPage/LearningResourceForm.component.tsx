@@ -287,17 +287,10 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           }
           rules={[
             {
-              validator: async (_, contexts) => {
-                if (!contexts || contexts.length < 1) {
-                  return Promise.reject(
-                    new Error(
-                      t('label.field-required', {
-                        field: t('label.context'),
-                      })
-                    )
-                  );
-                }
-              },
+              message: t('label.field-required', {
+                field: t('label.context'),
+              }),
+              required: true,
             },
           ]}>
           <Select

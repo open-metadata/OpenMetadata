@@ -15,6 +15,8 @@ Snowflake lineage module
 import traceback
 from typing import Iterator
 
+from sqlalchemy import text
+
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.snowflake.queries import (
@@ -45,7 +47,7 @@ class SnowflakeLineageSource(
 
     filters = """
         AND (
-            QUERY_TYPE IN ('MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT','COPY')
+            QUERY_TYPE IN ('MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT','COPY','UNLOAD')
             OR (QUERY_TYPE = 'INSERT' and query_text ILIKE '%%insert%%into%%select%%')
             OR (QUERY_TYPE = 'ALTER' and query_text ILIKE '%%alter%%table%%swap%%')
             OR (QUERY_TYPE = 'CREATE_TABLE' and query_text ILIKE '%%clone%%')
@@ -86,30 +88,32 @@ class SnowflakeLineageSource(
                     rows = conn.execution_options(
                         stream_results=True, max_row_buffer=100
                     ).execute(
-                        self.get_sql_statement(
-                            start_time=self.start,
-                            end_time=self.end,
-                            offset=offset,
-                            limit=batch_size,
+                        text(
+                            self.get_sql_statement(
+                                start_time=self.start,
+                                end_time=self.end,
+                                offset=offset,
+                                limit=batch_size,
+                            )
                         )
                     )
-                for row in rows:
-                    query_dict = dict(row)
-                    query_dict.update({k.lower(): v for k, v in query_dict.items()})
-                    row_count += 1
-                    try:
-                        yield TableQuery(
-                            dialect=self.dialect.value,
-                            query=query_dict["query_text"],
-                            databaseName=self.get_database_name(query_dict),
-                            serviceName=self.config.serviceName,
-                            databaseSchema=self.get_schema_name(query_dict),
-                        )
-                    except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Error processing query_dict {query_dict}: {exc}"
-                        )
+                    for row in rows:
+                        query_dict = row._asdict()
+                        query_dict.update({k.lower(): v for k, v in query_dict.items()})
+                        row_count += 1
+                        try:
+                            yield TableQuery(
+                                dialect=self.dialect.value,
+                                query=query_dict["query_text"],
+                                databaseName=self.get_database_name(query_dict),
+                                serviceName=self.config.serviceName,
+                                databaseSchema=self.get_schema_name(query_dict),
+                            )
+                        except Exception as exc:
+                            logger.debug(traceback.format_exc())
+                            logger.warning(
+                                f"Error processing query_dict {query_dict}: {exc}"
+                            )
                 total_fetched += row_count
                 if row_count < batch_size:
                     break

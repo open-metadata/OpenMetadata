@@ -13,12 +13,14 @@
 
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -100,29 +102,9 @@ public class EntityCompletionTracker {
         jobId);
 
     if (newCompleted >= totalCount) {
-      promoteIfReady(entityType);
-    }
-  }
-
-  private void promoteIfReady(String entityType) {
-    if (promotedEntities.add(entityType)) {
       AtomicInteger failed = failedPartitions.get(entityType);
-      boolean success = (failed == null || failed.get() == 0);
-
-      LOG.info(
-          "Entity '{}' all partitions complete (success={}, failedPartitions={}, job {})",
-          entityType,
-          success,
-          failed != null ? failed.get() : 0,
-          jobId);
-
-      if (onEntityComplete != null) {
-        try {
-          onEntityComplete.accept(entityType, success);
-        } catch (Exception e) {
-          LOG.error("Error in entity completion callback for '{}' (job {})", entityType, jobId, e);
-        }
-      }
+      boolean hasFailed = failed != null && failed.get() > 0;
+      promoteIfReady(entityType, hasFailed);
     }
   }
 
@@ -152,6 +134,91 @@ public class EntityCompletionTracker {
    */
   public UUID getJobId() {
     return jobId;
+  }
+
+  /**
+   * Reconcile entity completion state from the database. This catches completions that were missed
+   * by in-memory tracking (e.g., partitions completed by participant servers or failed by the stale
+   * reclaimer SQL, both of which bypass the in-memory EntityCompletionTracker).
+   *
+   * @param partitions All partitions for the job (from DB)
+   */
+  public void reconcileFromDatabase(List<SearchIndexPartition> partitions) {
+    Map<String, List<SearchIndexPartition>> byEntity =
+        partitions.stream().collect(Collectors.groupingBy(SearchIndexPartition::getEntityType));
+
+    for (Map.Entry<String, List<SearchIndexPartition>> entry : byEntity.entrySet()) {
+      String entityType = entry.getKey();
+      List<SearchIndexPartition> entityPartitions = entry.getValue();
+
+      if (promotedEntities.contains(entityType)) {
+        continue;
+      }
+
+      long completedCount =
+          entityPartitions.stream()
+              .filter(
+                  p ->
+                      p.getStatus() == PartitionStatus.COMPLETED
+                          || p.getStatus() == PartitionStatus.FAILED)
+              .count();
+      boolean allDone = completedCount == entityPartitions.size();
+
+      if (!allDone) {
+        Map<PartitionStatus, Long> statusCounts =
+            entityPartitions.stream()
+                .collect(
+                    Collectors.groupingBy(SearchIndexPartition::getStatus, Collectors.counting()));
+        LOG.debug(
+            "Reconcile: entity '{}' not all done: {}/{} complete, statuses={}",
+            entityType,
+            completedCount,
+            entityPartitions.size(),
+            statusCounts);
+      }
+
+      if (allDone && !entityPartitions.isEmpty()) {
+        boolean hasFailed =
+            entityPartitions.stream().anyMatch(p -> p.getStatus() == PartitionStatus.FAILED);
+
+        LOG.debug(
+            "DB reconciliation: entity '{}' all {} partitions done (hasFailed={}, job {})",
+            entityType,
+            entityPartitions.size(),
+            hasFailed,
+            jobId);
+
+        promoteIfReady(entityType, hasFailed);
+      }
+    }
+  }
+
+  private void promoteIfReady(String entityType, boolean hasFailed) {
+    if (promotedEntities.add(entityType)) {
+      boolean success = !hasFailed;
+
+      LOG.debug(
+          "Entity '{}' all partitions complete (success={}, hasFailed={}, job {})",
+          entityType,
+          success,
+          hasFailed,
+          jobId);
+
+      if (onEntityComplete != null) {
+        try {
+          onEntityComplete.accept(entityType, success);
+        } catch (Exception e) {
+          LOG.error(
+              "Error in entity completion callback for '{}' (job {}). "
+                  + "Entity is STILL in promotedEntities - will be SKIPPED by finalization!",
+              entityType,
+              jobId,
+              e);
+        }
+      }
+    } else {
+      LOG.debug("Entity '{}' already in promotedEntities, skipping (job {})", entityType, jobId);
+    }
   }
 
   /**

@@ -58,12 +58,17 @@ const mockPropsWithFreshness = {
   ],
 };
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn().mockReturnValue('Jan 3, 2024, 6:45 PM (UTC+05:30)'),
   formatDateTimeLong: jest
     .fn()
     .mockReturnValue('Jan 3, 2024, 6:45 PM (UTC+05:30)'),
   convertSecondsToHumanReadableFormat: jest
     .fn()
     .mockReturnValue('7Y 2M 22d 9m 24s'),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1709424034000),
+  getStartOfDayInMillis: jest.fn().mockReturnValue(1709424034000),
+  getEndOfDayInMillis: jest.fn().mockReturnValue(1709510434000),
+  getCurrentMillis: jest.fn().mockReturnValue(1709510434000),
 }));
 
 jest.mock('../../../../utils/TasksUtils', () => ({
@@ -95,8 +100,8 @@ describe('Test TestSummaryCustomTooltip component', () => {
     expect((await screen.findByTestId('maxValueLength')).textContent).toBe(
       '24'
     );
-    expect((await screen.findByTestId('passedRows')).textContent).toBe('4');
-    expect((await screen.findByTestId('failedRows')).textContent).toBe('2');
+    expect((await screen.findByTestId('rows-passed')).textContent).toBe('4/6');
+    expect((await screen.findByTestId('rows-failed')).textContent).toBe('2/6');
     expect(
       (await screen.findByTestId('passedRowsPercentage')).textContent
     ).toBe('60%');

@@ -510,11 +510,11 @@ test.describe('ODCS Import/Export', () => {
         'export-test.yaml'
       );
 
+      // Set up download listener before clicking export
+      const downloadPromise = page.waitForEvent('download');
+
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
-
-       // Now export the contract
-      const downloadPromise = page.waitForEvent('download');
 
       const download = await downloadPromise;
       const filename = download.suggestedFilename();

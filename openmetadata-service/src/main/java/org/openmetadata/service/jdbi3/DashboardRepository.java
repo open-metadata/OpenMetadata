@@ -83,7 +83,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName().equals("charts")) {
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("charts")) {
       TaskType taskType = threadContext.getThread().getTask().getType();
       if (entityLink.getArrayFieldValue() != null) {
         return new ChartDescriptionAndTagTaskWorkflow(threadContext);

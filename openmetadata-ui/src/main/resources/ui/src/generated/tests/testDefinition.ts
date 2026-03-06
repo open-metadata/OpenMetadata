@@ -27,7 +27,7 @@ export interface TestDefinition {
     /**
      * Description of the testcase.
      */
-    description: string;
+    description?: string;
     /**
      * Display Name that identifies this test case.
      */

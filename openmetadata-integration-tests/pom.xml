@@ -100,6 +100,20 @@
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
+    <!-- MCP module for MCP integration tests -->
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-mcp</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- AssertJ for fluent assertions -->
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.27.7</version>
+      <scope>test</scope>
+    </dependency>
     <!-- Dropwizard testing harness -->
     <dependency>
       <groupId>io.dropwizard</groupId>
@@ -181,6 +195,7 @@
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/WorkflowDefinitionResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -212,6 +227,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -261,6 +277,7 @@
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/WorkflowDefinitionResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -292,6 +309,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -341,6 +359,7 @@
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/WorkflowDefinitionResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -372,6 +391,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -421,6 +441,7 @@
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/WorkflowDefinitionResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -452,6 +473,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -501,6 +523,7 @@
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
+                    <include>**/WorkflowDefinitionResourceIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
@@ -534,6 +557,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                    <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>

@@ -884,27 +884,28 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
     // List all test suites (including empty)
     Map<String, String> allParams = new HashMap<>();
-    allParams.put("limit", "100");
+    allParams.put("limit", "1000000");
     ListResponse<TestSuite> allSuites = listTestSuites(allParams);
-    long allCount = allSuites.getData().size();
+    List<UUID> allSuiteIds = allSuites.getData().stream().map(TestSuite::getId).toList();
+    assertTrue(allSuiteIds.contains(nonEmptySuite.getId()));
+    assertTrue(allSuiteIds.contains(emptySuite.getId()));
 
-    // List non-empty test suites only
+    // List non-empty test suites only and verify the two suites created in this test.
+    // Avoid asserting global list contents since other tests mutate suites concurrently in CI.
     Map<String, String> nonEmptyParams = new HashMap<>();
     nonEmptyParams.put("includeEmptyTestSuites", "false");
-    nonEmptyParams.put("limit", "100");
-    ListResponse<TestSuite> nonEmptySuites = listTestSuites(nonEmptyParams);
-    long nonEmptyCount = nonEmptySuites.getData().size();
-
-    // Verify that non-empty count is less than or equal to all count
-    assertTrue(nonEmptyCount <= allCount);
-
-    // Verify all returned suites in non-empty list have test cases
-    for (TestSuite suite : nonEmptySuites.getData()) {
-      TestSuite detailed = client.testSuites().get(suite.getId().toString(), "tests");
-      if (detailed.getTests() != null) {
-        assertFalse(detailed.getTests().isEmpty());
-      }
-    }
+    nonEmptyParams.put("limit", "1000000");
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              ListResponse<TestSuite> nonEmptySuites = listTestSuites(nonEmptyParams);
+              List<UUID> nonEmptySuiteIds =
+                  nonEmptySuites.getData().stream().map(TestSuite::getId).toList();
+              assertTrue(nonEmptySuiteIds.contains(nonEmptySuite.getId()));
+              assertFalse(nonEmptySuiteIds.contains(emptySuite.getId()));
+            });
   }
 
   // ===================================================================

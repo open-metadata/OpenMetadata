@@ -24,9 +24,11 @@ import { PersonalAccessToken } from '../../../../generated/auth/personalAccessTo
 import {
   AuthenticationMechanism,
   AuthType,
+  JWTTokenExpiry,
 } from '../../../../generated/entity/teams/user';
 import {
   createUserWithPut,
+  generateUserToken,
   getAuthMechanismForBotUser,
   getUserAccessToken,
   revokeAccessToken,
@@ -56,7 +58,7 @@ const AccessTokenCard: FC<MockProps> = ({
     useState<boolean>(false);
   const [authenticationMechanism, setAuthenticationMechanism] =
     useState<PersonalAccessToken>(
-      USER_DEFAULT_AUTHENTICATION_MECHANISM as PersonalAccessToken
+      USER_DEFAULT_AUTHENTICATION_MECHANISM as PersonalAccessToken,
     );
   const { t } = useTranslation();
   const [authenticationMechanismBot, setAuthenticationMechanismBot] =
@@ -96,49 +98,56 @@ const AccessTokenCard: FC<MockProps> = ({
   };
 
   const handleAuthMechanismUpdateForBot = async (
-    updatedAuthMechanism: AuthenticationMechanism
+    updatedAuthMechanism: AuthenticationMechanism,
   ) => {
     setIsUpdating(true);
     if (botUserData && botData) {
       try {
-        const {
-          isAdmin,
-          timezone,
-          name,
-          description,
-          displayName,
-          profile,
-          email,
-          isBot,
-        } = botUserData;
+        // Use the new generateToken API for bot token generation
+        if (updatedAuthMechanism.authType === AuthType.Jwt) {
+          await generateUserToken({
+            id: botUserData.id,
+            JWTTokenExpiry:
+              updatedAuthMechanism.config?.JWTTokenExpiry ??
+              JWTTokenExpiry.Unlimited,
+          });
+          await fetchAuthMechanismForBot();
+        } else {
+          // Fallback to createUserWithPut for non-JWT auth mechanisms (e.g., SSO)
+          const {
+            isAdmin,
+            timezone,
+            name,
+            description,
+            displayName,
+            profile,
+            email,
+            isBot,
+          } = botUserData;
 
-        const response = await createUserWithPut({
-          isAdmin,
-          timezone,
-          name,
-          description,
-          displayName,
-          profile,
-          email,
-          isBot,
-          authenticationMechanism: {
-            ...botUserData.authenticationMechanism,
-            authType: updatedAuthMechanism.authType,
-            config:
-              updatedAuthMechanism.authType === AuthType.Jwt
-                ? {
-                    JWTTokenExpiry: updatedAuthMechanism.config?.JWTTokenExpiry,
-                  }
-                : {
-                    ssoServiceType: updatedAuthMechanism.config?.ssoServiceType,
-                    authConfig: updatedAuthMechanism.config?.authConfig,
-                  },
-          },
-          botName: botData.name,
-        });
+          const response = await createUserWithPut({
+            isAdmin,
+            timezone,
+            name,
+            description,
+            displayName,
+            profile,
+            email,
+            isBot,
+            authenticationMechanism: {
+              ...botUserData.authenticationMechanism,
+              authType: updatedAuthMechanism.authType,
+              config: {
+                ssoServiceType: updatedAuthMechanism.config?.ssoServiceType,
+                authConfig: updatedAuthMechanism.config?.authConfig,
+              },
+            },
+            botName: botData.name,
+          });
 
-        if (response) {
-          fetchAuthMechanismForBot();
+          if (response) {
+            fetchAuthMechanismForBot();
+          }
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -171,7 +180,7 @@ const AccessTokenCard: FC<MockProps> = ({
     try {
       const response = await revokeAccessToken('removeAll=true');
       setAuthenticationMechanism(
-        response?.[0] ?? USER_DEFAULT_AUTHENTICATION_MECHANISM
+        response?.[0] ?? USER_DEFAULT_AUTHENTICATION_MECHANISM,
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -257,9 +266,10 @@ const AccessTokenCard: FC<MockProps> = ({
         'access-token-card',
         isBot ? 'page-layout-v1-left-panel mt-2 ' : '',
         { disabled },
-        isSCIMBot && 'scim-token-card'
+        isSCIMBot && 'scim-token-card',
       )}
-      data-testid="center-panel">
+      data-testid="center-panel"
+    >
       {!isDataLoaded ? <Loader /> : renderAuthComponent()}
       <ConfirmationModal
         bodyText={

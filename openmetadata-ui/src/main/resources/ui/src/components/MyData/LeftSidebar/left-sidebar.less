@@ -44,10 +44,14 @@
     color: @grey-600;
   }
 
+  &.ant-menu.ant-menu-vertical[dir='rtl'] {
+    padding: 0 @padding-md 0 0;
+  }
+
   &.ant-menu.ant-menu-vertical,
   &.ant-menu.ant-menu-inline {
     border: none;
-    padding: 0 0 0 16px;
+    padding: 0 0 0 @padding-md;
     overflow: hidden;
 
     .ant-menu-submenu-vertical {

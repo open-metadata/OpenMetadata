@@ -527,6 +527,105 @@ class BigqueryUnitTest(TestCase):
                 for either in self.bq_source.yield_table((table[0], table[1]))
             ]
 
+    def test_topology_runner_error_handling(self):
+        """
+        TopologyRunnerMixin._run_node_post_process and _run_node_producer both
+        record any exception as a status failure (not just log it) and yield
+        nothing on error, but yield normally on success.
+
+        Base class methods are called directly via TopologyRunnerMixin to bypass
+        any subclass overrides.
+        """
+        from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+        from metadata.ingestion.models.topology import NodeStage, TopologyNode
+
+        _dummy_stage = NodeStage(type_=DatabaseSchema, processor="dummy")
+
+        # --- post_process: error is recorded as status failure ---
+        node = TopologyNode(
+            producer="get_schemas",
+            stages=[_dummy_stage],
+            post_process=["failing_post_process"],
+        )
+
+        def failing_post_process():
+            raise RuntimeError("something went wrong")
+
+        self.bq_source.failing_post_process = failing_post_process
+        initial_failures = len(self.bq_source.status.failures)
+
+        results = list(TopologyRunnerMixin._run_node_post_process(self.bq_source, node))
+
+        assert results == []
+        assert len(self.bq_source.status.failures) == initial_failures + 1
+        assert (
+            self.bq_source.status.failures[-1].name
+            == "Post Process failing_post_process"
+        )
+
+        # --- post_process: success yields entity normally ---
+        sentinel = object()
+        success_pp_node = TopologyNode(
+            producer="get_schemas",
+            stages=[_dummy_stage],
+            post_process=["successful_post_process"],
+        )
+
+        def successful_post_process():
+            yield sentinel
+
+        self.bq_source.successful_post_process = successful_post_process
+        failures_before = len(self.bq_source.status.failures)
+
+        results = list(
+            TopologyRunnerMixin._run_node_post_process(self.bq_source, success_pp_node)
+        )
+
+        assert results == [sentinel]
+        assert len(self.bq_source.status.failures) == failures_before
+
+        # --- node_producer: error is recorded as status failure ---
+        error_producer_node = TopologyNode(
+            producer="failing_producer",
+            stages=[_dummy_stage],
+        )
+
+        def failing_producer():
+            raise RuntimeError("producer failed")
+
+        self.bq_source.failing_producer = failing_producer
+        initial_failures = len(self.bq_source.status.failures)
+
+        results = list(
+            TopologyRunnerMixin._run_node_producer(self.bq_source, error_producer_node)
+        )
+
+        assert results == []
+        assert len(self.bq_source.status.failures) == initial_failures + 1
+        assert self.bq_source.status.failures[-1].name == "Producer failing_producer"
+
+        # --- node_producer: success yields entity normally ---
+        sentinel2 = object()
+        success_producer_node = TopologyNode(
+            producer="successful_producer",
+            stages=[_dummy_stage],
+        )
+
+        def successful_producer():
+            yield sentinel2
+
+        self.bq_source.successful_producer = successful_producer
+        failures_before = len(self.bq_source.status.failures)
+
+        results = list(
+            TopologyRunnerMixin._run_node_producer(
+                self.bq_source, success_producer_node
+            )
+        )
+
+        assert results == [sentinel2]
+        assert len(self.bq_source.status.failures) == failures_before
+
     def test_get_stored_procedures(self):
         """
         Test fetching stored procedures with filter
@@ -535,6 +634,10 @@ class BigqueryUnitTest(TestCase):
         self.bq_source.source_config.storedProcedureFilterPattern = FilterPattern(
             excludes=["sp_exclude"]
         )
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
         mock_engine = MagicMock()
         self.bq_source.engine = mock_engine
@@ -551,23 +654,32 @@ class BigqueryUnitTest(TestCase):
             "language": "SQL",
         }
 
-        mock_engine.execute.return_value.all.return_value = [row1, row2]
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [row1, row2]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
         results = list(self.bq_source.get_stored_procedures())
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
 
-    def test_usage_location_passed_to_client_and_engine(self):
+    @patch("metadata.utils.credentials.auth.default")
+    def test_usage_location_passed_to_client_and_engine(self, mock_auth_default):
         """
         Test usageLocation is correctly passed to BigQuery client and added to engine URL
         """
+        from google.auth.credentials import Credentials
+
         from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
             BigQueryConnection,
         )
         from metadata.ingestion.source.database.bigquery.helper import (
             get_inspector_details,
         )
+
+        mock_credentials = Mock(spec=Credentials)
+        mock_auth_default.return_value = (mock_credentials, "test-project")
 
         config_with_location = deepcopy(
             mock_bq_config["source"]["serviceConnection"]["config"]

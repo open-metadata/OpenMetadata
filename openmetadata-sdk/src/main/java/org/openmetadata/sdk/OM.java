@@ -35,6 +35,7 @@ public class OM {
     org.openmetadata.sdk.fluent.Pipelines.setDefaultClient(client);
     org.openmetadata.sdk.fluent.Topics.setDefaultClient(client);
     org.openmetadata.sdk.fluent.Containers.setDefaultClient(client);
+    org.openmetadata.sdk.fluent.StorageServices.setDefaultClient(client);
     org.openmetadata.sdk.fluent.MlModels.setDefaultClient(client);
     org.openmetadata.sdk.fluent.Queries.setDefaultClient(client);
     org.openmetadata.sdk.fluent.SearchIndexes.setDefaultClient(client);

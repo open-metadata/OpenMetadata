@@ -1,4 +1,3 @@
-import sys
 from datetime import datetime
 
 import pytest
@@ -8,7 +7,7 @@ from sqlalchemy import VARBINARY
 from sqlalchemy import Column as SQAColumn
 from sqlalchemy import MetaData
 from sqlalchemy import Table as SQATable
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.sql import sqltypes
@@ -33,12 +32,6 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
-
-if not sys.version_info >= (3, 9):
-    pytest.skip(
-        "requires python 3.9+ due to incompatibility with testcontainers",
-        allow_module_level=True,
-    )
 
 
 class TestParameters(BaseModel):
@@ -430,7 +423,7 @@ def test_happy_paths(
     workflow_config = {
         "source": {
             "type": "postgres",
-            "serviceName": "MyTestSuite",
+            "serviceName": f"MyTestSuite_{postgres_service.name.root}",
             "sourceConfig": {
                 "config": {
                     "type": TestSuiteConfigType.TestSuite.value,
@@ -575,7 +568,7 @@ def test_error_paths(
     workflow_config = {
         "source": {
             "type": "postgres",
-            "serviceName": "MyTestSuite",
+            "serviceName": f"MyTestSuite_{postgres_service.name.root}",
             "sourceConfig": {
                 "config": {
                     "type": TestSuiteConfigType.TestSuite.value,
@@ -601,34 +594,46 @@ def test_error_paths(
 
 
 def add_changed_tables(connection: Connection):
-    connection.execute("CREATE TABLE customer_200 AS SELECT * FROM customer LIMIT 200;")
     connection.execute(
-        "CREATE TABLE customer_different_case_columns AS SELECT * FROM customer;"
+        text("CREATE TABLE customer_200 AS SELECT * FROM customer LIMIT 200;")
     )
     connection.execute(
-        'ALTER TABLE customer_different_case_columns RENAME COLUMN first_name TO "First_Name";'
+        text("CREATE TABLE customer_different_case_columns AS SELECT * FROM customer;")
+    )
+    connection.execute(
+        text(
+            'ALTER TABLE customer_different_case_columns RENAME COLUMN first_name TO "First_Name";'
+        )
     )
     # TODO: this appears to be unsupported by data diff. Cross data type comparison is flaky.
     # connection.execute(
-    #     "ALTER TABLE customer_different_case_columns ALTER COLUMN store_id TYPE decimal"
+    #     text("ALTER TABLE customer_different_case_columns ALTER COLUMN store_id TYPE decimal")
     # )
-    connection.execute("CREATE TABLE changed_customer AS SELECT * FROM customer;")
+    connection.execute(text("CREATE TABLE changed_customer AS SELECT * FROM customer;"))
     connection.execute(
-        "UPDATE changed_customer SET first_name = 'John' WHERE MOD(customer_id, 2) = 0;"
-    )
-    connection.execute("DELETE FROM changed_customer WHERE MOD(customer_id, 13) = 0;")
-    connection.execute(
-        "CREATE TABLE customer_without_first_name AS SELECT * FROM customer;"
+        text(
+            "UPDATE changed_customer SET first_name = 'John' WHERE MOD(customer_id, 2) = 0;"
+        )
     )
     connection.execute(
-        "ALTER TABLE customer_without_first_name DROP COLUMN first_name;"
+        text("DELETE FROM changed_customer WHERE MOD(customer_id, 13) = 0;")
     )
     connection.execute(
-        "CREATE TABLE customer_int_first_name AS SELECT * FROM customer;"
+        text("CREATE TABLE customer_without_first_name AS SELECT * FROM customer;")
     )
-    connection.execute("ALTER TABLE customer_int_first_name DROP COLUMN first_name;")
-    connection.execute("ALTER TABLE customer_int_first_name ADD COLUMN first_name INT;")
-    connection.execute("UPDATE customer_int_first_name SET first_name = 1;")
+    connection.execute(
+        text("ALTER TABLE customer_without_first_name DROP COLUMN first_name;")
+    )
+    connection.execute(
+        text("CREATE TABLE customer_int_first_name AS SELECT * FROM customer;")
+    )
+    connection.execute(
+        text("ALTER TABLE customer_int_first_name DROP COLUMN first_name;")
+    )
+    connection.execute(
+        text("ALTER TABLE customer_int_first_name ADD COLUMN first_name INT;")
+    )
+    connection.execute(text("UPDATE customer_int_first_name SET first_name = 1;"))
 
 
 @pytest.fixture(scope="module")
@@ -637,7 +642,8 @@ def prepare_data(postgres_container, mysql_container):
         make_url(postgres_container.get_connection_url()).set(database="dvdrental"),
         isolation_level="AUTOCOMMIT",
     )
-    dvdrental.execute("CREATE DATABASE other_db")
+    with dvdrental.connect() as conn:
+        conn.execute(text("CREATE DATABASE other_db"))
     with dvdrental.connect() as conn:
         add_changed_tables(conn)
     other = create_engine(
@@ -698,8 +704,9 @@ def copy_table(source_engine, destination_engine, table_name):
         for i in range(0, len(data), batch_size):
             batch = data[i : i + batch_size]
             destination_connection.execute(
-                source_table.insert(), [dict(row) for row in batch]
+                source_table.insert(), [dict(row._mapping) for row in batch]
             )
+        destination_connection.commit()
 
 
 @pytest.fixture
@@ -732,25 +739,23 @@ def patched_metadata(metadata, postgres_service, ingest_mysql_service, monkeypat
 
 
 def copy_table_between_postgres(
-    source_conn: Connection, dest_conn: Connection, table_name: str, limit: int
+    source_engine, dest_engine, table_name: str, limit: int
 ):
-    # Reflect the source table
     source_metadata = MetaData()
-    source_table = SQATable(table_name, source_metadata, autoload_with=source_conn)
+    source_table = SQATable(table_name, source_metadata, autoload_with=source_engine)
 
-    # Create the destination table
     dest_metadata = MetaData()
     dest_table = SQATable(table_name, dest_metadata)
 
     for column in source_table.columns:
         dest_table.append_column(column.copy())
 
-    dest_metadata.create_all(dest_conn)
+    dest_metadata.create_all(dest_engine)
 
-    # Fetch data from the source table
-    query = source_table.select().limit(limit)
-    data = source_conn.execute(query).fetchall()
+    with source_engine.connect() as source_conn, dest_engine.connect() as dest_conn:
+        query = source_table.select().limit(limit)
+        data = source_conn.execute(query).fetchall()
 
-    # Insert data into the destination table
-    if data:
-        dest_conn.execute(dest_table.insert(), [dict(row) for row in data])
+        if data:
+            dest_conn.execute(dest_table.insert(), [dict(row._mapping) for row in data])
+            dest_conn.commit()

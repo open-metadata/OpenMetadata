@@ -34,6 +34,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -710,10 +711,18 @@ public class ColumnRepository {
 
   public BulkOperationResult bulkUpdateColumns(
       UriInfo uriInfo, SecurityContext securityContext, BulkColumnUpdateRequest request) {
+    return bulkUpdateColumns(uriInfo, securityContext, request, null);
+  }
 
+  public BulkOperationResult bulkUpdateColumns(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      BulkColumnUpdateRequest request,
+      BiConsumer<Long, Long> progressCallback) {
     BulkOperationResult result = new BulkOperationResult();
     AtomicLong successCount = new AtomicLong(0);
     AtomicLong failureCount = new AtomicLong(0);
+    AtomicLong processedCount = new AtomicLong(0);
     List<BulkResponse> successResponses = new ArrayList<>();
     List<BulkResponse> failureResponses = new ArrayList<>();
 
@@ -749,6 +758,11 @@ public class ColumnRepository {
           "Either columnName (for search-based updates) or columnUpdates (for explicit updates) must be provided");
     }
 
+    final long totalUpdates = columnUpdatesToProcess.size();
+    if (progressCallback != null) {
+      progressCallback.accept(0L, totalUpdates);
+    }
+
     // Process the updates
     for (ColumnUpdate columnUpdate : columnUpdatesToProcess) {
       try {
@@ -781,6 +795,10 @@ public class ColumnRepository {
                 "Failed to update column %s: %s", columnUpdate.getColumnFQN(), e.getMessage()));
         failureResponses.add(failureResponse);
         LOG.error("Error updating column: {}", columnUpdate.getColumnFQN(), e);
+      } finally {
+        if (progressCallback != null) {
+          progressCallback.accept(processedCount.incrementAndGet(), totalUpdates);
+        }
       }
     }
 

@@ -106,6 +106,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   // Default images (can be overridden by system properties)
   private static final String DEFAULT_POSTGRES_IMAGE = "postgres:15";
   private static final String DEFAULT_MYSQL_IMAGE = "mysql:8.3.0";
+  private static final String DEFAULT_MYSQL_MAX_ALLOWED_PACKET = "64M";
   private static final String DEFAULT_ELASTICSEARCH_IMAGE =
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
@@ -197,10 +198,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         image = DEFAULT_MYSQL_IMAGE;
       }
       LOG.info("Starting MySQL container with image: {}", image);
+      String mysqlMaxAllowedPacket =
+          System.getProperty("mysqlMaxAllowedPacket", DEFAULT_MYSQL_MAX_ALLOWED_PACKET);
       MySQLContainer<?> mysql = new MySQLContainer<>(image);
       mysql.withDatabaseName("openmetadata");
       mysql.withUsername("test");
       mysql.withPassword("test");
+      mysql.withCommand("mysqld", "--max_allowed_packet=" + mysqlMaxAllowedPacket);
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
@@ -212,7 +216,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
                           new com.github.dockerjava.api.model.Ulimit("nofile", 65536L, 65536L))));
       mysql.start();
       DATABASE_CONTAINER = mysql;
-      LOG.info("MySQL started: {}", DATABASE_CONTAINER.getJdbcUrl());
+      LOG.info(
+          "MySQL started: {} (max_allowed_packet={})",
+          DATABASE_CONTAINER.getJdbcUrl(),
+          mysqlMaxAllowedPacket);
     } else {
       if (image == null) {
         image = DEFAULT_POSTGRES_IMAGE;
@@ -468,7 +475,35 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.warn("Seed data load failed: {}", se.getMessage());
     }
 
+    registerMcpServerIfAvailable();
+
     LOG.info("OpenMetadata application started on port {}", APP.getLocalPort());
+  }
+
+  private void registerMcpServerIfAvailable() {
+    try {
+      // ApplicationContext was initialized before seed data loaded, so it missed McpApplication.
+      // Reinitialize to pick up apps created by seed data loading.
+      ApplicationContext.reinitialize();
+
+      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
+        LOG.info("McpApplication not found, skipping MCP server registration");
+        return;
+      }
+
+      // registerMCPServer is protected, so we use reflection from the test bootstrap
+      OpenMetadataApplication application = (OpenMetadataApplication) APP.getApplication();
+      java.lang.reflect.Method method =
+          OpenMetadataApplication.class.getDeclaredMethod(
+              "registerMCPServer",
+              OpenMetadataApplicationConfig.class,
+              io.dropwizard.core.setup.Environment.class);
+      method.setAccessible(true);
+      method.invoke(application, APP.getConfiguration(), APP.getEnvironment());
+      LOG.info("MCP server registered successfully");
+    } catch (Exception e) {
+      LOG.info("MCP server registration skipped: {}", e.getMessage());
+    }
   }
 
   private OpenMetadataApplicationConfig readTestAppConfig(String path)
@@ -549,10 +584,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void configurePipelineServiceClient(OpenMetadataApplicationConfig config) {
-    PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
-
     if (kubeConfigYaml != null) {
-      // K3s was started - configure K8s pipeline client
+      PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
       LOG.info("Configuring K8sPipelineClient for pipeline operations");
       pipelineConfig.setEnabled(true);
       pipelineConfig.setClassName(
@@ -567,13 +600,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       params.setAdditionalProperty("serviceAccountName", "default");
       params.setAdditionalProperty("imagePullPolicy", "IfNotPresent");
       pipelineConfig.setParameters(params);
+      config.setPipelineServiceClientConfiguration(pipelineConfig);
     } else {
-      // No K3s - disable pipeline service client
-      pipelineConfig.setEnabled(false);
       LOG.info("Pipeline service client disabled (K8s not enabled)");
+      config.getPipelineServiceClientConfiguration().setEnabled(false);
     }
-
-    config.setPipelineServiceClientConfiguration(pipelineConfig);
   }
 
   private void configureRdf(OpenMetadataApplicationConfig config) {
@@ -606,16 +637,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     try {
-      if (WorkflowHandler.isInitialized()) {
-        LOG.info("Shutting down Flowable ProcessEngine...");
-        org.flowable.engine.ProcessEngines.destroy();
-        LOG.info("Flowable ProcessEngine shut down successfully");
-      }
-    } catch (Exception e) {
-      LOG.warn("Error shutting down Flowable ProcessEngine", e);
-    }
-
-    try {
       if (APP != null) {
         APP.after();
         if (APP.getEnvironment() != null
@@ -626,6 +647,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       }
     } catch (Exception e) {
       LOG.warn("Error stopping Dropwizard app", e);
+    }
+
+    try {
+      if (WorkflowHandler.isInitialized()) {
+        LOG.info("Shutting down Flowable ProcessEngine...");
+        org.flowable.engine.ProcessEngines.destroy();
+        LOG.info("Flowable ProcessEngine shut down successfully");
+      }
+    } catch (Exception e) {
+      LOG.warn("Error shutting down Flowable ProcessEngine", e);
     }
 
     try {
