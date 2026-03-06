@@ -18,9 +18,13 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -31,6 +35,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -3096,6 +3101,115 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                     + "}")
         .reduce((a, b) -> a + ";" + b)
         .orElse("");
+  }
+
+  @Test
+  void test_testCaseInheritedMutuallyExclusiveTagsDoNotConflict(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a mutually exclusive classification with two tags
+    Classification meClassification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix("me_class"))
+                    .withMutuallyExclusive(true)
+                    .withDescription("Mutually exclusive classification for testing"));
+
+    Tag tag1 =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("TagA")
+                    .withClassification(meClassification.getName())
+                    .withDescription("First exclusive tag"));
+    Tag tag2 =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("TagB")
+                    .withClassification(meClassification.getName())
+                    .withDescription("Second exclusive tag"));
+
+    TagLabel tagLabel1 =
+        new TagLabel()
+            .withTagFQN(tag1.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    TagLabel tagLabel2 =
+        new TagLabel()
+            .withTagFQN(tag2.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    // Create table and add TagA to it
+    Table table = createTable(ns);
+    Table fetchedTable = client.tables().get(table.getId().toString(), "tags");
+    fetchedTable.setTags(List.of(tagLabel1));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    // Create test case with TagB (different tag from same mutually exclusive classification)
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("me_tag_test_case"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    request.setTags(List.of(tagLabel2));
+
+    TestCase testCase = client.testCases().create(request);
+    assertNotNull(testCase);
+
+    // Get test case with tags — inherited tags from table should be filtered
+    TestCase fetched = client.testCases().get(testCase.getId().toString(), "tags");
+
+    // The test case should have TagB (its own) but NOT TagA (inherited from table)
+    // because they belong to the same mutually exclusive classification
+    assertTrue(
+        fetched.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(tag2.getFullyQualifiedName())),
+        "Test case should have its own tag (TagB)");
+    assertFalse(
+        fetched.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(tag1.getFullyQualifiedName())),
+        "Test case should NOT inherit conflicting mutually exclusive tag (TagA) from table");
+  }
+
+  @Test
+  void test_testCaseInheritsNonConflictingTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+
+    // Create table and add a PII tag to it
+    Table table = createTable(ns);
+    Table fetchedTable = client.tables().get(table.getId().toString(), "tags");
+    fetchedTable.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
+    client.tables().update(fetchedTable.getId().toString(), fetchedTable);
+
+    // Create test case with a different (non-conflicting) tag
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("inherit_tag_test_case"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    request.setTags(List.of(shared.PERSONAL_DATA_TAG_LABEL));
+
+    TestCase testCase = client.testCases().create(request);
+    assertNotNull(testCase);
+
+    // Get test case with tags — should have both its own and inherited tags
+    TestCase fetched = client.testCases().get(testCase.getId().toString(), "tags");
+
+    assertTrue(
+        fetched.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.PERSONAL_DATA_TAG_LABEL.getTagFQN())),
+        "Test case should have its own tag (PersonalData)");
+    assertTrue(
+        fetched.getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())),
+        "Test case should inherit non-conflicting tag (Sensitive) from table");
   }
 
   private String formatTagsForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
