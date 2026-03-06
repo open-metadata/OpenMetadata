@@ -679,8 +679,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             newStatus
           );
 
-          if (!selectedStatus.includes('all') &&
-            !selectedStatus.includes(newStatus)) {
+          if (
+            !selectedStatus.includes('all') &&
+            !selectedStatus.includes(newStatus)
+          ) {
             setGlossaryChildTerms(
               updatedTerms.filter(
                 (term) => term.fullyQualifiedName !== glossaryTermFqn
@@ -771,7 +773,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 type="link"
                 onClick={() =>
                   parentRecord && handleLoadMoreChildren(parentRecord)
-                }>
+                }
+              >
                 {t('label.view-more-count', {
                   countValue: remainingCount,
                 })}
@@ -796,7 +799,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 className="cursor-pointer vertical-baseline"
                 data-testid={name}
                 style={{ color: record.style?.color }}
-                to={getGlossaryPath(record.fullyQualifiedName ?? record.name)}>
+                to={getGlossaryPath(record.fullyQualifiedName ?? record.name)}
+              >
                 {name}
               </Link>
             </>
@@ -867,7 +871,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               }
               overlayStyle={{ minWidth: '260px' }}
               placement="topLeft"
-              trigger="hover">
+              trigger="hover"
+            >
               <div>
                 <StatusBadge
                   dataTestId={termFQN + '-status'}
@@ -965,7 +970,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 <Tooltip
                   title={t('label.add-entity', {
                     entity: t('label.glossary-term'),
-                  })}>
+                  })}
+                >
                   <Button
                     className="add-new-term-btn text-grey-muted flex-center"
                     data-testid="add-classification"
@@ -984,7 +990,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               <Tooltip
                 title={t('label.edit-entity', {
                   entity: t('label.glossary-term'),
-                })}>
+                })}
+              >
                 <Button
                   className="cursor-pointer flex-center"
                   data-testid="edit-button"
@@ -1090,7 +1097,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             <div className="status-selection-dropdown">
               <Checkbox.Group
                 className="glossary-col-sel-checkbox-group"
-                value={statusDropdownSelection}>
+                value={statusDropdownSelection}
+              >
                 {GLOSSARY_TERM_STATUS_OPTIONS.map((option) => (
                   <div key={option.value}>
                     <Checkbox
@@ -1098,7 +1106,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                       value={option.value}
                       onChange={(e) =>
                         handleCheckboxChange(option.value, e.target.checked)
-                      }>
+                      }
+                    >
                       <p className="glossary-dropdown-label">{option.text}</p>
                     </Checkbox>
                   </div>
@@ -1120,13 +1129,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 <Button
                   className="custom-glossary-dropdown-action-btn"
                   type="primary"
-                  onClick={handleStatusSelectionDropdownSave}>
+                  onClick={handleStatusSelectionDropdownSave}
+                >
                   {t('label.save')}
                 </Button>
                 <Button
                   className="custom-glossary-dropdown-action-btn"
                   type="default"
-                  onClick={handleStatusSelectionDropdownCancel}>
+                  onClick={handleStatusSelectionDropdownCancel}
+                >
                   {t('label.cancel')}
                 </Button>
               </Space>
@@ -1189,12 +1200,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           menu={statusDropdownMenu}
           open={isStatusDropdownVisible}
           trigger={['click']}
-          onOpenChange={setIsStatusDropdownVisible}>
+          onOpenChange={setIsStatusDropdownVisible}
+        >
           <Button
             className="text-primary remove-button-background-hover"
             data-testid="glossary-status-dropdown"
             size="small"
-            type="text">
+            type="text"
+          >
             <Space>
               {t('label.status')}
               <DownOutlined />
@@ -1210,7 +1223,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           disabled={isExpandingAll}
           size="small"
           type="text"
-          onClick={toggleExpandAll}>
+          onClick={toggleExpandAll}
+        >
           <Space align="center" size={4}>
             {isExpandingAll ? (
               <Loader size="small" />
@@ -1366,8 +1380,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         parent: isUndefined(movedGlossaryTerm.to)
           ? null
           : {
-            fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
-          },
+              fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
+            },
       };
       const jsonPatch = compare(movedGlossaryTerm.from, newTermData);
 
@@ -1388,18 +1402,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     record,
     index
   ) =>
-  ({
-    index,
-    handleMoveRow,
-    handleTableHover,
-    record,
-  } as DraggableBodyRowProps<GlossaryTerm>);
+    ({
+      index,
+      handleMoveRow,
+      handleTableHover,
+      record,
+    } as DraggableBodyRowProps<GlossaryTerm>);
 
   const onTableHeader: TableProps<ModifiedGlossaryTerm>['onHeaderRow'] = () =>
-  ({
-    handleMoveRow,
-    handleTableHover,
-  } as DraggableBodyRowProps<GlossaryTerm>);
+    ({
+      handleMoveRow,
+      handleTableHover,
+    } as DraggableBodyRowProps<GlossaryTerm>);
 
   const onDragConfirmationModalClose = useCallback(() => {
     setIsModalOpen(false);
@@ -1492,7 +1506,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return 'No Glossary Terms';
   }, [isSearchActive, isStatusFilterActive, searchTerm]);
 
-  if (hasNoTerms && !isSearchActive && totalTermsCount === 0 && !isTableLoading) {
+  if (
+    hasNoTerms &&
+    !isSearchActive &&
+    totalTermsCount === 0 &&
+    !isTableLoading
+  ) {
     return (
       <div className="h-full" ref={tableContainerRef}>
         <ErrorPlaceHolder
@@ -1525,7 +1544,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             height: 'calc(100vh - 300px)',
             overflow: 'auto',
             position: 'relative',
-          }}>
+          }}
+        >
           {glossaryTerms.length > 0 ? (
             <>
               <Table
@@ -1552,13 +1572,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               {/* Show infinite scroll trigger if there are more results */}
               {((!searchTerm && paging.after !== undefined) ||
                 (searchTerm && searchPaging.hasMore)) && (
-                  <div
-                    className="m-t-md m-b-md text-center p-y-lg"
-                    ref={infiniteScrollRef}
-                    style={{ minHeight: '80px', background: 'transparent' }}>
-                    {isLoadingMore && <Loader size="small" />}
-                  </div>
-                )}
+                <div
+                  className="m-t-md m-b-md text-center p-y-lg"
+                  ref={infiniteScrollRef}
+                  style={{ minHeight: '80px', background: 'transparent' }}
+                >
+                  {isLoadingMore && <Loader size="small" />}
+                </div>
+              )}
             </>
           ) : (
             // Show empty state within the table container when search returns no results
@@ -1612,7 +1633,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             </>
           }
           onCancel={onDragConfirmationModalClose}
-          onOk={handleChangeGlossaryTerm}>
+          onOk={handleChangeGlossaryTerm}
+        >
           <Transi18next
             i18nKey="message.entity-transfer-message"
             renderElement={<strong />}
@@ -1632,7 +1654,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 checked={confirmCheckboxChecked}
                 className="text-grey-700"
                 data-testid="confirm-status-checkbox"
-                onChange={(e) => setConfirmCheckboxChecked(e.target.checked)}>
+                onChange={(e) => setConfirmCheckboxChecked(e.target.checked)}
+              >
                 <span>
                   <Transi18next
                     i18nKey="message.entity-transfer-confirmation-message"

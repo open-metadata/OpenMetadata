@@ -119,7 +119,8 @@ const ColumnProfileTable = () => {
           return (
             <div
               className="d-inline-flex flex-column hover-icon-group"
-              style={{ maxWidth: '75%' }}>
+              style={{ maxWidth: '75%' }}
+            >
               <div className="d-inline-flex items-start gap-1 flex-column">
                 <div className="d-inline-flex items-baseline">
                   <Link
@@ -135,7 +136,8 @@ const ColumnProfileTable = () => {
                         ...searchData,
                         activeColumnFqn: record.fullyQualifiedName || '',
                       }),
-                    }}>
+                    }}
+                  >
                     {getEntityName(record)}
                   </Link>
                 </div>
@@ -152,8 +154,8 @@ const ColumnProfileTable = () => {
         width: 200,
         render: (dataTypeDisplay: string) => {
           return (
-            <Typography as="span" className="break-word">
-              {dataTypeDisplay || 'N/A'}
+            <Typography>
+              <span className="break-word">{dataTypeDisplay || 'N/A'}</span>
             </Typography>
           );
         },
@@ -237,7 +239,8 @@ const ColumnProfileTable = () => {
                 tableFqn,
                 EntityTabs.PROFILER,
                 ProfilerTabPath.DATA_QUALITY
-              )}>
+              )}
+            >
               <span className="tw:text-success-primary">
                 {testCounts?.success}
               </span>
@@ -268,7 +271,8 @@ const ColumnProfileTable = () => {
                 tableFqn,
                 EntityTabs.PROFILER,
                 ProfilerTabPath.DATA_QUALITY
-              )}>
+              )}
+            >
               <span className="tw:text-error-primary">
                 {testCounts?.failed}
               </span>
@@ -299,7 +303,8 @@ const ColumnProfileTable = () => {
                 tableFqn,
                 EntityTabs.PROFILER,
                 ProfilerTabPath.DATA_QUALITY
-              )}>
+              )}
+            >
               <span className="tw:text-warning-primary">
                 {testCounts?.aborted}
               </span>
@@ -400,7 +405,8 @@ const ColumnProfileTable = () => {
   return (
     <div
       className="tw:flex tw:flex-col tw:gap-7.5"
-      data-testid="column-profile-table-container">
+      data-testid="column-profile-table-container"
+    >
       {!isLoading && !isProfilingEnabled && <NoProfilerBanner />}
 
       <div className="tw:grid tw:grid-cols-5 tw:gap-6">

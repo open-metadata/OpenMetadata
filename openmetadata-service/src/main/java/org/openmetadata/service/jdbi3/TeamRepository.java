@@ -95,9 +95,11 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -422,7 +424,7 @@ public class TeamRepository extends EntityRepository<Team> {
     validateDefaultPersona(team);
   }
 
-  public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request) {
+  public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request, String userName) {
     Team team = getByName(null, teamName, getFields("id"));
 
     // Validate all to be users
@@ -434,16 +436,17 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
 
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true);
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, userName);
   }
 
-  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+  public BulkOperationResult bulkRemoveAssets(
+      String domainName, BulkAssets request, String userName) {
     Team team = getByName(null, domainName, getFields("id"));
 
     // Validate all to be users
     validateAllRefUsers(request.getAssets());
 
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false);
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, userName);
   }
 
   private void validateAllRefUsers(List<EntityReference> refs) {
@@ -489,22 +492,29 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     List<Team> allTeams = listAll(getFields("id,fullyQualifiedName"), new ListFilter(null));
-    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
 
+    // Build team ID -> FQN mapping
+    Map<String, String> teamIdToFqn = new HashMap<>();
     for (Team team : allTeams) {
-      InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), 0, 0);
+      teamIdToFqn.put(team.getId().toString(), team.getFullyQualifiedName());
+    }
 
-      Integer count =
-          inheritedFieldEntitySearch.getCountForField(
-              query,
-              () -> {
-                LOG.warn(
-                    "Search fallback for team {} asset count. Returning 0.",
-                    team.getFullyQualifiedName());
-                return 0;
-              });
+    // Single ES aggregation query filtered by owners.type=team (excludes users)
+    String queryFilter = QueryFilterBuilder.buildTeamAssetsCountFilter();
+    Map<String, Integer> ownerIdCounts =
+        inheritedFieldEntitySearch.getAggregatedCountsByField(
+            "owners.id", queryFilter, EntityBuilderConstant.MAX_AGGREGATE_SIZE);
 
-      teamAssetCounts.put(team.getFullyQualifiedName(), count);
+    // Map team IDs to FQNs
+    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
+    for (Team team : allTeams) {
+      teamAssetCounts.put(team.getFullyQualifiedName(), 0);
+    }
+    for (Map.Entry<String, Integer> entry : ownerIdCounts.entrySet()) {
+      String teamFqn = teamIdToFqn.get(entry.getKey());
+      if (teamFqn != null) {
+        teamAssetCounts.put(teamFqn, entry.getValue());
+      }
     }
 
     return teamAssetCounts;

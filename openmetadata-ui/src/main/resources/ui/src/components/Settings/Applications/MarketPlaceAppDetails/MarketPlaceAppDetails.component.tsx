@@ -55,7 +55,7 @@ const MarketPlaceAppDetails = () => {
   const [isInstalled, setIsInstalled] = useState(false);
   const [appScreenshots, setAppScreenshots] = useState<JSX.Element[]>([]);
 
-  const isPreviewApp = useMemo(() => !!appData?.preview, [appData]);
+  const isAppDisabled = useMemo(() => appData?.enabled === false, [appData]);
 
   const loadScreenshot = async (screenshotName: string) => {
     try {
@@ -125,7 +125,7 @@ const MarketPlaceAppDetails = () => {
     if (isInstalled) {
       return t('message.app-already-installed');
     }
-    if (isPreviewApp) {
+    if (isAppDisabled) {
       return (
         <Transi18next
           i18nKey="message.paid-addon-description"
@@ -140,7 +140,7 @@ const MarketPlaceAppDetails = () => {
     }
 
     return '';
-  }, [isInstalled, isPreviewApp, appData?.displayName]);
+  }, [isInstalled, isAppDisabled, appData?.displayName]);
 
   const leftPanel = useMemo(() => {
     return (
@@ -150,7 +150,8 @@ const MarketPlaceAppDetails = () => {
           icon={<LeftOutlined />}
           size="small"
           type="text"
-          onClick={onBrowseAppsClick}>
+          onClick={onBrowseAppsClick}
+        >
           <Typography.Text className="font-medium">
             {t('label.browse-app-plural')}
           </Typography.Text>
@@ -163,14 +164,15 @@ const MarketPlaceAppDetails = () => {
             block
             className="m-t-md"
             data-testid="install-application"
-            disabled={isInstalled || isPreviewApp}
+            disabled={isInstalled || isAppDisabled}
             type="primary"
-            onClick={installApp}>
+            onClick={installApp}
+          >
             {t('label.install')}
           </Button>
         </Tooltip>
 
-        {isPreviewApp && (
+        {isAppDisabled && (
           <Alert
             className="m-t-md text-xs d-flex items-start p-xs"
             message={
@@ -209,7 +211,8 @@ const MarketPlaceAppDetails = () => {
               <Typography.Link
                 data-testid="app-support-email"
                 href={`mailto:${appData?.supportEmail}`}
-                target="_blank">
+                target="_blank"
+              >
                 <Space>{t('label.get-app-support')}</Space>
               </Typography.Link>
             )}
@@ -242,7 +245,8 @@ const MarketPlaceAppDetails = () => {
     <PageLayoutV1
       leftPanel={leftPanel}
       leftPanelWidth={260}
-      pageTitle={t('label.application-plural')}>
+      pageTitle={t('label.application-plural')}
+    >
       <Row>
         <Col span={24}>
           <Typography.Title className="p-md m-0 p-t-xss" level={2}>
@@ -257,12 +261,14 @@ const MarketPlaceAppDetails = () => {
             dots
             autoplaySpeed={3000}
             className="p-x-md"
-            easing="ease-in-out">
+            easing="ease-in-out"
+          >
             {appScreenshots.map((data) => (
               <div
                 className="app-slider-container"
                 data-testid="slider-container"
-                key={uniqueId()}>
+                key={uniqueId()}
+              >
                 {data}
               </div>
             ))}

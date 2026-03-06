@@ -83,8 +83,9 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
         </div>
       )}
       <div
-        className="tw:rounded-[10px] tw:border tw:border-border-secondary tw:p-4 tw:shadow-none"
-        data-testid="profiler-details-card-container">
+        className="tw:rounded-[10px] tw:border tw:border-secondary tw:p-4 tw:shadow-none"
+        data-testid="profiler-details-card-container"
+      >
         <div className="tw:flex tw:flex-col tw:gap-4">
           <ProfilerLatestValue
             information={information}
@@ -96,11 +97,13 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               className="custom-legend"
               debounce={200}
               id={`${name}_graph`}
-              minHeight={300}>
+              minHeight={300}
+            >
               <ComposedChart
                 className="w-full"
                 data={data}
-                margin={{ left: 0 }}>
+                margin={{ left: 0 }}
+              >
                 <CartesianGrid
                   horizontal={renderHorizontalGridLine}
                   stroke={GRAPH_BACKGROUND_COLOR}
