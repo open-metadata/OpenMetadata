@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { SmartToyOutlined } from '@mui/icons-material';
 import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
-import { ReactComponent as BotIcon } from '../assets/svg/bot-profile.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import { ERROR_MESSAGE, NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -49,12 +49,15 @@ export const commonUserDetailColumns = (
     ellipsis: { showTitle: false },
     render: (_, record) => (
       <Space size={4}>
-        {userCellRenderer(record)}
         {record.isBot && (
           <Tooltip title={t('label.bot')}>
-            <BotIcon data-testid="bot-icon" height={16} width={16} />
+            <SmartToyOutlined
+              data-testid="bot-icon"
+              style={{ fontSize: 16, color: '#757575' }}
+            />
           </Tooltip>
         )}
+        {userCellRenderer(record)}
       </Space>
     ),
   },
