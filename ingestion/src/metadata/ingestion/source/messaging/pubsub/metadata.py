@@ -21,7 +21,6 @@ from google.pubsub_v1.types import Topic as GcpTopic
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.messaging.pubSubConnection import (
     PubSubConnection,
@@ -91,16 +90,44 @@ class PubsubSource(MessagingServiceSource):
             )
         return cls(config, metadata)
 
+    def _get_dead_letter_topics(self) -> set:
+        """
+        Collect full resource names of all dead letter topics in the project
+        by inspecting subscription dead letter policies.
+        """
+        dead_letter_topics = set()
+        project_path = f"projects/{self.project_id}"
+        try:
+            subscriptions = self.pubsub.subscriber.list_subscriptions(
+                request={"project": project_path}
+            )
+            for sub in subscriptions:
+                if sub.dead_letter_policy and sub.dead_letter_policy.dead_letter_topic:
+                    dead_letter_topics.add(sub.dead_letter_policy.dead_letter_topic)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to list subscriptions for dead letter detection: {err}"
+            )
+        return dead_letter_topics
+
     def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
         """
         Method to yield topic details from Pub/Sub
         """
+        dead_letter_topics = set()
+        if not self.service_connection.includeDeadLetterTopics:
+            dead_letter_topics = self._get_dead_letter_topics()
+
         project_path = f"projects/{self.project_id}"
         try:
             topics = self.pubsub.publisher.list_topics(
                 request={"project": project_path}
             )
             for topic in topics:
+                if topic.name in dead_letter_topics:
+                    logger.debug(f"Skipping dead letter topic: {topic.name}")
+                    continue
                 topic_name = topic.name.split("/")[-1]
                 try:
                     topic_metadata = self._get_topic_metadata(topic)
@@ -254,17 +281,11 @@ class PubsubSource(MessagingServiceSource):
                 f"{topic_details.topic_name}?project={self.project_id}"
             )
 
-            # Pub/Sub does not have partitions like Kafka. For compatibility with the
-            # OpenMetadata topic model (which expects a `partitions` field), we use the
-            # number of subscriptions as a proxy value.
-            subscriptions_count = (
-                len(metadata.subscriptions) if metadata.subscriptions else 1
-            )
             retention_time = self._parse_retention(metadata.message_retention_duration)
             topic = CreateTopicRequest(
                 name=EntityName(topic_details.topic_name),
                 service=FullyQualifiedEntityName(self.context.get().messaging_service),
-                partitions=subscriptions_count,
+                partitions=1,
                 retentionTime=retention_time,
                 sourceUrl=SourceUrl(source_url),
             )
@@ -453,17 +474,30 @@ class PubsubSource(MessagingServiceSource):
                 continue
 
             try:
-                bq_table_fqn = subscription.bigquery_config.table
-                parts = bq_table_fqn.split(".")
-                if len(parts) >= 3:
-                    table_fqn = f"{parts[0]}.{parts[1]}.{parts[2]}"
-                else:
-                    table_fqn = bq_table_fqn
+                bq_table_ref = subscription.bigquery_config.table
+                parts = bq_table_ref.split(".")
+                if len(parts) < 3:
+                    logger.debug(
+                        f"BigQuery table reference '{bq_table_ref}' does not match "
+                        f"expected 'project.dataset.table' format"
+                    )
+                    continue
 
-                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                database_name, schema_name, table_name = (
+                    parts[0],
+                    parts[1],
+                    parts[2],
+                )
+                table_entity = fqn.search_table_from_es(
+                    metadata=self.metadata,
+                    database_name=database_name,
+                    schema_name=schema_name,
+                    service_name=None,
+                    table_name=table_name,
+                )
                 if not table_entity:
                     logger.debug(
-                        f"BigQuery table {table_fqn} not found for lineage from "
+                        f"BigQuery table {bq_table_ref} not found for lineage from "
                         f"topic {topic_details.topic_name}"
                     )
                     continue

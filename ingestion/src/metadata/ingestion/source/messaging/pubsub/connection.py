@@ -95,25 +95,30 @@ def get_connection(connection: PubSubConnection) -> PubSubClient:
     elif PUBSUB_EMULATOR_HOST in os.environ:
         del os.environ[PUBSUB_EMULATOR_HOST]
 
-    publisher = pubsub_v1.PublisherClient()
-    subscriber = pubsub_v1.SubscriberClient()
+    try:
+        publisher = pubsub_v1.PublisherClient()
+        subscriber = pubsub_v1.SubscriberClient()
 
-    schema_client = None
-    if connection.schemaRegistryEnabled:
-        schema_client = SchemaServiceClient()
+        schema_client = None
+        if connection.schemaRegistryEnabled:
+            schema_client = SchemaServiceClient()
 
-    project_id = _get_project_id(connection)
-    if not project_id:
-        raise ValueError(
-            "Project ID is required. Provide it via 'projectId' config or in GCP credentials."
+        project_id = _get_project_id(connection)
+        if not project_id:
+            raise ValueError(
+                "Project ID is required. Provide it via 'projectId' config or in GCP credentials."
+            )
+
+        return PubSubClient(
+            publisher=publisher,
+            subscriber=subscriber,
+            schema_client=schema_client,
+            project_id=project_id,
         )
-
-    return PubSubClient(
-        publisher=publisher,
-        subscriber=subscriber,
-        schema_client=schema_client,
-        project_id=project_id,
-    )
+    except Exception:
+        if connection.useEmulator and PUBSUB_EMULATOR_HOST in os.environ:
+            del os.environ[PUBSUB_EMULATOR_HOST]
+        raise
 
 
 def test_connection(
@@ -131,10 +136,10 @@ def test_connection(
     def list_topics_test():
         project_path = f"projects/{client.project_id}"
         try:
-            topics = list(
-                client.publisher.list_topics(request={"project": project_path})
+            topics_iter = client.publisher.list_topics(
+                request={"project": project_path}
             )
-            logger.debug(f"Found {len(topics)} topics in project {client.project_id}")
+            next(iter(topics_iter), None)
         except GoogleAPIError as err:
             raise err
 
@@ -142,12 +147,10 @@ def test_connection(
         if client.schema_client:
             project_path = f"projects/{client.project_id}"
             try:
-                schemas = list(
-                    client.schema_client.list_schemas(request={"parent": project_path})
+                schemas_iter = client.schema_client.list_schemas(
+                    request={"parent": project_path}
                 )
-                logger.debug(
-                    f"Found {len(schemas)} schemas in project {client.project_id}"
-                )
+                next(iter(schemas_iter), None)
             except GoogleAPIError as err:
                 raise err
 
