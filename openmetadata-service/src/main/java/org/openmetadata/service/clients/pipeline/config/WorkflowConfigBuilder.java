@@ -84,6 +84,9 @@ public class WorkflowConfigBuilder {
         buildDefaultWorkflowConfig(ingestionPipeline).withLoggerLevel(ingestionLevel));
     config.setIngestionPipelineFQN(ingestionPipeline.getFullyQualifiedName());
     config.setEnableStreamableLogs(ingestionPipeline.getEnableStreamableLogs());
+    if (service != null && service.getIngestionRunner() != null) {
+      config.setIngestionRunnerName(service.getIngestionRunner().getName());
+    }
     return config;
   }
 
@@ -108,6 +111,9 @@ public class WorkflowConfigBuilder {
         buildDefaultWorkflowConfig(ingestionPipeline).withLoggerLevel(ingestionLevel));
     config.setIngestionPipelineFQN(ingestionPipeline.getFullyQualifiedName());
     config.setEnableStreamableLogs(ingestionPipeline.getEnableStreamableLogs());
+    if (ingestionPipeline.getIngestionRunner() != null) {
+      config.setIngestionRunnerName(ingestionPipeline.getIngestionRunner().getName());
+    }
     return config;
   }
 
