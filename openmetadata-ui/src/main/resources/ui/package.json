@@ -255,7 +255,8 @@
   },
   "resolutions": {
     "@types/react": "^18.2.55",
-    "prosemirror-model": "1.18.1",
+    "@babel/runtime": "7.26.10",
+    "prosemirror-model": "1.22.1",
     "prosemirror-state": "1.4.1",
     "prosemirror-transform": "1.7.0",
     "prosemirror-view": "1.28.2",
@@ -274,6 +275,8 @@
     "cookie": "0.7.0",
     "cross-spawn": "7.0.5",
     "serialize-javascript": "7.0.3",
+    "dompurify": "3.2.7",
+    "immutable": "4.3.8",
     "@tootallnate/once": "3.0.1",
     "on-headers": "1.1.0",
     "form-data": "3.0.4",
