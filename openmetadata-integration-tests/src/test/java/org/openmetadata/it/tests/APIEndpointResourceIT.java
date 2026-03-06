@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
@@ -50,6 +51,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
   {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // ===================================================================
@@ -333,19 +335,6 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
             () -> createEntity(requestWithoutCollection),
             "Creating API endpoint without collection should fail");
     assertEquals(400, exception1.getStatusCode());
-
-    APICollection collection = getOrCreateAPICollection(ns);
-    CreateAPIEndpoint requestWithoutEndpointURL = new CreateAPIEndpoint();
-    requestWithoutEndpointURL.setName(ns.prefix("endpoint_no_url"));
-    requestWithoutEndpointURL.setApiCollection(collection.getFullyQualifiedName());
-    requestWithoutEndpointURL.setRequestMethod(APIRequestMethod.GET);
-
-    InvalidRequestException exception2 =
-        assertThrows(
-            InvalidRequestException.class,
-            () -> createEntity(requestWithoutEndpointURL),
-            "Creating API endpoint without endpointURL should fail");
-    assertEquals(400, exception2.getStatusCode());
   }
 
   @Test
@@ -704,5 +693,26 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
     if (expectedField.getChildren() != null && actualField.getChildren() != null) {
       assertFields(expectedField.getChildren(), actualField.getChildren());
     }
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateAPIEndpoint> createRequests) {
+    return SdkClients.adminClient().apiEndpoints().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateAPIEndpoint> createRequests) {
+    return SdkClients.adminClient().apiEndpoints().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateAPIEndpoint createInvalidRequestForBulk(TestNamespace ns) {
+    CreateAPIEndpoint request = new CreateAPIEndpoint();
+    request.setName(ns.prefix("invalid_api_endpoint"));
+    return request;
   }
 }

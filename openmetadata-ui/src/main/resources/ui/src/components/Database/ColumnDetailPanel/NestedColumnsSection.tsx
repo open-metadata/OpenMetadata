@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, useTheme } from '@mui/material';
+import { Badge } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { Column } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getNestedSectionTitle } from '../../../utils/TableUtils';
 import { NestedColumnsSectionProps } from './NestedColumnsSection.interface';
 
 const NestedColumnItem: React.FC<{
@@ -24,45 +25,30 @@ const NestedColumnItem: React.FC<{
   depth: number;
   onColumnClick: (column: Column) => void;
 }> = ({ column, depth, onColumnClick }) => {
-  const theme = useTheme();
   const hasChildren = column.children && column.children.length > 0;
 
   return (
-    <Box key={column.fullyQualifiedName}>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          padding: '4px 0',
-          paddingLeft: depth * 2,
-          cursor: 'pointer',
-          '&:hover .nested-column-name': {
-            textDecoration: 'underline',
-          },
-        }}
-        onClick={() => onColumnClick(column)}>
+    <div key={column.fullyQualifiedName}>
+      <p
+        className="tw:group tw:flex tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:py-1 tw:text-left"
+        style={{ paddingLeft: `${depth * 8}px` }}>
         <ColumnIcon
+          className="tw:text-brand-700"
           style={{
             width: 11,
             height: 11,
-            color: theme.palette.allShades?.brand?.[700],
             strokeWidth: '1.2px',
           }}
         />
         <Typography.Link
-          className="nested-column-name"
-          style={{
-            fontSize: 14,
-            fontWeight: 400,
-            color: theme.palette.allShades?.brand?.[700],
-          }}>
+          className="nested-column-name tw:text-sm tw:font-normal group-hover:tw:underline"
+          onClick={() => onColumnClick(column)}>
           {getEntityName(column)}
         </Typography.Link>
-      </Box>
+      </p>
       {hasChildren && (
-        <Box sx={{ paddingLeft: 2 }}>
-          {column.children!.map((child) => (
+        <div className="tw:pl-2">
+          {column.children?.map((child) => (
             <NestedColumnItem
               column={child}
               depth={depth + 1}
@@ -70,68 +56,39 @@ const NestedColumnItem: React.FC<{
               onColumnClick={onColumnClick}
             />
           ))}
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 };
 
 export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
   columns,
+  entityType,
   onColumnClick,
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   if (columns.length === 0) {
     return null;
   }
 
   return (
-    <Box
-      borderBottom={`0.6px solid ${theme.palette.allShades?.blueGray?.[100]}`}
-      padding={4}
-      paddingTop={0}>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          marginBottom: 3,
-        }}>
-        <Typography.Text
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: theme.palette.allShades?.gray?.[900],
-          }}>
-          {t('label.nested-column-plural')}
-        </Typography.Text>
-        <Box
-          sx={{
-            borderRadius: '6px',
-            padding: 0,
-            width: '20px',
-            display: 'flex',
-            textAlign: 'center',
-            marginLeft: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            border: '1px solid',
-            borderColor: 'divider',
-            backgroundColor: 'grey.50',
-          }}>
-          <Typography.Text
-            style={{
-              color: theme.palette.allShades?.gray?.[600],
-              fontSize: 10,
-              fontWeight: 500,
-            }}>
-            {columns.length}
-          </Typography.Text>
-        </Box>
-      </Box>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+    <div className="tw:border-b-[0.6px] tw:border-tertiary tw:px-4 tw:pb-4">
+      <div className="tw:mb-3 tw:flex tw:items-center tw:gap-2">
+        <span className="tw:text-[13px] tw:font-semibold tw:text-primary">
+          {t(getNestedSectionTitle(entityType))}
+        </span>
+
+        <Badge
+          className="tw:text-[10px] tw:font-medium tw:text-tertiary"
+          color="gray"
+          size="sm"
+          type="color">
+          {columns.length}
+        </Badge>
+      </div>
+      <div className="tw:flex tw:flex-col tw:gap-0.5">
         {columns.map((column) => (
           <NestedColumnItem
             column={column}
@@ -140,7 +97,7 @@ export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
             onColumnClick={onColumnClick}
           />
         ))}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };

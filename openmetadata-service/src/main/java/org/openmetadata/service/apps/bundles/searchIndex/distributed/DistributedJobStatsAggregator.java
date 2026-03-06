@@ -60,6 +60,8 @@ public class DistributedJobStatsAggregator {
   private ReindexingProgressListener progressListener;
   private ReindexingJobContext jobContext;
   private final AtomicReference<IndexJobStatus> lastNotifiedStatus = new AtomicReference<>();
+  private long lastBroadcastSuccess = -1;
+  private long lastBroadcastFailed = -1;
 
   public DistributedJobStatsAggregator(DistributedSearchIndexCoordinator coordinator, UUID jobId) {
     this(coordinator, jobId, null, null, DEFAULT_POLL_INTERVAL_MS);
@@ -159,7 +161,6 @@ public class DistributedJobStatsAggregator {
    */
   private void aggregateAndBroadcast() {
     try {
-      LOG.debug("Stats aggregator polling for job {}", jobId);
       SearchIndexJob job = coordinator.getJobWithAggregatedStats(jobId);
       if (job == null) {
         LOG.warn("Job {} not found, stopping aggregator", jobId);
@@ -167,27 +168,31 @@ public class DistributedJobStatsAggregator {
         return;
       }
 
-      LOG.debug(
-          "Aggregated stats from DB for job {}: processed={}, success={}, failed={}, status={}",
-          jobId,
-          job.getProcessedRecords(),
-          job.getSuccessRecords(),
-          job.getFailedRecords(),
-          job.getStatus());
+      // Skip broadcast if stats haven't changed (reduces log noise and DB load)
+      boolean statsChanged =
+          job.getSuccessRecords() != lastBroadcastSuccess
+              || job.getFailedRecords() != lastBroadcastFailed;
+
+      if (!statsChanged && !job.isTerminal()) {
+        return;
+      }
+
+      lastBroadcastSuccess = job.getSuccessRecords();
+      lastBroadcastFailed = job.getFailedRecords();
+
+      // Fetch server stats once and reuse for all conversions
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStats =
+          fetchServerStats(job);
 
       // Convert to WebSocket message format
-      AppRunRecord appRecord = convertToAppRunRecord(job);
+      AppRunRecord appRecord = convertToAppRunRecord(job, serverStats);
 
       // Broadcast via WebSocket
       broadcastStats(appRecord);
 
       // Notify progress listener
-      notifyProgressListener(job);
+      notifyProgressListener(job, serverStats);
 
-      // Note: Do NOT auto-stop when job is terminal. The executor will call stop()
-      // after ensuring final stats are broadcast with forceUpdate(). This prevents
-      // a race condition where the aggregator stops before all partition stats are
-      // committed to the database.
       if (job.isTerminal()) {
         LOG.info(
             "Job {} is in terminal state {}, waiting for executor to stop aggregator",
@@ -200,18 +205,33 @@ public class DistributedJobStatsAggregator {
     }
   }
 
+  private CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats fetchServerStats(
+      SearchIndexJob job) {
+    try {
+      return coordinator
+          .getCollectionDAO()
+          .searchIndexServerStatsDAO()
+          .getAggregatedStats(job.getId().toString());
+    } catch (Exception e) {
+      LOG.debug("Could not fetch aggregated server stats for job {}", job.getId(), e);
+      return null;
+    }
+  }
+
   /**
    * Notify the progress listener about job status and progress.
    *
    * @param job The current job state
    */
-  private void notifyProgressListener(SearchIndexJob job) {
+  private void notifyProgressListener(
+      SearchIndexJob job,
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStats) {
     if (progressListener == null || jobContext == null) {
       return;
     }
 
     try {
-      Stats stats = convertToStats(job);
+      Stats stats = convertToStats(job, serverStats);
       IndexJobStatus currentStatus = job.getStatus();
       IndexJobStatus previousStatus = lastNotifiedStatus.get();
 
@@ -252,20 +272,10 @@ public class DistributedJobStatsAggregator {
    * @param job The distributed job
    * @return Stats object
    */
-  private Stats convertToStats(SearchIndexJob job) {
+  private Stats convertToStats(
+      SearchIndexJob job,
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStatsAggr) {
     Stats stats = new Stats();
-
-    // Try to get aggregated server stats for accurate reader/sink breakdown
-    CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStatsAggr = null;
-    try {
-      serverStatsAggr =
-          coordinator
-              .getCollectionDAO()
-              .searchIndexServerStatsDAO()
-              .getAggregatedStats(job.getId().toString());
-    } catch (Exception e) {
-      LOG.debug("Could not fetch aggregated server stats for job {}", job.getId(), e);
-    }
 
     StepStats jobStats = new StepStats();
     jobStats.setTotalRecords(safeToInt(job.getTotalRecords()));
@@ -300,21 +310,48 @@ public class DistributedJobStatsAggregator {
     }
     stats.setReaderStats(readerStats);
 
-    StepStats sinkStats = new StepStats();
-    sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
+    // Process stats - building search index documents from entities
+    StepStats processStats = new StepStats();
     if (serverStatsAggr != null) {
-      sinkStats.setSuccessRecords(safeToInt(serverStatsAggr.sinkSuccess()));
-      // Include entityBuildFailures in sinkFailed - they occur during sink processing
-      // when Entity.buildSearchIndex() fails before sending to bulk processor
-      sinkStats.setFailedRecords(
-          safeToInt(serverStatsAggr.sinkFailed() + serverStatsAggr.entityBuildFailures()));
-      sinkStats.setWarningRecords(safeToInt(serverStatsAggr.sinkWarnings()));
+      long processTotal = serverStatsAggr.processSuccess() + serverStatsAggr.processFailed();
+      processStats.setTotalRecords(safeToInt(processTotal));
+      processStats.setSuccessRecords(safeToInt(serverStatsAggr.processSuccess()));
+      processStats.setFailedRecords(safeToInt(serverStatsAggr.processFailed()));
     } else {
+      // Fallback: assume all read records were processed successfully
+      processStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
+      processStats.setSuccessRecords(safeToInt(job.getProcessedRecords()));
+      processStats.setFailedRecords(0);
+    }
+    stats.setProcessStats(processStats);
+
+    // Sink stats - writing to search index (only includes successfully processed docs)
+    StepStats sinkStats = new StepStats();
+    if (serverStatsAggr != null) {
+      long sinkTotal = serverStatsAggr.sinkSuccess() + serverStatsAggr.sinkFailed();
+      sinkStats.setTotalRecords(safeToInt(sinkTotal));
+      sinkStats.setSuccessRecords(safeToInt(serverStatsAggr.sinkSuccess()));
+      sinkStats.setFailedRecords(safeToInt(serverStatsAggr.sinkFailed()));
+    } else {
+      sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
       sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
       sinkStats.setFailedRecords(safeToInt(job.getFailedRecords()));
-      sinkStats.setWarningRecords(0);
     }
     stats.setSinkStats(sinkStats);
+
+    // Vector stats - generating and indexing vector embeddings
+    StepStats vectorStats = new StepStats();
+    if (serverStatsAggr != null) {
+      long vectorTotal = serverStatsAggr.vectorSuccess() + serverStatsAggr.vectorFailed();
+      vectorStats.setTotalRecords(safeToInt(vectorTotal));
+      vectorStats.setSuccessRecords(safeToInt(serverStatsAggr.vectorSuccess()));
+      vectorStats.setFailedRecords(safeToInt(serverStatsAggr.vectorFailed()));
+    } else {
+      vectorStats.setTotalRecords(0);
+      vectorStats.setSuccessRecords(0);
+      vectorStats.setFailedRecords(0);
+    }
+    stats.setVectorStats(vectorStats);
 
     return stats;
   }
@@ -325,9 +362,10 @@ public class DistributedJobStatsAggregator {
    * @param job The distributed job
    * @return AppRunRecord in the format expected by the UI
    */
-  private AppRunRecord convertToAppRunRecord(SearchIndexJob job) {
-    // Reuse the shared conversion logic for consistent stats
-    Stats stats = convertToStats(job);
+  private AppRunRecord convertToAppRunRecord(
+      SearchIndexJob job,
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStats) {
+    Stats stats = convertToStats(job, serverStats);
 
     // Create AppRunRecord
     AppRunRecord appRecord = new AppRunRecord();
@@ -357,18 +395,8 @@ public class DistributedJobStatsAggregator {
       successContext.withAdditionalProperty("serverCount", job.getServerStats().size());
     }
 
-    // Add aggregated server stats from the dedicated table for more accurate sink stats
-    try {
-      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStatsAggr =
-          coordinator
-              .getCollectionDAO()
-              .searchIndexServerStatsDAO()
-              .getAggregatedStats(job.getId().toString());
-      if (serverStatsAggr != null) {
-        successContext.withAdditionalProperty("aggregatedServerStats", serverStatsAggr);
-      }
-    } catch (Exception e) {
-      LOG.debug("Could not fetch aggregated server stats for job {}", job.getId(), e);
+    if (serverStats != null) {
+      successContext.withAdditionalProperty("aggregatedServerStats", serverStats);
     }
 
     appRecord.setSuccessContext(successContext);
@@ -404,22 +432,15 @@ public class DistributedJobStatsAggregator {
     if (wsManager != null) {
       String messageJson = JsonUtils.pojoToJson(appRecord);
       wsManager.broadCastMessageToAll(SEARCH_INDEX_JOB_BROADCAST_CHANNEL, messageJson);
-      LOG.info(
-          "Broadcast distributed job stats via WebSocket - job: {}, progress: {}%, status: {}, "
-              + "success: {}, failed: {}",
+      Stats broadcastedStats =
+          (Stats) appRecord.getSuccessContext().getAdditionalProperties().get("stats");
+      LOG.debug(
+          "Broadcast job stats - job: {}, progress: {}%, status: {}, success: {}, failed: {}",
           jobId,
           appRecord.getSuccessContext().getAdditionalProperties().get("progressPercent"),
           appRecord.getStatus(),
-          appRecord.getSuccessContext().getAdditionalProperties().get("stats") != null
-              ? ((Stats) appRecord.getSuccessContext().getAdditionalProperties().get("stats"))
-                  .getJobStats()
-                  .getSuccessRecords()
-              : 0,
-          appRecord.getSuccessContext().getAdditionalProperties().get("stats") != null
-              ? ((Stats) appRecord.getSuccessContext().getAdditionalProperties().get("stats"))
-                  .getJobStats()
-                  .getFailedRecords()
-              : 0);
+          broadcastedStats != null ? broadcastedStats.getJobStats().getSuccessRecords() : 0,
+          broadcastedStats != null ? broadcastedStats.getJobStats().getFailedRecords() : 0);
     } else {
       LOG.warn("WebSocket manager not available, skipping distributed job broadcast");
     }

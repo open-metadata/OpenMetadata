@@ -12,6 +12,7 @@
  */
 import { SearchOutlined } from '@ant-design/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
+import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
@@ -249,6 +250,7 @@ class SearchClassBase {
           childEntities: [
             EntityType.DASHBOARD_DATA_MODEL,
             EntityType.DASHBOARD,
+            EntityType.CHART,
           ],
         },
         icon: DashboardIcon,
@@ -439,6 +441,13 @@ class SearchClassBase {
         path: ExplorePageTabs.DASHBOARD_DATA_MODEL,
         icon: IconDataModel,
       },
+      [SearchIndex.CHART]: {
+        label: t('label.chart-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: ExplorePageTabs.CHARTS,
+        icon: ChartIcon,
+      },
       [SearchIndex.PIPELINE]: {
         label: t('label.pipeline-plural'),
         sortingFields: entitySortingFields,
@@ -593,12 +602,7 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutTier() {
-    return [
-      EntityType.GLOSSARY_TERM,
-      EntityType.TAG,
-      EntityType.DATA_PRODUCT,
-      EntityType.TEST_CASE,
-    ];
+    return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.TEST_CASE];
   }
 
   public getServiceIcon(source: SearchSourceAlias) {

@@ -14,11 +14,12 @@ import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Health Check for OpenMetadata', () => {
+test.describe('Health Check for OpenMetadata', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

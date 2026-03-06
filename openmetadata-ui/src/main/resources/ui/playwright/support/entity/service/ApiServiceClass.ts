@@ -25,7 +25,10 @@ export class ApiServiceClass extends EntityClass {
     connection: {
       config: {
         type: 'Rest',
-        openAPISchemaURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
+        openAPISchemaConnection: {
+          openAPISchemaURL:
+            'https://sandbox-beta.open-metadata.org/swagger.json',
+        },
       },
     },
   };

@@ -620,6 +620,35 @@ class KafkaconnectSource(PipelineServiceSource):
                         if storage_entity:
                             return storage_entity
 
+                    # Fallback: Try wildcard search for containers with topic name suffixes
+                    # This handles cases where containers are ingested with topic names appended
+                    # Example: StorageServiceName.BucketName.Directory/TopicName.extension
+                    if storage_entity is None and dataset_details.container_name:
+                        logger.debug(
+                            f"Exact container match failed, trying prefix search for "
+                            f"container '{dataset_details.container_name}*' "
+                            f"under parent '{dataset_details.parent_container}'"
+                        )
+
+                        for storageservicename in self.get_storage_service_names() or [
+                            None
+                        ]:
+                            storage_entity = fqn.search_container_from_es(
+                                metadata=self.metadata,
+                                container_name=dataset_details.container_name + "*",
+                                service_name=storageservicename,
+                                parent_container=dataset_details.parent_container,
+                            )
+
+                            if storage_entity:
+                                container_fqn = model_str(
+                                    storage_entity.fullyQualifiedName
+                                )
+                                logger.info(
+                                    f"Found container via wildcard search: {container_fqn}"
+                                )
+                                return storage_entity
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get dataset entity {exc}")

@@ -430,21 +430,28 @@ public class ColumnBulkUpdateIT {
                               && t.getSource() == TagLabel.TagSource.GLOSSARY);
             });
 
-    Table updatedTable2 = getTableWithColumns(table2.getId().toString());
-    Column col2 =
-        updatedTable2.getColumns().stream()
-            .filter(c -> c.getName().equals(columnName))
-            .findFirst()
-            .orElseThrow();
+    Awaitility.await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              Table updatedTable2 = getTableWithColumns(table2.getId().toString());
+              Column col2 =
+                  updatedTable2.getColumns().stream()
+                      .filter(c -> c.getName().equals(columnName))
+                      .findFirst()
+                      .orElse(null);
 
-    assertNotNull(col2.getTags(), "Table2 column should have glossary term tags");
-    assertTrue(
-        col2.getTags().stream()
-            .anyMatch(
-                t ->
-                    t.getTagFQN().equals(personalInfoTerm.getFullyQualifiedName())
-                        && t.getSource() == TagLabel.TagSource.GLOSSARY),
-        "Table2 column should have the PersonalInfo glossary term");
+              if (col2 == null || col2.getTags() == null || col2.getTags().isEmpty()) {
+                return false;
+              }
+
+              return col2.getTags().stream()
+                  .anyMatch(
+                      t ->
+                          t.getTagFQN().equals(personalInfoTerm.getFullyQualifiedName())
+                              && t.getSource() == TagLabel.TagSource.GLOSSARY);
+            });
   }
 
   @Test
@@ -509,7 +516,10 @@ public class ColumnBulkUpdateIT {
                       .findFirst()
                       .orElse(null);
 
-              if (col == null || col.getTags() == null || col.getTags().size() < 2) {
+              if (col == null
+                  || col.getTags() == null
+                  || col.getTags().size() < 2
+                  || col.getDisplayName() == null) {
                 return false;
               }
 

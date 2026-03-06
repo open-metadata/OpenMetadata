@@ -52,6 +52,8 @@ export enum DetailPageWidgetKeys {
   DIRECTORY_CHILDREN = 'KnowledgePanel.DirectoryChildren',
   WORKSHEETS = 'KnowledgePanel.Worksheets',
   WORKSHEET_COLUMNS = 'KnowledgePanel.WorksheetColumns',
+  TIER = 'KnowledgePanel.Tier',
+  CERTIFICATION = 'KnowledgePanel.Certification',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

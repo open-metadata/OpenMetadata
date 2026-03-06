@@ -46,7 +46,8 @@ public class ElasticBucketSelectorAggregations implements ElasticAggregations {
                     BucketSelectorAggregation.of(
                         bs ->
                             bs.bucketsPath(bp -> bp.dict(bucketsPaths))
-                                .script(Script.of(s -> s.inline(i -> i.source(scriptStr)))))));
+                                .script(
+                                    Script.of(s -> s.source(ss -> ss.scriptString(scriptStr)))))));
   }
 
   @Override

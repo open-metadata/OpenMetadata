@@ -27,7 +27,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { Paging } from '../../generated/type/paging';
@@ -118,12 +118,25 @@ const PipelineDetailsPage = () => {
     [pipelineDetails]
   );
 
+  const viewUsagePermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        pipelinePermissions,
+        PermissionOperation.ViewUsage
+      ),
+    [pipelinePermissions]
+  );
+
   const fetchPipelineDetail = async (pipelineFQN: string) => {
     setLoading(true);
 
     try {
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
       const res = await getPipelineByFqn(pipelineFQN, {
-        fields: defaultFields,
+        fields,
       });
       const { id, fullyQualifiedName, serviceType } = res;
 
@@ -290,8 +303,12 @@ const PipelineDetailsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updatePipelinesVotes(id, data);
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
       const details = await getPipelineByFqn(decodedPipelineFQN, {
-        fields: defaultFields,
+        fields,
       });
       setPipelineDetails(details);
     } catch (error) {

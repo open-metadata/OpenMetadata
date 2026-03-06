@@ -19,12 +19,17 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import {
+  redirectToHomePage,
+  uuid,
+  visitOwnProfilePage,
+} from '../../utils/common';
 import {
   navigateToCustomizeLandingPage,
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { editDisplayName } from '../../utils/user';
 
 const test = base;
 
@@ -92,23 +97,6 @@ test.describe('FeedWidget on landing page', () => {
         } finally {
           await adminPage.close();
         }
-      } finally {
-        await afterAction();
-      }
-    }
-  );
-
-  test.afterAll(
-    'cleanup: delete entities, users, and persona',
-    async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        await entity.delete(apiContext);
-        await extraEntity.delete(apiContext);
-        await user1.delete(apiContext);
-        await testPersona.delete(apiContext);
-        await adminUser.delete(apiContext);
       } finally {
         await afterAction();
       }
@@ -534,7 +522,9 @@ test.describe('Mention notifications in Notification Box', () => {
       'Admin user checks notification for correct user and timestamp',
       async () => {
         await adminPage.reload();
-        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
         const notificationBell = adminPage.getByTestId('task-notifications');
 
         await expect(notificationBell).toBeVisible();
@@ -593,6 +583,60 @@ test.describe('Mention notifications in Notification Box', () => {
         expect(adminPage.url()).toContain('/all');
       }
     );
+
+    await test.step(
+      'Update user display name and verify reaction tooltip',
+      async () => {
+        test.slow();
+        const newDisplayName = `UpdatedName${uuid()}`;
+
+        // Go to profile and update name
+        await redirectToHomePage(user1Page);
+        await visitOwnProfilePage(user1Page);
+        await editDisplayName(user1Page, newDisplayName);
+
+        // Go back to entity
+        await entity.visitEntityPage(user1Page);
+
+        await user1Page.getByTestId('activity_feed').click();
+        await user1Page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Find a message to react to.
+        const message = user1Page
+          .locator('[data-testid="message-container"]')
+          .first();
+        await expect(message).toBeVisible();
+
+        // Add reaction
+        await message.locator('[data-testid="add-reactions"]').click();
+        const reactionResponse = user1Page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/feed') &&
+            response.request().method() === 'PATCH'
+        );
+        await user1Page.locator('[title="rocket"]').click();
+        await reactionResponse;
+
+        // Hover over the emoji button to see the popover
+        const emojiButton = message
+          .locator('[data-testid="emoji-button"]')
+          .last();
+        await emojiButton.hover();
+
+        // Verify tooltip using the data-testid from Emoji.tsx popoverContent
+        const tooltip = user1Page.getByTestId('popover-content');
+        await expect(tooltip).toBeVisible();
+        await expect(tooltip).toContainText(newDisplayName);
+        await expect(tooltip).toContainText('reacted with');
+
+        // Ensure username is not displayed if it's different
+        if (newDisplayName !== user1.responseData.name) {
+          await expect(tooltip).not.toContainText(user1.responseData.name);
+        }
+      }
+    );
   });
 });
 
@@ -603,44 +647,37 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
   let schemaFqn: string;
   const userName = `测试-${uuid()}`;
 
-  test.beforeAll('Create database, schema, and user with Chinese name', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test.beforeAll(
+    'Create database, schema, and user with Chinese name',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    await database.create(apiContext);
-    await apiEndpoint.create(apiContext);
-    await adminUser.create(apiContext);
-    schemaFqn = database.schemaResponseData.fullyQualifiedName;
-    const user = new UserClass({
-      firstName: userName,
-      lastName: '',
-      email: `${userName}@example.com`,
-      password: 'User@OMD123',
-    });
+      await database.create(apiContext);
+      await apiEndpoint.create(apiContext);
+      await adminUser.create(apiContext);
+      schemaFqn = database.schemaResponseData.fullyQualifiedName;
+      const user = new UserClass({
+        firstName: userName,
+        lastName: '',
+        email: `${userName}@example.com`,
+        password: 'User@OMD123',
+      });
 
-    await user.create(apiContext);
+      await user.create(apiContext);
 
-    // Create a conversation thread via API so we can post replies in the tests
-    await apiContext.post('/api/v1/feed', {
-      data: {
-        from: adminUser.responseData.name,
-        message: 'Initial conversation for Chinese character encoding test',
-        about: `<#E::databaseSchema::${schemaFqn}>`,
-        type: 'Conversation',
-      },
-    });
+      // Create a conversation thread via API so we can post replies in the tests
+      await apiContext.post('/api/v1/feed', {
+        data: {
+          from: adminUser.responseData.name,
+          message: 'Initial conversation for Chinese character encoding test',
+          about: `<#E::databaseSchema::${schemaFqn}>`,
+          type: 'Conversation',
+        },
+      });
 
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup: delete database and apiEndpoint', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await database.delete(apiContext);
-    await apiEndpoint.delete(apiContext);
-    await adminUser.delete(apiContext);
-
-    await afterAction();
-  });
+      await afterAction();
+    }
+  );
 
   test.beforeEach(async ({ page }) => {
     await adminUser.login(page);
@@ -718,15 +755,18 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     ]);
 
     await newPage.waitForResponse((response) =>
-      response.url().includes(`/api/v1/users/name/${encodeURIComponent(userName)}`)
+      response
+        .url()
+        .includes(`/api/v1/users/name/${encodeURIComponent(userName)}`)
     );
 
     await waitForAllLoadersToDisappear(newPage);
     expect(newPage.getByTestId('user-display-name')).toHaveText(userName);
   });
 
-
-  test('Should encode the chinese character while mentioning api endpoint', async ({ page }) => {
+  test('Should encode the chinese character while mentioning api endpoint', async ({
+    page,
+  }) => {
     const feedPromise = page.waitForResponse((response) => {
       const url = response.url();
       return (
@@ -764,7 +804,10 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     await editorLocator.pressSequentially(endpointName);
     await endpointSuggestionsResponse;
 
-    await page.locator(`[data-value="#apiEndpoint/${endpointName}"]`).first().click();
+    await page
+      .locator(`[data-value="#apiEndpoint/${endpointName}"]`)
+      .first()
+      .click();
 
     await expect(page.locator('[data-testid="send-button"]')).toBeVisible();
     await expect(
@@ -799,9 +842,10 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       endpointMentionLink.click(),
     ]);
 
-    await newPage.waitForResponse((response) =>
-      response.url().includes('/api/v1/apiEndpoints/name/') &&
-      response.request().method() === 'GET'
+    await newPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/apiEndpoints/name/') &&
+        response.request().method() === 'GET'
     );
 
     await waitForAllLoadersToDisappear(newPage);

@@ -40,10 +40,10 @@
     "input": {
       "type": "array",
       "items": { "type":  "string" },
-      "default": ["relatedEntity", "updatedBy", "triggeringObjectId"],
+      "default": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
       "additionalItems": false,
       "minItems": 1,
-      "maxItems": 3
+      "maxItems": 4
     },
     "inputNamespaceMap": {
       "type": "object",
@@ -59,10 +59,14 @@
         "triggeringObjectId": {
           "type": "string",
           "default": "global"
+        },
+        "recognizerFeedback": {
+          "type": "string",
+          "default": "global"
         }
       },
       "additionalProperties": false,
-      "required": ["relatedEntity", "updatedBy", "triggeringObjectId"]
+      "required": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"]
     },
     "output": {
       "type": "array",

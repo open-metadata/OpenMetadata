@@ -11,8 +11,6 @@
 """
 test data quality
 """
-from typing import List
-
 import pytest
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -21,6 +19,8 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
+
+BUCKET_NAME = "my-bucket"
 
 
 class TestDataQuality:
@@ -35,17 +35,18 @@ class TestDataQuality:
         self,
         run_test_suite_workflow,
         metadata,
+        datalake_service_name,
         test_case_name,
         expected_status,
         ingestion_fqn,
     ):
-        test_cases: List[TestCase] = metadata.list_entities(
-            TestCase, fields=["*"], skip_on_failure=True
-        ).entities
-        test_case: TestCase = next(
-            (t for t in test_cases if t.name.root == test_case_name), None
+        table_fqn = f'{datalake_service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        test_case: TestCase = metadata.get_by_name(
+            TestCase,
+            f"{table_fqn}.first_name.{test_case_name}",
+            fields=["*"],
+            nullable=False,
         )
-        assert test_case is not None
         assert test_case.testCaseResult.testCaseStatus == expected_status
 
         # Check the ingestion pipeline is properly created
@@ -66,15 +67,20 @@ class TestDataQuality:
         ],
     )
     def test_data_quality_with_sample(
-        self, run_sampled_test_suite_workflow, metadata, test_case_name, failed_rows
+        self,
+        run_sampled_test_suite_workflow,
+        metadata,
+        datalake_service_name,
+        test_case_name,
+        failed_rows,
     ):
-        test_cases: List[TestCase] = metadata.list_entities(
-            TestCase, fields=["*"], skip_on_failure=True
-        ).entities
-        test_case: TestCase = next(
-            (t for t in test_cases if t.name.root == test_case_name), None
+        table_fqn = f'{datalake_service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        test_case: TestCase = metadata.get_by_name(
+            TestCase,
+            f"{table_fqn}.first_name.{test_case_name}",
+            fields=["*"],
+            nullable=False,
         )
-        assert test_case is not None
         if failed_rows:
             assert test_case.testCaseResult.failedRows == pytest.approx(
                 failed_rows, abs=1
@@ -91,17 +97,18 @@ class TestDataQuality:
         self,
         run_partitioned_test_suite_workflow,
         metadata,
+        datalake_service_name,
         test_case_name,
         expected_status,
         failed_rows,
     ):
-        test_cases: List[TestCase] = metadata.list_entities(
-            TestCase, fields=["*"], skip_on_failure=True
-        ).entities
-        test_case: TestCase = next(
-            (t for t in test_cases if t.name.root == test_case_name), None
+        table_fqn = f'{datalake_service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        test_case: TestCase = metadata.get_by_name(
+            TestCase,
+            f"{table_fqn}.first_name.{test_case_name}",
+            fields=["*"],
+            nullable=False,
         )
-        assert test_case is not None
         assert test_case.testCaseResult.testCaseStatus == expected_status
         if failed_rows:
             assert test_case.testCaseResult.failedRows == failed_rows

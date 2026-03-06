@@ -20,6 +20,7 @@ import { getEntityChildDetailsV1 } from '../../../utils/EntitySummaryPanelUtilsV
 import ErrorPlaceHolderNew from '../ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../Loader/Loader';
 import SearchBarComponent from '../SearchBarComponent/SearchBar.component';
+import { SEARCH_PLACEHOLDER_MAP } from './EntityDetailsSection.constants';
 import { EntityDetailsSectionProps } from './EntityDetailsSection.interface';
 import './EntityDetailsSection.less';
 
@@ -50,6 +51,9 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
     return null;
   }
 
+  const searchLabel =
+    SEARCH_PLACEHOLDER_MAP[entityType] || 'label.column-plural';
+
   return dataAsset && !isEmpty(entityDetails) ? (
     <div
       className="entity-details-section"
@@ -58,7 +62,7 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
         <SearchBarComponent
           containerClassName="searchbar-container"
           placeholder={t('label.search-for-type', {
-            type: t('label.column-plural'),
+            type: t(searchLabel),
           })}
           searchValue={searchText}
           typingInterval={350}

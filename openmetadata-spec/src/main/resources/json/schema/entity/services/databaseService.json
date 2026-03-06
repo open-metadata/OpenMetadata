@@ -67,7 +67,8 @@
         "Epic",
         "ServiceNow",
         "Dremio",
-        "MicrosoftFabric"
+        "MicrosoftFabric",
+        "BurstIQ"
       ],
       "javaEnums": [
         {
@@ -228,6 +229,9 @@
         },
         {
           "name": "MicrosoftFabric"
+        },
+        {
+          "name": "BurstIQ"
         }
       ]
     },
@@ -393,6 +397,9 @@
             },
             {
               "$ref": "./connections/database/microsoftFabricConnection.json"
+            },
+            {
+              "$ref": "./connections/database/burstIQConnection.json"
             }
           ]
         }
@@ -484,6 +491,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "entityStatus": {
+      "description": "Status of the entity.",
+      "$ref": "../../type/status.json"
     },
     "dataProducts" : {
       "description": "List of data products this entity is part of.",

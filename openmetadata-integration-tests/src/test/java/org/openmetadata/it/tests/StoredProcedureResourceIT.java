@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -20,6 +21,7 @@ import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.StoredProcedureLanguage;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -40,6 +42,7 @@ public class StoredProcedureResourceIT
     supportsSearchIndex = false;
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // ===================================================================
@@ -570,5 +573,26 @@ public class StoredProcedureResourceIT
     StoredProcedure historicalVersion = getVersion(proc.getId(), version1);
     assertNotNull(historicalVersion);
     assertEquals(version1, historicalVersion.getVersion());
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateStoredProcedure> createRequests) {
+    return SdkClients.adminClient().storedProcedures().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateStoredProcedure> createRequests) {
+    return SdkClients.adminClient().storedProcedures().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateStoredProcedure createInvalidRequestForBulk(TestNamespace ns) {
+    CreateStoredProcedure request = new CreateStoredProcedure();
+    request.setName(ns.prefix("invalid_stored_proc"));
+    return request;
   }
 }

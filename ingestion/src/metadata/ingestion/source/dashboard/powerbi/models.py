@@ -12,9 +12,9 @@
 PowerBI Models
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing_extensions import Annotated
 
 
@@ -125,6 +125,7 @@ class PowerBiMeasureModel(BaseModel):
     dataType: str
     dataTypeDisplay: str
     name: str
+    displayName: Optional[str] = None
     description: str
 
 
@@ -135,9 +136,16 @@ class PowerBiMeasures(BaseModel):
     """
 
     name: str
-    expression: str
+    expression: Optional[Union[str, List[str]]] = None
     description: Optional[str] = None
     isHidden: Optional[bool] = False
+
+    @field_validator("expression", mode="before")
+    @classmethod
+    def normalize_expression(cls, v):
+        if isinstance(v, list):
+            return "\n".join(v)
+        return v
 
 
 class PowerBITableSource(BaseModel):
@@ -145,7 +153,24 @@ class PowerBITableSource(BaseModel):
     PowerBI Table Source
     """
 
-    expression: Optional[str] = None
+    expression: Optional[Union[str, List[str]]] = None
+
+    @field_validator("expression", mode="before")
+    @classmethod
+    def normalize_expression(cls, v):
+        if isinstance(v, list):
+            return "\n".join(v)
+        return v
+
+
+class PowerBIPartition(BaseModel):
+    """
+    PowerBI Table Partition (.pbit files)
+    """
+
+    name: Optional[str] = None
+    mode: Optional[str] = None
+    source: Optional[PowerBITableSource] = None
 
 
 class PowerBiTable(BaseModel):
@@ -159,6 +184,20 @@ class PowerBiTable(BaseModel):
     measures: Optional[List[PowerBiMeasures]] = None
     description: Optional[str] = None
     source: Optional[List[PowerBITableSource]] = None
+    partitions: Optional[List[PowerBIPartition]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def extract_source_from_partitions(cls, values):
+        if isinstance(values, dict):
+            if values.get("source") is None and values.get("partitions"):
+                partitions = values.get("partitions", [])
+                if partitions and len(partitions) > 0:
+                    partition_source = partitions[0].get("source")
+                    if partition_source:
+                        values["source"] = [partition_source]
+
+        return values
 
 
 class TablesResponse(BaseModel):
@@ -173,7 +212,14 @@ class TablesResponse(BaseModel):
 
 class DatasetExpression(BaseModel):
     name: str
-    expression: Optional[str] = None
+    expression: Optional[Union[str, List[str]]] = None
+
+    @field_validator("expression", mode="before")
+    @classmethod
+    def normalize_expression(cls, v):
+        if isinstance(v, list):
+            return "\n".join(v)
+        return v
 
 
 class UpstreaDataflow(BaseModel):
@@ -325,6 +371,39 @@ class ReportPagesAPIResponse(BaseModel):
     value: Optional[List[ReportPage]] = None
 
 
+class DatasourceConnectionDetails(BaseModel):
+    """
+    PowerBI Datasource Connection Details
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group#datasourceconnectiondetails
+    """
+
+    server: Optional[str] = None
+    database: Optional[str] = None
+
+
+class Datasource(BaseModel):
+    """
+    PowerBI Datasource Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group#datasource
+    """
+
+    name: Optional[str] = None
+    datasourceType: Optional[str] = None
+    connectionDetails: Optional[DatasourceConnectionDetails] = None
+    datasourceId: Optional[str] = None
+    gatewayId: Optional[str] = None
+
+
+class DatasourcesResponse(BaseModel):
+    """
+    PowerBI DatasourcesResponse Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group
+    """
+
+    odata_context: str = Field(alias="@odata.context")
+    value: List[Datasource]
+
+
 class DataflowEntityAttribute(BaseModel):
     """
     PowerBI Dataflow Entity Attribute Model
@@ -349,6 +428,24 @@ class DataflowEntity(BaseModel):
     attributes: Optional[List[DataflowEntityAttribute]] = []
 
 
+class DataflowQueryMetadata(BaseModel):
+    queryId: Optional[str] = None
+    queryName: Optional[str] = None
+    loadEnabled: Optional[bool] = False
+
+
+class DataflowMashup(BaseModel):
+    document: Optional[str] = None
+    queriesMetadata: Optional[dict] = None
+
+    @field_validator("queriesMetadata", mode="before")
+    @classmethod
+    def parse_queries_metadata(cls, v):
+        if isinstance(v, dict):
+            return v
+        return None
+
+
 class DataflowExportResponse(BaseModel):
     """
     PowerBI Dataflow Export API Response Model
@@ -360,3 +457,4 @@ class DataflowExportResponse(BaseModel):
     description: Optional[str] = None
     version: Optional[str] = None
     entities: Optional[List[DataflowEntity]] = []
+    mashup: Optional[DataflowMashup] = Field(None, alias="pbi:mashup")

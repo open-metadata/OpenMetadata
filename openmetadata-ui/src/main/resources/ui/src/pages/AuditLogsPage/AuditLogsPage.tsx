@@ -11,30 +11,40 @@
  *  limitations under the License.
  */
 
-import { DownloadOutlined, SearchOutlined } from '@ant-design/icons';
 import {
-  Button,
-  Col,
-  DatePicker,
-  Input,
-  Modal,
-  Progress,
-  Row,
-  Space,
+  Box,
+  Button as MuiButton,
+  Paper,
+  Stack,
   Typography,
-} from 'antd';
+  useTheme,
+} from '@mui/material';
+import { defaultColors } from '@openmetadata/ui-core-components';
+import { XClose } from '@untitledui/icons';
+import { Button, Modal, Progress, Space } from 'antd';
 import { AxiosError } from 'axios';
-import dayjs, { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { DateTime } from 'luxon';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ExportIcon } from '../../assets/svg/ic-download.svg';
 import { AuditLogFilters, AuditLogList } from '../../components/AuditLog';
+import '../../components/common/atoms/filters/FilterSelection.less';
+import { useBreadcrumbs } from '../../components/common/atoms/navigation/useBreadcrumbs';
+import { useSearch } from '../../components/common/atoms/navigation/useSearch';
 import Banner from '../../components/common/Banner/Banner';
+import DatePicker from '../../components/common/DatePicker/DatePicker';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { CSVExportWebsocketResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
-import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { PAGE_SIZE_MEDIUM, SOCKET_EVENTS } from '../../constants/constants';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+  SOCKET_EVENTS,
+} from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { CursorType } from '../../enums/pagination.enum';
@@ -46,6 +56,8 @@ import {
   AuditLogListParams,
   AuditLogListResponse,
 } from '../../types/auditLogs.interface';
+import { buildParamsFromFilters } from '../../utils/AuditLogUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './AuditLogsPage.less';
 
@@ -64,6 +76,7 @@ interface ExportJob {
 
 const AuditLogsPage = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const { socket } = useWebSocketConnector();
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
@@ -72,17 +85,20 @@ const AuditLogsPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const searchTermRef = useRef('');
   const [activeFilters, setActiveFilters] = useState<AuditLogActiveFilter[]>(
     []
   );
   const [filterParams, setFilterParams] = useState<Partial<AuditLogListParams>>(
     {}
   );
+  const filterParamsRef = useRef<Partial<AuditLogListParams>>({});
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportDateRange, setExportDateRange] = useState<[Dayjs, Dayjs] | null>(
-    null
-  );
+  const [exportDateRange, setExportDateRange] = useState<
+    [DateTime, DateTime] | null
+  >(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportJob, setExportJob] = useState<ExportJob | null>(null);
   const exportJobRef = useRef<ExportJob | null>(null);
@@ -95,23 +111,23 @@ const AuditLogsPage = () => {
       setIsLoading(true);
       try {
         const queryParams: AuditLogListParams = {
-          limit: PAGE_SIZE_MEDIUM,
+          limit: pageSize,
           after: cursorParams?.after,
           before: cursorParams?.before,
-          q: searchTerm || undefined,
-          ...(explicitFilterParams ?? filterParams),
+          q: searchTermRef.current || undefined,
+          ...(explicitFilterParams ?? filterParamsRef.current),
         };
 
         const response: AuditLogListResponse = await getAuditLogs(queryParams);
         setLogs(response.data);
         setPaging(response.paging ?? INITIAL_PAGING);
       } catch (error) {
-        showErrorToast(error as Error);
+        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
     },
-    [searchTerm, filterParams]
+    [pageSize]
   );
 
   useEffect(() => {
@@ -134,35 +150,61 @@ const AuditLogsPage = () => {
     [fetchAuditLogs, paging]
   );
 
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  }, []);
+
   const handleFiltersChange = useCallback(
     (filters: AuditLogActiveFilter[], params: Partial<AuditLogListParams>) => {
       setActiveFilters(filters);
       setFilterParams(params);
+      filterParamsRef.current = params;
       setCurrentPage(1);
       fetchAuditLogs({ after: undefined, before: undefined }, params);
     },
     [fetchAuditLogs]
   );
 
+  const handleSearchChange = useCallback(
+    (query: string) => {
+      setSearchTerm(query);
+      searchTermRef.current = query;
+      setCurrentPage(1);
+      fetchAuditLogs({ after: undefined, before: undefined });
+    },
+    [fetchAuditLogs]
+  );
+
+  const { search: searchComponent, clearSearch } = useSearch({
+    searchPlaceholder: t('label.search-audit-logs'),
+    onSearchChange: handleSearchChange,
+    testId: 'audit-log-search',
+  });
+
   const handleClearFilters = useCallback(() => {
     setActiveFilters([]);
     setFilterParams({});
+    filterParamsRef.current = {};
     setSearchTerm('');
+    searchTermRef.current = '';
     setCurrentPage(1);
+    clearSearch();
     fetchAuditLogs({ after: undefined, before: undefined }, {});
-  }, [fetchAuditLogs]);
+  }, [fetchAuditLogs, clearSearch]);
 
-  const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchTerm(e.target.value);
+  const handleRemoveFilter = useCallback(
+    (category: string) => {
+      const remaining = activeFilters.filter((f) => f.category !== category);
+      const params = buildParamsFromFilters(remaining);
+      setActiveFilters(remaining);
+      setFilterParams(params);
+      filterParamsRef.current = params;
+      setCurrentPage(1);
+      fetchAuditLogs({ after: undefined, before: undefined }, params);
     },
-    []
+    [activeFilters, fetchAuditLogs]
   );
-
-  const handleSearchPressEnter = useCallback(() => {
-    setCurrentPage(1);
-    fetchAuditLogs({ after: undefined, before: undefined });
-  }, [fetchAuditLogs]);
 
   const handleExportDownload = useCallback((data: string) => {
     const element = document.createElement('a');
@@ -208,7 +250,6 @@ const AuditLogsPage = () => {
       } else if (response.status === 'FAILED') {
         setIsExporting(false);
       }
-      // IN_PROGRESS status just updates the progress display
     },
     [handleExportDownload, t]
   );
@@ -262,6 +303,18 @@ const AuditLogsPage = () => {
     }
   }, [exportDateRange, searchTerm, filterParams]);
 
+  const { breadcrumbs } = useBreadcrumbs({
+    home: { show: false },
+    items: [
+      { name: t('label.setting-plural'), url: getSettingPath() },
+      {
+        name: t('label.access-control'),
+        url: getSettingPath(GlobalSettingsMenuCategory.ACCESS),
+      },
+      { name: t('label.audit-log-plural'), isActive: true },
+    ],
+  });
+
   const handleExportModalClose = useCallback(() => {
     if (!isExporting) {
       setIsExportModalOpen(false);
@@ -275,74 +328,189 @@ const AuditLogsPage = () => {
     activeFilters.length > 0 || Boolean(searchTerm.trim());
 
   return (
-    <PageLayoutV1 pageTitle={t('label.audit-log-plural')}>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
-          <PageHeader
-            data={{
-              header: t(PAGE_HEADERS.AUDIT_LOGS.header),
-              subHeader: t(PAGE_HEADERS.AUDIT_LOGS.subHeader),
+    <PageLayoutV1
+      fullHeight
+      mainContainerClassName="audit-logs-page-layout"
+      pageTitle={t('label.audit-log-plural')}>
+      <Box
+        data-testid="audit-logs-page"
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          minHeight: 0,
+          overflow: 'hidden',
+        }}>
+        <Box sx={{ flexShrink: 0, marginBottom: theme.spacing(2) }}>
+          {breadcrumbs}
+        </Box>
+        {/* Header */}
+        <Box
+          data-testid="audit-logs-page-header"
+          sx={{
+            flexShrink: 0,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: theme.spacing(1),
+            padding: theme.spacing(6),
+            mb: 2,
+            bgcolor: 'background.paper',
+            boxShadow: 1,
+
+            borderRadius: 1,
+            border: `1px solid ${defaultColors.blueGray[100]}`,
+          }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: theme.spacing(2 / 3),
+            }}>
+            <Typography
+              sx={{
+                color: theme.palette.grey[900],
+                fontSize: theme.typography.body1.fontSize,
+                fontWeight: 600,
+                lineHeight: theme.typography.body1.lineHeight,
+              }}>
+              {t(PAGE_HEADERS.AUDIT_LOGS.header)}
+            </Typography>
+            <Typography
+              sx={{
+                color: theme.palette.grey[600],
+                fontSize: theme.typography.body2.fontSize,
+                fontWeight: 400,
+                lineHeight: theme.typography.body2.lineHeight,
+              }}>
+              {t(PAGE_HEADERS.AUDIT_LOGS.subHeader)}
+            </Typography>
+          </Box>
+          <Button
+            data-testid="export-audit-logs-button"
+            icon={<ExportIcon height={16} width={16} />}
+            style={{
+              alignItems: 'center',
+              display: 'flex',
+              gap: theme.spacing(2),
             }}
-          />
-        </Col>
+            type="primary"
+            onClick={() => setIsExportModalOpen(true)}>
+            {t('label.export')}
+          </Button>
+        </Box>
 
-        <Col span={24}>
-          <Row align="middle" gutter={[16, 16]} justify="space-between">
-            <Col flex="auto">
-              <Space wrap className="audit-log-filters" size={8}>
-                <AuditLogFilters
-                  activeFilters={activeFilters}
-                  onFiltersChange={handleFiltersChange}
-                />
-                <Input
-                  allowClear
-                  className="audit-log-search-input"
-                  data-testid="audit-log-search"
-                  placeholder={t('label.search-audit-logs')}
-                  prefix={<SearchOutlined className="text-grey-muted" />}
-                  style={{ width: 300 }}
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  onPressEnter={handleSearchPressEnter}
-                />
-                {hasActiveFilters && (
-                  <Button
-                    data-testid="clear-filters"
-                    type="link"
-                    onClick={handleClearFilters}>
-                    {t('label.clear')}
-                  </Button>
-                )}
-              </Space>
-            </Col>
-            <Col>
-              <Button
-                data-testid="export-audit-logs-button"
-                icon={<DownloadOutlined />}
-                type="primary"
-                onClick={() => setIsExportModalOpen(true)}>
-                {t('label.export')}
-              </Button>
-            </Col>
-          </Row>
-        </Col>
+        {/* Content Paper */}
+        <Paper
+          elevation={0}
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            borderRadius: '12px',
+            border: `1px solid ${defaultColors.blueGray[100]}`,
+          }}>
+          {/* Filters */}
+          <Box sx={{ flexShrink: 0, p: 3 }}>
+            <Stack alignItems="center" direction="row" spacing={2}>
+              <Box
+                data-testid="audit-log-search-container"
+                sx={{ flexShrink: 0 }}>
+                {searchComponent}
+              </Box>
+              <AuditLogFilters
+                activeFilters={activeFilters}
+                onFiltersChange={handleFiltersChange}
+              />
+              <Box flexGrow={1} />
+            </Stack>
+            {hasActiveFilters && (
+              <Box
+                className="filter-selection-container"
+                data-testid="filter-selection-container"
+                sx={{
+                  mt: 2,
+                }}>
+                <Box className="filter-selection-chips-wrapper">
+                  {activeFilters.map((filter) => (
+                    <Box
+                      className="filter-selection-chip"
+                      data-testid={`filter-chip-${filter.category}`}
+                      key={filter.category}>
+                      <Box
+                        className="filter-selection-chip-content"
+                        component="span">
+                        <span className="filter-selection-label">
+                          {filter.categoryLabel}:{' '}
+                        </span>
+                        <span
+                          className="filter-selection-value"
+                          title={filter.value.label}>
+                          {filter.category === 'time' &&
+                          filter.value.key === 'customRange'
+                            ? t('label.custom-range')
+                            : filter.value.label}
+                        </span>
+                      </Box>
+                      <Box
+                        aria-label="Remove filter"
+                        className="filter-selection-remove-btn"
+                        component="button"
+                        data-testid={`remove-filter-${filter.category}`}
+                        onClick={() => handleRemoveFilter(filter.category)}>
+                        <XClose size={14} />
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+                <MuiButton
+                  className="filter-selection-clear-all"
+                  data-testid="clear-filters"
+                  variant="text"
+                  onClick={handleClearFilters}>
+                  {t('label.clear-entity', {
+                    entity: t('label.all-lowercase'),
+                  })}
+                </MuiButton>
+              </Box>
+            )}
+          </Box>
 
-        <Col span={24}>
-          <AuditLogList isLoading={isLoading} logs={logs} />
-        </Col>
+          {/* List */}
+          <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+            <AuditLogList isLoading={isLoading} logs={logs} />
+          </Box>
 
-        {logs.length > 0 && (
-          <Col span={24}>
-            <NextPrevious
-              currentPage={currentPage}
-              isLoading={isLoading}
-              pageSize={PAGE_SIZE_MEDIUM}
-              paging={paging}
-              pagingHandler={handlePaging}
-            />
-          </Col>
-        )}
-      </Row>
+          {/* Pagination */}
+          {logs.length > 0 && (
+            <Box
+              sx={{
+                flexShrink: 0,
+                p: 2,
+                display: 'flex',
+                justifyContent: 'center',
+                boxShadow:
+                  '0 -13px 16px -4px rgba(10, 13, 18, 0.04), 0 -4px 6px -2px rgba(10, 13, 18, 0.03)',
+              }}>
+              <NextPrevious
+                currentPage={currentPage}
+                isLoading={isLoading}
+                pageSize={pageSize}
+                pageSizeOptions={[
+                  PAGE_SIZE_BASE,
+                  PAGE_SIZE_MEDIUM,
+                  PAGE_SIZE_LARGE,
+                ]}
+                paging={paging}
+                pagingHandler={handlePaging}
+                onShowSizeChange={handlePageSizeChange}
+              />
+            </Box>
+          )}
+        </Paper>
+      </Box>
 
       <Modal
         centered
@@ -363,25 +531,30 @@ const AuditLogsPage = () => {
         onCancel={handleExportModalClose}
         onOk={handleExport}>
         <Space className="w-full" direction="vertical" size={16}>
-          <Typography.Text type="secondary">
+          <Typography color="text.secondary">
             {t('message.export-audit-logs-description')}
-          </Typography.Text>
+          </Typography>
           <div>
-            <Typography.Text className="m-b-xs d-block">
-              {t('label.date-range')} <span className="text-red-500">*</span>
-            </Typography.Text>
+            <Typography component="span" sx={{ display: 'block', mb: 1 }}>
+              {t('label.date-range')}{' '}
+              <Box component="span" sx={{ color: 'error.main' }}>
+                *
+              </Box>
+            </Typography>
             <DatePicker.RangePicker
               allowClear
               className="w-full"
               data-testid="export-date-range-picker"
               disabled={isExporting}
-              disabledDate={(current) =>
-                current && current > dayjs().endOf('day')
-              }
+              disabledDate={(current) => current > DateTime.now().endOf('day')}
               value={exportDateRange}
-              onChange={(dates) =>
-                setExportDateRange(dates as [Dayjs, Dayjs] | null)
-              }
+              onChange={(dates) => {
+                if (dates && dates[0] && dates[1]) {
+                  setExportDateRange([dates[0], dates[1]]);
+                } else {
+                  setExportDateRange(null);
+                }
+              }}
             />
           </div>
           {exportJob && exportJob.status === 'IN_PROGRESS' && (
@@ -397,9 +570,11 @@ const AuditLogsPage = () => {
                 size="small"
                 status="active"
               />
-              <Typography.Text className="m-t-xs d-block" type="secondary">
+              <Typography
+                color="text.secondary"
+                sx={{ display: 'block', mt: 1 }}>
                 {exportJob.message ?? t('message.exporting')}
-              </Typography.Text>
+              </Typography>
             </div>
           )}
           {exportJob && exportJob.status !== 'IN_PROGRESS' && (

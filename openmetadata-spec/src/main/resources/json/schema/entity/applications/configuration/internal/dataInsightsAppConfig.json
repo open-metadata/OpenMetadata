@@ -56,7 +56,7 @@
           "title": "Data Retention (Days)",
           "description": "Defines the number of days the Data Assets Insights information will be kept. After it they will be deleted.",
           "type": "integer",
-          "default": 7,
+          "default": 90,
           "minimum": 0
         },
         "serviceFilter": {

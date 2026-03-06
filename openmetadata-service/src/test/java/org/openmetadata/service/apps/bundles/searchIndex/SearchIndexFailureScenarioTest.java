@@ -165,27 +165,11 @@ class SearchIndexFailureScenarioTest {
   class EntityBuildFailureTests {
 
     @Test
-    @DisplayName("Entity build failures should increment failure counter")
-    void testEntityBuildFailuresTracked() {
+    @DisplayName("Process failures should be tracked in totalFailed")
+    void testProcessFailuresTracked() throws Exception {
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L);
 
-      assertEquals(0, sink.getEntityBuildFailures());
-
-      StepStats stats = sink.getStats();
-      assertEquals(0, stats.getFailedRecords());
-    }
-
-    @Test
-    @DisplayName("Stats should include entity build failures in failed count")
-    void testStatsIncludeEntityBuildFailures() throws Exception {
-      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L);
-
-      Field entityBuildFailuresField =
-          ElasticSearchBulkSink.class.getDeclaredField("entityBuildFailures");
-      entityBuildFailuresField.setAccessible(true);
-      AtomicLong entityBuildFailures = (AtomicLong) entityBuildFailuresField.get(sink);
-      entityBuildFailures.set(5);
-
+      // Failures during entity processing (building search docs) are tracked in totalFailed
       Field totalFailedField = ElasticSearchBulkSink.class.getDeclaredField("totalFailed");
       totalFailedField.setAccessible(true);
       AtomicLong totalFailed = (AtomicLong) totalFailedField.get(sink);
@@ -197,54 +181,6 @@ class SearchIndexFailureScenarioTest {
 
       StepStats stats = sink.getStats();
       assertEquals(5, stats.getFailedRecords());
-      assertEquals(5, sink.getEntityBuildFailures());
-    }
-
-    @Test
-    @DisplayName("BulkSink interface should expose getEntityBuildFailures with default value")
-    void testBulkSinkInterfaceDefault() {
-      BulkSink mockSink =
-          new BulkSink() {
-            @Override
-            public void write(java.util.List<?> entities, java.util.Map<String, Object> contextData)
-                throws Exception {}
-
-            @Override
-            public void updateStats(int currentSuccess, int currentFailed) {}
-
-            @Override
-            public StepStats getStats() {
-              return new StepStats();
-            }
-
-            @Override
-            public void close() {}
-          };
-
-      assertEquals(0, mockSink.getEntityBuildFailures());
-    }
-
-    @Test
-    @DisplayName("createEntityStatsWithBuildFailures should correctly calculate stats")
-    void testCreateEntityStatsWithBuildFailures() throws Exception {
-      SearchIndexExecutor executor = new SearchIndexExecutor(collectionDAO, searchRepository);
-
-      Method method =
-          SearchIndexExecutor.class.getDeclaredMethod(
-              "createEntityStatsWithBuildFailures",
-              org.openmetadata.schema.utils.ResultList.class,
-              int.class);
-      method.setAccessible(true);
-
-      org.openmetadata.schema.utils.ResultList<Object> entities =
-          new org.openmetadata.schema.utils.ResultList<>();
-      entities.setData(java.util.Arrays.asList(new Object(), new Object(), new Object()));
-      entities.setErrors(new java.util.ArrayList<>());
-
-      StepStats stats = (StepStats) method.invoke(executor, entities, 1);
-
-      assertEquals(2, stats.getSuccessRecords());
-      assertEquals(1, stats.getFailedRecords());
     }
   }
 

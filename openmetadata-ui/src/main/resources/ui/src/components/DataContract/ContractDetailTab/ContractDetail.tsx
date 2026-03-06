@@ -99,6 +99,7 @@ const ContractDetail: React.FC<{
   entityId: string;
   entityType: string;
   entityName?: string;
+  hasEditPermission?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onContractUpdated?: () => void;
@@ -107,6 +108,7 @@ const ContractDetail: React.FC<{
   entityId,
   entityType,
   entityName,
+  hasEditPermission = false,
   onEdit,
   onDelete,
   onContractUpdated,
@@ -207,54 +209,58 @@ const ContractDetail: React.FC<{
 
   const contractActionsItems: MenuProps['items'] = useMemo(() => {
     return [
-      {
-        label: (
-          <div
-            className="contract-action-dropdown-item"
-            data-testid="contract-edit-button">
-            <EditIcon className="anticon" />
+      ...(hasEditPermission
+        ? [
+            {
+              label: (
+                <div
+                  className="contract-action-dropdown-item"
+                  data-testid="contract-edit-button">
+                  <EditIcon className="anticon" />
 
-            {t('label.edit')}
-          </div>
-        ),
-        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EDIT,
-      },
-      {
-        label: (
-          <div
-            className="contract-action-dropdown-item"
-            data-testid="contract-run-now-button">
-            <RunIcon className="anticon" />
+                  {t('label.edit')}
+                </div>
+              ),
+              key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EDIT,
+            },
+            {
+              label: (
+                <div
+                  className="contract-action-dropdown-item"
+                  data-testid="contract-run-now-button">
+                  <RunIcon className="anticon" />
 
-            {t('label.run-now')}
-          </div>
-        ),
-        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.RUN_NOW,
-      },
-      {
-        label: (
-          <div
-            className="contract-action-dropdown-item"
-            data-testid="import-openmetadata-contract-button">
-            <ImportIcon className="anticon" />
+                  {t('label.run-now')}
+                </div>
+              ),
+              key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.RUN_NOW,
+            },
+            {
+              label: (
+                <div
+                  className="contract-action-dropdown-item"
+                  data-testid="import-openmetadata-contract-button">
+                  <ImportIcon className="anticon" />
 
-            {t('label.import')}
-          </div>
-        ),
-        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA,
-      },
-      {
-        label: (
-          <div
-            className="contract-action-dropdown-item"
-            data-testid="import-odcs-contract-button">
-            <ImportIcon className="anticon" />
+                  {t('label.import')}
+                </div>
+              ),
+              key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA,
+            },
+            {
+              label: (
+                <div
+                  className="contract-action-dropdown-item"
+                  data-testid="import-odcs-contract-button">
+                  <ImportIcon className="anticon" />
 
-            {t('label.import-odcs')}
-          </div>
-        ),
-        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS,
-      },
+                  {t('label.import-odcs')}
+                </div>
+              ),
+              key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS,
+            },
+          ]
+        : []),
       {
         label: (
           <div
@@ -279,38 +285,50 @@ const ContractDetail: React.FC<{
         ),
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT_ODCS,
       },
-      {
-        type: 'divider',
-      },
-      {
-        label: (
-          <div
-            className={`contract-action-dropdown-item contract-action-dropdown-delete-item ${
-              isInheritedContract ? 'disabled' : ''
-            }`}
-            data-testid="delete-contract-button"
-            title={
-              isInheritedContract
-                ? t('message.inherited-contract-cannot-be-deleted')
-                : undefined
-            }>
-            <DeleteIcon className="anticon" />
+      ...(hasEditPermission
+        ? [
+            {
+              type: 'divider' as const,
+            },
+            {
+              label: (
+                <div
+                  className={`contract-action-dropdown-item contract-action-dropdown-delete-item ${
+                    isInheritedContract ? 'disabled' : ''
+                  }`}
+                  data-testid="delete-contract-button"
+                  title={
+                    isInheritedContract
+                      ? t('message.inherited-contract-cannot-be-deleted')
+                      : undefined
+                  }>
+                  <DeleteIcon className="anticon" />
 
-            {t('label.delete')}
-          </div>
-        ),
-        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.DELETE,
-        disabled: isInheritedContract,
-      },
+                  {t('label.delete')}
+                </div>
+              ),
+              key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.DELETE,
+              disabled: isInheritedContract,
+            },
+          ]
+        : []),
     ];
-  }, [isInheritedContract]);
+  }, [isInheritedContract, hasEditPermission, t]);
 
   const handleExportContract = useCallback(() => {
     if (!contract) {
       return;
     }
-
-    downloadContractYamlFile(contract);
+    try {
+      downloadContractYamlFile(contract);
+      showSuccessToast(
+        t('message.entity-exported-successfully', {
+          entity: t('label.contract'),
+        })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
   }, [contract]);
 
   const handleExportODCSContract = useCallback(async () => {
@@ -612,6 +630,20 @@ const ContractDetail: React.FC<{
   }, [contract]);
 
   if (!contract) {
+    if (!hasEditPermission) {
+      return (
+        <ErrorPlaceHolder
+          icon={
+            <EmptyContractIcon className="empty-contract-icon" height={140} />
+          }
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
+          <Typography.Paragraph className="m-t-md w-80" type="secondary">
+            {t('message.no-contract-description')}
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
+      );
+    }
+
     return (
       <>
         <ContractImportModal
@@ -747,7 +779,7 @@ const ContractDetail: React.FC<{
             {showContractStatusAlert && (
               <Col className="contract-card-items" span={24}>
                 <AlertBar
-                  defafultExpand
+                  defaultExpand
                   className="h-full"
                   message={latestContractResults?.result ?? ''}
                   type="error"

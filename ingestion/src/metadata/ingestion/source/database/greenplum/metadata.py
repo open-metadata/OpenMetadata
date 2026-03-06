@@ -15,9 +15,9 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
 
-from sqlalchemy import sql
+from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -62,7 +62,9 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_all_view_definitions,
+    get_table_ddl,
 )
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
@@ -78,6 +80,9 @@ PGDialect.get_columns = get_columns
 PGDialect.get_all_view_definitions = get_all_view_definitions
 
 PGDialect.ischema_names = ischema_names
+
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
 
 class GreenplumSource(CommonDbSourceService, MultiDBSource):
@@ -163,11 +168,14 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:
-        result = self.engine.execute(
-            GREENPLUM_PARTITION_DETAILS.format(
-                table_name=table_name, schema_name=schema_name
-            )
-        ).all()
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text(
+                    GREENPLUM_PARTITION_DETAILS.format(
+                        table_name=table_name, schema_name=schema_name
+                    )
+                )
+            ).all()
 
         if result:
             partition_details = TablePartition(

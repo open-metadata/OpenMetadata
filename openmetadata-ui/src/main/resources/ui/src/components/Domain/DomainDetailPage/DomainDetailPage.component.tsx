@@ -31,6 +31,7 @@ import {
   getDomainByName,
   patchDomains,
   removeFollower,
+  updateDomainVotes,
 } from '../../../rest/domainAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
@@ -38,6 +39,7 @@ import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
+import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import '../domain.less';
 import DomainDetails from '../DomainDetails/DomainDetails.component';
@@ -106,6 +108,8 @@ const DomainDetailPage = () => {
           TabSpecificField.TAGS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.EXTENSION,
+          TabSpecificField.VOTES,
+          TabSpecificField.CERTIFICATION,
         ],
       });
       setActiveDomain(data);
@@ -180,6 +184,31 @@ const DomainDetailPage = () => {
     setIsFollowingLoading(false);
   }, [isFollowing, unFollowDomain, followDomain]);
 
+  const handleUpdateVote = useCallback(
+    async (data: QueryVote, id: string) => {
+      try {
+        await updateDomainVotes(id, data);
+        const response = await getDomainByName(domainFqn, {
+          fields: [
+            TabSpecificField.CHILDREN,
+            TabSpecificField.OWNERS,
+            TabSpecificField.PARENT,
+            TabSpecificField.EXPERTS,
+            TabSpecificField.TAGS,
+            TabSpecificField.FOLLOWERS,
+            TabSpecificField.EXTENSION,
+            TabSpecificField.VOTES,
+            TabSpecificField.CERTIFICATION,
+          ],
+        });
+        setActiveDomain(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [domainFqn]
+  );
+
   useEffect(() => {
     if (domainFqn) {
       fetchDomainByName(domainFqn);
@@ -223,6 +252,7 @@ const DomainDetailPage = () => {
         isFollowingLoading={isFollowingLoading}
         onDelete={handleDomainDelete}
         onUpdate={handleDomainUpdate}
+        onUpdateVote={handleUpdateVote}
       />
     </PageLayoutV1>
   );
