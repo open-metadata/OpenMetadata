@@ -27,11 +27,11 @@ import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.s
 import { ReactComponent as Layers } from '../../../../assets/svg/ic-layers.svg';
 import { ReactComponent as ServiceView } from '../../../../assets/svg/services.svg';
 import { SERVICE_TYPES } from '../../../../constants/Services.constant';
-import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { LineageLayer } from '../../../../generated/settings/settings';
+import { useLineageStore } from '../../../../hooks/useLineageStore';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import './lineage-layers.less';
@@ -93,11 +93,11 @@ const StyledButton = styled((props: ToggleButtonProps) => (
 const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
   const {
     activeLayer,
-    onUpdateLayerView,
-    onPlatformViewChange,
     platformView,
+    setPlatformView,
     isPlatformLineage,
-  } = useLineageProvider();
+    setActiveLayer,
+  } = useLineageStore();
   const { t } = useTranslation();
   const [layersAnchorEl, setLayersAnchorEl] =
     React.useState<null | HTMLElement>(null);
@@ -111,12 +111,12 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
       const value = layer;
       const index = activeLayer.indexOf(value);
       if (index === -1) {
-        onUpdateLayerView([...activeLayer, value]);
+        setActiveLayer([...activeLayer, value]);
       } else {
-        onUpdateLayerView(activeLayer.filter((layer) => layer !== value));
+        setActiveLayer(activeLayer.filter((layer) => layer !== value));
       }
     },
-    [activeLayer, onUpdateLayerView]
+    [activeLayer, setActiveLayer]
   );
 
   const handlePlatformViewChange = React.useCallback(
@@ -124,13 +124,13 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
       _event: React.MouseEvent<HTMLElement, MouseEvent>,
       view: string | null
     ) => {
-      onPlatformViewChange(
+      setPlatformView(
         platformView === view
           ? LineagePlatformView.None
           : (view as LineagePlatformView)
       );
     },
-    [platformView, onPlatformViewChange]
+    [platformView, setPlatformView]
   );
 
   const handleSelection = (
@@ -172,14 +172,16 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
         <StyledButton
           data-testid="lineage-layer-column-btn"
           key={LineageLayer.ColumnLevelLineage}
-          value={LineageLayer.ColumnLevelLineage}>
+          value={LineageLayer.ColumnLevelLineage}
+        >
           {searchClassBase.getEntityIcon(EntityType.TABLE)}
           {t('label.column')}
         </StyledButton>,
         <StyledButton
           data-testid="lineage-layer-observability-btn"
           key={LineageLayer.DataObservability}
-          value={LineageLayer.DataObservability}>
+          value={LineageLayer.DataObservability}
+        >
           <DataQualityIcon />
           {t('label.observability')}
         </StyledButton>,
@@ -191,7 +193,8 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
         <StyledButton
           data-testid="lineage-layer-service-btn"
           key={LineagePlatformView.Service}
-          value={LineagePlatformView.Service}>
+          value={LineagePlatformView.Service}
+        >
           <ServiceView />
           {t('label.service')}
         </StyledButton>
@@ -203,7 +206,8 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
         <StyledButton
           data-testid="lineage-layer-domain-btn"
           key={LineagePlatformView.Domain}
-          value={LineagePlatformView.Domain}>
+          value={LineagePlatformView.Domain}
+        >
           <DomainIcon />
           {t('label.domain')}
         </StyledButton>
@@ -215,7 +219,8 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
         <StyledButton
           data-testid="lineage-layer-data-product-btn"
           key={LineagePlatformView.DataProduct}
-          value={LineagePlatformView.DataProduct}>
+          value={LineagePlatformView.DataProduct}
+        >
           <DataProductIcon />
           {t('label.data-product')}
         </StyledButton>
@@ -246,7 +251,8 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
         })}
         data-testid="lineage-layer-btn"
         value=""
-        onClick={(e) => setLayersAnchorEl(e.currentTarget)}>
+        onClick={(e) => setLayersAnchorEl(e.currentTarget)}
+      >
         <Layers width={20} />
 
         {t('label.layer-plural')}
@@ -261,7 +267,8 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
         id="lineage-layers-popover"
         open={Boolean(layersAnchorEl)}
         sx={{ marginLeft: '16px' }} // Moves popover right by 80px
-        onClose={() => setLayersAnchorEl(null)}>
+        onClose={() => setLayersAnchorEl(null)}
+      >
         {buttonContent}
       </Popover>
     </>

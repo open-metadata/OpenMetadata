@@ -65,11 +65,11 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     setDisplayActiveDomains((prev) => {
       const prevIds = prev
         .map((item) => item.id)
-        .sort()
+        .sort((a, b) => (a ?? '').localeCompare(b ?? ''))
         .join(',');
       const newIds = activeDomains
         .map((item) => item.id)
-        .sort()
+        .sort((a, b) => (a ?? '').localeCompare(b ?? ''))
         .join(',');
 
       if (prevIds !== newIds) {
@@ -81,9 +81,14 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   }, [activeDomains]);
 
   const handleEditClick = () => {
-    setEditingDataProducts(
-      displayDataProducts.map((dp) => dp as unknown as DataProduct)
-    );
+    const dpList: DataProduct[] = displayDataProducts.map((dp) => ({
+      id: dp.id,
+      name: dp.name || '',
+      displayName: dp.displayName || dp.name,
+      fullyQualifiedName: dp.fullyQualifiedName || '',
+      description: dp.description || '',
+    }));
+    setEditingDataProducts(dpList);
     startEditing();
   };
 
@@ -156,8 +161,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       name: dp.name || '',
       displayName: dp.displayName || dp.name,
       fullyQualifiedName: dp.fullyQualifiedName || '',
-      description: dp.description,
-      type: 'dataProduct',
+      description: dp.description || '',
     })) as DataProduct[];
 
     setEditingDataProducts(dpList);
@@ -177,7 +181,8 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
           setPopoverOpen(false);
           cancelEditing();
         }}
-        onUpdate={handleSaveWithDataProducts}>
+        onUpdate={handleSaveWithDataProducts}
+      >
         <div className="data-product-selector-trigger" />
       </DataProductsSelectListV1>
     ),
@@ -228,7 +233,8 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
             <div
               className="data-product-item"
               data-testid="data-product-item"
-              key={dataProduct.id || dataProduct.fullyQualifiedName}>
+              key={dataProduct.id || dataProduct.fullyQualifiedName}
+            >
               <div className="data-product-card-bar">
                 <div className="data-product-card-content">
                   <DataProductIcon className="data-product-icon" />
@@ -243,7 +249,8 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
             <button
               className="show-more-data-products-button"
               type="button"
-              onClick={() => setShowAllDataProducts(!showAllDataProducts)}>
+              onClick={() => setShowAllDataProducts(!showAllDataProducts)}
+            >
               {showAllDataProducts
                 ? t('label.less')
                 : `+${displayDataProducts.length - maxVisibleDataProducts} ${t(

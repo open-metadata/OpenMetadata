@@ -47,8 +47,10 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DEFAULT_THEME } from './constants/Appearance.constants';
 import RuleEnforcementProvider from './context/RuleEnforcementProvider/RuleEnforcementProvider';
+import { ThemeProvider as UntitledUIThemeProvider } from './context/UntitledUIThemeProvider/theme-provider';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
+
 const App: FC = () => {
   const { applicationConfig, setApplicationConfig, setRdfEnabled } =
     useApplicationStore(
@@ -113,47 +115,52 @@ const App: FC = () => {
             <HelmetProvider>
               <ErrorBoundary>
                 <AntDConfigProvider>
-                  <ThemeProvider theme={muiTheme}>
-                    <GlobalStyles styles={{ html: { fontSize: '14px' } }} />
-                    <SnackbarProvider
-                      Components={{
-                        default: SnackbarContent,
-                        error: SnackbarContent,
-                        success: SnackbarContent,
-                        warning: SnackbarContent,
-                        info: SnackbarContent,
-                      }}
-                      anchorOrigin={{
-                        vertical: 'top',
-                        horizontal: 'right',
-                      }}
-                      autoHideDuration={6000}
-                      maxSnack={3}>
-                      <AuthProvider childComponentType={AppRouter}>
-                        <TourProvider>
-                          <WebAnalyticsProvider>
-                            <PermissionProvider>
-                              <WebSocketProvider>
-                                <ApplicationsProvider>
-                                  <AsyncDeleteProvider>
-                                    <EntityExportModalProvider>
-                                      <AirflowStatusProvider>
-                                        <RuleEnforcementProvider>
-                                          <DndProvider backend={HTML5Backend}>
-                                            <AppRouter />
-                                          </DndProvider>
-                                        </RuleEnforcementProvider>
-                                      </AirflowStatusProvider>
-                                    </EntityExportModalProvider>
-                                  </AsyncDeleteProvider>
-                                </ApplicationsProvider>
-                              </WebSocketProvider>
-                            </PermissionProvider>
-                          </WebAnalyticsProvider>
-                        </TourProvider>
-                      </AuthProvider>
-                    </SnackbarProvider>
-                  </ThemeProvider>
+                  <UntitledUIThemeProvider
+                    brandColors={applicationConfig?.customTheme}
+                  >
+                    <ThemeProvider theme={muiTheme}>
+                      <GlobalStyles styles={{ html: { fontSize: '14px' } }} />
+                      <SnackbarProvider
+                        Components={{
+                          default: SnackbarContent,
+                          error: SnackbarContent,
+                          success: SnackbarContent,
+                          warning: SnackbarContent,
+                          info: SnackbarContent,
+                        }}
+                        anchorOrigin={{
+                          vertical: 'top',
+                          horizontal: 'right',
+                        }}
+                        autoHideDuration={6000}
+                        maxSnack={3}
+                      >
+                        <AuthProvider childComponentType={AppRouter}>
+                          <TourProvider>
+                            <WebAnalyticsProvider>
+                              <PermissionProvider>
+                                <WebSocketProvider>
+                                  <ApplicationsProvider>
+                                    <AsyncDeleteProvider>
+                                      <EntityExportModalProvider>
+                                        <AirflowStatusProvider>
+                                          <RuleEnforcementProvider>
+                                            <DndProvider backend={HTML5Backend}>
+                                              <AppRouter />
+                                            </DndProvider>
+                                          </RuleEnforcementProvider>
+                                        </AirflowStatusProvider>
+                                      </EntityExportModalProvider>
+                                    </AsyncDeleteProvider>
+                                  </ApplicationsProvider>
+                                </WebSocketProvider>
+                              </PermissionProvider>
+                            </WebAnalyticsProvider>
+                          </TourProvider>
+                        </AuthProvider>
+                      </SnackbarProvider>
+                    </ThemeProvider>
+                  </UntitledUIThemeProvider>
                 </AntDConfigProvider>
               </ErrorBoundary>
             </HelmetProvider>

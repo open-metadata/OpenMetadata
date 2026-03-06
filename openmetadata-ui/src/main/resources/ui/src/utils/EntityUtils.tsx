@@ -30,7 +30,7 @@ import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/DataAssetSummaryPanel.interface';
+import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
@@ -1600,7 +1600,8 @@ export const getFrequentlyJoinedColumns = (
               to={getEntityDetailsPath(
                 EntityType.TABLE,
                 columnJoin.fullyQualifiedName
-              )}>
+              )}
+            >
               {getPartialNameFromTableFQN(
                 columnJoin.fullyQualifiedName,
                 [
@@ -1632,7 +1633,8 @@ export const getFrequentlyJoinedColumns = (
                           columnJoin?.fullyQualifiedName,
                           [FqnPart.Column]
                         )
-                      )}>
+                      )}
+                    >
                       {getPartialNameFromTableFQN(
                         columnJoin?.fullyQualifiedName,
                         [FqnPart.Database, FqnPart.Table, FqnPart.Column]
@@ -1643,7 +1645,8 @@ export const getFrequentlyJoinedColumns = (
               </div>
             }
             placement="bottom"
-            trigger="click">
+            trigger="click"
+          >
             <span className="show-more m-l-xss text-underline">...</span>
           </Popover>
         )}
@@ -2935,6 +2938,7 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.SPREADSHEET]: t('label.spreadsheet'),
   [EntityType.WORKSHEET]: t('label.worksheet'),
   [EntityType.NOTIFICATION_TEMPLATE]: t('label.notification-template'),
+  [EntityType.TABLE_COLUMN]: t('label.table-column'),
 };
 
 export const hasSchemaTab = (entityType: EntityType): boolean =>

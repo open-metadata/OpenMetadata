@@ -30,7 +30,6 @@ import { patchDashboardDetails } from '../../rest/dashboardAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { patchTableDetails } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
-import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -79,10 +78,6 @@ jest.mock('../../rest/testAPI', () => ({
   listTestCases: jest.fn(),
 }));
 
-jest.mock('../../utils/DashboardDetailsUtils', () => ({
-  fetchCharts: jest.fn(),
-}));
-
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn(),
   getEpochMillisForPastDays: jest.fn(),
@@ -91,10 +86,6 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
-}));
-
-jest.mock('../../utils/EntitySummaryPanelUtils', () => ({
-  getEntityChildDetails: jest.fn(),
 }));
 
 jest.mock('../../utils/EntityUtils', () => {
@@ -205,7 +196,8 @@ jest.mock('../common/DescriptionSection/DescriptionSection', () => {
         data-testid="update-description-btn"
         onClick={() =>
           onDescriptionUpdate && onDescriptionUpdate('New description')
-        }>
+        }
+      >
         Update Description
       </button>
     </div>
@@ -218,7 +210,8 @@ jest.mock('../common/OverviewSection/OverviewSection', () => {
       {(entityInfoV1 || []).map((item: any, index: number) => (
         <div
           data-testid={`overview-item-${String(item.name).toLowerCase()}`}
-          key={index}>
+          key={index}
+        >
           {item.name} {item.value}
         </div>
       ))}
@@ -380,13 +373,6 @@ const mockIncidentData = {
   },
 };
 
-const mockChartsData = [
-  {
-    id: 'chart-1',
-    name: 'Test Chart',
-  },
-];
-
 describe('DataAssetSummaryPanelV1', () => {
   const mockT = jest.fn((key: string) => key);
   const mockGetEntityPermission = jest.fn();
@@ -430,7 +416,6 @@ describe('DataAssetSummaryPanelV1', () => {
       mockIncidentData
     );
     (listTestCases as jest.Mock).mockResolvedValue({ data: mockTestCaseData });
-    (fetchCharts as jest.Mock).mockResolvedValue(mockChartsData);
     (getEntityOverview as jest.Mock).mockImplementation(
       (_entityType: any, _dataAsset: any, additionalInfo: any) => [
         { name: 'Type', value: 'Table', visible: ['explore'] },
@@ -604,28 +589,6 @@ describe('DataAssetSummaryPanelV1', () => {
           limit: 100,
           fields: ['testCaseResult', 'incidentId'],
         });
-      });
-    });
-
-    it('should fetch charts for DASHBOARD entity', async () => {
-      const dashboardProps = {
-        ...defaultProps,
-        entityType: EntityType.DASHBOARD,
-        dataAsset: {
-          ...mockDataAsset,
-          name: 'test-dashboard',
-          displayName: 'Test Dashboard',
-          entityType: EntityType.DASHBOARD,
-          charts: [{ id: 'chart-1' }],
-        } as any,
-      };
-
-      await act(async () => {
-        render(<DataAssetSummaryPanelV1 {...dashboardProps} />);
-      });
-
-      await waitFor(() => {
-        expect(fetchCharts).toHaveBeenCalledWith([{ id: 'chart-1' }]);
       });
     });
 
@@ -881,32 +844,6 @@ describe('DataAssetSummaryPanelV1', () => {
         expect(screen.getByTestId('overview-item-incidents')).toHaveTextContent(
           'Incidents 0'
         );
-      });
-    });
-
-    it('should handle charts fetch error gracefully', async () => {
-      const dashboardProps = {
-        ...defaultProps,
-        entityType: EntityType.DASHBOARD,
-        dataAsset: {
-          ...mockDataAsset,
-          name: 'test-dashboard',
-          displayName: 'Test Dashboard',
-          entityType: EntityType.DASHBOARD,
-          charts: [{ id: 'chart-1' }],
-        } as any,
-      };
-
-      (fetchCharts as jest.Mock).mockRejectedValue(
-        new Error('Charts fetch failed')
-      );
-
-      await act(async () => {
-        render(<DataAssetSummaryPanelV1 {...dashboardProps} />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('description-section')).toBeInTheDocument();
       });
     });
   });

@@ -41,7 +41,8 @@ const ActivityFeedActions = ({
   isPost,
   onEditPost,
 }: ActivityFeedActionsProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dir = i18n.dir();
   const { currentUser } = useApplicationStore();
   const isAuthor = post.from === currentUser?.name;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -88,7 +89,12 @@ const ActivityFeedActions = ({
 
   return (
     <>
-      <Space className="feed-actions" data-testid="feed-actions" size={12}>
+      <Space
+        className="feed-actions"
+        data-testid="feed-actions"
+        dir={dir}
+        size={12}
+      >
         {!isPost && (
           <Icon
             className="toolbar-button"

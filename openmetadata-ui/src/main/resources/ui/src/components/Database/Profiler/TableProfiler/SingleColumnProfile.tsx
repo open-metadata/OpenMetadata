@@ -10,15 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Card,
-  Divider,
-  Grid,
-  Stack,
-  Typography,
-  useTheme,
-} from '@mui/material';
 import { AxiosError } from 'axios';
 import { find, first, isString, last, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
@@ -80,7 +71,6 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     isProfilingEnabled,
     testCaseSummary,
   } = useTableProfiler();
-  const theme = useTheme();
   const { t } = useTranslation();
 
   const dateRangeObject = useMemo(() => {
@@ -228,40 +218,30 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   }, [activeColumnFqn, dateRangeObject]);
 
   return (
-    <Stack
-      className="m-b-lg"
+    <div
+      className="tw:mb-lg tw:flex tw:flex-col tw:gap-8"
       data-testid="profiler-tab-container"
-      spacing="30px">
+    >
       {selectedColumn && (
-        <Grid container spacing={5}>
-          <Grid size={7.2}>
+        <div className="tw:grid tw:grid-cols-24 tw:gap-5">
+          <div className="tw:col-span-14">
             <ColumnSummary column={selectedColumn} />
-          </Grid>
-          <Grid size="grow">
-            <Card
-              sx={{
-                borderRadius: '10px',
-                border: `1px solid ${theme.palette.grey[200]}`,
-                boxShadow: 'none',
-                height: '100%',
-              }}>
-              <Box p={4}>
-                <Typography
-                  sx={{
-                    fontSize: theme.typography.pxToRem(16),
-                    fontWeight: theme.typography.fontWeightMedium,
-                    color: theme.palette.grey[900],
-                  }}>
+          </div>
+          <div className="tw:col-span-10">
+            <div className="tw:h-full tw:rounded-[10px] tw:border tw:border-border-secondary tw:shadow-none">
+              <div className="tw:p-4">
+                <p className="tw:m-0 tw:text-md tw:font-medium tw:text-primary">
                   {t('label.data-quality-test-plural')}
-                </Typography>
-              </Box>
-              <Divider />
-              <Grid container spacing={3} sx={{ p: 4 }}>
-                <Grid size={5}>
+                </p>
+              </div>
+              <hr className="tw:my-0 tw:h-px tw:border-0 tw:bg-border-secondary" />
+              <div className="tw:grid tw:grid-cols-12 tw:gap-3 tw:p-4">
+                <div className="tw:col-span-5">
                   <PieChart
                     className="dq-pie-chart-container"
                     height={160}
-                    width={160}>
+                    width={160}
+                  >
                     <Pie
                       cx="50%"
                       cy="50%"
@@ -274,7 +254,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       paddingAngle={0}
                       // to hide tooltip when there is no data
                       pointerEvents="none"
-                      startAngle={90}>
+                      startAngle={90}
+                    >
                       <Cell fill={GREY_200} />
                     </Pie>
                     <Pie
@@ -289,7 +270,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       paddingAngle={0}
                       // to hide tooltip when there is no data
                       pointerEvents="none"
-                      startAngle={90}>
+                      startAngle={90}
+                    >
                       <Cell fill={GREY_200} />
                     </Pie>
                     <Pie
@@ -301,7 +283,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       innerRadius={50}
                       outerRadius={70}
                       paddingAngle={0}
-                      startAngle={90}>
+                      startAngle={90}
+                    >
                       {columnTestData.map((entry, index) => (
                         <Cell fill={entry.color} key={`cell-${index}`} />
                       ))}
@@ -312,7 +295,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       dominantBaseline="middle"
                       textAnchor="middle"
                       x="50%"
-                      y="42%">
+                      y="42%"
+                    >
                       {activeColumnTests?.total ?? 0}
                     </text>
                     <text
@@ -320,53 +304,41 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       dominantBaseline="middle"
                       textAnchor="middle"
                       x="50%"
-                      y="55%">
+                      y="55%"
+                    >
                       {t('label.total-test-plural')}
                     </text>
                   </PieChart>
-                </Grid>
+                </div>
 
-                <Grid size="grow">
-                  <Box
-                    sx={{
-                      p: 4,
-                      borderRadius: '6px',
-                      bgcolor: theme.palette.grey[50],
-                      width: '100%',
-                    }}>
+                <div className="tw:col-span-7">
+                  <div className="tw:w-full tw:rounded-md tw:bg-secondary tw:p-4">
                     {columnTestData.map((item) => (
-                      <Box
-                        alignItems="center"
-                        display="flex"
-                        justifyContent="space-between"
+                      <div
+                        className="tw:mb-1 tw:flex tw:items-center tw:justify-between"
                         key={item.name}
-                        sx={{ mb: 1 }}>
-                        <Typography
-                          sx={{
-                            color: theme.palette.grey[700],
-                            fontSize: theme.typography.pxToRem(13),
+                      >
+                        <span
+                          className="tw:text-[13px] tw:text-secondary"
+                          style={{
                             borderLeft: `4px solid ${item.color}`,
-                            pl: 2,
+                            paddingLeft: '8px',
                             lineHeight: '10px',
-                          }}>
+                          }}
+                        >
                           {item.name}
-                        </Typography>
-                        <Typography
-                          sx={{
-                            color: theme.palette.grey[900],
-                            fontWeight: theme.typography.fontWeightMedium,
-                            fontSize: theme.typography.pxToRem(13),
-                          }}>
+                        </span>
+                        <span className="tw:text-[13px] tw:font-medium tw:text-primary">
                           {formatNumberWithComma(item.value)}
-                        </Typography>
-                      </Box>
+                        </span>
+                      </div>
                     ))}
-                  </Box>
-                </Grid>
-              </Grid>
-            </Card>
-          </Grid>
-        </Grid>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <ProfilerDetailsCard
@@ -412,7 +384,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         <ProfilerStateWrapper
           dataTestId="histogram-metrics"
           isLoading={isLoading}
-          title={t('label.data-distribution')}>
+          title={t('label.data-distribution')}
+        >
           <DataDistributionHistogram
             data={{
               firstDayData: firstDay,
@@ -427,7 +400,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         <ProfilerStateWrapper
           dataTestId="cardinality-distribution-metrics"
           isLoading={isLoading}
-          title={t('label.cardinality')}>
+          title={t('label.cardinality')}
+        >
           <CardinalityDistributionChart
             data={{
               firstDayData: firstDay,
@@ -442,7 +416,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         customMetricsGraphData={columnCustomMetrics}
         isLoading={isLoading || isProfilerDataLoading}
       />
-    </Stack>
+    </div>
   );
 };
 

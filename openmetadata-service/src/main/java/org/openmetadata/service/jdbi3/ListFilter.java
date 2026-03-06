@@ -5,10 +5,13 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -65,7 +68,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityLinkCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
-    conditions.add(getEntityStatusCondition());
+    conditions.add(getEntityStatusCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -107,7 +110,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
-    return assignee == null ? "" : String.format("assignee = '%s'", assignee);
+    return assignee == null ? "" : "assignee = :assignee";
   }
 
   private String getCreatedByCondition() {
@@ -122,9 +125,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getWorkflowDefinitionIdCondition() {
     String workflowDefinitionId = queryParams.get("workflowDefinitionId");
-    return workflowDefinitionId == null
-        ? ""
-        : String.format("workflowDefinitionId = '%s'", workflowDefinitionId);
+    return workflowDefinitionId == null ? "" : "workflowDefinitionId = :workflowDefinitionId";
   }
 
   private String getEntityLinkCondition() {
@@ -132,16 +133,43 @@ public class ListFilter extends Filter<ListFilter> {
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
   }
 
-  private String getEntityStatusCondition() {
+  private String getEntityStatusCondition(String tableName) {
     String entityStatus = queryParams.get("entityStatus");
     if (entityStatus == null || entityStatus.trim().isEmpty()) {
       return "";
     }
 
+    Set<String> validStatuses =
+        Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
+    List<String> statusValues =
+        Arrays.stream(entityStatus.split(","))
+            .map(String::trim)
+            .filter(Predicate.not(String::isEmpty))
+            .filter(validStatuses::contains)
+            .toList();
+
+    if (statusValues.isEmpty()) {
+      return "";
+    }
+
+    List<String> bindParams = new ArrayList<>();
+    for (int i = 0; i < statusValues.size(); i++) {
+      String key = "entityStatus_" + i;
+      queryParams.put(key, statusValues.get(i));
+      bindParams.add(":" + key);
+    }
+    String inCondition = String.join(",", bindParams);
+
+    // glossary_term_entity has indexed entityStatus column, use it directly
+    if (Entity.getCollectionDAO().glossaryTermDAO().getTableName().equals(tableName)) {
+      return String.format("entityStatus IN (%s)", inCondition);
+    }
+
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return "json->>'$.entityStatus' = :entityStatus";
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) IN (%s)", inCondition);
     } else {
-      return "json->>'entityStatus' = :entityStatus";
+      return String.format("json->>'entityStatus' IN (%s)", inCondition);
     }
   }
 
@@ -150,8 +178,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (agentTypes == null || agentTypes.trim().isEmpty()) {
       return "";
     } else {
-      // Handle multiple values using the existing pattern
-      String inCondition = getInConditionFromString(agentTypes);
+      String inCondition = buildIndexedBindParams("agentType", agentTypes);
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
         return String.format("JSON_EXTRACT(json, '$.agentType') IN (%s)", inCondition);
       } else {
@@ -207,7 +234,7 @@ public class ListFilter extends Filter<ListFilter> {
     String testFailureStatus = queryParams.get("testCaseResolutionStatusType");
     return testFailureStatus == null
         ? ""
-        : String.format("testCaseResolutionStatusType = '%s'", testFailureStatus);
+        : "testCaseResolutionStatusType = :testCaseResolutionStatusType";
   }
 
   public String getIncludeCondition(String tableName) {
@@ -246,11 +273,11 @@ public class ListFilter extends Filter<ListFilter> {
     }
     // Special handling for pipeline_entity - use entity_relationship join
     if (tableName != null && tableName.equals("pipeline_entity")) {
-      String safeService = service.replace("'", "''");
+      queryParams.put("serviceNameParam", service);
       String entityIdColumn = tableName + ".id";
       return String.format(
-          "(EXISTS (SELECT 1 FROM entity_relationship er JOIN pipeline_service_entity pse ON er.fromId = pse.id WHERE er.toId = %s AND er.fromEntity = 'pipelineService' AND er.toEntity = 'pipeline' AND er.relation = 0 AND pse.name = '%s'))",
-          entityIdColumn, safeService);
+          "(EXISTS (SELECT 1 FROM entity_relationship er JOIN pipeline_service_entity pse ON er.fromId = pse.id WHERE er.toId = %s AND er.fromEntity = 'pipelineService' AND er.toEntity = 'pipeline' AND er.relation = 0 AND pse.name = :serviceNameParam))",
+          entityIdColumn);
     }
     return getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service), "service");
   }
@@ -261,10 +288,9 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     }
     if (tableName != null && tableName.equals("pipeline_entity")) {
-      String safeServiceType = serviceType.replace("'", "''");
+      queryParams.put("serviceTypeParam", serviceType);
       return String.format(
-          "JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.serviceType')) = '%s'",
-          tableName, safeServiceType);
+          "JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.serviceType')) = :serviceTypeParam", tableName);
     }
     return "";
   }
@@ -284,27 +310,29 @@ public class ListFilter extends Filter<ListFilter> {
 
     if (NULL_PARAM.equals(domainId)) {
       String entityType = getQueryParam("entityType");
-      String entityTypeCondition =
-          nullOrEmpty(entityType)
-              ? ""
-              : String.format("AND entity_relationship.toEntity='%s'", entityType);
+      String entityTypeCondition = "";
+      if (!nullOrEmpty(entityType)) {
+        queryParams.put("domainEntityType", entityType);
+        entityTypeCondition = "AND entity_relationship.toEntity = :domainEntityType";
+      }
       return String.format(
           "(%s NOT IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' %s AND relation=10))",
           entityIdColumn, entityTypeCondition);
     }
 
+    String domainInClause = buildIndexedBindParams("domainId", domainId.replace("'", ""));
+
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
-      // allow passing entities with no domains
       return String.format(
           "(NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain' AND er.toId = %s) OR "
               + "%s IN (SELECT er2.toId FROM entity_relationship er2 WHERE er2.fromEntity='domain' AND er2.fromId IN (%s) AND er2.relation=10))",
-          entityIdColumn, entityIdColumn, domainId);
+          entityIdColumn, entityIdColumn, domainInClause);
     }
 
     return String.format(
         "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
-        entityIdColumn, domainId);
+        entityIdColumn, domainInClause);
   }
 
   private String getOwnerCondition(String tableName) {
@@ -324,11 +352,11 @@ public class ListFilter extends Filter<ListFilter> {
     if (tier == null || tier.isEmpty()) {
       return "";
     }
-    String safeTier = tier.replace("'", "''");
+    queryParams.put("tierParam", tier);
     String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
     return String.format(
-        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.tagFQN = '%s'))",
-        fqnHashColumn, safeTier);
+        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.tagFQN = :tierParam))",
+        fqnHashColumn);
   }
 
   public String getApiCollectionCondition(String apiEndpoint) {
@@ -353,7 +381,8 @@ public class ListFilter extends Filter<ListFilter> {
     if (directoryFqn == null) {
       return "";
     }
-    return String.format("directoryFqn = '%s'", directoryFqn);
+    queryParams.put("directoryFqnParam", directoryFqn);
+    return "directoryFqn = :directoryFqnParam";
   }
 
   public String getSpreadsheetCondition(String tableName) {
@@ -368,7 +397,8 @@ public class ListFilter extends Filter<ListFilter> {
     if (fileType == null) {
       return "";
     }
-    return String.format("fileType = '%s'", fileType);
+    queryParams.put("fileTypeParam", fileType);
+    return "fileType = :fileTypeParam";
   }
 
   public String getDisabledCondition() {
@@ -479,15 +509,14 @@ public class ListFilter extends Filter<ListFilter> {
     String type = getQueryParam("testCaseType");
 
     if (entityFQN != null) {
-      // EntityLink gets validated in the resource layer
-      // EntityLink entityLinkParsed = EntityLink.parse(entityLink);
-      // filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
-      conditions.add(
-          includeAllTests
-              ? String.format(
-                  "(entityFQN LIKE '%s%s%%' OR entityFQN = '%s')",
-                  escape(entityFQN), Entity.SEPARATOR, escapeApostrophe(entityFQN))
-              : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN)));
+      if (includeAllTests) {
+        queryParams.put("entityFQNLikePrefix", entityFQN + Entity.SEPARATOR + "%");
+        queryParams.put("entityFQNExact", entityFQN);
+        conditions.add("(entityFQN LIKE :entityFQNLikePrefix OR entityFQN = :entityFQNExact)");
+      } else {
+        queryParams.put("entityFQNExact", entityFQN);
+        conditions.add("entityFQN = :entityFQNExact");
+      }
     }
 
     if (testSuiteId != null) {
@@ -569,12 +598,11 @@ public class ListFilter extends Filter<ListFilter> {
     queryParams.put("typePrefix", typePrefix);
     return tableName == null
         ? "webhookType LIKE :typePrefix"
-        : tableName + ".webhookType LIKE typePrefix";
+        : tableName + ".webhookType LIKE :typePrefix";
   }
 
   private String getPipelineTypePrefixCondition(String tableName, String pipelineType) {
-    pipelineType = escape(pipelineType);
-    String inCondition = getInConditionFromString(pipelineType);
+    String inCondition = buildIndexedBindParams("pipelineType", pipelineType);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       return tableName == null
           ? String.format("pipelineType IN (%s)", inCondition)
@@ -587,12 +615,22 @@ public class ListFilter extends Filter<ListFilter> {
         : String.format("%s.json->>'pipelineType' IN (%s)", tableName, inCondition);
   }
 
-  protected String getInConditionFromString(String condition) {
-    return Arrays.stream(condition.split(","))
-        .map(String::trim)
-        .filter(s -> !s.isEmpty())
-        .map(s -> String.format("'%s'", s))
-        .collect(Collectors.joining(","));
+  protected String buildIndexedBindParams(String prefix, String commaSeparatedValues) {
+    List<String> values =
+        Arrays.stream(commaSeparatedValues.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .toList();
+    if (values.isEmpty()) {
+      return "''";
+    }
+    List<String> placeholders = new ArrayList<>();
+    for (int i = 0; i < values.size(); i++) {
+      String key = prefix + "_" + i;
+      queryParams.put(key, values.get(i));
+      placeholders.add(":" + key);
+    }
+    return String.join(",", placeholders);
   }
 
   private String getCategoryPrefixCondition(String tableName, String category) {
@@ -605,14 +643,10 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getStatusPrefixCondition(String tableName, String statusPrefix) {
     if (!statusPrefix.isEmpty()) {
-      List<String> statusList = new ArrayList<>(Arrays.asList(statusPrefix.split(",")));
-      List<String> condition = new ArrayList<>();
-      for (String s : statusList) {
-        String format = "\"" + s + "\"";
-        condition.add(format);
-      }
-      queryParams.put("statusList", String.join(",", condition));
-      return "status in (:statusList)";
+      String inCondition = buildIndexedBindParams("status", statusPrefix);
+      return tableName == null
+          ? String.format("status IN (%s)", inCondition)
+          : String.format("%s.status IN (%s)", tableName, inCondition);
     }
     queryParams.put("statusPrefix", String.format("%s%%", statusPrefix));
     return tableName == null

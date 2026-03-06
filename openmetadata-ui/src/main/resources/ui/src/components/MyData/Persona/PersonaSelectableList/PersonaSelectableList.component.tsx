@@ -62,6 +62,7 @@ export const PersonaSelectableList = ({
   popoverProps,
   personaList,
   isDefaultPersona,
+  multiSelect,
 }: PersonaSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
@@ -157,24 +158,31 @@ export const PersonaSelectableList = ({
   const handlePersonaUpdate = () => {
     setIsSaving(true);
 
-    Promise.resolve(
-      onUpdate(
-        isDefaultPersona
-          ? currentlySelectedPersonas[0]
-          : currentlySelectedPersonas
-      )
-    ).finally(() => {
-      setIsSaving(false);
-      setPopupVisible(false);
-    });
+    if (multiSelect === false) {
+      Promise.resolve(onUpdate(currentlySelectedPersonas[0])).finally(() => {
+        setIsSaving(false);
+        setPopupVisible(false);
+      });
+    } else {
+      Promise.resolve(onUpdate(currentlySelectedPersonas)).finally(() => {
+        setIsSaving(false);
+        setPopupVisible(false);
+      });
+    }
   };
 
   const handleChange = useCallback(
-    (selectedPersonas: string[]) => {
+    (selectedPersonas: string | string[]) => {
+      const selectedArr = Array.isArray(selectedPersonas)
+        ? selectedPersonas
+        : selectedPersonas
+        ? [selectedPersonas]
+        : [];
+
       const selectedPersonasList = selectOptions.filter(
         (persona) =>
           persona.fullyQualifiedName &&
-          selectedPersonas?.includes(persona.fullyQualifiedName)
+          selectedArr.includes(persona.fullyQualifiedName)
       );
       setCurrentlySelectedPersonas(selectedPersonasList);
     },
@@ -196,7 +204,8 @@ export const PersonaSelectableList = ({
           className="user-profile-edit-popover-card relative"
           style={{
             height: `${popoverHeight}px`,
-          }}>
+          }}
+        >
           <div className="d-flex justify-start items-center gap-2 m-b-sm">
             <div className="d-flex flex-start items-center">
               <PersonaIcon height={16} />
@@ -282,12 +291,14 @@ export const PersonaSelectableList = ({
       style={{ borderRadius: '12px' }}
       trigger="click"
       onOpenChange={setPopupVisible}
-      {...popoverProps}>
+      {...popoverProps}
+    >
       {children ?? (
         <Tooltip
           title={t('label.edit-entity', {
             entity: t('label.persona'),
-          })}>
+          })}
+        >
           <EditIcon
             className="cursor-pointer"
             data-testid={`${

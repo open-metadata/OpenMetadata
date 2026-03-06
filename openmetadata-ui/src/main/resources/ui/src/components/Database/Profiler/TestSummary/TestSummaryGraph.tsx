@@ -73,6 +73,7 @@ import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
 function TestSummaryGraph({
   testCaseName,
+  testCaseFqn,
   testCaseParameterValue,
   testCaseResults,
   selectedTimeRange,
@@ -105,6 +106,7 @@ function TestSummaryGraph({
       testCaseParameterValue: testCaseParameterValue ?? [],
       testCaseResults,
       entityThread,
+      testCaseFqn,
     });
     setShowAILearningBanner(data.showAILearningBanner);
     const isFreshnessTest = data.information.some(
@@ -112,7 +114,7 @@ function TestSummaryGraph({
     );
 
     return { chartData: data, isFreshnessTest };
-  }, [testCaseResults, entityThread, testCaseParameterValue]);
+  }, [testCaseResults, entityThread, testCaseParameterValue, testCaseFqn]);
 
   const customLegendPayLoad = useMemo(() => {
     const legendPayload: Payload[] = chartData?.information.map((info) => ({
@@ -159,7 +161,8 @@ function TestSummaryGraph({
         width={STATUS_DOT_SIZE}
         x={cx - STATUS_DOT_RADIUS}
         xmlns="http://www.w3.org/2000/svg"
-        y={cy - STATUS_DOT_RADIUS}>
+        y={cy - STATUS_DOT_RADIUS}
+      >
         <circle
           cx={STATUS_DOT_RADIUS}
           cy={STATUS_DOT_RADIUS}
@@ -196,7 +199,8 @@ function TestSummaryGraph({
             data-testid="no-search-image"
           />
         }
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+      >
         <Typography.Paragraph style={{ marginBottom: '0' }}>
           {t('message.no-test-result-for-days', {
             days: selectedTimeRange,
@@ -213,14 +217,16 @@ function TestSummaryGraph({
     <ResponsiveContainer
       className="bg-white custom-test-summary-graph"
       id={`${testCaseName}_graph`}
-      minHeight={minHeight ?? 400}>
+      minHeight={minHeight ?? 400}
+    >
       <ComposedChart
         data={chartData.data}
         margin={TEST_SUMMARY_CHART_MARGIN}
         ref={chartRef}
         onMouseMove={(e) => {
           setChartMouseEvent(e);
-        }}>
+        }}
+      >
         <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
         <XAxis
           angle={-45}
@@ -243,7 +249,17 @@ function TestSummaryGraph({
           width={80}
         />
         <Tooltip
-          content={<TestSummaryCustomTooltip />}
+          content={({ active, payload }) => (
+            <TestSummaryCustomTooltip
+              active={active}
+              payload={
+                payload as
+                  | Array<{ payload: Record<string, unknown> }>
+                  | undefined
+              }
+              testCaseFqn={chartData?.testCaseFqn}
+            />
+          )}
           offset={tooltipOffset}
           position={{ y: 100 }}
           wrapperStyle={{ pointerEvents: 'auto' }}

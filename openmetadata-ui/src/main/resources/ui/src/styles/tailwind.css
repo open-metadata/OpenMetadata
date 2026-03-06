@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import 'tailwindcss' prefix(tw);
+@import 'tailwindcss/theme.css' prefix(tw);
+@import 'tailwindcss/preflight.css' prefix(tw);
+@import 'tailwindcss/utilities.css' prefix(tw);
 
 /* Importing the theme.css from ui-core-components to ensure that the theme 
 variables are available in this file. This is an explicit decision to maintain theme 
 file in the core components and loading in here. */
 @import '@openmetadata/ui-core-components/theme.css';
 
-@source '../';
+@source '../**/*.{tsx,ts,jsx,js,css}';
 
 @custom-variant dark (&:where(.dark-mode, .dark-mode *));
 

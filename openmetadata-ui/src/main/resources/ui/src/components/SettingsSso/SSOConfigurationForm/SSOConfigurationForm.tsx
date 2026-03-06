@@ -94,6 +94,7 @@ import {
   UISchemaObject,
 } from './SSOConfigurationForm.interface';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
+import SsoRolesSelectField from './SsoRolesSelectField';
 
 const widgets = {
   SelectWidget: SelectWidget,
@@ -328,6 +329,7 @@ const SSOConfigurationFormRJSF = ({
 
   const customFields: RegistryFieldsType = {
     ArrayField: SsoConfigurationFormArrayFieldTemplate,
+    RolesSelectField: SsoRolesSelectField,
   };
 
   const schema = useMemo(() => {
@@ -846,7 +848,8 @@ const SSOConfigurationFormRJSF = ({
     return (
       <Card
         className="sso-provider-selection flex-col"
-        data-testid="sso-configuration-form-card">
+        data-testid="sso-configuration-form-card"
+      >
         <ProviderSelector
           selectedProvider={currentProvider as AuthProvider}
           onProviderSelect={handleProviderSelect}
@@ -924,7 +927,8 @@ const SSOConfigurationFormRJSF = ({
                       className="cancel-sso-configuration text-md"
                       data-testid="cancel-sso-configuration"
                       type="link"
-                      onClick={handleCancelClick}>
+                      onClick={handleCancelClick}
+                    >
                       {t('label.cancel')}
                     </Button>
                     <Button
@@ -933,7 +937,8 @@ const SSOConfigurationFormRJSF = ({
                       disabled={isLoading}
                       loading={isLoading}
                       type="primary"
-                      onClick={handleSave}>
+                      onClick={handleSave}
+                    >
                       {t('label.save')}
                     </Button>
                   </div>
@@ -963,7 +968,8 @@ const SSOConfigurationFormRJSF = ({
   const wrappedFormContent = (
     <Card
       className="sso-configuration-form-card flex-col p-0"
-      data-testid="sso-configuration-form-card">
+      data-testid="sso-configuration-form-card"
+    >
       {/* SSO Provider Header */}
       {currentProvider && (
         <div className="sso-provider-form-header flex items-center justify-between">
@@ -986,7 +992,8 @@ const SSOConfigurationFormRJSF = ({
             <Button
               data-testid="change-provider-button"
               type="link"
-              onClick={onChangeProvider}>
+              onClick={onChangeProvider}
+            >
               {t('label.change-provider')}
             </Button>
           )}
@@ -1023,7 +1030,8 @@ const SSOConfigurationFormRJSF = ({
                     className="cancel-sso-configuration text-md"
                     data-testid="cancel-sso-configuration"
                     type="link"
-                    onClick={handleCancelClick}>
+                    onClick={handleCancelClick}
+                  >
                     {t('label.cancel')}
                   </Button>
                   <Button
@@ -1032,7 +1040,8 @@ const SSOConfigurationFormRJSF = ({
                     disabled={isLoading}
                     loading={isLoading}
                     type="primary"
-                    onClick={handleSave}>
+                    onClick={handleSave}
+                  >
                     {t('label.save')}
                   </Button>
                 </div>

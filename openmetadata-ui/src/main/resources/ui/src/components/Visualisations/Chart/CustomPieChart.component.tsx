@@ -26,7 +26,10 @@ const CustomPieChart = ({
   data,
   label,
   showLegends = false,
+  onSegmentClick,
 }: CustomPieChartProps) => {
+  const hasClickHandler = Boolean(onSegmentClick);
+
   const centerLabel = useMemo(() => {
     if (isUndefined(label)) {
       return '';
@@ -48,7 +51,8 @@ const CustomPieChart = ({
       <PieChart
         height={CHART_SMALL_SIZE}
         id={`${name}-pie-chart`}
-        width={CHART_SMALL_SIZE}>
+        width={CHART_SMALL_SIZE}
+      >
         <Pie
           cx="50%"
           cy="50%"
@@ -61,10 +65,12 @@ const CustomPieChart = ({
           outerRadius={80}
           // to hide tooltip when there is no data
           pointerEvents="none"
-          startAngle={90}>
+          startAngle={90}
+        >
           <Cell fill={GREY_200} />
         </Pie>
         <Pie
+          className={hasClickHandler ? 'custom-pie-chart-clickable' : ''}
           cx="50%"
           cy="50%"
           data={data}
@@ -72,7 +78,18 @@ const CustomPieChart = ({
           endAngle={-270}
           innerRadius={60}
           outerRadius={80}
-          startAngle={90}>
+          startAngle={90}
+          onClick={
+            onSegmentClick
+              ? (_, index) => {
+                  const entry = data[index];
+                  if (entry) {
+                    onSegmentClick(entry, index);
+                  }
+                }
+              : undefined
+          }
+        >
           {data.map((entry) => (
             <Cell fill={entry.color} key={`cell-${entry.name}`} />
           ))}

@@ -65,13 +65,15 @@ const ExpandableCard = ({
       extra={
         <CardExpandCollapseIconButton
           className="expand-collapse-icon bordered"
+          data-testid="expand-collapse-icon"
           disabled={isExpandDisabled}
           size="small"
           title={isExpanded ? t('label.collapse') : t('label.expand')}
           onClick={handleExpandClick}
         />
       }
-      {...restCardProps}>
+      {...restCardProps}
+    >
       {children}
     </Card>
   );

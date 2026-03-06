@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Form, FormProps, Input, Select } from 'antd';
+import { Form, FormProps, Input, InputNumber, Select } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -166,6 +166,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             ...(value.glossaryTerms ?? []),
           ],
       dimensionColumns: value.dimensionColumns || undefined,
+      topDimensions: value.topDimensions ?? undefined,
     };
     const jsonPatch = compare(testCase, updatedTestCase);
 
@@ -267,6 +268,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         'computePassedFailedRowCount',
         'useDynamicAssertion',
         'dimensionColumns',
+        'topDimensions',
       ]);
 
       form.setFieldsValue({
@@ -370,10 +372,12 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       title={`${t('label.edit')} ${testCase?.name}`}
       width={720}
       onCancel={onCancel}
-      onOk={() => form.submit()}>
+      onOk={() => form.submit()}
+    >
       <EntityAttachmentProvider
         entityFqn={testCase?.fullyQualifiedName}
-        entityType={EntityType.TEST_CASE}>
+        entityType={EntityType.TEST_CASE}
+      >
         {isLoading ? (
           <Loader />
         ) : (
@@ -382,7 +386,8 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             form={form}
             layout="vertical"
             name="tableTestForm"
-            onFinish={handleFormSubmit}>
+            onFinish={handleFormSubmit}
+          >
             {!showOnlyParameter && (
               <>
                 <Form.Item required label={t('label.table')} name="table">
@@ -403,7 +408,8 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
                       pattern: ENTITY_NAME_REGEX,
                       message: t('message.entity-name-validation'),
                     },
-                  ]}>
+                  ]}
+                >
                   <Input
                     disabled
                     placeholder={t('message.enter-test-case-name')}
@@ -417,7 +423,8 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
                   label={t('label.test-entity', {
                     entity: t('label.type'),
                   })}
-                  name="testDefinition">
+                  name="testDefinition"
+                >
                   <Input
                     disabled
                     placeholder={t('message.enter-test-case-name')}
@@ -429,11 +436,26 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             {isColumn && (
               <Form.Item
                 label={t('label.dimension-plural')}
-                name="dimensionColumns">
+                name="dimensionColumns"
+              >
                 <Select
                   getPopupContainer={getPopupContainer}
                   mode="multiple"
                   options={dimensionColumnOptions}
+                />
+              </Form.Item>
+            )}
+            {isColumn && (
+              <Form.Item
+                label={t('label.top-dimension-plural')}
+                name="topDimensions"
+              >
+                <InputNumber
+                  className="w-full"
+                  id="root/topDimensions"
+                  max={50}
+                  min={1}
+                  placeholder="5"
                 />
               </Form.Item>
             )}
@@ -450,7 +472,8 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
                   prevValues['useDynamicAssertion'],
                   currentValues['useDynamicAssertion']
                 );
-              }}>
+              }}
+            >
               {({ getFieldValue }) =>
                 getFieldValue('useDynamicAssertion') ? null : paramsField
               }

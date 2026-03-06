@@ -29,7 +29,6 @@ import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
   getColumnFunctionValue,
-  getColumnSourceTargetHandles,
   getLineageDetailsObject,
 } from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -71,7 +70,7 @@ const EdgeInfoDrawer = ({
   }, [edge]);
 
   const isColumnLineage = useMemo(() => {
-    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    const { sourceHandle, targetHandle } = edge;
 
     return Boolean(sourceHandle && targetHandle);
   }, [edge]);
@@ -106,8 +105,7 @@ const EdgeInfoDrawer = ({
   const onFunctionUpdate = useCallback(
     async (updatedFunction: string) => {
       if (edge) {
-        const { sourceHandle, targetHandle } =
-          getColumnSourceTargetHandles(edge);
+        const { sourceHandle, targetHandle } = edge;
         const updatedColumnLineage = [...(edgeEntity.columns || [])];
 
         // Find and update the function for the specific column connection
@@ -152,7 +150,7 @@ const EdgeInfoDrawer = ({
 
   const edgeDetailsSection = useMemo(() => {
     const { data } = edge;
-    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    const { sourceHandle, targetHandle } = edge;
 
     if (isColumnLineage) {
       const functionValue = getColumnFunctionValue(
@@ -169,7 +167,8 @@ const EdgeInfoDrawer = ({
           onEdit={() => {
             setSqlFunction(functionValue ?? '');
             setShowSqlFunctionModal(true);
-          }}>
+          }}
+        >
           <Typography.Text className="m-b-0" data-testid="sql-function">
             {functionValue ?? NO_DATA_PLACEHOLDER}
           </Typography.Text>
@@ -183,7 +182,8 @@ const EdgeInfoDrawer = ({
           className="summary-panel-card"
           showEditButton={hasEditAccess}
           title={t('label.sql-uppercase-query')}
-          onEdit={() => setShowSqlQueryModal(true)}>
+          onEdit={() => setShowSqlQueryModal(true)}
+        >
           {mysqlQuery ? (
             <SchemaEditor
               className="edge-drawer-sql-editor"
@@ -203,7 +203,8 @@ const EdgeInfoDrawer = ({
         <SectionWithEdit
           className="summary-panel-card"
           showEditButton={false}
-          title={t('label.lineage-source')}>
+          title={t('label.lineage-source')}
+        >
           <Typography.Text className="lineage-source-text">
             {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
           </Typography.Text>
@@ -223,7 +224,7 @@ const EdgeInfoDrawer = ({
 
   const getEdgeInfo = () => {
     const { source, target, data } = edge;
-    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    const { sourceHandle, targetHandle } = edge;
     const { pipeline, pipelineEntityType } = data?.edge ?? {};
 
     let sourceData: Node | undefined, targetData: Node | undefined;
@@ -341,14 +342,16 @@ const EdgeInfoDrawer = ({
                   mouseEnterDelay={0.5}
                   placement="bottomLeft"
                   title={t('label.edge-information')}
-                  trigger="hover">
+                  trigger="hover"
+                >
                   <div className="d-flex items-center gap-2">
                     <span className="d-flex">
                       <GitMerge height={16} width={16} />
                     </span>
                     <Typography.Text
                       className="edge-info-drawer-title"
-                      data-testid="edge-header-title">
+                      data-testid="edge-header-title"
+                    >
                       {t('label.edge-information')}
                     </Typography.Text>
                   </div>

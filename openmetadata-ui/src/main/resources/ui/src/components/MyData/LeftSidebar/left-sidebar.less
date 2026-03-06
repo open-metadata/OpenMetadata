@@ -44,10 +44,14 @@
     color: @grey-600;
   }
 
+  &.ant-menu.ant-menu-vertical[dir='rtl'] {
+    padding: 0 @padding-md 0 0;
+  }
+
   &.ant-menu.ant-menu-vertical,
   &.ant-menu.ant-menu-inline {
     border: none;
-    padding: 0 0 0 16px;
+    padding: 0 0 0 @padding-md;
     overflow: hidden;
 
     .ant-menu-submenu-vertical {
@@ -57,7 +61,9 @@
     }
 
     .ant-menu-submenu.ant-menu-submenu-inline {
-      &.ant-menu-submenu-active:not(.ant-menu-submenu-open):not(.ant-menu-submenu-selected) {
+      &.ant-menu-submenu-active:not(.ant-menu-submenu-open):not(
+          .ant-menu-submenu-selected
+        ) {
         .ant-menu-submenu-title {
           background: @hover-color;
         }

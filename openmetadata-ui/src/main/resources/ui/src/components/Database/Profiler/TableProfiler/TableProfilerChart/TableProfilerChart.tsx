@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Stack } from '@mui/material';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
@@ -196,30 +196,35 @@ const TableProfilerChart = ({
   }
 
   return (
-    <Stack
+    <div
+      className={classNames('tw:flex tw:flex-col', {
+        'tw:gap-[30px]': !isProfilingEnabled,
+      })}
       data-testid="table-profiler-chart-container"
-      spacing={!isProfilingEnabled ? '30px' : 0}>
+    >
       {showHeader && (
         <>
           {!isSummaryLoading && !isProfilingEnabled && <NoProfilerBanner />}
 
-          <Grid container spacing={5}>
+          <div className="tw:grid tw:grid-cols-5 tw:gap-6">
             {overallSummary?.map((summary) => (
-              <Grid key={summary.title} size="grow">
-                <SummaryCardV1
-                  extra={summary.extra}
-                  icon={summary.icon}
-                  isLoading={isSummaryLoading}
-                  title={summary.title}
-                  value={summary.value}
-                />
-              </Grid>
+              <SummaryCardV1
+                extra={summary.extra}
+                icon={summary.icon}
+                isLoading={isSummaryLoading}
+                key={summary.title}
+                title={summary.title}
+                value={summary.value}
+              />
             ))}
-          </Grid>
+          </div>
         </>
       )}
-      <Stack data-testid="table-profiler-chart-container" spacing="30px">
-        <Box data-testid="row-metrics">
+      <div
+        className="tw:flex tw:flex-col tw:gap-[30px]"
+        data-testid="table-profiler-chart-metrics"
+      >
+        <div data-testid="row-metrics">
           <ProfilerDetailsCard
             chartCollection={rowCountMetrics}
             chartType="area"
@@ -228,7 +233,7 @@ const TableProfilerChart = ({
             noDataPlaceholderText={noProfilerMessage}
             title={t('label.data-volume')}
           />
-        </Box>
+        </div>
         {showSystemMetrics && (
           <ProfilerStateWrapper
             dataTestId="operation-metrics"
@@ -236,7 +241,8 @@ const TableProfilerChart = ({
             profilerLatestValueProps={{
               information: operationMetrics.information,
             }}
-            title={t('label.volume-change')}>
+            title={t('label.volume-change')}
+          >
             <CustomBarChart
               chartCollection={operationMetrics}
               name="operationMetrics"
@@ -250,8 +256,8 @@ const TableProfilerChart = ({
           customMetricsGraphData={tableCustomMetricsProfiling}
           isLoading={isTableProfilerLoading || isSummaryLoading}
         />
-      </Stack>
-    </Stack>
+      </div>
+    </div>
   );
 };
 

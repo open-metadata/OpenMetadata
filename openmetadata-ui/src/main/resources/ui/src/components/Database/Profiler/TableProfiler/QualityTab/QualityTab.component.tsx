@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid, Stack, Tab, Tabs, useTheme } from '@mui/material';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { Form, Select, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
@@ -75,7 +75,6 @@ export const QualityTab = () => {
     testCaseSummary,
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
-  const theme = useTheme();
   const { permissions: globalPermissions } = usePermissionProvider();
 
   const {
@@ -338,11 +337,14 @@ export const QualityTab = () => {
     handlePageSizeChange,
   ]);
 
-  const handleTabChange = (_: React.SyntheticEvent, tab: string) => {
+  const handleTabChange = (tab: string | number) => {
     navigate(
       {
         pathname: location.pathname,
-        search: QueryString.stringify({ ...searchData, qualityTab: tab }),
+        search: QueryString.stringify({
+          ...searchData,
+          qualityTab: String(tab),
+        }),
       },
       { state: undefined, replace: true }
     );
@@ -360,76 +362,38 @@ export const QualityTab = () => {
   }
 
   return (
-    <Stack className="quality-tab-container" spacing="30px">
-      <Grid container spacing={5}>
+    <div className="quality-tab-container tw:flex tw:flex-col tw:gap-7.5">
+      <div className="tw:grid tw:grid-cols-4 tw:gap-6">
         {totalTestCaseSummary?.map((summary) => (
-          <Grid key={summary.title} size="grow">
-            <SummaryCardV1
-              icon={summary.icon}
-              isLoading={false}
-              title={summary.title}
-              value={summary.value}
-            />
-          </Grid>
+          <SummaryCardV1
+            icon={summary.icon}
+            isLoading={false}
+            key={summary.title}
+            title={summary.title}
+            value={summary.value}
+          />
         ))}
-      </Grid>
+      </div>
 
-      <Box
-        sx={{
-          border: `1px solid ${theme.palette.grey['200']}`,
-          borderRadius: '10px',
-        }}>
-        <Box
-          alignItems="center"
-          display="flex"
-          justifyContent="space-between"
-          p={4}>
-          <Box display="flex" gap={5} width="100%">
+      <div className="tw:border tw:border-secondary tw:rounded-[10px]">
+        <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:p-4">
+          <div className="tw:flex tw:items-center tw:gap-5">
             <Tabs
-              sx={{
-                width: 'max-content',
-                minHeight: 'unset',
-                display: 'inline-flex',
-                '.MuiTab-root': {
-                  color: theme.palette.grey['700'],
-                  transition:
-                    'background-color 0.2s ease-in, color 0.2s ease-in',
-                  borderRadius: '8px',
-                },
-                '.Mui-selected, .MuiTab-root:hover': {
-                  backgroundColor: `${theme.palette.grey['50']}`,
-                  color: `${theme.palette.grey['800']}`,
-                },
-                '.MuiButtonBase-root': {
-                  minHeight: 'unset',
-                },
-                '.MuiTabs-indicator': {
-                  display: 'none',
-                },
-                '.MuiTabs-scroller': {
-                  padding: '0px',
-                  height: 'unset',
-                  borderRadius: '8px',
-                },
-                '.MuiTab-root:not(:first-of-type)': {
-                  marginLeft: '0px',
-                  borderLeft: `1px solid ${theme.palette.grey['200']}`,
-                  borderTopLeftRadius: 0,
-                  borderBottomLeftRadius: 0,
-                },
-                '& .MuiTabs-flexContainer': {
-                  gap: '0px',
-                },
-              }}
-              value={qualityTab}
-              onChange={handleTabChange}>
-              {tabs.map(({ label, key }) => (
-                <Tab key={key} label={label} value={key} />
-              ))}
+              className="tw:w-max"
+              selectedKey={qualityTab}
+              onSelectionChange={handleTabChange}
+            >
+              <Tabs.List size="sm" type="button-border">
+                {tabs.map(({ label, key }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
             </Tabs>
 
             {isTestCaseTab && (
-              <Box width={400}>
+              <div className="tw:w-100">
                 <Searchbar
                   removeMargin
                   placeholder={t('label.search-entity', {
@@ -438,9 +402,9 @@ export const QualityTab = () => {
                   searchValue={searchValue}
                   onSearch={handleSearchTestCase}
                 />
-              </Box>
+              </div>
             )}
-          </Box>
+          </div>
 
           {isTestCaseTab && (
             <Form className="new-form-style" layout="inline">
@@ -474,13 +438,13 @@ export const QualityTab = () => {
               </Space>
             </Form>
           )}
-        </Box>
+        </div>
 
-        {isTestCaseTab && (
+        {qualityTab === EntityTabs.TEST_CASES && (
           <DataQualityTab
             removeTableBorder
             afterDeleteAction={async (...params) => {
-              await fetchAllTests(...params); // Update current count when Create / Delete operation performed
+              await fetchAllTests(...params);
               params?.length &&
                 (await getResourceLimit('dataQuality', true, true));
             }}
@@ -499,7 +463,7 @@ export const QualityTab = () => {
         {qualityTab === EntityTabs.PIPELINE && (
           <TestSuitePipelineTab testSuite={testSuite} />
         )}
-      </Box>
-    </Stack>
+      </div>
+    </div>
   );
 };

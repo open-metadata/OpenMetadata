@@ -122,7 +122,8 @@ jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
           data-testid="switch-to-yaml"
           onClick={() =>
             handleModeChange({ target: { value: DataContractMode.YAML } })
-          }>
+          }
+        >
           YAML
         </button>
       </div>
@@ -150,12 +151,14 @@ jest.mock('../ODCSImportModal', () => {
         </span>
         <button
           data-testid="mock-import-success"
-          onClick={() => onSuccess && onSuccess()}>
+          onClick={() => onSuccess && onSuccess()}
+        >
           Import Success
         </button>
         <button
           data-testid="mock-import-close"
-          onClick={() => onClose && onClose()}>
+          onClick={() => onClose && onClose()}
+        >
           Close
         </button>
       </div>
@@ -234,6 +237,10 @@ jest.mock('react-i18next', () => ({
         'label.import-odcs': 'Import from ODCS',
         'label.odcs-contract': 'ODCS Contract',
         'message.entity-imported-successfully': `${options?.entity} imported successfully`,
+        'message.no-contract-description':
+          'No contract has been defined for this entity.',
+        'message.create-contract-description':
+          'Create a contract based on all the metadata which you got for this entity.',
       };
 
       return translations[key] || key;
@@ -366,7 +373,7 @@ describe('ContractDetail', () => {
 
       render(
         <ContractDetail
-          contract={{ ...mockContract, description: '', termsOfUse: '' }}
+          contract={{ ...mockContract, description: '', termsOfUse: {} }}
           entityId="test-entity-id"
           entityType="table"
           onDelete={mockOnDelete}
@@ -429,6 +436,7 @@ describe('ContractDetail', () => {
     it('should call onEdit when edit button is clicked', () => {
       render(
         <ContractDetail
+          hasEditPermission
           contract={mockContract}
           entityId="test-entity-id"
           entityType="table"
@@ -449,6 +457,7 @@ describe('ContractDetail', () => {
     it('should call onDelete when delete button is clicked', () => {
       render(
         <ContractDetail
+          hasEditPermission
           contract={mockContract}
           entityId="test-entity-id"
           entityType="table"
@@ -473,7 +482,10 @@ describe('ContractDetail', () => {
 
       render(
         <ContractDetail
+          hasEditPermission
           contract={inheritedContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -503,7 +515,10 @@ describe('ContractDetail', () => {
 
       render(
         <ContractDetail
+          hasEditPermission
           contract={nonInheritedContract}
+          entityId="test-entity-id"
+          entityType="table"
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -522,6 +537,7 @@ describe('ContractDetail', () => {
 
       render(
         <ContractDetail
+          hasEditPermission
           contract={mockContract}
           entityId="test-entity-id"
           entityType="table"
@@ -550,6 +566,7 @@ describe('ContractDetail', () => {
 
       render(
         <ContractDetail
+          hasEditPermission
           contract={mockContract}
           entityId="test-entity-id"
           entityType="table"
@@ -574,6 +591,7 @@ describe('ContractDetail', () => {
 
       render(
         <ContractDetail
+          hasEditPermission
           contract={contractWithoutId}
           entityId="test-entity-id"
           entityType="table"
@@ -997,6 +1015,7 @@ describe('ContractDetail', () => {
     it('should show import ODCS option in dropdown menu', async () => {
       render(
         <ContractDetail
+          hasEditPermission
           contract={mockContract}
           entityId="table-1"
           entityType="table"
@@ -1017,6 +1036,7 @@ describe('ContractDetail', () => {
     it('should show import OpenMetadata option in dropdown menu', async () => {
       render(
         <ContractDetail
+          hasEditPermission
           contract={mockContract}
           entityId="table-1"
           entityType="table"
@@ -1037,6 +1057,7 @@ describe('ContractDetail', () => {
     it('should open import modal with ODCS format from contract actions', async () => {
       render(
         <ContractDetail
+          hasEditPermission
           contract={mockContract}
           entityId="table-1"
           entityType="table"
@@ -1061,6 +1082,7 @@ describe('ContractDetail', () => {
     it('should open import modal with OpenMetadata format from contract actions', async () => {
       render(
         <ContractDetail
+          hasEditPermission
           contract={mockContract}
           entityId="table-1"
           entityType="table"
@@ -1087,6 +1109,7 @@ describe('ContractDetail', () => {
     it('should call onContractUpdated on successful import', async () => {
       render(
         <ContractDetail
+          hasEditPermission
           contract={mockContract}
           entityId="table-1"
           entityType="table"
@@ -1111,6 +1134,7 @@ describe('ContractDetail', () => {
     it('should handle add contract menu actions in empty state', async () => {
       render(
         <ContractDetail
+          hasEditPermission
           contract={null}
           entityId="table-1"
           entityType="table"
@@ -1228,6 +1252,7 @@ describe('ContractDetail', () => {
     it('should handle mouse hover states on add contract menu items', async () => {
       render(
         <ContractDetail
+          hasEditPermission
           contract={null}
           entityId="table-1"
           entityType="table"
@@ -1267,6 +1292,7 @@ describe('ContractDetail', () => {
     it('should close import modal when close is clicked', async () => {
       render(
         <ContractDetail
+          hasEditPermission
           contract={mockContract}
           entityId="table-1"
           entityType="table"
@@ -1315,6 +1341,107 @@ describe('ContractDetail', () => {
       await waitFor(() => {
         expect(exportContractToODCSYaml).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('Permissions - Empty State', () => {
+    it('should render view-only empty state without add button when no contract and no edit permission', () => {
+      render(
+        <ContractDetail
+          contract={null}
+          entityId="table-1"
+          entityType="table"
+          hasEditPermission={false}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByText('No contract has been defined for this entity.')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('add-contract-button')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('contract-import-modal')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render add contract button when no contract and user has edit permission', () => {
+      render(
+        <ContractDetail
+          hasEditPermission
+          contract={null}
+          entityId="table-1"
+          entityType="table"
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(screen.getByTestId('add-contract-button')).toBeInTheDocument();
+      expect(
+        screen.queryByText('No contract has been defined for this entity.')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should show create-contract description when user has edit permission and no contract', () => {
+      render(
+        <ContractDetail
+          hasEditPermission
+          contract={null}
+          entityId="table-1"
+          entityType="table"
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(
+        screen.getByText(
+          'Create a contract based on all the metadata which you got for this entity.'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should render contract import modal only when user has edit permission', () => {
+      render(
+        <ContractDetail
+          hasEditPermission
+          contract={null}
+          entityId="table-1"
+          entityType="table"
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(screen.getByTestId('contract-import-modal')).toBeInTheDocument();
+    });
+
+    it('should call onEdit when create contract menu item is clicked', () => {
+      render(
+        <ContractDetail
+          hasEditPermission
+          contract={null}
+          entityId="table-1"
+          entityType="table"
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      fireEvent.click(screen.getByTestId('add-contract-button'));
+      fireEvent.click(screen.getByTestId('create-contract-button'));
+
+      expect(mockOnEdit).toHaveBeenCalled();
     });
   });
 });

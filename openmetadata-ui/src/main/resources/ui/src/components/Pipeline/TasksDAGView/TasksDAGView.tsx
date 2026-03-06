@@ -24,7 +24,10 @@ import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
 } from '../../../constants/Lineage.constants';
-import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import {
+  EntityLineageDirection,
+  EntityLineageNodeType,
+} from '../../../enums/entity.enum';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
 import { replaceSpaceWith_ } from '../../../utils/CommonUtils';
 import { getLayoutedElements, onLoad } from '../../../utils/EntityLineageUtils';
@@ -109,10 +112,14 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       return [...prev, ...taskEdges];
     }, [] as Edge[]);
 
-    const { node: nodeValue, edge: edgeValue } = getLayoutedElements({
-      node: nodes,
-      edge: edges,
-    });
+    const { node: nodeValue, edge: edgeValue } = getLayoutedElements(
+      {
+        node: nodes,
+        edge: edges,
+      },
+      EntityLineageDirection.LEFT_RIGHT,
+      false
+    );
     setNodesData(nodeValue);
     setEdgesData(edgeValue);
   }, [tasks, selectedExec]);
@@ -132,7 +139,8 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       onInit={(reactFlowInstance) => {
         onLoad(reactFlowInstance);
       }}
-      onNodesChange={onNodesChange}>
+      onNodesChange={onNodesChange}
+    >
       <Background gap={12} size={1} />
       <Controls
         className="task-dag-control-btn"

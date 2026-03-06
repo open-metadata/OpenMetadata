@@ -95,7 +95,8 @@ jest.mock('antd', () => {
           className={className}
           data-span={span}
           data-testid="col"
-          {...props}>
+          {...props}
+        >
           {children}
         </div>
       )),
@@ -106,7 +107,8 @@ jest.mock('antd', () => {
           className={className}
           data-gutter={gutter}
           data-testid="row"
-          {...props}>
+          {...props}
+        >
           {children}
         </div>
       )),
@@ -133,7 +135,8 @@ jest.mock('antd', () => {
             className={className}
             data-ellipsis={ellipsis}
             data-testid="typography-text"
-            {...props}>
+            {...props}
+          >
             {children}
           </span>
         )),
@@ -143,7 +146,8 @@ jest.mock('antd', () => {
           <p
             className={className}
             data-testid="typography-paragraph"
-            {...props}>
+            {...props}
+          >
             {children}
           </p>
         )),
@@ -163,7 +167,8 @@ jest.mock('../../../common/DataQualitySection', () => {
             data-testid={`test-${test.type}`}
             key={index}
             role="button"
-            onClick={() => onFilterChange?.(test.type)}>
+            onClick={() => onFilterChange?.(test.type)}
+          >
             {test.count}
           </div>
         ))}
@@ -209,11 +214,26 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
 
 // Mock API functions
 jest.mock('../../../../rest/testAPI', () => ({
-  listTestCases: jest.fn(),
+  getListTestCaseBySearch: jest.fn(),
 }));
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
+}));
+
+jest.mock('../../../../utils/CommonUtils', () => ({
+  Transi18next: jest
+    .fn()
+    .mockImplementation(({ i18nKey }) => (
+      <span data-testid="trans-i18next">{i18nKey}</span>
+    )),
+  getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => {
+    if (fqn?.includes('::columns::')) {
+      return fqn.split('::columns::')[0];
+    }
+
+    return fqn;
+  }),
 }));
 
 // Mock utility functions
@@ -268,7 +288,6 @@ jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
 }));
 
 const mockEntityFQN = 'test.entity.fqn';
-const mockEntityType = 'table';
 
 const mockTestCases: TestCase[] = [
   {
@@ -349,7 +368,6 @@ const mockIncidents: TestCaseResolutionStatus[] = [
 
 const defaultProps = {
   entityFQN: mockEntityFQN,
-  entityType: mockEntityType,
 };
 
 describe('DataQualityTab', () => {
@@ -359,13 +377,17 @@ describe('DataQualityTab', () => {
 
   describe('Loading State', () => {
     it('should render loader when loading', async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
       // Mock delayed API responses
-      listTestCases.mockImplementation(() => new Promise(() => undefined));
+      getListTestCaseBySearch.mockImplementation(
+        () => new Promise(() => undefined)
+      );
       getListTestCaseIncidentStatus.mockImplementation(
         () => new Promise(() => undefined)
       );
@@ -376,12 +398,16 @@ describe('DataQualityTab', () => {
     });
 
     it('should render with correct CSS classes when loading', async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
-      listTestCases.mockImplementation(() => new Promise(() => undefined));
+      getListTestCaseBySearch.mockImplementation(
+        () => new Promise(() => undefined)
+      );
       getListTestCaseIncidentStatus.mockImplementation(
         () => new Promise(() => undefined)
       );
@@ -396,12 +422,14 @@ describe('DataQualityTab', () => {
 
   describe('No Test Cases', () => {
     it('should render no test cases message when no test cases', async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
-      listTestCases.mockResolvedValue({ data: [] });
+      getListTestCaseBySearch.mockResolvedValue({ data: [] });
       getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
 
       render(<DataQualityTab {...defaultProps} />);
@@ -413,7 +441,7 @@ describe('DataQualityTab', () => {
       });
 
       await waitFor(() => {
-        expect(listTestCases).toHaveBeenCalled();
+        expect(getListTestCaseBySearch).toHaveBeenCalled();
         expect(getListTestCaseIncidentStatus).toHaveBeenCalled();
       });
     });
@@ -421,12 +449,14 @@ describe('DataQualityTab', () => {
 
   describe('Test Cases Rendering', () => {
     beforeEach(async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
-      listTestCases.mockResolvedValue({ data: mockTestCases });
+      getListTestCaseBySearch.mockResolvedValue({ data: mockTestCases });
       getListTestCaseIncidentStatus.mockResolvedValue({ data: mockIncidents });
 
       render(<DataQualityTab {...defaultProps} />);
@@ -536,12 +566,14 @@ describe('DataQualityTab', () => {
 
   describe('Filter Functionality', () => {
     beforeEach(async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
-      listTestCases.mockResolvedValue({ data: mockTestCases });
+      getListTestCaseBySearch.mockResolvedValue({ data: mockTestCases });
       getListTestCaseIncidentStatus.mockResolvedValue({ data: mockIncidents });
 
       render(<DataQualityTab {...defaultProps} />);
@@ -615,12 +647,14 @@ describe('DataQualityTab', () => {
         },
       ];
 
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
-      listTestCases.mockResolvedValue({ data: successOnlyTestCases });
+      getListTestCaseBySearch.mockResolvedValue({ data: successOnlyTestCases });
       getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
 
       render(<DataQualityTab {...defaultProps} />);
@@ -648,12 +682,14 @@ describe('DataQualityTab', () => {
 
   describe('Tab Navigation', () => {
     beforeEach(async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
-      listTestCases.mockResolvedValue({ data: mockTestCases });
+      getListTestCaseBySearch.mockResolvedValue({ data: mockTestCases });
       getListTestCaseIncidentStatus.mockResolvedValue({ data: mockIncidents });
 
       render(<DataQualityTab {...defaultProps} />);
@@ -704,12 +740,14 @@ describe('DataQualityTab', () => {
 
   describe('Incidents Tab', () => {
     beforeEach(async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
-      listTestCases.mockResolvedValue({ data: mockTestCases });
+      getListTestCaseBySearch.mockResolvedValue({ data: mockTestCases });
       getListTestCaseIncidentStatus.mockResolvedValue({ data: mockIncidents });
 
       render(<DataQualityTab {...defaultProps} />);
@@ -830,7 +868,9 @@ describe('DataQualityTab', () => {
 
   describe('Error Handling', () => {
     it('should handle test cases API error', async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
@@ -838,7 +878,7 @@ describe('DataQualityTab', () => {
         '../../../../utils/ToastUtils'
       );
 
-      listTestCases.mockRejectedValue(new Error('API Error'));
+      getListTestCaseBySearch.mockRejectedValue(new Error('API Error'));
       getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
 
       render(<DataQualityTab {...defaultProps} />);
@@ -852,7 +892,9 @@ describe('DataQualityTab', () => {
     });
 
     it('should handle incidents API error', async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
@@ -860,7 +902,7 @@ describe('DataQualityTab', () => {
         '../../../../utils/ToastUtils'
       );
 
-      listTestCases.mockResolvedValue({ data: mockTestCases });
+      getListTestCaseBySearch.mockResolvedValue({ data: mockTestCases });
       getListTestCaseIncidentStatus.mockRejectedValue(new Error('API Error'));
 
       render(<DataQualityTab {...defaultProps} />);
@@ -873,15 +915,17 @@ describe('DataQualityTab', () => {
 
   describe('Edge Cases', () => {
     it('should handle missing entityFQN', async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
-      render(<DataQualityTab entityFQN="" entityType={mockEntityType} />);
+      render(<DataQualityTab entityFQN="" />);
 
       await waitFor(() => {
-        expect(listTestCases).not.toHaveBeenCalled();
+        expect(getListTestCaseBySearch).not.toHaveBeenCalled();
         expect(getListTestCaseIncidentStatus).not.toHaveBeenCalled();
       });
     });
@@ -902,12 +946,14 @@ describe('DataQualityTab', () => {
         },
       ];
 
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
-      listTestCases.mockResolvedValue({ data: incompleteTestCases });
+      getListTestCaseBySearch.mockResolvedValue({ data: incompleteTestCases });
       getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
 
       render(<DataQualityTab {...defaultProps} />);
@@ -934,13 +980,15 @@ describe('DataQualityTab', () => {
         },
       ];
 
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
       // Provide at least one test case so tabs are rendered
-      listTestCases.mockResolvedValue({ data: [mockTestCases[0]] });
+      getListTestCaseBySearch.mockResolvedValue({ data: [mockTestCases[0]] });
       getListTestCaseIncidentStatus.mockResolvedValue({
         data: incidentsWithoutAssignee,
       });
@@ -967,12 +1015,14 @@ describe('DataQualityTab', () => {
 
   describe('Loading States', () => {
     it('should show incidents loading state', async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
       const { getListTestCaseIncidentStatus } = jest.requireMock(
         '../../../../rest/incidentManagerAPI'
       );
 
-      listTestCases.mockResolvedValue({ data: mockTestCases });
+      getListTestCaseBySearch.mockResolvedValue({ data: mockTestCases });
       getListTestCaseIncidentStatus.mockResolvedValue({ data: mockIncidents });
 
       render(<DataQualityTab {...defaultProps} />);
@@ -990,6 +1040,68 @@ describe('DataQualityTab', () => {
       // Verify incidents tab content is displayed
       await waitFor(() => {
         expect(screen.getByText('label.new')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Permissions', () => {
+    it('should render permission placeholder when hasViewTests is false', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+
+      render(<DataQualityTab {...defaultProps} hasViewTests={false} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.no-access-placeholder')
+        ).toBeInTheDocument();
+      });
+
+      // API calls should NOT be made when permission is denied
+      expect(getListTestCaseBySearch).not.toHaveBeenCalled();
+      expect(getListTestCaseIncidentStatus).not.toHaveBeenCalled();
+    });
+
+    it('should fetch data when hasViewTests is true', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+
+      getListTestCaseBySearch.mockResolvedValue({ data: [] });
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
+
+      render(<DataQualityTab {...defaultProps} hasViewTests />);
+
+      await waitFor(() => {
+        expect(getListTestCaseBySearch).toHaveBeenCalled();
+        expect(getListTestCaseIncidentStatus).toHaveBeenCalled();
+      });
+    });
+
+    it('should default to hasViewTests=true for backward compatibility', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+
+      getListTestCaseBySearch.mockResolvedValue({ data: [] });
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
+
+      // render without hasViewTests prop
+      render(<DataQualityTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(getListTestCaseBySearch).toHaveBeenCalled();
+        expect(getListTestCaseIncidentStatus).toHaveBeenCalled();
       });
     });
   });

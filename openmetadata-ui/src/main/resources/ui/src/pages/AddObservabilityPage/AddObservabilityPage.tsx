@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Grid } from '@mui/material';
-import { Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -302,14 +301,16 @@ function AddObservabilityPage() {
                     resources: alert?.filteringRules?.resources,
                   }}
                   validateMessages={VALIDATION_MESSAGES}
-                  onFinish={handleSave}>
+                  onFinish={handleSave}
+                >
                   <Row gutter={[20, 20]}>
                     <Col span={24}>
                       <Form.Item
                         label={t('label.name')}
                         labelCol={{ span: 24 }}
                         name="displayName"
-                        rules={NAME_FIELD_RULES}>
+                        rules={NAME_FIELD_RULES}
+                      >
                         <Input placeholder={t('label.name')} />
                       </Form.Item>
                     </Col>
@@ -318,7 +319,8 @@ function AddObservabilityPage() {
                         label={t('label.description')}
                         labelCol={{ span: 24 }}
                         name="description"
-                        trigger="onTextChange">
+                        trigger="onTextChange"
+                      >
                         <RichTextEditor
                           data-testid="description"
                           initialValue={alert?.description}
@@ -407,12 +409,12 @@ function AddObservabilityPage() {
                     )}
 
                     <Col span={24}>
-                      <Grid container justifyContent="end" spacing={2}>
+                      <div className="flex justify-end gap-2">
                         <Button
-                          className="float-right"
                           data-testid="cancel-button"
-                          variant="text"
-                          onClick={() => navigate(-1)}>
+                          type="text"
+                          onClick={() => navigate(-1)}
+                        >
                           {t('label.cancel')}
                         </Button>
 
@@ -430,14 +432,14 @@ function AddObservabilityPage() {
                           )
                         )}
                         <Button
-                          className="float-right"
                           data-testid="save-button"
+                          htmlType="submit"
                           loading={saving}
-                          type="submit"
-                          variant="contained">
+                          type="primary"
+                        >
                           {t('label.save')}
                         </Button>
-                      </Grid>
+                      </div>
                     </Col>
                   </Row>
                 </Form>

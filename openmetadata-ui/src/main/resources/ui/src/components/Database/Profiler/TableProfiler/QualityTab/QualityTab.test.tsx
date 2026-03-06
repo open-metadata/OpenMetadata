@@ -17,6 +17,38 @@ jest.mock('../../../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
+jest.mock('@openmetadata/ui-core-components', () => {
+  const MockTabPanel = ({
+    children,
+    id,
+  }: {
+    children: React.ReactNode;
+    id?: string;
+  }) => <div data-testid={`tab-panel-${id}`}>{children}</div>;
+  const MockTabList = ({ children }: { children: React.ReactNode }) => (
+    <div role="tablist">{children}</div>
+  );
+  const MockTabItem = ({
+    children,
+    id,
+  }: {
+    children: React.ReactNode;
+    id?: string;
+  }) => (
+    <button data-testid={`tab-${id}`} role="tab">
+      {children}
+    </button>
+  );
+  const MockTabs = ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+  MockTabs.Panel = MockTabPanel;
+  MockTabs.List = MockTabList;
+  MockTabs.Item = MockTabItem;
+
+  return { Tabs: MockTabs };
+});
+
 import { render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
@@ -109,7 +141,8 @@ jest.mock('../../../../common/NextPrevious/NextPrevious', () => {
       <p>NextPrevious.component</p>
       <button
         data-testid="next-btn"
-        onClick={() => pagingHandler({ cursorType: 'after', currentPage: 2 })}>
+        onClick={() => pagingHandler({ cursorType: 'after', currentPage: 2 })}
+      >
         Next
       </button>
     </div>
@@ -185,7 +218,8 @@ jest.mock('../../../../common/EntityPageInfos/ManageButton/ManageButton', () =>
       data-deleted={props.deleted}
       data-entity-id={props.entityId}
       data-entity-type={props.entityType}
-      data-testid="manage-button">
+      data-testid="manage-button"
+    >
       ManageButton
     </div>
   ))

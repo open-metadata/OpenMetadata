@@ -125,13 +125,14 @@ const CommentCard = ({
 
   return (
     <div
-      className={classNames('d-flex justify-start relative reply-card', {
+      className={classNames('d-flex justify-start relative reply-card gap-2', {
         'reply-card-border-bottom': !isLastReply,
       })}
       data-testid="feed-reply-card"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
-      <div className="profile-picture m-r-xs">
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="profile-picture">
         <UserPopOverCard userName={post.from ?? ''}>
           <div className="d-flex items-center">
             <ProfilePicture key={post.id} name={post.from ?? ''} width="32" />
@@ -144,7 +145,8 @@ const CommentCard = ({
             <UserPopOverCard userName={post.from ?? ''}>
               <Link
                 className="reply-card-user-name"
-                to={getUserPath(post.from ?? '')}>
+                to={getUserPath(post.from ?? '')}
+              >
                 {getEntityName(user)}
               </Link>
             </UserPopOverCard>
@@ -156,10 +158,12 @@ const CommentCard = ({
             <Tooltip
               color="white"
               overlayClassName="timestamp-tooltip"
-              title={formatDateTime(post.postTs)}>
+              title={formatDateTime(post.postTs)}
+            >
               <Typography.Text
                 className="feed-card-header-v2-timestamp mr-2"
-                data-testid="timestamp">
+                data-testid="timestamp"
+              >
                 {getRelativeTime(post.postTs)}
               </Typography.Text>
             </Tooltip>

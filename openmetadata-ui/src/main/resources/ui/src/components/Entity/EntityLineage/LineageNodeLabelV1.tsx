@@ -19,14 +19,13 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-filter.svg';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
-import { LineageLayer } from '../../../generated/settings/settings';
 import {
   EntityReference,
   TestSummary,
 } from '../../../generated/tests/testCase';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageUtils';
 import {
@@ -34,26 +33,18 @@ import {
   getEntityName,
 } from '../../../utils/EntityUtils';
 import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
-import { SourceType } from '../../SearchedData/SearchedData.interface';
+import { LineageNodeType } from '../../Lineage/Lineage.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 interface LineageNodeLabelProps {
-  node: SourceType;
+  node: LineageNodeType;
   isChildrenListExpanded?: boolean;
   toggleColumnsList?: () => void;
   toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
 
-interface LineageNodeLabelPropsExtended
-  extends Omit<LineageNodeLabelProps, 'node'> {
-  node: LineageNodeLabelProps['node'] & {
-    serviceType?: string;
-    columnNames?: string[];
-  };
-}
-
-const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
+const EntityLabel = ({ node }: LineageNodeLabelProps) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
@@ -64,11 +55,10 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
     };
   }, [node]);
 
-  const { children } = useMemo(
+  const { childrenCount } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node.id]
   );
-  const childrenCount = children.length;
 
   const breadcrumbs = useMemo(
     () => getBreadcrumbsFromFqn(node.fullyQualifiedName ?? ''),
@@ -79,7 +69,9 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
     (item: string) => (
       <Typography.Text
         className="text-grey-muted lineage-breadcrumb-item"
-        ellipsis={{ tooltip: true }}>
+        ellipsis={{ tooltip: true }}
+        key={item}
+      >
         {item}
       </Typography.Text>
     ),
@@ -91,7 +83,8 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
       className={classNames(
         'items-center entity-label-container',
         childrenCount > 0 ? 'with-footer' : ''
-      )}>
+      )}
+    >
       <Col className="d-flex items-center" flex="auto">
         <div className="d-flex entity-service-icon m-r-xs">
           {getServiceIcon(node)}
@@ -100,20 +93,23 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
           <Typography.Text
             className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
             data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}>
+            ellipsis={{ tooltip: true }}
+          >
             {getEntityName(node)}
           </Typography.Text>
 
           <Space
             className="d-flex items-center m-b-xs lineage-breadcrumbs"
-            data-testid="lineage-breadcrumbs">
+            data-testid="lineage-breadcrumbs"
+          >
             <Breadcrumbs
               separator={<span className="lineage-breadcrumb-item-separator" />}
               sx={{
                 '& ol': {
                   gap: 0,
                 },
-              }}>
+              }}
+            >
               {breadcrumbs.map((breadcrumb) =>
                 renderBreadcrumbItem(breadcrumb.name)
               )}
@@ -137,7 +133,7 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
   );
 };
 
-const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelPropsExtended) => {
+const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelProps) => {
   const { entityType } = node;
   const [summary, setSummary] = useState<TestSummary>();
   const [isLoading, setIsLoading] = useState(true);
@@ -154,23 +150,15 @@ const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelPropsExtended) => {
     }
   };
 
-  const { activeLayer } = useLineageProvider();
-
-  const { showDataObservability } = useMemo(() => {
-    return {
-      showDataObservability: activeLayer?.includes(
-        LineageLayer.DataObservability
-      ),
-    };
-  }, [activeLayer]);
+  const { isDQEnabled } = useLineageStore();
 
   const showDataObservabilitySummary = useMemo(() => {
     return Boolean(
-      showDataObservability &&
+      isDQEnabled &&
         entityType === EntityType.TABLE &&
         (node as Table).testSuite
     );
-  }, [node, showDataObservability, entityType]);
+  }, [node, isDQEnabled, entityType]);
 
   useEffect(() => {
     const testSuite = (node as Table)?.testSuite;
@@ -206,15 +194,13 @@ const EntityFooter = ({
   toggleColumnsList,
   toggleOnlyShowColumnsWithLineageFilterActive,
   isOnlyShowColumnsWithLineageFilterActive,
-}: LineageNodeLabelPropsExtended) => {
+}: LineageNodeLabelProps) => {
   const { t } = useTranslation();
-  const { children, childrenHeading } = useMemo(
+  const { isEditMode } = useLineageStore();
+  const { childrenHeading, childrenCount } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node.id]
   );
-  const { isEditMode } = useLineageProvider();
-
-  const childrenCount = children.length;
 
   const childrenInfoDropdownLabel = useMemo(
     () => `${childrenCount} ${childrenHeading}`,
@@ -261,7 +247,8 @@ const EntityFooter = ({
           )}
           data-testid="children-info-dropdown-btn"
           variant="outlined"
-          onClick={handleClickColumnInfoDropdown}>
+          onClick={handleClickColumnInfoDropdown}
+        >
           {childrenInfoDropdownLabel}
         </Button>
       </div>
@@ -269,7 +256,8 @@ const EntityFooter = ({
         <TestSuiteSummaryContainer node={node} />
         <Tooltip
           placement="right"
-          title={t('message.only-show-columns-with-lineage')}>
+          title={t('message.only-show-columns-with-lineage')}
+        >
           <IconButton
             className={classNames(
               'only-show-columns-with-lineage-filter-button',
@@ -277,7 +265,8 @@ const EntityFooter = ({
             )}
             data-testid="lineage-filter-button"
             disabled={isEditMode}
-            onClick={handleOnlyShowColumnsWithLineage}>
+            onClick={handleOnlyShowColumnsWithLineage}
+          >
             <FilterIcon height={20} width={20} />
           </IconButton>
         </Tooltip>

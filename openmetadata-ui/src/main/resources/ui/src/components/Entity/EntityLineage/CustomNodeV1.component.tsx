@@ -13,10 +13,11 @@
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
+import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
-import { LineageLayer } from '../../../generated/configuration/lineageSettings';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
 import {
@@ -146,15 +147,23 @@ const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
 
   const {
-    isEditMode,
-    tracedNodes,
-    selectedNode,
     onNodeCollapse,
     removeNodeHandler,
     loadChildNodesHandler,
-    activeLayer,
     dataQualityLineage,
   } = useLineageProvider();
+
+  const {
+    isEditMode,
+    tracedNodes,
+    selectedNode,
+    isColumnLevelLineage,
+    isDQEnabled,
+    nodeFilterState,
+    setNodeFilterState,
+  } = useLineageStore();
+
+  const [columnsExpanded, setColumnsExpanded] = useState<boolean>();
 
   const {
     label,
@@ -167,8 +176,20 @@ const CustomNodeV1 = (props: NodeProps) => {
     isDownstreamNode = false,
   } = data;
 
-  const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
-  const isSelected = selectedNode === node;
+  // sync expand state based on edit or column layer active
+  useEffect(() => {
+    setColumnsExpanded(isEditMode || isColumnLevelLineage);
+  }, [isEditMode, isColumnLevelLineage]);
+
+  const toggleColumnsExpanded = useCallback(() => {
+    setColumnsExpanded((prev) => !prev);
+  }, []);
+
+  const nodeType = useMemo(
+    () => (isEditMode ? EntityLineageNodeType.DEFAULT : type),
+    [isEditMode, type]
+  );
+  const isSelected = useMemo(() => selectedNode === node, [selectedNode, node]);
   const {
     id,
     fullyQualifiedName,
@@ -176,51 +197,36 @@ const CustomNodeV1 = (props: NodeProps) => {
     upstreamExpandPerformed = false,
     downstreamExpandPerformed = false,
   } = node;
-  const [isTraced, setIsTraced] = useState(false);
+
+  const showColumnsWithLineageOnly = useMemo(
+    () => nodeFilterState.get(node.id) ?? false,
+    [nodeFilterState, node.id]
+  );
+
+  useEffect(() => {
+    if (isColumnLevelLineage) {
+      setNodeFilterState(node.id, true);
+    }
+
+    // reset on unmount
+    return () => {
+      setNodeFilterState(node.id, false);
+    };
+  }, [isColumnLevelLineage]);
 
   const showDqTracing = useMemo(
     () =>
-      activeLayer.includes(LineageLayer.DataObservability) &&
+      isDQEnabled &&
       dataQualityLineage?.nodes?.some((dqNode) => dqNode.id === id),
-    [activeLayer, dataQualityLineage, id]
+    [isDQEnabled, dataQualityLineage, id]
   );
-
-  const isColumnLayerEnabled = useMemo(
-    () => activeLayer.includes(LineageLayer.ColumnLevelLineage),
-    [activeLayer]
-  );
-
-  const [isChildrenListExpanded, setIsChildrenListExpanded] =
-    useState(isColumnLayerEnabled);
-  const toggleColumnsList = useCallback(() => {
-    setIsChildrenListExpanded((prev) => !prev);
-  }, []);
-
-  const [
-    isOnlyShowColumnsWithLineageFilterActive,
-    setIsOnlyShowColumnsWithLineageFilterActive,
-  ] = useState(false);
-
-  const toggleOnlyShowColumnsWithLineageFilterActive = useCallback(() => {
-    setIsOnlyShowColumnsWithLineageFilterActive((prev) => !prev);
-  }, []);
-
-  useEffect(() => {
-    setIsChildrenListExpanded(isColumnLayerEnabled);
-  }, [isColumnLayerEnabled]);
-
-  useEffect(() => {
-    setIsOnlyShowColumnsWithLineageFilterActive(
-      isColumnLayerEnabled && !isEditMode
-    );
-  }, [isColumnLayerEnabled, isEditMode]);
 
   const containerClass = getNodeClassNames({
     isSelected,
     showDqTracing: showDqTracing ?? false,
-    isTraced,
+    isTraced: tracedNodes.has(id),
     isBaseNode: isRootNode,
-    isChildrenListExpanded,
+    isChildrenListExpanded: columnsExpanded || isColumnLevelLineage,
   });
 
   const onExpand = useCallback(
@@ -237,6 +243,17 @@ const CustomNodeV1 = (props: NodeProps) => {
     [onNodeCollapse, props]
   );
 
+  const toggleShowColumnsWithLineageOnly = useCallback(() => {
+    if (!node.id) {
+      return;
+    }
+    setNodeFilterState(node.id, !showColumnsWithLineageOnly);
+  }, [showColumnsWithLineageOnly, setNodeFilterState, node.id]);
+
+  const handleNodeRemove = useCallback(() => {
+    removeNodeHandler(props);
+  }, [removeNodeHandler, props]);
+
   const nodeLabel = useMemo(() => {
     if (isNewNode) {
       return label;
@@ -245,18 +262,16 @@ const CustomNodeV1 = (props: NodeProps) => {
     return (
       <>
         <LineageNodeLabelV1
-          isChildrenListExpanded={isChildrenListExpanded}
-          isOnlyShowColumnsWithLineageFilterActive={
-            isOnlyShowColumnsWithLineageFilterActive
-          }
+          isChildrenListExpanded={columnsExpanded}
+          isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
           node={node}
-          toggleColumnsList={toggleColumnsList}
+          toggleColumnsList={toggleColumnsExpanded}
           toggleOnlyShowColumnsWithLineageFilterActive={
-            toggleOnlyShowColumnsWithLineageFilterActive
+            toggleShowColumnsWithLineageOnly
           }
         />
         {isSelected && isEditMode && !isRootNode && (
-          <LineageNodeRemoveButton onRemove={() => removeNodeHandler(props)} />
+          <LineageNodeRemoveButton onRemove={handleNodeRemove} />
         )}
       </>
     );
@@ -265,14 +280,12 @@ const CustomNodeV1 = (props: NodeProps) => {
     isNewNode,
     label,
     isSelected,
-    isEditMode,
     isRootNode,
-    isChildrenListExpanded,
-    toggleColumnsList,
-    toggleOnlyShowColumnsWithLineageFilterActive,
-    removeNodeHandler,
-    props,
-    isOnlyShowColumnsWithLineageFilterActive,
+    columnsExpanded,
+    showColumnsWithLineageOnly,
+    toggleShowColumnsWithLineageOnly,
+    handleNodeRemove,
+    toggleColumnsExpanded,
     isEditMode,
   ]);
 
@@ -310,14 +323,27 @@ const CustomNodeV1 = (props: NodeProps) => {
     [expandCollapseProps]
   );
 
-  useEffect(() => {
-    setIsTraced(tracedNodes.includes(id));
-  }, [tracedNodes, id]);
+  const childElement = useMemo(() => {
+    if (!columnsExpanded) {
+      return null;
+    }
+
+    return (
+      <NodeChildren
+        isChildrenListExpanded={columnsExpanded}
+        isConnectable={isConnectable}
+        isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
+        node={node}
+      />
+    );
+  }, [columnsExpanded, isConnectable, showColumnsWithLineageOnly, node]);
 
   return (
     <div
       className={containerClass}
-      data-testid={`lineage-node-${fullyQualifiedName}`}>
+      data-testid={`lineage-node-${fullyQualifiedName}`}
+      style={{ width: NODE_WIDTH }}
+    >
       {isRootNode && (
         <div className="lineage-node-badge-container">
           <div className="lineage-node-badge" />
@@ -331,14 +357,7 @@ const CustomNodeV1 = (props: NodeProps) => {
           isConnectable={isConnectable}
           nodeType={nodeType}
         />
-        <NodeChildren
-          isChildrenListExpanded={isChildrenListExpanded}
-          isConnectable={isConnectable}
-          isOnlyShowColumnsWithLineageFilterActive={
-            isOnlyShowColumnsWithLineageFilterActive
-          }
-          node={node}
-        />
+        {childElement}
       </div>
     </div>
   );

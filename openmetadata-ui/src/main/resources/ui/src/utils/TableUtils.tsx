@@ -315,7 +315,8 @@ export const getConstraintIcon = ({
       className={classNames(className)}
       placement="bottom"
       title={title}
-      trigger="hover">
+      trigger="hover"
+    >
       <Icon
         alt={title}
         className={classNames({
@@ -520,7 +521,9 @@ export const getEntityTypeIcon = (entityType?: string) => {
   return searchClassBase.getEntityIcon(entityType ?? '');
 };
 
-export const getServiceIcon = (source: SourceType) => {
+export const getServiceIcon = (source: {
+  entityType?: EntityType | string;
+}) => {
   const isDataAsset = NON_SERVICE_TYPE_ASSETS.includes(
     source.entityType as EntityType
   );
@@ -1181,11 +1184,13 @@ export const tableConstraintRendererBasedOnType = (
     <div
       className="d-flex constraint-columns"
       data-testid={`${constraintType}-container`}
-      key={constraintType}>
+      key={constraintType}
+    >
       <Space
         className="constraint-icon-container"
         direction="vertical"
-        size={0}>
+        size={0}
+      >
         {columns?.map((column, index) => (
           <Fragment key={column}>
             {(columns?.length ?? 0) - 1 !== index || isSingleColumn ? (

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Box } from '@mui/material';
-import { Button, Col, Row, Tabs, TabsProps, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Tabs, TabsProps, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -156,10 +156,10 @@ const IncidentManagerDetailPage = ({
     return tabs.map(({ LabelComponent, labelProps, key, Tab, isBeta }) => ({
       key,
       label: (
-        <Box alignItems="center" display="flex" gap={1}>
+        <div className="tw:flex tw:items-center tw:gap-1">
           <LabelComponent {...labelProps} />
           {isBeta && <BetaBadge />}
-        </Box>
+        </div>
       ),
       children: <Tab />,
     }));
@@ -442,13 +442,15 @@ const IncidentManagerDetailPage = ({
         {
           entity: getEntityName(testCase) || t('label.test-case'),
         }
-      )}>
+      )}
+    >
       <Row
         className={classNames({
           'version-data': isVersionPage,
         })}
         data-testid="incident-manager-details-page-container"
-        gutter={[0, 12]}>
+        gutter={[0, 12]}
+      >
         <Col span={24}>
           <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
         </Col>
@@ -468,15 +470,17 @@ const IncidentManagerDetailPage = ({
               <ButtonGroup
                 className="data-asset-button-group spaced"
                 data-testid="asset-header-btn-group"
-                size="small">
+                size="small"
+              >
                 {!isDimensionPage && (
                   <Tooltip title={t('label.version-plural-history')}>
                     <Button
                       className="version-button"
                       data-testid="version-button"
                       icon={<Icon component={VersionIcon} />}
-                      onClick={onVersionClick}>
-                      <Typography.Text>{testCase?.version}</Typography.Text>
+                      onClick={onVersionClick}
+                    >
+                      <Typography as="span">{testCase?.version}</Typography>
                     </Button>
                   </Tooltip>
                 )}

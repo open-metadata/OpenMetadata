@@ -91,6 +91,11 @@ export const withDomainFilter = (
       if (config.params?.index === SearchIndex.TAG) {
         return config;
       }
+
+      const domainFilterField =
+        config.params?.index === SearchIndex.DOMAIN
+          ? 'fullyQualifiedName'
+          : 'domains.fullyQualifiedName';
       let filter: QueryFilterInterface = { query: { bool: {} } };
       if (config.params?.query_filter) {
         try {
@@ -124,12 +129,12 @@ export const withDomainFilter = (
                 should: [
                   {
                     term: {
-                      'domains.fullyQualifiedName': activeDomain,
+                      [domainFilterField]: activeDomain,
                     },
                   },
                   {
                     prefix: {
-                      'domains.fullyQualifiedName': `${activeDomain}.`,
+                      [domainFilterField]: `${activeDomain}.`,
                     },
                   },
                 ],
@@ -355,7 +360,8 @@ export const iconTooltipDataRender = () => (
         cursor: 'help',
         lineHeight: 0,
         pointerEvents: 'auto',
-      }}>
+      }}
+    >
       <InfoOutlinedIcon
         data-testid="mui-helper-icon"
         sx={{
@@ -424,11 +430,13 @@ export const renderDomainLink = (
           textClassName
         )}
         data-testid="domain-link"
-        to={getDomainPath(domain?.fullyQualifiedName)}>
+        to={getDomainPath(domain?.fullyQualifiedName)}
+      >
         {trimLink ? (
           <Typography.Text
             className="domain-link-name"
-            ellipsis={{ tooltip: false }}>
+            ellipsis={{ tooltip: false }}
+          >
             {displayName}
           </Typography.Text>
         ) : (
@@ -782,7 +790,8 @@ export const DomainListItemRenderer = (props: EntityReference) => {
           <Typography.Text
             ellipsis
             className="m-l-xss text-xs"
-            type="secondary">
+            type="secondary"
+          >
             {fqn}
           </Typography.Text>
         )}

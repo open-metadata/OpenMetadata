@@ -224,7 +224,8 @@ function CustomizeMyData({
           className="p-box customise-my-data"
           pageTitle={t('label.customize-entity', {
             entity: t('label.landing-page'),
-          })}>
+          })}
+        >
           <CustomizablePageHeader
             disableSave={disableSave}
             personaName={getEntityName(personaDetails)}
@@ -232,7 +233,13 @@ function CustomizeMyData({
             onReset={handleReset}
             onSave={handleSave}
           />
-          <div className="grid-wrapper">
+          {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
+          {/*
+            ReactGridLayout has known issues with RTL layouts, 
+            setting dir="ltr" on the container ensures correct behavior
+            without affecting the overall RTL layout of the page
+          */}
+          <div className="grid-wrapper" dir="ltr">
             <CustomiseLandingPageHeader
               overlappedContainer
               addedWidgetsList={addedWidgetsList}
@@ -262,7 +269,8 @@ function CustomizeMyData({
               maxRows={maxRows}
               preventCollision={false}
               rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
-              onLayoutChange={handleLayoutUpdate}>
+              onLayoutChange={handleLayoutUpdate}
+            >
               {widgets}
             </ReactGridLayout>
           </div>

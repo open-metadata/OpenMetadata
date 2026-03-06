@@ -19,8 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { TagLabel } from '../../../generated/type/tagLabel';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
@@ -74,7 +74,8 @@ const TierWidget = () => {
     <div className={classNames('d-flex items-center gap-2')}>
       <Typography.Text
         className="text-sm font-medium"
-        data-testid="tier-heading-name">
+        data-testid="tier-heading-name"
+      >
         {t('label.tier')}
       </Typography.Text>
       {canEdit && (
@@ -109,7 +110,7 @@ const TierWidget = () => {
   const content = isEditing ? (
     <TierCard
       currentTier={tier?.tagFQN}
-      footerActionButtonsClassName='p-x-md'
+      footerActionButtonsClassName="p-x-md"
       popoverProps={{
         open: true,
         onOpenChange: (visible: boolean) => {
@@ -120,7 +121,8 @@ const TierWidget = () => {
       }}
       tierCardClassName="tier-widget-popover"
       updateTier={handleTierUpdate}
-      onClose={() => setIsEditing(false)}>
+      onClose={() => setIsEditing(false)}
+    >
       <div data-testid="tier-selector-display">{tierDisplay}</div>
     </TierCard>
   ) : (

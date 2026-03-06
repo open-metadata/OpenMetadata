@@ -33,6 +33,8 @@ workflowConfig:
 import traceback
 from typing import Iterator
 
+from sqlalchemy import text
+
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.redshift.connection import (
@@ -102,13 +104,15 @@ class RedshiftLineageSource(
         for engine in self.get_engine():
             with engine.connect() as conn:
                 rows = conn.execute(
-                    self.get_sql_statement(
-                        start_time=self.start,
-                        end_time=self.end,
+                    text(
+                        self.get_sql_statement(
+                            start_time=self.start,
+                            end_time=self.end,
+                        )
                     )
                 )
                 for row in rows:
-                    query_dict = dict(row)
+                    query_dict = row._asdict()
                     try:
                         yield TableQuery(
                             dialect=self.dialect.value,
