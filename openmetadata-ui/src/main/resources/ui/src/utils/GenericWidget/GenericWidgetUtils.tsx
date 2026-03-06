@@ -43,6 +43,8 @@ import {
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference, TagSource } from '../../generated/tests/testCase';
+import MarketplaceDataProductsWidget from '../../components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component';
+import MarketplaceDomainsWidget from '../../components/DataMarketplace/MarketplaceDomainsWidget/MarketplaceDomainsWidget.component';
 import APIEndpointsTab from '../../pages/APICollectionPage/APIEndpointsTab';
 import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import SearchIndexFieldsTab from '../../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
@@ -188,5 +190,15 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => (
     <PartitionedKeys renderAsExpandableCard={false} />
+  ),
+  [DetailPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS]: () => (
+    <MarketplaceDataProductsWidget
+      widgetKey={DetailPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS}
+    />
+  ),
+  [DetailPageWidgetKeys.MARKETPLACE_DOMAINS]: () => (
+    <MarketplaceDomainsWidget
+      widgetKey={DetailPageWidgetKeys.MARKETPLACE_DOMAINS}
+    />
   ),
 } as const;

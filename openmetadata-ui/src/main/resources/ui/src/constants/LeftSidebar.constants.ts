@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Cube01 } from '@untitledui/icons';
+import { Building05, Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
@@ -37,6 +37,15 @@ import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 const DataProductIcon = createIconWithStroke(
   Cube01 as React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    style?: React.CSSProperties;
+  }>,
+  1.2
+);
+
+const MarketplaceIcon = createIconWithStroke(
+  Building05 as React.ComponentType<{
     size?: number;
     strokeWidth?: number;
     style?: React.CSSProperties;
@@ -115,6 +124,35 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     ),
     icon: InsightsIcon,
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
+  },
+  {
+    key: 'data-marketplace-section',
+    title: 'label.data-marketplace',
+    icon: MarketplaceIcon,
+    dataTestId: SidebarItem.DATA_MARKETPLACE_SECTION,
+    children: [
+      {
+        key: ROUTES.DATA_MARKETPLACE,
+        title: 'label.data-marketplace',
+        redirect_url: ROUTES.DATA_MARKETPLACE,
+        icon: MarketplaceIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_MARKETPLACE}`,
+      },
+      {
+        key: 'data-marketplace-data-products',
+        title: 'label.data-product-plural',
+        redirect_url: ROUTES.DATA_PRODUCT,
+        icon: DataProductIcon,
+        dataTestId: `app-bar-item-marketplace-data-products`,
+      },
+      {
+        key: 'data-marketplace-domains',
+        title: 'label.domain-plural',
+        redirect_url: ROUTES.DOMAIN,
+        icon: DomainsIcon,
+        dataTestId: `app-bar-item-marketplace-domains`,
+      },
+    ],
   },
   {
     key: 'domains-section',
