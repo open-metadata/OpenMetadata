@@ -119,10 +119,10 @@ const TableV2 = <T extends object>(
   const entityKey = useMemo(() => entityType ?? type, [type, entityType]);
 
   const clientPagination = useMemo(() => {
-    if (!rest.pagination) {
+    if (rest.pagination === false) {
       return null;
     }
-    const cfg = rest.pagination as TablePaginationConfig;
+    const cfg = (rest.pagination ?? {}) as TablePaginationConfig;
 
     return {
       pageSize: (cfg.pageSize as number) ?? 10,
