@@ -25,7 +25,6 @@ import {
   getApiContext,
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
-  toastNotification,
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
@@ -250,11 +249,19 @@ class ServiceBaseClass {
     await page.waitForTimeout(3000);
 
     await page.getByTestId('more-actions').first().click();
+
+    const triggerPipeline = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes('/api/v1/services/ingestionPipelines/trigger/') &&
+        response.status() === 200
+    );
     await page.getByTestId('run-button').click();
 
-    await page.waitForLoadState('networkidle');
+    await triggerPipeline;
 
-    await toastNotification(page, `Pipeline triggered successfully!`);
+    await page.waitForLoadState('networkidle');
 
     // need manual wait to make sure we are awaiting on latest run results
     await page.waitForTimeout(2000);
@@ -648,9 +655,17 @@ class ServiceBaseClass {
     await page.waitForTimeout(3000);
 
     await page.getByTestId('more-actions').first().click();
-    await page.getByTestId('run-button').click();
 
-    await toastNotification(page, `Pipeline triggered successfully!`);
+    const triggerPipeline = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes('/api/v1/services/ingestionPipelines/trigger/') &&
+        response.status() === 200
+    );
+
+    await page.getByTestId('run-button').click();
+    await triggerPipeline;
 
     // need manual wait to make sure we are awaiting on latest run results
     await page.waitForTimeout(2000);
