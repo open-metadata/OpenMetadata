@@ -38,7 +38,7 @@ import { createScrollToErrorHandler } from '../../../utils/formUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
-import FormItemLabel from '../../common/Form/FormItemLabel';
+import FormItemLabel from '../../common/FormItemLabel';
 import CodeEditor from '../../Database/SchemaEditor/CodeEditor';
 
 interface TestDefinitionFormProps {

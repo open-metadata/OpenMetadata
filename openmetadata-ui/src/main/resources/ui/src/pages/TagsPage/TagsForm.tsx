@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, SxProps, Theme } from '@mui/material';
+import { Box, Grid } from '@mui/material';
 import { Form } from 'antd';
 import { castArray } from 'lodash';
 import { Suspense, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import MUIFormItemLabel from '../../components/common/MUIFormItemLabel/MUIFormItemLabel';
+import FormItemLabel from '../../components/common/FormItemLabel/FormItemLabel';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   DEFAULT_FORM_VALUE,
@@ -46,11 +46,6 @@ import {
 } from './tagFormFields';
 import './TagsForm.less';
 import { RenameFormProps } from './TagsPage.interface';
-
-const LABEL_STYLES: SxProps<Theme> = {
-  color: (theme) => theme.palette.grey[700],
-  fontWeight: (theme) => theme.typography.subtitle2.fontWeight,
-};
 
 const TagsForm = ({
   formRef,
@@ -121,9 +116,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      muiLabel: (
-        <MUIFormItemLabel label={t(field.muiLabel)} labelSx={LABEL_STYLES} />
-      ),
+      muiLabel: <FormItemLabel label={t(field.muiLabel)} />,
       props: {
         ...field.props,
         placeholder: t(field.placeholder),
@@ -134,12 +127,7 @@ const TagsForm = ({
   const colorField = useMemo(
     () => ({
       ...COLOR_FIELD,
-      muiLabel: (
-        <MUIFormItemLabel
-          label={t(COLOR_FIELD.muiLabel)}
-          labelSx={LABEL_STYLES}
-        />
-      ),
+      muiLabel: <FormItemLabel label={t(COLOR_FIELD.muiLabel)} />,
     }),
     [t]
   );
@@ -214,12 +202,7 @@ const TagsForm = ({
     const fields: FieldProp[] = [
       {
         ...descriptionField,
-        label: (
-          <MUIFormItemLabel
-            label={t(descriptionField.label)}
-            labelSx={LABEL_STYLES}
-          />
-        ),
+        label: <FormItemLabel label={t(descriptionField.label)} />,
       },
     ];
 

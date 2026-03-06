@@ -34,6 +34,31 @@ const mockProps: EditTestCaseModalProps = {
   onUpdate: jest.fn(),
 };
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: ({
+    children,
+    title,
+  }: {
+    children: React.ReactNode;
+    title?: React.ReactNode;
+  }) => <div title={title as string}>{children}</div>,
+  TooltipTrigger: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => <button className={className}>{children}</button>,
+  Badge: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <span data-testid={testId}>{children}</span>,
+  createMuiTheme: jest.fn(),
+}));
+
 jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => {
   return {
     createTestCaseParameters: jest.fn().mockImplementation(() => []),

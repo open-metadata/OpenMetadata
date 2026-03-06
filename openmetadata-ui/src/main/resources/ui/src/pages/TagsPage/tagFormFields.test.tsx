@@ -358,7 +358,7 @@ describe('tagFormFields', () => {
         label: 'label.disable-tag',
         muiLabel: 'label.disable-tag',
         id: 'root/disabled',
-        type: FieldTypes.SWITCH_MUI,
+        type: FieldTypes.UT_SWITCH,
         formItemLayout: FormItemLayout.HORIZONTAL,
         props: {
           inputProps: {
@@ -409,7 +409,7 @@ describe('tagFormFields', () => {
         name: 'mutuallyExclusive',
         label: 'label.mutually-exclusive',
         muiLabel: 'label.mutually-exclusive',
-        type: FieldTypes.SWITCH_MUI,
+        type: FieldTypes.UT_SWITCH,
         required: false,
         props: {
           id: 'tags_mutuallyExclusive',

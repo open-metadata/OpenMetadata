@@ -18,6 +18,53 @@ import { Classification } from '../../generated/entity/classification/classifica
 import { Tag } from '../../generated/entity/classification/tag';
 import TagsForm from './TagsForm';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Toggle: ({
+    children,
+    onChange,
+    isSelected,
+    isDisabled,
+    ...props
+  }: {
+    children?: React.ReactNode;
+    onChange?: (v: boolean) => void;
+    isSelected?: boolean;
+    isDisabled?: boolean;
+    [key: string]: unknown;
+  }) => (
+    <button
+      aria-checked={isSelected}
+      disabled={isDisabled}
+      role="switch"
+      onClick={() => onChange?.(!isSelected)}
+      {...props}>
+      {children}
+    </button>
+  ),
+  Tooltip: ({
+    children,
+    title,
+  }: {
+    children: React.ReactNode;
+    title?: React.ReactNode;
+  }) => <div title={title as string}>{children}</div>,
+  TooltipTrigger: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => <button className={className}>{children}</button>,
+  Badge: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <span data-testid={testId}>{children}</span>,
+  createMuiTheme: jest.fn(),
+}));
+
 jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockImplementation(({ initialValue }) => {
     return <div>{initialValue}MarkdownWithPreview component</div>;

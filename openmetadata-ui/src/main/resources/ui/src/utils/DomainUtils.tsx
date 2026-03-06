@@ -338,8 +338,10 @@ export const domainTypeTooltipDataRender = () => (
     {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
       <Fragment key={type}>
         <Space direction="vertical" size={0}>
-          <Typography.Text>{`${t(type)} :`}</Typography.Text>
-          <Typography.Paragraph className="m-0 text-grey-muted">
+          <Typography.Text className="text-white">{`${t(
+            type
+          )} :`}</Typography.Text>
+          <Typography.Paragraph className="m-0 text-white">
             {t(description)}
           </Typography.Paragraph>
         </Space>
@@ -362,7 +364,7 @@ export const iconTooltipDataRender = () => (
         pointerEvents: 'auto',
       }}>
       <InfoOutlinedIcon
-        data-testid="mui-helper-icon"
+        data-testid="form-item-helper-icon"
         sx={{
           fontSize: 16,
           color: 'text.secondary',

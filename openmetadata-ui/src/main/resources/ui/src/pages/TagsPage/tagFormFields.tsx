@@ -173,7 +173,7 @@ export const getDisabledField = ({
   label: 'label.disable-tag',
   muiLabel: 'label.disable-tag',
   id: 'root/disabled',
-  type: FieldTypes.SWITCH_MUI,
+  type: FieldTypes.UT_SWITCH,
   formItemLayout: FormItemLayout.HORIZONTAL,
   props: {
     inputProps: {
@@ -194,7 +194,7 @@ export const getMutuallyExclusiveField = ({
   name: 'mutuallyExclusive',
   muiLabel: 'label.mutually-exclusive',
   label: 'label.mutually-exclusive',
-  type: FieldTypes.SWITCH_MUI,
+  type: FieldTypes.UT_SWITCH,
   required: false,
   props: {
     id: 'tags_mutuallyExclusive',

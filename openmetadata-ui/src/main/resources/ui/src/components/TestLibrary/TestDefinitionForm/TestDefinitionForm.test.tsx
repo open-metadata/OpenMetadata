@@ -10,17 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   DataQualityDimensions,
   DataType,
   EntityType,
+  TestDataType,
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
@@ -62,12 +57,37 @@ const mockExternalTestDefinition: TestDefinition = {
     {
       name: 'threshold',
       displayName: 'Threshold',
-      dataType: 'INT' as any,
+      dataType: TestDataType.Int,
       description: 'Minimum count threshold',
       required: true,
     },
   ],
 };
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: ({
+    children,
+    title,
+  }: {
+    children: React.ReactNode;
+    title?: React.ReactNode;
+  }) => <div title={title as string}>{children}</div>,
+  TooltipTrigger: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => <button className={className}>{children}</button>,
+  Badge: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <span data-testid={testId}>{children}</span>,
+  createMuiTheme: jest.fn(),
+}));
 
 jest.mock('../../../rest/testAPI', () => ({
   createTestDefinition: jest.fn(),
@@ -145,20 +165,18 @@ describe('TestDefinitionForm Component', () => {
 
       expect(screen.getByText('label.edit-entity')).toBeInTheDocument();
 
-      const nameInput = screen.getByLabelText('label.name') as HTMLInputElement;
+      const nameInput = screen.getByLabelText<HTMLInputElement>('label.name');
 
       expect(nameInput.value).toBe('columnValuesToBeNotNull');
       expect(nameInput).toBeDisabled();
 
-      const displayNameInput = screen.getByLabelText(
-        'label.display-name'
-      ) as HTMLInputElement;
+      const displayNameInput =
+        screen.getByLabelText<HTMLInputElement>('label.display-name');
 
       expect(displayNameInput.value).toBe('Column Values To Be Not Null');
 
-      const descriptionInput = screen.getByLabelText(
-        'label.description'
-      ) as HTMLTextAreaElement;
+      const descriptionInput =
+        screen.getByLabelText<HTMLTextAreaElement>('label.description');
 
       expect(descriptionInput.value).toBe(
         'Ensures that all values in a column are not null'
@@ -241,14 +259,10 @@ describe('TestDefinitionForm Component', () => {
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
 
-      const sqlEditor = screen.getByTestId(
-        'code-editor'
-      ) as HTMLTextAreaElement;
+      const sqlEditor = screen.getByTestId<HTMLTextAreaElement>('code-editor');
 
-      await act(async () => {
-        fireEvent.change(sqlEditor, {
-          target: { value: 'SELECT * FROM {table} WHERE {column} IS NOT NULL' },
-        });
+      fireEvent.change(sqlEditor, {
+        target: { value: 'SELECT * FROM {table} WHERE {column} IS NOT NULL' },
       });
 
       expect(sqlEditor.value).toBe(
@@ -280,11 +294,9 @@ describe('TestDefinitionForm Component', () => {
       );
 
       const addButtons = screen.getAllByText('label.add-entity');
-      const parameterAddButton = addButtons[addButtons.length - 1];
+      const parameterAddButton = addButtons.at(-1)!;
 
-      await act(async () => {
-        fireEvent.click(parameterAddButton);
-      });
+      fireEvent.click(parameterAddButton);
 
       await waitFor(() => {
         expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
@@ -300,11 +312,9 @@ describe('TestDefinitionForm Component', () => {
       );
 
       const addButtons = screen.getAllByText('label.add-entity');
-      const parameterAddButton = addButtons[addButtons.length - 1];
+      const parameterAddButton = addButtons.at(-1)!;
 
-      await act(async () => {
-        fireEvent.click(parameterAddButton);
-      });
+      fireEvent.click(parameterAddButton);
 
       await waitFor(() => {
         expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
@@ -312,9 +322,7 @@ describe('TestDefinitionForm Component', () => {
 
       const removeButton = screen.getByLabelText('minus-circle');
 
-      await act(async () => {
-        fireEvent.click(removeButton);
-      });
+      fireEvent.click(removeButton);
 
       await waitFor(() => {
         expect(screen.queryByText('label.parameter 1')).not.toBeInTheDocument();
@@ -330,9 +338,7 @@ describe('TestDefinitionForm Component', () => {
 
       const saveButton = screen.getByTestId('save-test-definition');
 
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+      fireEvent.click(saveButton);
 
       await waitFor(() => {
         const errors = screen.getAllByText('message.field-text-is-required');
@@ -418,11 +424,12 @@ describe('TestDefinitionForm Component', () => {
         />
       );
 
-      const sqlField = screen.getByLabelText('label.sql-query');
+      const sqlFields = screen.getAllByLabelText('label.sql-query');
+      const sqlField = sqlFields.at(-1);
 
       expect(sqlField).toBeInTheDocument();
       expect(sqlField).toBeDisabled();
-      expect(sqlField.tagName).toBe('TEXTAREA');
+      expect(sqlField?.tagName).toBe('TEXTAREA');
     });
 
     it('should render entity type as disabled input for external tests', () => {
@@ -512,9 +519,10 @@ describe('TestDefinitionForm Component', () => {
         />
       );
 
-      const supportedServicesField = screen.getByLabelText(
+      const supportedServicesFields = screen.getAllByLabelText(
         'label.supported-service-plural'
       );
+      const supportedServicesField = supportedServicesFields.at(-1);
 
       expect(supportedServicesField).toBeDisabled();
     });
@@ -591,9 +599,10 @@ describe('TestDefinitionForm Component', () => {
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
 
-      const supportedServicesField = screen.getByLabelText(
+      const supportedServicesFields = screen.getAllByLabelText(
         'label.supported-service-plural'
       );
+      const supportedServicesField = supportedServicesFields.at(-1);
 
       expect(supportedServicesField).toBeInTheDocument();
       expect(supportedServicesField).not.toBeDisabled();
@@ -608,9 +617,10 @@ describe('TestDefinitionForm Component', () => {
         />
       );
 
-      const supportedServicesField = screen.getByLabelText(
+      const supportedServicesFields = screen.getAllByLabelText(
         'label.supported-service-plural'
       );
+      const supportedServicesField = supportedServicesFields.at(-1);
 
       expect(supportedServicesField).toBeInTheDocument();
       expect(supportedServicesField).not.toBeDisabled();

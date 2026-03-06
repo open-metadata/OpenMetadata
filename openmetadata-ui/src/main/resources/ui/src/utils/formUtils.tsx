@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
+import { Toggle } from '@openmetadata/ui-core-components';
+import { Placement } from '@react-types/overlays';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
@@ -22,15 +23,13 @@ import {
   InputNumber,
   Select,
   Switch,
-  TooltipProps,
   Typography,
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
-import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compact, startCase, toString } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -41,12 +40,11 @@ import DomainSelectableList from '../components/common/DomainSelectableList/Doma
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
-import FormItemLabel from '../components/common/Form/FormItemLabel';
+import FormItemLabel from '../components/common/FormItemLabel';
 import { MUIIconPicker } from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
-import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUISelect from '../components/common/MUISelect/MUISelect';
 import MUITagSuggestion from '../components/common/MUITagSuggestion/MUITagSuggestion';
@@ -67,13 +65,13 @@ import UserTeamSelectableListSearchInput from '../components/common/UserTeamSele
 import MUIAutocomplete, {
   MUIAutocompleteProps,
 } from '../components/form/MUIAutocomplete';
-import MUISwitch, { MUISwitchProps } from '../components/form/MUISwitch';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
   HelperTextType,
+  SwitchProps,
 } from '../interface/FormUtils.interface';
 import TagSuggestion, {
   TagSuggestionProps,
@@ -129,14 +127,13 @@ export const getField = (field: FieldProp) => {
 
   // Define MUI label for MUI field types
   const muiLabel = field.muiLabel || (
-    <MUIFormItemLabel
+    <FormItemLabel
       helperText={helperText}
       helperTextType={helperTextType}
       isBeta={isBeta}
       label={label}
-      placement={props?.tooltipPlacement as MUITooltipProps['placement']}
+      placement={props?.tooltipPlacement as Placement}
       showHelperText={showHelperText}
-      slotProps={props?.slotProps as Partial<MUITooltipProps>}
     />
   );
 
@@ -336,7 +333,8 @@ export const getField = (field: FieldProp) => {
 
         fieldElement = (
           <DomainSelectableList
-            {...(rest as unknown as DomainSelectableListProps)}>
+            {...(rest as unknown as DomainSelectableListProps)}
+          >
             {children}
           </DomainSelectableList>
         );
@@ -365,7 +363,8 @@ export const getField = (field: FieldProp) => {
 
         fieldElement = (
           <UserTeamSelectableList
-            {...(rest as unknown as UserSelectDropdownProps)}>
+            {...(rest as unknown as UserSelectDropdownProps)}
+          >
             {children}
           </UserTeamSelectableList>
         );
@@ -462,12 +461,17 @@ export const getField = (field: FieldProp) => {
       );
     }
 
-    case FieldTypes.SWITCH_MUI: {
+    case FieldTypes.UT_SWITCH: {
+      const { disabled, onChange, size, ...switchRest } = props as SwitchProps;
+
       return (
-        <Form.Item {...formProps} valuePropName="checked">
-          <MUISwitch
-            label={muiLabel as string}
-            {...(props as MUISwitchProps)}
+        <Form.Item {...formProps} valuePropName="isSelected">
+          <Toggle
+            isDisabled={disabled}
+            label={typeof muiLabel === 'string' ? muiLabel : ''}
+            size={size}
+            onChange={onChange}
+            {...switchRest}
           />
         </Form.Item>
       );
@@ -485,14 +489,11 @@ export const getField = (field: FieldProp) => {
 
   const labelValue = (
     <FormItemLabel
-      align={props.tooltipAlign as TooltipProps['align']}
       helperText={helperText}
       helperTextType={helperTextType}
       isBeta={isBeta}
       label={label}
-      overlayClassName={props.overlayClassName as string}
-      overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
-      placement={props.tooltipPlacement as TooltipPlacement}
+      placement={props?.tooltipPlacement as Placement}
       showHelperText={showHelperText}
     />
   );
@@ -517,7 +518,8 @@ export const getField = (field: FieldProp) => {
           'm-b-xss': helperTextType === HelperTextType.ALERT,
         })}
         {...formProps}
-        label={labelValue}>
+        label={labelValue}
+      >
         {fieldElement}
       </Form.Item>
 

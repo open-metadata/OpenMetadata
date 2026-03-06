@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import FormItemLabel from '../../common/Form/FormItemLabel';
+import FormItemLabel from '../../common/FormItemLabel';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import DomainTypeSelectForm from '../DomainTypeSelectForm/DomainTypeSelectForm.component';
@@ -57,11 +57,9 @@ export const DomainTypeWidget = () => {
         className="right-panel-label"
         data-testid="domainType-heading-name">
         <FormItemLabel
-          align={{ targetOffset: [18, 0] }}
           helperText={domainTypeTooltipDataRender()}
           label={t('label.domain-type')}
-          overlayClassName="domain-type-tooltip-container"
-          placement="topLeft"
+          placement="top left"
         />
       </Typography.Text>
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,5 @@
  *  limitations under the License.
  */
 
-import { TooltipPlacement, TooltipProps } from 'antd/lib/tooltip';
-import { ReactNode } from 'react';
-import { HelperTextType } from '../../../interface/FormUtils.interface';
-
-export interface FormItemLabelProps {
-  label: ReactNode;
-  helperText?: ReactNode;
-  helperTextType?: HelperTextType;
-  showHelperText?: boolean;
-  placement?: TooltipPlacement;
-  overlayClassName?: string;
-  overlayInnerStyle?: React.CSSProperties;
-  align?: TooltipProps['align'];
-  isBeta?: boolean;
-}
+export { default } from './FormItemLabel';
+export type { FormItemLabelProps } from './FormItemLabel';

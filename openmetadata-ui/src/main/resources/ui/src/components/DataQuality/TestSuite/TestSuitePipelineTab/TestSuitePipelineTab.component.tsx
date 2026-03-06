@@ -45,7 +45,7 @@ import { getServiceFromTestSuiteFQN } from '../../../../utils/TestSuiteUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
-import MUIFormItemLabel from '../../../common/MUIFormItemLabel/MUIFormItemLabel';
+import FormItemLabel from '../../../common/FormItemLabel/FormItemLabel';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import IngestionListTable from '../../../Settings/Services/Ingestion/IngestionListTable/IngestionListTable';
 
@@ -261,7 +261,7 @@ const TestSuitePipelineTab = ({
     () => [
       {
         title: (
-          <MUIFormItemLabel
+          <FormItemLabel
             helperText={t('message.test-case-count-info')}
             label={t('label.test-case-plural')}
           />
