@@ -525,6 +525,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     testCaseResultSummaryMap.forEach(
         (id, results) -> testSummaryMap.put(id, computeSimpleSummary(results)));
 
+    setFieldFromMap(
+        true, testSuites, testCaseResultSummaryMap, TestSuite::setTestCaseResultSummary);
     setFieldFromMap(true, testSuites, testSummaryMap, TestSuite::setSummary);
   }
 
