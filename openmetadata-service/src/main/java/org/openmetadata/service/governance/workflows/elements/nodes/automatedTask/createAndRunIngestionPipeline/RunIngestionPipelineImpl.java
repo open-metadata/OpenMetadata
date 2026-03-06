@@ -2,8 +2,12 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 
 import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -18,6 +22,14 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
 public class RunIngestionPipelineImpl {
+  public static final String SUCCESS = "SUCCESS";
+  public static final String FAILED = "FAILED";
+  public static final String RUNNING = "RUNNING";
+  public static final String WAIT_FOR_PIPELINE_COMPLETION = "waitForPipelineCompletion";
+
+  static long pollingIntervalMillis = 30 * 1_000L;
+  static long runRetryIntervalMillis = 15 * 1_000L;
+
   private final PipelineServiceClientInterface pipelineServiceClient;
 
   public RunIngestionPipelineImpl(PipelineServiceClientInterface pipelineServiceClient) {
@@ -72,30 +84,24 @@ public class RunIngestionPipelineImpl {
   }
 
   private void runIngestionPipeline(IngestionPipeline ingestionPipeline) {
-    int maxRetries = 3;
-    int tryNumber = 0;
-    long backoffMillis = 15 * 1000;
+    RetryConfig retryConfig =
+        RetryConfig.custom()
+            .maxAttempts(3)
+            .waitDuration(Duration.ofMillis(runRetryIntervalMillis))
+            .retryOnException(ex -> ex instanceof IngestionPipelineDeploymentException)
+            .build();
 
-    while (true) {
-      try {
-        pipelineServiceClient.runPipeline(
-            ingestionPipeline,
-            Entity.getEntity(
-                ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
-        break;
-      } catch (IngestionPipelineDeploymentException ex) {
-        tryNumber++;
-        if (tryNumber >= maxRetries) {
-          throw new RuntimeException("Failed to run pipeline after " + tryNumber + " attempts", ex);
-        }
-        try {
-          Thread.sleep(backoffMillis);
-        } catch (InterruptedException ie) {
-          Thread.currentThread().interrupt();
-          throw new RuntimeException("Retry interrupted", ie);
-        }
-        backoffMillis *= 2;
-      }
+    Retry retry = Retry.of("runIngestionPipeline", retryConfig);
+
+    try {
+      retry.executeRunnable(
+          () ->
+              pipelineServiceClient.runPipeline(
+                  ingestionPipeline,
+                  Entity.getEntity(
+                      ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED)));
+    } catch (Exception ex) {
+      throw new RuntimeException("Failed to run pipeline after retries: " + ex.getMessage(), ex);
     }
   }
 
@@ -104,37 +110,49 @@ public class RunIngestionPipelineImpl {
       IngestionPipeline ingestionPipeline,
       long startTime,
       long timeoutMillis) {
-    long backoffMillis = 5 * 1000;
-    while (true) {
-      if (System.currentTimeMillis() - startTime > timeoutMillis) {
-        return false;
-      }
 
-      List<PipelineStatus> statuses =
-          repository
-              .listPipelineStatus(
-                  ingestionPipeline.getFullyQualifiedName(), startTime, startTime + timeoutMillis)
-              .getData();
+    RetryConfig retryConfig =
+        RetryConfig.<String>custom()
+            .maxAttempts(Integer.MAX_VALUE)
+            .waitDuration(Duration.ofMillis(pollingIntervalMillis))
+            .retryOnResult(RUNNING::equals)
+            .retryOnException(ex -> true)
+            .failAfterMaxAttempts(false)
+            .build();
 
-      if (statuses.isEmpty()) {
-        try {
-          Thread.sleep(backoffMillis);
-          backoffMillis *= 2;
-          continue;
-        } catch (InterruptedException ie) {
-          Thread.currentThread().interrupt();
-          throw new RuntimeException("Retry interrupted", ie);
-        }
-      }
+    Retry retry = Retry.of(WAIT_FOR_PIPELINE_COMPLETION, retryConfig);
 
-      PipelineStatus status = statuses.get(statuses.size() - 1);
+    Supplier<String> completionChecker =
+        () -> {
+          if (System.currentTimeMillis() - startTime > timeoutMillis) {
+            return "TIMEOUT";
+          }
 
-      if (status.getPipelineState().equals(PipelineStatusType.FAILED)) {
-        return false;
-      } else if (status.getPipelineState().equals(PipelineStatusType.SUCCESS)
-          || status.getPipelineState().equals(PipelineStatusType.PARTIAL_SUCCESS)) {
-        return true;
-      }
-    }
+          List<PipelineStatus> statuses =
+              repository
+                  .listPipelineStatus(
+                      ingestionPipeline.getFullyQualifiedName(),
+                      startTime,
+                      startTime + timeoutMillis)
+                  .getData();
+
+          if (statuses.isEmpty()) {
+            return RUNNING;
+          }
+
+          PipelineStatus status = statuses.getLast();
+
+          if (status.getPipelineState().equals(PipelineStatusType.FAILED)) {
+            return FAILED;
+          } else if (status.getPipelineState().equals(PipelineStatusType.SUCCESS)
+              || status.getPipelineState().equals(PipelineStatusType.PARTIAL_SUCCESS)) {
+            return SUCCESS;
+          }
+
+          return RUNNING;
+        };
+
+    String result = retry.executeSupplier(completionChecker);
+    return SUCCESS.equals(result);
   }
 }
