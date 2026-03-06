@@ -214,6 +214,7 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
         dimension_col: Union[SQALikeColumn, Column],
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation query for a single dimension column
 
@@ -222,6 +223,7 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
             dimension_col: The dimension column to group by (e.g., region)
             metrics_to_compute: Dict mapping metric names to Metrics enum values
             test_params: Test parameters including min and max bounds
+            top_n: Number of top dimension values before grouping as "Others"
 
         Returns:
             List of DimensionResult objects for each dimension value

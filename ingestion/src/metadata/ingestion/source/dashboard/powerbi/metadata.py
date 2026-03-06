@@ -63,6 +63,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.constants import (
+    BIGQUERY_QUERY_EXPRESSION_KW,
     DATABRICKS_QUERY_EXPRESSION_KW,
     DEFAULT_REPORTS_PREFIX,
     MAX_PROJECT_FILTER_SIZE,
@@ -70,6 +71,7 @@ from metadata.ingestion.source.dashboard.powerbi.constants import (
     RDL_REPORT_FORMAT,
     RDL_REPORTS_PREFIX,
     SNOWFLAKE_QUERY_EXPRESSION_KW,
+    SQL_LINE_COMMENT_PATTERN,
 )
 from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
     parse_databricks_native_query_source,
@@ -1011,16 +1013,110 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
+    def _parse_bigquery_query_source(
+        self, source_expression: str
+    ) -> Optional[List[dict]]:
+        """
+        Parse BigQuery Value.NativeQuery source expressions containing inline SQL.
+
+        Example:
+        Value.NativeQuery(GoogleBigQuery.Database([BillingProject="project"]){[Name="project"]}[Data],
+            "SELECT ... FROM `dataset.table` ...", null, [EnableFolding=true])
+        """
+        try:
+            # Strip M language block comments (/* ... */) and line comments (//)
+            cleaned_expression = re.sub(
+                r"/\*.*?\*/", "", source_expression, flags=re.DOTALL
+            )
+            cleaned_expression = re.sub(
+                SQL_LINE_COMMENT_PATTERN, "", cleaned_expression
+            )
+
+            # Extract the project from BillingProject parameter
+            billing_match = re.search(r'BillingProject="([^"]+)"', cleaned_expression)
+            project = billing_match.group(1) if billing_match else None
+
+            # Extract the SQL query string (second argument to Value.NativeQuery)
+            # Use a pattern that handles doubled quotes ("") inside M expression strings
+            sql_match = re.search(
+                r'\[Data\],\s*"((?:[^"]|"")+)"(?:,\s*null|\s*\))',
+                cleaned_expression,
+                re.DOTALL,
+            )
+            if not sql_match:
+                logger.debug("SQL query not found in BigQuery NativeQuery expression")
+                return None
+
+            sql_query = sql_match.group(1).replace('""', '"')
+            sql_query = sql_query.replace("#(lf)", "\n")
+            sql_query = sql_query.replace("#(tab)", "\t")
+            sql_query = re.sub(r"--[^\n]*", "", sql_query)
+            sql_query = re.sub(SQL_LINE_COMMENT_PATTERN, "", sql_query)
+            sql_query = re.sub(r"\s+", " ", sql_query).strip()
+
+            logger.debug(f"Extracted BigQuery SQL query: {sql_query[:200]}")
+
+            try:
+                parser = LineageParser(
+                    sql_query,
+                    dialect=Dialect.BIGQUERY,
+                    timeout_seconds=30,
+                    parser_type=self.get_query_parser_type(),
+                )
+            except Exception as parser_exc:
+                logger.debug(f"LineageParser failed for BigQuery query: {parser_exc}")
+                return None
+
+            if not parser.source_tables:
+                logger.debug("No tables found in BigQuery query through parser")
+                return None
+
+            lineage_tables_list = []
+            for source_table in parser.source_tables:
+                database = project
+                schema = None
+                if hasattr(source_table, "schema") and source_table.schema:
+                    schema_str = (
+                        source_table.schema.raw_name
+                        if hasattr(source_table.schema, "raw_name")
+                        else str(source_table.schema)
+                    )
+                    schema = schema_str
+
+                table_name = source_table.raw_name
+                if table_name:
+                    logger.debug(
+                        f"BigQuery NativeQuery table found: {database}.{schema}.{table_name}"
+                    )
+                    lineage_tables_list.append(
+                        {
+                            "database": database,
+                            "schema": schema,
+                            "table": table_name,
+                        }
+                    )
+            return lineage_tables_list or None
+
+        except Exception as exc:
+            logger.debug(f"Error parsing BigQuery query source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
     def _parse_bigquery_source(
-        self, source_expression: str, datamodel_entity: DashboardDataModel
+        self,
+        source_expression: str,
+        datamodel_entity: DashboardDataModel,
+        table: PowerBiTable,
     ) -> Optional[List[dict]]:
         """
         Parse BigQuery source from Power Query M expressions.
-        Handles both direct BigQuery connections and references to dataset expressions.
+        Handles direct BigQuery connections, Value.NativeQuery with inline SQL,
+        and references to dataset expressions.
 
         Examples:
         1. Direct: GoogleBigQuery.Database()[Name="project"][Data][Name="dataset",Kind="Schema"][Data][Name="table",Kind="Table"][Data]
-        2. Via expression reference: Source = S_PJ_CODE (where S_PJ_CODE is a dataset expression)
+        2. NativeQuery: Value.NativeQuery(GoogleBigQuery.Database([BillingProject="project"]){...}[Data], "SELECT ... FROM `dataset.table`", ...)
+        3. Via expression reference: Source = S_PJ_CODE (where S_PJ_CODE is a dataset expression)
         """
         try:
             # Check if source expression references a dataset expression
@@ -1049,15 +1145,18 @@ class PowerbiSource(DashboardServiceSource):
                             )
                             # Recursively parse the referenced expression
                             return self._parse_bigquery_source(
-                                dexpression.expression, datamodel_entity
+                                dexpression.expression, datamodel_entity, table
                             )
 
             # Check if this is a direct BigQuery connection
             if "GoogleBigQuery.Database" not in source_expression:
                 return None
 
-            logger.debug(f"Found GoogleBigQuery.Database in expression")
+            # Handle Value.NativeQuery with inline SQL
+            if BIGQUERY_QUERY_EXPRESSION_KW in source_expression:
+                return self._parse_bigquery_query_source(source_expression)
 
+            logger.debug(f"Found GoogleBigQuery.Database in expression")
             # Extract project, dataset (schema), and table from BigQuery M expression
             # Pattern: [Name="project"][Data][Name="dataset",Kind="Schema"][Data][Name="table",Kind="Table"]
 
@@ -1087,7 +1186,10 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(
                 f"Extracted BigQuery info: project={project}, dataset={dataset}, table={table_name}"
             )
-
+            if not table_name:
+                logger.debug(
+                    f"Parsing BigQuery source expression for powerbi table ({table.name}):: {source_expression}"
+                )
             if table_name:
                 return [{"database": project, "schema": dataset, "table": table_name}]
 
@@ -1144,7 +1246,7 @@ class PowerbiSource(DashboardServiceSource):
             parser_query = parser_query.replace("#(lf)", "\n")
 
             # 3. Remove SQL comments that might cause issues (// style comments)
-            parser_query = re.sub(r"//[^\n]*", "", parser_query)
+            parser_query = re.sub(SQL_LINE_COMMENT_PATTERN, "", parser_query)
 
             # 4. Clean up excessive whitespace
             parser_query = re.sub(r"\s+", " ", parser_query).strip()
@@ -1345,7 +1447,7 @@ class PowerbiSource(DashboardServiceSource):
 
             # parse bigquery source
             table_info_list = self._parse_bigquery_source(
-                source_expression, datamodel_entity
+                source_expression, datamodel_entity, table
             )
             if isinstance(table_info_list, List):
                 return table_info_list
@@ -1422,12 +1524,18 @@ class PowerbiSource(DashboardServiceSource):
                         )
                         return
 
-                    fqn_search_string = build_es_fqn_search_string(
-                        service_name=prefix_service_name or "*",
-                        table_name=(prefix_table_name or table_name),
-                        schema_name=(prefix_schema_name or schema_name),
-                        database_name=(prefix_database_name or database_name),
-                    )
+                    try:
+                        fqn_search_string = build_es_fqn_search_string(
+                            service_name=prefix_service_name or "*",
+                            table_name=(prefix_table_name or table_name),
+                            schema_name=(prefix_schema_name or schema_name),
+                            database_name=(prefix_database_name or database_name),
+                        )
+                    except ValueError:
+                        logger.debug(
+                            f"Skipping table '{table_name}' with invalid FQN characters"
+                        )
+                        continue
                     table_entity = self.metadata.search_in_any_service(
                         entity_type=Table,
                         fqn_search_string=fqn_search_string,

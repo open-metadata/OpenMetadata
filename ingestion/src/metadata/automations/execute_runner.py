@@ -18,6 +18,9 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 @singledispatch
@@ -45,5 +48,12 @@ def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:
     automation_workflow = metadata.get_by_name(
         entity=AutomationWorkflow, fqn=encrypted_automation_workflow.name.root
     )
+
+    ingestion_runner = getattr(automation_workflow.request, "ingestionRunner", None)
+    if ingestion_runner:
+        logger.info(
+            f"Executing automation [{automation_workflow.name.root}]"
+            f" in Runner [{ingestion_runner}]"
+        )
 
     return run_workflow(automation_workflow.request, automation_workflow, metadata)

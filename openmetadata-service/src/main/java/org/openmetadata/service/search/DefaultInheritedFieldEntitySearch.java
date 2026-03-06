@@ -252,16 +252,22 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
 
   @Override
   public Map<String, Integer> getAggregatedCountsByField(String fieldPath, String queryFilter) {
+    return getAggregatedCountsByField(fieldPath, queryFilter, 100);
+  }
+
+  @Override
+  public Map<String, Integer> getAggregatedCountsByField(
+      String fieldPath, String queryFilter, int size) {
     try {
       if (isSearchUnavailable()) {
         LOG.warn("Search unavailable for aggregated counts");
         return Collections.emptyMap();
       }
 
-      LOG.info("Aggregation field: {}, query: {}", fieldPath, queryFilter);
+      LOG.info("Aggregation field: {}, query: {}, size: {}", fieldPath, queryFilter, size);
 
       SearchAggregationNode aggregationNode =
-          SearchAggregation.terms("field_aggregation", fieldPath);
+          SearchAggregation.terms("field_aggregation", fieldPath, size);
       SearchAggregation searchAggregation = SearchAggregation.fromTree(aggregationNode);
 
       JsonObject response =
