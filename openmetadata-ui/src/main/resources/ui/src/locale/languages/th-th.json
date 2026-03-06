@@ -1650,6 +1650,7 @@
     "select-a-metric-type": "เลือกประเภทเมตริก",
     "select-a-policy": "เลือกนโยบาย",
     "select-add-test-suite": "เลือก/เพิ่มชุดทดสอบ",
+    "select-all": "เลือกทั้งหมด",
     "select-all-entity": "เลือกทั้งหมด {{entity}}",
     "select-asset-type": "เลือกประเภททรัพย์สิน",
     "select-background": "เลือกพื้นหลัง",

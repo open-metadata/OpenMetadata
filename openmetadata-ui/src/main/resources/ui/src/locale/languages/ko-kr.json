@@ -1650,6 +1650,7 @@
     "select-a-metric-type": "메트릭 유형 선택",
     "select-a-policy": "정책 선택",
     "select-add-test-suite": "테스트 스위트 선택/추가",
+    "select-all": "전체 선택",
     "select-all-entity": "모든 {{entity}} 선택",
     "select-asset-type": "자산 유형 선택",
     "select-background": "배경 선택",

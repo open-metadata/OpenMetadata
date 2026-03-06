@@ -1650,6 +1650,7 @@
     "select-a-metric-type": "Bir Metrik Türü Seçin",
     "select-a-policy": "Bir Politika Seçin",
     "select-add-test-suite": "Test Paketi Seç/Ekle",
+    "select-all": "Tümünü seç",
     "select-all-entity": "Tüm {{entity}} Seç",
     "select-asset-type": "Varlık Türünü Seç",
     "select-background": "Arka Plan Seç",

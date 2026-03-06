@@ -1650,6 +1650,7 @@
     "select-a-metric-type": "メトリックタイプを選択",
     "select-a-policy": "ポリシーを選択",
     "select-add-test-suite": "テストスイートを選択/追加",
+    "select-all": "すべて選択",
     "select-all-entity": "すべての {{entity}} を選択",
     "select-asset-type": "アセットタイプを選択",
     "select-background": "背景を選択",

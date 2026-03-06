@@ -359,7 +359,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
       )}
 
       <Form
-        className="new-form-style"
+        className="new-form-style bundle-suite-form"
         form={form}
         id="bundle-suite-form"
         initialValues={{
@@ -379,7 +379,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
 
         {/* Test Case Selection */}
         <Card
-          className="form-card-section"
+          className="form-card-section bundle-suite-form-test-case-selection-card"
           data-testid="test-case-selection-card">
           <Form.Item
             label={t('label.test-case-plural')}
@@ -393,6 +393,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
               },
             ]}>
             <AddTestCaseList
+              showSelectAll
               selectedTest={selectedTestCases.map((tc) => tc.name)}
               showButton={false}
               onChange={handleTestCaseSelection}

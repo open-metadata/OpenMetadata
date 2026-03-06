@@ -1650,6 +1650,7 @@
     "select-a-metric-type": "تحديد نوع مقياس",
     "select-a-policy": "تحديد سياسة",
     "select-add-test-suite": "تحديد/إضافة مجموعة اختبار",
+    "select-all": "تحديد الكل",
     "select-all-entity": "تحديد كل {{entity}}",
     "select-asset-type": "تحديد نوع الأصل",
     "select-background": "تحديد الخلفية",

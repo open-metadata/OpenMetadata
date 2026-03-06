@@ -1650,6 +1650,7 @@
     "select-a-metric-type": "Wählen Sie einen Metriktyp aus",
     "select-a-policy": "Wählen Sie eine Richtlinie aus",
     "select-add-test-suite": "Auswahl/Hinzufügen einer Test-Suite",
+    "select-all": "Alle auswählen",
     "select-all-entity": "Alle {{entity}}",
     "select-asset-type": "Asset-Typ auswählen",
     "select-background": "Hintergrund auswählen",

@@ -1650,6 +1650,7 @@
     "select-a-metric-type": "Sélectionner un Type d'Indicateur",
     "select-a-policy": "Sélectionner une Stratégie",
     "select-add-test-suite": "Sélectionner/Ajouter un Ensemble de Tests",
+    "select-all": "Tout sélectionner",
     "select-all-entity": "Sélectionner Tous les {{entity}}",
     "select-asset-type": "Sélectionner le Type d'Actif",
     "select-background": "Sélectionner le Fond",

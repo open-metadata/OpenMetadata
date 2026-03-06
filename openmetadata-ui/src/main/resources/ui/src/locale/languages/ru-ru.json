@@ -1650,6 +1650,7 @@
     "select-a-metric-type": "Выбрать тип показателя",
     "select-a-policy": "Выбрать политику",
     "select-add-test-suite": "Выбрать/добавить набор тестов",
+    "select-all": "Выбрать все",
     "select-all-entity": "Выбрать все объекты «{{entity}}»",
     "select-asset-type": "Выбрать тип актива",
     "select-background": "Выбрать фон",

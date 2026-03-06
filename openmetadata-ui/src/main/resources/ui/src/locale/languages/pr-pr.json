@@ -1650,6 +1650,7 @@
     "select-a-metric-type": "یک نوع معیار انتخاب کنید",
     "select-a-policy": "یک سیاست انتخاب کنید",
     "select-add-test-suite": "انتخاب/افزودن مجموعه تست",
+    "select-all": "انتخاب همه",
     "select-all-entity": "انتخاب همه {{entity}}",
     "select-asset-type": "انتخاب نوع دارایی",
     "select-background": "انتخاب پس‌زمینه",

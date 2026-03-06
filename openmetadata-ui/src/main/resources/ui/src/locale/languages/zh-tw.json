@@ -1650,6 +1650,7 @@
     "select-a-metric-type": "選取指標類型",
     "select-a-policy": "選取政策",
     "select-add-test-suite": "選取/新增測試套件",
+    "select-all": "全選",
     "select-all-entity": "選取所有 {{entity}}",
     "select-asset-type": "選取資產類型",
     "select-background": "選取背景",
