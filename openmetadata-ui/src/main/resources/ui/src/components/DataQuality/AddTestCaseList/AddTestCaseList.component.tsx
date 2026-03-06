@@ -187,7 +187,7 @@ export const AddTestCaseList = ({
             const selectedItemsMap = new Map();
             pre?.forEach((item) => selectedItemsMap.set(item.id, item));
             testCaseResponse.data.forEach((hit) => {
-              if (selectedTest.some((test) => hit.name === test)) {
+              if (selectedTest.includes(hit.name)) {
                 selectedItemsMap.set(hit.id ?? '', hit);
               }
             });
@@ -372,6 +372,7 @@ export const AddTestCaseList = ({
     filterColumns,
     selectedItems,
     isLoading,
+    onScroll,
   ]);
 
   const handleFilterChange = useCallback(
