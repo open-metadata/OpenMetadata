@@ -137,7 +137,7 @@ describe('Test UserListPage component', () => {
   beforeAll(() => {
     // Get reference to mocked Table component
     mockTableComponent = jest.requireMock(
-      '../../components/common/Table/Table'
+      '../../components/common/Table/TableV2'
     );
   });
 
