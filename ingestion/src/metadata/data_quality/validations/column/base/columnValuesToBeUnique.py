@@ -212,7 +212,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         column: Union[SQALikeColumn, Column],
         dimension_col: Union[SQALikeColumn, Column],
         metrics_to_compute: dict,
-        test_params: Optional[dict] = None,
+        test_params: Optional[dict],
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query for a single dimension
 

@@ -25,6 +25,7 @@ import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validat
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -181,6 +182,10 @@ public class IngestionPipelineResource
     /* Required for serde */
   }
 
+  public static class PipelineStatusList extends ResultList<PipelineStatus> {
+    /* Required for serde */
+  }
+
   /**
    * Handle permissions based on the pipeline type
    */
@@ -227,7 +232,7 @@ public class IngestionPipelineResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class)))
+                    schema = @Schema(implementation = IngestionPipelineList.class)))
       })
   public ResultList<IngestionPipeline> list(
       @Context UriInfo uriInfo,
@@ -694,7 +699,10 @@ public class IngestionPipelineResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = PipelineServiceClientResponse.class)))
+                    array =
+                        @ArraySchema(
+                            schema =
+                                @Schema(implementation = PipelineServiceClientResponse.class))))
       })
   public List<PipelineServiceClientResponse> bulkDeployIngestion(
       @Context UriInfo uriInfo,
@@ -1176,7 +1184,7 @@ public class IngestionPipelineResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class)))
+                    schema = @Schema(implementation = PipelineStatusList.class)))
       })
   public ResultList<PipelineStatus> listPipelineStatuses(
       @Context SecurityContext securityContext,
@@ -1213,7 +1221,7 @@ public class IngestionPipelineResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = IngestionPipeline.class)))
+                    schema = @Schema(implementation = PipelineStatus.class)))
       })
   public PipelineStatus getPipelineStatus(
       @Context UriInfo uriInfo,
