@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
@@ -29,6 +30,19 @@ public class ColumnSearchIndex implements SearchIndex {
   @Override
   public Object getEntity() {
     return column;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return Set.of(
+        "children",
+        "profile",
+        "customMetrics",
+        "jsonSchema",
+        "precision",
+        "scale",
+        "dataLength",
+        "arrayDataType");
   }
 
   @Override

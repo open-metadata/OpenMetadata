@@ -1022,7 +1022,7 @@ public class SearchRepository {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
     EntityInterface entity =
         entityRepository.get(null, entityReference.getId(), entityRepository.getFields("*"));
-    // Update Entity
+    entity.setChangeDescription(null);
     updateEntityIndex(entity);
   }
 
@@ -1665,6 +1665,9 @@ public class SearchRepository {
     try {
       searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
       deleteOrUpdateChildren(entity, indexMapping);
+      if (Entity.TABLE.equals(entityType)) {
+        deleteTableColumns((Table) entity);
+      }
     } catch (Exception ie) {
       LOG.error(
           "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",

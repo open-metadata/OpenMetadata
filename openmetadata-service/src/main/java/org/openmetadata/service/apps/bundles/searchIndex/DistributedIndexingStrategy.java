@@ -485,6 +485,7 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         && !promotedEntities.contains(Entity.TABLE_COLUMN)) {
       boolean tableSuccess = computeEntitySuccess(Entity.TABLE, entityStatsMap);
       promoteColumnIndex(recreateIndexHandler, recreateContext, tableSuccess);
+      entitiesToFinalize.remove(Entity.TABLE_COLUMN);
     }
 
     boolean hasVectorIndex = entitiesToFinalize.remove(VectorIndexService.VECTOR_INDEX_KEY);

@@ -655,19 +655,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     checkMutuallyExclusiveForParentAndSubField(
         columnFqn, FullyQualifiedName.buildHash(columnFqn), allAssetTags, glossaryTags, false);
 
-    success.add(new BulkResponse().withRequest(columnRef));
-    result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-
-    // Apply tag if not dry run
     if (!dryRun && CommonUtil.nullOrEmpty(result.getFailedRequest())) {
       List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
       columnTags.add(tagLabel);
-      // Apply Tags to the column
       applyTags(getUniqueTags(columnTags), columnFqn);
-
-      // Update the parent table's search index (which will also update column indexes)
       searchRepository.updateEntity(table.getEntityReference());
     }
+
+    success.add(new BulkResponse().withRequest(columnRef));
+    result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
   }
 
   private Column findColumnByFqn(List<Column> columns, String columnFqn) {
