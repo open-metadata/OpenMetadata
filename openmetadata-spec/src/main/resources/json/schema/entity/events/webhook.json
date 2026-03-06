@@ -60,6 +60,7 @@
     "authType": {
       "description": "Authentication configuration for the webhook. If not specified, the webhook will be sent without authentication.",
       "title": "Authentication Configuration Type",
+      "mask": true,
       "oneOf": [
         {
           "$ref": "./authentication/webhookNoAuth.json"

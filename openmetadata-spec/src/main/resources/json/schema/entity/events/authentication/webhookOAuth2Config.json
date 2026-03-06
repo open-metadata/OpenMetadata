@@ -16,7 +16,7 @@
       "format": "uri"
     },
     "clientId": {
-      "description": "OAuth2 client identifier.",
+      "description": "OAuth2 client identifier. Stored encrypted via Fernet.",
       "type": "string"
     },
     "clientSecret": {

@@ -7,11 +7,17 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 
 @Slf4j
 public class MigrationUtil {
 
   private MigrationUtil() {}
+
+  private static final String UPDATE_EVENT_SUB_MYSQL =
+      "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
+  private static final String UPDATE_EVENT_SUB_POSTGRESQL =
+      "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id";
 
   public static void migrateWebhookSecretKeyToAuthType(Handle handle) {
     LOG.info("Starting migration of webhook secretKey to authType");
@@ -55,11 +61,11 @@ public class MigrationUtil {
         }
 
         if (modified) {
-          handle
-              .createUpdate("UPDATE event_subscription_entity SET json = :json WHERE id = :id")
-              .bind("json", root.toString())
-              .bind("id", id)
-              .execute();
+          String updateSql =
+              Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+                  ? UPDATE_EVENT_SUB_MYSQL
+                  : UPDATE_EVENT_SUB_POSTGRESQL;
+          handle.createUpdate(updateSql).bind("json", root.toString()).bind("id", id).execute();
           migratedCount++;
         }
       } catch (Exception e) {
