@@ -47,6 +47,12 @@ class ColumnValuesSumToBeBetweenValidator(
         """
         return self.run_query_results(self.runner, metric, column)
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        sum_value = row.get(Metrics.sum.name)
+        if sum_value is None:
+            return None
+        return {Metrics.sum.name: sum_value}
+
     def _execute_dimensional_validation(
         self,
         column: Column,
@@ -102,27 +108,9 @@ class ColumnValuesSumToBeBetweenValidator(
                 top_n=top_n,
             )
 
-            for row in result_rows:
-                sum_value = row.get(Metrics.sum.name)
-
-                if sum_value is None:
-                    continue
-
-                metric_values = {
-                    Metrics.sum.name: sum_value,
-                }
-
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                dimension_result = self._create_dimension_result(
-                    row,
-                    dimension_col.name,
-                    metric_values,
-                    evaluation,
-                    test_params,
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
