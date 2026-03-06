@@ -1,8 +1,10 @@
 package org.openmetadata.mcp.server.auth.handlers;
 
+import java.net.URI;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ public class RegistrationHandler {
 
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
   private static final int CLIENT_SECRET_BYTES = 32;
+  private static final Set<String> ALLOWED_REDIRECT_SCHEMES = Set.of("http", "https");
 
   private final OAuthClientRepository clientRepository;
 
@@ -109,6 +112,19 @@ public class RegistrationHandler {
     if (metadata.getRedirectUris() == null || metadata.getRedirectUris().isEmpty()) {
       throw new RegistrationException(
           "invalid_redirect_uri", "At least one redirect_uri must be provided");
+    }
+
+    // Validate redirect URI schemes (RFC 7591 Section 5)
+    for (URI uri : metadata.getRedirectUris()) {
+      String scheme = uri.getScheme();
+      if (scheme == null || !ALLOWED_REDIRECT_SCHEMES.contains(scheme.toLowerCase())) {
+        throw new RegistrationException(
+            "invalid_redirect_uri", "redirect_uri must use http or https scheme: " + uri);
+      }
+      if (uri.getFragment() != null) {
+        throw new RegistrationException(
+            "invalid_redirect_uri", "redirect_uri must not contain a fragment: " + uri);
+      }
     }
 
     // Validate supported grant types

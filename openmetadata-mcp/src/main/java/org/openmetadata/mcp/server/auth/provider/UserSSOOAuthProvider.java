@@ -521,17 +521,17 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       try {
         basicAuthenticator.checkIfLoginBlocked(email);
       } catch (AuthenticationException e) {
-        LOG.warn("Login blocked for user: {}", email);
+        LOG.warn("Login blocked for user");
         session.setAttribute(SESSION_MCP_LOGIN_ERROR, e.getMessage());
         return displayLoginForm(session, client);
       }
 
       try {
-        LOG.info("Attempting to authenticate user with email: {}", email);
+        LOG.debug("Attempting basic auth login");
         User user = basicAuthenticator.lookUserInProvider(email, password);
-        LOG.info("User lookup successful for: {}", email);
+        LOG.debug("User lookup successful");
         basicAuthenticator.validatePassword(email, password, user);
-        LOG.info("Password validation successful for: {}", email);
+        LOG.debug("Password validation successful");
 
         LoginAttemptCache.getInstance().recordSuccessfulLogin(email);
         LOG.debug("Successful login for user: {}, reset failed login counter", userName);
@@ -556,12 +556,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
                 URI.create(redirectUri),
                 scopes);
 
-        LOG.info("Generated authorization code for user: {}", user.getName());
+        LOG.debug("Generated authorization code for basic auth user");
 
         return displayAuthorizationCode(authCode, redirectUri, state);
 
       } catch (AuthenticationException e) {
-        LOG.warn("Basic Auth login failed for user: {}", email);
+        LOG.warn("Basic Auth login failed");
         try {
           basicAuthenticator.recordFailedLoginAttempt(email, email);
         } catch (Exception recordEx) {
@@ -708,7 +708,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         generateAuthorizationCode(
             userName, clientId, codeChallenge, URI.create(redirectUri), scopes);
 
-    LOG.info("Generated MCP authorization code for user: {} via SSO", userName);
+    LOG.debug("Generated MCP authorization code via SSO");
 
     Map<String, String> ssoQueryParams = new HashMap<>();
     ssoQueryParams.put("code", authCode);
@@ -812,7 +812,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             requestedRedirectUri,
             pendingRequest.scopes());
 
-    LOG.info("Generated MCP authorization code for user: {} via SSO", userName);
+    LOG.debug("Generated MCP authorization code via SSO");
 
     // Build redirect URL with MCP state (original client state, not SSO state)
     // Properly encode query parameters to prevent injection attacks
@@ -922,7 +922,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
 
       String userName = codeRecord.userName();
-      LOG.info("Generating JWT for user: {}", userName);
+      LOG.debug("Generating JWT token");
 
       User user = Entity.getEntityByName(Entity.USER, userName, "roles,teams", Include.NON_DELETED);
       if (user == null) {
@@ -966,7 +966,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       token.setRefreshToken(refreshTokenValue); // Add refresh token to response
       token.setScope(String.join(" ", codeRecord.scopes())); // Include granted scopes
 
-      LOG.info("Successfully issued JWT token and refresh token for user: {}", userName);
+      LOG.debug("Successfully issued JWT and refresh token");
       return CompletableFuture.completedFuture(token);
 
     } catch (TokenException e) {
@@ -1065,7 +1065,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
 
       String userName = tokenRecord.getUserName();
-      LOG.info("Refresh token validated successfully for user: {} (rotating token)", userName);
+      LOG.debug("Refresh token validated successfully (rotating token)");
 
       // HIGH: Validate user account status before issuing new tokens
       // Check if user still exists and is not deleted (security requirement)
@@ -1131,7 +1131,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       token.setRefreshToken(newRefreshTokenValue); // Return NEW refresh token (rotation)
       token.setScope(String.join(" ", requestedScopes));
 
-      LOG.info("Successfully refreshed tokens for user: {} (JWT + new refresh token)", userName);
+      LOG.debug("Successfully refreshed tokens (JWT + new refresh token)");
       return CompletableFuture.completedFuture(token);
 
     } catch (TokenException e) {

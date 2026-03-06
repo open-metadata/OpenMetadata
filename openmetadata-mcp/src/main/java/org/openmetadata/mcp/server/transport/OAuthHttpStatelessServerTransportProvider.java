@@ -607,15 +607,16 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private boolean isRegistrationRateLimited(String clientIp) {
     long now = System.currentTimeMillis();
-    // Reset window every hour
-    if (now - registrationWindowStart > 3_600_000) {
-      registrationAttempts.clear();
-      registrationWindowStart = now;
+    synchronized (registrationAttempts) {
+      if (now - registrationWindowStart > 3_600_000) {
+        registrationAttempts.clear();
+        registrationWindowStart = now;
+      }
+      java.util.concurrent.atomic.AtomicInteger count =
+          registrationAttempts.computeIfAbsent(
+              clientIp, k -> new java.util.concurrent.atomic.AtomicInteger(0));
+      return count.incrementAndGet() > REGISTRATION_MAX_PER_HOUR;
     }
-    java.util.concurrent.atomic.AtomicInteger count =
-        registrationAttempts.computeIfAbsent(
-            clientIp, k -> new java.util.concurrent.atomic.AtomicInteger(0));
-    return count.incrementAndGet() > REGISTRATION_MAX_PER_HOUR;
   }
 
   private void handleRegistrationRequest(HttpServletRequest request, HttpServletResponse response)
@@ -696,7 +697,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private void handleRevocationRequest(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     try {
-      LOG.info("Token revocation request received");
+      LOG.debug("Token revocation request received");
 
       Map<String, String> params = new HashMap<>();
       request
@@ -707,6 +708,23 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
                   params.put(key, values[0]);
                 }
               });
+
+      // Authenticate client before revocation (RFC 7009 Section 2.1)
+      String clientId = params.get("client_id");
+      String clientSecret = params.get("client_secret");
+      try {
+        clientAuthenticator.authenticate(clientId, clientSecret).join();
+      } catch (Exception e) {
+        LOG.warn("Client authentication failed for revocation request");
+        setCorsHeaders(request, response);
+        response.setContentType("application/json");
+        response.setStatus(401);
+        Map<String, String> error = new HashMap<>();
+        error.put("error", "invalid_client");
+        error.put("error_description", "Client authentication failed");
+        getObjectMapper().writeValue(response.getOutputStream(), error);
+        return;
+      }
 
       String token = params.get("token");
       String tokenTypeHint = params.get("token_type_hint");

@@ -260,7 +260,22 @@ public class SSOCallbackServlet extends HttpServlet {
       }
 
       JWT idToken = credentials.getIdToken();
-      JWTClaimsSet claimsSet = idToken.getJWTClaimsSet();
+
+      // Defense-in-depth: validate ID token signature even though pac4j should have validated it.
+      // This protects against pac4j misconfiguration or bugs that skip signature verification.
+      JWTClaimsSet claimsSet;
+      try {
+        claimsSet = createIdTokenValidator().validateAndDecode(idToken.serialize());
+        LOG.debug("ID token signature validated successfully in standard SSO flow");
+      } catch (IdTokenValidator.IdTokenValidationException e) {
+        LOG.error(
+            "SECURITY ALERT: ID token validation failed in standard SSO flow. Reason: {}. IP: {}",
+            e.getMessage(),
+            request.getRemoteAddr());
+        throw new IllegalStateException(
+            "ID token validation failed: " + e.getMessage() + ". Please restart authentication.",
+            e);
+      }
 
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       claims.putAll(claimsSet.getClaims());
@@ -271,7 +286,7 @@ public class SSOCallbackServlet extends HttpServlet {
           findEmailFromClaims(
               getClaimsMapping(), List.of(getClaimsOrder()), claims, getPrincipalDomain());
 
-      LOG.info("Extracted user identity from SSO: username={}, email={}", userName, email);
+      LOG.debug("Extracted user identity from SSO callback");
 
       // Generate MCP authorization code and redirect to client
       userSSOProvider.handleSSOCallbackWithDbState(
@@ -367,15 +382,11 @@ public class SSOCallbackServlet extends HttpServlet {
     }
 
     if (email == null || email.trim().isEmpty()) {
-      LOG.warn(
-          "Could not extract email from SSO claims for user: {}. Available claims: {}",
-          userName,
-          claims.keySet());
+      LOG.warn("Could not extract email from SSO claims. Available claims: {}", claims.keySet());
       // Email is optional - continue with just username
     }
 
-    LOG.info(
-        "Extracted user identity from direct ID token: username={}, email={}", userName, email);
+    LOG.debug("Extracted user identity from direct ID token flow");
 
     // Clear session attribute
     session.removeAttribute("mcp.auth.request.id");
