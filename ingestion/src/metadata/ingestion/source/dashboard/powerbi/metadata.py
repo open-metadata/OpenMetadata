@@ -1952,6 +1952,7 @@ class PowerbiSource(DashboardServiceSource):
             for source_table in parser.source_tables:
                 table_name = source_table.raw_name
                 schema_name = None
+                database_name = database
 
                 if hasattr(source_table, "schema") and source_table.schema:
                     schema_str = (
@@ -1962,7 +1963,7 @@ class PowerbiSource(DashboardServiceSource):
                     if "." in schema_str:
                         parts = schema_str.split(".")
                         if len(parts) == 2:
-                            database = parts[0] if parts[0] else database
+                            database_name = parts[0] if parts[0] else database
                             schema_name = parts[1]
                         else:
                             schema_name = schema_str
@@ -1972,7 +1973,7 @@ class PowerbiSource(DashboardServiceSource):
                 if table_name:
                     lineage_tables.append(
                         {
-                            "database": database,
+                            "database": database_name,
                             "schema": schema_name,
                             "table": table_name,
                             "sql": cleaned_sql,
