@@ -17,6 +17,7 @@ OWNER_ACCESS_RIGHTS_KEYWORDS = ["owner", "write", "admin"]
 
 SNOWFLAKE_QUERY_EXPRESSION_KW = "Value.NativeQuery(Snowflake.Databases("
 DATABRICKS_QUERY_EXPRESSION_KW = "Value.NativeQuery(Databricks.Catalogs("
+BIGQUERY_QUERY_EXPRESSION_KW = "Value.NativeQuery(GoogleBigQuery.Database("
 
 DEFAULT_REPORTS_PREFIX = "reports"
 RDL_REPORT_FORMAT = "RDL"
@@ -45,3 +46,5 @@ RDL_REPORTS_PREFIX = "rdlreports"
 # =============================================================================
 
 MAX_PROJECT_FILTER_SIZE = 10
+
+SQL_LINE_COMMENT_PATTERN = r"//[^\n]*"
