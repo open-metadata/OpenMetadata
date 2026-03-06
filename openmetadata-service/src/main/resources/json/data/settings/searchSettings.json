@@ -31,7 +31,7 @@
         "field": "tier.tagFQN"
       },
       {
-        "name": "owners.displayName.keyword",
+        "name": "ownerDisplayName",
         "type": "terms",
         "field": "ownerDisplayName"
       },

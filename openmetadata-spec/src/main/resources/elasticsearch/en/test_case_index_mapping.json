@@ -464,7 +464,6 @@
         }
       },
       "tags": {
-        "type": "nested",
         "properties": {
           "tagFQN": {
             "type": "keyword",

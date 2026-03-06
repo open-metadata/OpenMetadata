@@ -151,7 +151,6 @@
         "normalizer": "lowercase_normalizer"
       },
       "tags": {
-        "type": "nested",
         "properties": {
           "tagFQN": {
             "type": "keyword",
