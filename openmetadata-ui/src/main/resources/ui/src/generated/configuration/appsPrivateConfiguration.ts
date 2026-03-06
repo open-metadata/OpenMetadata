@@ -25,10 +25,6 @@ export interface AppsPrivateConfiguration {
  */
 export interface AppPrivateConfig {
     /**
-     * Flag to enable/disable the application. If the app is not enabled, it can't be installed.
-     */
-    enabled?: boolean;
-    /**
      * Application Name
      */
     name: string;
@@ -36,7 +32,12 @@ export interface AppPrivateConfig {
      * Parameters to initialize the Applications.
      */
     parameters: { [key: string]: any };
-    schedule?:  any[] | boolean | AppScheduleClass | number | number | null | string;
+    /**
+     * Flag to enable/disable preview for the application. If the app is in preview mode, it
+     * can't be installed.
+     */
+    preview?:  boolean;
+    schedule?: any[] | boolean | AppScheduleClass | number | number | null | string;
 }
 
 export interface AppScheduleClass {

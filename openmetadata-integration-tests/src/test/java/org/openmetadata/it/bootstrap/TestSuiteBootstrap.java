@@ -549,8 +549,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void configurePipelineServiceClient(OpenMetadataApplicationConfig config) {
+    PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
+
     if (kubeConfigYaml != null) {
-      PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
+      // K3s was started - configure K8s pipeline client
       LOG.info("Configuring K8sPipelineClient for pipeline operations");
       pipelineConfig.setEnabled(true);
       pipelineConfig.setClassName(
@@ -565,11 +567,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       params.setAdditionalProperty("serviceAccountName", "default");
       params.setAdditionalProperty("imagePullPolicy", "IfNotPresent");
       pipelineConfig.setParameters(params);
-      config.setPipelineServiceClientConfiguration(pipelineConfig);
     } else {
+      // No K3s - disable pipeline service client
+      pipelineConfig.setEnabled(false);
       LOG.info("Pipeline service client disabled (K8s not enabled)");
-      config.getPipelineServiceClientConfiguration().setEnabled(false);
     }
+
+    config.setPipelineServiceClientConfiguration(pipelineConfig);
   }
 
   private void configureRdf(OpenMetadataApplicationConfig config) {
