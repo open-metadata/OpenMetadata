@@ -18,22 +18,26 @@
  * Accepts the same TableComponentProps<T> interface for zero-friction adoption.
  *
  * Unsupported in v1 (accepted but ignored):
- *  - resizableColumns  (react-antd-column-resize is AntD-specific)
- *  - expandable        (React Aria has no built-in expandable rows)
- *  - components        (AntD custom cell/header renderers)
- *  - scroll            (handled via CSS overflow on the container)
+ *  - expandable  (React Aria has no built-in expandable rows)
+ *  - components  (AntD custom cell/header renderers)
  */
 
-import { Table as UntitledTable } from '@openmetadata/ui-core-components';
-import { Button, Col, Dropdown, Row, Typography } from 'antd';
 import {
+  Button,
+  Dropdown,
+  Table as UntitledTable,
+} from '@openmetadata/ui-core-components';
+import type {
   ColumnType,
   FilterValue,
   SorterResult,
   TableCurrentDataSource,
   TablePaginationConfig,
 } from 'antd/lib/table/interface';
-import { ColumnsType } from 'antd/es/table/interface';
+import type { ColumnsType } from 'antd/es/table/interface';
+import { Resizable } from 'react-resizable';
+import type { ResizeCallbackData } from 'react-resizable';
+import 'react-resizable/css/styles.css';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -89,7 +93,8 @@ const TableV2 = <T extends object>(
   const { t } = useTranslation();
   const { type } = useGenericContext();
   const [propsColumns, setPropsColumns] = useState<ColumnsType<T>>([]);
-  const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const [internalCurrentPage, setInternalCurrentPage] = useState(1);
   const [dropdownColumnList, setDropdownColumnList] = useState<
     TableColumnDropdownList[]
   >([]);
@@ -110,6 +115,28 @@ const TableV2 = <T extends object>(
   );
 
   const entityKey = useMemo(() => entityType ?? type, [type, entityType]);
+
+  const clientPagination = useMemo(() => {
+    if (!rest.pagination) {
+      return null;
+    }
+    const cfg = rest.pagination as TablePaginationConfig;
+
+    return {
+      pageSize: (cfg.pageSize as number) ?? 10,
+      hideOnSinglePage: cfg.hideOnSinglePage ?? false,
+    };
+  }, [rest.pagination]);
+
+  const pagedDataSource = useMemo((): T[] => {
+    const data = (rest.dataSource ?? []) as T[];
+    if (!clientPagination) {
+      return data;
+    }
+    const start = (internalCurrentPage - 1) * clientPagination.pageSize;
+
+    return data.slice(start, start + clientPagination.pageSize);
+  }, [rest.dataSource, clientPagination, internalCurrentPage]);
 
   const isCustomizeColumnEnable = useMemo(
     () =>
@@ -171,57 +198,6 @@ const TableV2 = <T extends object>(
     entityKey,
   ]);
 
-  const menu = useMemo(
-    () => ({
-      items: [
-        {
-          key: 'header',
-          label: (
-            <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
-              <Typography.Text
-                className="text-sm text-grey-muted font-medium"
-                data-testid="column-dropdown-title">
-                {t('label.column')}
-              </Typography.Text>
-              <Button
-                className="text-primary text-sm p-0"
-                data-testid="column-dropdown-action-button"
-                type="text"
-                onClick={handleBulkColumnAction}>
-                {dropdownColumnList.length === columnDropdownSelections.length
-                  ? t('label.hide-all')
-                  : t('label.view-all')}
-              </Button>
-            </div>
-          ),
-        },
-        {
-          key: 'columns',
-          label: dropdownColumnList.map(
-            (item: TableColumnDropdownList, index: number) => (
-              <DraggableMenuItem
-                currentItem={item}
-                index={index}
-                itemList={dropdownColumnList}
-                key={item.value}
-                selectedOptions={columnDropdownSelections}
-                onMoveItem={handleMoveItem}
-                onSelect={handleColumnItemSelect}
-              />
-            )
-          ),
-        },
-      ],
-    }),
-    [
-      dropdownColumnList,
-      columnDropdownSelections,
-      handleMoveItem,
-      handleColumnItemSelect,
-      handleBulkColumnAction,
-    ]
-  );
-
   // ─── Row key ──────────────────────────────────────────────────────────────
 
   const getRowKey = useCallback(
@@ -267,6 +243,16 @@ const TableV2 = <T extends object>(
       });
     },
     [rest.rowSelection, rest.dataSource, getRowKey]
+  );
+
+  // ─── Column resize ────────────────────────────────────────────────────────
+
+  const handleColumnResize = useCallback(
+    (colKey: string) =>
+      (_: React.SyntheticEvent, { size }: ResizeCallbackData) => {
+        setColumnWidths((prev) => ({ ...prev, [colKey]: size.width }));
+      },
+    []
   );
 
   // ─── Sorting ──────────────────────────────────────────────────────────────
@@ -355,6 +341,10 @@ const TableV2 = <T extends object>(
     defaultVisibleColumns,
   ]);
 
+  useEffect(() => {
+    setInternalCurrentPage(1);
+  }, [rest.dataSource]);
+
   // ─── Cell value resolver ──────────────────────────────────────────────────
 
   const resolveCellValue = useCallback(
@@ -407,59 +397,89 @@ const TableV2 = <T extends object>(
     <div
       className={classNames('table-container', rest.containerClassName)}
       ref={ref}>
-      <Row
-        className={classNames({
+      <div
+        className={classNames('p-x-md', {
           'p-y-md':
-            searchProps ?? rest.extraTableFilters ?? isCustomizeColumnEnable,
+            searchProps || rest.extraTableFilters || isCustomizeColumnEnable,
         })}>
-        <Col span={24}>
-          <Row className="p-x-md">
-            {searchProps ? (
-              <Col span={12}>
-                <Searchbar
-                  {...searchProps}
-                  removeMargin
-                  placeholder={searchProps?.placeholder ?? t('label.search')}
-                  searchValue={searchProps?.searchValue}
-                  typingInterval={searchProps?.typingInterval ?? 500}
-                  onSearch={handleSearchAction}
-                />
-              </Col>
-            ) : null}
-            {(rest.extraTableFilters || isCustomizeColumnEnable) && (
-              <Col
-                className={classNames(
-                  'd-flex justify-end items-center gap-5',
-                  rest.extraTableFiltersClassName
-                )}
-                span={searchProps ? 12 : 24}>
-                {rest.extraTableFilters}
-                {isCustomizeColumnEnable && (
-                  <Dropdown
-                    className="custom-column-dropdown-menu"
-                    menu={menu}
-                    open={isDropdownVisible}
-                    placement="bottomRight"
-                    trigger={['click']}
-                    onOpenChange={setIsDropdownVisible}>
-                    <Button
-                      className="remove-button-background-hover"
-                      data-testid="column-dropdown"
-                      icon={<ColumnIcon />}
-                      size="small"
-                      title={t('label.show-or-hide-column-plural')}
-                      type="text">
-                      {t('label.customize')}
-                    </Button>
-                  </Dropdown>
-                )}
-              </Col>
-            )}
-          </Row>
-        </Col>
-      </Row>
+        <div className="d-flex">
+          {searchProps ? (
+            <div style={{ flex: 1 }}>
+              <Searchbar
+                {...searchProps}
+                removeMargin
+                placeholder={searchProps?.placeholder ?? t('label.search')}
+                searchValue={searchProps?.searchValue}
+                typingInterval={searchProps?.typingInterval ?? 500}
+                onSearch={handleSearchAction}
+              />
+            </div>
+          ) : null}
+          {(rest.extraTableFilters || isCustomizeColumnEnable) && (
+            <div
+              className={classNames(
+                'd-flex justify-end items-center gap-5',
+                rest.extraTableFiltersClassName
+              )}
+              style={searchProps ? { flex: 1 } : undefined}>
+              {rest.extraTableFilters}
+              {isCustomizeColumnEnable && (
+                <Dropdown.Root>
+                  <Button
+                    color="tertiary"
+                    data-testid="column-dropdown"
+                    iconLeading={ColumnIcon}
+                    size="sm"
+                    title={t('label.show-or-hide-column-plural')}>
+                    {t('label.customize')}
+                  </Button>
+                  <Dropdown.Popover>
+                    <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
+                      <span
+                        className="text-sm text-grey-muted font-medium"
+                        data-testid="column-dropdown-title">
+                        {t('label.column')}
+                      </span>
+                      <Button
+                        color="link-color"
+                        data-testid="column-dropdown-action-button"
+                        size="sm"
+                        onPress={() => handleBulkColumnAction()}>
+                        {dropdownColumnList.length ===
+                        columnDropdownSelections.length
+                          ? t('label.hide-all')
+                          : t('label.view-all')}
+                      </Button>
+                    </div>
+                    {dropdownColumnList.map(
+                      (item: TableColumnDropdownList, index: number) => (
+                        <DraggableMenuItem
+                          currentItem={item}
+                          index={index}
+                          itemList={dropdownColumnList}
+                          key={item.value}
+                          selectedOptions={columnDropdownSelections}
+                          onMoveItem={handleMoveItem}
+                          onSelect={handleColumnItemSelect}
+                        />
+                      )
+                    )}
+                  </Dropdown.Popover>
+                </Dropdown.Root>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
-      <div className="tw:relative">
+      <div
+        className="tw:relative"
+        style={{
+          ...(rest.scroll?.x ? { overflowX: 'auto' } : {}),
+          ...(rest.scroll?.y
+            ? { overflowY: 'auto', maxHeight: rest.scroll.y }
+            : {}),
+        }}>
         {isLoading && (
           <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-white/60">
             <Loader />
@@ -477,15 +497,36 @@ const TableV2 = <T extends object>(
             {propsColumns.map((col, colIdx) => {
               const colType = col as ColumnType<T>;
               const colKey = String(col.key ?? colType.dataIndex ?? colIdx);
+              const colWidth =
+                columnWidths[colKey] ?? (colType.width as number) ?? 150;
 
-              return (
+              const headNode = (
                 <UntitledTable.Head
                   allowsSorting={!!colType.sorter}
                   className="tw:pl-4 tw:pr-2 tw:text-sm tw:text-tertiary"
                   id={colKey}
-                  key={colKey}>
+                  key={colKey}
+                  style={
+                    rest.resizableColumns
+                      ? { width: colWidth, minWidth: colWidth }
+                      : undefined
+                  }>
                   {resolveColumnTitle(colType)}
                 </UntitledTable.Head>
+              );
+
+              return rest.resizableColumns ? (
+                <Resizable
+                  draggableOpts={{ enableUserSelectHack: false }}
+                  height={0}
+                  key={colKey}
+                  minConstraints={[80, 0]}
+                  width={colWidth}
+                  onResize={handleColumnResize(colKey)}>
+                  {headNode}
+                </Resizable>
+              ) : (
+                headNode
               );
             })}
           </UntitledTable.Header>
@@ -498,26 +539,54 @@ const TableV2 = <T extends object>(
                 </div>
               )
             }>
-            {((rest.dataSource ?? []) as T[]).map((record, index) => (
-              <UntitledTable.Row
-                className={
-                  typeof rest.rowClassName === 'function'
-                    ? rest.rowClassName(record, index, 0)
-                    : rest.rowClassName
-                }
-                id={getRowKey(record, index)}
-                key={getRowKey(record, index)}>
-                {propsColumns.map((col, colIdx) => (
-                  <UntitledTable.Cell
-                    className="tw:py-2 tw:pl-4 tw:pr-2 tw:align-top"
-                    key={String(
+            {pagedDataSource.map((record, pageLocalIdx) => {
+              const actualIndex = clientPagination
+                ? (internalCurrentPage - 1) * clientPagination.pageSize +
+                  pageLocalIdx
+                : pageLocalIdx;
+
+              return (
+                <UntitledTable.Row
+                  className={
+                    typeof rest.rowClassName === 'function'
+                      ? rest.rowClassName(record, actualIndex, 0)
+                      : rest.rowClassName
+                  }
+                  id={getRowKey(record, actualIndex)}
+                  key={getRowKey(record, actualIndex)}>
+                  {propsColumns.map((col, colIdx) => {
+                    const cellKey = String(
                       col.key ?? (col as ColumnType<T>).dataIndex ?? colIdx
-                    )}>
-                    {resolveCellValue(col as ColumnType<T>, record, index)}
-                  </UntitledTable.Cell>
-                ))}
-              </UntitledTable.Row>
-            ))}
+                    );
+
+                    return (
+                      <UntitledTable.Cell
+                        className={
+                          rest.cellClassName ??
+                          'tw:py-2 tw:pl-4 tw:pr-2 tw:align-top'
+                        }
+                        key={cellKey}
+                        style={
+                          rest.resizableColumns
+                            ? {
+                                width:
+                                  columnWidths[cellKey] ??
+                                  ((col as ColumnType<T>).width as number) ??
+                                  150,
+                              }
+                            : undefined
+                        }>
+                        {resolveCellValue(
+                          col as ColumnType<T>,
+                          record,
+                          actualIndex
+                        )}
+                      </UntitledTable.Cell>
+                    );
+                  })}
+                </UntitledTable.Row>
+              );
+            })}
           </UntitledTable.Body>
         </UntitledTable>
       </div>
@@ -525,6 +594,22 @@ const TableV2 = <T extends object>(
       {customPaginationProps && customPaginationProps.showPagination ? (
         <div>
           <NextPrevious {...customPaginationProps} />
+        </div>
+      ) : clientPagination &&
+        !(
+          clientPagination.hideOnSinglePage &&
+          (rest.dataSource ?? []).length <= clientPagination.pageSize
+        ) ? (
+        <div>
+          <NextPrevious
+            isNumberBased
+            currentPage={internalCurrentPage}
+            pageSize={clientPagination.pageSize}
+            paging={{ total: (rest.dataSource ?? []).length }}
+            pagingHandler={({ currentPage }) =>
+              setInternalCurrentPage(currentPage)
+            }
+          />
         </div>
       ) : null}
     </div>

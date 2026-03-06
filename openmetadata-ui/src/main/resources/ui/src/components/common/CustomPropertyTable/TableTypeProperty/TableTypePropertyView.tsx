@@ -14,7 +14,7 @@ import { isArray } from 'lodash';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
-import Table from '../../Table/Table';
+import Table from '../../Table/TableV2';
 import './table-type-property-view.less';
 
 interface TableTypePropertyViewProps {
@@ -48,15 +48,11 @@ const TableTypePropertyView: FC<TableTypePropertyViewProps> = ({
   return (
     <Table
       resizableColumns
-      className="w-full table-type-custom-property"
       columns={tableColumns}
+      containerClassName="w-full table-type-custom-property"
       data-testid="table-type-property-value"
       dataSource={rows}
-      pagination={{
-        position: ['bottomCenter'],
-        pageSize: 10,
-        hideOnSinglePage: true,
-      }}
+      pagination={{ hideOnSinglePage: true, pageSize: 10 }}
       rowKey="name"
       scroll={{ x: true }}
       size="small"
