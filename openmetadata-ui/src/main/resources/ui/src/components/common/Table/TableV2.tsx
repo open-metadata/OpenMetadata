@@ -508,6 +508,11 @@ const TableV2 = <T extends object>(
 
         <UntitledTable
           aria-label="data-table"
+          selectedKeys={
+            rest.rowSelection?.selectedRowKeys
+              ? new Set(rest.rowSelection.selectedRowKeys.map(String))
+              : undefined
+          }
           selectionBehavior={rest.rowSelection ? 'toggle' : undefined}
           selectionMode={selectionMode}
           size={rest.size === 'small' ? 'sm' : 'md'}
