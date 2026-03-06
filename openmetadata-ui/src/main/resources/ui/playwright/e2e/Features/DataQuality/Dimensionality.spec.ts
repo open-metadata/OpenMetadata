@@ -11,10 +11,17 @@
  *  limitations under the License.
  */
 import test, { expect, Response } from '@playwright/test';
-import { DOMAIN_TAGS, PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../../constant/config';
+import {
+  DOMAIN_TAGS,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+} from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import { visitDataQualityTab } from '../../../utils/testCases';
+import {
+  ObservabilityFeature,
+  selectAddObservabilityFeature,
+} from '../../../utils/dataQuality';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -47,182 +54,193 @@ test.slow();
  * Dimensionality Tests
  * @description Creates a dimension-level test case, edits dimension columns, and validates the dimension selector in the details view.
  */
-test('Dimensionality Tests', { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, PLAYWRIGHT_INGESTION_TAG_OBJ.tag] }, async ({ page }) => {
-  await test.step('Add dimensionality test case', async () => {
-    /**
-     * Step 1: Create dimension-level test case
-     * @description Opens the create form in Dimension Level mode, selects a primary column and dimension columns,
-     * chooses the test definition, submits, waits for pipeline deploy endpoints, and verifies the new test.
-     */
-    await redirectToHomePage(page);
-    await visitDataQualityTab(page, table);
-    await page.click('[data-testid="profiler-add-table-test-btn"]');
-    const testCaseDoc = page.waitForResponse(
-      '/locales/en-US/OpenMetadata/TestCaseForm.md'
-    );
-    await page.getByRole('menuitemradio', { name: 'Test case' }).click();
-    await page
-      .getByTestId('select-table-card')
-      .getByText('Dimension Level')
-      .click();
-    await testCaseDoc;
-
-    await page.click('[id="root\\/column"]');
-    await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-    await expect(page.locator('[data-id="column"]')).toBeVisible();
-
-    await page.click(
-      `[title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
-    );
-
-    await page.locator('[id="root\\/dimensionColumns"]').click();
-    await page.waitForSelector(`[data-id="dimensionColumns"]`, {
-      state: 'visible',
-    });
-
-    await expect(
-      page.locator(
-        `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
-      )
-    ).not.toBeVisible();
-
-    for (const dimension of NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions) {
-      await page.click(
-        `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${dimension}"]`
+test(
+  'Dimensionality Tests',
+  {
+    tag: [
+      `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`,
+      PLAYWRIGHT_INGESTION_TAG_OBJ.tag,
+    ],
+  },
+  async ({ page }) => {
+    await test.step('Add dimensionality test case', async () => {
+      /**
+       * Step 1: Create dimension-level test case
+       * @description Opens the create form in Dimension Level mode, selects a primary column and dimension columns,
+       * chooses the test definition, submits, waits for pipeline deploy endpoints, and verifies the new test.
+       */
+      await redirectToHomePage(page);
+      await visitDataQualityTab(page, table);
+      await page.click('[data-testid="profiler-add-table-test-btn"]');
+      const testCaseDoc = page.waitForResponse(
+        '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
-    }
+      await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
+      await page
+        .getByTestId('select-table-card')
+        .getByText('Dimension Level')
+        .click();
+      await testCaseDoc;
 
-    await page.locator('[data-id="dimensionColumns"]').click();
+      await page.click('[id="root\\/column"]');
+      await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
 
-    await page.getByTestId('test-case-name').click();
-    await page.fill(
-      '[data-testid="test-case-name"]',
-      NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name
-    );
+      await expect(page.locator('[data-id="column"]')).toBeVisible();
 
-    await page.fill(
-      '[id="root\\/testType"]',
-      NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.type
-    );
-    await page.click(
-      `[data-testid="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.type}"]`
-    );
+      await page.click(
+        `[title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
+      );
 
-    const createTestCaseResponse = page.waitForResponse(
-      (response: Response) =>
-        response.url().includes('/api/v1/dataQuality/testCases') &&
-        response.request().method() === 'POST'
-    );
+      await page.locator('[id="root\\/dimensionColumns"]').click();
+      await page.waitForSelector(`[data-id="dimensionColumns"]`, {
+        state: 'visible',
+      });
 
-    const ingestionPipelines = page.waitForResponse(
-      '/api/v1/services/ingestionPipelines'
-    );
-    const deploy = page.waitForResponse(
-      '/api/v1/services/ingestionPipelines/deploy/*'
-    );
+      await expect(
+        page.locator(
+          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
+        )
+      ).not.toBeVisible();
 
-    await page.click('[data-testid="create-btn"]');
+      for (const dimension of NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions) {
+        await page.click(
+          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${dimension}"]`
+        );
+      }
 
-    const response = await createTestCaseResponse;
-    await ingestionPipelines;
-    await deploy;
+      await page.locator('[data-id="dimensionColumns"]').click();
 
-    expect(response.status()).toBe(201);
-    await expect(
-      page.locator(
-        `[data-testid="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}"]`
-      )
-    ).toBeVisible();
-  });
+      await page.getByTestId('test-case-name').click();
+      await page.fill(
+        '[data-testid="test-case-name"]',
+        NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name
+      );
 
-  await test.step('Edit dimensionality from entity page', async () => {
-    /**
-     * Step 2: Edit dimension columns
-     * @description Opens the edit drawer for the created test, adds a new dimension column, submits a PATCH,
-     * and verifies a successful update response.
-     */
-    await page
-      .getByTestId(
-        `action-dropdown-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}`
-      )
-      .click();
-    await page
-      .getByTestId(`edit-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}`)
-      .click();
+      await page.fill(
+        '[id="root\\/testType"]',
+        NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.type
+      );
+      await page.click(
+        `[data-testid="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.type}"]`
+      );
 
-    await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
-      `Edit ${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}`
-    );
+      const createTestCaseResponse = page.waitForResponse(
+        (response: Response) =>
+          response.url().includes('/api/v1/dataQuality/testCases') &&
+          response.request().method() === 'POST'
+      );
 
-    await page.locator('[id="root\\/dimensionColumns"]').click();
-    await page.waitForSelector(`[data-id="dimensionColumns"]`, {
-      state: 'visible',
+      const ingestionPipelines = page.waitForResponse(
+        '/api/v1/services/ingestionPipelines'
+      );
+      const deploy = page.waitForResponse(
+        '/api/v1/services/ingestionPipelines/deploy/*'
+      );
+
+      await page.click('[data-testid="create-btn"]');
+
+      const response = await createTestCaseResponse;
+      await ingestionPipelines;
+      await deploy;
+
+      expect(response.status()).toBe(201);
+      await expect(
+        page.locator(
+          `[data-testid="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}"]`
+        )
+      ).toBeVisible();
     });
 
-    await expect(
-      page.locator(
-        `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
-      )
-    ).not.toBeVisible();
+    await test.step('Edit dimensionality from entity page', async () => {
+      /**
+       * Step 2: Edit dimension columns
+       * @description Opens the edit drawer for the created test, adds a new dimension column, submits a PATCH,
+       * and verifies a successful update response.
+       */
+      await page
+        .getByTestId(
+          `action-dropdown-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}`
+        )
+        .click();
+      await page
+        .getByTestId(`edit-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}`)
+        .click();
 
-    await page.click(
-      `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0]}"]`
-    );
+      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+        `Edit ${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}`
+      );
 
-    const updateTestCaseResponse = page.waitForResponse(
-      (response: Response) =>
-        response.url().includes('/api/v1/dataQuality/testCases') &&
-        response.request().method() === 'PATCH'
-    );
+      await page.locator('[id="root\\/dimensionColumns"]').click();
+      await page.waitForSelector(`[data-id="dimensionColumns"]`, {
+        state: 'visible',
+      });
 
-    await page.getByTestId('update-btn').click();
-    const response = await updateTestCaseResponse;
+      await expect(
+        page.locator(
+          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
+        )
+      ).not.toBeVisible();
 
-    expect(response.status()).toBe(200);
-  });
+      await page.click(
+        `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0]}"]`
+      );
 
-  await test.step('Details page should show updated dimensions', async () => {
-    /**
-     * Step 3: Validate details view dimensions
-     * @description Opens the dimension results from the test card, ensures the dimensionality view and selector are visible,
-     * and verifies both original and edited dimension values are present in the selector options.
-     */
-    await expect(
-      page.locator(
-        `[data-testid="dimension-count-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}"]`
-      )
-    ).toBeVisible();
+      const updateTestCaseResponse = page.waitForResponse(
+        (response: Response) =>
+          response.url().includes('/api/v1/dataQuality/testCases') &&
+          response.request().method() === 'PATCH'
+      );
 
-    const dimensionResponse = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/dimensionResults/*?*'
-    );
-    await page
-      .locator(
-        `[data-testid="dimension-count-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}"]`
-      )
-      .click();
+      await page.getByTestId('update-btn').click();
+      const response = await updateTestCaseResponse;
 
-    await dimensionResponse;
+      expect(response.status()).toBe(200);
+    });
 
-    await expect(page.locator(`[data-testid="dimensionality"]`)).toBeVisible();
+    await test.step('Details page should show updated dimensions', async () => {
+      /**
+       * Step 3: Validate details view dimensions
+       * @description Opens the dimension results from the test card, ensures the dimensionality view and selector are visible,
+       * and verifies both original and edited dimension values are present in the selector options.
+       */
+      await expect(
+        page.locator(
+          `[data-testid="dimension-count-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}"]`
+        )
+      ).toBeVisible();
 
-    await expect(
-      page.locator(`[data-testid="dimension-select"]`)
-    ).toBeVisible();
+      const dimensionResponse = page.waitForResponse(
+        '/api/v1/dataQuality/testCases/dimensionResults/*?*'
+      );
+      await page
+        .locator(
+          `[data-testid="dimension-count-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}"]`
+        )
+        .click();
 
-    await page.locator(`[data-testid="dimension-select"]`).click();
+      await dimensionResponse;
 
-    await expect(
-      page.locator(
-        `[data-value=${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions[0]}]`
-      )
-    ).toBeVisible();
+      await expect(
+        page.locator(`[data-testid="dimensionality"]`)
+      ).toBeVisible();
 
-    await expect(
-      page.locator(
-        `[data-value=${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0]}]`
-      )
-    ).toBeVisible();
-  });
-});
+      await expect(
+        page.locator(`[data-testid="dimension-select"]`)
+      ).toBeVisible();
+
+      await page.locator(`[data-testid="dimension-select"]`).click();
+
+      await expect(
+        page.getByRole('option', {
+          name: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions[0],
+        })
+      ).toBeVisible();
+
+      await expect(
+        page.getByRole('option', {
+          name: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0],
+        })
+      ).toBeVisible();
+    });
+  }
+);
