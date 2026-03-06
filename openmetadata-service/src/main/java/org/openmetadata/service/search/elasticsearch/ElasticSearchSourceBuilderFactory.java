@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.SearchUtil.isColumnIndex;
 import static org.openmetadata.service.search.SearchUtil.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtil.isDataQualityIndex;
 import static org.openmetadata.service.search.SearchUtil.isServiceIndex;
@@ -27,6 +28,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
+import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
@@ -320,6 +322,10 @@ public class ElasticSearchSourceBuilderFactory
       return buildTimeSeriesSearchBuilderV2(indexName, searchQuery, fromOffset, size);
     }
 
+    if (isColumnIndex(indexName)) {
+      return buildColumnSearchBuilderV2(searchQuery, fromOffset, size);
+    }
+
     if (isServiceIndex(indexName)) {
       return buildServiceSearchBuilderV2(searchQuery, fromOffset, size);
     }
@@ -358,6 +364,21 @@ public class ElasticSearchSourceBuilderFactory
           query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
+  }
+
+  public ElasticSearchRequestBuilder buildColumnSearchBuilderV2(String query, int from, int size) {
+    Map<String, Float> fields = ColumnSearchIndex.getFields();
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
+        ElasticQueryBuilder.multiMatchQuery(
+            query,
+            fields,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.BestFields,
+            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
+            String.valueOf(DEFAULT_TIE_BREAKER),
+            "0");
+    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
+        buildHighlightsV2(List.of("name", "displayName", "description"));
+    return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
   public ElasticSearchRequestBuilder buildServiceSearchBuilderV2(String query, int from, int size) {

@@ -77,6 +77,13 @@ public class SearchUtil {
     };
   }
 
+  public static boolean isColumnIndex(String indexName) {
+    return switch (indexName) {
+      case "column_search_index", Entity.TABLE_COLUMN -> true;
+      default -> false;
+    };
+  }
+
   public static boolean isServiceIndex(String indexName) {
     return switch (indexName) {
       case "api_service_search_index",
@@ -121,6 +128,7 @@ public class SearchUtil {
       case "file_search_index", Entity.FILE -> Entity.FILE;
       case "worksheet_search_index", Entity.WORKSHEET -> Entity.WORKSHEET;
       case "spreadsheet_search_index", Entity.SPREADSHEET -> Entity.SPREADSHEET;
+      case "column_search_index", Entity.TABLE_COLUMN -> Entity.TABLE_COLUMN;
       case "dataAsset" -> "dataAsset";
       default -> "dataAsset";
     };
