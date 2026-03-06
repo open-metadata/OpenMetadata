@@ -327,8 +327,8 @@ public class ODCSConverter {
   private static ODCSDataContract.OdcsStatus mapContractStatusToODCS(EntityStatus status) {
     if (status == null) return ODCSDataContract.OdcsStatus.DRAFT;
     return switch (status) {
-      case APPROVED -> ODCSDataContract.OdcsStatus.ACTIVE;
-      case DEPRECATED -> ODCSDataContract.OdcsStatus.DEPRECATED;
+      case APPROVED, ACTIVE -> ODCSDataContract.OdcsStatus.ACTIVE;
+      case DEPRECATED, ARCHIVED -> ODCSDataContract.OdcsStatus.DEPRECATED;
       case DRAFT, IN_REVIEW, REJECTED, UNPROCESSED -> ODCSDataContract.OdcsStatus.DRAFT;
     };
   }

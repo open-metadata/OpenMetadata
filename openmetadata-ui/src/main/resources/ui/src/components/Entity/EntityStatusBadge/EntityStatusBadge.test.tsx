@@ -37,6 +37,8 @@ describe('EntityStatusBadge', () => {
       EntityStatus.InReview,
       EntityStatus.Rejected,
       EntityStatus.Deprecated,
+      EntityStatus.Active,
+      EntityStatus.Archived,
     ];
 
     statuses.forEach((status) => {

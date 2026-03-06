@@ -908,7 +908,9 @@ export interface HistogramClass {
  * catalog.
  */
 export enum EntityStatus {
+    Active = "Active",
     Approved = "Approved",
+    Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
