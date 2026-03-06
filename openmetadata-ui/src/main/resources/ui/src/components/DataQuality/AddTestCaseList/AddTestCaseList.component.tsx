@@ -225,7 +225,7 @@ export const AddTestCaseList = ({
           });
       }
     },
-    [searchTerm, totalCount, items, isLoading]
+    [searchTerm, totalCount, items, isLoading, fetchTestCases, pageNumber]
   );
 
   const handleCardClick = (details: TestCase) => {
