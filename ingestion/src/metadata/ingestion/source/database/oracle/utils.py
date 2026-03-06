@@ -42,7 +42,7 @@ def get_table_prefix_from_connection(service_connection) -> str:
 
 
 def _get_table_prefix(self) -> str:
-    return getattr(self, "table_prefix", "DBA")
+    return getattr(self, "table_prefix", "ALL")
 
 
 @reflection.cache

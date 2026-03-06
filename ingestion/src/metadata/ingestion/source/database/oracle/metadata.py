@@ -190,7 +190,7 @@ class OracleSource(CommonDbSourceService):
         schema = self.context.get().database_schema
         if not getattr(self.service_connection, "preserveIdentifierCase", False):
             schema = schema.upper()
-        prefix = getattr(self.engine.dialect, "table_prefix", "DBA")
+        prefix = getattr(self.engine.dialect, "table_prefix", "ALL")
         with self.engine.connect() as conn:
             results: FetchObjectList = conn.execute(
                 text(query.format(schema=schema, prefix=prefix))
