@@ -90,6 +90,8 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
 REDSHIFT_SERVERLESS_SQL_STATEMENT = textwrap.dedent(
     """
 WITH queries AS (
+    -- Limit applied here (not outer query) to prevent LISTAGG exceeding 65KB limit in full_queries CTE
+    -- Order by start_time DESC to prioritize recent queries for lineage
     SELECT *
     FROM SYS_QUERY_HISTORY
     WHERE user_id > 1
@@ -101,6 +103,8 @@ WITH queries AS (
         AND LOWER(status) = 'success'
         AND start_time >= '{start_time}'
         AND start_time < '{end_time}'
+    ORDER BY start_time DESC
+    LIMIT {result_limit}
 ),
 deduped_querytext AS (
     -- Sometimes rows are duplicated, causing LISTAGG to fail in the full_queries CTE.
@@ -151,7 +155,6 @@ FROM queries AS q
     INNER JOIN pg_catalog.pg_user AS u
         ON q.user_id = u.usesysid
 ORDER BY q.start_time DESC
-LIMIT {result_limit}
 """
 )
 
@@ -638,7 +641,7 @@ ORDER BY data.starttime DESC;
 # both Redshift Serverless and Provisioned since sys views are available
 # in both instances. However, it still needs to be tested in Provisioned
 # clusters.
-# Ref: https://github.com/open-metadata/OpenMetadata/pull/6568/files#diff-65e5e8591345679be6a347ea29c4d283d5ca9aa723ef788c9a2524344de49ff3R17
+# Ref: https://github.com/open-metadata/OpenMetadata/pull/6568/files#diff-65e5e8591345679be6a347ea29c4d283d5ca9aa723ef788c9a2524344de49ff3R17  # noqa: E501
 
 REDSHIFT_TEST_GET_QUERIES_MAP = {
     RedshiftInstanceType.PROVISIONED: REDSHIFT_TEST_GET_QUERIES,
