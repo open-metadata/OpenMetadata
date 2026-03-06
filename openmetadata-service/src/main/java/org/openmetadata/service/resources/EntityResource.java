@@ -335,8 +335,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
+    return listVersionsInternal(securityContext, id, 0, 0);
+  }
+
+  protected EntityHistory listVersionsInternal(
+      SecurityContext securityContext, UUID id, int limit, int offset) {
     OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
-    return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
+    return listVersionsInternal(
+        securityContext, id, limit, offset, operationContext, getResourceContextById(id));
   }
 
   protected EntityHistory listVersionsInternal(
@@ -344,7 +350,20 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UUID id,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
+    return listVersionsInternal(securityContext, id, 0, 0, operationContext, resourceContext);
+  }
+
+  protected EntityHistory listVersionsInternal(
+      SecurityContext securityContext,
+      UUID id,
+      int limit,
+      int offset,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (limit > 0) {
+      return repository.listVersionsWithOffset(id, limit, offset).entityHistory();
+    }
     return repository.listVersions(id);
   }
 

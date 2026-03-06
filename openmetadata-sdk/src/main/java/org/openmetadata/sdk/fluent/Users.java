@@ -119,6 +119,11 @@ public final class Users {
     return getClient().users().getVersionList(id);
   }
 
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset) {
+    return getClient().users().getVersionList(id, limit, offset);
+  }
+
   public static User getVersion(String id, Double version) {
     return getClient().users().getVersion(id, version);
   }

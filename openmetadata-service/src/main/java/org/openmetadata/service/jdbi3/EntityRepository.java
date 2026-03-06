@@ -189,6 +189,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionType;
@@ -1258,23 +1259,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
     T latest = setFieldsInternal(find(id, ALL), putFields);
     setInheritedFields(latest, putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
-    List<ExtensionRecord> records =
-        daoCollection
-            .entityExtensionDAO()
-            .getExtensionsWithOffset(id, extensionPrefix, limit, offset);
-    List<EntityVersionPair> oldVersions = new ArrayList<>();
-    records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
-    oldVersions.sort(EntityUtil.compareVersion.reversed());
 
     final List<Object> versions = new ArrayList<>();
+    int dbLimit;
+    int dbOffset;
 
     if (offset == 0) {
       versions.add(JsonUtils.pojoToJson(latest));
+      dbLimit = limit - 1;
+      dbOffset = 0;
+    } else {
+      dbLimit = limit;
+      dbOffset = offset - 1;
     }
 
-    oldVersions.forEach(version -> versions.add(version.getEntityJson()));
-    return new EntityHistoryWithOffset(
-        new EntityHistory().withEntityType(entityType).withVersions(versions), offset + limit);
+    if (dbLimit > 0) {
+      List<ExtensionRecord> records =
+          daoCollection
+              .entityExtensionDAO()
+              .getExtensionsWithOffset(id, extensionPrefix, dbLimit, dbOffset);
+      List<EntityVersionPair> oldVersions = new ArrayList<>();
+      records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
+      oldVersions.sort(EntityUtil.compareVersion.reversed());
+      oldVersions.forEach(version -> versions.add(version.getEntityJson()));
+    }
+
+    int extensionCount = daoCollection.entityExtensionDAO().getExtensionCount(id, extensionPrefix);
+    int total = extensionCount + 1;
+    Paging paging = new Paging();
+    paging.setOffset(offset);
+    paging.setLimit(limit);
+    paging.setTotal(total);
+
+    EntityHistory entityHistory =
+        new EntityHistory().withEntityType(entityType).withVersions(versions).withPaging(paging);
+    return new EntityHistoryWithOffset(entityHistory, offset + limit);
   }
 
   public final ResultList<T> listWithOffset(

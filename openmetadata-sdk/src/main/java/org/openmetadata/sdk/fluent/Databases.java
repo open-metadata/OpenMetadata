@@ -118,6 +118,11 @@ public final class Databases {
     return getClient().databases().getVersionList(id);
   }
 
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset) {
+    return getClient().databases().getVersionList(id, limit, offset);
+  }
+
   public static Database getVersion(String id, Double version) {
     return getClient().databases().getVersion(id, version);
   }

@@ -184,6 +184,11 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().searchIndexes().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected SearchIndex getVersion(UUID id, Double version) {
     return SdkClients.adminClient().searchIndexes().getVersion(id.toString(), version);
   }

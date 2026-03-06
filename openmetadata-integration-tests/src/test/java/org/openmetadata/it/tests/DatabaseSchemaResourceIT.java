@@ -171,6 +171,11 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().databaseSchemas().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected DatabaseSchema getVersion(UUID id, Double version) {
     return SdkClients.adminClient().databaseSchemas().getVersion(id.toString(), version);
   }

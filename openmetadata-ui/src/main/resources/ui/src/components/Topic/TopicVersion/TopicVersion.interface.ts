@@ -27,6 +27,9 @@ export interface TopicVersionProp {
   tier: TagLabel;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;

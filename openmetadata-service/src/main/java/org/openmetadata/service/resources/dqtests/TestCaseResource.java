@@ -500,14 +500,24 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id) {
+          UUID id,
+      @Parameter(description = "Limit the number of versions returned")
+          @QueryParam("limit")
+          @DefaultValue("0")
+          @Min(0)
+          @Max(1000)
+          int limit,
+      @Parameter(description = "Offset of the versions to return")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
 
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
-    // VIEW_TESTS
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-    return super.listVersionsInternal(securityContext, id, operationContext, resourceContext);
+    return super.listVersionsInternal(
+        securityContext, id, limit, offset, operationContext, resourceContext);
   }
 
   @GET

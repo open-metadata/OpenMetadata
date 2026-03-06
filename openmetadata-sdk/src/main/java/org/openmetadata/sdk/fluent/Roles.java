@@ -78,6 +78,11 @@ public final class Roles {
     return getClient().roles().getVersionList(id);
   }
 
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset) {
+    return getClient().roles().getVersionList(id, limit, offset);
+  }
+
   public static Role getVersion(String id, Double version) {
     return getClient().roles().getVersion(id, version);
   }

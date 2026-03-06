@@ -155,6 +155,11 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().apiCollections().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected APICollection getVersion(UUID id, Double version) {
     return SdkClients.adminClient().apiCollections().getVersion(id.toString(), version);
   }

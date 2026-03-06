@@ -144,6 +144,11 @@ public class DashboardServiceResourceIT
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().dashboardServices().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected DashboardService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().dashboardServices().getVersion(id.toString(), version);
   }

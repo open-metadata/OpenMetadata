@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -601,6 +602,20 @@ public abstract class EntityServiceBase<T> {
   public EntityHistory getVersionList(String id) throws OpenMetadataException {
     String path = basePath + "/" + id + "/versions";
     return httpClient.execute(HttpMethod.GET, path, null, EntityHistory.class);
+  }
+
+  public EntityHistory getVersionList(UUID id, int limit, int offset) throws OpenMetadataException {
+    return getVersionList(id.toString(), limit, offset);
+  }
+
+  public EntityHistory getVersionList(String id, int limit, int offset)
+      throws OpenMetadataException {
+    String path = basePath + "/" + id + "/versions";
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("limit", String.valueOf(limit));
+    queryParams.put("offset", String.valueOf(offset));
+    RequestOptions options = RequestOptions.builder().queryParams(queryParams).build();
+    return httpClient.execute(HttpMethod.GET, path, null, EntityHistory.class, options);
   }
 
   /**

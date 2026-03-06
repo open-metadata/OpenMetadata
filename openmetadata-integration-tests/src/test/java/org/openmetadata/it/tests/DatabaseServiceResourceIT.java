@@ -167,6 +167,11 @@ public class DatabaseServiceResourceIT
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().databaseServices().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected DatabaseService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().databaseServices().getVersion(id.toString(), version);
   }

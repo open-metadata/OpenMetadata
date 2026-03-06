@@ -184,6 +184,11 @@ public class EventSubscriptionResourceIT
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().eventSubscriptions().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected EventSubscription getVersion(UUID id, Double version) {
     return SdkClients.adminClient().eventSubscriptions().getVersion(id.toString(), version);
   }

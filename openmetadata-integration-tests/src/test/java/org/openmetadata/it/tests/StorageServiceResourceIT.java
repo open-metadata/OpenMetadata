@@ -131,6 +131,11 @@ public class StorageServiceResourceIT extends BaseServiceIT<StorageService, Crea
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().storageServices().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected StorageService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().storageServices().getVersion(id.toString(), version);
   }

@@ -156,6 +156,11 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().containers().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected Container getVersion(UUID id, Double version) {
     return SdkClients.adminClient().containers().getVersion(id.toString(), version);
   }

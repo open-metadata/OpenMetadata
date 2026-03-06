@@ -51,6 +51,9 @@ export interface ChartVersionProp {
   tier: TagLabel;
   slashedChartName: string[];
   versionList: EntityHistory;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
@@ -67,6 +70,9 @@ const ChartVersion: FC<ChartVersionProp> = ({
   tier,
   slashedChartName,
   versionList,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -158,7 +164,8 @@ const ChartVersion: FC<ChartVersionProp> = ({
             <Col
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
-              flex="220px">
+              flex="220px"
+            >
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -217,7 +224,8 @@ const ChartVersion: FC<ChartVersionProp> = ({
     return (
       <>
         <div
-          className={`version-data ${deleted ? 'version-data--deleted' : ''}`}>
+          className={`version-data ${deleted ? 'version-data--deleted' : ''}`}
+        >
           <Row gutter={[0, 12]}>
             <Col span={24}>
               <DataAssetsVersionHeader
@@ -241,7 +249,8 @@ const ChartVersion: FC<ChartVersionProp> = ({
                 data={currentVersionData}
                 permissions={entityPermissions}
                 type={EntityType.CHART}
-                onUpdate={() => Promise.resolve()}>
+                onUpdate={() => Promise.resolve()}
+              >
                 <Col className="entity-version-page-tabs" span={24}>
                   <Tabs
                     className="tabs-new"
@@ -259,9 +268,12 @@ const ChartVersion: FC<ChartVersionProp> = ({
         <EntityVersionTimeLine
           currentVersion={version ?? ''}
           entityType={EntityType.CHART}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}
+          onLoadMore={onLoadMore}
         />
       </>
     );

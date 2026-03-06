@@ -318,17 +318,27 @@ class BaseEntity(Generic[TEntity, TCreate]):
         return CsvImportOperation(client=client, entity=cls.entity_type(), name=name)
 
     @classmethod
-    def get_versions(cls, entity_id: UuidLike) -> Sequence[TEntity]:
+    def get_versions(
+        cls,
+        entity_id: UuidLike,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> Sequence[TEntity]:
         """Fetch all historical versions for an entity."""
 
         client = cls._get_client()
         list_versions = cast(
             Callable[..., Any], getattr(client, "get_list_entity_versions")
         )
-        history = list_versions(
-            entity=cls.entity_type(),
-            entity_id=cls._stringify_identifier(entity_id),
-        )
+        kwargs: Dict[str, Any] = {
+            "entity": cls.entity_type(),
+            "entity_id": cls._stringify_identifier(entity_id),
+        }
+        if limit is not None:
+            kwargs["limit"] = limit
+        if offset is not None:
+            kwargs["offset"] = offset
+        history = list_versions(**kwargs)
         versions = cast(Sequence[Any], getattr(history, "versions", []) or [])
         return [cls._coerce_entity(item) for item in versions]
 

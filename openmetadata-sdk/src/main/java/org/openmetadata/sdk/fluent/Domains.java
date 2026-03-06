@@ -115,6 +115,11 @@ public final class Domains {
     return getClient().domains().getVersionList(id);
   }
 
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset) {
+    return getClient().domains().getVersionList(id, limit, offset);
+  }
+
   public static Domain getVersion(String id, Double version) {
     return getClient().domains().getVersion(id, version);
   }

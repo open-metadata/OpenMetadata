@@ -124,6 +124,11 @@ public final class Pipelines {
     return getClient().pipelines().getVersionList(id);
   }
 
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset) {
+    return getClient().pipelines().getVersionList(id, limit, offset);
+  }
+
   public static Pipeline getVersion(String id, Double version) {
     return getClient().pipelines().getVersion(id, version);
   }

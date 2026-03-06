@@ -153,6 +153,11 @@ public final class Tables {
     return getClient().tables().getVersionList(id);
   }
 
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset) {
+    return getClient().tables().getVersionList(id, limit, offset);
+  }
+
   public static Table getVersion(String id, Double version) {
     return getClient().tables().getVersion(id, version);
   }

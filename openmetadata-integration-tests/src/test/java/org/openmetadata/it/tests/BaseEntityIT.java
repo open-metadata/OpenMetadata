@@ -42,6 +42,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.util.TestUtils;
 
 /**
@@ -1351,6 +1352,76 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   @Test
+  void get_entityVersionHistory_paginated_200(TestNamespace ns) {
+    if (!supportsPatch) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    String entityId = created.getId().toString();
+    String patchPath = getResourcePath() + entityId;
+    RequestOptions patchOptions =
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
+
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient user1 = SdkClients.user1Client();
+
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            patchPath,
+            "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Admin patch 1\"}]",
+            patchOptions);
+
+    try {
+      user1
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PATCH,
+              patchPath,
+              "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"User1 patch 2\"}]",
+              patchOptions);
+    } catch (Exception e) {
+      Assumptions.assumeTrue(
+          false, "Skipping: user1 cannot patch this entity type - " + e.getMessage());
+    }
+
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            patchPath,
+            "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Admin patch 3\"}]",
+            patchOptions);
+
+    org.openmetadata.schema.type.EntityHistory allVersions = getVersionHistory(created.getId());
+    int totalVersions = allVersions.getVersions().size();
+    assertTrue(
+        totalVersions >= 3, "Should have at least 3 versions after alternating-user patches");
+
+    org.openmetadata.schema.type.EntityHistory page1 =
+        getVersionHistoryPaginated(created.getId(), 1, 0);
+    assertNotNull(page1.getPaging(), "Paging metadata should be present");
+    assertEquals(1, (int) page1.getPaging().getLimit());
+    assertEquals(0, (int) page1.getPaging().getOffset());
+    assertEquals(totalVersions, (int) page1.getPaging().getTotal());
+    assertEquals(1, page1.getVersions().size());
+
+    org.openmetadata.schema.type.EntityHistory page2 =
+        getVersionHistoryPaginated(created.getId(), 1, 1);
+    assertNotNull(page2.getPaging());
+    assertEquals(1, (int) page2.getPaging().getLimit());
+    assertEquals(1, (int) page2.getPaging().getOffset());
+    assertEquals(totalVersions, (int) page2.getPaging().getTotal());
+    assertEquals(1, page2.getVersions().size());
+
+    org.openmetadata.schema.type.EntityHistory unpaginated = getVersionHistory(created.getId());
+    assertNotNull(unpaginated.getVersions());
+    assertEquals(totalVersions, unpaginated.getVersions().size());
+  }
+
+  @Test
   void get_specificVersion_200(TestNamespace ns) {
     if (!supportsPatch) return; // Specific version tests require patch support
 
@@ -1372,6 +1443,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected org.openmetadata.schema.type.EntityHistory getVersionHistory(UUID id) {
     throw new UnsupportedOperationException(
         "Version history not implemented - override in subclass");
+  }
+
+  protected org.openmetadata.schema.type.EntityHistory getVersionHistoryPaginated(
+      UUID id, int limit, int offset) {
+    throw new UnsupportedOperationException(
+        "Paginated version history not implemented - override in subclass");
   }
 
   protected T getVersion(UUID id, Double version) {

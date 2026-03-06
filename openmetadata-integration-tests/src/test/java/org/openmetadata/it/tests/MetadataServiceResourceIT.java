@@ -150,6 +150,11 @@ public class MetadataServiceResourceIT
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().metadataServices().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected MetadataService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().metadataServices().getVersion(id.toString(), version);
   }

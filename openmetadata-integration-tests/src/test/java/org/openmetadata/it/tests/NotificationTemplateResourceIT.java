@@ -844,6 +844,11 @@ public class NotificationTemplateResourceIT
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().notificationTemplates().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected NotificationTemplate getVersion(UUID id, Double version) {
     return SdkClients.adminClient().notificationTemplates().getVersion(id.toString(), version);
   }

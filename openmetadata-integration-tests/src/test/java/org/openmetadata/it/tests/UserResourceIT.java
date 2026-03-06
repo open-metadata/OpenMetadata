@@ -2298,6 +2298,11 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return Users.getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected User getVersion(UUID id, Double version) {
     return Users.getVersion(id.toString(), version);
   }

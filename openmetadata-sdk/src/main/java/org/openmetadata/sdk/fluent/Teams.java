@@ -116,6 +116,11 @@ public final class Teams {
     return getClient().teams().getVersionList(id);
   }
 
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset) {
+    return getClient().teams().getVersionList(id, limit, offset);
+  }
+
   public static Team getVersion(String id, Double version) {
     return getClient().teams().getVersion(id, version);
   }

@@ -1421,6 +1421,11 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("offset") int offset);
 
+    @SqlQuery(
+        "SELECT COUNT(*) FROM entity_extension WHERE id = :id AND extension "
+            + "LIKE CONCAT (:extensionPrefix, '.%')")
+    int getExtensionCount(@BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
+
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
     void delete(@BindUUID("id") UUID id, @Bind("extension") String extension);
 

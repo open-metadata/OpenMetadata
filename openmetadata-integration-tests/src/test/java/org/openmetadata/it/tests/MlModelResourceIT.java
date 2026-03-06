@@ -159,6 +159,11 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().mlModels().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected MlModel getVersion(UUID id, Double version) {
     return SdkClients.adminClient().mlModels().getVersion(id.toString(), version);
   }

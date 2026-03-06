@@ -72,6 +72,9 @@ const TableVersion: React.FC<TableVersionProp> = ({
   tier,
   slashedTableName,
   versionList,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -298,7 +301,8 @@ const TableVersion: React.FC<TableVersionProp> = ({
             <Col
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
-              flex="220px">
+              flex="220px"
+            >
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -399,7 +403,8 @@ const TableVersion: React.FC<TableVersionProp> = ({
               data={currentVersionData}
               permissions={entityPermissions}
               type={EntityType.TABLE}
-              onUpdate={() => Promise.resolve()}>
+              onUpdate={() => Promise.resolve()}
+            >
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
                   className="tabs-new"
@@ -416,9 +421,12 @@ const TableVersion: React.FC<TableVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.TABLE}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
+        onLoadMore={onLoadMore}
       />
     </>
   );

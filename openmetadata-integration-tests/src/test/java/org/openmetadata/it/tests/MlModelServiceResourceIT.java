@@ -145,6 +145,11 @@ public class MlModelServiceResourceIT extends BaseServiceIT<MlModelService, Crea
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().mlModelServices().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected MlModelService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().mlModelServices().getVersion(id.toString(), version);
   }

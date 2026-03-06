@@ -202,6 +202,11 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().dataProducts().getVersionList(id, limit, offset);
+  }
+
+  @Override
   protected DataProduct getVersion(UUID id, Double version) {
     return SdkClients.adminClient().dataProducts().getVersion(id.toString(), version);
   }

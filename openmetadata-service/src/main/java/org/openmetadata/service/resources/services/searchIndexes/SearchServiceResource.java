@@ -353,8 +353,19 @@ public class SearchServiceResource
       @Context SecurityContext securityContext,
       @Parameter(description = "search service Id", schema = @Schema(type = "string"))
           @PathParam("id")
-          UUID id) {
-    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+          UUID id,
+      @Parameter(description = "Limit the number of versions returned")
+          @QueryParam("limit")
+          @DefaultValue("0")
+          @Min(0)
+          @Max(1000)
+          int limit,
+      @Parameter(description = "Offset of the versions to return")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset) {
+    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id, limit, offset);
 
     List<Object> versions =
         entityHistory.getVersions().stream()

@@ -89,6 +89,8 @@ class OMetaVersionMixin(Generic[T]):
         self,
         entity_id: Union[str, basic.Uuid],
         entity: Type[T],
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
     ) -> Union[Response, EntityVersionHistory]:
         """
         Retrieve the list of versions for a specific entity
@@ -99,6 +101,10 @@ class OMetaVersionMixin(Generic[T]):
             the entity type
         entity_id: Union[str, basic.Uuid]
             the ID for a specific entity
+        limit: Optional[int]
+            maximum number of versions to return
+        offset: Optional[int]
+            offset for pagination
 
         Returns
         -------
@@ -107,7 +113,15 @@ class OMetaVersionMixin(Generic[T]):
         """
         path = f"{model_str(entity_id)}/versions"
 
-        resp = self.client.get(f"{self.get_suffix(entity)}/{path}")
+        params = {}
+        if limit is not None:
+            params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
+
+        resp = self.client.get(
+            f"{self.get_suffix(entity)}/{path}", data=params if params else None
+        )
 
         if self._use_raw_data:
             return resp
