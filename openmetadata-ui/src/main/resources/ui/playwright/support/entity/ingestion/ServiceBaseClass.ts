@@ -357,7 +357,6 @@ class ServiceBaseClass {
     workflowData: { fullyQualifiedName: string; name: string },
     ingestionType: string
   ) => {
-    const oneHourBefore = Date.now() - 86400000;
     let consecutiveErrors = 0;
 
     await expect
@@ -367,7 +366,7 @@ class ServiceBaseClass {
             const response = await makeRetryRequest({
               url: `/api/v1/services/ingestionPipelines/${encodeURIComponent(
                 workflowData.fullyQualifiedName
-              )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`,
+              )}/pipelineStatus?limit=1`,
               page,
             });
             consecutiveErrors = 0; // Reset error counter on success
