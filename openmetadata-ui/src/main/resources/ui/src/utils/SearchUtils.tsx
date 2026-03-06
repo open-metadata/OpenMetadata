@@ -94,7 +94,7 @@ export const getSearchAPIQueryParams = (
 
 // will add back slash "\" before quote in string if present
 export const getQueryWithSlash = (query: string): string =>
-  query.replace(/["']/g, '\\$&');
+  query.replace(/[\\"']/g, '\\$&');
 
 export const getGroupLabel = (index: string) => {
   let label = '';
