@@ -446,9 +446,9 @@ export const verifyPipelineDataInDrawer = async (
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
   const pipelineName = get(pipelineItem, 'entityResponseData.name');
 
-  await page.click(
-    `[data-testid="pipeline-label-${fromNodeFqn}-${toNodeFqn}"]`
-  );
+  await page
+    .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
+    .dispatchEvent('click');
 
   await page.locator('.edge-info-drawer').isVisible();
   await page
