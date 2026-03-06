@@ -80,9 +80,9 @@ public class CheckChangeDescriptionTask implements NodeInterface {
 
   private ServiceTask getCheckChangeDescriptionServiceTask(
       String subProcessId, String condition, String includeFields, String inputNamespaceMap) {
-    log.debug("CheckChangeDescriptionTask: condition = {}", condition);
-    log.debug("CheckChangeDescriptionTask: includeFields = {}", includeFields);
-    log.debug("CheckChangeDescriptionTask: inputNamespaceMap = {}", inputNamespaceMap);
+    LOG.debug("CheckChangeDescriptionTask: condition = {}", condition);
+    LOG.debug("CheckChangeDescriptionTask: includeFields = {}", includeFields);
+    LOG.debug("CheckChangeDescriptionTask: inputNamespaceMap = {}", inputNamespaceMap);
 
     FieldExtension conditionExpr =
         new FieldExtensionBuilder().fieldName("conditionExpr").fieldValue(condition).build();

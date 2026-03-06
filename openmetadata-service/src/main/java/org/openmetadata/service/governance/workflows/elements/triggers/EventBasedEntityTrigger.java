@@ -156,7 +156,7 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     if (entityTypes != null && !entityTypes.isEmpty()) {
       return entityTypes;
     }
-    log.debug("No entityTypes found in workflow trigger configuration, returning empty list");
+    LOG.debug("No entityTypes found in workflow trigger configuration, returning empty list");
     return new ArrayList<>();
   }
 
