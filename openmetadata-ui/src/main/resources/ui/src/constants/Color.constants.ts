@@ -15,6 +15,7 @@
 import { DEFAULT_THEME } from './Appearance.constants';
 
 export const GREEN_1 = '#067647';
+export const GREEN_6 = '#079455';
 export const GREEN_3 = '#48ca9e';
 export const GREEN_4 = '#039855';
 export const GREEN_3_OPACITY = '#48ca9e30';
@@ -25,6 +26,7 @@ export const RED_3 = '#f24822';
 export const RED_3_OPACITY = '#FF7C501A';
 export const PURPLE_2 = '#7147e8';
 export const TEXT_COLOR = '#414651';
+export const GRAY_700 = '#344054';
 export const WHITE_SMOKE = '#F8F8F8';
 export const GRAY_1 = '#A1A1AA';
 export const LIGHT_GRAY = '#F1F4F9';
@@ -36,6 +38,9 @@ export const BLUE_500 = '#2E90FA';
 export const BLUE_800 = '#1849A9';
 export const BLUE_50 = '#EFF8FF';
 export const CHART_BLUE_1 = '#4689FF';
+export const BLUE_600 = '#1677ff';
+export const BLUE_CHART_AREA_FILL = '#e6f4ff';
+export const CHART_CURSOR_STROKE = '#e8e8e8';
 export const RIPTIDE = '#76E9C6';
 export const MY_SIN = '#FEB019';
 export const SAN_MARINO = '#416BB3';
@@ -47,6 +52,8 @@ export const LEMON_ZEST = '#FFD700';
 export const GREY_100 = '#f5f5f5';
 export const GREY_200 = '#E9EAEB';
 export const GRAY_600 = '#535862';
+export const COLOR_GREY_400 = '#98A2B3';
+export const COLOR_GREY_300 = '#D0D5DD';
 
 export const SEVERITY_COLORS: Record<string, { bg: string; color: string }> = {
   Severity1: {
