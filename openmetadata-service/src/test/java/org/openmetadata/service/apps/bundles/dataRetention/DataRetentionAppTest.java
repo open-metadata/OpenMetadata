@@ -50,6 +50,7 @@ class DataRetentionAppTest extends OpenMetadataApplicationTest {
   @Mock private CollectionDAO.EventSubscriptionDAO eventSubscriptionDAO;
   @Mock private CollectionDAO.FeedDAO feedDAO;
   @Mock private CollectionDAO.SystemDAO systemDAO;
+  @Mock private CollectionDAO.WorkflowDAO workflowDAO;
 
   private DataRetention dataRetention;
 
@@ -60,6 +61,7 @@ class DataRetentionAppTest extends OpenMetadataApplicationTest {
     lenient().when(collectionDAO.eventSubscriptionDAO()).thenReturn(eventSubscriptionDAO);
     lenient().when(collectionDAO.feedDAO()).thenReturn(feedDAO);
     lenient().when(collectionDAO.systemDAO()).thenReturn(systemDAO);
+    lenient().when(collectionDAO.workflowDAO()).thenReturn(workflowDAO);
 
     // Setup basic method returns to avoid NPEs
     lenient().when(relationshipDAO.getTotalRelationshipCount()).thenReturn(0L);
@@ -84,6 +86,9 @@ class DataRetentionAppTest extends OpenMetadataApplicationTest {
     lenient()
         .when(
             systemDAO.deleteBrokenRelationFromParentToChild(anyString(), anyString(), anyString()))
+        .thenReturn(0);
+    lenient()
+        .when(workflowDAO.deleteReverseIngestionWorkflowsBeforeCutoff(anyLong(), anyInt()))
         .thenReturn(0);
 
     dataRetention = new DataRetention(collectionDAO, searchRepository);

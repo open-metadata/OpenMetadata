@@ -5,7 +5,9 @@
     "changeEventRetentionPeriod": 7,
     "activityThreadsRetentionPeriod": 60,
     "profileDataRetentionPeriod": 1440,
-    "testCaseResultsRetentionPeriod": 1440
+    "testCaseResultsRetentionPeriod": 1440,
+    "auditLogRetentionPeriod": 90,
+    "reverseIngestionWorkflowRetentionPeriod": 30
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",
