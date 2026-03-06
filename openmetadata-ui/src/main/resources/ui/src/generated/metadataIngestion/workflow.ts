@@ -43,6 +43,11 @@ export interface OpenMetadataWorkflowConfig {
      */
     ingestionPipelineFQN?: string;
     /**
+     * Name of the ingestion runner executing this workflow. Set at dispatch time by the
+     * execution environment.
+     */
+    ingestionRunnerName?: string;
+    /**
      * Unique identifier of pipeline run, used to identify the current pipeline run
      */
     pipelineRunId?: string;
@@ -1559,6 +1564,12 @@ export interface ConfigObject {
      * Prefix of the data source.
      */
     prefix?: string;
+    /**
+     * Skip files in cold storage tiers (e.g., S3 Glacier, Azure Archive/Cool/Cold, GCS
+     * Coldline/Archive). When enabled, only files in hot/standard storage tiers will be
+     * processed.
+     */
+    skipColdStorage?: boolean;
     /**
      * Couchbase connection Bucket options.
      */
@@ -5143,15 +5154,15 @@ export interface Pipeline {
      */
     computeColumnMetrics?: boolean;
     /**
-     * Option to turn on/off computing profiler metrics.
-     */
-    computeMetrics?: boolean;
-    /**
      * Option to turn on/off table metric computation. If enabled, profiler will compute table
      * level metrics.
      */
     computeTableMetrics?: boolean;
-    processingEngine?:    ProcessingEngine;
+    /**
+     * List of metrics to compute. If empty, then all metrics will be computed
+     */
+    metrics?:          MetricType[];
+    processingEngine?: ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
@@ -5174,10 +5185,11 @@ export interface Pipeline {
      */
     timeoutSeconds?: number;
     /**
-     * Use system tables to extract metrics. Metrics that cannot be gathered from system tables
-     * will use the default methods. Using system tables can be faster but requires gathering
-     * statistics before running (for example using the ANALYZE procedure). More information can
-     * be found in the documentation: https://docs.openmetadata.org/latest/profler
+     * Use system tables to extract table metrics. Metrics that cannot be gathered from system
+     * tables will use the default methods. Using system tables can be faster but requires
+     * gathering statistics before running (for example using the ANALYZE procedure). More
+     * information can be found in the documentation:
+     * https://docs.openmetadata.org/latest/profler
      */
     useStatistics?: boolean;
     /**
@@ -5591,6 +5603,17 @@ export interface CollateAIAppConfig {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Per-entity-type override for time series max days. Keys are entity type names (e.g.
+     * testCaseResult, queryCostRecord), values are number of days. Entities not listed here use
+     * the default Time Series Max Days value.
+     */
+    timeSeriesEntityDays?: { [key: string]: number };
+    /**
+     * Maximum age in days for time series data during reindexing. Default 0 (index all data).
+     * Set to a positive value like 15 to limit to recent data only.
+     */
+    timeSeriesMaxDays?: number;
     /**
      * Enable distributed indexing to scale reindexing across multiple servers with fault
      * tolerance and parallel processing
@@ -6792,6 +6815,48 @@ export interface LineageInformation {
      */
     storageServiceNames?: string[];
     [property: string]: any;
+}
+
+/**
+ * This schema defines all possible metric types in OpenMetadata.
+ */
+export enum MetricType {
+    CardinalityDistribution = "cardinalityDistribution",
+    ColumnCount = "columnCount",
+    ColumnNames = "columnNames",
+    CountInSet = "countInSet",
+    DistinctCount = "distinctCount",
+    DistinctProportion = "distinctProportion",
+    DuplicateCount = "duplicateCount",
+    FirstQuartile = "firstQuartile",
+    Histogram = "histogram",
+    ILikeCount = "iLikeCount",
+    ILikeRatio = "iLikeRatio",
+    InterQuartileRange = "interQuartileRange",
+    LikeCount = "likeCount",
+    LikeRatio = "likeRatio",
+    Max = "max",
+    MaxLength = "maxLength",
+    Mean = "mean",
+    Median = "median",
+    Min = "min",
+    MinLength = "minLength",
+    NonParametricSkew = "nonParametricSkew",
+    NotLikeCount = "notLikeCount",
+    NotRegexCount = "notRegexCount",
+    NullCount = "nullCount",
+    NullMissingCount = "nullMissingCount",
+    NullProportion = "nullProportion",
+    RegexCount = "regexCount",
+    RowCount = "rowCount",
+    Stddev = "stddev",
+    Sum = "sum",
+    System = "system",
+    ThirdQuartile = "thirdQuartile",
+    UniqueCount = "uniqueCount",
+    UniqueProportion = "uniqueProportion",
+    ValueRank = "valueRank",
+    ValuesCount = "valuesCount",
 }
 
 /**

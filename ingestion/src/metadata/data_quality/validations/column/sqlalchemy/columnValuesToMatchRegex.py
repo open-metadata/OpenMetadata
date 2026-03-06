@@ -51,12 +51,12 @@ class ColumnValuesToMatchRegexValidator(
             column: column
         """
         try:
-            regex_count = Metrics.REGEX_COUNT(column)
+            regex_count = Metrics.regexCount(column)
             regex_count.expression = kwargs.get("expression")
             regex_count_fn = regex_count.fn()
 
             row = self.runner.dispatch_query_select_first(
-                Metrics.COUNT(column).fn(),
+                Metrics.valuesCount(column).fn(),
                 regex_count_fn,
             )
             res = dict(row._mapping)
@@ -64,11 +64,11 @@ class ColumnValuesToMatchRegexValidator(
             logger.warning(
                 f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`"
             )
-            regex_count = Metrics.LIKE_COUNT(column)
+            regex_count = Metrics.likeCount(column)
             regex_count.expression = kwargs.get("expression")
             regex_count_fn = regex_count.fn()
             row = self.runner.dispatch_query_select_first(
-                Metrics.COUNT(column).fn(),
+                Metrics.valuesCount(column).fn(),
                 regex_count_fn,
             )
             res = dict(row._mapping)
@@ -83,7 +83,7 @@ class ColumnValuesToMatchRegexValidator(
             )
             # pylint: enable=line-too-long
 
-        return res.get(Metrics.COUNT.name), res.get(regex_count.name())
+        return res.get(Metrics.valuesCount.name), res.get(regex_count.name())
 
     def _execute_dimensional_validation(
         self,
@@ -91,6 +91,7 @@ class ColumnValuesToMatchRegexValidator(
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
@@ -112,17 +113,17 @@ class ColumnValuesToMatchRegexValidator(
             regex = test_params[BaseColumnValuesToMatchRegexValidator.REGEX]
 
             metric_expressions = {
-                Metrics.REGEX_COUNT.name: add_props(expression=regex)(
-                    Metrics.REGEX_COUNT.value
+                Metrics.regexCount.name: add_props(expression=regex)(
+                    Metrics.regexCount.value
                 )(column).fn(),
-                Metrics.COUNT.name: Metrics.COUNT(column).fn(),
-                Metrics.ROW_COUNT.name: Metrics.ROW_COUNT().fn(),
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.ROW_COUNT().fn(),
+                Metrics.valuesCount.name: Metrics.valuesCount(column).fn(),
+                Metrics.rowCount.name: Metrics.rowCount().fn(),
+                DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
             }
 
             metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
-                metric_expressions[Metrics.COUNT.name]
-                - metric_expressions[Metrics.REGEX_COUNT.name]
+                metric_expressions[Metrics.valuesCount.name]
+                - metric_expressions[Metrics.regexCount.name]
             )
 
             normalized_dimension = self._get_normalized_dimension_expression(
@@ -133,6 +134,7 @@ class ColumnValuesToMatchRegexValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                top_n=top_n,
             )
 
             for row in result_rows:

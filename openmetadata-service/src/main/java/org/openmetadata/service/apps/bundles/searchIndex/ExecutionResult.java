@@ -1,5 +1,8 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import org.openmetadata.schema.system.Stats;
 
 /**
@@ -13,52 +16,61 @@ public record ExecutionResult(
     long failedRecords,
     long startTime,
     long endTime,
-    Stats finalStats) {
+    Stats finalStats,
+    Map<String, Object> metadata) {
+
+  public ExecutionResult(
+      Status status,
+      long totalRecords,
+      long successRecords,
+      long failedRecords,
+      long startTime,
+      long endTime,
+      Stats finalStats) {
+    this(
+        status,
+        totalRecords,
+        successRecords,
+        failedRecords,
+        startTime,
+        endTime,
+        finalStats,
+        Collections.emptyMap());
+  }
 
   /** Execution status values */
   public enum Status {
-    /** Job completed successfully with all records processed */
     COMPLETED,
-    /** Job completed but some records failed */
     COMPLETED_WITH_ERRORS,
-    /** Job failed due to an exception */
     FAILED,
-    /** Job was stopped by user request */
     STOPPED
   }
 
-  /** Get the duration of the execution in milliseconds */
   public long getDurationMillis() {
     return endTime - startTime;
   }
 
-  /** Get the duration of the execution in seconds */
   public long getDurationSeconds() {
     return getDurationMillis() / 1000;
   }
 
-  /** Get the success rate as a percentage (0-100) */
   public double getSuccessRate() {
     return totalRecords > 0 ? (successRecords * 100.0) / totalRecords : 0;
   }
 
-  /** Get the processing rate in records per second */
   public double getRecordsPerSecond() {
     long durationSeconds = getDurationSeconds();
     return durationSeconds > 0 ? (double) successRecords / durationSeconds : 0;
   }
 
-  /** Check if the execution was successful (no failures) */
   public boolean isSuccessful() {
     return status == Status.COMPLETED;
   }
 
-  /** Check if the execution completed (regardless of errors) */
   public boolean isCompleted() {
     return status == Status.COMPLETED || status == Status.COMPLETED_WITH_ERRORS;
   }
 
-  /** Builder for creating ExecutionResult instances */
   public static Builder builder() {
     return new Builder();
   }
@@ -71,6 +83,7 @@ public record ExecutionResult(
     private long startTime;
     private long endTime;
     private Stats finalStats;
+    private Map<String, Object> metadata = new HashMap<>();
 
     public Builder status(Status status) {
       this.status = status;
@@ -107,9 +120,26 @@ public record ExecutionResult(
       return this;
     }
 
+    public Builder metadata(Map<String, Object> metadata) {
+      this.metadata = metadata != null ? metadata : new HashMap<>();
+      return this;
+    }
+
+    public Builder addMetadata(String key, Object value) {
+      this.metadata.put(key, value);
+      return this;
+    }
+
     public ExecutionResult build() {
       return new ExecutionResult(
-          status, totalRecords, successRecords, failedRecords, startTime, endTime, finalStats);
+          status,
+          totalRecords,
+          successRecords,
+          failedRecords,
+          startTime,
+          endTime,
+          finalStats,
+          Collections.unmodifiableMap(metadata));
     }
   }
 

@@ -56,8 +56,10 @@ class ColumnCount(StaticMetric):
 
     This Metric needs to be initialised passing the Table
     information:
-    add_props(table=table)(Metrics.COLUMN_COUNT.value)
+    add_props(table=table)(Metrics.columnCount.value)
     """
+
+    schema_metric_type = MetricType.columnCount
 
     table: type
 
@@ -81,7 +83,7 @@ class ColumnCount(StaticMetric):
         """sqlalchemy function"""
         if not hasattr(self, "table"):
             raise AttributeError(
-                "Column Count requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
+                "Column Count requires a table to be set: add_props(table=...)(Metrics.columnCount)"
             )
         return ColumnCountFn(literal(len(inspect(self.table).c)))
 

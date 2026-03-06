@@ -83,7 +83,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
         </div>
       )}
       <div
-        className="tw:rounded-[10px] tw:border tw:border-border-secondary tw:p-4 tw:shadow-none"
+        className="tw:rounded-[10px] tw:border tw:border-secondary tw:p-4 tw:shadow-none"
         data-testid="profiler-details-card-container">
         <div className="tw:flex tw:flex-col tw:gap-4">
           <ProfilerLatestValue
