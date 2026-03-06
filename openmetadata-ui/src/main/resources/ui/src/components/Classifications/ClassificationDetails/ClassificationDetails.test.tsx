@@ -65,7 +65,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       aria-disabled={isDisabled}
       data-testid={testId}
       role="switch"
-      onClick={() => onChange?.(!isSelected)}>
+      onClick={() => onChange?.(!isSelected)}
+    >
       toggle
     </button>
   ),
@@ -110,7 +111,8 @@ jest.mock('../../common/EntityDescription/DescriptionV1', () =>
     <div data-testid="description-container">
       <button
         data-testid="edit-description"
-        onClick={() => onDescriptionUpdate?.('Updated description')}>
+        onClick={() => onDescriptionUpdate?.('Updated description')}
+      >
         Edit Description
       </button>
     </div>
@@ -126,7 +128,8 @@ jest.mock('../../common/EntityPageInfos/ManageButton/ManageButton', () =>
           data-testid="edit-display-name"
           onClick={() =>
             onEditDisplayName?.({ name: 'test', displayName: 'New Display' })
-          }>
+          }
+        >
           Edit Display Name
         </button>
         {extraDropdownContent?.map(
@@ -134,7 +137,8 @@ jest.mock('../../common/EntityPageInfos/ManageButton/ManageButton', () =>
             <button
               data-testid={item.key}
               key={item.key}
-              onClick={item.onClick}>
+              onClick={item.onClick}
+            >
               {item.key}
             </button>
           )
@@ -493,11 +497,9 @@ describe('ClassificationDetails', () => {
       );
     });
 
-    const enabledToggle = screen
-      .getByTestId('tag-disable-toggle-Tag1')
-      .getElementsByTagName('input')[0];
+    const enabledToggle = screen.getByTestId('tag-disable-toggle-Tag1');
 
-    expect(enabledToggle).not.toBeDisabled();
+    expect(enabledToggle).not.toHaveAttribute('aria-disabled', 'true');
 
     unmount();
 
@@ -518,11 +520,10 @@ describe('ClassificationDetails', () => {
       );
     });
 
-    expect(
-      screen
-        .getByTestId('tag-disable-toggle-Tag1')
-        .getElementsByTagName('input')[0]
-    ).toBeDisabled();
+    expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
 
     unmount2();
 
@@ -540,10 +541,9 @@ describe('ClassificationDetails', () => {
       );
     });
 
-    expect(
-      screen
-        .getByTestId('tag-disable-toggle-Tag1')
-        .getElementsByTagName('input')[0]
-    ).toBeDisabled();
+    expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 });

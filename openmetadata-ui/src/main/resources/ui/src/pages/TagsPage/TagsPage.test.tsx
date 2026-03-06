@@ -255,6 +255,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </span>
   ),
+  Typography: ({
+    children,
+    className,
+    as: Tag = 'span',
+  }: {
+    children: React.ReactNode;
+    className?: string;
+    as?: keyof JSX.IntrinsicElements;
+  }) => (
+    <Tag className={className} spec-url="">
+      {children}
+    </Tag>
+  ),
   Button: ({
     children,
     onClick,
@@ -272,7 +285,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       className={className}
       data-testid={testId}
       disabled={isDisabled}
-      onClick={onClick}>
+      onClick={onClick}
+    >
       {children}
     </button>
   ),
@@ -310,7 +324,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       aria-disabled={isDisabled}
       data-testid={testId}
       role="switch"
-      onClick={() => onChange?.(!isSelected)}>
+      onClick={() => onChange?.(!isSelected)}
+    >
       toggle
     </button>
   ),
