@@ -16,10 +16,15 @@ export const StyledIconButton = styled((props: IconButtonProps) => (
   <IconButton {...props} />
 ))(({ theme }) => ({
   '&.MuiButtonBase-root': {
-    padding: theme.spacing(0.5),
+    padding: theme.spacing(1),
     // borderRadius: '6px',
     background: theme.palette.allShades.gray[100],
     color: '#535862',
+
+    '& svg': {
+      height: '20px',
+      width: '20px',
+    },
 
     '&.MuiButtonBase-root-MuiIconButton-root': {
       '&:hover': {
