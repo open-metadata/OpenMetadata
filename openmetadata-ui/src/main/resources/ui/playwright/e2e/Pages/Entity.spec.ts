@@ -1601,11 +1601,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               .first();
             await columnName.scrollIntoViewIfNeeded();
 
-            // Wait for profile API response when panel opens
             const profileResponse = page.waitForResponse(
               (response) =>
                 response.url().includes('/api/v1/tables/') &&
-                response.url().includes('fields=profile')
+                response.url().includes('/columns') &&
+                response.url().includes('profile')
             );
             await columnName.click();
             await profileResponse;
