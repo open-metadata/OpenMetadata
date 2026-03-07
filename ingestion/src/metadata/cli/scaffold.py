@@ -283,7 +283,9 @@ def collect_interactive() -> ConnectorProfile:
         print(
             "    Available: metadata, lineage, usage, profiler, stored_procedures, data_diff"
         )
-        print("    lineage  — Query-log-based lineage (generates lineage.py + query_parser.py)")
+        print(
+            "    lineage  — Query-log-based lineage (generates lineage.py + query_parser.py)"
+        )
         print("    usage    — Query-log-based usage (generates usage.py)")
         print("    profiler — Column profiling + data quality (needs SQLAlchemy)")
         profile.capabilities = _prompt_multi(
@@ -295,7 +297,9 @@ def collect_interactive() -> ConnectorProfile:
         profile.capabilities = ["metadata"]
         print("    Default: metadata")
         print("    Note: Lineage, usage, and data models for non-database connectors")
-        print("    are implemented as method overrides in metadata.py (no extra files).")
+        print(
+            "    are implemented as method overrides in metadata.py (no extra files)."
+        )
         print("    See CONNECTOR_CONTEXT.md for details.")
     print()
 
@@ -330,9 +334,7 @@ def collect_interactive() -> ConnectorProfile:
         "e.g. 'metabase/metabase:latest', 'mcr.microsoft.com/mssql/server:2022-latest'",
     )
     if profile.docker_image:
-        port_str = _prompt_optional(
-            "Container port to expose", "e.g. 80, 3000, 8080"
-        )
+        port_str = _prompt_optional("Container port to expose", "e.g. 80, 3000, 8080")
         if port_str:
             profile.docker_port = int(port_str)
     print()
@@ -1090,87 +1092,547 @@ class {camel}Client:
 # ---------------------------------------------------------------------------
 
 
-def gen_unit_test(p: ConnectorProfile) -> str:
+def _gen_unit_test_database(p: ConnectorProfile) -> str:
     camel = p.camel
-    if p.service_type == "database" and p.connection_type == "sqlalchemy":
-        return f'''{COPYRIGHT_HEADER}
+    port = p.default_port or 5432
+    return f'''{COPYRIGHT_HEADER}
 """
-Unit tests for {camel} source
+Unit tests for {camel} using the topology
 """
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from metadata.generated.schema.entity.services.connections.database.{p.module_name}Connection import (
-    {camel}Connection,
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.{p.name}.metadata import {camel}Source
 
+mock_{p.name}_config = {{
+    "source": {{
+        "type": "{p.name.replace("_", "-")}",
+        "serviceName": "test_{p.name}",
+        "serviceConnection": {{
+            "config": {{
+                "type": "{camel}",
+                "hostPort": "localhost:{port}",
+                "username": "test_user",
+                "authType": {{
+                    "password": "test_password"
+                }},
+            }}
+        }},
+        "sourceConfig": {{
+            "config": {{
+                "type": "DatabaseMetadata"
+            }}
+        }},
+    }},
+    "sink": {{
+        "type": "metadata-rest",
+        "config": {{}},
+    }},
+    "workflowConfig": {{
+        "openMetadataServerConfig": {{
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {{
+                "jwtToken": "token"
+            }},
+        }},
+    }},
+}}
 
-class Test{camel}Source(TestCase):
+MOCK_DATABASE_SERVICE = DatabaseService(
+    id="85811038-099a-11ed-861d-0242ac120002",
+    name="{p.name}_source",
+    connection=DatabaseConnection(),
+    serviceType=DatabaseServiceType.{camel},
+)
+
+
+class {camel}UnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
     )
-    def test_create(self, mock_test_connection):
-        mock_test_connection.return_value = True
-        config = {{
-            "source": {{
-                "type": "{p.name.replace('_', '-')}",
-                "serviceName": "test_{p.name}",
-                "serviceConnection": {{
-                    "config": {{
-                        "type": "{camel}",
-                        "hostPort": "localhost:5432",
-                        "username": "test_user",
-                        "authType": {{
-                            "password": "test_password"
-                        }},
-                    }}
-                }},
-                "sourceConfig": {{
-                    "config": {{
-                        "type": "DatabaseMetadata"
-                    }}
-                }},
-            }},
-            "sink": {{
-                "type": "metadata-rest",
-                "config": {{}},
-            }},
-            "workflowConfig": {{
-                "loggerLevel": "DEBUG",
-                "openMetadataServerConfig": {{
-                    "hostPort": "http://localhost:8585/api",
-                    "authProvider": "openmetadata",
-                    "securityConfig": {{
-                        "jwtToken": "token"
-                    }},
-                }},
-            }},
-        }}
-        # TODO: Validate source creation
-        # source = {camel}Source.create(config["source"], metadata)
+    def __init__(self, methodName, test_connection) -> None:
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_{p.name}_config)
+        self.{p.name}_source = {camel}Source.create(
+            mock_{p.name}_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.{p.name}_source.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.{p.name}_source.context.get().__dict__["database"] = "test_db"
+
+    def test_source_config(self):
+        assert self.{p.name}_source is not None
+        assert self.{p.name}_source.service_connection is not None
+
+    @patch("sqlalchemy.engine.base.Engine")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+    )
+    def test_close_connection(self, engine, connection):
+        connection.return_value = True
+        self.{p.name}_source.close()
 '''
-    else:
-        return f'''{COPYRIGHT_HEADER}
+
+
+def _gen_unit_test_dashboard(p: ConnectorProfile) -> str:
+    camel = p.camel
+    return f'''{COPYRIGHT_HEADER}
 """
-Unit tests for {camel} source
+Unit tests for {camel} using the topology
 """
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
-from metadata.generated.schema.entity.services.connections.{p.service_type}.{p.module_name}Connection import (
-    {camel}Connection,
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+    DashboardServiceType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.{p.name}.metadata import {camel}Source
+
+MOCK_DASHBOARD_SERVICE = DashboardService(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    fullyQualifiedName=FullyQualifiedEntityName("mock_{p.name}"),
+    name="mock_{p.name}",
+    connection=DashboardConnection(),
+    serviceType=DashboardServiceType.{camel},
 )
 
+mock_config = {{
+    "source": {{
+        "type": "{p.name.replace("_", "-")}",
+        "serviceName": "mock_{p.name}",
+        "serviceConnection": {{
+            "config": {{
+                "type": "{camel}",
+                # TODO: Fill in required connection properties from the schema
+                "hostPort": "http://localhost:8080",
+            }}
+        }},
+        "sourceConfig": {{
+            "config": {{
+                "dashboardFilterPattern": {{}},
+                "chartFilterPattern": {{}},
+            }}
+        }},
+    }},
+    "sink": {{"type": "metadata-rest", "config": {{}}}},
+    "workflowConfig": {{
+        "openMetadataServerConfig": {{
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {{
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGc"
+                "iOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE"
+                "2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXB"
+                "iEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fN"
+                "r3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3u"
+                "d-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            }},
+        }},
+    }},
+}}
 
-class Test{camel}Source(TestCase):
-    @patch(
-        "metadata.ingestion.source.{p.service_type}.{p.name}.connection.get_connection"
+# TODO: Replace with actual model classes from your client/models.py
+# Example mock dashboard details — adapt fields to match your models
+MOCK_DASHBOARD_DETAILS = SimpleNamespace(
+    id="1",
+    name="test_dashboard",
+    description="Sample dashboard description",
+)
+
+EXPECTED_DASHBOARD = [
+    CreateDashboardRequest(
+        name="1",
+        displayName="test_dashboard",
+        description="Sample dashboard description",
+        # TODO: Set sourceUrl based on your connector's URL pattern
+        sourceUrl="http://localhost:8080/dashboard/1",
+        charts=[],
+        service=FullyQualifiedEntityName("mock_{p.name}"),
     )
-    def test_create(self, mock_get_connection):
-        mock_get_connection.return_value = None
-        # TODO: Add source creation and validation tests
+]
+
+# TODO: Replace with actual chart model from your client/models.py
+MOCK_CHARTS = [
+    SimpleNamespace(id="c1", name="chart1", chart_type="bar"),
+    SimpleNamespace(id="c2", name="chart2", chart_type="line"),
+]
+
+EXPECTED_CHARTS = [
+    CreateChartRequest(
+        name="c1",
+        displayName="chart1",
+        chartType="Other",
+        # TODO: Set sourceUrl for charts
+        sourceUrl="http://localhost:8080/chart/c1",
+        service=FullyQualifiedEntityName("mock_{p.name}"),
+    ),
+    CreateChartRequest(
+        name="c2",
+        displayName="chart2",
+        chartType="Other",
+        sourceUrl="http://localhost:8080/chart/c2",
+        service=FullyQualifiedEntityName("mock_{p.name}"),
+    ),
+]
+
+
+class {camel}UnitTest(TestCase):
+    @patch(
+        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
+    )
+    @patch("metadata.ingestion.source.dashboard.{p.name}.connection.get_connection")
+    def __init__(self, methodName, get_connection, test_connection) -> None:
+        super().__init__(methodName)
+        get_connection.return_value = False
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+        self.{p.name}: {camel}Source = {camel}Source.create(
+            mock_config["source"],
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+        )
+        self.{p.name}.client = SimpleNamespace()
+        self.{p.name}.context.get().__dict__[
+            "dashboard_service"
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+
+    def test_dashboard_name(self):
+        """Test extracting dashboard name from details object"""
+        assert (
+            self.{p.name}.get_dashboard_name(MOCK_DASHBOARD_DETAILS)
+            == MOCK_DASHBOARD_DETAILS.name
+        )
+
+    def test_yield_dashboard(self):
+        """Test creating a CreateDashboardRequest from dashboard details"""
+        results = list(self.{p.name}.yield_dashboard(MOCK_DASHBOARD_DETAILS))
+        # TODO: Update once yield_dashboard is implemented
+        # self.assertEqual(EXPECTED_DASHBOARD, [res.right for res in results])
+
+    def test_yield_dashboard_chart(self):
+        """Test creating CreateChartRequest entities from dashboard details"""
+        chart_list = []
+        results = self.{p.name}.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS)
+        for result in results:
+            if isinstance(result, Either) and result.right:
+                chart_list.append(result.right)
+        # TODO: Update once yield_dashboard_chart is implemented
+        # for expected, original in zip(EXPECTED_CHARTS, chart_list):
+        #     self.assertEqual(expected, original)
+
+    def test_yield_dashboard_lineage(self):
+        """Test that lineage generation does not error (yields nothing by default)"""
+        results = list(
+            self.{p.name}.yield_dashboard_lineage_details(
+                dashboard_details=MOCK_DASHBOARD_DETAILS, db_service_prefix=None
+            )
+        )
+        # Default implementation yields nothing — override if your connector supports lineage
+        self.assertEqual(results, [])
 '''
+
+
+def _gen_unit_test_pipeline(p: ConnectorProfile) -> str:
+    camel = p.camel
+    return f'''{COPYRIGHT_HEADER}
+"""
+Unit tests for {camel} using the topology
+"""
+from types import SimpleNamespace
+from unittest import TestCase
+from unittest.mock import patch
+
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.entity.data.pipeline import Task
+from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineConnection,
+    PipelineService,
+    PipelineServiceType,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.{p.name}.metadata import {camel}Source
+
+MOCK_PIPELINE_SERVICE = PipelineService(
+    id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
+    name="{p.name}_source_test",
+    connection=PipelineConnection(),
+    serviceType=PipelineServiceType.{camel},
+)
+
+mock_config = {{
+    "source": {{
+        "type": "{p.name.replace("_", "-")}",
+        "serviceName": "{p.name}_source_test",
+        "serviceConnection": {{
+            "config": {{
+                "type": "{camel}",
+                # TODO: Fill in required connection properties
+                "hostPort": "http://localhost:8080",
+            }}
+        }},
+        "sourceConfig": {{
+            "config": {{
+                "type": "PipelineMetadata",
+            }}
+        }},
+    }},
+    "sink": {{"type": "metadata-rest", "config": {{}}}},
+    "workflowConfig": {{
+        "openMetadataServerConfig": {{
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {{
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGc"
+                "iOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE"
+                "2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXB"
+                "iEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fN"
+                "r3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3u"
+                "d-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            }},
+        }},
+    }},
+}}
+
+# TODO: Replace with actual pipeline details from your API response
+MOCK_PIPELINE_DETAILS = SimpleNamespace(
+    id="1",
+    name="test_pipeline",
+    description="Sample pipeline",
+    tasks=[
+        SimpleNamespace(id="t1", name="task_1", description="First task"),
+        SimpleNamespace(id="t2", name="task_2", description="Second task"),
+    ],
+)
+
+EXPECTED_PIPELINE = [
+    CreatePipelineRequest(
+        name="1",
+        displayName="test_pipeline",
+        description="Sample pipeline",
+        tasks=[
+            Task(name="t1", displayName="task_1", description="First task"),
+            Task(name="t2", displayName="task_2", description="Second task"),
+        ],
+        service="{p.name}_source_test",
+    )
+]
+
+
+class {camel}UnitTest(TestCase):
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
+    @patch("metadata.ingestion.source.pipeline.{p.name}.connection.get_connection")
+    def __init__(self, methodName, get_connection, test_connection) -> None:
+        super().__init__(methodName)
+        get_connection.return_value = False
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+        self.{p.name} = {camel}Source.create(
+            mock_config["source"],
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+        )
+        self.{p.name}.client = SimpleNamespace()
+        self.{p.name}.context.get().__dict__[
+            "pipeline_service"
+        ] = MOCK_PIPELINE_SERVICE.name.root
+
+    def test_pipeline_name(self):
+        """Test extracting pipeline name from details object"""
+        assert (
+            self.{p.name}.get_pipeline_name(MOCK_PIPELINE_DETAILS)
+            == MOCK_PIPELINE_DETAILS.name
+        )
+
+    def test_yield_pipeline(self):
+        """Test creating a CreatePipelineRequest from pipeline details"""
+        results = list(self.{p.name}.yield_pipeline(MOCK_PIPELINE_DETAILS))
+        # TODO: Update once yield_pipeline is implemented
+        # pipeline_list = [r.right for r in results if isinstance(r, Either) and r.right]
+        # for expected, original in zip(EXPECTED_PIPELINE, pipeline_list):
+        #     self.assertEqual(expected, original)
+
+    def test_yield_pipeline_status(self):
+        """Test creating pipeline execution status"""
+        self.{p.name}.context.get().__dict__["pipeline"] = "test_pipeline"
+        results = list(self.{p.name}.yield_pipeline_status(MOCK_PIPELINE_DETAILS))
+        # TODO: Update once yield_pipeline_status is implemented
+        # status_list = [r.right for r in results if isinstance(r, Either) and r.right]
+        # assert len(status_list) > 0
+
+    def test_yield_pipeline_lineage(self):
+        """Test that lineage generation does not error"""
+        results = list(
+            self.{p.name}.yield_pipeline_lineage_details(
+                pipeline_details=MOCK_PIPELINE_DETAILS
+            )
+        )
+        # Default implementation yields nothing — override if your connector supports lineage
+        self.assertEqual(results, [])
+'''
+
+
+def _gen_unit_test_generic(p: ConnectorProfile) -> str:
+    """Generate unit tests for messaging, mlmodel, storage, search, api connectors."""
+    camel = p.camel
+    base_class_name, base_class_module = BASE_CLASS_MAP[p.service_type]
+    svc_type_map = {
+        "messaging": (
+            "MessagingServiceType",
+            "messagingService",
+            "MessagingConnection",
+            "MessagingService",
+        ),
+        "mlmodel": (
+            "MlModelServiceType",
+            "mlmodelService",
+            "MlModelConnection",
+            "MlModelService",
+        ),
+        "storage": (
+            "StorageServiceType",
+            "storageService",
+            "StorageConnection",
+            "StorageService",
+        ),
+        "search": (
+            "SearchServiceType",
+            "searchService",
+            "SearchConnection",
+            "SearchService",
+        ),
+        "api": (
+            "ApiServiceType",
+            "apiService",
+            "ApiConnection",
+            "ApiService",
+        ),
+    }
+    type_enum, svc_module, conn_class, svc_class = svc_type_map.get(
+        p.service_type,
+        ("MessagingServiceType", "messagingService", "MessagingConnection", "MessagingService"),
+    )
+    return f'''{COPYRIGHT_HEADER}
+"""
+Unit tests for {camel} using the topology
+"""
+from types import SimpleNamespace
+from unittest import TestCase
+from unittest.mock import patch
+
+from metadata.generated.schema.entity.services.{svc_module} import (
+    {conn_class},
+    {svc_class},
+    {type_enum},
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.{p.service_type}.{p.name}.metadata import {camel}Source
+
+MOCK_SERVICE = {svc_class}(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    name="mock_{p.name}",
+    connection={conn_class}(),
+    serviceType={type_enum}.{camel},
+)
+
+mock_config = {{
+    "source": {{
+        "type": "{p.name.replace("_", "-")}",
+        "serviceName": "mock_{p.name}",
+        "serviceConnection": {{
+            "config": {{
+                "type": "{camel}",
+                # TODO: Fill in required connection properties
+            }}
+        }},
+        "sourceConfig": {{
+            "config": {{}}
+        }},
+    }},
+    "sink": {{"type": "metadata-rest", "config": {{}}}},
+    "workflowConfig": {{
+        "openMetadataServerConfig": {{
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {{
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGc"
+                "iOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE"
+                "2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXB"
+                "iEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fN"
+                "r3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3u"
+                "d-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            }},
+        }},
+    }},
+}}
+
+
+class {camel}UnitTest(TestCase):
+    @patch(
+        "{base_class_module}.{base_class_name}.test_connection"
+    )
+    @patch("metadata.ingestion.source.{p.service_type}.{p.name}.connection.get_connection")
+    def __init__(self, methodName, get_connection, test_connection) -> None:
+        super().__init__(methodName)
+        get_connection.return_value = False
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+        self.{p.name} = {camel}Source.create(
+            mock_config["source"],
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+        )
+        self.{p.name}.client = SimpleNamespace()
+
+    def test_source_creation(self):
+        """Test that the source is properly created from config"""
+        assert self.{p.name} is not None
+        assert self.{p.name}.service_connection is not None
+
+    def test_service_connection_type(self):
+        """Test that the service connection type is correct"""
+        assert self.{p.name}.service_connection.type.value == "{camel}"
+'''
+
+
+def gen_unit_test(p: ConnectorProfile) -> str:
+    if p.service_type == "database":
+        return _gen_unit_test_database(p)
+    if p.service_type == "dashboard":
+        return _gen_unit_test_dashboard(p)
+    if p.service_type == "pipeline":
+        return _gen_unit_test_pipeline(p)
+    return _gen_unit_test_generic(p)
 
 
 def gen_integration_conftest(p: ConnectorProfile) -> str:
@@ -1262,11 +1724,31 @@ def create_service_request({p.name}_container):
 def _gen_integration_conftest_non_database(p: ConnectorProfile, port: int) -> str:
     camel = p.camel
     svc_type_map = {
-        "dashboard": ("DashboardServiceType", "dashboardService", "CreateDashboardServiceRequest"),
-        "pipeline": ("PipelineServiceType", "pipelineService", "CreatePipelineServiceRequest"),
-        "messaging": ("MessagingServiceType", "messagingService", "CreateMessagingServiceRequest"),
-        "mlmodel": ("MlModelServiceType", "mlmodelService", "CreateMlModelServiceRequest"),
-        "storage": ("StorageServiceType", "storageService", "CreateStorageServiceRequest"),
+        "dashboard": (
+            "DashboardServiceType",
+            "dashboardService",
+            "CreateDashboardServiceRequest",
+        ),
+        "pipeline": (
+            "PipelineServiceType",
+            "pipelineService",
+            "CreatePipelineServiceRequest",
+        ),
+        "messaging": (
+            "MessagingServiceType",
+            "messagingService",
+            "CreateMessagingServiceRequest",
+        ),
+        "mlmodel": (
+            "MlModelServiceType",
+            "mlmodelService",
+            "CreateMlModelServiceRequest",
+        ),
+        "storage": (
+            "StorageServiceType",
+            "storageService",
+            "CreateStorageServiceRequest",
+        ),
         "search": ("SearchServiceType", "searchService", "CreateSearchServiceRequest"),
         "api": ("ApiServiceType", "apiService", "CreateApiServiceRequest"),
     }
@@ -1558,46 +2040,150 @@ class Test{camel}Connection:
 ABSTRACT_METHODS = {
     "database": [],  # CommonDbSourceService has no required abstract methods
     "dashboard": [
-        ("get_dashboards_list(self)", "Optional[List[Any]]", "Return list of all dashboard objects from the source"),
-        ("get_dashboard_name(self, dashboard: Any)", "str", "Extract name from a dashboard object"),
-        ("get_dashboard_details(self, dashboard: Any)", "Any", "Fetch full dashboard details for a given dashboard"),
-        ("yield_dashboard(self, dashboard_details: Any)", "Iterable[Either[CreateDashboardRequest]]", "Create and yield a CreateDashboardRequest entity"),
-        ("yield_dashboard_chart(self, dashboard_details: Any)", "Iterable[Either[CreateChartRequest]]", "Create and yield CreateChartRequest entities for each chart"),
-        ("yield_dashboard_lineage_details(self, dashboard_details: Any, db_service_prefix: Optional[str] = None)", "Iterable[Either[AddLineageRequest]]", "Yield lineage between dashboard and data sources (can yield nothing if N/A)"),
+        (
+            "get_dashboards_list(self)",
+            "Optional[List[Any]]",
+            "Return list of all dashboard objects from the source",
+        ),
+        (
+            "get_dashboard_name(self, dashboard: Any)",
+            "str",
+            "Extract name from a dashboard object",
+        ),
+        (
+            "get_dashboard_details(self, dashboard: Any)",
+            "Any",
+            "Fetch full dashboard details for a given dashboard",
+        ),
+        (
+            "yield_dashboard(self, dashboard_details: Any)",
+            "Iterable[Either[CreateDashboardRequest]]",
+            "Create and yield a CreateDashboardRequest entity",
+        ),
+        (
+            "yield_dashboard_chart(self, dashboard_details: Any)",
+            "Iterable[Either[CreateChartRequest]]",
+            "Create and yield CreateChartRequest entities for each chart",
+        ),
+        (
+            "yield_dashboard_lineage_details(self, dashboard_details: Any, db_service_prefix: Optional[str] = None)",
+            "Iterable[Either[AddLineageRequest]]",
+            "Yield lineage between dashboard and data sources (can yield nothing if N/A)",
+        ),
     ],
     "pipeline": [
-        ("get_pipelines_list(self)", "Optional[List[Any]]", "Return list of all pipeline objects from the source"),
-        ("get_pipeline_name(self, pipeline_details: Any)", "str", "Extract name from a pipeline object"),
-        ("yield_pipeline(self, pipeline_details: Any)", "Iterable[Either[CreatePipelineRequest]]", "Create and yield a CreatePipelineRequest entity with tasks"),
-        ("yield_pipeline_status(self, pipeline_details: Any)", "Iterable[Either[OMetaPipelineStatus]]", "Yield pipeline execution status"),
-        ("yield_pipeline_lineage_details(self, pipeline_details: Any)", "Iterable[Either[AddLineageRequest]]", "Yield lineage between pipeline and data sources"),
+        (
+            "get_pipelines_list(self)",
+            "Optional[List[Any]]",
+            "Return list of all pipeline objects from the source",
+        ),
+        (
+            "get_pipeline_name(self, pipeline_details: Any)",
+            "str",
+            "Extract name from a pipeline object",
+        ),
+        (
+            "yield_pipeline(self, pipeline_details: Any)",
+            "Iterable[Either[CreatePipelineRequest]]",
+            "Create and yield a CreatePipelineRequest entity with tasks",
+        ),
+        (
+            "yield_pipeline_status(self, pipeline_details: Any)",
+            "Iterable[Either[OMetaPipelineStatus]]",
+            "Yield pipeline execution status",
+        ),
+        (
+            "yield_pipeline_lineage_details(self, pipeline_details: Any)",
+            "Iterable[Either[AddLineageRequest]]",
+            "Yield lineage between pipeline and data sources",
+        ),
     ],
     "messaging": [
-        ("get_topic_list(self)", "Optional[List[Any]]", "Return list of all topic objects"),
-        ("get_topic_name(self, topic_details: Any)", "str", "Extract name from a topic object"),
-        ("yield_topic(self, topic_details: Any)", "Iterable[Either[CreateTopicRequest]]", "Create and yield a CreateTopicRequest entity"),
+        (
+            "get_topic_list(self)",
+            "Optional[List[Any]]",
+            "Return list of all topic objects",
+        ),
+        (
+            "get_topic_name(self, topic_details: Any)",
+            "str",
+            "Extract name from a topic object",
+        ),
+        (
+            "yield_topic(self, topic_details: Any)",
+            "Iterable[Either[CreateTopicRequest]]",
+            "Create and yield a CreateTopicRequest entity",
+        ),
     ],
     "mlmodel": [
-        ("get_mlmodels(self, *args, **kwargs)", "Iterable", "List all ML models to process"),
+        (
+            "get_mlmodels(self, *args, **kwargs)",
+            "Iterable",
+            "List all ML models to process",
+        ),
         ("yield_mlmodel(self, *args, **kwargs)", "Iterable", "Yield MlModel entities"),
-        ("_get_hyper_params(self, *args, **kwargs)", "Optional[List]", "Get hyper parameters from the model"),
-        ("_get_ml_store(self, *args, **kwargs)", "Optional", "Get the ML store from the model version"),
-        ("_get_ml_features(self, *args, **kwargs)", "Optional[List]", "Pick up features from the model"),
-        ("_get_algorithm(self, *args, **kwargs)", "str", "Return the algorithm for a given model"),
+        (
+            "_get_hyper_params(self, *args, **kwargs)",
+            "Optional[List]",
+            "Get hyper parameters from the model",
+        ),
+        (
+            "_get_ml_store(self, *args, **kwargs)",
+            "Optional",
+            "Get the ML store from the model version",
+        ),
+        (
+            "_get_ml_features(self, *args, **kwargs)",
+            "Optional[List]",
+            "Pick up features from the model",
+        ),
+        (
+            "_get_algorithm(self, *args, **kwargs)",
+            "str",
+            "Return the algorithm for a given model",
+        ),
     ],
     "storage": [
         ("get_containers(self)", "Iterable", "Retrieve all containers for the service"),
-        ("yield_create_container_requests(self, container_details: Any)", "Iterable", "Generate create container requests"),
+        (
+            "yield_create_container_requests(self, container_details: Any)",
+            "Iterable",
+            "Generate create container requests",
+        ),
     ],
     "search": [
-        ("get_search_index_list(self)", "Optional[List[Any]]", "Return list of all search indexes"),
-        ("get_search_index_name(self, search_index_details: Any)", "str", "Extract name from a search index object"),
-        ("yield_search_index(self, search_index_details: Any)", "Iterable", "Create and yield search index entities"),
+        (
+            "get_search_index_list(self)",
+            "Optional[List[Any]]",
+            "Return list of all search indexes",
+        ),
+        (
+            "get_search_index_name(self, search_index_details: Any)",
+            "str",
+            "Extract name from a search index object",
+        ),
+        (
+            "yield_search_index(self, search_index_details: Any)",
+            "Iterable",
+            "Create and yield search index entities",
+        ),
     ],
     "api": [
-        ("get_api_collections(self, *args, **kwargs)", "Iterable", "List all API collections to process"),
-        ("yield_api_collection(self, *args, **kwargs)", "Iterable", "Yield API collection entities"),
-        ("yield_api_endpoint(self, *args, **kwargs)", "Iterable", "Yield API endpoint entities"),
+        (
+            "get_api_collections(self, *args, **kwargs)",
+            "Iterable",
+            "List all API collections to process",
+        ),
+        (
+            "yield_api_collection(self, *args, **kwargs)",
+            "Iterable",
+            "Yield API collection entities",
+        ),
+        (
+            "yield_api_endpoint(self, *args, **kwargs)",
+            "Iterable",
+            "Yield API endpoint entities",
+        ),
     ],
 }
 
@@ -1650,6 +2236,7 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     s.append("3. **Implement the TODO items** in the generated files")
     s.append("4. **Register the connector** in the service schema and UI")
     s.append("5. **Run code generation** and formatting")
+    s.append("6. **Run tests** and validate")
     s.append("")
     s.append("Do NOT skip steps. Do NOT guess patterns — copy them from the reference.")
     s.append("")
@@ -1657,7 +2244,9 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     # --- Environment Setup ---
     s.append("## Prerequisites: Environment Setup")
     s.append("")
-    s.append("Before running any `make` or `python` commands, set up the Python environment:")
+    s.append(
+        "Before running any `make` or `python` commands, set up the Python environment:"
+    )
     s.append("")
     s.append("```bash")
     s.append("# From the root of the OpenMetadata project")
@@ -1711,7 +2300,9 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     # --- Step 1: Read reference ---
     s.append("## Step 1: Read the Reference Connector")
     s.append("")
-    s.append(f"The `{ref}` connector is the closest reference. **Read these files first**:")
+    s.append(
+        f"The `{ref}` connector is the closest reference. **Read these files first**:"
+    )
     s.append("")
 
     ref_files = [f"{ref_dir}/metadata.py", f"{ref_dir}/connection.py"]
@@ -1730,7 +2321,9 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     for rf in ref_files:
         s.append(f"- `{rf}`")
     s.append("")
-    s.append(f"Also read the base class to understand the topology and abstract methods:")
+    s.append(
+        f"Also read the base class to understand the topology and abstract methods:"
+    )
     s.append(f"- `{base_class_file}`")
     s.append("")
 
@@ -1742,39 +2335,59 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
 
     if p.service_type == "database" and p.connection_type == "sqlalchemy":
         s.append(f"### `{source_dir}/connection.py`")
-        s.append(f"- `_get_client()` — Return a SQLAlchemy `Engine`. The default `create_generic_db_connection` works if the DB uses standard host/port/user/password. Customize for special auth (e.g., token injection).")
-        s.append(f"- `test_connection()` — Usually works as-is with `test_connection_db_schema_sources`.")
+        s.append(
+            f"- `_get_client()` — Return a SQLAlchemy `Engine`. The default `create_generic_db_connection` works if the DB uses standard host/port/user/password. Customize for special auth (e.g., token injection)."
+        )
+        s.append(
+            f"- `test_connection()` — Usually works as-is with `test_connection_db_schema_sources`."
+        )
         s.append("")
         s.append(f"### `{source_dir}/metadata.py`")
-        s.append(f"- Usually works as-is via `CommonDbSourceService`. Override only for custom behavior (stored procedures, custom type mapping).")
+        s.append(
+            f"- Usually works as-is via `CommonDbSourceService`. Override only for custom behavior (stored procedures, custom type mapping)."
+        )
         s.append("")
         s.append(f"### `{source_dir}/queries.py`")
         s.append("- Add SQL queries for metadata extraction or query log access.")
         s.append("")
         if "lineage" in p.capabilities:
             s.append(f"### `{source_dir}/lineage.py`")
-            s.append("- Set `filters` to SQL conditions that identify lineage-relevant queries (CREATE TABLE AS SELECT, INSERT INTO SELECT, MERGE, etc.).")
+            s.append(
+                "- Set `filters` to SQL conditions that identify lineage-relevant queries (CREATE TABLE AS SELECT, INSERT INTO SELECT, MERGE, etc.)."
+            )
             s.append("")
             s.append(f"### `{source_dir}/query_parser.py`")
-            s.append("- Implement `get_sql_statement()` to return the SQL that fetches query logs from the source's audit/log tables.")
+            s.append(
+                "- Implement `get_sql_statement()` to return the SQL that fetches query logs from the source's audit/log tables."
+            )
             s.append("")
         if "usage" in p.capabilities:
             s.append(f"### `{source_dir}/usage.py`")
-            s.append("- Usually just sets `filters = \"\"` to capture all queries for usage analysis.")
+            s.append(
+                '- Usually just sets `filters = ""` to capture all queries for usage analysis.'
+            )
             s.append("")
     else:
         s.append(f"### `{source_dir}/client.py` (main implementation work)")
         s.append("")
         s.append("Build the REST/SDK client. Required methods:")
         s.append("")
-        s.append("- `__init__(self, config)` — Initialize HTTP session or SDK client, set up auth")
-        s.append("- `test_access(self)` — Make a lightweight API call to verify credentials work")
+        s.append(
+            "- `__init__(self, config)` — Initialize HTTP session or SDK client, set up auth"
+        )
+        s.append(
+            "- `test_access(self)` — Make a lightweight API call to verify credentials work"
+        )
         s.append("")
-        s.append("Add methods for each API operation needed by `metadata.py`. For example:")
+        s.append(
+            "Add methods for each API operation needed by `metadata.py`. For example:"
+        )
         s.append("")
         if p.service_type == "dashboard":
             s.append("- `get_dashboards(self)` — List all dashboards")
-            s.append("- `get_dashboard_details(self, dashboard_id)` — Get full dashboard details")
+            s.append(
+                "- `get_dashboard_details(self, dashboard_id)` — Get full dashboard details"
+            )
             s.append("- `get_charts(self, dashboard_id)` — List charts for a dashboard")
         elif p.service_type == "pipeline":
             s.append("- `get_pipelines(self)` — List all pipelines")
@@ -1782,13 +2395,19 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
             s.append("- `get_tasks(self, pipeline_id)` — List tasks for a pipeline")
         elif p.service_type == "messaging":
             s.append("- `get_topics(self)` — List all topics")
-            s.append("- `get_topic_details(self, topic_name)` — Get topic metadata/schema")
+            s.append(
+                "- `get_topic_details(self, topic_name)` — Get topic metadata/schema"
+            )
         elif p.service_type == "search":
             s.append("- `get_indexes(self)` — List all search indexes")
-            s.append("- `get_index_mapping(self, index_name)` — Get index field mappings")
+            s.append(
+                "- `get_index_mapping(self, index_name)` — Get index field mappings"
+            )
         elif p.service_type == "api":
             s.append("- `get_collections(self)` — List all API collections")
-            s.append("- `get_endpoints(self, collection_id)` — List endpoints in a collection")
+            s.append(
+                "- `get_endpoints(self, collection_id)` — List endpoints in a collection"
+            )
         elif p.service_type == "storage":
             s.append("- `get_containers(self)` — List all containers/buckets")
         elif p.service_type == "mlmodel":
@@ -1798,13 +2417,17 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
 
         s.append(f"### `{source_dir}/connection.py`")
         s.append("")
-        s.append("Already wired. Update the `test_fn` dict keys to match the step names")
+        s.append(
+            "Already wired. Update the `test_fn` dict keys to match the step names"
+        )
         s.append(f"in `{test_conn}`. Add client methods for each test step.")
         s.append("")
 
         s.append(f"### `{source_dir}/metadata.py`")
         s.append("")
-        s.append(f"Extends `{base_class}`. You **must** implement these abstract methods:")
+        s.append(
+            f"Extends `{base_class}`. You **must** implement these abstract methods:"
+        )
         s.append("")
 
         methods = ABSTRACT_METHODS.get(p.service_type, [])
@@ -1821,33 +2444,47 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
         optional_overrides = []
         if p.service_type == "dashboard":
             optional_overrides = [
-                ("yield_dashboard_lineage_details(self, dashboard_details, db_service_prefix=None)",
-                 "Iterable[Either[AddLineageRequest]]",
-                 "Dashboard-to-table lineage. Parse SQL from charts or map dashboard data sources to database tables. See metabase or tableau metadata.py for examples."),
-                ("yield_dashboard_usage(self, dashboard_details)",
-                 "Iterable[Either[DashboardUsage]]",
-                 "Dashboard view counts. Fetch usage/view count from the API and yield DashboardUsage. See tableau or looker metadata.py for examples."),
-                ("yield_bulk_datamodel(self, _)",
-                 "Iterable[Either[CreateDashboardDataModelRequest]]",
-                 "Data models (e.g. LookML views, Tableau datasources). See looker metadata.py for examples."),
-                ("get_owner_ref(self, dashboard_details)",
-                 "Optional[EntityReferenceList]",
-                 "Dashboard ownership. Resolve owner email to OpenMetadata user reference."),
-                ("get_project_name(self, dashboard_details)",
-                 "Optional[str]",
-                 "Folder/project/workspace name for organizing dashboards."),
+                (
+                    "yield_dashboard_lineage_details(self, dashboard_details, db_service_prefix=None)",
+                    "Iterable[Either[AddLineageRequest]]",
+                    "Dashboard-to-table lineage. Parse SQL from charts or map dashboard data sources to database tables. See metabase or tableau metadata.py for examples.",
+                ),
+                (
+                    "yield_dashboard_usage(self, dashboard_details)",
+                    "Iterable[Either[DashboardUsage]]",
+                    "Dashboard view counts. Fetch usage/view count from the API and yield DashboardUsage. See tableau or looker metadata.py for examples.",
+                ),
+                (
+                    "yield_bulk_datamodel(self, _)",
+                    "Iterable[Either[CreateDashboardDataModelRequest]]",
+                    "Data models (e.g. LookML views, Tableau datasources). See looker metadata.py for examples.",
+                ),
+                (
+                    "get_owner_ref(self, dashboard_details)",
+                    "Optional[EntityReferenceList]",
+                    "Dashboard ownership. Resolve owner email to OpenMetadata user reference.",
+                ),
+                (
+                    "get_project_name(self, dashboard_details)",
+                    "Optional[str]",
+                    "Folder/project/workspace name for organizing dashboards.",
+                ),
             ]
         elif p.service_type == "pipeline":
             optional_overrides = [
-                ("yield_pipeline_lineage_details(self, pipeline_details)",
-                 "Iterable[Either[AddLineageRequest]]",
-                 "Pipeline-to-table lineage. Map pipeline tasks to source/target database tables. See airflow or fivetran metadata.py for examples."),
+                (
+                    "yield_pipeline_lineage_details(self, pipeline_details)",
+                    "Iterable[Either[AddLineageRequest]]",
+                    "Pipeline-to-table lineage. Map pipeline tasks to source/target database tables. See airflow or fivetran metadata.py for examples.",
+                ),
             ]
 
         if optional_overrides:
             s.append("### Optional Capability Overrides (in `metadata.py`)")
             s.append("")
-            s.append("These are **not required** but can be implemented by overriding the")
+            s.append(
+                "These are **not required** but can be implemented by overriding the"
+            )
             s.append("default no-op methods in the base class. No extra files needed.")
             s.append("")
             for sig, ret, desc in optional_overrides:
@@ -1863,18 +2500,24 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     s.append("")
     s.append(f'- Add `"{camel}"` to the `{p.service_type}ServiceType` enum array')
     s.append(f"- Add to the connection `oneOf` array:")
-    s.append(f'  ```json')
-    s.append(f'  {{"$ref": "connections/{p.service_type}/{p.module_name}Connection.json"}}')
-    s.append(f'  ```')
+    s.append(f"  ```json")
+    s.append(
+        f'  {{"$ref": "connections/{p.service_type}/{p.module_name}Connection.json"}}'
+    )
+    s.append(f"  ```")
     s.append("")
     s.append(f"### 3b. UI service utils: `{ui_utils}`")
     s.append("")
     s.append(f"- Import the resolved connection schema for `{camel}`")
-    s.append(f"- Add a `case '{camel}':` in the switch statement that returns the schema")
+    s.append(
+        f"- Add a `case '{camel}':` in the switch statement that returns the schema"
+    )
     s.append("")
     s.append("### 3c. Localization")
     s.append("")
-    s.append("- Add i18n keys in `openmetadata-ui/src/main/resources/ui/src/locale/languages/`")
+    s.append(
+        "- Add i18n keys in `openmetadata-ui/src/main/resources/ui/src/locale/languages/`"
+    )
     s.append(f'- Add display name entry for `"{camel}"` service')
     s.append("")
 
@@ -1904,16 +2547,56 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     s.append("```")
     s.append("")
 
-    # --- Step 5: Validate ---
-    s.append("## Step 5: Validate")
+    # --- Step 5: Run tests ---
+    s.append("## Step 5: Run Tests")
     s.append("")
-    s.append("- [ ] JSON Schema: `$ref` resolves, `supports*` flags correct")
+    s.append("```bash")
+    s.append("source env/bin/activate")
+    s.append("")
+    s.append("# Unit tests")
+    s.append(
+        f"python -m pytest ingestion/tests/unit/topology/{p.service_type}/test_{p.name}.py -v"
+    )
+    s.append("")
+    s.append("# Integration tests (requires OpenMetadata server running locally)")
+    s.append(f"python -m pytest ingestion/tests/integration/{p.name}/ -v")
+    s.append("")
+    s.append("# Connection integration test")
+    s.append(
+        f"python -m pytest ingestion/tests/integration/connections/test_{p.name}_connection.py -v"
+    )
+    s.append("```")
+    s.append("")
+    if p.docker_image:
+        s.append(
+            f"Integration tests use `testcontainers` with Docker image `{p.docker_image}`."
+        )
+        s.append(
+            "Docker must be running. The container is started and stopped automatically."
+        )
+        s.append("")
+    else:
+        s.append(
+            "Note: Integration tests are stubs. To enable real E2E testing, either:"
+        )
+        s.append(
+            "- Re-run scaffold with `--docker-image` to generate testcontainers-based tests"
+        )
+        s.append(
+            "- Manually update `ingestion/tests/integration/{}/conftest.py` with a container or mock server".format(
+                p.name
+            )
+        )
+        s.append("")
+
+    # --- Step 6: Validate ---
+    s.append("## Step 6: Validate Checklist")
+    s.append("")
     s.append("- [ ] `make generate` succeeds")
     s.append("- [ ] `mvn clean install -pl openmetadata-spec` succeeds")
     s.append("- [ ] `yarn parse-schema` succeeds")
-    s.append("- [ ] Connection creates client successfully")
-    s.append("- [ ] `test_connection()` passes all steps")
     s.append("- [ ] Unit tests pass")
+    s.append("- [ ] Integration tests pass (if Docker available)")
     s.append("- [ ] `make py_format` passes (run from repo root with env activated)")
     s.append("- [ ] `mvn spotless:apply` passes")
     s.append("")
@@ -1937,16 +2620,26 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
             s.append(f"| `{source_dir}/usage.py` | Usage extraction |")
     else:
         s.append(f"| `{source_dir}/client.py` | REST/SDK client |")
-    s.append(f"| `ingestion/tests/unit/topology/{p.service_type}/test_{p.name}.py` | Unit tests |")
-    s.append(f"| `ingestion/tests/integration/connections/test_{p.name}_connection.py` | Connection integration test |")
-    s.append(f"| `ingestion/tests/integration/{p.name}/conftest.py` | Test container fixtures |")
-    s.append(f"| `ingestion/tests/integration/{p.name}/test_metadata.py` | Metadata integration test |")
+    s.append(
+        f"| `ingestion/tests/unit/topology/{p.service_type}/test_{p.name}.py` | Unit tests |"
+    )
+    s.append(
+        f"| `ingestion/tests/integration/connections/test_{p.name}_connection.py` | Connection integration test |"
+    )
+    s.append(
+        f"| `ingestion/tests/integration/{p.name}/conftest.py` | Test container fixtures |"
+    )
+    s.append(
+        f"| `ingestion/tests/integration/{p.name}/test_metadata.py` | Metadata integration test |"
+    )
     s.append("")
 
     if p.docker_image:
         s.append("## Integration Tests with Docker")
         s.append("")
-        s.append(f"Docker image `{p.docker_image}` is configured for integration testing.")
+        s.append(
+            f"Docker image `{p.docker_image}` is configured for integration testing."
+        )
         s.append("The generated test files use `testcontainers` to:")
         s.append("")
         s.append("1. Spin up a Docker container with the real service")
@@ -1970,7 +2663,9 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
         s.append(f"python -m pytest ingestion/tests/integration/{p.name}/ -v")
         s.append("```")
         s.append("")
-        s.append("**Reference**: See `ingestion/tests/integration/mysql/conftest.py` for a complete example.")
+        s.append(
+            "**Reference**: See `ingestion/tests/integration/mysql/conftest.py` for a complete example."
+        )
         s.append("")
 
     return "\n".join(s)

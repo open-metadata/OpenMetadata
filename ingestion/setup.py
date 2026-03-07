@@ -362,6 +362,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
+    "ssrs": {"requests-ntlm~=1.3"},
     "sample-data": {
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
