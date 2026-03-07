@@ -12,10 +12,12 @@
 Tests for PresidioRecognizerFactory and RecognizerRegistry
 """
 import re
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from presidio_analyzer import EntityRecognizer, PatternRecognizer
+from presidio_analyzer.nlp_engine import NlpArtifacts
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.type.classificationLanguages import (
@@ -377,6 +379,129 @@ class TestPresidioRecognizerFactory:
 
         assert len(recognizers) == 2
         assert all(isinstance(r, EntityRecognizer) for r in recognizers)
+
+    def test_create_recognizer_always_applies_enhance_using_context(self):
+        """enhance_using_context is called for every enabled recognizer regardless of threshold"""
+        recognizer_config = Recognizer(
+            name="pattern_recognizer",
+            enabled=True,
+            recognizerConfig=RecognizerConfig(
+                root=PatternRecognizerConfig(
+                    type="pattern",
+                    patterns=[Pattern(name="token", regex=r"TOKEN-\d+", score=0.7)],
+                    regexFlags=RegexFlags(),
+                    context=[],
+                    supportedLanguage=ClassificationLanguage.en,
+                )
+            ),
+        )
+
+        with patch(
+            "metadata.pii.algorithms.presidio_recognizer_factory.enhance_using_context",
+            wraps=lambda r: r,
+        ) as mock_enhance:
+            result = PresidioRecognizerFactory.create_recognizer(
+                recognizer_config, "PII.Token"
+            )
+
+        assert result is not None
+        mock_enhance.assert_called_once()
+
+    def test_create_recognizer_applies_confidence_threshold_when_set(self):
+        """Results with a score below confidenceThreshold are filtered out by analyze"""
+        recognizer_config = Recognizer(
+            name="low_score_recognizer",
+            enabled=True,
+            confidenceThreshold=0.8,
+            recognizerConfig=RecognizerConfig(
+                root=PatternRecognizerConfig(
+                    type="pattern",
+                    patterns=[Pattern(name="token", regex=r"TOKEN-\d+", score=0.5)],
+                    regexFlags=RegexFlags(),
+                    context=[],
+                    supportedLanguage=ClassificationLanguage.en,
+                )
+            ),
+        )
+
+        result = PresidioRecognizerFactory.create_recognizer(
+            recognizer_config, "PII.Token"
+        )
+
+        assert result is not None
+        nlp_artifacts = NlpArtifacts(
+            entities=[],
+            tokens=[],
+            tokens_indices=[],
+            lemmas=[],
+            nlp_engine=None,
+            language="en",
+        )
+        matches = result.analyze("TOKEN-123", ["PII.Token"], nlp_artifacts)
+        assert matches == []
+
+    def test_create_recognizer_no_threshold_filtering_when_not_set(self):
+        """When confidenceThreshold is None, analyze returns all pattern matches regardless of score"""
+        recognizer_config = Recognizer(
+            name="low_score_recognizer",
+            enabled=True,
+            confidenceThreshold=None,
+            recognizerConfig=RecognizerConfig(
+                root=PatternRecognizerConfig(
+                    type="pattern",
+                    patterns=[Pattern(name="token", regex=r"TOKEN-\d+", score=0.3)],
+                    regexFlags=RegexFlags(),
+                    context=[],
+                    supportedLanguage=ClassificationLanguage.en,
+                )
+            ),
+        )
+
+        result = PresidioRecognizerFactory.create_recognizer(
+            recognizer_config, "PII.Token"
+        )
+
+        assert result is not None
+        nlp_artifacts = NlpArtifacts(
+            entities=[],
+            tokens=[],
+            tokens_indices=[],
+            lemmas=[],
+            nlp_engine=None,
+            language="en",
+        )
+        matches = result.analyze("TOKEN-123", ["PII.Token"], nlp_artifacts)
+        assert len(matches) == 1
+        assert matches[0].score == pytest.approx(0.3)
+
+    def test_create_recognizer_disabled_returns_none_without_decorating(self):
+        """Disabled recognizers return None before any decorators are applied"""
+        recognizer_config = Recognizer(
+            name="disabled_recognizer",
+            enabled=False,
+            recognizerConfig=RecognizerConfig(
+                root=PatternRecognizerConfig(
+                    type="pattern",
+                    patterns=[Pattern(name="token", regex=r"TOKEN-\d+", score=0.9)],
+                    regexFlags=RegexFlags(),
+                    context=[],
+                    supportedLanguage=ClassificationLanguage.en,
+                )
+            ),
+        )
+
+        with patch(
+            "metadata.pii.algorithms.presidio_recognizer_factory.enhance_using_context"
+        ) as mock_enhance, patch(
+            "metadata.pii.algorithms.presidio_recognizer_factory.decorate_recognizer"
+        ) as mock_decorate:
+            result = PresidioRecognizerFactory.create_recognizer(
+                recognizer_config, "PII.Token"
+            )
+
+        assert result is None
+        mock_enhance.assert_not_called()
+        mock_decorate.assert_not_called()
 
 
 class TestRecognizerRegistry:
