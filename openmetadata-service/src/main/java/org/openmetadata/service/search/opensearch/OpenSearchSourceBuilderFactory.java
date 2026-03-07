@@ -1085,6 +1085,10 @@ public class OpenSearchSourceBuilderFactory
             }
           });
 
+      int termCount = query.trim().split("\\s+").length;
+      String fuzziness = termCount > 2 ? "0" : "1";
+      int maxExpansions = termCount > 2 ? 2 : 10;
+
       os.org.opensearch.client.opensearch._types.query_dsl.Query fuzzyQuery =
           os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
               q ->
@@ -1097,8 +1101,8 @@ public class OpenSearchSourceBuilderFactory
                                       .MostFields)
                               .operator(
                                   os.org.opensearch.client.opensearch._types.query_dsl.Operator.Or)
-                              .fuzziness("1")
-                              .maxExpansions(10)
+                              .fuzziness(fuzziness)
+                              .maxExpansions(maxExpansions)
                               .prefixLength(1)
                               .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
                               .tieBreaker(DEFAULT_TIE_BREAKER)
@@ -1138,13 +1142,15 @@ public class OpenSearchSourceBuilderFactory
 
   private os.org.opensearch.client.opensearch._types.query_dsl.Query createStandardFuzzyQueryV2(
       String query, Map<String, Float> fields) {
+    int termCount = query.trim().split("\\s+").length;
+    String fuzziness = termCount > 2 ? "0" : "1";
     return OpenSearchQueryBuilder.multiMatchQuery(
         query,
         fields,
         os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.MostFields,
         os.org.opensearch.client.opensearch._types.query_dsl.Operator.Or,
         String.valueOf(DEFAULT_TIE_BREAKER),
-        "1");
+        fuzziness);
   }
 
   private os.org.opensearch.client.opensearch._types.query_dsl.Query createStandardNonFuzzyQueryV2(

@@ -582,6 +582,15 @@ class GlobalSettingsClassBase {
                 icon: DomainIcon,
               },
               {
+                label: t('label.metric-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.metric-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.METRICS}`,
+                icon: MetricIcon,
+              },
+              {
                 label: t('label.search-index-plural'),
                 description: t('message.search-settings-for-entity', {
                   entity: t('label.search-index-plural'),

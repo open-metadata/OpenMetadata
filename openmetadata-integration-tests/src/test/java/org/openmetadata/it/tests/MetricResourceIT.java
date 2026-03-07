@@ -1,13 +1,19 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -636,6 +642,51 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         EntityStatus.DEPRECATED,
         updatedMetric.getEntityStatus(),
         "Metric should be updated to DEPRECATED status");
+  }
+
+  // ===================================================================
+  // SEARCH TESTS
+  // ===================================================================
+
+  @Test
+  void test_searchMetricWithLongName_doesNotCauseClauseExplosion(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper objectMapper = new ObjectMapper();
+
+    CreateMetric request =
+        new CreateMetric()
+            .withName(ns.prefix("AcceleratedConnection_WBA_Ethernet_ServiceLevel"))
+            .withDescription("Metric with a long multi-word name to test search clause explosion");
+
+    Metric metric = createEntity(request);
+    assertNotNull(metric);
+
+    Awaitility.await("Wait for metric to appear in search index")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(90))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse = searchForEntity(metric.getId().toString());
+              assertNotNull(searchResponse);
+              assertTrue(searchResponse.contains(metric.getId().toString()));
+            });
+
+    String searchQuery = "AcceleratedConnection WBA Ethernet ServiceLevel";
+    assertDoesNotThrow(
+        () -> {
+          String response =
+              client.search().query(searchQuery).index("metric_search_index").size(10).execute();
+          assertNotNull(response);
+          JsonNode root = objectMapper.readTree(response);
+          assertFalse(
+              root.has("error") && root.get("error").asText().contains("too_many_nested_clauses"),
+              "Search should not fail with too_many_nested_clauses error");
+          assertTrue(root.has("hits"), "Response should have hits");
+        },
+        "Searching for a metric with a long multi-word name should not cause clause explosion");
   }
 
   // ===================================================================
