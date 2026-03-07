@@ -41,7 +41,6 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
-import { getTableColumnsCount } from '../../utils/table';
 import {
   addEmailTeam,
   addTeamHierarchy,
@@ -603,10 +602,11 @@ test.describe('Teams Page', () => {
       await addTeamOwnerToEntity(page, table3, team3);
       await addTeamOwnerToEntity(page, table4, team4);
 
-      const assetCount1 = getTableColumnsCount(table1.children) + 1; // +1 for the table entity itself
-      const assetCount2 = getTableColumnsCount(table2.children) + 1;
-      const assetCount3 = getTableColumnsCount(table3.children) + 1;
-      const assetCount4 = getTableColumnsCount(table4.children) + 1;
+      // Columns are excluded from team asset counts, so only count the table itself
+      const assetCount1 = 1;
+      const assetCount2 = 1;
+      const assetCount3 = 1;
+      const assetCount4 = 1;
 
       await verifyTeamListingAssetCount(page, team1, assetCount1);
       await verifyTeamListingAssetCount(page, team2, assetCount2);
