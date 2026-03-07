@@ -1,0 +1,28 @@
+# Example: Pipeline connector using vendor SDK
+# Run: metadata scaffold-connector --name prefect --service-type pipeline ...
+
+name: prefect
+display_name: Prefect
+service_type: pipeline
+connection_type: sdk_client
+auth_types:
+  - token
+capabilities:
+  - metadata
+description: "Prefect — modern workflow orchestration platform"
+docs_url: "https://docs.prefect.io/latest/api-ref/rest-api/"
+sdk_package: "prefect-client"
+api_endpoints: |
+  GET /api/flows — List flows
+  GET /api/flow_runs — List flow runs
+  GET /api/task_runs — List task runs
+  POST /api/flows/filter — Filter flows
+  POST /api/flow_runs/filter — Filter flow runs
+docs_notes: |
+  - Auth: Bearer token via PREFECT_API_KEY header
+  - Prefect Cloud vs Prefect Server — both use same REST API
+  - Flows = Pipelines, Flow Runs = Pipeline executions
+  - Task Runs nested under Flow Runs
+  - Pagination: offset/limit on filter endpoints
+  - SDK: prefect-client package provides PrefectClient class
+  - Flow status mapping: COMPLETED=Successful, FAILED=Failed, RUNNING=Pending
