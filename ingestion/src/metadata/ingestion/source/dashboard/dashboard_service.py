@@ -437,6 +437,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to pick up dashboard usage data
         """
+        if not self.source_config.includeUsage:
+            return
 
     def close(self):
         self.metadata.close()
