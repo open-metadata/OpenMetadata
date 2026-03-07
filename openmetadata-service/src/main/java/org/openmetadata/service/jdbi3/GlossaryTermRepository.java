@@ -21,7 +21,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
-import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.GLOSSARY;
@@ -78,7 +77,6 @@ import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CloseTask;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -106,8 +104,6 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.Workflow;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
@@ -119,7 +115,6 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -928,44 +923,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
-    TaskType taskType = threadContext.getThread().getTask().getType();
-    if (EntityUtil.isApprovalTask(taskType)) {
-      return new ApprovalTaskWorkflow(threadContext);
-    }
     return super.getTaskWorkflow(threadContext);
-  }
-
-  public static class ApprovalTaskWorkflow extends TaskWorkflow {
-    ApprovalTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      GlossaryTerm glossaryTerm = (GlossaryTerm) threadContext.getAboutEntity();
-      checkUpdatedByReviewer(glossaryTerm, user);
-
-      UUID taskId = threadContext.getThread().getId();
-      Map<String, Object> variables = new HashMap<>();
-      variables.put(
-          Workflow.RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put(Workflow.UPDATED_BY_VARIABLE, user);
-      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      boolean workflowSuccess =
-          workflowHandler.resolveTask(
-              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
-
-      if (!workflowSuccess) {
-        LOG.warn(
-            "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
-        Boolean approved = (Boolean) variables.get(Workflow.RESULT_VARIABLE);
-        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
-        EntityFieldUtils.setEntityField(
-            glossaryTerm, "glossaryTerm", user, FIELD_ENTITY_STATUS, entityStatus, true);
-      }
-
-      return glossaryTerm;
-    }
   }
 
   @Override

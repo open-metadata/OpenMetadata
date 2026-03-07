@@ -746,6 +746,16 @@ public class TagRepository extends EntityRepository<Tag> {
       super(original, updated, operation);
     }
 
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -928,6 +938,13 @@ public class TagRepository extends EntityRepository<Tag> {
         closeApprovalTask(updated, "Closed due to tag going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
       } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
+  }
+
+  @Override
+  protected void preDelete(Tag entity, String deletedBy) {
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
     }
   }
 

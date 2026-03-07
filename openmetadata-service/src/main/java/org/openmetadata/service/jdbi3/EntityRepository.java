@@ -8035,10 +8035,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Generic approval task workflow usable for any entity. Checks that the acting user is an
-   * assignee of the task (not necessarily an entity reviewer), then delegates resolution to the
-   * governance WorkflowHandler. Falls back to a direct entityStatus patch when the Flowable
-   * workflow record no longer exists (e.g. after a corrupted restart).
+   * Generic approval task workflow usable for any entity. Checks that the acting user is a
+   * reviewer of the entity, then delegates resolution to the governance WorkflowHandler. Falls
+   * back to a direct entityStatus patch when the Flowable workflow record no longer exists (e.g.
+   * after a corrupted restart).
    */
   public static class ApprovalTaskWorkflow extends TaskWorkflow {
     ApprovalTaskWorkflow(ThreadContext threadContext) {
@@ -8048,7 +8048,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @Override
     public EntityInterface performTask(String user, ResolveTask resolveTask) {
       EntityInterface entity = threadContext.getAboutEntity();
-      checkUpdatedByTaskAssignee(threadContext.getThread(), user);
+      verifyReviewer(entity, user);
 
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
@@ -8103,6 +8103,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 });
     if (!isAssignee) {
       throw new AuthorizationException(notTaskAssignee(user));
+    }
+  }
+
+  /**
+   * Checks that {@code user} is a reviewer of the given entity. Throws {@link
+   * AuthorizationException} if not.
+   */
+  public static void verifyReviewer(EntityInterface entity, String user) {
+    List<EntityReference> reviewers = entity.getReviewers();
+    if (nullOrEmpty(reviewers)) {
+      return;
+    }
+    boolean isReviewer =
+        reviewers.stream()
+            .anyMatch(
+                e -> {
+                  if (TEAM.equals(e.getType())) {
+                    org.openmetadata.schema.entity.teams.Team team =
+                        Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                    return team.getUsers().stream()
+                        .anyMatch(
+                            u ->
+                                u.getName().equals(user) || u.getFullyQualifiedName().equals(user));
+                  }
+                  return e.getName().equals(user) || e.getFullyQualifiedName().equals(user);
+                });
+    if (!isReviewer) {
+      throw new AuthorizationException(notReviewer(user));
     }
   }
 

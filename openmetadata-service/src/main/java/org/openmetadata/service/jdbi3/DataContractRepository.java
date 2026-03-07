@@ -1390,6 +1390,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
+    }
+
+    @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate(
           "latestResult",
@@ -1746,6 +1756,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           "Cannot delete an inherited data contract. The contract is inherited from a Data Product "
               + "and can only be removed by removing the entity from the Data Product or by creating "
               + "an entity-specific contract that overrides the inherited one.");
+    }
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
     }
   }
 

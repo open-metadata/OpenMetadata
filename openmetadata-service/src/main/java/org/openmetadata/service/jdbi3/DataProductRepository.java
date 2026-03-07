@@ -771,6 +771,16 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       super(original, updated, operation);
     }
 
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
+    }
+
     public List<EntityReference> getCapturedOriginalDomains() {
       return capturedOriginalDomains;
     }
@@ -981,6 +991,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     return super.getTaskWorkflow(threadContext);
+  }
+
+  @Override
+  protected void preDelete(DataProduct entity, String deletedBy) {
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
+    }
   }
 
   public static void checkUpdatedByReviewer(DataProduct dataProduct, String updatedBy) {
