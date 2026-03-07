@@ -175,6 +175,4 @@ class OMetaVersionMixin(Generic[T]):
         if after is not None:
             params["after"] = after
 
-        return self.client.get(
-            f"{self.get_suffix(entity)}/history", data=params
-        )
+        return self.client.get(f"{self.get_suffix(entity)}/history", data=params)
