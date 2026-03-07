@@ -7,7 +7,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -25,35 +25,39 @@ public class GetLineageTool implements McpTool {
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
-    if (nullOrEmpty(params)) {
-      throw new IllegalArgumentException("Parameters cannot be null or empty");
+    try {
+      if (nullOrEmpty(params)) {
+        throw new IllegalArgumentException("Parameters cannot be null or empty");
+      }
+      String entityType = (String) params.get("entityType");
+      String fqn = (String) params.get("fqn");
+
+      if (nullOrEmpty(entityType) || nullOrEmpty(fqn)) {
+        throw new IllegalArgumentException("Parameters 'entityType' and 'fqn' are required");
+      }
+
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+          new ResourceContext<>(entityType));
+
+      // Parse and validate upstream depth with default and max limits
+      int upstreamDepth = parseDepthParameter(params.get("upstreamDepth"), DEFAULT_DEPTH);
+      // Parse and validate downstream depth with default and max limits
+      int downstreamDepth = parseDepthParameter(params.get("downstreamDepth"), DEFAULT_DEPTH);
+
+      LOG.info(
+          "Getting lineage for entity type: {}, FQN: {}, upstreamDepth: {}, downstreamDepth: {}",
+          entityType,
+          fqn,
+          upstreamDepth,
+          downstreamDepth);
+
+      return JsonUtils.getMap(
+          Entity.getLineageRepository().getByName(entityType, fqn, upstreamDepth, downstreamDepth));
+    } catch (Exception e) {
+      return Map.of("error", e.getMessage());
     }
-    String entityType = (String) params.get("entityType");
-    String fqn = (String) params.get("fqn");
-
-    if (nullOrEmpty(entityType) || nullOrEmpty(fqn)) {
-      throw new IllegalArgumentException("Parameters 'entityType' and 'fqn' are required");
-    }
-
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
-        new ResourceContext<>(entityType));
-
-    // Parse and validate upstream depth with default and max limits
-    int upstreamDepth = parseDepthParameter(params.get("upstreamDepth"), DEFAULT_DEPTH);
-    // Parse and validate downstream depth with default and max limits
-    int downstreamDepth = parseDepthParameter(params.get("downstreamDepth"), DEFAULT_DEPTH);
-
-    LOG.info(
-        "Getting lineage for entity type: {}, FQN: {}, upstreamDepth: {}, downstreamDepth: {}",
-        entityType,
-        fqn,
-        upstreamDepth,
-        downstreamDepth);
-
-    return JsonUtils.getMap(
-        new LineageRepository().getByName(entityType, fqn, upstreamDepth, downstreamDepth));
   }
 
   /**

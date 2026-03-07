@@ -40,10 +40,30 @@ public class AuthServeletHandlerFactory {
       case CUSTOM_OIDC:
       case AWS_COGNITO:
         // OIDC providers use AuthenticationCodeFlowHandler
+        LOG.info("OIDC provider {} detected, clientType: {}", provider, authConfig.getClientType());
         if (ClientType.CONFIDENTIAL.equals(authConfig.getClientType())) {
-          return AuthenticationCodeFlowHandler.getInstance(authConfig, authzConfig);
+          try {
+            AuthenticationCodeFlowHandler handler =
+                AuthenticationCodeFlowHandler.getInstance(authConfig, authzConfig);
+            LOG.info(
+                "Successfully initialized AuthenticationCodeFlowHandler for provider: {}",
+                provider);
+            return handler;
+          } catch (Exception e) {
+            LOG.error(
+                "Failed to initialize AuthenticationCodeFlowHandler for provider: {}. "
+                    + "SSO will not be available. Error: {}",
+                provider,
+                e.getMessage(),
+                e);
+            return NoopAuthServeletHandler.getInstance();
+          }
         }
-        LOG.warn("OIDC provider {} requires CONFIDENTIAL client type", provider);
+        LOG.warn(
+            "OIDC provider {} requires CONFIDENTIAL client type, but got: {}. "
+                + "Set AUTHENTICATION_CLIENT_TYPE=confidential to enable SSO.",
+            provider,
+            authConfig.getClientType());
         return NoopAuthServeletHandler.getInstance();
 
       case SAML:
