@@ -1,0 +1,38 @@
+{
+  "name": "Informix",
+  "displayName": "Informix Test Connection",
+  "description": "This Test Connection validates the access against the Informix database and basic metadata extraction of schemas, tables, views, and stored procedures.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach the Informix database server and authenticate with the given credentials.",
+      "errorMessage": "Failed to connect to Informix. Please validate the hostPort, username, password, and serverName (INFORMIXSERVER) credentials.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetSchemas",
+      "description": "List all the schemas (owners) available to the user in the Informix database.",
+      "errorMessage": "Failed to fetch schemas. Please validate that the user has sufficient privileges to query systables.",
+      "mandatory": true
+    },
+    {
+      "name": "GetTables",
+      "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, tables from a random schema will be listed.",
+      "errorMessage": "Failed to fetch tables. Please validate that the user has sufficient privileges to read table metadata from systables.",
+      "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "description": "From a given schema, list the views belonging to that schema. If no schema is specified, views from a random schema will be listed.",
+      "errorMessage": "Failed to fetch views. Please validate that the user has sufficient privileges to read view metadata from systables and sysviews.",
+      "mandatory": false
+    },
+    {
+      "name": "GetStoredProcedures",
+      "description": "List the stored procedures and functions available in the database. These are extracted from sysprocedures.",
+      "errorMessage": "Failed to fetch stored procedures. Please validate that the user has SELECT privileges on sysprocedures and sysprocbody.",
+      "mandatory": false
+    }
+  ]
+}
