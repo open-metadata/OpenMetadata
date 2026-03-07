@@ -309,6 +309,8 @@ test.describe.serial('Lineage Settings Tests', () => {
     // Select pipeline from Modal
     await applyPipelineFromModal(dataStewardPage, table, topic, pipeline);
     await editLineageClick(dataStewardPage);
+    // wait till canvas gets ready
+    await page.waitForTimeout(500);
     await verifyPipelineDataInDrawer(
       dataStewardPage,
       table,

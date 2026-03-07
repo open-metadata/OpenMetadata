@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,15 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { StatusType } from '../generated/entity/data/pipeline';
 
-import { Box, styled } from '@mui/material';
+export function getPipelineStatusClass(
+  executionStatus?: StatusType | string
+): string {
+  if (!executionStatus) {
+    return '';
+  }
 
-export const DataPill = styled(Box)(({ theme }) => ({
-  backgroundColor: theme.palette.grey[100],
-  color: theme.palette.grey[900],
-  borderRadius: '6px',
-  padding: '6px 12px',
-  fontSize: theme.typography.pxToRem(14),
-  fontWeight: 600,
-  display: 'inline-block',
-}));
+  switch (executionStatus) {
+    case StatusType.Successful:
+    case 'Successful':
+      return 'green';
+    case StatusType.Failed:
+    case 'Failed':
+      return 'red';
+    case StatusType.Pending:
+    case StatusType.Skipped:
+    case 'Pending':
+    case 'Skipped':
+      return 'amber';
+    default:
+      return '';
+  }
+}

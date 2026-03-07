@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 import { Theme } from '@mui/material';
-import { RefObject, useCallback, useEffect, useRef } from 'react';
+import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { Edge, Position, useNodes, useReactFlow, useViewport } from 'reactflow';
+import {
+  CanvasButton,
+  createCanvasButton,
+  drawCanvasButton,
+  ECanvasButtonType,
+  isPointInButton,
+} from '../utils/CanvasButtonUtils';
 import {
   drawArrowMarker,
   getBezierEndTangentAngle,
@@ -22,6 +29,7 @@ import {
 } from '../utils/CanvasUtils';
 import { computeEdgeStyle } from '../utils/EdgeStyleUtils';
 import { getEdgePathData } from '../utils/EntityLineageUtils';
+import { getEntityName } from '../utils/EntityUtils';
 import { useLineageStore } from './useLineageStore';
 
 interface UseCanvasEdgeRendererProps {
@@ -39,6 +47,11 @@ interface EdgeHitEntry {
   path: Path2D;
 }
 
+export interface CanvasButtonHitData {
+  button: CanvasButton;
+  edge: Edge;
+}
+
 export function useCanvasEdgeRenderer({
   canvasRef,
   dqHighlightedEdges,
@@ -51,14 +64,25 @@ export function useCanvasEdgeRenderer({
   const rafIdRef = useRef<number>();
   const isDirtyRef = useRef(false);
   const visibleEdgesRef = useRef<Edge[]>([]);
-  // Stores the Path2D for each visible edge so mouse-move hit testing can use
-  // isPointInStroke instead of pixel read-back, which is unreliable due to
-  // anti-aliasing and color-profile transformations on macOS.
   const edgeHitPathsRef = useRef<EdgeHitEntry[]>([]);
-  // A temporary off-screen canvas used solely for isPointInStroke calls.
-  // Path2D.isPointInStroke requires a CanvasRenderingContext2D to resolve
-  // the current lineWidth and transform, so we keep one around.
+  const canvasButtonsRef = useRef<CanvasButtonHitData[]>([]);
+  const hoveredButtonRef = useRef<CanvasButton | null>(null);
+  const [hoveredButton, setHoveredButton] = useState<CanvasButton | null>(null);
   const hitTestCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const edgePathCacheRef = useRef<
+    WeakMap<
+      Edge,
+      {
+        edgePath: string;
+        edgeCenterX: number;
+        edgeCenterY: number;
+        sourceX: number;
+        sourceY: number;
+        targetX: number;
+        targetY: number;
+      }
+    >
+  >(new WeakMap());
 
   const { getNode } = useReactFlow();
   const nodes = useNodes();
@@ -71,77 +95,59 @@ export function useCanvasEdgeRenderer({
     columnsInCurrentPages,
     isRepositioning,
     setIsCanvasReady,
+    isEditMode,
+    isDQEnabled,
   } = useLineageStore();
 
   const viewport = useViewport();
 
   const drawEdge = useCallback(
     (ctx: CanvasRenderingContext2D, edge: Edge): Path2D | null => {
-      const computedPath = edge.data?.computedPath;
+      let pathData = edgePathCacheRef.current.get(edge);
 
-      if (!computedPath) {
-        const coords = getEdgeCoordinates(
-          edge,
-          getNode(edge.source),
-          getNode(edge.target),
-          columnsInCurrentPages
-        );
-        if (!coords) {
-          return null;
+      if (!pathData) {
+        const computedPath = edge.data?.computedPath;
+
+        if (computedPath) {
+          pathData = computedPath;
+          edgePathCacheRef.current.set(edge, computedPath);
+        } else {
+          const coords = getEdgeCoordinates(
+            edge,
+            getNode(edge.source),
+            getNode(edge.target),
+            columnsInCurrentPages
+          );
+          if (!coords) {
+            return null;
+          }
+
+          const calculatedPath = getEdgePathData(edge.source, edge.target, {
+            sourceX: coords.sourceX,
+            sourceY: coords.sourceY,
+            targetX: coords.targetX,
+            targetY: coords.targetY,
+            sourcePosition: Position.Right,
+            targetPosition: Position.Left,
+          });
+
+          pathData = {
+            edgePath: calculatedPath.edgePath,
+            edgeCenterX: calculatedPath.edgeCenterX,
+            edgeCenterY: calculatedPath.edgeCenterY,
+            sourceX: coords.sourceX,
+            sourceY: coords.sourceY,
+            targetX: coords.targetX,
+            targetY: coords.targetY,
+          };
+
+          edgePathCacheRef.current.set(edge, pathData);
         }
-
-        const pathData = getEdgePathData(edge.source, edge.target, {
-          sourceX: coords.sourceX,
-          sourceY: coords.sourceY,
-          targetX: coords.targetX,
-          targetY: coords.targetY,
-          sourcePosition: Position.Right,
-          targetPosition: Position.Left,
-        });
-
-        const style = computeEdgeStyle(
-          edge,
-          tracedNodes,
-          tracedColumns,
-          dqHighlightedEdges,
-          selectedColumn,
-          theme,
-          edge.data?.isColumnLineage ?? false,
-          edge.sourceHandle,
-          edge.targetHandle,
-          edge.id === hoverEdge?.id || selectedEdge?.id === edge.id
-        );
-
-        ctx.strokeStyle = style.stroke;
-        ctx.globalAlpha = style.opacity;
-        ctx.lineWidth = style.strokeWidth;
-        ctx.setLineDash(edge.animated ? [6, 4] : []);
-
-        const path = new Path2D(pathData.edgePath);
-        ctx.stroke(path);
-
-        ctx.globalAlpha = 1;
-        ctx.setLineDash([]);
-
-        const angle = getBezierEndTangentAngle(
-          pathData.edgePath,
-          coords.sourceX,
-          coords.sourceY,
-          coords.targetX,
-          coords.targetY
-        );
-        drawArrowMarker(
-          ctx,
-          coords.targetX,
-          coords.targetY,
-          angle,
-          style.stroke
-        );
-
-        return path;
       }
 
-      const pathData = computedPath;
+      if (!pathData) {
+        return null;
+      }
 
       const style = computeEdgeStyle(
         edge,
@@ -167,7 +173,7 @@ export function useCanvasEdgeRenderer({
       ctx.globalAlpha = 1;
       ctx.setLineDash([]);
 
-      if (pathData.sourceX && pathData.targetX) {
+      if (pathData.sourceX !== undefined && pathData.targetX !== undefined) {
         const angle = getBezierEndTangentAngle(
           pathData.edgePath,
           pathData.sourceX,
@@ -224,6 +230,8 @@ export function useCanvasEdgeRenderer({
     ctx.clearRect(0, 0, containerWidth, containerHeight);
 
     if (isRepositioning) {
+      edgePathCacheRef.current = new WeakMap();
+
       if (isCanvasReadyRef.current) {
         isCanvasReadyRef.current = false;
         setIsCanvasReady(false);
@@ -261,6 +269,7 @@ export function useCanvasEdgeRenderer({
     visibleEdgesRef.current = visibleEdges;
 
     const hitPaths: EdgeHitEntry[] = [];
+    const canvasButtons: CanvasButtonHitData[] = [];
 
     visibleEdges.forEach((edge) => {
       ctx.save();
@@ -270,9 +279,51 @@ export function useCanvasEdgeRenderer({
       if (path) {
         hitPaths.push({ edge, path });
       }
+
+      const {
+        isColumnLineage,
+        edge: edgeDetails,
+        columnFunctionValue,
+        isExpanded,
+        isPipelineRootNode,
+      } = edge.data || {};
+
+      const hasPipeline =
+        !isColumnLineage &&
+        edgeDetails?.pipeline &&
+        getEntityName(edgeDetails.pipeline);
+      const hasFunction = !isColumnLineage && columnFunctionValue && isExpanded;
+
+      if (hasPipeline || hasFunction) {
+        const cachedPathData = edgePathCacheRef.current.get(edge);
+
+        if (!cachedPathData) {
+          return;
+        }
+
+        const button = createCanvasButton(
+          cachedPathData.edgeCenterX,
+          cachedPathData.edgeCenterY,
+          edge.id,
+          hasPipeline ? ECanvasButtonType.Pipeline : ECanvasButtonType.Function,
+          edgeDetails?.pipeline?.pipelineStatus?.executionStatus,
+          isPipelineRootNode
+        );
+
+        const isHovered =
+          hoveredButtonRef.current?.edgeId === edge.id &&
+          hoveredButtonRef.current?.type === button.type;
+
+        ctx.save();
+        drawCanvasButton(ctx, button, isHovered, isDQEnabled);
+        ctx.restore();
+
+        canvasButtons.push({ button, edge });
+      }
     });
 
     edgeHitPathsRef.current = hitPaths;
+    canvasButtonsRef.current = canvasButtons;
 
     ctx.restore();
 
@@ -293,7 +344,30 @@ export function useCanvasEdgeRenderer({
     columnsInCurrentPages,
     isRepositioning,
     setIsCanvasReady,
+    isDQEnabled,
+    isEditMode,
+    getNode,
   ]);
+
+  const getButtonAtPoint = useCallback(
+    (
+      clientX: number,
+      clientY: number,
+      containerRect: DOMRect
+    ): CanvasButtonHitData | null => {
+      const x = (clientX - containerRect.left - viewport.x) / viewport.zoom;
+      const y = (clientY - containerRect.top - viewport.y) / viewport.zoom;
+
+      for (const buttonData of canvasButtonsRef.current) {
+        if (isPointInButton(x, y, buttonData.button)) {
+          return buttonData;
+        }
+      }
+
+      return null;
+    },
+    [viewport]
+  );
 
   const getEdgeAtPoint = useCallback(
     (clientX: number, clientY: number, containerRect: DOMRect): Edge | null => {
@@ -315,7 +389,6 @@ export function useCanvasEdgeRenderer({
         return null;
       }
 
-      // Use a hit tolerance that gives a comfortable target regardless of zoom.
       const hitLineWidth = 12 / viewport.zoom;
       ctx.lineWidth = hitLineWidth;
 
@@ -345,7 +418,18 @@ export function useCanvasEdgeRenderer({
     });
   }, []);
 
+  const onSetHoveredButton = useCallback((button: CanvasButton | null) => {
+    if (
+      hoveredButtonRef.current?.edgeId !== button?.edgeId ||
+      hoveredButtonRef.current?.type !== button?.type
+    ) {
+      hoveredButtonRef.current = button;
+      setHoveredButton(button);
+    }
+  }, []);
+
   useEffect(() => {
+    edgePathCacheRef.current = new WeakMap();
     scheduleRedraw();
 
     return () => {
@@ -377,5 +461,12 @@ export function useCanvasEdgeRenderer({
     }
   }, [isRepositioning, clearCanvas]);
 
-  return { redraw: scheduleRedraw, visibleEdgesRef, getEdgeAtPoint };
+  return {
+    redraw: scheduleRedraw,
+    visibleEdgesRef,
+    getEdgeAtPoint,
+    getButtonAtPoint,
+    setHoveredButton: onSetHoveredButton,
+    hoveredButton,
+  };
 }
