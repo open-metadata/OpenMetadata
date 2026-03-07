@@ -92,15 +92,32 @@ public final class CommonUtil {
       Enumeration<? extends ZipEntry> e = zf.entries();
       while (e.hasMoreElements()) {
         String fileName = e.nextElement().getName();
-        if (pattern.matcher(fileName).matches()) {
+        if (isSafeZipEntryName(fileName) && pattern.matcher(fileName).matches()) {
           retval.add(fileName);
           LOG.debug("Adding file from jar {}", fileName);
+        } else if (!isSafeZipEntryName(fileName)) {
+          LOG.warn("Skipped potentially unsafe zip entry: {}", fileName);
         }
       }
     } catch (Exception ignored) {
       // Ignored exception
     }
     return retval;
+  /** Checks if a zip entry name is safe: no absolute paths, no directory traversal */
+  private static boolean isSafeZipEntryName(String entryName) {
+    Path entryPath = Paths.get(entryName).normalize();
+    // No absolute paths, no path segments "..", and no empty path segments
+    if (entryPath.isAbsolute()) {
+      return false;
+    }
+    for (Path part : entryPath) {
+      if (part.toString().equals("..") || part.toString().isEmpty()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   }
 
   public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern)
