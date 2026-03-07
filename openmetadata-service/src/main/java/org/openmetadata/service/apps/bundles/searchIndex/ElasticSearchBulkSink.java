@@ -435,7 +435,9 @@ public class ElasticSearchBulkSink implements BulkSink {
                                   .id(docId)
                                   .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
         }
-        bulkProcessor.add(operation);
+        long estimatedSize =
+            (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
+        bulkProcessor.add(operation, docId, Entity.TABLE_COLUMN, null, estimatedSize);
         columnIndexed.incrementAndGet();
       } catch (Exception e) {
         columnFailed.incrementAndGet();

@@ -621,12 +621,11 @@ public class SearchRepository {
       return true; // Default to full reindex if no change description
     }
 
-    // Check if columns field is in any of the change lists
-    return changeDescription.getFieldsAdded().stream()
+    return listOrEmpty(changeDescription.getFieldsAdded()).stream()
             .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
-        || changeDescription.getFieldsUpdated().stream()
+        || listOrEmpty(changeDescription.getFieldsUpdated()).stream()
             .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
-        || changeDescription.getFieldsDeleted().stream()
+        || listOrEmpty(changeDescription.getFieldsDeleted()).stream()
             .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS));
   }
 
@@ -740,7 +739,9 @@ public class SearchRepository {
       refMap.put("name", entity.getName());
       refMap.put(
           "displayName",
-          nullOrEmpty(entity.getDisplayName()) ? entity.getName() : entity.getDisplayName());
+          entity.getDisplayName() != null && !entity.getDisplayName().isBlank()
+              ? entity.getDisplayName()
+              : entity.getName());
       refMap.put("fullyQualifiedName", entity.getFullyQualifiedName());
       refMap.put("description", entity.getDescription());
       refMap.put("deleted", entity.getDeleted());
@@ -783,12 +784,15 @@ public class SearchRepository {
     }
   }
 
+  private static final int COLUMN_BATCH_SIZE = 500;
+
   private void indexColumnsForTables(List<EntityInterface> entities) {
     IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
     if (columnIndexMapping == null) {
       return;
     }
 
+    String indexName = columnIndexMapping.getIndexName(clusterAlias);
     List<Map<String, String>> allColumnDocs = new ArrayList<>();
 
     for (EntityInterface entity : entities) {
@@ -804,6 +808,10 @@ public class SearchRepository {
           String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
           String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
           allColumnDocs.add(Collections.singletonMap(columnId, doc));
+          if (allColumnDocs.size() >= COLUMN_BATCH_SIZE) {
+            searchClient.createEntities(indexName, allColumnDocs);
+            allColumnDocs.clear();
+          }
         } catch (Exception e) {
           LOG.error(
               "Issue indexing column [{}] for table [{}]: {}",
@@ -816,7 +824,7 @@ public class SearchRepository {
 
     if (!allColumnDocs.isEmpty()) {
       try {
-        searchClient.createEntities(columnIndexMapping.getIndexName(clusterAlias), allColumnDocs);
+        searchClient.createEntities(indexName, allColumnDocs);
       } catch (Exception e) {
         LOG.error("Issue bulk indexing columns: {}", e.getMessage());
       }
