@@ -514,7 +514,9 @@ def get_postgres_time_column_name(engine) -> str:
     try:
         with engine.connect() as conn:
             result = conn.execute(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = 'pg_stat_statements'"
+                text(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = 'pg_stat_statements'"
+                )
             )
             columns = {row[0] for row in result}
             if "total_exec_time" in columns:
