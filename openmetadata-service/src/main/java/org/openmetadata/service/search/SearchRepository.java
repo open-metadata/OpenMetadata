@@ -714,21 +714,7 @@ public class SearchRepository {
     if (nullOrEmpty(entities)) {
       return Collections.emptyList();
     }
-    List<Map<String, Object>> result = new ArrayList<>();
-    for (EntityReference entity : entities) {
-      Map<String, Object> refMap = new HashMap<>();
-      refMap.put("id", entity.getId() != null ? entity.getId().toString() : null);
-      refMap.put("name", entity.getName());
-      refMap.put(
-          "displayName",
-          nullOrEmpty(entity.getDisplayName()) ? entity.getName() : entity.getDisplayName());
-      refMap.put("fullyQualifiedName", entity.getFullyQualifiedName());
-      refMap.put("description", entity.getDescription());
-      refMap.put("deleted", entity.getDeleted());
-      refMap.put("type", entity.getType());
-      result.add(refMap);
-    }
-    return result;
+    return entities.stream().map(SearchIndexUtils::toEntityRefMap).toList();
   }
 
   /**
