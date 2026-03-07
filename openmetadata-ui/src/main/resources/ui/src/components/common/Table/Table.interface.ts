@@ -29,6 +29,9 @@ export interface TableComponentProps<T> extends TableProps<T> {
     showPagination: boolean;
   };
   entityType?: string;
+  /** CSS class applied to every data cell. Defaults to 'tw:py-2 tw:pl-4 tw:pr-2 tw:align-top'. */
+  cellClassName?: string;
+  'data-testid'?: string;
 }
 
 export interface TableColumnDropdownList {

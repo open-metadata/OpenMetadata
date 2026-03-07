@@ -48,7 +48,7 @@ import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterT
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
-import Table from '../../../common/Table/Table';
+import Table from '../../../common/Table/TableV2';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../PageHeader/PageHeader.component';

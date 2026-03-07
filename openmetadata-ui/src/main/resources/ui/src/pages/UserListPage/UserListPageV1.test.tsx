@@ -86,7 +86,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock('../../components/common/Table/Table', () => {
+jest.mock('../../components/common/Table/TableV2', () => {
   return jest
     .fn()
     .mockImplementation(
@@ -137,7 +137,7 @@ describe('Test UserListPage component', () => {
   beforeAll(() => {
     // Get reference to mocked Table component
     mockTableComponent = jest.requireMock(
-      '../../components/common/Table/Table'
+      '../../components/common/Table/TableV2'
     );
   });
 
