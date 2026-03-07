@@ -27,7 +27,6 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
           "location",
           "queries",
           "tests",
-          "dataModel",
           "testSuite.changeDescription");
 
   @Override
