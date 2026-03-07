@@ -245,6 +245,8 @@ const TableV2 = <T extends object>(
 
   // ─── Row selection ────────────────────────────────────────────────────────
 
+  // AntD default rowSelection.type is 'checkbox', which maps to 'multiple'.
+  // Passing type: undefined with a truthy rowSelection object also yields 'multiple'.
   const selectionMode = useMemo((): 'none' | 'single' | 'multiple' => {
     if (!rest.rowSelection) {
       return 'none';
@@ -276,12 +278,23 @@ const TableV2 = <T extends object>(
 
   // ─── Column resize ────────────────────────────────────────────────────────
 
-  const handleColumnResize = useCallback(
-    (colKey: string) =>
-      (_: React.SyntheticEvent, { size }: ResizeCallbackData) => {
-        setColumnWidths((prev) => ({ ...prev, [colKey]: size.width }));
-      },
-    []
+  const resizeHandlers = useMemo(
+    () =>
+      Object.fromEntries(
+        propsColumns.map((col, idx) => {
+          const key = String(
+            col.key ?? (col as ColumnType<T>).dataIndex ?? idx
+          );
+
+          return [
+            key,
+            (_: React.SyntheticEvent, { size }: ResizeCallbackData) => {
+              setColumnWidths((prev) => ({ ...prev, [key]: size.width }));
+            },
+          ];
+        })
+      ),
+    [propsColumns]
   );
 
   // ─── Sorting ──────────────────────────────────────────────────────────────
@@ -374,9 +387,10 @@ const TableV2 = <T extends object>(
     defaultVisibleColumns,
   ]);
 
+  const dataSourceLength = rest.dataSource?.length ?? 0;
   useEffect(() => {
     setInternalCurrentPage(1);
-  }, [rest.dataSource]);
+  }, [dataSourceLength]);
 
   // ─── Cell value resolver ──────────────────────────────────────────────────
 
@@ -578,7 +592,7 @@ const TableV2 = <T extends object>(
                   key={colKey}
                   minConstraints={[80, 0]}
                   width={colWidth}
-                  onResize={handleColumnResize(colKey)}>
+                  onResize={resizeHandlers[colKey]}>
                   {headNode}
                 </Resizable>
               ) : (
