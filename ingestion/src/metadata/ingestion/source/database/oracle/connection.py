@@ -52,6 +52,9 @@ from metadata.ingestion.source.database.oracle.queries import (
     TEST_ORACLE_GET_STORED_PACKAGES,
     TEST_QUERY_HISTORY,
 )
+from metadata.ingestion.source.database.oracle.utils import (
+    get_table_prefix_from_connection,
+)
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
@@ -97,11 +100,14 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         Test connection. This can be executed either as part
         of a metadata workflow or during an Automation Workflow
         """
-
+        table_prefix = get_table_prefix_from_connection(self.service_connection)
+        self.client.dialect.table_prefix = table_prefix
         test_conn_queries = {
-            "CheckAccess": CHECK_ACCESS_TO_ALL,
-            "PackageAccess": TEST_ORACLE_GET_STORED_PACKAGES,
-            "GetMaterializedViews": TEST_MATERIALIZED_VIEWS,
+            "CheckAccess": CHECK_ACCESS_TO_ALL.format(prefix=table_prefix),
+            "PackageAccess": TEST_ORACLE_GET_STORED_PACKAGES.format(
+                prefix=table_prefix
+            ),
+            "GetMaterializedViews": TEST_MATERIALIZED_VIEWS.format(prefix=table_prefix),
             "GetQueryHistory": TEST_QUERY_HISTORY,
         }
 
