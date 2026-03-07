@@ -295,7 +295,7 @@ public class MigrationUtil {
     for (LoadTags loadTags : loadTagsList) {
       String classification = loadTags.getCreateClassification().getName();
       for (CreateTag createTag : loadTags.getCreateTags()) {
-        if (createTag.getAutoClassificationEnabled())
+        if (Boolean.TRUE.equals(createTag.getAutoClassificationEnabled()))
           recognizersByTag.put(
               classification + "." + createTag.getName(), createTag.getRecognizers());
       }
@@ -320,7 +320,7 @@ public class MigrationUtil {
       String tagFqn,
       List<Recognizer> recognizers,
       Map<String, QueryStatus> results,
-      Boolean isForceMigration,
+      boolean isForceMigration,
       String version) {
     String recognizersJson = JsonUtils.pojoToJson(recognizers);
 
