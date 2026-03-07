@@ -96,10 +96,15 @@ export interface DashboardConnection {
  * Grafana Connection Config
  *
  * Hex Connection Config
+ *
+ * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
+ * create, deploy, and manage paginated reports
  */
 export interface Connection {
     /**
      * Regex exclude or include charts that matches the pattern.
+     *
+     * Regex to exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
     /**
@@ -165,6 +170,8 @@ export interface Connection {
      * URL to the Grafana instance.
      *
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
+     *
+     * Host and Port of the Ssrs instance.
      */
     hostPort?: string;
     /**
@@ -201,6 +208,8 @@ export interface Connection {
      * Password to connect to PowerBI report server.
      *
      * Password to connect to MicroStrategy.
+     *
+     * Password to connect to Ssrs.
      */
     password?: string;
     /**
@@ -212,6 +221,8 @@ export interface Connection {
      *
      * Username to connect to MicroStrategy. This user should have privileges to read all the
      * metadata in MicroStrategy.
+     *
+     * Username to connect to Ssrs.
      */
     username?: string;
     /**
@@ -574,6 +585,8 @@ export interface CertificatesSSLConfig {
  * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to exclude or include charts that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1286,6 +1299,7 @@ export enum DashboardServiceType {
     QuickSight = "QuickSight",
     Redash = "Redash",
     Sigma = "Sigma",
+    Ssrs = "Ssrs",
     Superset = "Superset",
     Tableau = "Tableau",
     ThoughtSpot = "ThoughtSpot",
