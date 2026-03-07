@@ -18,6 +18,7 @@ Generates all boilerplate files AND a CONNECTOR_CONTEXT.md that gives
 AI agents (Claude, Codex, Cursor, Copilot) full context to implement
 the connector logic in one shot.
 """
+import argparse
 import json
 import re
 import sys
@@ -2825,7 +2826,7 @@ def run_scaffold_interactive() -> None:
     run_scaffold(profile)
 
 
-def run_scaffold_cli(args) -> None:
+def run_scaffold_cli(args: argparse.Namespace) -> None:
     """Entry point for non-interactive (argparse-driven) scaffold."""
     profile = ConnectorProfile()
     profile.name = args.name
