@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { Table } from '../../../src/generated/entity/data/table';
+import { DataType, Table } from '../../../src/generated/entity/data/table';
 import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
@@ -156,6 +156,27 @@ test.describe(
       await expect(page.getByRole('tab', { name: 'Columns' })).toContainText(
         `${count}`
       );
+    });
+
+    test('Table details API should not fetch columns in fields parameter', async ({
+      dataConsumerPage: page,
+    }) => {
+      const detailsRequest = page.waitForRequest(
+        (request) =>
+          request.url().includes('/api/v1/tables/name/') &&
+          request.method() === 'GET' &&
+          !request.url().includes('/columns') &&
+          request.url().includes('fields=')
+      );
+
+      await table1.visitEntityPage(page);
+
+      const req = await detailsRequest;
+      const url = new URL(req.url());
+      const fields = url.searchParams.get('fields') || '';
+
+      expect(fields).not.toContain('columns');
+      expect(fields).toContain('tags');
     });
 
     test('should persist current page', async ({ dataConsumerPage: page }) => {
@@ -659,7 +680,7 @@ test.describe(
       for (let i = 0; i < 50; i++) {
         columns.push({
           name: `extra_col_${i}`,
-          dataType: 'VARCHAR',
+          dataType: DataType.Varchar,
           dataLength: 100,
           dataTypeDisplay: 'varchar',
           description: `Extra column ${i}`,
@@ -668,7 +689,7 @@ test.describe(
       // Add the target column
       columns.push({
         name: targetColumnName,
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'Target column for search test',
@@ -788,7 +809,7 @@ test.describe('dbt Tab Visibility for Seed Files', () => {
     // Intercept the table API call to add dataModel field to save test time
     // Since dataModel can only be added through ingestion
     await page.route(
-      '**/api/v1/tables/name/**?fields=columns*dataModel*',
+      '**/api/v1/tables/name/**?fields=*dataModel*',
       async (route) => {
         const response = await route.fetch();
         const json = await response.json();
