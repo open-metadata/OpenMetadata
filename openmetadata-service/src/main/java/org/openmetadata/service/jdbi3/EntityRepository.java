@@ -1264,7 +1264,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
 
     if (fieldChanged != null && !fieldChanged.isEmpty()) {
-      String sanitized = fieldChanged.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+      String sanitized = fieldChanged.replace("!", "!!").replace("%", "!%").replace("_", "!_");
       return listVersionsWithFieldFilter(id, extensionPrefix, limit, offset, sanitized);
     }
 
