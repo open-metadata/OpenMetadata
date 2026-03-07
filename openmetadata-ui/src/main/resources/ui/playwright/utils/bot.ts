@@ -149,7 +149,9 @@ export const updateBotDetails = async (page: Page) => {
   ).toContainText(BOT_DETAILS.updatedBotName);
 
   await expect(
-    page.locator(`tr[id="${botName}"] [data-testid="markdown-parser"]`)
+    page.locator(
+      `tr[data-row-key="${botName}"] [data-testid="markdown-parser"]`
+    )
   ).toContainText(BOT_DETAILS.updatedDescription);
 };
 

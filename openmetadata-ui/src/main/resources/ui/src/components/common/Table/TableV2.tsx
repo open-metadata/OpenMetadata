@@ -20,6 +20,10 @@
  * Unsupported in v1 (accepted but ignored):
  *  - expandable  (React Aria has no built-in expandable rows)
  *  - components  (AntD custom cell/header renderers)
+ *
+ * Sorting:
+ *  - sorter: (a, b) => number  → applied client-side on full dataset before pagination
+ *  - sorter: true              → visual indicator only; parent must handle via onChange
  */
 
 import {
@@ -97,6 +101,10 @@ const TableV2 = <T extends object>(
   const [propsColumns, setPropsColumns] = useState<ColumnsType<T>>([]);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [internalCurrentPage, setInternalCurrentPage] = useState(1);
+  const [sortState, setSortState] = useState<{
+    columnKey: string | null;
+    direction: 'ascending' | 'descending' | null;
+  }>({ columnKey: null, direction: null });
   const [dropdownColumnList, setDropdownColumnList] = useState<
     TableColumnDropdownList[]
   >([]);
@@ -130,15 +138,34 @@ const TableV2 = <T extends object>(
     };
   }, [rest.pagination]);
 
-  const pagedDataSource = useMemo((): T[] => {
+  const sortedDataSource = useMemo((): T[] => {
     const data = (rest.dataSource ?? []) as T[];
-    if (!clientPagination) {
+    if (!sortState.columnKey || !sortState.direction) {
       return data;
+    }
+    const col = propsColumns.find((c, idx) => {
+      const key = String(c.key ?? (c as ColumnType<T>).dataIndex ?? idx);
+
+      return key === sortState.columnKey;
+    }) as ColumnType<T> | undefined;
+
+    if (!col?.sorter || typeof col.sorter !== 'function') {
+      return data;
+    }
+    const compareFn = col.sorter as (a: T, b: T) => number;
+    const sorted = [...data].sort((a, b) => compareFn(a, b));
+
+    return sortState.direction === 'descending' ? sorted.reverse() : sorted;
+  }, [rest.dataSource, sortState, propsColumns]);
+
+  const pagedDataSource = useMemo((): T[] => {
+    if (!clientPagination) {
+      return sortedDataSource;
     }
     const start = (internalCurrentPage - 1) * clientPagination.pageSize;
 
-    return data.slice(start, start + clientPagination.pageSize);
-  }, [rest.dataSource, clientPagination, internalCurrentPage]);
+    return sortedDataSource.slice(start, start + clientPagination.pageSize);
+  }, [sortedDataSource, clientPagination, internalCurrentPage]);
 
   const isCustomizeColumnEnable = useMemo(
     () =>
@@ -231,7 +258,7 @@ const TableV2 = <T extends object>(
       if (!rest.rowSelection?.onChange) {
         return;
       }
-      const dataSource = (rest.dataSource ?? []) as T[];
+      const dataSource = sortedDataSource;
       const selectedKeys =
         keys === 'all'
           ? dataSource.map((r, i) => getRowKey(r, i))
@@ -244,7 +271,7 @@ const TableV2 = <T extends object>(
         type: selectionMode === 'single' ? 'single' : 'multiple',
       });
     },
-    [rest.rowSelection, rest.dataSource, getRowKey]
+    [rest.rowSelection, sortedDataSource, getRowKey]
   );
 
   // ─── Column resize ────────────────────────────────────────────────────────
@@ -261,6 +288,10 @@ const TableV2 = <T extends object>(
 
   const handleSortChange = useCallback(
     (descriptor: AriaSortDescriptor) => {
+      const newKey = descriptor.column ? String(descriptor.column) : null;
+      const newDirection = descriptor.direction ?? null;
+      setSortState({ columnKey: newKey, direction: newDirection });
+
       if (!rest.onChange) {
         return;
       }
@@ -528,7 +559,7 @@ const TableV2 = <T extends object>(
               const headNode = (
                 <UntitledTable.Head
                   allowsSorting={!!colType.sorter}
-                  className="tw:pl-4 tw:pr-2 tw:text-sm tw:text-tertiary"
+                  className="tw:py-2 tw:pl-4 tw:pr-2 tw:text-sm tw:text-tertiary"
                   id={colKey}
                   key={colKey}
                   style={
