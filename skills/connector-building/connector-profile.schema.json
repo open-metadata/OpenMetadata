@@ -66,6 +66,14 @@
     "docs_notes": {
       "type": "string",
       "description": "Additional notes about auth quirks, pagination, rate limits, etc."
+    },
+    "docker_image": {
+      "type": "string",
+      "description": "Docker image for integration tests (e.g. 'metabase/metabase:latest')"
+    },
+    "docker_port": {
+      "type": "integer",
+      "description": "Container port to expose for integration tests (e.g. 3000)"
     }
   },
   "required": ["name", "service_type"],
