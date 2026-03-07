@@ -709,40 +709,19 @@ public class SearchRepository {
     }
   }
 
-  private Map<String, Object> buildEntityRefMap(EntityReference entityRef) {
-    if (entityRef == null) {
-      return null;
-    }
-    Map<String, Object> refMap = new HashMap<>();
-    refMap.put("id", entityRef.getId() != null ? entityRef.getId().toString() : null);
-    refMap.put("name", entityRef.getName());
-    refMap.put(
-        "displayName",
-        entityRef.getDisplayName() != null && !entityRef.getDisplayName().isBlank()
-            ? entityRef.getDisplayName()
-            : entityRef.getName());
-    refMap.put("fullyQualifiedName", entityRef.getFullyQualifiedName());
-    refMap.put("description", entityRef.getDescription());
-    refMap.put("deleted", entityRef.getDeleted());
-    refMap.put("type", entityRef.getType());
-    return refMap;
-  }
-
   private List<Map<String, Object>> buildEntityRefListWithDisplayName(
       List<EntityReference> entities) {
     if (nullOrEmpty(entities)) {
       return Collections.emptyList();
     }
-    return entities.stream().map(SearchIndexUtils::toEntityRefMap).toList();
+    List<Map<String, Object>> result = new ArrayList<>();
     for (EntityReference entity : entities) {
       Map<String, Object> refMap = new HashMap<>();
       refMap.put("id", entity.getId() != null ? entity.getId().toString() : null);
       refMap.put("name", entity.getName());
       refMap.put(
           "displayName",
-          entity.getDisplayName() != null && !entity.getDisplayName().isBlank()
-              ? entity.getDisplayName()
-              : entity.getName());
+          nullOrEmpty(entity.getDisplayName()) ? entity.getName() : entity.getDisplayName());
       refMap.put("fullyQualifiedName", entity.getFullyQualifiedName());
       refMap.put("description", entity.getDescription());
       refMap.put("deleted", entity.getDeleted());
