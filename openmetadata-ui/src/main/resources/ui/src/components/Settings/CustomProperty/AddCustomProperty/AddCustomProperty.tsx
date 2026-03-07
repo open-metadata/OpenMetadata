@@ -126,7 +126,7 @@ const AddCustomProperty = ({
         ];
 
       // Remove -cp from the name and convert to start case
-      const title = startCase(getEntityName(type).replace(/-cp/g, ''));
+      const title = startCase(getEntityName(type).replaceAll('-cp', ''));
 
       return {
         searchField: title,
@@ -454,21 +454,15 @@ const AddCustomProperty = ({
             validator: async (_, value) => {
               if (isArray(value)) {
                 if (value.length > 3) {
-                  return Promise.reject(
-                    t('message.maximum-count-allowed', {
-                      count: 3,
-                      label: t('label.column-plural'),
-                    })
-                  );
+                  throw t('message.maximum-count-allowed', {
+                    count: 3,
+                    label: t('label.column-plural'),
+                  });
                 }
-
-                return Promise.resolve();
               } else {
-                return Promise.reject(
-                  t('label.field-required', {
-                    field: t('label.column-plural'),
-                  })
-                );
+                throw t('label.field-required', {
+                  field: t('label.column-plural'),
+                });
               }
             },
           },

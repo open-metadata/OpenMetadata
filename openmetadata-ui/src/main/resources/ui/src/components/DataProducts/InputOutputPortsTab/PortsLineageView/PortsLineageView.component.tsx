@@ -241,7 +241,7 @@ const PortsLineageView = ({
     <div
       className={`ports-lineage-view w-full bg-gray-50 ${
         isFullScreen
-          ? 'tw:fixed tw:top-0 tW:left-0 tw:right-0 tw:bottom-0 tw:z-1300 tw:rounded-none tw:border-none'
+          ? 'tw:fixed tw:top-0 tw:left-0 tw:right-0 tw:bottom-0 tw:z-1300 tw:rounded-none tw:border-none'
           : 'tw:relative tw:rounded-lg tw:border tw:border-gray-200'
       }`}
       data-testid="ports-lineage-view"

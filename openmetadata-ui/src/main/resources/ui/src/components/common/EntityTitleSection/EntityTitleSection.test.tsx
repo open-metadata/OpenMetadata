@@ -10,13 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityTitleSection } from './EntityTitleSection';
 
@@ -540,9 +535,8 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+      const user = userEvent.setup();
+      await user.click(editButton);
 
       expect(screen.getByTestId('entity-name-modal')).toBeInTheDocument();
     });
@@ -564,17 +558,13 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+      const user = userEvent.setup();
+      await user.click(editButton);
 
       expect(screen.getByTestId('entity-name-modal')).toBeInTheDocument();
 
       const cancelButton = screen.getByTestId('modal-cancel-button');
-
-      await act(async () => {
-        fireEvent.click(cancelButton);
-      });
+      await user.click(cancelButton);
 
       expect(screen.queryByTestId('entity-name-modal')).not.toBeInTheDocument();
     });
@@ -610,15 +600,11 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+      const user = userEvent.setup();
+      await user.click(editButton);
 
       const saveButton = screen.getByTestId('modal-save-button');
-
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+      await user.click(saveButton);
 
       await waitFor(() => {
         expect(mockPatchAPI).toHaveBeenCalledWith('test-id', [
@@ -657,15 +643,12 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+      const user = userEvent.setup();
+      await user.click(editButton);
 
       const saveButton = screen.getByTestId('modal-save-button');
 
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+      await user.click(saveButton);
 
       await waitFor(() => {
         expect(mockPatchAPI).toHaveBeenCalledWith('test-id', [
@@ -698,15 +681,12 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+      const user = userEvent.setup();
+      await user.click(editButton);
 
       const saveButton = screen.getByTestId('modal-save-button');
 
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+      await user.click(saveButton);
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalled();
