@@ -11,17 +11,87 @@
  *  limitations under the License.
  */
 
-import { ThemeProvider } from '@mui/material/styles';
-import { createMuiTheme } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { FormInstance } from 'antd';
 import ClassificationFormDrawer from './ClassificationFormDrawer';
 
-const theme = createMuiTheme();
-
 jest.mock('./TagsForm', () => {
   return jest.fn(() => <div data-testid="tags-form">Tags Form</div>);
 });
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  SlideoutMenu: Object.assign(
+    ({
+      isOpen,
+      onOpenChange,
+      children,
+      'data-testid': testId,
+    }: {
+      isOpen: boolean;
+      onOpenChange?: (isOpen: boolean) => void;
+      children: (arg: { close: () => void }) => React.ReactNode;
+      'data-testid'?: string;
+    }) => {
+      if (!isOpen) {
+        return null;
+      }
+
+      const close = () => onOpenChange?.(false);
+
+      return <div data-testid={testId}>{children({ close })}</div>;
+    },
+    {
+      Header: ({
+        children,
+        onClose,
+        'data-testid': testId,
+      }: {
+        children: React.ReactNode;
+        onClose?: () => void;
+        'data-testid'?: string;
+      }) => (
+        <div data-testid={testId}>
+          {children}
+          <button data-testid="drawer-close-icon" onClick={onClose} />
+        </div>
+      ),
+      Content: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      ),
+      Footer: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      ),
+    }
+  ),
+  Button: ({
+    children,
+    onClick,
+    isDisabled,
+    isLoading,
+    'data-testid': testId,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    isDisabled?: boolean;
+    isLoading?: boolean;
+    'data-testid'?: string;
+  }) => (
+    <button
+      data-testid={testId}
+      disabled={isDisabled || isLoading}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  ),
+  Typography: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={testId}>{children}</div>,
+}));
 
 const mockForm = {
   submit: jest.fn(),
@@ -50,26 +120,18 @@ describe('ClassificationFormDrawer', () => {
   });
 
   it('should render drawer when open is true', () => {
-    render(
-      <ThemeProvider theme={theme}>
-        <ClassificationFormDrawer {...defaultProps} />
-      </ThemeProvider>
-    );
+    render(<ClassificationFormDrawer {...defaultProps} />);
 
     expect(
       screen.getByTestId('classification-form-drawer')
     ).toBeInTheDocument();
-    expect(screen.getByTestId('form-heading')).toHaveTextContent(
+    expect(screen.getByTestId('drawer-heading')).toHaveTextContent(
       'label.adding-new-classification'
     );
   });
 
   it('should not render drawer when open is false', () => {
-    render(
-      <ThemeProvider theme={theme}>
-        <ClassificationFormDrawer {...defaultProps} open={false} />
-      </ThemeProvider>
-    );
+    render(<ClassificationFormDrawer {...defaultProps} open={false} />);
 
     expect(
       screen.queryByTestId('classification-form-drawer')
@@ -77,11 +139,7 @@ describe('ClassificationFormDrawer', () => {
   });
 
   it('should call onClose when close button is clicked', () => {
-    render(
-      <ThemeProvider theme={theme}>
-        <ClassificationFormDrawer {...defaultProps} />
-      </ThemeProvider>
-    );
+    render(<ClassificationFormDrawer {...defaultProps} />);
 
     const closeButton = screen.getByTestId('drawer-close-icon');
 
@@ -91,11 +149,7 @@ describe('ClassificationFormDrawer', () => {
   });
 
   it('should call onClose when cancel button is clicked', () => {
-    render(
-      <ThemeProvider theme={theme}>
-        <ClassificationFormDrawer {...defaultProps} />
-      </ThemeProvider>
-    );
+    render(<ClassificationFormDrawer {...defaultProps} />);
 
     const cancelButton = screen.getByTestId('cancel-button');
 
@@ -105,21 +159,13 @@ describe('ClassificationFormDrawer', () => {
   });
 
   it('should render TagsForm component', () => {
-    render(
-      <ThemeProvider theme={theme}>
-        <ClassificationFormDrawer {...defaultProps} />
-      </ThemeProvider>
-    );
+    render(<ClassificationFormDrawer {...defaultProps} />);
 
     expect(screen.getByTestId('tags-form')).toBeInTheDocument();
   });
 
   it('should disable save button when isLoading is true', () => {
-    render(
-      <ThemeProvider theme={theme}>
-        <ClassificationFormDrawer {...defaultProps} isLoading />
-      </ThemeProvider>
-    );
+    render(<ClassificationFormDrawer {...defaultProps} isLoading />);
 
     const saveButton = screen.getByTestId('save-button');
 
@@ -127,11 +173,7 @@ describe('ClassificationFormDrawer', () => {
   });
 
   it('should keep "Save" text visible when isLoading is true', () => {
-    render(
-      <ThemeProvider theme={theme}>
-        <ClassificationFormDrawer {...defaultProps} isLoading />
-      </ThemeProvider>
-    );
+    render(<ClassificationFormDrawer {...defaultProps} isLoading />);
 
     const saveButton = screen.getByTestId('save-button');
 
@@ -139,11 +181,7 @@ describe('ClassificationFormDrawer', () => {
   });
 
   it('should show "Save" text when isLoading is false', () => {
-    render(
-      <ThemeProvider theme={theme}>
-        <ClassificationFormDrawer {...defaultProps} />
-      </ThemeProvider>
-    );
+    render(<ClassificationFormDrawer {...defaultProps} />);
 
     const saveButton = screen.getByTestId('save-button');
 

@@ -362,7 +362,7 @@ export const iconTooltipDataRender = () => (
         pointerEvents: 'auto',
       }}>
       <InfoOutlinedIcon
-        data-testid="mui-helper-icon"
+        data-testid="helper-icon"
         sx={{
           fontSize: 16,
           color: 'text.secondary',
