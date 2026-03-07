@@ -8,6 +8,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
@@ -24,6 +25,8 @@ import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import jakarta.json.JsonPatch;
@@ -95,12 +98,14 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -1012,6 +1017,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       return new TestCaseRepository.TestCaseFailureResolutionTaskWorkflow(threadContext);
     }
 
+    if (EntityUtil.isApprovalTask(taskType)) {
+      return new ApprovalTaskWorkflow(threadContext);
+    }
+
     return super.getTaskWorkflow(threadContext);
   }
 
@@ -1195,9 +1204,57 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
+  public static class ApprovalTaskWorkflow extends FeedRepository.TaskWorkflow {
+    ApprovalTaskWorkflow(FeedRepository.ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      TestCase testCase = (TestCase) threadContext.getAboutEntity();
+      checkUpdatedByReviewer(testCase, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
+      variables.put(UPDATED_BY_VARIABLE, user);
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      if (!workflowSuccess) {
+        LOG.warn("[TestCase] Workflow failed for taskId='{}', applying status directly", taskId);
+        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
+        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
+        EntityFieldUtils.setEntityField(
+            testCase, TEST_CASE, user, FIELD_ENTITY_STATUS, entityStatus, true);
+      }
+
+      return testCase;
+    }
+  }
+
+  @Override
+  protected void preDelete(TestCase entity, String deletedBy) {
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
+    }
+  }
+
   public class TestUpdater extends EntityUpdater {
     public TestUpdater(TestCase original, TestCase updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
     }
 
     @Override
