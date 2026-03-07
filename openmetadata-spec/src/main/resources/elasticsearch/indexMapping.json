@@ -22,7 +22,7 @@
     "indexName": "column_search_index",
     "indexMappingFile": "/elasticsearch/%s/column_index_mapping.json",
     "alias": "tableColumn",
-    "parentAliases": ["all", "table", "dataAsset"],
+    "parentAliases": ["all", "table"],
     "childAliases": []
   },
   "storedProcedure": {
