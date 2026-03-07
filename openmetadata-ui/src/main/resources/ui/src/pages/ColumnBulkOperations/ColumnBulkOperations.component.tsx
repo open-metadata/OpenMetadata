@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useBreadcrumbs } from '../../components/common/atoms/navigation/useBreadcrumbs';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -31,10 +30,10 @@ const ColumnBulkOperations = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.column-bulk-operations')}>
-      <Box className="column-bulk-operations-container">
+      <div>
         {breadcrumbs}
         <ColumnGrid />
-      </Box>
+      </div>
     </PageLayoutV1>
   );
 };

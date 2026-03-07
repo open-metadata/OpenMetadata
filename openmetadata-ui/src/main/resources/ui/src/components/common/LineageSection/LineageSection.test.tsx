@@ -16,6 +16,46 @@ import { getLineagePagingData } from '../../../rest/lineageAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import LineageSection from './LineageSection';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(
+      ({
+        children,
+        onClick,
+        'data-testid': testId,
+      }: {
+        children: React.ReactNode;
+        onClick?: () => void;
+        'data-testid'?: string;
+        [key: string]: unknown;
+      }) => (
+        <button data-testid={testId} onClick={onClick}>
+          {children}
+        </button>
+      )
+    ),
+  Divider: jest.fn().mockImplementation(() => <hr />),
+  Typography: jest
+    .fn()
+    .mockImplementation(
+      ({
+        children,
+        'data-testid': testId,
+        className,
+      }: {
+        children: React.ReactNode;
+        'data-testid'?: string;
+        className?: string;
+        [key: string]: unknown;
+      }) => (
+        <span className={className} data-testid={testId}>
+          {children}
+        </span>
+      )
+    ),
+}));
+
 jest.mock('../../../assets/svg/lineage-upstream-icon.svg', () => ({
   ReactComponent: () => <div data-testid="upstream-icon">Upstream</div>,
 }));
@@ -26,6 +66,17 @@ jest.mock('../../../assets/svg/lineage-downstream-icon.svg', () => ({
 
 jest.mock('../../../rest/lineageAPI', () => ({
   getLineagePagingData: jest.fn(),
+}));
+
+jest.mock('../../../utils/EntityLineageUtils', () => ({
+  getEntityCountAtDepth: jest
+    .fn()
+    .mockImplementation(
+      (
+        depthInfo: Array<{ depth: number; entityCount: number }> | undefined,
+        depth: number
+      ) => depthInfo?.find((info) => info.depth === depth)?.entityCount ?? 0
+    ),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -140,7 +191,7 @@ describe('LineageSection', () => {
     expect(screen.getByTestId('downstream-count')).toHaveTextContent('12');
 
     // Divider exists between sections
-    expect(container.querySelector('.MuiDivider-root')).toBeInTheDocument();
+    expect(container.querySelector('hr')).toBeInTheDocument();
   });
 
   it('renders both sections even when one side is zero', async () => {

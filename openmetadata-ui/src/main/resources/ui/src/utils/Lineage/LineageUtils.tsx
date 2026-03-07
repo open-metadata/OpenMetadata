@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { ChevronRight } from '@untitledui/icons';
 import { get, omit, pick } from 'lodash';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column-new.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
@@ -166,7 +166,7 @@ export const getTruncatedPath = (path: string, className?: string) => {
     <CondensedBreadcrumb
       className={className}
       items={parts}
-      separator={<ChevronRightIcon className="right-arrow-icon" />}
+      separator={<ChevronRight className="right-arrow-icon" size={12} />}
     />
   );
 };

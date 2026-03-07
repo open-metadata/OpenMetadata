@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@mui/material';
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -156,16 +156,19 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             filter === 'upstream' ? 'active' : ''
           }`}
           size="small"
-          onClick={() => onFilterChange('upstream')}>
+          onClick={() => onFilterChange('upstream')}
+        >
           <span
             className="lineage-filter-button-text"
-            data-testid="upstream-button-text">
+            data-testid="upstream-button-text"
+          >
             {t('label.upstream')}
           </span>
           <span
             className={`lineage-filter-button-count ${
               filter === 'upstream' ? 'active' : ''
-            }`}>
+            }`}
+          >
             {upstreamCount}
           </span>
         </Button>
@@ -177,16 +180,19 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             filter === 'downstream' ? 'active' : ''
           }`}
           size="small"
-          onClick={() => onFilterChange('downstream')}>
+          onClick={() => onFilterChange('downstream')}
+        >
           <span
             className="lineage-filter-button-text"
-            data-testid="downstream-button-text">
+            data-testid="downstream-button-text"
+          >
             {t('label.downstream')}
           </span>
           <span
             className={`lineage-filter-button-count ${
               filter === 'downstream' ? 'active' : ''
-            }`}>
+            }`}
+          >
             {downstreamCount}
           </span>
         </Button>
@@ -215,14 +221,16 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               to={getEntityLinkFromType(
                 item.entity.fullyQualifiedName ?? '',
                 item.entity.entityType as EntityType
-              )}>
+              )}
+            >
               <div
                 className="lineage-item-card"
                 key={
                   item.entity.id ||
                   item.entity.fullyQualifiedName ||
                   `${item.direction}-${item.path}`
-                }>
+                }
+              >
                 <div className="lineage-item-header">
                   <div className="d-flex align-items-center gap-1">
                     <div className="service-icon">
@@ -241,22 +249,16 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                   <div className="lineage-item-direction">
                     {item.direction === 'upstream' ? (
-                      <Tooltip
-                        arrow
-                        placement="top"
-                        title={t('label.upstream')}>
-                        <span>
+                      <Tooltip placement="top" title={t('label.upstream')}>
+                        <TooltipTrigger>
                           <UpstreamIcon height={18} width={18} />
-                        </span>
+                        </TooltipTrigger>
                       </Tooltip>
                     ) : (
-                      <Tooltip
-                        arrow
-                        placement="top"
-                        title={t('label.downstream')}>
-                        <span>
+                      <Tooltip placement="top" title={t('label.downstream')}>
+                        <TooltipTrigger>
                           <DownstreamIcon height={18} width={18} />
-                        </span>
+                        </TooltipTrigger>
                       </Tooltip>
                     )}
                   </div>
@@ -313,7 +315,8 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             <ErrorPlaceHolderNew
               className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+            >
               <Typography.Paragraph className="text-center  no-data-placeholder">
                 {t('label.lineage-not-found')}
               </Typography.Paragraph>
