@@ -81,7 +81,6 @@ public class SSOCallbackServlet extends HttpServlet {
   private final AuthenticationCodeFlowHandler ssoHandler;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
   private final SSOAuthMechanism.SsoServiceType ssoServiceType;
-  private final Object callbackUrlLock = new Object();
   private volatile IdTokenValidator idTokenValidator;
 
   public SSOCallbackServlet(
@@ -240,31 +239,22 @@ public class SSOCallbackServlet extends HttpServlet {
         LOG.debug("Restored pac4j code verifier for client {}", clientName);
       }
 
-      // Set the correct callback URL on the pac4j client to match what was used in authorization
-      // This prevents redirect_uri_mismatch errors during token exchange
-      // Synchronized to prevent race condition when multiple concurrent requests modify shared
-      // client
+      // Store MCP callback URL in session so handleCallback() uses it for token exchange
+      // instead of the shared client's default callback URL. This avoids mutating the shared
+      // pac4j client which would race with concurrent UI auth flows.
       String mcpCallbackUrl = request.getRequestURL().toString();
-      synchronized (callbackUrlLock) {
-        String originalCallbackUrl = ssoHandler.getClient().getCallbackUrl();
-        ssoHandler.getClient().setCallbackUrl(mcpCallbackUrl);
-        LOG.debug("Set pac4j callback URL to: {} (was: {})", mcpCallbackUrl, originalCallbackUrl);
+      session.setAttribute(AuthenticationCodeFlowHandler.SESSION_SSO_CALLBACK_URL, mcpCallbackUrl);
+      LOG.debug("Set session SSO callback URL to: {}", mcpCallbackUrl);
 
-        HttpServletResponseWrapper responseWrapper =
-            new HttpServletResponseWrapper(response) {
-              @Override
-              public void sendRedirect(String location) throws IOException {
-                LOG.debug("Capturing redirect to {} (will not execute)", location);
-              }
-            };
+      HttpServletResponseWrapper responseWrapper =
+          new HttpServletResponseWrapper(response) {
+            @Override
+            public void sendRedirect(String location) throws IOException {
+              LOG.debug("Capturing redirect to {} (will not execute)", location);
+            }
+          };
 
-        try {
-          ssoHandler.handleCallback(request, responseWrapper);
-        } finally {
-          // Restore original callback URL
-          ssoHandler.getClient().setCallbackUrl(originalCallbackUrl);
-        }
-      }
+      ssoHandler.handleCallback(request, responseWrapper);
 
       OidcCredentials credentials = (OidcCredentials) session.getAttribute(OIDC_CREDENTIAL_PROFILE);
       if (credentials == null || credentials.getIdToken() == null) {
@@ -312,15 +302,12 @@ public class SSOCallbackServlet extends HttpServlet {
         try {
           response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
           response.setContentType("text/html; charset=UTF-8");
-          String safeErrorMessage =
-              org.openmetadata.mcp.server.auth.html.HtmlTemplates.escapeHtml(
-                  e.getMessage() != null ? e.getMessage() : "Unknown error");
           response
               .getWriter()
               .write(
-                  "<html><body><h1>Authentication Failed</h1><p>Error: "
-                      + safeErrorMessage
-                      + "</p></body></html>");
+                  "<html><body><h1>Authentication Failed</h1>"
+                      + "<p>An internal error occurred while processing authentication. "
+                      + "Please try again or contact your administrator.</p></body></html>");
         } catch (Exception writeEx) {
           LOG.error("Failed to write error response", writeEx);
         }

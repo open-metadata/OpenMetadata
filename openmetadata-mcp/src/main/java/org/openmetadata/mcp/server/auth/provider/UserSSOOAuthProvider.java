@@ -705,18 +705,22 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
 
       // CRITICAL: Validate redirect URI matches (RFC 6749 Section 4.1.3)
-      // If redirect_uri was provided in token request, it MUST match the one from authorization
+      // If redirect_uri was included in the authorization request, it MUST be present and
+      // identical in the token exchange request. Omitting it is not allowed.
+      String storedRedirectUri = codeRecord.redirectUri();
       URI requestRedirectUri = authCode.getRedirectUri();
-      if (requestRedirectUri != null) {
-        String storedRedirectUri = codeRecord.redirectUri();
-        String requestRedirectUriStr = requestRedirectUri.toString();
-
-        if (!requestRedirectUriStr.equals(storedRedirectUri)) {
+      if (storedRedirectUri != null && !storedRedirectUri.isEmpty()) {
+        if (requestRedirectUri == null) {
+          throw new TokenException(
+              "invalid_request",
+              "redirect_uri is required when it was included in the authorization request");
+        }
+        if (!requestRedirectUri.toString().equals(storedRedirectUri)) {
           LOG.error(
               "SECURITY ALERT: Redirect URI mismatch in token exchange! "
                   + "Authorization used '{}' but token request used '{}'",
               storedRedirectUri,
-              requestRedirectUriStr);
+              requestRedirectUri);
           throw new TokenException(
               "invalid_grant",
               "Redirect URI in token request does not match authorization request");

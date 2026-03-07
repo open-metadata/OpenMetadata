@@ -597,8 +597,14 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
               "invalid_grant", "Authorization code was not issued to this client");
         }
 
-        // Validate redirect_uri if it was provided during authorization
-        if (storedCode.getRedirectUri() != null && redirectUri != null) {
+        // Validate redirect_uri (RFC 6749 Section 4.1.3): if redirect_uri was included in
+        // the authorization request, it MUST be present and identical in the token request
+        if (storedCode.getRedirectUri() != null) {
+          if (redirectUri == null) {
+            throw new TokenException(
+                "invalid_request",
+                "redirect_uri is required when it was included in the authorization request");
+          }
           if (!storedCode.getRedirectUri().toString().equals(redirectUri)) {
             throw new TokenException(
                 "invalid_grant", "redirect_uri does not match authorization request");

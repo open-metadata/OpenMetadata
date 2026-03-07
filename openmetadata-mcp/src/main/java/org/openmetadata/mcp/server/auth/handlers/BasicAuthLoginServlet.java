@@ -177,8 +177,8 @@ public class BasicAuthLoginServlet extends HttpServlet {
       try {
         basicAuthenticator.checkIfLoginBlocked(email);
       } catch (AuthenticationException e) {
-        LOG.warn("Login blocked for user");
-        renderLoginFormWithError(request, response, pending, e.getMessage());
+        LOG.warn("Login blocked for user", e);
+        renderLoginFormWithError(request, response, pending, "Login blocked");
         return;
       }
 
