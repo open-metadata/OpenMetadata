@@ -4747,6 +4747,19 @@ public interface CollectionDAO {
                 parts = {":fqnhash", ".%"},
                 hash = true)
             String fqnhash);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE tag SET json = JSON_SET(json, '$.recognizers', CAST(:recognizers AS JSON)) "
+                + "WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') = :tagFqn",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE tag SET json = json::jsonb || json_build_object("
+                + "'recognizers', :recognizers::jsonb "
+                + ")::jsonb WHERE json->>'fullyQualifiedName' = :tagFqn",
+        connectionType = POSTGRES)
+    void patchRecognizers(@Bind("tagFqn") String tagFqn, @Bind("recognizers") String recognizers);
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
