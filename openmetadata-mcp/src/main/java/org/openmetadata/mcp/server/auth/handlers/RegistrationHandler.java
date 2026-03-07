@@ -24,6 +24,7 @@ public class RegistrationHandler {
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
   private static final int CLIENT_SECRET_BYTES = 32;
   private static final Set<String> ALLOWED_REDIRECT_SCHEMES = Set.of("http", "https");
+  private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "::1");
 
   private final OAuthClientRepository clientRepository;
 
@@ -116,7 +117,7 @@ public class RegistrationHandler {
           "invalid_redirect_uri", "At least one redirect_uri must be provided");
     }
 
-    // Validate redirect URI schemes (RFC 7591 Section 5)
+    // Validate redirect URI schemes and hosts (RFC 7591 Section 5, RFC 8252 Section 7.3)
     for (URI uri : metadata.getRedirectUris()) {
       String scheme = uri.getScheme();
       if (scheme == null || !ALLOWED_REDIRECT_SCHEMES.contains(scheme.toLowerCase())) {
@@ -126,6 +127,16 @@ public class RegistrationHandler {
       if (uri.getFragment() != null) {
         throw new RegistrationException(
             "invalid_redirect_uri", "redirect_uri must not contain a fragment: " + uri);
+      }
+      // RFC 8252 Section 7.3: http redirect URIs MUST use loopback addresses only.
+      // This prevents authorization code interception via attacker-controlled redirect URIs.
+      if ("http".equalsIgnoreCase(scheme)) {
+        String host = uri.getHost();
+        if (host == null || !LOOPBACK_HOSTS.contains(host)) {
+          throw new RegistrationException(
+              "invalid_redirect_uri",
+              "http redirect_uri must use localhost/loopback address: " + uri);
+        }
       }
     }
 

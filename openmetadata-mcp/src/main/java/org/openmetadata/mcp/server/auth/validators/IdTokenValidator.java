@@ -335,7 +335,7 @@ public class IdTokenValidator {
       this.cache =
           CacheBuilder.newBuilder()
               .maximumSize(10)
-              .expireAfterWrite(24, TimeUnit.HOURS)
+              .expireAfterWrite(6, TimeUnit.HOURS)
               .build(
                   new CacheLoader<>() {
                     @Override

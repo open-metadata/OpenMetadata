@@ -95,15 +95,12 @@ public class HttpServletStatelessServerTransport extends HttpServlet
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
-
-    this.doPost(request, response);
-    //    String requestURI = request.getRequestURI();
-    //    if (!requestURI.endsWith(mcpEndpoint)) {
-    //      response.sendError(HttpServletResponse.SC_NOT_FOUND);
-    //      return;
-    //    }
-    //
-    //    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+    String requestURI = request.getRequestURI();
+    if (!requestURI.endsWith(mcpEndpoint)) {
+      response.sendError(HttpServletResponse.SC_NOT_FOUND);
+      return;
+    }
+    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
   }
 
   /**

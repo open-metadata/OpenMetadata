@@ -26,7 +26,7 @@ This module implements a complete OAuth 2.0 Authorization Code Flow with PKCE fo
 ### Security Features
 - **PKCE Validation** - SHA-256 code challenge/verifier validation
 - **Token Expiry Management** - Configurable access token (1 hour) and refresh token (7 days) lifetimes
-- **Rate Limiting** - Client registration endpoint protection (10 registrations/hour per IP)
+- **Rate Limiting** - Registration (10/hour per IP) and token (30/minute per IP) endpoint protection
 - **Thread-Safe Concurrent Processing** - ThreadLocal storage for request isolation
 - **Audit Logging** - OAuth operations logged via SLF4J (oauth_audit_log table available for future use)
 
@@ -58,13 +58,6 @@ This module implements a complete OAuth 2.0 Authorization Code Flow with PKCE fo
 - Routes authorization, token, and discovery requests
 - Servlet-based stateless request handling
 - Provider-aware OAuth scope configuration
-
-**McpAuthFilter**
-- Authentication filter for MCP endpoints
-- JWT token validation
-- OAuth endpoint exemptions (no auth required for .well-known endpoints)
-- CORS preflight support
-- User impersonation context management
 
 **SecurityConfigurationManager**
 - Singleton manager for runtime security configuration (authentication, authorization, MCP settings)
@@ -275,7 +268,7 @@ The OAuth server is configured in `openmetadata.yaml`:
 
 - **JWT Configuration** - RSA key pair for token signing, JWKS endpoint URL
 - **Token Expiry** - Access token (1 hour) and refresh token (7 days) lifetimes
-- **Rate Limiting** - Client registration rate limits (10 registrations/hour per IP)
+- **Rate Limiting** - Registration (10/hour per IP) and token endpoint (30/minute per IP) rate limits
 - **SSO Provider** - Google, Okta, Azure AD, etc. OAuth client ID and secret for SSO integration
 - **Callback URLs** - Allowed redirect URIs for OAuth clients
 
@@ -300,7 +293,7 @@ All MCP tools authenticate using the Bearer token from the OAuth flow:
 
 **Permission Model**: Tool permissions are enforced by OpenMetadata's Authorizer using the user's identity from the JWT. This ensures MCP users have the same access as they would in the OpenMetadata UI - respecting all policies, roles, and ownership rules. OAuth authenticates the user; the Authorizer enforces what they can access.
 
-The McpAuthFilter extracts and validates the JWT on every request, setting up the security context for downstream MCP tool execution.
+The transport provider extracts and validates the JWT on every request, setting up the security context for downstream MCP tool execution.
 
 ## Recent Improvements
 
@@ -388,13 +381,13 @@ Schema migrations in `bootstrap/sql/migrations/native/1.12.0/`:
 
 ### Server Initialization
 
-OAuth components initialized in `McpApplication`:
+OAuth components initialized in `McpServer`:
 
 1. JwtFilter and authorizer setup
 2. OAuth repositories instantiation
 3. UserSSOOAuthProvider initialization with SSO config
-4. OAuthHttpStatelessServerTransportProvider registration
-5. McpAuthFilter registration for /api/v1/mcp/* endpoints
+4. OAuthHttpStatelessServerTransportProvider registration at /mcp/*
+5. SSO callback servlet and Basic Auth login servlet registration
 6. OAuthTokenCleanupJob scheduled (10-minute intervals)
 
 ### Environment Variables
@@ -416,14 +409,17 @@ OAuth components initialized in `McpApplication`:
 ## Security Considerations
 
 - **Public Client Security** - PKCE mandatory for all authorization code flows
+- **Redirect URI Validation** - HTTP redirect URIs restricted to loopback addresses per RFC 8252; HTTPS URIs validated against registered client URIs
 - **Token Storage** - Refresh tokens encrypted at rest using Fernet
 - **Session Management** - Stateless design with database-backed state persistence
 - **Audit Trail** - All OAuth operations logged for compliance and forensics
-- **Rate Limiting** - Registration endpoint rate limiting to prevent abuse
+- **Rate Limiting** - Registration (10/hour per IP) and token (30/minute per IP) endpoint rate limiting
+- **CORS Security** - Deny-all CORS when MCP configuration is unavailable (no permissive localhost fallback)
 - **Single-Use Codes** - Authorization codes deleted after exchange
 - **Token Rotation** - Refresh tokens rotated on every refresh to limit exposure
 - **Timing-Safe Comparisons** - CSRF and PKCE validation use MessageDigest.isEqual() to prevent timing attacks
 - **Provider-Aware Scopes** - OAuth scopes automatically adjusted based on SSO provider (Google, Okta, Azure, etc.)
+- **JWK Caching** - 6-hour TTL with cache-miss retry for responsive key rotation handling
 
 ## License
 

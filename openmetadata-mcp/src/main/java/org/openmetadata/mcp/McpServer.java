@@ -5,7 +5,6 @@ import io.dropwizard.jetty.MutableServletContextHandler;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
-import java.util.Arrays;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
@@ -248,13 +247,13 @@ public class McpServer implements McpServerProvider {
       }
     } catch (Exception e) {
       LOG.error(
-          "Failed to get allowed origins from MCP config, using development defaults: {}",
+          "Failed to get allowed origins from MCP config, CORS will reject all origins: {}",
           e.getMessage());
     }
-    LOG.warn(
-        "MCP configuration not available, using development localhost origins. "
-            + "This should NOT happen in production. Please configure MCP settings via the API.");
-    return Arrays.asList("http://localhost:3000", "http://localhost:8585", "http://localhost:9090");
+    LOG.error(
+        "MCP configuration not available. CORS will reject all origins. "
+            + "Configure MCP settings via the API to enable cross-origin access.");
+    return List.of();
   }
 
   /**

@@ -67,10 +67,10 @@ public class AuthorizationHandler {
                     createErrorResponse("invalid_request", "Client ID not found", state, null));
               }
 
-              // Validate redirect URI
-              // TODO: Open redirect vulnerability — requestedRedirectUri is accepted without
-              //  allowlist validation. Add an allowedMcpCallbackUrls field in MCPConfiguration
-              //  and validate against it here to prevent redirect to arbitrary URLs.
+              // Validate redirect URI against client's registered redirect URIs.
+              // Open redirect is mitigated at registration: HTTP URIs are restricted to
+              // loopback addresses per RFC 8252, and the redirect URI must match a
+              // registered URI for this client.
               URI redirectUri;
               try {
                 URI tempUri = redirectUriStr != null ? URI.create(redirectUriStr) : null;

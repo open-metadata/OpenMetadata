@@ -72,17 +72,19 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private volatile org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet
       basicAuthLoginServlet;
 
-  // In-memory rate limiter for client registration: max 10 registrations per IP per hour.
-  // NOTE: MCP spec (RFC 7591) requires open client registration, so authentication is not applied.
-  // Rate limiting is the primary mitigation against abuse. This in-memory implementation is
-  // per-JVM-instance; in clustered deployments the effective limit is 10 × N nodes per hour.
-  // For multi-node production deployments, consider database-backed rate limiting using
-  // COUNT(*) on oauth_clients with created_at and ip_address filters.
+  // In-memory rate limiters for registration and token endpoints.
+  // These are per-JVM-instance; in clustered deployments the effective limit is N × limit per hour.
+  // For multi-node production deployments, consider database-backed rate limiting.
   private static final int REGISTRATION_MAX_PER_HOUR = 10;
+  private static final int TOKEN_MAX_PER_MINUTE = 30;
   private final java.util.concurrent.ConcurrentHashMap<
           String, java.util.concurrent.atomic.AtomicInteger>
       registrationAttempts = new java.util.concurrent.ConcurrentHashMap<>();
   private volatile long registrationWindowStart = System.currentTimeMillis();
+  private final java.util.concurrent.ConcurrentHashMap<
+          String, java.util.concurrent.atomic.AtomicInteger>
+      tokenAttempts = new java.util.concurrent.ConcurrentHashMap<>();
+  private volatile long tokenWindowStart = System.currentTimeMillis();
 
   /**
    * Creates a new OAuthHttpServletSseServerTransportProvider.
@@ -311,7 +313,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     } else if (path.equals("/mcp/login") && basicAuthLoginServlet != null) {
       basicAuthLoginServlet.doGet(request, response);
     } else {
-      // Handle other GET requests using the parent class
+      // Unknown GET path: base class returns 404 for sub-paths, 405 for /mcp exactly
       super.doGet(request, response);
     }
   }
@@ -544,9 +546,18 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     LOG.debug("Token request params (sanitized): {}", sanitizeParamsForLogging(params));
 
-    // TODO: Add rate limiting on the token endpoint (per client_id and per IP) to mitigate
-    // brute-force attacks on client credentials and authorization code guessing.
-    // Registration endpoint already has rate limiting — apply similar pattern here.
+    String clientIp = request.getRemoteAddr();
+    if (isTokenRateLimited(clientIp)) {
+      LOG.warn("Token endpoint rate limit exceeded for IP: {}", clientIp);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
+      response.setStatus(429);
+      Map<String, String> error = new HashMap<>();
+      error.put("error", "too_many_requests");
+      error.put("error_description", "Token request rate limit exceeded. Try again later.");
+      getObjectMapper().writeValue(response.getOutputStream(), error);
+      return;
+    }
 
     if (authProvider instanceof org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) {
       ((org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) authProvider)
@@ -704,6 +715,20 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
           registrationAttempts.computeIfAbsent(
               clientIp, k -> new java.util.concurrent.atomic.AtomicInteger(0));
       return count.incrementAndGet() > REGISTRATION_MAX_PER_HOUR;
+    }
+  }
+
+  private boolean isTokenRateLimited(String clientIp) {
+    long now = System.currentTimeMillis();
+    synchronized (tokenAttempts) {
+      if (now - tokenWindowStart > 60_000) {
+        tokenAttempts.clear();
+        tokenWindowStart = now;
+      }
+      java.util.concurrent.atomic.AtomicInteger count =
+          tokenAttempts.computeIfAbsent(
+              clientIp, k -> new java.util.concurrent.atomic.AtomicInteger(0));
+      return count.incrementAndGet() > TOKEN_MAX_PER_MINUTE;
     }
   }
 
