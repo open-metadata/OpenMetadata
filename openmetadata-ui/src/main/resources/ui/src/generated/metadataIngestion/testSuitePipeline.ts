@@ -136,6 +136,9 @@ export interface ServiceConnection {
  *
  * Hex Connection Config
  *
+ * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
+ * create, deploy, and manage paginated reports
+ *
  * Google BigQuery Connection Config
  *
  * Google BigTable Connection Config
@@ -412,6 +415,8 @@ export interface ConfigObject {
     type?: ConfigType;
     /**
      * Regex exclude or include charts that matches the pattern.
+     *
+     * Regex to exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
     /**
@@ -489,6 +494,8 @@ export interface ConfigObject {
      * URL to the Grafana instance.
      *
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
+     *
+     * Host and Port of the Ssrs instance.
      *
      * BigQuery APIs URL.
      *
@@ -617,6 +624,8 @@ export interface ConfigObject {
      *
      * Password to connect to MicroStrategy.
      *
+     * Password to connect to Ssrs.
+     *
      * Password to connect to AzureSQL.
      *
      * Password to connect to Clickhouse.
@@ -687,6 +696,8 @@ export interface ConfigObject {
      *
      * Username to connect to MicroStrategy. This user should have privileges to read all the
      * metadata in MicroStrategy.
+     *
+     * Username to connect to Ssrs.
      *
      * Username to connect to AzureSQL. This user should have privileges to read the metadata.
      *
@@ -2149,6 +2160,8 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to exclude or include charts that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
@@ -4757,6 +4770,7 @@ export enum ConfigType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    Ssrs = "Ssrs",
     StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",
