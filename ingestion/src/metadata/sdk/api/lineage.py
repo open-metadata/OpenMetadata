@@ -1,10 +1,10 @@
 """Lineage API with a fluent interface."""
+
 from __future__ import annotations
 
 import asyncio
 from functools import partial
 from typing import Any, Callable, ClassVar, Optional, TypeVar, Union, cast
-from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -13,18 +13,9 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, EntityLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sdk.client import OpenMetadata
-from metadata.sdk.types import JsonDict, OMetaClient, UuidLike
+from metadata.sdk.types import JsonDict, OMetaClient, UuidLike, ensure_uuid
 
 T = TypeVar("T")
-
-
-def _ensure_uuid(value: UuidLike) -> basic.Uuid:
-    """Convert user supplied ids into the schema UUID type."""
-    if isinstance(value, basic.Uuid):
-        return value
-    if isinstance(value, UUID):
-        return basic.Uuid(value)
-    return basic.Uuid(UUID(value))
 
 
 async def _run_async(callable_: Callable[[], T]) -> T:
@@ -92,7 +83,7 @@ class Lineage:
         client = cast(Any, cls._get_client())
         payload = client.get_lineage_by_id(
             entity=entity_type,
-            entity_id=_ensure_uuid(entity_id),
+            entity_id=ensure_uuid(entity_id),
             up_depth=upstream_depth,
             down_depth=downstream_depth,
         )
@@ -121,7 +112,7 @@ class Lineage:
         request = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=EntityReference(
-                    id=_ensure_uuid(from_entity_id),
+                    id=ensure_uuid(from_entity_id),
                     type=from_entity_type,
                     name=None,
                     fullyQualifiedName=None,
@@ -132,7 +123,7 @@ class Lineage:
                     href=None,
                 ),
                 toEntity=EntityReference(
-                    id=_ensure_uuid(to_entity_id),
+                    id=ensure_uuid(to_entity_id),
                     type=to_entity_type,
                     name=None,
                     fullyQualifiedName=None,
@@ -166,7 +157,7 @@ class Lineage:
         client = cast(Any, cls._get_client())
         edge = EntitiesEdge(
             fromEntity=EntityReference(
-                id=_ensure_uuid(from_entity),
+                id=ensure_uuid(from_entity),
                 type=from_entity_type,
                 name=None,
                 fullyQualifiedName=None,
@@ -177,7 +168,7 @@ class Lineage:
                 href=None,
             ),
             toEntity=EntityReference(
-                id=_ensure_uuid(to_entity),
+                id=ensure_uuid(to_entity),
                 type=to_entity_type,
                 name=None,
                 fullyQualifiedName=None,
