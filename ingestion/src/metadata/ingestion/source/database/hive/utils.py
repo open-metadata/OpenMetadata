@@ -43,9 +43,14 @@ def get_columns(
     rows = [[col.strip() if col else None for col in row] for row in rows]
     rows = [row for row in rows if row[0] and row[0] != "# col_name"]
     result = []
+    seen_columns = set()
     for col_name, col_type, comment in rows:
         if col_name == "# Partition Information":
             break
+
+        # Skip duplicate column names (partition columns appear twice in DESCRIBE output)
+        if col_name in seen_columns:
+            continue
 
         col_raw_type = col_type
         attype = re.sub(r"\(.*\)", "", col_type)
@@ -79,6 +84,7 @@ def get_columns(
                 "is_complex": col_type in complex_data_types,
             }
         )
+        seen_columns.add(col_name)
     return result
 
 
