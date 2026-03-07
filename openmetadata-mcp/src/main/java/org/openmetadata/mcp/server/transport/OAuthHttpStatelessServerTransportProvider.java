@@ -26,11 +26,8 @@ import org.openmetadata.mcp.auth.ProtectedResourceMetadata;
 import org.openmetadata.mcp.auth.RefreshToken;
 import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
-import org.openmetadata.mcp.server.auth.handlers.MetadataHandler;
-import org.openmetadata.mcp.server.auth.handlers.ProtectedResourceMetadataHandler;
 import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
-import org.openmetadata.mcp.server.auth.middleware.BearerAuthenticator;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
@@ -48,9 +45,9 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatelessServerTransport
     implements SecurityConfigurationManager.ConfigurationChangeListener {
 
-  private final MetadataHandler metadataHandler;
+  private volatile OAuthMetadata oauthMetadata;
 
-  private final ProtectedResourceMetadataHandler protectedResourceMetadataHandler;
+  private volatile ProtectedResourceMetadata protectedResourceMetadata;
 
   private final AuthorizationHandler authorizationHandler;
 
@@ -59,8 +56,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private final RevocationHandler revocationHandler;
 
   private final ClientAuthenticator clientAuthenticator;
-
-  private volatile BearerAuthenticator bearerAuthenticator;
 
   private final ObjectMapper objectMapper;
 
@@ -111,9 +106,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     this.mcpEndpoint = mcpEndpoint;
     LOG.info("Initializing OAuth transport with base URL: {}", baseUrl);
 
-    // Create authenticators with audience validation
     this.clientAuthenticator = new ClientAuthenticator(authProvider);
-    this.bearerAuthenticator = new BearerAuthenticator(authProvider, baseUrl);
 
     // Create Authorization Server metadata (RFC 8414)
     // Endpoints are relative to /mcp prefix since servlet is mounted there
@@ -140,10 +133,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     protectedResourceMetadata.setScopesSupported(supportedScopes);
     protectedResourceMetadata.setResourceDocumentation(URI.create(baseUrl + "/docs"));
 
-    // Create handlers
-    this.metadataHandler = new MetadataHandler(metadata);
-    this.protectedResourceMetadataHandler =
-        new ProtectedResourceMetadataHandler(protectedResourceMetadata);
+    this.oauthMetadata = metadata;
+    this.protectedResourceMetadata = protectedResourceMetadata;
     this.authorizationHandler = new AuthorizationHandler(authProvider);
     this.registrationHandler = new RegistrationHandler(new OAuthClientRepository());
     this.revocationHandler = new RevocationHandler(new OAuthTokenRepository());
@@ -203,18 +194,17 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     newMetadata.setCodeChallengeMethodsSupported(List.of("S256"));
     newMetadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
     newMetadata.setRevocationEndpointAuthMethodsSupported(List.of("client_secret_post"));
-    metadataHandler.updateMetadata(newMetadata);
+    this.oauthMetadata = newMetadata;
 
     ProtectedResourceMetadata newResourceMetadata = new ProtectedResourceMetadata();
     newResourceMetadata.setResource(URI.create(baseUrl + mcpEndpoint));
     newResourceMetadata.setAuthorizationServers(List.of(URI.create(baseUrl + mcpEndpoint)));
     newResourceMetadata.setScopesSupported(supportedScopes);
     newResourceMetadata.setResourceDocumentation(URI.create(baseUrl + "/docs"));
-    protectedResourceMetadataHandler.updateMetadata(newResourceMetadata);
+    this.protectedResourceMetadata = newResourceMetadata;
 
     this.resourceMetadataUrl =
         URI.create(baseUrl + mcpEndpoint + "/.well-known/oauth-protected-resource");
-    this.bearerAuthenticator = new BearerAuthenticator(authProvider, baseUrl);
 
     LOG.info("OAuth metadata rebuilt with base URL: {}", baseUrl);
   }
@@ -455,42 +445,18 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private void handleMetadataRequest(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
-    try {
-      OAuthMetadata metadata = metadataHandler.handle().join();
-      response.setContentType("application/json");
-      setCorsHeaders(request, response);
-      response.setStatus(200);
-      getObjectMapper().writeValue(response.getOutputStream(), metadata);
-    } catch (CompletionException ex) {
-      LOG.error("Failed to handle OAuth metadata request", ex);
-      setCorsHeaders(request, response);
-      response.setContentType("application/json");
-      response.setStatus(500);
-      Map<String, String> error = new HashMap<>();
-      error.put("error", "server_error");
-      error.put("error_description", "Failed to retrieve OAuth metadata");
-      getObjectMapper().writeValue(response.getOutputStream(), error);
-    }
+    response.setContentType("application/json");
+    setCorsHeaders(request, response);
+    response.setStatus(200);
+    getObjectMapper().writeValue(response.getOutputStream(), oauthMetadata);
   }
 
   private void handleProtectedResourceMetadataRequest(
       HttpServletRequest request, HttpServletResponse response) throws IOException {
-    try {
-      ProtectedResourceMetadata metadata = protectedResourceMetadataHandler.handle().join();
-      response.setContentType("application/json");
-      setCorsHeaders(request, response);
-      response.setStatus(200);
-      getObjectMapper().writeValue(response.getOutputStream(), metadata);
-    } catch (CompletionException ex) {
-      LOG.error("Failed to handle protected resource metadata request", ex);
-      setCorsHeaders(request, response);
-      response.setContentType("application/json");
-      response.setStatus(500);
-      Map<String, String> error = new HashMap<>();
-      error.put("error", "server_error");
-      error.put("error_description", "Failed to retrieve protected resource metadata");
-      getObjectMapper().writeValue(response.getOutputStream(), error);
-    }
+    response.setContentType("application/json");
+    setCorsHeaders(request, response);
+    response.setStatus(200);
+    getObjectMapper().writeValue(response.getOutputStream(), protectedResourceMetadata);
   }
 
   private void handleAuthorizeRequest(HttpServletRequest request, HttpServletResponse response)

@@ -57,14 +57,9 @@ public class McpServer implements McpServerProvider {
     this.limits = limits;
     this.environment = environment;
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
-    McpAuthFilter authFilter =
-        new McpAuthFilter(
-            new JwtFilter(
-                SecurityConfigurationManager.getCurrentAuthConfig(),
-                SecurityConfigurationManager.getCurrentAuthzConfig()));
     List<McpSchema.Tool> tools = getTools();
     List<McpSchema.Prompt> prompts = getPrompts();
-    addStatelessTransport(contextHandler, authFilter, tools, prompts, config);
+    addStatelessTransport(contextHandler, tools, prompts, config);
   }
 
   protected List<McpSchema.Tool> getTools() {
@@ -77,7 +72,6 @@ public class McpServer implements McpServerProvider {
 
   private void addStatelessTransport(
       MutableServletContextHandler contextHandler,
-      McpAuthFilter authFilter,
       List<McpSchema.Tool> tools,
       List<McpSchema.Prompt> prompts,
       OpenMetadataApplicationConfig config) {
@@ -143,12 +137,6 @@ public class McpServer implements McpServerProvider {
       // SSE transport for MCP
       ServletHolder servletHolderSSE = new ServletHolder(statelessOauthTransport);
       contextHandler.addServlet(servletHolderSSE, "/mcp/*");
-
-      // Note: McpAuthFilter is NOT applied to /mcp/* because
-      // OAuthHttpStatelessServerTransportProvider
-      // handles its own OAuth authentication internally. Applying an external auth filter would
-      // block
-      // the OAuth handshake that happens at the transport layer.
 
       // Register SSO callback endpoint only for SSO providers (not basic auth)
       org.openmetadata.schema.api.security.AuthenticationConfiguration authConfig =

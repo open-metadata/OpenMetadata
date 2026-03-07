@@ -377,6 +377,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       return CompletableFuture.completedFuture("SSO_REDIRECT_INITIATED");
 
+    } catch (AuthorizeException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("SSO authorization failed for client: {}", client.getClientId(), e);
       throw new AuthorizeException("authorization_failed", "SSO authorization failed");
@@ -402,13 +404,25 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             "Redirect URI '" + params.getRedirectUri() + "' is not registered for this client.");
       }
 
+      // Validate PKCE code challenge before storage (same validation as SSO path)
+      String codeChallenge = params.getCodeChallenge();
+      if (codeChallenge == null || codeChallenge.trim().isEmpty()) {
+        throw new AuthorizeException(
+            "invalid_request", "PKCE code_challenge is required but was not provided");
+      }
+      if (!codeChallenge.matches("^[A-Za-z0-9_-]{43,128}$")) {
+        throw new AuthorizeException(
+            "invalid_request",
+            "PKCE code_challenge has invalid format (must be base64url encoded, 43-128 characters)");
+      }
+
       // Store PKCE params in DB (same as SSO flow — survives cross-domain redirects)
       List<String> scopes =
           params.getScopes() != null ? params.getScopes() : List.of("openid", "profile", "email");
       String authRequestId =
           pendingAuthRepository.createPendingRequest(
               client.getClientId(),
-              params.getCodeChallenge(),
+              codeChallenge,
               "S256",
               validatedRedirectUri.toString(),
               params.getState(),
@@ -523,14 +537,20 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     }
     String redirectUrl = UriUtils.constructRedirectUri(pendingRequest.redirectUri(), queryParams);
 
-    // Cleanup pending request
-    pendingAuthRepository.delete(authRequestId);
-
-    // TODO: Future Enhancement - Show success page before redirect (see handleBasicAuthLogin)
-
-    // Redirect to client callback URL with authorization code
-    LOG.info("Redirecting to client callback with authorization code: {}", requestedRedirectUri);
+    // Redirect FIRST — this is the critical path. If delete throws after redirect,
+    // the user still gets their auth code. Pending request cleaned up by cleanup job.
+    LOG.info("Redirecting to client callback with authorization code");
     response.sendRedirect(redirectUrl);
+
+    // Best-effort cleanup — failure here doesn't affect the user
+    try {
+      pendingAuthRepository.delete(authRequestId);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to clean up pending auth request {}, will be removed by cleanup job: {}",
+          authRequestId,
+          e.getMessage());
+    }
   }
 
   @Override

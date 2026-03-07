@@ -205,10 +205,9 @@ public class BasicAuthLoginServlet extends HttpServlet {
                 URI.create(pending.redirectUri()),
                 scopes);
 
-        // Delete pending auth request
-        pendingAuthRepository.delete(authRequestId);
-
         // Redirect to client callback with code + state
+        // Redirect BEFORE deleting pending request — if delete throws, the user still
+        // gets their auth code. The pending request will be cleaned up by the cleanup job.
         Map<String, String> queryParams = new HashMap<>();
         queryParams.put("code", authCode);
         if (pending.mcpState() != null) {
@@ -218,6 +217,16 @@ public class BasicAuthLoginServlet extends HttpServlet {
 
         LOG.info("Basic Auth login successful, redirecting to client callback");
         response.sendRedirect(redirectUrl);
+
+        // Best-effort cleanup — failure here doesn't affect the user
+        try {
+          pendingAuthRepository.delete(authRequestId);
+        } catch (Exception deleteEx) {
+          LOG.warn(
+              "Failed to clean up pending auth request {}, will be removed by cleanup job: {}",
+              authRequestId,
+              deleteEx.getMessage());
+        }
 
       } catch (AuthenticationException e) {
         LOG.warn("Basic Auth login failed");
