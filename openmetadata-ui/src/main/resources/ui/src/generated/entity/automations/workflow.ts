@@ -862,6 +862,8 @@ export interface RequestConnection {
  *
  * Kinesis Connection Config
  *
+ * Google Cloud Pub/Sub Connection Config
+ *
  * Custom Messaging Service Connection to build a source that is not supported by
  * OpenMetadata yet.
  *
@@ -1044,7 +1046,7 @@ export interface ConfigObject {
      *
      * GCP Credentials for Google Drive API
      */
-    credentials?: GCPCredentials;
+    credentials?: CredentialsClass;
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
@@ -1149,6 +1151,8 @@ export interface ConfigObject {
      * URL to the Grafana instance.
      *
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
+     *
+     * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Pipeline Service Management/UI URI.
      *
@@ -2298,6 +2302,31 @@ export interface ConfigObject {
      * Regex to only fetch topics that matches the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * GCP credentials configuration for authenticating with Pub/Sub.
+     */
+    gcpConfig?: GcpConfigClass;
+    /**
+     * Include dead letter topics in metadata extraction.
+     */
+    includeDeadLetterTopics?: boolean;
+    /**
+     * Include subscription metadata for each topic.
+     */
+    includeSubscriptions?: boolean;
+    /**
+     * GCP Project ID where Pub/Sub topics are located. If not specified, will be read from
+     * credentials.
+     */
+    projectId?: string;
+    /**
+     * Enable fetching schemas from Pub/Sub Schema Registry.
+     */
+    schemaRegistryEnabled?: boolean;
+    /**
+     * Connect to a Pub/Sub emulator rather than the production service.
+     */
+    useEmulator?: boolean;
     /**
      * Pipeline Service Number Of Status
      */
@@ -3701,6 +3730,8 @@ export interface ConfigSourceConnection {
  *
  * GCP credentials configs.
  *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
  * GCP Credentials for Google Drive API
  *
  * AWS credentials configs.
@@ -4260,6 +4291,8 @@ export enum ConnectionType {
  *
  * GCP credentials configs.
  *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
  * GCP Credentials for Google Drive API
  *
  * Azure Cloud Credentials
@@ -4268,7 +4301,7 @@ export enum ConnectionType {
  *
  * Azure Credentials
  */
-export interface GCPCredentials {
+export interface CredentialsClass {
     /**
      * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
      * Credentials Path
@@ -4435,6 +4468,27 @@ export enum FHIRVersion {
     Dstu2 = "DSTU2",
     R4 = "R4",
     Stu3 = "STU3",
+}
+
+/**
+ * GCP Credentials
+ *
+ * GCP credentials configs.
+ *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
+ * GCP Credentials for Google Drive API
+ */
+export interface GcpConfigClass {
+    /**
+     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+     * Credentials Path
+     */
+    gcpConfig: GCPCredentialsConfiguration;
+    /**
+     * we enable the authenticated service account to impersonate another service account
+     */
+    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
 }
 
 /**
@@ -5154,6 +5208,7 @@ export enum ConfigType {
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     Presto = "Presto",
+    PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",

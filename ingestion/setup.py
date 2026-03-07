@@ -68,6 +68,7 @@ VERSIONS = {
     "starrocks": "pymysql~=1.0",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
+    "google-cloud-pubsub": "google-cloud-pubsub>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
     "s3fs": "s3fs~=2023.12.1",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
@@ -313,6 +314,7 @@ plugins: Dict[str, Set[str]] = {
     "kafka": {*COMMONS["kafka"]},
     "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
+    "pubsub": {VERSIONS["google-cloud-pubsub"]},
     "looker": {
         VERSIONS["looker-sdk"],
         VERSIONS["lkml"],
