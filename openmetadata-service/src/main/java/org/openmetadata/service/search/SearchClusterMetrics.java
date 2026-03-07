@@ -163,32 +163,34 @@ public class SearchClusterMetrics {
       long totalEntities,
       int maxDbConnections) {
 
+    int availableCores = Runtime.getRuntime().availableProcessors();
+    long jvmMaxHeap = Runtime.getRuntime().maxMemory();
+
     int maxProducerThreads = (maxDbConnections * 3) / 4;
     int recommendedProducerThreads = Math.min(maxProducerThreads, 10 * totalNodes);
+    recommendedProducerThreads = Math.min(recommendedProducerThreads, availableCores * 4);
 
     if (memoryUsagePercent > 80) {
-      recommendedProducerThreads = Math.max(10, recommendedProducerThreads / 4);
+      recommendedProducerThreads = Math.max(2, recommendedProducerThreads / 4);
     } else if (memoryUsagePercent > 60) {
-      recommendedProducerThreads = Math.max(20, recommendedProducerThreads / 2);
+      recommendedProducerThreads = Math.max(2, recommendedProducerThreads / 2);
     }
 
-    // Consumers transform entities to search documents - can be CPU intensive
-    // With virtual threads, we can have more consumers for better throughput
-    int availableCores = Runtime.getRuntime().availableProcessors();
-    int recommendedConsumerThreads =
-        Math.min(30, Math.max(10, availableCores * 2)); // 2x cores, bounded
+    int recommendedConsumerThreads = Math.min(30, Math.max(2, availableCores * 2));
 
     if (totalNodes > 3) {
       recommendedConsumerThreads = Math.min(40, recommendedConsumerThreads + (totalNodes * 2));
     }
+    recommendedConsumerThreads = Math.min(recommendedConsumerThreads, availableCores * 4);
 
     if (memoryUsagePercent > 80) {
-      recommendedConsumerThreads = Math.max(10, recommendedConsumerThreads / 2);
+      recommendedConsumerThreads = Math.max(2, recommendedConsumerThreads / 2);
     } else if (memoryUsagePercent < 40 && totalEntities > 100000) {
-      recommendedConsumerThreads = Math.min(50, (int) (recommendedConsumerThreads * 1.5));
+      recommendedConsumerThreads =
+          Math.min(availableCores * 4, (int) (recommendedConsumerThreads * 1.5));
     }
 
-    int requestsPerNode = 50; // Base requests per node
+    int requestsPerNode = 50;
     if (cpuUsagePercent > 70 || memoryUsagePercent > 70) {
       requestsPerNode = 25;
     } else if (cpuUsagePercent < 30 && memoryUsagePercent < 50) {
@@ -196,6 +198,7 @@ public class SearchClusterMetrics {
     }
 
     int baseConcurrentRequests = Math.min(200, totalNodes * requestsPerNode);
+    baseConcurrentRequests = Math.min(baseConcurrentRequests, availableCores * 25);
     if (memoryUsagePercent > 80) {
       baseConcurrentRequests = Math.max(10, baseConcurrentRequests / 2);
     }
@@ -383,9 +386,11 @@ public class SearchClusterMetrics {
       conservativeBatchSize = 100;
     }
 
-    int conservativeThreads = (maxDbConnections * 3) / 4;
+    int availCores = Runtime.getRuntime().availableProcessors();
+    int conservativeThreads = Math.min((maxDbConnections * 3) / 4, availCores * 4);
     int conservativeConcurrentRequests = totalEntities > 100000 ? 50 : 25;
-    int conservativeConsumerThreads = 20;
+    conservativeConcurrentRequests = Math.min(conservativeConcurrentRequests, availCores * 25);
+    int conservativeConsumerThreads = Math.min(20, availCores * 2);
     int conservativeQueueSize = conservativeBatchSize * conservativeConcurrentRequests * 2;
 
     long maxHeap = Runtime.getRuntime().maxMemory();
@@ -450,6 +455,10 @@ public class SearchClusterMetrics {
 
   public void logRecommendations() {
     LOG.info("=== Auto-Tune Cluster Analysis ===");
+    LOG.info(
+        "JVM: {} CPUs, {} MB max heap",
+        Runtime.getRuntime().availableProcessors(),
+        Runtime.getRuntime().maxMemory() / (1024 * 1024));
     LOG.info("Cluster: {} nodes, {} shards", totalNodes, totalShards);
     LOG.info(
         "Resource Usage: CPU {}%, Memory {}%",

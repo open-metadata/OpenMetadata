@@ -20,8 +20,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -51,10 +53,22 @@ public class ElasticSearchBulkSink implements BulkSink {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
-  private static final int MAX_CONCURRENT_DOC_BUILDS = 8;
-  private static final Semaphore DOC_BUILD_SEMAPHORE = new Semaphore(MAX_CONCURRENT_DOC_BUILDS);
-  private static final ExecutorService DOC_BUILD_EXECUTOR =
-      Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("es-doc-build-", 0).factory());
+  private static final int MAX_CONCURRENT_DOC_BUILDS =
+      Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
+  private static final ExecutorService DOC_BUILD_EXECUTOR = createDocBuildExecutor();
+
+  private static ExecutorService createDocBuildExecutor() {
+    ThreadPoolExecutor pool =
+        new ThreadPoolExecutor(
+            MAX_CONCURRENT_DOC_BUILDS,
+            MAX_CONCURRENT_DOC_BUILDS,
+            60L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(),
+            Thread.ofVirtual().name("es-doc-build-", 0).factory());
+    pool.allowCoreThreadTimeOut(true);
+    return pool;
+  }
 
   private final ElasticSearchClient searchClient;
   protected final SearchRepository searchRepository;
@@ -168,14 +182,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> {
-                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
-                              try {
-                                addTimeSeriesEntity(entity, indexName, entityType, tracker);
-                              } finally {
-                                DOC_BUILD_SEMAPHORE.release();
-                              }
-                            },
+                            () -> addTimeSeriesEntity(entity, indexName, entityType, tracker),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -188,14 +195,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> {
-                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
-                              try {
-                                addEntity(entity, indexName, recreateIndex, tracker);
-                              } finally {
-                                DOC_BUILD_SEMAPHORE.release();
-                              }
-                            },
+                            () -> addEntity(entity, indexName, recreateIndex, tracker),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();

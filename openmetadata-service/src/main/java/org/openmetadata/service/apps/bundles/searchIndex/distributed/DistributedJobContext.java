@@ -13,7 +13,9 @@
 
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 
 /**
@@ -24,6 +26,7 @@ public class DistributedJobContext implements ReindexingJobContext {
 
   private final SearchIndexJob job;
   private final String source;
+  private final Map<String, Object> distributedMetadata = new ConcurrentHashMap<>();
 
   public DistributedJobContext(SearchIndexJob job) {
     this(job, "DISTRIBUTED");
@@ -66,5 +69,15 @@ public class DistributedJobContext implements ReindexingJobContext {
 
   public SearchIndexJob getJob() {
     return job;
+  }
+
+  public void setDistributedMetadata(String key, Object value) {
+    if (value != null) {
+      distributedMetadata.put(key, value);
+    }
+  }
+
+  public Map<String, Object> getDistributedMetadata() {
+    return distributedMetadata;
   }
 }

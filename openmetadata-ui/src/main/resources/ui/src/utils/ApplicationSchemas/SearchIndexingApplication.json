@@ -168,14 +168,6 @@
       "type": "integer",
       "default": 0,
       "minimum": -1
-    },
-    "timeSeriesEntityDays": {
-      "title": "Time Series Entity Days Override",
-      "description": "Per-entity-type override for time series max days. Keys are entity type names (e.g. testCaseResult, queryCostRecord), values are number of days. Entities not listed here use the default Time Series Max Days value.",
-      "type": "object",
-      "additionalProperties": {
-        "type": "integer"
-      }
     }
   },
   "additionalProperties": false

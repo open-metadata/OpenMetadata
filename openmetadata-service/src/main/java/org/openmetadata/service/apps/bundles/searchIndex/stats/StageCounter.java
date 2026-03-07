@@ -8,10 +8,19 @@ public class StageCounter {
   @Getter private final AtomicLong failed = new AtomicLong(0);
   @Getter private final AtomicLong warnings = new AtomicLong(0);
 
+  @Getter private final AtomicLong cumulativeSuccess = new AtomicLong(0);
+  @Getter private final AtomicLong cumulativeFailed = new AtomicLong(0);
+
   public void record(StatsResult result) {
     switch (result) {
-      case SUCCESS -> success.incrementAndGet();
-      case FAILED -> failed.incrementAndGet();
+      case SUCCESS -> {
+        success.incrementAndGet();
+        cumulativeSuccess.incrementAndGet();
+      }
+      case FAILED -> {
+        failed.incrementAndGet();
+        cumulativeFailed.incrementAndGet();
+      }
       case WARNING -> warnings.incrementAndGet();
     }
   }
@@ -20,6 +29,8 @@ public class StageCounter {
     success.addAndGet(successCount);
     failed.addAndGet(failedCount);
     warnings.addAndGet(warningCount);
+    cumulativeSuccess.addAndGet(successCount);
+    cumulativeFailed.addAndGet(failedCount);
   }
 
   public void reset() {
