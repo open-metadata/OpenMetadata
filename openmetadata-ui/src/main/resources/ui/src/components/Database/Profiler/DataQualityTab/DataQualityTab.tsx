@@ -198,7 +198,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             <Tooltip placement="top" title={result.result}>
               <p
                 className="tw:m-0 tw:line-clamp-2 tw:cursor-pointer tw:wrap-break-word tw:text-sm"
-                data-testid={`reason-text-${record.name}`}>
+                data-testid={`reason-text-${record.name}`}
+              >
                 {result.result}
               </p>
             </Tooltip>
@@ -260,7 +261,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                       EntityTabs.PROFILER,
                       ProfilerTabPath.DATA_QUALITY
                     )}
-                    onClick={(e) => e.stopPropagation()}>
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {tableFqn}
                   </Link>
                 );
@@ -411,15 +413,18 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                     {
                       number: dimensions.length,
                     }
-                  )}>
+                  )}
+                >
                   <Link
                     to={getTestCaseDetailPagePath(
                       record.fullyQualifiedName ?? '',
                       TestCasePageTabs.DIMENSIONALITY
-                    )}>
+                    )}
+                  >
                     <div
                       className="tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:bg-blue-50 tw:p-2 tw:text-primary"
-                      data-testid={`dimension-count-${record.name}`}>
+                      data-testid={`dimension-count-${record.name}`}
+                    >
                       <DimensionIcon height={12} width={12} />
                       <span className="tw:text-xs tw:font-medium">
                         {dimensions.length}
@@ -432,7 +437,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 isOpen={activeRecordId === (record.id ?? null)}
                 onOpenChange={(isOpen) =>
                   setActiveRecordId(isOpen ? record.id ?? null : null)
-                }>
+                }
+              >
                 <Button
                   className="tw:h-6 tw:w-6 tw:p-0!"
                   color="secondary"
@@ -570,7 +576,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     <div
       className={classNames({
         'data-quality-tab-container': !isUndefined(tableHeader),
-      })}>
+      })}
+    >
       {tableHeader && (
         <div className="data-quality-table-header">{tableHeader}</div>
       )}

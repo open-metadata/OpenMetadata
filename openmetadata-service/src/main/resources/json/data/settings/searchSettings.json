@@ -380,6 +380,108 @@
       }
     },
     {
+      "assetType": "tableColumn",
+      "searchFields": [
+        {
+          "field": "displayName.keyword",
+          "boost": 20.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "name",
+          "boost": 10.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "name.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "name.compound",
+          "boost": 8.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "displayName",
+          "boost": 7.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "displayName.ngram",
+          "boost": 1.0,
+          "matchType": "fuzzy"
+        },
+        {
+          "field": "displayName.compound",
+          "boost": 6.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "description",
+          "boost": 2.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "dataType",
+          "boost": 3.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "table.name",
+          "boost": 5.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "table.displayName",
+          "boost": 5.0,
+          "matchType": "phrase"
+        },
+        {
+          "field": "fullyQualifiedName",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "fqnParts",
+          "boost": 5.0,
+          "matchType": "standard"
+        }
+      ],
+      "highlightFields": [
+        "name",
+        "displayName",
+        "description",
+        "table.name"
+      ],
+      "aggregations": [
+        {
+          "name": "dataType",
+          "type": "terms",
+          "field": "dataType"
+        },
+        {
+          "name": "table.name.keyword",
+          "type": "terms",
+          "field": "table.name.keyword"
+        },
+        {
+          "name": "service.displayName.keyword",
+          "type": "terms",
+          "field": "service.displayName.keyword"
+        }
+      ],
+      "termBoosts": [],
+      "fieldValueBoosts": [],
+      "scoreMode": "sum",
+      "boostMode": "sum",
+      "matchTypeBoostMultipliers": {
+        "exactMatchMultiplier": 2.0,
+        "phraseMatchMultiplier": 1.5,
+        "fuzzyMatchMultiplier": 1.0
+      }
+    },
+    {
       "assetType": "storedProcedure",
       "searchFields": [
         {
@@ -2316,6 +2418,51 @@
         {
           "name": "columns.children.description",
           "description": "Search on descriptions of nested columns within complex data types. Helps find tables with nested fields serving specific purposes."
+        }
+      ]
+    },
+    {
+      "entityType": "tableColumn",
+      "fields": [
+        {
+          "name": "name",
+          "description": "Column name - primary search field for finding columns by their database name."
+        },
+        {
+          "name": "name.keyword",
+          "description": "Exact match on column name for precise lookups."
+        },
+        {
+          "name": "name.ngram",
+          "description": "Fuzzy/partial match on column name for flexible searching."
+        },
+        {
+          "name": "displayName",
+          "description": "Display name for the column."
+        },
+        {
+          "name": "description",
+          "description": "Column description text for finding columns by their documented purpose."
+        },
+        {
+          "name": "dataType",
+          "description": "Data type (VARCHAR, INT, etc.) for filtering columns by their type."
+        },
+        {
+          "name": "table.name",
+          "description": "Parent table name for finding columns within specific tables."
+        },
+        {
+          "name": "table.displayName",
+          "description": "Parent table display name."
+        },
+        {
+          "name": "tags.tagFQN",
+          "description": "Tags applied to the column for classification-based discovery."
+        },
+        {
+          "name": "service.displayName",
+          "description": "Database service name for filtering columns by their source service."
         }
       ]
     },

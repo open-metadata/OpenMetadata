@@ -185,7 +185,8 @@ const CustomMetricGraphs = ({
   return (
     <div
       className="tw:flex tw:flex-col tw:gap-8"
-      data-testid="custom-metric-graph-container">
+      data-testid="custom-metric-graph-container"
+    >
       {toPairs(customMetricsGraphData).map(([key, metric]) => {
         const metricDetails = customMetrics?.find(
           (metric) => metric.name === key
@@ -211,7 +212,8 @@ const CustomMetricGraphs = ({
                       isOpen={openMenuKey === key}
                       onOpenChange={(isOpen) =>
                         setOpenMenuKey(isOpen ? key : null)
-                      }>
+                      }
+                    >
                       <Button
                         color="secondary"
                         data-testid={`${key}-custom-metrics-menu`}
@@ -233,7 +235,8 @@ const CustomMetricGraphs = ({
                     </Dropdown.Root>
                   ) : undefined,
               }}
-              title={key}>
+              title={key}
+            >
               <div>
                 {isEmpty(metric) ? (
                   <div className="tw:flex tw:h-full tw:w-full tw:items-center tw:justify-center">
@@ -244,11 +247,13 @@ const CustomMetricGraphs = ({
                     className="custom-legend"
                     debounce={200}
                     id={`${key}-graph`}
-                    minHeight={300}>
+                    minHeight={300}
+                  >
                     <ComposedChart
                       className="w-full"
                       data={metric}
-                      margin={{ left: 16 }}>
+                      margin={{ left: 16 }}
+                    >
                       <CartesianGrid
                         horizontal={renderHorizontalGridLine}
                         stroke={GRAPH_BACKGROUND_COLOR}
@@ -329,7 +334,8 @@ const CustomMetricGraphs = ({
           title={t('label.edit-entity', { entity: selectedMetrics.name })}
           width={650}
           onCancel={handleModalCancel}
-          onOk={() => form.submit()}>
+          onOk={() => form.submit()}
+        >
           <CustomMetricForm
             isEditMode
             form={form}

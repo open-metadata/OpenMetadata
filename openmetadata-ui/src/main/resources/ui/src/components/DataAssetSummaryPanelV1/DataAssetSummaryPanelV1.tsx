@@ -38,8 +38,10 @@ import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
+import { updateTableColumn } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
@@ -92,6 +94,17 @@ export const DataAssetSummaryPanelV1 = ({
         if (!dataAsset.id) {
           return;
         }
+        if (entityType === EntityType.TABLE_COLUMN) {
+          const res = await updateTableColumn(
+            dataAsset.fullyQualifiedName ?? '',
+            {
+              description: newDescription,
+            }
+          );
+          onDescriptionUpdate?.(res.description || newDescription);
+
+          return;
+        }
 
         // Create the JSON patch for description update
         const jsonPatch = [
@@ -126,7 +139,14 @@ export const DataAssetSummaryPanelV1 = ({
         );
       }
     },
-    [dataAsset.id, dataAsset.description, entityType, t, onDescriptionUpdate]
+    [
+      dataAsset.id,
+      dataAsset.fullyQualifiedName,
+      dataAsset.description,
+      entityType,
+      t,
+      onDescriptionUpdate,
+    ]
   );
 
   const [additionalInfo, setAdditionalInfo] = useState<
@@ -239,6 +259,10 @@ export const DataAssetSummaryPanelV1 = ({
       fetchIncidentCount();
     }
   };
+  // Columns inherit owners, domains, tier, and data products from their parent table
+  // These fields should not be editable on columns
+  const isColumnEntity = entityType === EntityType.TABLE_COLUMN;
+
   const {
     editDomainPermission,
     editOwnerPermission,
@@ -249,7 +273,9 @@ export const DataAssetSummaryPanelV1 = ({
     editGlossaryTermsPermission,
   } = useMemo(
     () => ({
+      // Columns inherit domain from table - not editable
       editDomainPermission:
+        !isColumnEntity &&
         entityPermissions?.EditAll &&
         !dataAsset.deleted &&
         panelPath !== ENTITY_PATH.dataProductsTab,
@@ -259,19 +285,24 @@ export const DataAssetSummaryPanelV1 = ({
       editGlossaryTermsPermission:
         (entityPermissions?.EditGlossaryTerms || entityPermissions?.EditAll) &&
         !dataAsset.deleted,
+      // Columns inherit owners from table - not editable
       editOwnerPermission:
+        !isColumnEntity &&
         (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
         !dataAsset.deleted,
+      // Columns inherit tier from table - not editable
       editTierPermission:
+        !isColumnEntity &&
         (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
         !dataAsset.deleted,
       editTagsPermission:
         (entityPermissions?.EditAll || entityPermissions?.EditTags) &&
         !dataAsset.deleted,
+      // Columns inherit data products from table - not editable
       editDataProductPermission:
-        entityPermissions?.EditAll && !dataAsset.deleted,
+        !isColumnEntity && entityPermissions?.EditAll && !dataAsset.deleted,
     }),
-    [entityPermissions, dataAsset]
+    [entityPermissions, dataAsset, isColumnEntity]
   );
 
   const init = useCallback(async () => {
@@ -280,12 +311,54 @@ export const DataAssetSummaryPanelV1 = ({
       return;
     }
 
+    // For columns, use the parent table's permissions since columns don't have their own
+    if (entityType === EntityType.TABLE_COLUMN) {
+      const columnData = dataAsset as typeof dataAsset & {
+        table?: { id?: string };
+      };
+      if (columnData.table?.id) {
+        try {
+          const permissions = await getEntityPermission(
+            ResourceEntity.TABLE,
+            columnData.table.id
+          );
+          setEntityPermissions(permissions);
+
+          return;
+        } catch {
+          // If permission fetch fails, allow basic view access for columns
+          setEntityPermissions({
+            ...DEFAULT_ENTITY_PERMISSION,
+            ViewBasic: true,
+            ViewAll: true,
+          });
+
+          return;
+        }
+      }
+      // If no table.id available, allow basic view access for columns
+      // Columns inherit permissions from their parent table
+      setEntityPermissions({
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewBasic: true,
+        ViewAll: true,
+      });
+
+      return;
+    }
+
     const permissions = await getEntityPermission(
       dataAsset.entityType as ResourceEntity,
       dataAsset.id
     );
     setEntityPermissions(permissions);
-  }, [dataAsset.id, dataAsset.entityType, isTourPage, getEntityPermission]);
+  }, [
+    dataAsset.id,
+    dataAsset.entityType,
+    entityType,
+    isTourPage,
+    getEntityPermission,
+  ]);
 
   useEffect(() => {
     if (entityPermissions) {
@@ -323,6 +396,7 @@ export const DataAssetSummaryPanelV1 = ({
       case EntityType.FILE:
       case EntityType.SPREADSHEET:
       case EntityType.WORKSHEET:
+      case EntityType.TABLE_COLUMN:
       case EntityType.GOVERN:
       case EntityType.GLOSSARY:
       case EntityType.GLOSSARY_TERM:
@@ -378,6 +452,9 @@ export const DataAssetSummaryPanelV1 = ({
             )}
             {entityType === EntityType.DIRECTORY && (
               <span className="d-none" data-testid="DirectorySummary" />
+            )}
+            {entityType === EntityType.TABLE_COLUMN && (
+              <span className="d-none" data-testid="ColumnSummary" />
             )}
             {entityType === EntityType.DASHBOARD_DATA_MODEL && (
               <span

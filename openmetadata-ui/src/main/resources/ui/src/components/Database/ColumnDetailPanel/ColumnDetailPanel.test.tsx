@@ -62,7 +62,8 @@ jest.mock('antd', () => ({
         data-testid={props['data-testid'] || 'button'}
         disabled={disabled}
         onClick={onClick}
-        {...props}>
+        {...props}
+      >
         {children}
       </button>
     )),
@@ -222,7 +223,8 @@ jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({
             data-testid="update-description"
             onClick={async () => {
               await onDescriptionUpdate('Updated description');
-            }}>
+            }}
+          >
             Update Description
           </button>
         )}
@@ -249,7 +251,8 @@ jest.mock('../../common/TagsSection/TagsSection', () => ({
             } catch {
               // Error is handled by the component
             }
-          }}>
+          }}
+        >
           Update Tags
         </button>
       )}
@@ -276,7 +279,8 @@ jest.mock('../../common/GlossaryTermsSection/GlossaryTermsSection', () => ({
             } catch {
               // Error is handled by the component
             }
-          }}>
+          }}
+        >
           Update Glossary Terms
         </button>
       )}

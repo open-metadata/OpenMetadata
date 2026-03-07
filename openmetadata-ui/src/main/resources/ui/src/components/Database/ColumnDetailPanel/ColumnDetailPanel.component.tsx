@@ -796,7 +796,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             return (
               <div
                 className="tw:inline-flex tw:items-center"
-                key={breadcrumb.fullyQualifiedName}>
+                key={breadcrumb.fullyQualifiedName}
+              >
                 <div className="tw:inline-flex tw:items-center tw:gap-0.5">
                   <Typography.Text
                     className={classNames('tw:text-xs', {
@@ -809,7 +810,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                       isLastItem
                         ? undefined
                         : () => handleBreadcrumbClick(breadcrumb)
-                    }>
+                    }
+                  >
                     {getEntityName(breadcrumb)}
                   </Typography.Text>
                   {index < breadcrumbPath.length - 1 && (
@@ -836,11 +838,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                   mouseEnterDelay={0.5}
                   placement="topLeft"
                   title={getEntityName(activeColumn)}
-                  trigger="hover">
+                  trigger="hover"
+                >
                   <Typography.Text
                     className="entity-title-link"
                     data-testid="entity-link"
-                    ellipsis={{ tooltip: true }}>
+                    ellipsis={{ tooltip: true }}
+                  >
                     {stringToHTML(
                       (activeColumn as { displayName?: string }).displayName ||
                         activeColumn.name ||
@@ -879,7 +883,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                   <Typography.Text
                     className="text-grey-muted text-xs"
                     data-testid="entity-name"
-                    ellipsis={{ tooltip: true }}>
+                    ellipsis={{ tooltip: true }}
+                  >
                     {stringToHTML(activeColumn.name || '')}
                   </Typography.Text>
                 )}
@@ -900,7 +905,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             <Tooltip
               placement="bottom"
               title={getDataTypeDisplay(activeColumn)}
-              trigger="hover">
+              trigger="hover"
+            >
               <div className="tw:max-w-60 flex-center tw:overflow-hidden tw:text-ellipsis data-type-chip">
                 {getDataTypeDisplay(activeColumn) || ''}
               </div>
@@ -987,7 +993,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       placement="right"
       title={columnTitle}
       width="40%"
-      onClose={onClose}>
+      onClose={onClose}
+    >
       {localToast.open && (
         <div className="tw:sticky tw:-top-5 tw:z-1 tw:mr-4 tw:mb-4 tw:ml-2 column-panel-alert-wrapper">
           <AlertBar

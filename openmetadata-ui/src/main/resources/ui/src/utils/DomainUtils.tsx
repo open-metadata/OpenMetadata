@@ -207,6 +207,7 @@ export const getQueryFilterToIncludeDomain = (
                     EntityType.TEST_SUITE,
                     EntityType.QUERY,
                     EntityType.TEST_CASE,
+                    EntityType.TABLE_COLUMN,
                   ],
                 },
               },
@@ -242,6 +243,17 @@ export const getQueryFilterToExcludeDomainTerms = (
                 {
                   term: {
                     'domains.fullyQualifiedName': fqn,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            bool: {
+              must_not: [
+                {
+                  terms: {
+                    entityType: [EntityType.TABLE_COLUMN],
                   },
                 },
               ],
@@ -286,8 +298,8 @@ export const getQueryFilterForDomain = (domainFqn: string) => {
         ],
         must_not: [
           {
-            term: {
-              entityType: 'dataProduct',
+            terms: {
+              entityType: [EntityType.DATA_PRODUCT, EntityType.TABLE_COLUMN],
             },
           },
         ],

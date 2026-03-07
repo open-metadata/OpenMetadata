@@ -250,7 +250,8 @@ const TeamDetailsV1 = ({
               })
         }
         type={type}
-        onClick={onClick}>
+        onClick={onClick}
+      >
         {children}
       </ErrorPlaceHolder>
     ),
@@ -581,7 +582,8 @@ const TeamDetailsV1 = ({
                       <Col span={21}>
                         <Typography.Text
                           className="font-medium"
-                          data-testid="open-group-label">
+                          data-testid="open-group-label"
+                        >
                           {t('label.public-team')}
                         </Typography.Text>
                       </Col>
@@ -634,7 +636,8 @@ const TeamDetailsV1 = ({
       <ErrorPlaceHolder
         className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+      >
         <Typography.Paragraph style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
             entity: t('label.team'),
@@ -658,7 +661,8 @@ const TeamDetailsV1 = ({
             disabled={!entityPermissions.Create || isTeamDeleted}
             icon={<PlusOutlined />}
             type="primary"
-            onClick={handleAddTeamButtonClick}>
+            onClick={handleAddTeamButtonClick}
+          >
             {t('label.add')}
           </Button>
         </Tooltip>
@@ -750,7 +754,8 @@ const TeamDetailsV1 = ({
                 isTeamDeleted
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.role') })
-              }>
+              }
+            >
               <Button
                 ghost
                 className={classNames({
@@ -765,7 +770,8 @@ const TeamDetailsV1 = ({
                     type: EntityType.ROLE,
                     selectedData: currentTeam.defaultRoles ?? [],
                   })
-                }>
+                }
+              >
                 {t('label.add')}
               </Button>
             </Tooltip>
@@ -783,7 +789,8 @@ const TeamDetailsV1 = ({
                     type: EntityType.ROLE,
                     selectedData: currentTeam.defaultRoles ?? [],
                   })
-                }>
+                }
+              >
                 {addRole}
               </Button>
             </Col>
@@ -822,7 +829,8 @@ const TeamDetailsV1 = ({
                 isTeamDeleted
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.policy') })
-              }>
+              }
+            >
               <Button
                 ghost
                 className={classNames({
@@ -837,7 +845,8 @@ const TeamDetailsV1 = ({
                     type: EntityType.POLICY,
                     selectedData: currentTeam.policies ?? [],
                   })
-                }>
+                }
+              >
                 {t('label.add')}
               </Button>
             </Tooltip>
@@ -860,7 +869,8 @@ const TeamDetailsV1 = ({
                     type: EntityType.POLICY,
                     selectedData: currentTeam.policies ?? [],
                   })
-                }>
+                }
+              >
                 {addPolicy}
               </Button>
             </Col>
@@ -895,7 +905,8 @@ const TeamDetailsV1 = ({
             // Used to stop click propagation event to the header collapsible panel
             e.stopPropagation();
             deleteUserHandler(currentUser.id, true);
-          }}>
+          }}
+        >
           {t('label.leave-team')}
         </Button>
       ) : (
@@ -929,7 +940,8 @@ const TeamDetailsV1 = ({
           <Space
             align="start"
             className="w-full flex-col justify-center p-t-xs"
-            size="middle">
+            size="middle"
+          >
             {!isOrganization && (
               <TitleBreadcrumb titleLinks={slashedTeamName} />
             )}
@@ -1134,7 +1146,8 @@ const TeamDetailsV1 = ({
         <Col
           className="teams-profile-container"
           data-testid="team-details-collapse"
-          span={24}>
+          span={24}
+        >
           {teamsCollapseHeader}
         </Col>
 
@@ -1158,7 +1171,8 @@ const TeamDetailsV1 = ({
               : t('label.removing-user')
           }
           onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
-          onOk={handleRemoveUser}>
+          onOk={handleRemoveUser}
+        >
           {removeUserBodyText(deletingUser.leave)}
         </Modal>
         {addAttribute && (
@@ -1190,7 +1204,8 @@ const TeamDetailsV1 = ({
                 selectedEntity.attribute
               );
               setSelectedEntity(undefined);
-            }}>
+            }}
+          >
             <Typography.Text>
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),

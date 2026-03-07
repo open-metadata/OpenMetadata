@@ -208,7 +208,8 @@ const DimensionalityTab = () => {
               <span className="tw:text-xs">
                 {t('message.impact-score-helper')}
               </span>
-            }>
+            }
+          >
             <HelpCircle height={16} width={16} />
           </Tooltip>
         </div>
@@ -234,7 +235,8 @@ const DimensionalityTab = () => {
             to={getTestCaseDimensionsDetailPagePath(
               testCase?.fullyQualifiedName || '',
               record.result.dimensionKey || ''
-            )}>
+            )}
+          >
             {dimensionValue}
           </Link>
         );
@@ -292,7 +294,8 @@ const DimensionalityTab = () => {
             items={dimensionColumnsOptions}
             size="sm"
             value={selectedDimension ?? null}
-            onChange={handleDimensionChange}>
+            onChange={handleDimensionChange}
+          >
             {(item) => (
               <Select.Item id={item.id} key={item.id} label={item.label} />
             )}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography, Tooltip } from 'antd';
+import { Divider, Tooltip, Typography } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as InheritIcon } from '../../../../assets/svg/ic-inherit.svg';
@@ -107,7 +107,9 @@ const UserProfilePersonas = ({
               hasPermission={hasEditPermission}
               multiSelect={false}
               personaList={combinedPersonas}
-              selectedPersonas={userData.defaultPersona ? [userData.defaultPersona] : []}
+              selectedPersonas={
+                userData.defaultPersona ? [userData.defaultPersona] : []
+              }
               onUpdate={handleDefaultPersonaUpdate}
             />
           </div>

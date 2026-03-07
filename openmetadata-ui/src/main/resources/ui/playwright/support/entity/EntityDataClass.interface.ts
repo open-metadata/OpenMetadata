@@ -53,4 +53,5 @@ export type EntityType =
   | 'topic'
   | 'MlModel'
   | 'container'
-  | 'searchIndex';
+  | 'searchIndex'
+  | 'tableColumn';

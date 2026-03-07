@@ -104,6 +104,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
@@ -113,6 +114,7 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
@@ -129,6 +131,7 @@ import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -372,6 +375,37 @@ public class SearchRepository {
         .collect(Collectors.joining(","));
   }
 
+  public List<String> getChildIndexAliases(String entityType) {
+    Set<String> visited = new HashSet<>();
+    List<String> aliases = new ArrayList<>();
+    collectChildAliases(entityType, aliases, visited);
+    return aliases;
+  }
+
+  private void collectChildAliases(String entityType, List<String> aliases, Set<String> visited) {
+    if (!visited.add(entityType)) {
+      return;
+    }
+    IndexMapping mapping = entityIndexMap.get(entityType);
+    if (mapping == null) {
+      return;
+    }
+    List<String> children = mapping.getChildAliases(null);
+    if (nullOrEmpty(children)) {
+      return;
+    }
+    for (String childEntityType : children) {
+      IndexMapping childMapping = entityIndexMap.get(childEntityType);
+      if (childMapping != null) {
+        String alias = childMapping.getAlias(null);
+        if (alias != null && !aliases.contains(alias)) {
+          aliases.add(alias);
+        }
+        collectChildAliases(childEntityType, aliases, visited);
+      }
+    }
+  }
+
   public String getIndexNameWithoutAlias(String fullIndexName) {
     if (clusterAlias != null
         && !clusterAlias.isEmpty()
@@ -494,6 +528,10 @@ public class SearchRepository {
       SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
       String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
       searchClient.createEntity(indexMapping.getIndexName(clusterAlias), entityId, doc);
+
+      if (Entity.TABLE.equals(entityType)) {
+        indexTableColumns((Table) entity);
+      }
     } catch (Exception ie) {
       LOG.error(
           "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
@@ -503,6 +541,180 @@ public class SearchRepository {
           ie.getCause(),
           ExceptionUtils.getStackTrace(ie));
     }
+  }
+
+  private void indexTableColumns(Table table) {
+    if (table.getColumns() == null || table.getColumns().isEmpty()) {
+      return;
+    }
+
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      LOG.debug("Column index mapping not found, skipping column indexing");
+      return;
+    }
+
+    List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+    List<Map<String, String>> docs = new ArrayList<>();
+
+    for (Column column : flattenedColumns) {
+      try {
+        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+        String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
+        String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
+        docs.add(Collections.singletonMap(columnId, doc));
+      } catch (Exception e) {
+        LOG.error(
+            "Issue indexing column [{}] for table [{}]: {}",
+            column.getFullyQualifiedName(),
+            table.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+
+    if (!docs.isEmpty()) {
+      try {
+        searchClient.createEntities(columnIndexMapping.getIndexName(clusterAlias), docs);
+      } catch (Exception e) {
+        LOG.error(
+            "Issue bulk indexing columns for table [{}]: {}",
+            table.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+  }
+
+  private void deleteTableColumns(Table table) {
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      return;
+    }
+
+    try {
+      searchClient.deleteEntityByFields(
+          List.of(columnIndexMapping.getIndexName(clusterAlias)),
+          List.of(new ImmutablePair<>("table.id", table.getId().toString())));
+    } catch (Exception e) {
+      LOG.error(
+          "Issue deleting columns for table [{}]: {}",
+          table.getFullyQualifiedName(),
+          e.getMessage());
+    }
+  }
+
+  private void syncTableColumns(Table table, ChangeDescription changeDescription) {
+    // Check if columns were actually modified
+    boolean columnsChanged = hasColumnsChanged(changeDescription);
+
+    if (columnsChanged) {
+      // Columns were added/removed/modified - do full reindex
+      deleteTableColumns(table);
+      indexTableColumns(table);
+    } else {
+      // Only inherited fields changed - use efficient update
+      updateTableColumnsInheritedFields(table);
+    }
+  }
+
+  private boolean hasColumnsChanged(ChangeDescription changeDescription) {
+    if (changeDescription == null) {
+      return true; // Default to full reindex if no change description
+    }
+
+    return listOrEmpty(changeDescription.getFieldsAdded()).stream()
+            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
+        || listOrEmpty(changeDescription.getFieldsUpdated()).stream()
+            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
+        || listOrEmpty(changeDescription.getFieldsDeleted()).stream()
+            .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS));
+  }
+
+  private void updateTableColumnsInheritedFields(Table table) {
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      return;
+    }
+
+    try {
+      // Build the inherited fields update map
+      Map<String, Object> inheritedFields = new HashMap<>();
+
+      // Update table reference fields
+      Map<String, Object> tableRef = new HashMap<>();
+      tableRef.put("id", table.getId().toString());
+      tableRef.put("name", table.getName());
+      tableRef.put(
+          "displayName",
+          table.getDisplayName() != null && !table.getDisplayName().isBlank()
+              ? table.getDisplayName()
+              : table.getName());
+      tableRef.put("fullyQualifiedName", table.getFullyQualifiedName());
+      tableRef.put("description", table.getDescription());
+      tableRef.put("deleted", table.getDeleted());
+      tableRef.put("type", Entity.TABLE);
+      inheritedFields.put("table", tableRef);
+
+      // Update inherited fields from table
+      inheritedFields.put("deleted", table.getDeleted() != null && table.getDeleted());
+      inheritedFields.put("updatedAt", table.getUpdatedAt());
+      inheritedFields.put("updatedBy", table.getUpdatedBy());
+      inheritedFields.put("version", table.getVersion());
+
+      if (table.getService() != null) {
+        inheritedFields.put("service", SearchIndexUtils.toEntityRefMap(table.getService()));
+      }
+      if (table.getDatabase() != null) {
+        inheritedFields.put("database", SearchIndexUtils.toEntityRefMap(table.getDatabase()));
+      }
+      if (table.getDatabaseSchema() != null) {
+        inheritedFields.put(
+            "databaseSchema", SearchIndexUtils.toEntityRefMap(table.getDatabaseSchema()));
+      }
+      if (table.getServiceType() != null) {
+        inheritedFields.put("serviceType", table.getServiceType().toString());
+      }
+      if (table.getOwners() != null) {
+        inheritedFields.put("owners", buildEntityRefListWithDisplayName(table.getOwners()));
+      }
+      if (table.getDomains() != null) {
+        inheritedFields.put("domains", buildEntityRefListWithDisplayName(table.getDomains()));
+      }
+      if (table.getFollowers() != null) {
+        inheritedFields.put("followers", SearchIndexUtils.parseFollowers(table.getFollowers()));
+      }
+
+      int totalVotes =
+          nullOrEmpty(table.getVotes())
+              ? 0
+              : Math.max(table.getVotes().getUpVotes() - table.getVotes().getDownVotes(), 0);
+      inheritedFields.put("totalVotes", totalVotes);
+
+      // Use updateChildren to efficiently update all columns for this table
+      searchClient.updateChildren(
+          List.of(columnIndexMapping.getIndexName(clusterAlias)),
+          new ImmutablePair<>("table.id", table.getId().toString()),
+          new ImmutablePair<>(DEFAULT_UPDATE_SCRIPT, inheritedFields));
+
+      LOG.debug(
+          "Efficiently updated inherited fields for columns of table [{}]",
+          table.getFullyQualifiedName());
+    } catch (Exception e) {
+      LOG.error(
+          "Issue updating inherited fields for columns of table [{}]: {}. Falling back to full reindex.",
+          table.getFullyQualifiedName(),
+          e.getMessage());
+      // Fall back to full reindex on error
+      deleteTableColumns(table);
+      indexTableColumns(table);
+    }
+  }
+
+  private List<Map<String, Object>> buildEntityRefListWithDisplayName(
+      List<EntityReference> entities) {
+    if (nullOrEmpty(entities)) {
+      return Collections.emptyList();
+    }
+    return entities.stream().map(SearchIndexUtils::toEntityRefMap).toList();
   }
 
   /**
@@ -523,6 +735,10 @@ public class SearchRepository {
 
       try {
         searchClient.createEntities(indexMapping.getIndexName(clusterAlias), docs);
+
+        if (Entity.TABLE.equals(entityType)) {
+          indexColumnsForTables(entities);
+        }
       } catch (Exception ie) {
         LOG.error(
             "Issue in Creating entities document for entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
@@ -530,6 +746,54 @@ public class SearchRepository {
             ie.getMessage(),
             ie.getCause(),
             ExceptionUtils.getStackTrace(ie));
+      }
+    }
+  }
+
+  private static final int COLUMN_BATCH_SIZE = 500;
+
+  private void indexColumnsForTables(List<EntityInterface> entities) {
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      return;
+    }
+
+    String indexName = columnIndexMapping.getIndexName(clusterAlias);
+    List<Map<String, String>> allColumnDocs = new ArrayList<>();
+
+    for (EntityInterface entity : entities) {
+      Table table = (Table) entity;
+      if (table.getColumns() == null || table.getColumns().isEmpty()) {
+        continue;
+      }
+
+      List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+      for (Column column : flattenedColumns) {
+        try {
+          ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+          String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
+          String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
+          allColumnDocs.add(Collections.singletonMap(columnId, doc));
+
+          if (allColumnDocs.size() >= COLUMN_BATCH_SIZE) {
+            searchClient.createEntities(indexName, allColumnDocs);
+            allColumnDocs.clear();
+          }
+        } catch (Exception e) {
+          LOG.error(
+              "Issue indexing column [{}] for table [{}]: {}",
+              column.getFullyQualifiedName(),
+              table.getFullyQualifiedName(),
+              e.getMessage());
+        }
+      }
+    }
+
+    if (!allColumnDocs.isEmpty()) {
+      try {
+        searchClient.createEntities(indexName, allColumnDocs);
+      } catch (Exception e) {
+        LOG.error("Issue bulk indexing columns: {}", e.getMessage());
       }
     }
   }
@@ -645,6 +909,10 @@ public class SearchRepository {
       // TODO: Consider using async updates with proper wait mechanisms in tests
       searchClient.updateEntity(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
 
+      if (Entity.TABLE.equals(entityType)) {
+        syncTableColumns((Table) entity, changeDescription);
+      }
+
       long updateTime = System.currentTimeMillis() - startTime;
 
       // Only propagate if fields that affect children have changed
@@ -729,7 +997,7 @@ public class SearchRepository {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
     EntityInterface entity =
         entityRepository.get(null, entityReference.getId(), entityRepository.getFields("*"));
-    // Update Entity
+    entity.setChangeDescription(null);
     updateEntityIndex(entity);
   }
 
@@ -1372,6 +1640,9 @@ public class SearchRepository {
     try {
       searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
       deleteOrUpdateChildren(entity, indexMapping);
+      if (Entity.TABLE.equals(entityType)) {
+        deleteTableColumns((Table) entity);
+      }
     } catch (Exception ie) {
       LOG.error(
           "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
@@ -1445,6 +1716,10 @@ public class SearchRepository {
       searchClient.softDeleteOrRestoreEntity(
           indexMapping.getIndexName(clusterAlias), entityId, scriptTxt);
       softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
+
+      if (Entity.TABLE.equals(entityType)) {
+        softDeleteOrRestoreTableColumns((Table) entity, delete);
+      }
     } catch (Exception ie) {
       LOG.error(
           "Issue in Soft Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
@@ -1453,6 +1728,26 @@ public class SearchRepository {
           ie.getMessage(),
           ie.getCause(),
           ExceptionUtils.getStackTrace(ie));
+    }
+  }
+
+  private void softDeleteOrRestoreTableColumns(Table table, boolean delete) {
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      return;
+    }
+
+    String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
+    try {
+      searchClient.updateChildren(
+          List.of(columnIndexMapping.getIndexName(clusterAlias)),
+          new ImmutablePair<>("table.id", table.getId().toString()),
+          new ImmutablePair<>(scriptTxt, null));
+    } catch (Exception e) {
+      LOG.error(
+          "Issue soft deleting/restoring columns for table [{}]: {}",
+          table.getFullyQualifiedName(),
+          e.getMessage());
     }
   }
 

@@ -19,6 +19,7 @@ import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as IconAPICollection } from '../assets/svg/ic-api-collection-default.svg';
 import { ReactComponent as IconAPIEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
 import { ReactComponent as IconAPIService } from '../assets/svg/ic-api-service-default.svg';
+import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
@@ -39,6 +40,7 @@ import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.i
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
   API_ENDPOINT_DROPDOWN_ITEMS,
+  COLUMN_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
   CONTAINER_DROPDOWN_ITEMS,
   DASHBOARD_DATA_MODEL_TYPE,
@@ -54,6 +56,7 @@ import {
   TOPIC_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import {
+  columnSortingFields,
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
@@ -68,7 +71,10 @@ import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { TestSuite } from '../generated/tests/testCase';
-import { SearchSourceAlias } from '../interface/search.interface';
+import {
+  SearchSourceAlias,
+  TableSearchSource,
+} from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   getEntityBreadcrumbs,
@@ -121,6 +127,7 @@ class SearchClassBase {
       [EntityType.FILE]: SearchIndex.FILE_SEARCH_INDEX,
       [EntityType.SPREADSHEET]: SearchIndex.SPREADSHEET_SEARCH_INDEX,
       [EntityType.WORKSHEET]: SearchIndex.WORKSHEET_SEARCH_INDEX,
+      [EntityType.TABLE_COLUMN]: SearchIndex.COLUMN,
     };
   }
 
@@ -166,6 +173,7 @@ class SearchClassBase {
       [SearchIndex.FILE_SEARCH_INDEX]: EntityType.FILE,
       [SearchIndex.SPREADSHEET_SEARCH_INDEX]: EntityType.SPREADSHEET,
       [SearchIndex.WORKSHEET_SEARCH_INDEX]: EntityType.WORKSHEET,
+      [SearchIndex.COLUMN]: EntityType.TABLE_COLUMN,
     };
   }
 
@@ -178,6 +186,7 @@ class SearchClassBase {
         label: t('label.database-schema'),
       },
       { value: SearchIndex.TABLE, label: t('label.table') },
+      { value: SearchIndex.COLUMN, label: t('label.column') },
       { value: SearchIndex.TOPIC, label: t('label.topic') },
       { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
       { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
@@ -238,6 +247,7 @@ class SearchClassBase {
             EntityType.DATABASE_SCHEMA,
             EntityType.STORED_PROCEDURE,
             EntityType.TABLE,
+            EntityType.TABLE_COLUMN,
           ],
         },
         icon: DatabaseIcon,
@@ -380,6 +390,7 @@ class SearchClassBase {
   public getExploreTreeKey(tab: ExplorePageTabs) {
     const tabMapping: Record<string, SearchIndex[]> = {
       [ExplorePageTabs.TABLES]: [SearchIndex.DATABASE],
+      [ExplorePageTabs.COLUMNS]: [SearchIndex.DATABASE],
       [ExplorePageTabs.DASHBOARDS]: [SearchIndex.DASHBOARD],
       [ExplorePageTabs.TOPICS]: [SearchIndex.TOPIC],
       [ExplorePageTabs.CONTAINERS]: [SearchIndex.CONTAINER],
@@ -405,6 +416,13 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.TABLES,
         icon: TableIcon,
+      },
+      [SearchIndex.COLUMN]: {
+        label: t('label.column-plural'),
+        sortingFields: columnSortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: ExplorePageTabs.COLUMNS,
+        icon: ColumnIcon,
       },
       [SearchIndex.STORED_PROCEDURE]: {
         label: t('label.stored-procedure-plural'),
@@ -587,6 +605,8 @@ class SearchClassBase {
         return TAG_DROPDOWN_ITEMS;
       case SearchIndex.DATA_PRODUCT:
         return DATA_PRODUCT_DROPDOWN_ITEMS;
+      case SearchIndex.COLUMN:
+        return COLUMN_DROPDOWN_ITEMS;
       case SearchIndex.STORED_PROCEDURE:
       case SearchIndex.DATABASE:
       case SearchIndex.DATABASE_SCHEMA:
@@ -614,7 +634,7 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {
-    return [EntityType.TEST_CASE, EntityType.DOMAIN];
+    return [EntityType.TEST_CASE, EntityType.DOMAIN, EntityType.TABLE_COLUMN];
   }
 
   public getEntityBreadcrumbs(
@@ -637,6 +657,18 @@ class SearchClassBase {
 
     if (entity.entityType === EntityType.CHART) {
       return getChartDetailsPath(entity.fullyQualifiedName ?? '');
+    }
+
+    if (entity.entityType === EntityType.TABLE_COLUMN) {
+      const columnEntity = entity as TableSearchSource;
+      if (columnEntity?.fullyQualifiedName) {
+        const tablePath = getEntityLinkFromType(
+          columnEntity.fullyQualifiedName,
+          EntityType.TABLE
+        );
+
+        return tablePath;
+      }
     }
 
     if (entity.fullyQualifiedName && entity.entityType) {

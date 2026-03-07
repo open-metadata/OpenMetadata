@@ -91,6 +91,7 @@ export enum ResourceEntity {
   WORKSHEET = 'worksheet',
   NOTIFICATION_TEMPLATE = 'notificationTemplate',
   AUDIT_LOG = 'auditLog',
+  TABLE_COLUMN = 'tableColumn',
   DATA_CONTRACT = 'dataContract',
 }
 

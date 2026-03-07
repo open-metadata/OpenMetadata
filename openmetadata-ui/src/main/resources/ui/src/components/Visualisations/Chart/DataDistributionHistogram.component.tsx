@@ -115,14 +115,16 @@ const DataDistributionHistogram = ({
                 color="gray"
                 data-testid="date"
                 size="lg"
-                type="color">
+                type="color"
+              >
                 {graphDate}
               </Badge>
               <Badge
                 className="tw:font-semibold"
                 color={skewColor}
                 size="lg"
-                type="color">
+                type="color"
+              >
                 {`${t('label.skew')}: ${
                   columnProfile?.nonParametricSkew || '--'
                 }`}
@@ -133,10 +135,12 @@ const DataDistributionHistogram = ({
                 debounce={200}
                 height="100%"
                 id={`${key}-histogram`}
-                width="100%">
+                width="100%"
+              >
                 <BarChart
                   data={graphData}
-                  margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                  margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                >
                   <CartesianGrid
                     horizontal={renderHorizontalGridLine}
                     stroke={GRAPH_BACKGROUND_COLOR}

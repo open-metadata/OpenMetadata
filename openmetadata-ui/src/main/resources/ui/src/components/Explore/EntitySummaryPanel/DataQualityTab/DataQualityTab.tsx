@@ -71,7 +71,8 @@ const DetailItem: React.FC<DetailItemProps> = ({
   showDottedBorder = false,
 }) => (
   <div
-    className={`test-case-detail-item ${showDottedBorder ? 'dotted-row' : ''}`}>
+    className={`test-case-detail-item ${showDottedBorder ? 'dotted-row' : ''}`}
+  >
     <Typography.Text className="detail-label">{label}</Typography.Text>
     <div className="detail-value">{value}</div>
   </div>
@@ -217,14 +218,16 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
     <Card
       bordered={false}
       className="test-case-card"
-      style={{ borderRadius: '0px' }}>
+      style={{ borderRadius: '0px' }}
+    >
       <div className="test-case-card-content">
         <div className="test-case-header">
           <div className="test-case-title-section">
             <Link
               className="test-case-name"
               data-testid={`test-case-${testCaseName}`}
-              to={getTestCaseDetailPagePath(testCase.fullyQualifiedName ?? '')}>
+              to={getTestCaseDetailPagePath(testCase.fullyQualifiedName ?? '')}
+            >
               {testCaseName}
             </Link>
           </div>
@@ -671,7 +674,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <ErrorPlaceHolderNew
           className="text-grey-14 m-t-lg"
           icon={<AddPlaceHolderIcon height={100} width={100} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+        >
           <Typography.Paragraph className="text-center p-x-md  no-data-placeholder">
             {t('message.no-data-quality-test-message')}
           </Typography.Paragraph>
@@ -728,7 +732,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           <ErrorPlaceHolderNew
             className="text-grey-14"
             icon={<AddPlaceHolderIcon height={100} width={100} />}
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+          >
             <Typography.Paragraph className="text-center p-x-md  no-data-placeholder">
               {t('message.no-data-quality-test-message')}
             </Typography.Paragraph>
@@ -746,7 +751,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 activeIncidentFilter === 'new' ? 'active' : ''
               }`}
               type="button"
-              onClick={() => handleIncidentFilterChange('new')}>
+              onClick={() => handleIncidentFilterChange('new')}
+            >
               <Typography.Text className="stat-count new">
                 {incidentCounts.new}
               </Typography.Text>
@@ -760,7 +766,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 activeIncidentFilter === 'ack' ? 'active' : ''
               }`}
               type="button"
-              onClick={() => handleIncidentFilterChange('ack')}>
+              onClick={() => handleIncidentFilterChange('ack')}
+            >
               <Typography.Text className="stat-count ack">
                 {incidentCounts.ack}
               </Typography.Text>
@@ -774,7 +781,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 activeIncidentFilter === 'assigned' ? 'active' : ''
               }`}
               type="button"
-              onClick={() => handleIncidentFilterChange('assigned')}>
+              onClick={() => handleIncidentFilterChange('assigned')}
+            >
               <Typography.Text className="stat-count assigned">
                 {incidentCounts.assigned}
               </Typography.Text>
@@ -789,7 +797,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 active: activeIncidentFilter === 'resolved',
               })}
               type="button"
-              onClick={() => handleIncidentFilterChange('resolved')}>
+              onClick={() => handleIncidentFilterChange('resolved')}
+            >
               <Typography.Text className="resolved-label">
                 {t('label.-with-colon', { text: t('label.resolved') })}
               </Typography.Text>
@@ -825,12 +834,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <span
           className={`tab-header-container ${
             activeTab === 'data-quality' ? 'active' : ''
-          }`}>
+          }`}
+        >
           {t('label.data-quality')}
           <span
             className={`data-quality-tab-count ${
               activeTab === 'data-quality' ? 'active' : ''
-            }`}>
+            }`}
+          >
             {statusCounts.total}
           </span>
         </span>
@@ -843,13 +854,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <span
           className={`tab-header-container ${
             activeTab === 'incidents' ? 'active' : ''
-          }`}>
+          }`}
+        >
           {t('label.incident-plural')}
 
           <span
             className={`data-quality-tab-count ${
               activeTab === 'incidents' ? 'active' : ''
-            }`}>
+            }`}
+          >
             {incidentCounts.total}
           </span>
         </span>
@@ -863,7 +876,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       <div className="lineage-items-list">
         <ErrorPlaceHolderNew
           className="text-grey-14 permission-error-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}>
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        >
           <Transi18next
             i18nKey="message.no-access-placeholder"
             renderElement={<span />}

@@ -19,6 +19,7 @@ export enum QueryFilterFieldsEnum {
 
 export enum ExplorePageTabs {
   TABLES = 'tables',
+  COLUMNS = 'columns',
   TOPICS = 'topics',
   DASHBOARDS = 'dashboards',
   PIPELINES = 'pipelines',

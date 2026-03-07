@@ -87,7 +87,8 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         render: (_, record) => (
           <Link
             className="link-hover"
-            to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
+            to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}
+          >
             {stringToHTML(
               highlightSearchText(getEntityName(record), searchTerm)
             )}
@@ -279,7 +280,8 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
               <Button
                 data-testid="add-team"
                 type="primary"
-                onClick={handleAddTeamButtonClick}>
+                onClick={handleAddTeamButtonClick}
+              >
                 {t('label.add-entity', { entity: t('label.team') })}
               </Button>
             )}
@@ -308,7 +310,8 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         open={isModalOpen}
         title={t('label.move-the-entity', { entity: t('label.team') })}
         onCancel={onDragConfirmationModalClose}
-        onOk={handleChangeTeam}>
+        onOk={handleChangeTeam}
+      >
         <Transi18next
           i18nKey="message.entity-transfer-message"
           renderElement={<strong />}

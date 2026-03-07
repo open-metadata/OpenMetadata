@@ -220,7 +220,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   return (
     <div
       className="tw:mb-lg tw:flex tw:flex-col tw:gap-8"
-      data-testid="profiler-tab-container">
+      data-testid="profiler-tab-container"
+    >
       {selectedColumn && (
         <div className="tw:grid tw:grid-cols-24 tw:gap-5">
           <div className="tw:col-span-14">
@@ -239,7 +240,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                   <PieChart
                     className="dq-pie-chart-container"
                     height={160}
-                    width={160}>
+                    width={160}
+                  >
                     <Pie
                       cx="50%"
                       cy="50%"
@@ -252,7 +254,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       paddingAngle={0}
                       // to hide tooltip when there is no data
                       pointerEvents="none"
-                      startAngle={90}>
+                      startAngle={90}
+                    >
                       <Cell fill={GREY_200} />
                     </Pie>
                     <Pie
@@ -267,7 +270,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       paddingAngle={0}
                       // to hide tooltip when there is no data
                       pointerEvents="none"
-                      startAngle={90}>
+                      startAngle={90}
+                    >
                       <Cell fill={GREY_200} />
                     </Pie>
                     <Pie
@@ -279,7 +283,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       innerRadius={50}
                       outerRadius={70}
                       paddingAngle={0}
-                      startAngle={90}>
+                      startAngle={90}
+                    >
                       {columnTestData.map((entry, index) => (
                         <Cell fill={entry.color} key={`cell-${index}`} />
                       ))}
@@ -290,7 +295,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       dominantBaseline="middle"
                       textAnchor="middle"
                       x="50%"
-                      y="42%">
+                      y="42%"
+                    >
                       {activeColumnTests?.total ?? 0}
                     </text>
                     <text
@@ -298,7 +304,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                       dominantBaseline="middle"
                       textAnchor="middle"
                       x="50%"
-                      y="55%">
+                      y="55%"
+                    >
                       {t('label.total-test-plural')}
                     </text>
                   </PieChart>
@@ -309,14 +316,16 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                     {columnTestData.map((item) => (
                       <div
                         className="tw:mb-1 tw:flex tw:items-center tw:justify-between"
-                        key={item.name}>
+                        key={item.name}
+                      >
                         <span
                           className="tw:text-[13px] tw:text-secondary"
                           style={{
                             borderLeft: `4px solid ${item.color}`,
                             paddingLeft: '8px',
                             lineHeight: '10px',
-                          }}>
+                          }}
+                        >
                           {item.name}
                         </span>
                         <span className="tw:text-[13px] tw:font-medium tw:text-primary">
@@ -375,7 +384,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         <ProfilerStateWrapper
           dataTestId="histogram-metrics"
           isLoading={isLoading}
-          title={t('label.data-distribution')}>
+          title={t('label.data-distribution')}
+        >
           <DataDistributionHistogram
             data={{
               firstDayData: firstDay,
@@ -390,7 +400,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         <ProfilerStateWrapper
           dataTestId="cardinality-distribution-metrics"
           isLoading={isLoading}
-          title={t('label.cardinality')}>
+          title={t('label.cardinality')}
+        >
           <CardinalityDistributionChart
             data={{
               firstDayData: firstDay,

@@ -20,6 +20,11 @@ export const mockEntitySearchSettings = {
   url: 'settings/preferences/search-settings/tables',
 };
 
+export const mockColumnSearchSettings = {
+  key: 'preferences.search-settings.tableColumn',
+  url: 'settings/preferences/search-settings/tableColumn',
+};
+
 export const mockEntitySearchConfig = {
   assetType: 'table',
   searchFields: [
@@ -62,15 +67,15 @@ export const mockEntitySearchConfig = {
   fieldValueBoosts: [
     {
       field: 'usageSummary.monthlyStats.count',
-      factor: 3.0,
+      factor: 3,
       modifier: 'log1p',
-      missing: 0.0,
+      missing: 0,
     },
     {
       field: 'usageSummary.monthlyStats.percentileRank',
-      factor: 1.0,
+      factor: 1,
       modifier: 'none',
-      missing: 0.0,
+      missing: 0,
     },
   ],
   scoreMode: 'sum',

@@ -566,7 +566,8 @@ const IncidentManager = ({
               data-testid={`test-case-${record.testCaseReference?.name}`}
               to={getTestCaseDetailPagePath(
                 record.testCaseReference?.fullyQualifiedName ?? ''
-              )}>
+              )}
+            >
               {getEntityName(record.testCaseReference)}
             </Link>
           );
@@ -600,7 +601,8 @@ const IncidentManager = ({
                       EntityTabs.PROFILER,
                       ProfilerTabPath.DATA_QUALITY
                     )}
-                    onClick={(e) => e.stopPropagation()}>
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {getNameFromFQN(tableFqn) ?? value.fullyQualifiedName}
                   </Link>
                 );
@@ -739,7 +741,8 @@ const IncidentManager = ({
               value={filters.testCaseResolutionStatusType}
               onChange={(value) =>
                 updateFilters({ testCaseResolutionStatusType: value })
-              }>
+              }
+            >
               {Object.values(TestCaseResolutionStatusTypes).map((value) => (
                 <Select.Option key={value}>
                   {TEST_CASE_RESOLUTION_STATUS_LABELS[value]}

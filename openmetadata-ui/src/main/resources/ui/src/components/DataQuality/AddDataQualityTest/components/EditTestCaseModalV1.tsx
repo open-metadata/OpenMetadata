@@ -161,7 +161,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
     if (selectedDefinition?.parameterDefinition) {
       return (
         <div
-          onClick={() => handleActiveField(`root/${selectedDefinition.name}`)}>
+          onClick={() => handleActiveField(`root/${selectedDefinition.name}`)}
+        >
           <ParameterForm definition={selectedDefinition} table={table} />
         </div>
       );
@@ -452,7 +453,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
           onClick={() => {
             form.resetFields();
             onCancel();
-          }}>
+          }}
+        >
           {t('label.cancel')}
         </Button>
         <Button
@@ -460,7 +462,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
           htmlType="submit"
           loading={isLoadingOnSave}
           type="primary"
-          onClick={() => form.submit()}>
+          onClick={() => form.submit()}
+        >
           {t('label.update')}
         </Button>
       </Space>
@@ -471,7 +474,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
   const formContent = (
     <EntityAttachmentProvider
       entityFqn={testCase?.fullyQualifiedName}
-      entityType={EntityType.TEST_CASE}>
+      entityType={EntityType.TEST_CASE}
+    >
       {isLoading ? (
         <Loader />
       ) : (
@@ -496,7 +500,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
             name="tableTestForm"
             onFinish={handleFormSubmit}
             onFinishFailed={scrollToError}
-            onFocus={handleFieldFocus}>
+            onFocus={handleFieldFocus}
+          >
             {!showOnlyParameter && (
               <Card className="form-card-section">
                 <Form.Item required label={t('label.table')} name="table">
@@ -510,7 +515,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
                 {isColumn && (
                   <Form.Item
                     label={t('label.dimension-plural')}
-                    name="dimensionColumns">
+                    name="dimensionColumns"
+                  >
                     <Select
                       getPopupContainer={getPopupContainer}
                       id="root/dimensionColumns"
@@ -522,7 +528,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
                 {isColumn && (
                   <Form.Item
                     label={t('label.top-dimension-plural')}
-                    name="topDimensions">
+                    name="topDimensions"
+                  >
                     <InputNumber
                       className="w-full"
                       id="root/topDimensions"
@@ -540,7 +547,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
                 label={t('label.test-entity', {
                   entity: t('label.type'),
                 })}
-                name="testDefinition">
+                name="testDefinition"
+              >
                 <Input
                   disabled
                   id={`root/${selectedDefinition?.name}`}
@@ -561,7 +569,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
                     prevValues['useDynamicAssertion'],
                     currentValues['useDynamicAssertion']
                   );
-                }}>
+                }}
+              >
                 {({ getFieldValue }) =>
                   getFieldValue('useDynamicAssertion') ? null : paramsField
                 }
@@ -581,7 +590,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
                       pattern: ENTITY_NAME_REGEX,
                       message: t('message.entity-name-validation'),
                     },
-                  ]}>
+                  ]}
+                >
                   <Input
                     disabled
                     id="root/name"
@@ -637,7 +647,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
       onClose={() => {
         form.resetFields();
         onCancel();
-      }}>
+      }}
+    >
       <div className="drawer-content-wrapper">
         <div className="drawer-form-content">{formContent}</div>
         <div className="drawer-doc-panel service-doc-panel markdown-parser">

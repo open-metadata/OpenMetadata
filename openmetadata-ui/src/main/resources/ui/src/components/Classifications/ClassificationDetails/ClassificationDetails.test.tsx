@@ -59,7 +59,8 @@ jest.mock('../../common/EntityDescription/DescriptionV1', () =>
     <div data-testid="description-container">
       <button
         data-testid="edit-description"
-        onClick={() => onDescriptionUpdate?.('Updated description')}>
+        onClick={() => onDescriptionUpdate?.('Updated description')}
+      >
         Edit Description
       </button>
     </div>
@@ -75,7 +76,8 @@ jest.mock('../../common/EntityPageInfos/ManageButton/ManageButton', () =>
           data-testid="edit-display-name"
           onClick={() =>
             onEditDisplayName?.({ name: 'test', displayName: 'New Display' })
-          }>
+          }
+        >
           Edit Display Name
         </button>
         {extraDropdownContent?.map(
@@ -83,7 +85,8 @@ jest.mock('../../common/EntityPageInfos/ManageButton/ManageButton', () =>
             <button
               data-testid={item.key}
               key={item.key}
-              onClick={item.onClick}>
+              onClick={item.onClick}
+            >
               {item.key}
             </button>
           )
