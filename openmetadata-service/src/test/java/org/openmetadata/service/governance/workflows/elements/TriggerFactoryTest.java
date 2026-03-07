@@ -27,8 +27,6 @@ import org.flowable.bpmn.model.Process;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.Config__8;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkConfig;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
@@ -308,40 +306,47 @@ class TriggerFactoryTest {
   }
 
   private SinkTaskDefinition createSinkTask(String name, boolean batchMode) {
-    SinkTaskDefinition sinkTask = new SinkTaskDefinition();
-    sinkTask.setName(name);
-
-    Config__8 config = new Config__8();
-    config.setSinkType(Config__8.SinkType.GIT);
-    config.setSyncMode(Config__8.SyncMode.OVERWRITE);
-    config.setOutputFormat(Config__8.OutputFormat.YAML);
-    config.setBatchMode(batchMode);
-    config.setTimeoutSeconds(300);
-
-    SinkConfig sinkConfig = new SinkConfig();
-    sinkConfig.setAdditionalProperty("repositoryUrl", "https://github.com/org/repo.git");
-    config.setSinkConfig(sinkConfig);
-
-    sinkTask.setConfig(config);
-    return sinkTask;
+    String sinkTaskJson =
+        """
+        {
+          "name": "%s",
+          "type": "automatedTask",
+          "subType": "sinkTask",
+          "config": {
+            "sinkType": "git",
+            "syncMode": "overwrite",
+            "outputFormat": "yaml",
+            "batchMode": %s,
+            "timeoutSeconds": 300,
+            "sinkConfig": {
+              "repositoryUrl": "https://github.com/org/repo.git"
+            }
+          }
+        }
+        """
+            .formatted(name, batchMode);
+    return JsonUtils.readValue(sinkTaskJson, SinkTaskDefinition.class);
   }
 
   private SinkTaskDefinition createSinkTaskWithoutBatchMode(String name) {
-    SinkTaskDefinition sinkTask = new SinkTaskDefinition();
-    sinkTask.setName(name);
-
-    Config__8 config = new Config__8();
-    config.setSinkType(Config__8.SinkType.GIT);
-    config.setSyncMode(Config__8.SyncMode.OVERWRITE);
-    config.setOutputFormat(Config__8.OutputFormat.YAML);
-    // Note: batchMode is NOT set, should default to true per schema
-    config.setTimeoutSeconds(300);
-
-    SinkConfig sinkConfig = new SinkConfig();
-    sinkConfig.setAdditionalProperty("repositoryUrl", "https://github.com/org/repo.git");
-    config.setSinkConfig(sinkConfig);
-
-    sinkTask.setConfig(config);
-    return sinkTask;
+    String sinkTaskJson =
+        """
+        {
+          "name": "%s",
+          "type": "automatedTask",
+          "subType": "sinkTask",
+          "config": {
+            "sinkType": "git",
+            "syncMode": "overwrite",
+            "outputFormat": "yaml",
+            "timeoutSeconds": 300,
+            "sinkConfig": {
+              "repositoryUrl": "https://github.com/org/repo.git"
+            }
+          }
+        }
+        """
+            .formatted(name);
+    return JsonUtils.readValue(sinkTaskJson, SinkTaskDefinition.class);
   }
 }

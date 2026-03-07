@@ -19,7 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 
-import java.util.List;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.FlowElement;
@@ -28,12 +27,8 @@ import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.SubProcess;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.Config__8;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.EntityFilter;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.HierarchyConfig;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.InputNamespaceMap__8;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkConfig;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SinkTask;
 
 class SinkTaskTest {
@@ -296,22 +291,25 @@ class SinkTaskTest {
 
   @Test
   void testEntityListDefaultsToGlobalNamespace() {
-    SinkTaskDefinition definition = new SinkTaskDefinition();
-    definition.setName("noNamespaceMapSink");
-
-    Config__8 taskConfig = new Config__8();
-    taskConfig.setSinkType(Config__8.SinkType.GIT);
-    taskConfig.setSyncMode(Config__8.SyncMode.OVERWRITE);
-    taskConfig.setOutputFormat(Config__8.OutputFormat.YAML);
-    taskConfig.setBatchMode(true);
-    taskConfig.setTimeoutSeconds(300);
-
-    SinkConfig sinkConfig = new SinkConfig();
-    sinkConfig.setAdditionalProperty("repositoryUrl", "https://github.com/org/repo.git");
-    taskConfig.setSinkConfig(sinkConfig);
-
-    definition.setConfig(taskConfig);
-    // Note: No inputNamespaceMap set
+    String sinkTaskJson =
+        """
+        {
+          "name": "noNamespaceMapSink",
+          "type": "automatedTask",
+          "subType": "sinkTask",
+          "config": {
+            "sinkType": "git",
+            "syncMode": "overwrite",
+            "outputFormat": "yaml",
+            "batchMode": true,
+            "timeoutSeconds": 300,
+            "sinkConfig": {
+              "repositoryUrl": "https://github.com/org/repo.git"
+            }
+          }
+        }
+        """;
+    SinkTaskDefinition definition = JsonUtils.readValue(sinkTaskJson, SinkTaskDefinition.class);
 
     WorkflowConfiguration config = createWorkflowConfiguration(false);
     SinkTask sinkTask = new SinkTask(definition, config);
@@ -350,68 +348,66 @@ class SinkTaskTest {
   }
 
   private SinkTaskDefinition createSinkTaskDefinition(String name, String sinkType) {
-    SinkTaskDefinition definition = new SinkTaskDefinition();
-    definition.setName(name);
-
-    Config__8 taskConfig = new Config__8();
-    taskConfig.setSinkType(Config__8.SinkType.fromValue(sinkType));
-    taskConfig.setSyncMode(Config__8.SyncMode.OVERWRITE);
-    taskConfig.setOutputFormat(Config__8.OutputFormat.YAML);
-    taskConfig.setBatchMode(true);
-    taskConfig.setTimeoutSeconds(300);
-
-    SinkConfig sinkConfig = new SinkConfig();
-    sinkConfig.setAdditionalProperty("endpoint", "https://example.com/webhook");
-    taskConfig.setSinkConfig(sinkConfig);
-
-    definition.setConfig(taskConfig);
-
-    InputNamespaceMap__8 namespaceMap = new InputNamespaceMap__8();
-    namespaceMap.setRelatedEntity("global");
-    definition.setInputNamespaceMap(namespaceMap);
-
-    return definition;
+    String sinkTaskJson =
+        """
+        {
+          "name": "%s",
+          "type": "automatedTask",
+          "subType": "sinkTask",
+          "config": {
+            "sinkType": "%s",
+            "syncMode": "overwrite",
+            "outputFormat": "yaml",
+            "batchMode": true,
+            "timeoutSeconds": 300,
+            "sinkConfig": {
+              "endpoint": "https://example.com/webhook"
+            }
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        }
+        """
+            .formatted(name, sinkType);
+    return JsonUtils.readValue(sinkTaskJson, SinkTaskDefinition.class);
   }
 
   private SinkTaskDefinition createFullSinkTaskDefinition() {
-    SinkTaskDefinition definition = new SinkTaskDefinition();
-    definition.setName("fullConfigSink");
-    definition.setDisplayName("Full Config Sink Task");
-    definition.setDescription("A sink task with all configuration options");
-
-    Config__8 taskConfig = new Config__8();
-    taskConfig.setSinkType(Config__8.SinkType.GIT);
-    taskConfig.setSyncMode(Config__8.SyncMode.OVERWRITE);
-    taskConfig.setOutputFormat(Config__8.OutputFormat.YAML);
-    taskConfig.setBatchMode(true);
-    taskConfig.setTimeoutSeconds(600);
-
-    // Git sink config using additionalProperties
-    SinkConfig sinkConfig = new SinkConfig();
-    sinkConfig.setAdditionalProperty("repositoryUrl", "https://github.com/org/repo.git");
-    sinkConfig.setAdditionalProperty("branch", "main");
-    sinkConfig.setAdditionalProperty("basePath", "metadata");
-    taskConfig.setSinkConfig(sinkConfig);
-
-    // Entity filter
-    EntityFilter entityFilter = new EntityFilter();
-    entityFilter.setEntityTypes(List.of("table", "dashboard"));
-    entityFilter.setDomains(List.of("marketing"));
-    taskConfig.setEntityFilter(entityFilter);
-
-    // Hierarchy config
-    HierarchyConfig hierarchyConfig = new HierarchyConfig();
-    hierarchyConfig.setPreserveHierarchy(true);
-    hierarchyConfig.setRootPath("metadata");
-    taskConfig.setHierarchyConfig(hierarchyConfig);
-
-    definition.setConfig(taskConfig);
-
-    InputNamespaceMap__8 namespaceMap = new InputNamespaceMap__8();
-    namespaceMap.setRelatedEntity("global");
-    definition.setInputNamespaceMap(namespaceMap);
-
-    return definition;
+    String fullSinkTaskJson =
+        """
+        {
+          "name": "fullConfigSink",
+          "displayName": "Full Config Sink Task",
+          "description": "A sink task with all configuration options",
+          "type": "automatedTask",
+          "subType": "sinkTask",
+          "config": {
+            "sinkType": "git",
+            "syncMode": "overwrite",
+            "outputFormat": "yaml",
+            "batchMode": true,
+            "timeoutSeconds": 600,
+            "sinkConfig": {
+              "repositoryUrl": "https://github.com/org/repo.git",
+              "branch": "main",
+              "basePath": "metadata"
+            },
+            "entityFilter": {
+              "entityTypes": ["table", "dashboard"],
+              "domains": ["marketing"]
+            },
+            "hierarchyConfig": {
+              "preserveHierarchy": true,
+              "rootPath": "metadata"
+            }
+          },
+          "inputNamespaceMap": {
+            "relatedEntity": "global"
+          }
+        }
+        """;
+    return JsonUtils.readValue(fullSinkTaskJson, SinkTaskDefinition.class);
   }
 
   private WorkflowConfiguration createWorkflowConfiguration(boolean storeStageStatus) {

@@ -46,6 +46,11 @@ export interface TriggerConfiguration {
      * (applied to all entity types) or an object mapping entity types to their specific filters.
      */
     filter?: FilterConditionObject | string;
+    /**
+     * Map of fields to their required values/patterns that must match to trigger the workflow.
+     * Takes priority over exclude fields. Field values use substring matching.
+     */
+    include?: { [key: string]: string[] };
 }
 
 /**
