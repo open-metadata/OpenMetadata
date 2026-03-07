@@ -1017,6 +1017,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
+    eph.addErrorPage(Response.Status.FORBIDDEN.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);
   }
 

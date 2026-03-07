@@ -523,17 +523,40 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private Optional<OidcCredentials> getUserCredentialsFromSession(HttpSession session) {
     OidcCredentials credentials = (OidcCredentials) session.getAttribute(OIDC_CREDENTIAL_PROFILE);
-    if (credentials != null && credentials.getRefreshToken() != null) {
-      LOG.trace("Credentials found in session: {}", credentials);
+    if (credentials == null) {
+      LOG.error("No credentials found against session. ID: {}", session.getId());
+      return Optional.empty();
+    }
+
+    if (credentials.getRefreshToken() != null) {
+      LOG.trace("Credentials found in session with refresh token: {}", session.getId());
       renewOidcCredentials(session, credentials);
       return Optional.of(credentials);
-    } else {
-      if (credentials == null) {
-        LOG.error("No credentials found against session. ID: {}", session.getId());
-      } else {
-        LOG.error("No refresh token found against session. ID: {}", session.getId());
-      }
     }
+
+    // No refresh token available (e.g., Azure Workload Identity Federation flows that do not
+    // issue refresh tokens). Return the existing credentials if the idToken is still valid.
+    LOG.debug(
+        "No refresh token for session {}. Checking if idToken is still valid (Workload Identity Federation / non-offline-access flow).",
+        session.getId());
+    try {
+      if (credentials.getIdToken() != null) {
+        Date expirationTime = credentials.getIdToken().getJWTClaimsSet().getExpirationTime();
+        if (expirationTime != null && expirationTime.after(new Date())) {
+          LOG.debug("idToken is still valid for session {}", session.getId());
+          return Optional.of(credentials);
+        }
+        LOG.debug(
+            "idToken is expired for session {} (expiry: {})", session.getId(), expirationTime);
+      }
+    } catch (ParseException e) {
+      LOG.warn(
+          "Failed to parse idToken claims for session {}: {}", session.getId(), e.getMessage());
+    }
+
+    LOG.error(
+        "No refresh token and idToken is expired or unreadable for session. ID: {}",
+        session.getId());
     return Optional.empty();
   }
 
