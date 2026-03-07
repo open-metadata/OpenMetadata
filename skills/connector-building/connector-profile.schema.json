@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConnectorProfile",
+  "description": "Profile for scaffolding a new OpenMetadata connector",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Connector name in snake_case"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Human-readable display name"
+    },
+    "service_type": {
+      "type": "string",
+      "enum": ["database", "dashboard", "pipeline", "messaging", "mlmodel", "storage", "search", "api"]
+    },
+    "connection_type": {
+      "type": "string",
+      "enum": ["sqlalchemy", "rest_api", "sdk_client"],
+      "default": "rest_api"
+    },
+    "scheme": {
+      "type": "string",
+      "description": "SQLAlchemy connection scheme (database/sqlalchemy only)"
+    },
+    "default_port": {
+      "type": "integer",
+      "description": "Default port number"
+    },
+    "auth_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["basic", "iam", "azure", "jwt", "token", "oauth"]
+      },
+      "default": ["basic"]
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["metadata", "lineage", "usage", "profiler", "stored_procedures", "data_diff"]
+      },
+      "default": ["metadata"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description of the data source"
+    },
+    "docs_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to API/SDK documentation"
+    },
+    "sdk_package": {
+      "type": "string",
+      "description": "Python SDK package name (PyPI)"
+    },
+    "api_endpoints": {
+      "type": "string",
+      "description": "Key API endpoints"
+    },
+    "docs_notes": {
+      "type": "string",
+      "description": "Additional notes about auth quirks, pagination, rate limits, etc."
+    },
+    "docker_image": {
+      "type": "string",
+      "description": "Docker image for integration tests (e.g. 'metabase/metabase:latest')"
+    },
+    "docker_port": {
+      "type": "integer",
+      "description": "Container port to expose for integration tests (e.g. 3000)"
+    }
+  },
+  "required": ["name", "service_type"],
+  "additionalProperties": false
+}
