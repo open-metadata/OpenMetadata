@@ -170,7 +170,8 @@ public class DataRetention extends AbstractNativeApplication {
         "Starting cleanup for audit logs with retention period: {} days.", auditLogRetentionPeriod);
     cleanAuditLogs(auditLogRetentionPeriod);
 
-    int reverseIngestionWorkflowRetentionPeriod = config.getReverseIngestionWorkflowRetentionPeriod();
+    int reverseIngestionWorkflowRetentionPeriod =
+        config.getReverseIngestionWorkflowRetentionPeriod();
     LOG.info(
         "Starting cleanup for reverse ingestion workflows with retention period: {} days.",
         reverseIngestionWorkflowRetentionPeriod);
