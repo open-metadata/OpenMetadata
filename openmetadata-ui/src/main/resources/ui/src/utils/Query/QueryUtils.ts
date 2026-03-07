@@ -43,12 +43,17 @@ export const createQueryFilter = ({
   const ownerFilter = owners?.length
     ? [
         {
-          bool: {
-            should: owners.map((data) => ({
-              term: {
-                'owners.name': data.key,
+          nested: {
+            path: 'owners',
+            query: {
+              bool: {
+                should: owners.map((data) => ({
+                  term: {
+                    'owners.name': data.key,
+                  },
+                })),
               },
-            })),
+            },
           },
         },
       ]

@@ -41,7 +41,7 @@ describe('Explore Utils', () => {
       },
       {
         label: 'Owner',
-        key: 'owners.displayName.keyword',
+        key: 'ownerDisplayName',
         value: [],
       },
       {
@@ -94,19 +94,19 @@ describe('Explore Utils', () => {
           bool: {
             must_not: {
               exists: {
-                field: 'owners.displayName.keyword',
+                field: 'ownerDisplayName',
               },
             },
           },
         },
         {
           term: {
-            'owners.displayName.keyword': 'accounting',
+            ownerDisplayName: 'accounting',
           },
         },
       ];
       const result = extractTermKeys(objects);
-      const expectedKeys = ['owners.displayName.keyword'];
+      const expectedKeys = ['ownerDisplayName'];
 
       expect(result).toEqual(expectedKeys);
     });
@@ -135,7 +135,7 @@ describe('Explore Utils', () => {
       },
       {
         label: 'Owner',
-        key: 'owners.displayName.keyword',
+        key: 'ownerDisplayName',
       },
       {
         label: 'Tag',
@@ -154,14 +154,14 @@ describe('Explore Utils', () => {
                     bool: {
                       must_not: {
                         exists: {
-                          field: 'owners.displayName.keyword',
+                          field: 'ownerDisplayName',
                         },
                       },
                     },
                   },
                   {
                     term: {
-                      'owners.displayName.keyword': 'accounting',
+                      ownerDisplayName: 'accounting',
                     },
                   },
                 ],

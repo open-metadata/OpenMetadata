@@ -163,6 +163,7 @@
         "type": "text"
       },
       "owners": {
+        "type": "nested",
         "properties": {
           "id": {
             "type": "keyword",
@@ -573,6 +574,29 @@
             "format": "strict_date_optional_time||epoch_millis"
           }
         }
+      },
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
+      },
+      "ownerDisplayName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "ownerName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       }
     }
   }

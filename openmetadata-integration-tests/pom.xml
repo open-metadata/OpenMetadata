@@ -196,6 +196,7 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -228,6 +229,7 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -278,6 +280,7 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -310,6 +313,7 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -360,6 +364,7 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -392,6 +397,7 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
@@ -442,6 +448,7 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -474,6 +481,7 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
@@ -524,6 +532,7 @@
                   <includes>
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/VectorEmbeddingIntegrationIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
@@ -558,6 +567,7 @@
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>

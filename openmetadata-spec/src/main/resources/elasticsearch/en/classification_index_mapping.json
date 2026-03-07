@@ -288,6 +288,7 @@
         }
       },
       "owners": {
+        "type": "nested",
         "properties": {
           "id": {
             "type": "keyword",
@@ -334,6 +335,14 @@
             "type": "text"
           }
         }
+      },
+      "ownerDisplayName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "ownerName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       }
     }
   }

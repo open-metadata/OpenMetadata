@@ -23,7 +23,7 @@ type EntityFields = {
 export const FIELDS: EntityFields[] = [
   {
     id: 'Owners',
-    name: 'owners.displayName.keyword',
+    name: 'ownerDisplayName',
   },
   {
     id: 'Tags',

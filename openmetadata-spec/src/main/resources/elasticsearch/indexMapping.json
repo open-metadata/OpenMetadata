@@ -8,7 +8,8 @@
       "databaseSchema",
       "databaseService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": [
       "testSuite",
@@ -26,7 +27,8 @@
       "databaseSchema",
       "databaseService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -38,7 +40,8 @@
       "database",
       "databaseService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": [
       "table",
@@ -56,7 +59,8 @@
     "parentAliases": [
       "databaseService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": [
       "databaseSchema",
@@ -76,7 +80,8 @@
       "dashboard",
       "dashboardService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -87,7 +92,8 @@
     "parentAliases": [
       "dashboardService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": [
       "chart"
@@ -100,7 +106,8 @@
     "parentAliases": [
       "dashboardService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -111,7 +118,8 @@
     "parentAliases": [
       "pipelineService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -129,7 +137,8 @@
     "parentAliases": [
       "messagingService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -140,7 +149,8 @@
     "parentAliases": [
       "storageService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -151,12 +161,12 @@
     "parentAliases": [
       "driveService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": [
       "file",
-      "spreadsheet",
-      "directory"
+      "spreadsheet"
     ]
   },
   "file": {
@@ -167,7 +177,8 @@
       "driveService",
       "directory",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -179,7 +190,8 @@
       "driveService",
       "directory",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": [
       "worksheet"
@@ -193,7 +205,8 @@
       "driveService",
       "spreadsheet",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -204,7 +217,8 @@
     "parentAliases": [
       "searchService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -224,7 +238,8 @@
     "parentAliases": [
       "all",
       "dataAsset",
-      "mlModelService"
+      "mlModelService",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -271,7 +286,8 @@
     "parentAliases": [
       "domain",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -292,7 +308,8 @@
     "alias": "metric",
     "parentAliases": [
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -301,7 +318,8 @@
     "indexMappingFile": "/elasticsearch/%s/glossary_index_mapping.json",
     "alias": "glossary",
     "parentAliases": [
-      "all"
+      "all",
+      "dataAssetEmbeddings"
     ],
     "childAliases": [
       "glossaryTerm"
@@ -314,7 +332,8 @@
     "parentAliases": [
       "all",
       "glossary",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -325,7 +344,8 @@
     "parentAliases": [
       "classification",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -534,7 +554,8 @@
     "parentAliases": [
       "apiService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": [
       "apiEndpoint"
@@ -548,74 +569,8 @@
       "apiService",
       "apiCollection",
       "all",
-      "dataAsset"
-    ],
-    "childAliases": []
-  },
-  "driveService": {
-    "indexName": "drive_service_search_index",
-    "indexMappingFile": "/elasticsearch/%s/drive_service_index_mapping.json",
-    "alias": "driveService",
-    "parentAliases": [
-      "all",
-      "service"
-    ],
-    "childAliases": [
-      "directory",
-      "file",
-      "spreadsheet",
-      "worksheet"
-    ]
-  },
-  "directory": {
-    "indexName": "directory_search_index",
-    "indexMappingFile": "/elasticsearch/%s/directory_index_mapping.json",
-    "alias": "directory",
-    "parentAliases": [
-      "driveService",
-      "all",
-      "dataAsset"
-    ],
-    "childAliases": [
-      "file",
-      "spreadsheet"
-    ]
-  },
-  "file": {
-    "indexName": "file_search_index",
-    "indexMappingFile": "/elasticsearch/%s/file_index_mapping.json",
-    "alias": "file",
-    "parentAliases": [
-      "driveService",
-      "directory",
-      "all",
-      "dataAsset"
-    ],
-    "childAliases": []
-  },
-  "spreadsheet": {
-    "indexName": "spreadsheet_search_index",
-    "indexMappingFile": "/elasticsearch/%s/spreadsheet_index_mapping.json",
-    "alias": "spreadsheet",
-    "parentAliases": [
-      "driveService",
-      "directory",
-      "all",
-      "dataAsset"
-    ],
-    "childAliases": [
-      "worksheet"
-    ]
-  },
-  "worksheet": {
-    "indexName": "worksheet_search_index",
-    "indexMappingFile": "/elasticsearch/%s/worksheet_index_mapping.json",
-    "alias": "worksheet",
-    "parentAliases": [
-      "driveService",
-      "spreadsheet",
-      "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -687,13 +642,6 @@
     "parentAliases": [
       "all"
     ],
-    "childAliases": []
-  },
-  "vectorEmbedding": {
-    "indexName": "vector_search_index",
-    "indexMappingFile": "/elasticsearch/%s/vector_search_index.json",
-    "alias": "vectorEmbedding",
-    "parentAliases": [],
     "childAliases": []
   }
 }

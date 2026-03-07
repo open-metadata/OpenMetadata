@@ -19,8 +19,6 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.UsageDetails;
-import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
@@ -28,12 +26,11 @@ import org.openmetadata.service.search.vector.utils.TextChunkManager;
 @UtilityClass
 public class VectorDocBuilder {
 
-  public static List<Map<String, Object>> fromEntity(
-      EntityInterface entity, EmbeddingClient embeddingClient) {
-    return fromEntityWithFingerprint(entity, embeddingClient);
-  }
-
-  public static List<Map<String, Object>> fromEntityWithFingerprint(
+  /**
+   * Generate embedding fields to merge into an entity's search index document. Returns a map with:
+   * embedding, textToEmbed, chunkIndex, chunkCount, parentId, fingerprint.
+   */
+  public static Map<String, Object> buildEmbeddingFields(
       EntityInterface entity, EmbeddingClient embeddingClient) {
     String parentId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
@@ -44,45 +41,23 @@ public class VectorDocBuilder {
 
     List<String> chunks = TextChunkManager.chunk(body);
     int chunkCount = chunks.size();
-    List<String> textsToEmbed = new ArrayList<>(chunkCount);
-    for (int ci = 0; ci < chunkCount; ci++) {
-      String contTag = (ci == 0) ? "" : "description (continued): ";
-      String text =
-          String.format(
-              "%s%s%s | chunk %d/%d", metaLight, contTag, chunks.get(ci), ci + 1, chunkCount);
-      textsToEmbed.add(text);
-    }
 
-    List<float[]> embeddings = embeddingClient.embedBatch(textsToEmbed);
-    List<Map<String, Object>> docs = new ArrayList<>(chunks.size());
+    // Use the first chunk for the entity's embedding
+    String contTag = "";
+    String textToEmbed =
+        String.format("%s%s%s | chunk %d/%d", metaLight, contTag, chunks.get(0), 1, chunkCount);
 
-    for (int i = 0; i < chunks.size(); i++) {
-      Map<String, Object> doc = new HashMap<>();
-      doc.put("parent_id", parentId);
-      doc.put("sourceId", parentId);
-      doc.put("entityType", entityType);
-      doc.put("fullyQualifiedName", stringOrEmpty(entity.getFullyQualifiedName()));
-      doc.put("name", stringOrEmpty(entity.getName()));
-      doc.put("displayName", stringOrEmpty(entity.getDisplayName()));
-      doc.put("serviceType", extractServiceType(entity));
-      doc.put("deleted", entity.getDeleted() != null && entity.getDeleted());
-      doc.put("fingerprint", fingerprint);
-      doc.put("chunk_index", i);
-      doc.put("chunk_count", chunks.size());
-      doc.put("text_to_embed", textsToEmbed.get(i));
-      doc.put("embedding", embeddings.get(i));
+    float[] embedding = embeddingClient.embed(textToEmbed);
 
-      addTagsAndTier(doc, entity);
-      addCertification(doc, entity);
-      addOwners(doc, entity);
-      addDomains(doc, entity);
-      addCustomProperties(doc, entity);
-      addPopularityMetrics(doc, entity);
-      addEntitySpecificFields(doc, entity, entityType);
+    Map<String, Object> fields = new HashMap<>();
+    fields.put("embedding", embedding);
+    fields.put("textToEmbed", textToEmbed);
+    fields.put("chunkIndex", 0);
+    fields.put("chunkCount", chunkCount);
+    fields.put("parentId", parentId);
+    fields.put("fingerprint", fingerprint);
 
-      docs.add(doc);
-    }
-    return docs;
+    return fields;
   }
 
   public static String computeFingerprintForEntity(EntityInterface entity) {
@@ -224,193 +199,6 @@ public class VectorDocBuilder {
     }
 
     return String.join("; ", bodyParts);
-  }
-
-  private static void addTagsAndTier(Map<String, Object> doc, EntityInterface entity) {
-    if (entity.getTags() == null || entity.getTags().isEmpty()) {
-      doc.put("tags", Collections.emptyList());
-      return;
-    }
-
-    List<Map<String, Object>> tagsList = new ArrayList<>();
-    Map<String, Object> tierMap = null;
-
-    for (TagLabel tag : entity.getTags()) {
-      Map<String, Object> tagDoc = new HashMap<>();
-      tagDoc.put("tagFQN", tag.getTagFQN());
-      tagDoc.put("name", tag.getName());
-      tagDoc.put("labelType", tag.getLabelType() != null ? tag.getLabelType().value() : null);
-      tagDoc.put("description", tag.getDescription());
-      tagDoc.put("source", tag.getSource() != null ? tag.getSource().value() : null);
-      tagDoc.put("state", tag.getState() != null ? tag.getState().value() : null);
-
-      if (tag.getTagFQN() != null && tag.getTagFQN().startsWith("Tier.")) {
-        tierMap = tagDoc;
-      } else {
-        tagsList.add(tagDoc);
-      }
-    }
-
-    doc.put("tags", tagsList);
-    doc.put("tier", tierMap);
-  }
-
-  private static void addCertification(Map<String, Object> doc, EntityInterface entity) {
-    AssetCertification cert = entity.getCertification();
-    if (cert != null && cert.getTagLabel() != null) {
-      Map<String, Object> certDoc = new HashMap<>();
-      TagLabel tag = cert.getTagLabel();
-      certDoc.put("tagFQN", tag.getTagFQN());
-      certDoc.put("name", tag.getName());
-      certDoc.put("labelType", tag.getLabelType() != null ? tag.getLabelType().value() : null);
-      certDoc.put("description", tag.getDescription());
-      certDoc.put("source", tag.getSource() != null ? tag.getSource().value() : null);
-      certDoc.put("state", tag.getState() != null ? tag.getState().value() : null);
-      doc.put("certification", certDoc);
-    }
-  }
-
-  private static void addOwners(Map<String, Object> doc, EntityInterface entity) {
-    if (entity.getOwners() == null || entity.getOwners().isEmpty()) {
-      doc.put("owners", Collections.emptyList());
-      return;
-    }
-    List<Map<String, Object>> ownersList = new ArrayList<>();
-    for (EntityReference owner : entity.getOwners()) {
-      Map<String, Object> ownerDoc = new HashMap<>();
-      ownerDoc.put("id", owner.getId() != null ? owner.getId().toString() : null);
-      ownerDoc.put("name", owner.getName());
-      ownerDoc.put("type", owner.getType());
-      ownerDoc.put("displayName", owner.getDisplayName());
-      ownersList.add(ownerDoc);
-    }
-    doc.put("owners", ownersList);
-  }
-
-  private static void addDomains(Map<String, Object> doc, EntityInterface entity) {
-    if (entity.getDomains() == null || entity.getDomains().isEmpty()) {
-      return;
-    }
-    List<Map<String, Object>> domainsList = new ArrayList<>();
-    for (EntityReference domain : entity.getDomains()) {
-      Map<String, Object> domainDoc = new HashMap<>();
-      domainDoc.put("id", domain.getId() != null ? domain.getId().toString() : null);
-      domainDoc.put("name", domain.getName());
-      domainDoc.put("displayName", domain.getDisplayName());
-      domainsList.add(domainDoc);
-    }
-    doc.put("domains", domainsList);
-  }
-
-  private static void addCustomProperties(Map<String, Object> doc, EntityInterface entity) {
-    Object extension = entity.getExtension();
-    if (extension instanceof Map) {
-      doc.put("customProperties", extension);
-    }
-  }
-
-  private static void addPopularityMetrics(Map<String, Object> doc, EntityInterface entity) {
-    Votes votes = entity.getVotes();
-    if (votes != null) {
-      int up = votes.getUpVotes() != null ? votes.getUpVotes() : 0;
-      int down = votes.getDownVotes() != null ? votes.getDownVotes() : 0;
-      doc.put("upVotes", up);
-      doc.put("downVotes", down);
-      doc.put("totalVotes", up + down);
-    } else {
-      doc.put("upVotes", 0);
-      doc.put("downVotes", 0);
-      doc.put("totalVotes", 0);
-    }
-
-    List<EntityReference> followers = entity.getFollowers();
-    doc.put("followersCount", followers != null ? followers.size() : 0);
-
-    UsageDetails usage = entity.getUsageSummary();
-    if (usage != null) {
-      Map<String, Object> usageMap = new HashMap<>();
-      if (usage.getDailyStats() != null) {
-        usageMap.put("dailyStats", Map.of("count", usage.getDailyStats().getCount()));
-      }
-      if (usage.getWeeklyStats() != null) {
-        Map<String, Object> weekly = new HashMap<>();
-        weekly.put("count", usage.getWeeklyStats().getCount());
-        if (usage.getWeeklyStats().getPercentileRank() != null) {
-          weekly.put("percentileRank", usage.getWeeklyStats().getPercentileRank());
-        }
-        usageMap.put("weeklyStats", weekly);
-      }
-      if (usage.getMonthlyStats() != null) {
-        Map<String, Object> monthly = new HashMap<>();
-        monthly.put("count", usage.getMonthlyStats().getCount());
-        if (usage.getMonthlyStats().getPercentileRank() != null) {
-          monthly.put("percentileRank", usage.getMonthlyStats().getPercentileRank());
-        }
-        usageMap.put("monthlyStats", monthly);
-      }
-      if (!usageMap.isEmpty()) {
-        doc.put("usageSummary", usageMap);
-      }
-    }
-  }
-
-  @SuppressWarnings("unchecked")
-  private static void addEntitySpecificFields(
-      Map<String, Object> doc, EntityInterface entity, String entityType) {
-    if (entity instanceof Table table) {
-      if (table.getColumns() != null) {
-        List<String> columnNames =
-            table.getColumns().stream().map(Column::getName).collect(Collectors.toList());
-        doc.put("columns", columnNames);
-      }
-    } else if (entity instanceof GlossaryTerm glossaryTerm) {
-      if (glossaryTerm.getSynonyms() != null) {
-        doc.put("synonyms", glossaryTerm.getSynonyms());
-      }
-      if (glossaryTerm.getRelatedTerms() != null) {
-        List<Map<String, Object>> relatedTerms = new ArrayList<>();
-        for (EntityReference ref : glossaryTerm.getRelatedTerms()) {
-          Map<String, Object> relMap = new HashMap<>();
-          relMap.put("id", ref.getId() != null ? ref.getId().toString() : null);
-          relMap.put("name", ref.getName());
-          relMap.put("type", ref.getType());
-          relMap.put("displayName", ref.getDisplayName());
-          relMap.put("fullyQualifiedName", ref.getFullyQualifiedName());
-          relatedTerms.add(relMap);
-        }
-        doc.put("relatedTerms", relatedTerms);
-      }
-    } else if (entity instanceof Metric metric) {
-      if (metric.getMetricExpression() != null) {
-        Map<String, Object> expr = new HashMap<>();
-        expr.put(
-            "language",
-            metric.getMetricExpression().getLanguage() != null
-                ? metric.getMetricExpression().getLanguage().value()
-                : null);
-        expr.put("code", metric.getMetricExpression().getCode());
-        doc.put("metricExpression", expr);
-      }
-      if (metric.getMetricType() != null) {
-        doc.put("metricType", metric.getMetricType().value());
-      }
-      if (metric.getUnitOfMeasurement() != null) {
-        doc.put("unitOfMeasurement", metric.getUnitOfMeasurement().value());
-      }
-      if (metric.getCustomUnitOfMeasurement() != null) {
-        doc.put("customUnitOfMeasurement", metric.getCustomUnitOfMeasurement());
-      }
-      if (metric.getGranularity() != null) {
-        doc.put("granularity", metric.getGranularity().value());
-      }
-      if (metric.getRelatedMetrics() != null) {
-        doc.put(
-            "relatedMetrics",
-            metric.getRelatedMetrics().stream()
-                .map(EntityReference::getFullyQualifiedName)
-                .collect(Collectors.toList()));
-      }
-    }
   }
 
   static String extractServiceType(EntityInterface entity) {

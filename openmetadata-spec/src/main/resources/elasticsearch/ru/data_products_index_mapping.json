@@ -227,6 +227,7 @@
         "type": "text"
       },
       "owners": {
+        "type": "nested",
         "properties": {
           "id": {
             "type": "keyword",
@@ -532,50 +533,50 @@
           }
         }
       },
-        "descriptionStatus": {
-          "type": "keyword"
-        },
-        "certification": {
-          "type": "object",
-          "properties": {
-            "tagLabel": {
-              "type": "object",
-              "properties": {
-                "tagFQN": {
-                  "type": "keyword",
-                  "normalizer": "lowercase_normalizer",
-                  "fields": {
-                    "text": {
-                      "type": "text",
-                      "analyzer": "om_analyzer"
-                    }
+      "descriptionStatus": {
+        "type": "keyword"
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
                   }
-                },
-                "labelType": {
-                  "type": "keyword"
-                },
-                "description": {
-                  "type": "text"
-                },
-                "source": {
-                  "type": "keyword"
-                },
-                "state": {
-                  "type": "keyword"
                 }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
               }
-            },
-            "appliedDate": {
-              "type": "date",
-              "format": "strict_date_optional_time||epoch_millis"
-            },
-            "expiryDate": {
-              "type": "date",
-              "format": "strict_date_optional_time||epoch_millis"
             }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
           }
-        },
-        "customPropertiesTyped": {
+        }
+      },
+      "customPropertiesTyped": {
         "type": "nested",
         "properties": {
           "name": {
@@ -616,6 +617,29 @@
             "type": "keyword"
           }
         }
+      },
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
+      },
+      "ownerDisplayName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "ownerName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       }
     }
   }

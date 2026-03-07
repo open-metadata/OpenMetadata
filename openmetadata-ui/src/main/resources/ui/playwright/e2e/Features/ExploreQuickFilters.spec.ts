@@ -110,7 +110,7 @@ test('search dropdown should work properly for quick filters', async ({
 
 test('should search for empty or null filters', async ({ page }) => {
   const items = [
-    { label: 'Owners', key: 'owners.displayName.keyword' },
+    { label: 'Owners', key: 'ownerDisplayName' },
     { label: 'Tag', key: 'tags.tagFQN' },
     { label: 'Domains', key: 'domains.displayName.keyword' },
     { label: 'Tier', key: 'tier.tagFQN' },
@@ -187,7 +187,7 @@ test('should search for multiple values along with null filters', async ({
 });
 
 test('should persist quick filter on global search', async ({ page }) => {
-  const items = [{ label: 'Owners', key: 'owners.displayName.keyword' }];
+  const items = [{ label: 'Owners', key: 'ownerDisplayName' }];
 
   for (const filter of items) {
     await selectNullOption(page, filter, false);

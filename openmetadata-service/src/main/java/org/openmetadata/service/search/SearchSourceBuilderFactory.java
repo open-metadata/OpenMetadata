@@ -223,4 +223,18 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     }
     return !FUZZY_FIELDS.contains(key);
   }
+
+  /**
+   * Remap nested owner field paths to their flat top-level equivalents.
+   * The flat fields {@code ownerDisplayName} and {@code ownerName} are
+   * denormalized copies maintained in every search index.
+   */
+  Map<String, String> AGGREGATION_FIELD_REMAPS =
+      Map.of(
+          "owners.displayName.keyword", "ownerDisplayName",
+          "owners.name.keyword", "ownerName");
+
+  static String remapAggregationField(String field) {
+    return AGGREGATION_FIELD_REMAPS.getOrDefault(field, field);
+  }
 }

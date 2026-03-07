@@ -574,16 +574,6 @@ public class SystemRepository {
     }
 
     try {
-      searchRepository.ensureVectorIndexDimension();
-    } catch (Exception e) {
-      LOG.error("Vector dimension mismatch detected", e);
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage("Vector dimension mismatch: " + e.getMessage())
-          .withPassed(false);
-    }
-
-    try {
       return validateEmbeddingGeneration(
           searchRepository.getEmbeddingClient(), embeddingsValidation, description, configMessage);
     } catch (Exception e) {

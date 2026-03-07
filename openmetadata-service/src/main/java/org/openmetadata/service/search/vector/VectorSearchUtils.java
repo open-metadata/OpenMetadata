@@ -2,6 +2,7 @@ package org.openmetadata.service.search.vector;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 
@@ -27,73 +28,19 @@ public final class VectorSearchUtils {
       return;
     }
     try {
-      vectorService.updateVectorEmbeddings(entity, vectorService.getIndexName());
+      IndexMapping mapping = Entity.getSearchRepository().getIndexMapping(entityType);
+      if (mapping == null) {
+        LOG.warn("No index mapping found for entity type: {}", entityType);
+        return;
+      }
+      String entityIndexName = mapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+      vectorService.updateEntityEmbedding(entity, entityIndexName);
     } catch (Exception e) {
       LOG.error(
           "Failed to update vector embeddings for entity {}: {}",
           entity.getId(),
           e.getMessage(),
           e);
-    }
-  }
-
-  public static void softDeleteVectorEmbeddingsForOpenSearch(EntityInterface entity) {
-    if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
-      return;
-    }
-    String entityType = entity.getEntityReference().getType();
-    if (!AvailableEntityTypes.isVectorIndexable(entityType)) {
-      return;
-    }
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
-    if (vectorService == null) {
-      return;
-    }
-    try {
-      vectorService.softDeleteEmbeddings(entity);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to soft delete embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
-    }
-  }
-
-  public static void hardDeleteVectorEmbeddingsForOpenSearch(EntityInterface entity) {
-    if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
-      return;
-    }
-    String entityType = entity.getEntityReference().getType();
-    if (!AvailableEntityTypes.isVectorIndexable(entityType)) {
-      return;
-    }
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
-    if (vectorService == null) {
-      return;
-    }
-    try {
-      vectorService.hardDeleteEmbeddings(entity);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to hard delete embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
-    }
-  }
-
-  public static void restoreVectorEmbeddingsForOpenSearch(EntityInterface entity) {
-    if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
-      return;
-    }
-    String entityType = entity.getEntityReference().getType();
-    if (!AvailableEntityTypes.isVectorIndexable(entityType)) {
-      return;
-    }
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
-    if (vectorService == null) {
-      return;
-    }
-    try {
-      vectorService.restoreEmbeddings(entity);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to restore embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
   }
 }

@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.lenient;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -80,18 +79,5 @@ class OpenSearchBulkSinkSimpleTest {
     contextData.remove("recreateIndex");
     recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
     assertEquals(false, recreateIndex);
-  }
-
-  @Test
-  void testIsVectorEmbeddingEnabledForEntity() {
-    assertEquals(false, openSearchBulkSink.isVectorEmbeddingEnabledForEntity("table"));
-    assertEquals(false, openSearchBulkSink.isVectorEmbeddingEnabledForEntity("user"));
-    assertEquals(false, openSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard"));
-  }
-
-  @Test
-  void testAddEntitiesToVectorIndexBatch() {
-    openSearchBulkSink.addEntitiesToVectorIndexBatch(
-        null, Collections.emptyList(), true, null, null);
   }
 }

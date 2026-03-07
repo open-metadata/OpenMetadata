@@ -22,111 +22,41 @@ class VectorDocBuilderTest {
       new EmbeddingClientTest.MockEmbeddingClient(384);
 
   @Test
-  void testFromEntityBasic() {
+  void testBuildEmbeddingFieldsBasic() {
     Table table = createTestTable("test_table", "Test Table", "A test table for unit testing");
 
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
 
-    assertNotNull(docs);
-    assertFalse(docs.isEmpty());
-    Map<String, Object> doc = docs.getFirst();
-    assertEquals(table.getId().toString(), doc.get("parent_id"));
-    assertEquals("test_table", doc.get("name"));
-    assertEquals("Test Table", doc.get("displayName"));
-    assertEquals("service.db.schema.test_table", doc.get("fullyQualifiedName"));
-    assertNotNull(doc.get("embedding"));
-    assertNotNull(doc.get("fingerprint"));
-    assertEquals(0, doc.get("chunk_index"));
-    assertEquals(1, doc.get("chunk_count"));
+    assertNotNull(fields);
+    assertEquals(table.getId().toString(), fields.get("parentId"));
+    assertNotNull(fields.get("embedding"));
+    assertNotNull(fields.get("textToEmbed"));
+    assertNotNull(fields.get("fingerprint"));
+    assertEquals(0, fields.get("chunkIndex"));
+    assertTrue((int) fields.get("chunkCount") >= 1);
   }
 
   @Test
-  void testFromEntityWithTags() {
-    Table table = createTestTable("tagged_table", null, null);
+  void testBuildEmbeddingFieldsContainsEmbeddingVector() {
+    Table table = createTestTable("vec_table", null, "A table with embedding");
 
-    TagLabel tag = new TagLabel();
-    tag.setTagFQN("PII.Sensitive");
-    tag.setName("Sensitive");
-    table.setTags(List.of(tag));
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
 
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
-
-    Map<String, Object> doc = docs.getFirst();
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> tags = (List<Map<String, Object>>) doc.get("tags");
-    assertNotNull(tags);
-    assertEquals(1, tags.size());
-    assertEquals("PII.Sensitive", tags.getFirst().get("tagFQN"));
+    Object embedding = fields.get("embedding");
+    assertTrue(embedding instanceof float[]);
+    assertEquals(384, ((float[]) embedding).length);
   }
 
   @Test
-  void testFromEntityWithTier() {
-    Table table = createTestTable("tiered_table", null, null);
+  void testBuildEmbeddingFieldsTextToEmbedContainsEntityInfo() {
+    Table table = createTestTable("info_table", "Info Display", "Important description");
 
-    TagLabel tierTag = new TagLabel();
-    tierTag.setTagFQN("Tier.Tier1");
-    tierTag.setName("Tier1");
-    table.setTags(List.of(tierTag));
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
 
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
-
-    Map<String, Object> doc = docs.getFirst();
-    @SuppressWarnings("unchecked")
-    Map<String, Object> tier = (Map<String, Object>) doc.get("tier");
-    assertNotNull(tier);
-    assertEquals("Tier.Tier1", tier.get("tagFQN"));
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> tags = (List<Map<String, Object>>) doc.get("tags");
-    assertTrue(tags.isEmpty());
-  }
-
-  @Test
-  void testFromEntityWithOwners() {
-    Table table = createTestTable("owned_table", null, null);
-
-    EntityReference owner = new EntityReference();
-    owner.setId(UUID.randomUUID());
-    owner.setType("user");
-    owner.setName("test_user");
-    owner.setDisplayName("Test User");
-    table.setOwners(List.of(owner));
-
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
-
-    Map<String, Object> doc = docs.getFirst();
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> owners = (List<Map<String, Object>>) doc.get("owners");
-    assertNotNull(owners);
-    assertEquals(1, owners.size());
-    assertEquals("test_user", owners.getFirst().get("name"));
-    assertEquals("user", owners.getFirst().get("type"));
-  }
-
-  @Test
-  void testFromEntityWithColumns() {
-    Table table = createTestTable("column_table", null, "A table with columns");
-
-    Column col1 = new Column();
-    col1.setName("id");
-    col1.setDataType(ColumnDataType.INT);
-    col1.setDescription("Primary key");
-
-    Column col2 = new Column();
-    col2.setName("email");
-    col2.setDataType(ColumnDataType.VARCHAR);
-    col2.setDescription("User email address");
-
-    table.setColumns(List.of(col1, col2));
-
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
-
-    Map<String, Object> doc = docs.getFirst();
-    @SuppressWarnings("unchecked")
-    List<String> columns = (List<String>) doc.get("columns");
-    assertNotNull(columns);
-    assertEquals(2, columns.size());
-    assertEquals("id", columns.get(0));
-    assertEquals("email", columns.get(1));
+    String textToEmbed = (String) fields.get("textToEmbed");
+    assertNotNull(textToEmbed);
+    assertTrue(textToEmbed.contains("info_table"));
+    assertTrue(textToEmbed.contains("Important description"));
   }
 
   @Test
@@ -151,31 +81,18 @@ class VectorDocBuilderTest {
   }
 
   @Test
-  void testMultiChunkDocument() {
+  void testBuildEmbeddingFieldsChunkCount() {
     StringBuilder longDesc = new StringBuilder();
     for (int i = 0; i < 500; i++) {
       longDesc.append("word").append(i).append(" ");
     }
     Table table = createTestTable("chunked_table", null, longDesc.toString());
 
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
+    Map<String, Object> fields = VectorDocBuilder.buildEmbeddingFields(table, MOCK_CLIENT);
 
-    assertTrue(docs.size() > 1);
-    for (int i = 0; i < docs.size(); i++) {
-      assertEquals(i, docs.get(i).get("chunk_index"));
-      assertEquals(docs.size(), docs.get(i).get("chunk_count"));
-      assertEquals(table.getId().toString(), docs.get(i).get("parent_id"));
-    }
-  }
-
-  @Test
-  void testDeletedFlag() {
-    Table table = createTestTable("deleted_table", null, null);
-    table.setDeleted(true);
-
-    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
-
-    assertEquals(true, docs.getFirst().get("deleted"));
+    assertTrue((int) fields.get("chunkCount") > 1);
+    assertEquals(0, fields.get("chunkIndex"));
+    assertEquals(table.getId().toString(), fields.get("parentId"));
   }
 
   @Test
@@ -211,6 +128,34 @@ class VectorDocBuilderTest {
     String bodyText = VectorDocBuilder.buildBodyText(table, "table");
 
     assertTrue(bodyText.contains("my_column"));
+  }
+
+  @Test
+  void testMetaLightTextContainsTags() {
+    Table table = createTestTable("tagged_table", null, null);
+
+    TagLabel tag = new TagLabel();
+    tag.setTagFQN("PII.Sensitive");
+    tag.setName("Sensitive");
+    table.setTags(List.of(tag));
+
+    String metaLight = VectorDocBuilder.buildMetaLightText(table, "table");
+    assertTrue(metaLight.contains("PII.Sensitive"));
+  }
+
+  @Test
+  void testMetaLightTextContainsOwners() {
+    Table table = createTestTable("owned_table", null, null);
+
+    EntityReference owner = new EntityReference();
+    owner.setId(UUID.randomUUID());
+    owner.setType("user");
+    owner.setName("test_user");
+    owner.setDisplayName("Test User");
+    table.setOwners(List.of(owner));
+
+    String metaLight = VectorDocBuilder.buildMetaLightText(table, "table");
+    assertTrue(metaLight.contains("test_user"));
   }
 
   @Test

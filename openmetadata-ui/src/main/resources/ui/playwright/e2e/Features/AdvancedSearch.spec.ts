@@ -201,7 +201,7 @@ test.describe('Advanced Search', { tag: ['@advanced-search', PLAYWRIGHT_SAMPLE_D
 
     // Update Search Criteria here
     searchCriteria = {
-      'owners.displayName.keyword': [
+      'ownerDisplayName': [
         EntityDataClass.user1.getUserDisplayName(),
         EntityDataClass.user2.getUserDisplayName(),
       ],

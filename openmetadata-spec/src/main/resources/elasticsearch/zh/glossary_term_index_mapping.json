@@ -186,6 +186,7 @@
         "similarity": "boolean"
       },
       "owners": {
+        "type": "nested",
         "properties": {
           "id": {
             "type": "keyword",
@@ -491,6 +492,29 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
+      },
+      "ownerDisplayName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "ownerName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       }
     }
   }

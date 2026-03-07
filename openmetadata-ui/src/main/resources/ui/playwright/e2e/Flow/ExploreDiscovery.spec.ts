@@ -268,7 +268,7 @@ test.describe('Explore Assets Discovery', () => {
     // The user should not be visible in the owners filter when the deleted switch is off
     await page.click('[data-testid="search-dropdown-Owners"]');
     const searchResOwner = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=owners.displayName.keyword*deleted=false*`
+      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*deleted=false*`
     );
 
     await page.fill(
@@ -329,7 +329,7 @@ test.describe('Explore Assets Discovery', () => {
     await page.click('[data-testid="search-dropdown-Owners"]');
 
     const searchResOwner = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=owners.displayName.keyword*deleted=true*`
+      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*deleted=true*`
     );
 
     await page.fill('[data-testid="search-input"]', ownerSearchText);
@@ -347,7 +347,7 @@ test.describe('Explore Assets Discovery', () => {
       .click();
 
     const fetchWithOwner = page.waitForResponse(
-      `/api/v1/search/query?*deleted=true*owners.displayName.keyword*${ownerSearchText}*`
+      `/api/v1/search/query?*deleted=true*ownerDisplayName*${ownerSearchText}*`
     );
     await page.getByTestId('update-btn').click();
     await fetchWithOwner;

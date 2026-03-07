@@ -35,4 +35,9 @@ public class ElasticQueryBuilderFactory implements QueryBuilderFactory {
   public OMQueryBuilder existsQuery(String field) {
     return new ElasticQueryBuilder().existsQuery(field);
   }
+
+  @Override
+  public OMQueryBuilder nestedQuery(String path, OMQueryBuilder query) {
+    return new ElasticQueryBuilder().nestedQuery(path, query);
+  }
 }
