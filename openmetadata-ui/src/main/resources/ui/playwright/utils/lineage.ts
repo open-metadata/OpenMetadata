@@ -135,12 +135,17 @@ export const performZoomOut = async (page: Page, xTimes = 10) => {
 export const clickEdgeBetweenNodes = async (
   page: Page,
   fromNode: EntityClass,
-  toNode: EntityClass
+  toNode: EntityClass,
+  isPipeline = false
 ) => {
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const edgeDiv = page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`);
+  const edgeDiv = page.getByTestId(
+    isPipeline
+      ? `pipeline-label-${fromNodeFqn}-${toNodeFqn}`
+      : `edge-${fromNodeFqn}-${toNodeFqn}`
+  );
   await expect(edgeDiv).toBeVisible();
 
   await edgeDiv.dispatchEvent('click');
@@ -163,7 +168,7 @@ export const deleteEdge = async (
   fromNode: EntityClass,
   toNode: EntityClass
 ) => {
-  await clickEdgeBetweenNodes(page, fromNode, toNode);
+  await clickEdgeBetweenNodes(page, fromNode, toNode, true);
 
   await page.getByTestId('add-pipeline').dispatchEvent('click');
 
@@ -441,9 +446,9 @@ export const verifyPipelineDataInDrawer = async (
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
   const pipelineName = get(pipelineItem, 'entityResponseData.name');
 
-  await page.click(
-    `[data-testid="pipeline-label-${fromNodeFqn}-${toNodeFqn}"]`
-  );
+  await page
+    .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
+    .dispatchEvent('click');
 
   await page.locator('.edge-info-drawer').isVisible();
   await page
