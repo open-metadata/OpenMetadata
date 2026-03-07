@@ -24,6 +24,11 @@ export interface QueryRunnerRequest {
      */
     connectionType?: string;
     /**
+     * Source type of the resolved credentials. Indicates whether the credentials come from a
+     * user-level config or a team-level config. Set by the backend during credential resolution.
+     */
+    credentialSourceType?: CredentialSourceType;
+    /**
      * Optional database/dataset to use for query execution (selected by user in QueryRunner
      * Studio). Service-specific name (e.g., Snowflake database).
      */
@@ -72,4 +77,13 @@ export interface QueryRunnerRequest {
      * Optional value of the workflow name responsible for running the test
      */
     workflowName?: string;
+}
+
+/**
+ * Source type of the resolved credentials. Indicates whether the credentials come from a
+ * user-level config or a team-level config. Set by the backend during credential resolution.
+ */
+export enum CredentialSourceType {
+    Team = "team",
+    User = "user",
 }

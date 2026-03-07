@@ -219,14 +219,16 @@ export const UserTab = ({
           <Space
             align="center"
             className="w-full justify-center remove-icon"
-            size={8}>
+            size={8}
+          >
             <Tooltip
               placement="left"
               title={
                 editUserPermission
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
-              }>
+              }
+            >
               <Button
                 data-testid="remove-user-btn"
                 disabled={!editUserPermission}
@@ -334,8 +336,10 @@ export const UserTab = ({
           <Space>
             <UserSelectableList
               hasPermission
+              includeBot
               selectedUsers={currentTeam?.users ?? []}
-              onUpdate={onAddUser}>
+              onUpdate={onAddUser}
+            >
               <Tooltip placement="topRight" title={addUserButtonTitle}>
                 <Button
                   ghost
@@ -345,7 +349,8 @@ export const UserTab = ({
                   data-testid="add-new-user"
                   disabled={!editUserPermission || isTeamDeleted}
                   icon={<PlusOutlined />}
-                  type="primary">
+                  type="primary"
+                >
                   {t('label.add')}
                 </Button>
               </Tooltip>
@@ -402,8 +407,10 @@ export const UserTab = ({
                 {users.length > 0 && editUserPermission && (
                   <UserSelectableList
                     hasPermission
+                    includeBot
                     selectedUsers={currentTeam?.users ?? []}
-                    onUpdate={onAddUser}>
+                    onUpdate={onAddUser}
+                  >
                     <Button data-testid="add-new-user" type="primary">
                       {t('label.add-entity', { entity: t('label.user') })}
                     </Button>
@@ -443,7 +450,8 @@ export const UserTab = ({
         open={Boolean(deletingUser)}
         title={t('label.removing-user')}
         onCancel={() => setDeletingUser(undefined)}
-        onOk={handleRemoveUser}>
+        onOk={handleRemoveUser}
+      >
         {t('message.are-you-sure-want-to-text', {
           text: t('label.remove-entity', {
             entity: getEntityName(deletingUser),

@@ -70,6 +70,10 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  EXTENSION_POINTS,
+  TabContribution,
+} from '../../../../utils/ExtensionPointTypes';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import {
   getSettingsPathWithFqn,
@@ -92,6 +96,7 @@ import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.inter
 import AssetsTabs from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.component';
+import { useApplicationsProvider } from '../../Applications/ApplicationsProvider/ApplicationsProvider';
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
 import {
@@ -134,6 +139,7 @@ const TeamDetailsV1 = ({
   const location = useCustomLocation();
   const { isAdminUser } = useAuth();
   const { currentUser } = useApplicationStore();
+  const { extensionRegistry } = useApplicationsProvider();
 
   const { activeTab } = useMemo(() => {
     const param = location.search;
@@ -250,7 +256,8 @@ const TeamDetailsV1 = ({
               })
         }
         type={type}
-        onClick={onClick}>
+        onClick={onClick}
+      >
         {children}
       </ErrorPlaceHolder>
     ),
@@ -581,7 +588,8 @@ const TeamDetailsV1 = ({
                       <Col span={21}>
                         <Typography.Text
                           className="font-medium"
-                          data-testid="open-group-label">
+                          data-testid="open-group-label"
+                        >
                           {t('label.public-team')}
                         </Typography.Text>
                       </Col>
@@ -634,7 +642,8 @@ const TeamDetailsV1 = ({
       <ErrorPlaceHolder
         className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+      >
         <Typography.Paragraph style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
             entity: t('label.team'),
@@ -658,7 +667,8 @@ const TeamDetailsV1 = ({
             disabled={!entityPermissions.Create || isTeamDeleted}
             icon={<PlusOutlined />}
             type="primary"
-            onClick={handleAddTeamButtonClick}>
+            onClick={handleAddTeamButtonClick}
+          >
             {t('label.add')}
           </Button>
         </Tooltip>
@@ -750,7 +760,8 @@ const TeamDetailsV1 = ({
                 isTeamDeleted
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.role') })
-              }>
+              }
+            >
               <Button
                 ghost
                 className={classNames({
@@ -765,7 +776,8 @@ const TeamDetailsV1 = ({
                     type: EntityType.ROLE,
                     selectedData: currentTeam.defaultRoles ?? [],
                   })
-                }>
+                }
+              >
                 {t('label.add')}
               </Button>
             </Tooltip>
@@ -783,7 +795,8 @@ const TeamDetailsV1 = ({
                     type: EntityType.ROLE,
                     selectedData: currentTeam.defaultRoles ?? [],
                   })
-                }>
+                }
+              >
                 {addRole}
               </Button>
             </Col>
@@ -822,7 +835,8 @@ const TeamDetailsV1 = ({
                 isTeamDeleted
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.policy') })
-              }>
+              }
+            >
               <Button
                 ghost
                 className={classNames({
@@ -837,7 +851,8 @@ const TeamDetailsV1 = ({
                     type: EntityType.POLICY,
                     selectedData: currentTeam.policies ?? [],
                   })
-                }>
+                }
+              >
                 {t('label.add')}
               </Button>
             </Tooltip>
@@ -860,7 +875,8 @@ const TeamDetailsV1 = ({
                     type: EntityType.POLICY,
                     selectedData: currentTeam.policies ?? [],
                   })
-                }>
+                }
+              >
                 {addPolicy}
               </Button>
             </Col>
@@ -895,7 +911,8 @@ const TeamDetailsV1 = ({
             // Used to stop click propagation event to the header collapsible panel
             e.stopPropagation();
             deleteUserHandler(currentUser.id, true);
-          }}>
+          }}
+        >
           {t('label.leave-team')}
         </Button>
       ) : (
@@ -929,7 +946,8 @@ const TeamDetailsV1 = ({
           <Space
             align="start"
             className="w-full flex-col justify-center p-t-xs"
-            size="middle">
+            size="middle"
+          >
             {!isOrganization && (
               <TitleBreadcrumb titleLinks={slashedTeamName} />
             )}
@@ -1109,6 +1127,43 @@ const TeamDetailsV1 = ({
     ]
   );
 
+  // Get plugin-contributed tabs
+  const pluginTabs = useMemo(() => {
+    const extensionContext = {
+      teamId: currentTeam.id,
+    };
+
+    return extensionRegistry
+      .getContributions<TabContribution>(EXTENSION_POINTS.TEAM_DETAILS_TABS)
+      .filter((tab) => {
+        if (tab.condition) {
+          return tab.condition(extensionContext);
+        }
+
+        return !tab.isHidden;
+      })
+      .map((tab) => {
+        const TabComponent = tab.component;
+
+        return {
+          label:
+            typeof tab.label === 'string' ? (
+              <TabsLabel
+                id={tab.key}
+                isActive={currentTab === tab.key}
+                name={tab.label}
+              />
+            ) : (
+              tab.label
+            ),
+          key: tab.key,
+          children: <TabComponent {...extensionContext} />,
+        };
+      });
+  }, [extensionRegistry, currentTeam.id, currentTab]);
+
+  const allTabs = useMemo(() => [...tabs, ...pluginTabs], [tabs, pluginTabs]);
+
   if (isTeamMemberLoading > 0) {
     return <Loader />;
   }
@@ -1134,7 +1189,8 @@ const TeamDetailsV1 = ({
         <Col
           className="teams-profile-container"
           data-testid="team-details-collapse"
-          span={24}>
+          span={24}
+        >
           {teamsCollapseHeader}
         </Col>
 
@@ -1143,7 +1199,7 @@ const TeamDetailsV1 = ({
             destroyInactiveTabPane
             activeKey={currentTab}
             className="tabs-new"
-            items={tabs}
+            items={allTabs}
             onChange={updateActiveTab}
           />
         </Col>
@@ -1158,7 +1214,8 @@ const TeamDetailsV1 = ({
               : t('label.removing-user')
           }
           onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
-          onOk={handleRemoveUser}>
+          onOk={handleRemoveUser}
+        >
           {removeUserBodyText(deletingUser.leave)}
         </Modal>
         {addAttribute && (
@@ -1190,7 +1247,8 @@ const TeamDetailsV1 = ({
                 selectedEntity.attribute
               );
               setSelectedEntity(undefined);
-            }}>
+            }}
+          >
             <Typography.Text>
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),
