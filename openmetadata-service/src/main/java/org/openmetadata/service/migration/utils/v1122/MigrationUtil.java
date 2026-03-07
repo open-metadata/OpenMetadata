@@ -1,16 +1,30 @@
 package org.openmetadata.service.migration.utils.v1122;
 
+import static org.openmetadata.service.Entity.CLASSIFICATION;
+import static org.openmetadata.service.util.EntityUtil.hash;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.classification.LoadTags;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -36,7 +50,6 @@ import org.openmetadata.service.util.EntityUtil;
  */
 @Slf4j
 public class MigrationUtil {
-
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String ADMIN_USER_NAME = "admin";
 
@@ -263,5 +276,71 @@ public class MigrationUtil {
     }
 
     return node;
+  }
+
+  public static Map<String, QueryStatus> setRecognizersForSensitiveTags(
+      Handle handle, String version, MigrationDAO migrationDAO, boolean isForceMigration) {
+    Map<String, QueryStatus> result = new HashMap<>();
+    List<LoadTags> loadTagsList;
+    try {
+      loadTagsList =
+          EntityRepository.getEntitiesFromSeedData(
+              CLASSIFICATION, ".*json/data/tags/piiTagsWithRecognizers.json$", LoadTags.class);
+    } catch (IOException e) {
+      LOG.error("Failed to load tag data");
+      return result;
+    }
+
+    Map<String, List<Recognizer>> recognizersByTag = new HashMap<>();
+    for (LoadTags loadTags : loadTagsList) {
+      String classification = loadTags.getCreateClassification().getName();
+      for (CreateTag createTag : loadTags.getCreateTags()) {
+        if (Boolean.TRUE.equals(createTag.getAutoClassificationEnabled()))
+          recognizersByTag.put(
+              classification + "." + createTag.getName(), createTag.getRecognizers());
+      }
+    }
+
+    recognizersByTag.forEach(
+        (tagFqn, recognizers) -> {
+          try {
+            updateTagRecognizers(
+                handle, migrationDAO, tagFqn, recognizers, result, isForceMigration, version);
+          } catch (Exception e) {
+            LOG.error("Failed to update recognizers for tag: {}", tagFqn, e);
+          }
+        });
+
+    return result;
+  }
+
+  private static void updateTagRecognizers(
+      Handle handle,
+      MigrationDAO migrationDAO,
+      String tagFqn,
+      List<Recognizer> recognizers,
+      Map<String, QueryStatus> results,
+      boolean isForceMigration,
+      String version) {
+    String recognizersJson = JsonUtils.pojoToJson(recognizers);
+
+    String truncatedQuery =
+        String.format(
+            "UPDATE tag SET recognizers = [ ... data truncated for %s ... ] WHERE fullyQualifiedName = %s",
+            tagFqn, tagFqn);
+
+    try {
+      handle.attach(CollectionDAO.TagDAO.class).patchRecognizers(tagFqn, recognizersJson);
+      migrationDAO.upsertServerMigrationSQL(version, truncatedQuery, hash(truncatedQuery));
+      results.put(
+          truncatedQuery,
+          new QueryStatus(QueryStatus.Status.SUCCESS, "Successfully Executed Query"));
+    } catch (Exception e) {
+      String message = String.format("Failed to run sql: [%s] due to [%s]", truncatedQuery, e);
+      results.put(truncatedQuery, new QueryStatus(QueryStatus.Status.FAILURE, message));
+      if (!isForceMigration) {
+        throw new RuntimeException(message, e);
+      }
+    }
   }
 }
