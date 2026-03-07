@@ -24,11 +24,7 @@ import {
   PipelineStatus,
 } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
-import {
-  formatDateTimeLong,
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../../../../utils/date-time/DateTimeUtils';
+import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
 import IngestionRunDetailsModal from '../../../../Modals/IngestionRunDetailsModal/IngestionRunDetailsModal';
 import './ingestion-recent-run.style.less';
 import { IngestionRecentRunsProps } from './IngestionRecentRuns.interface';
@@ -55,14 +51,9 @@ export const IngestionRecentRuns = <
     try {
       if (!isUndefined(ingestion?.fullyQualifiedName)) {
         const ingestionPipeline = ingestion as IngestionPipeline;
-
-        const queryParams = {
-          startTs: getEpochMillisForPastDays(1),
-          endTs: getCurrentMillis(),
-        };
         const response = await getRunHistoryForPipeline(
           ingestionPipeline?.fullyQualifiedName ?? '',
-          queryParams
+          { limit: 5 }
         );
 
         const runs =
@@ -144,7 +135,8 @@ export const IngestionRecentRuns = <
               )}
               data-testid="pipeline-status"
               key={`${runId}-status`}
-              onClick={() => handleRunStatusClick(r)}>
+              onClick={() => handleRunStatusClick(r)}
+            >
               {i === recentRunStatus.length - 1
                 ? upperFirst(pipelineState)
                 : ''}
@@ -177,7 +169,8 @@ export const IngestionRecentRuns = <
                   )}
                 </div>
               }
-              key={`${runId}-timestamp`}>
+              key={`${runId}-timestamp`}
+            >
               {status}
             </Popover>
           ) : (

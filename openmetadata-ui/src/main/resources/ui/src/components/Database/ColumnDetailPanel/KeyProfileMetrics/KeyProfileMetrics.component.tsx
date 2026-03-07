@@ -12,59 +12,16 @@
  */
 import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { HelpCircle } from '@untitledui/icons';
-import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TabSpecificField } from '../../../../enums/entity.enum';
-import { ColumnProfile } from '../../../../generated/entity/data/table';
-import { getTableColumnsByFQN } from '../../../../rest/tableAPI';
 import { getKeyProfileMetrics } from '../../../../utils/TableProfilerUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
-import Loader from '../../../common/Loader/Loader';
 import {
   KeyProfileMetricsProps,
   ProfileMetric,
 } from './KeyProfileMetrics.interface';
 
-export const KeyProfileMetrics = ({
-  columnFqn,
-  tableFqn,
-}: KeyProfileMetricsProps) => {
+export const KeyProfileMetrics = ({ profile }: KeyProfileMetricsProps) => {
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState(false);
-  const [profile, setProfile] = useState<ColumnProfile | undefined>(undefined);
-
-  const fetchColumnProfile = useCallback(async () => {
-    if (!columnFqn || !tableFqn) {
-      setProfile(undefined);
-      setIsLoading(false);
-
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const response = await getTableColumnsByFQN(tableFqn, {
-        fields: TabSpecificField.PROFILE,
-        limit: 50,
-      });
-
-      const columnData = response.data?.find(
-        (col) => col.fullyQualifiedName === columnFqn
-      );
-
-      setProfile(columnData?.profile);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setProfile(undefined);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [columnFqn, tableFqn]);
-
-  useEffect(() => {
-    fetchColumnProfile();
-  }, [fetchColumnProfile]);
 
   const metrics: ProfileMetric[] = useMemo(
     () => getKeyProfileMetrics(profile, t),
@@ -75,17 +32,6 @@ export const KeyProfileMetrics = ({
     'tw:border-b-[0.6px] tw:border-tertiary tw:-mt-2 tw:pb-4 tw:px-4';
   const titleClassName = 'tw:text-[13px] tw:font-semibold tw:mb-1.5';
 
-  if (isLoading) {
-    return (
-      <div className={sectionClassName}>
-        <p className={titleClassName}>{t('label.key-profile-metric-plural')}</p>
-        <div className="tw:flex tw:items-center tw:justify-center tw:p-3">
-          <Loader size="small" />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={sectionClassName}>
       <p className={titleClassName}>{t('label.key-profile-metric-plural')}</p>
@@ -94,7 +40,8 @@ export const KeyProfileMetrics = ({
           <div
             className="tw:flex-1 tw:rounded-lg tw:bg-secondary tw:p-2"
             data-testid={`key-profile-metric-${metric.label}`}
-            key={metric.label}>
+            key={metric.label}
+          >
             <div className="tw:flex tw:flex-col tw:gap-1">
               <div className="tw:flex tw:items-center tw:gap-1">
                 <span className="tw:text-xs tw:font-medium tw:text-tertiary">

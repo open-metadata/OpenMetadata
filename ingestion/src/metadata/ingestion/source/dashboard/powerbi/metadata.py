@@ -59,10 +59,12 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.constants import (
+    BIGQUERY_QUERY_EXPRESSION_KW,
     DATABRICKS_QUERY_EXPRESSION_KW,
     DEFAULT_REPORTS_PREFIX,
     MAX_PROJECT_FILTER_SIZE,
@@ -70,6 +72,8 @@ from metadata.ingestion.source.dashboard.powerbi.constants import (
     RDL_REPORT_FORMAT,
     RDL_REPORTS_PREFIX,
     SNOWFLAKE_QUERY_EXPRESSION_KW,
+    SQL_DATABASE_EXPRESSION_KW,
+    SQL_LINE_COMMENT_PATTERN,
 )
 from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
     parse_databricks_native_query_source,
@@ -117,6 +121,7 @@ class PowerbiSource(DashboardServiceSource):
         )
         self.workspace_data = []
         self.datamodel_file_mappings = []
+        self.dataflow_exports: dict = {}
 
     def close(self):
         self.metadata.close()
@@ -737,6 +742,7 @@ class PowerbiSource(DashboardServiceSource):
                             dataflow_id=dataset.id
                         )
                         if dataflow_export:
+                            self.dataflow_exports[dataset.id] = dataflow_export
                             datamodel_columns = self._get_dataflow_column_info(
                                 dataflow_export
                             )
@@ -1011,6 +1017,95 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
+    def _parse_bigquery_query_source(
+        self, source_expression: str
+    ) -> Optional[List[dict]]:
+        """
+        Parse BigQuery Value.NativeQuery source expressions containing inline SQL.
+
+        Example:
+        Value.NativeQuery(GoogleBigQuery.Database([BillingProject="project"]){[Name="project"]}[Data],
+            "SELECT ... FROM `dataset.table` ...", null, [EnableFolding=true])
+        """
+        try:
+            # Strip M language block comments (/* ... */) and line comments (//)
+            cleaned_expression = re.sub(
+                r"/\*.*?\*/", "", source_expression, flags=re.DOTALL
+            )
+            cleaned_expression = re.sub(
+                SQL_LINE_COMMENT_PATTERN, "", cleaned_expression
+            )
+
+            # Extract the project from BillingProject parameter
+            billing_match = re.search(r'BillingProject="([^"]+)"', cleaned_expression)
+            project = billing_match.group(1) if billing_match else None
+
+            # Extract the SQL query string (second argument to Value.NativeQuery)
+            # Use a pattern that handles doubled quotes ("") inside M expression strings
+            sql_match = re.search(
+                r'\[Data\],\s*"((?:[^"]|"")+)"(?:,\s*null|\s*\))',
+                cleaned_expression,
+                re.DOTALL,
+            )
+            if not sql_match:
+                logger.debug("SQL query not found in BigQuery NativeQuery expression")
+                return None
+
+            sql_query = sql_match.group(1).replace('""', '"')
+            sql_query = sql_query.replace("#(lf)", "\n")
+            sql_query = sql_query.replace("#(tab)", "\t")
+            sql_query = re.sub(r"--[^\n]*", "", sql_query)
+            sql_query = re.sub(SQL_LINE_COMMENT_PATTERN, "", sql_query)
+            sql_query = re.sub(r"\s+", " ", sql_query).strip()
+
+            logger.debug(f"Extracted BigQuery SQL query: {sql_query[:200]}")
+
+            try:
+                parser = LineageParser(
+                    sql_query,
+                    dialect=Dialect.BIGQUERY,
+                    timeout_seconds=30,
+                    parser_type=self.get_query_parser_type(),
+                )
+            except Exception as parser_exc:
+                logger.debug(f"LineageParser failed for BigQuery query: {parser_exc}")
+                return None
+
+            if not parser.source_tables:
+                logger.debug("No tables found in BigQuery query through parser")
+                return None
+
+            lineage_tables_list = []
+            for source_table in parser.source_tables:
+                database = project
+                schema = None
+                if hasattr(source_table, "schema") and source_table.schema:
+                    schema_str = (
+                        source_table.schema.raw_name
+                        if hasattr(source_table.schema, "raw_name")
+                        else str(source_table.schema)
+                    )
+                    schema = schema_str
+
+                table_name = source_table.raw_name
+                if table_name:
+                    logger.debug(
+                        f"BigQuery NativeQuery table found: {database}.{schema}.{table_name}"
+                    )
+                    lineage_tables_list.append(
+                        {
+                            "database": database,
+                            "schema": schema,
+                            "table": table_name,
+                        }
+                    )
+            return lineage_tables_list or None
+
+        except Exception as exc:
+            logger.debug(f"Error parsing BigQuery query source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
     def _parse_bigquery_source(
         self,
         source_expression: str,
@@ -1019,11 +1114,13 @@ class PowerbiSource(DashboardServiceSource):
     ) -> Optional[List[dict]]:
         """
         Parse BigQuery source from Power Query M expressions.
-        Handles both direct BigQuery connections and references to dataset expressions.
+        Handles direct BigQuery connections, Value.NativeQuery with inline SQL,
+        and references to dataset expressions.
 
         Examples:
         1. Direct: GoogleBigQuery.Database()[Name="project"][Data][Name="dataset",Kind="Schema"][Data][Name="table",Kind="Table"][Data]
-        2. Via expression reference: Source = S_PJ_CODE (where S_PJ_CODE is a dataset expression)
+        2. NativeQuery: Value.NativeQuery(GoogleBigQuery.Database([BillingProject="project"]){...}[Data], "SELECT ... FROM `dataset.table`", ...)
+        3. Via expression reference: Source = S_PJ_CODE (where S_PJ_CODE is a dataset expression)
         """
         try:
             # Check if source expression references a dataset expression
@@ -1058,6 +1155,10 @@ class PowerbiSource(DashboardServiceSource):
             # Check if this is a direct BigQuery connection
             if "GoogleBigQuery.Database" not in source_expression:
                 return None
+
+            # Handle Value.NativeQuery with inline SQL
+            if BIGQUERY_QUERY_EXPRESSION_KW in source_expression:
+                return self._parse_bigquery_query_source(source_expression)
 
             logger.debug(f"Found GoogleBigQuery.Database in expression")
             # Extract project, dataset (schema), and table from BigQuery M expression
@@ -1149,7 +1250,7 @@ class PowerbiSource(DashboardServiceSource):
             parser_query = parser_query.replace("#(lf)", "\n")
 
             # 3. Remove SQL comments that might cause issues (// style comments)
-            parser_query = re.sub(r"//[^\n]*", "", parser_query)
+            parser_query = re.sub(SQL_LINE_COMMENT_PATTERN, "", parser_query)
 
             # 4. Clean up excessive whitespace
             parser_query = re.sub(r"\s+", " ", parser_query).strip()
@@ -1337,12 +1438,14 @@ class PowerbiSource(DashboardServiceSource):
             if not source_expression:
                 logger.debug(f"No source expression found for table: {table.name}")
                 return None
+
             # parse snowflake source
             table_info_list = self._parse_snowflake_source(
                 source_expression, datamodel_entity
             )
             if isinstance(table_info_list, List):
                 return table_info_list
+
             # parse redshift source
             table_info_list = self._parse_redshift_source(source_expression)
             if isinstance(table_info_list, List):
@@ -1359,6 +1462,12 @@ class PowerbiSource(DashboardServiceSource):
             table_info_list = self._parse_databricks_source(
                 source_expression, datamodel_entity
             )
+            if isinstance(table_info_list, List):
+                return table_info_list
+
+            # parse generic Sql.Database source
+            # (inline query, native query, catalog access)
+            table_info_list = self._parse_sql_source(source_expression)
             if isinstance(table_info_list, List):
                 return table_info_list
 
@@ -1427,12 +1536,18 @@ class PowerbiSource(DashboardServiceSource):
                         )
                         return
 
-                    fqn_search_string = build_es_fqn_search_string(
-                        service_name=prefix_service_name or "*",
-                        table_name=(prefix_table_name or table_name),
-                        schema_name=(prefix_schema_name or schema_name),
-                        database_name=(prefix_database_name or database_name),
-                    )
+                    try:
+                        fqn_search_string = build_es_fqn_search_string(
+                            service_name=prefix_service_name or "*",
+                            table_name=(prefix_table_name or table_name),
+                            schema_name=(prefix_schema_name or schema_name),
+                            database_name=(prefix_database_name or database_name),
+                        )
+                    except ValueError:
+                        logger.debug(
+                            f"Skipping table '{table_name}' with invalid FQN characters"
+                        )
+                        continue
                     table_entity = self.metadata.search_in_any_service(
                         entity_type=Table,
                         fqn_search_string=fqn_search_string,
@@ -1671,6 +1786,347 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 )
 
+    def _parse_dataflow_m_document(
+        self, dataflow_export: DataflowExportResponse
+    ) -> List[dict]:
+        """
+        Parse Power Query M expressions from the dataflow export document
+        to extract table references for each entity/query in the dataflow.
+
+        Returns a list of dicts: [{"entity_name": str, "tables": [{"database": str, "schema": str, "table": str}], "sql": str|None}]
+        """
+        results = []
+        mashup = dataflow_export.mashup
+        if not mashup or not mashup.document:
+            return results
+
+        document = mashup.document
+        queries_metadata = mashup.queriesMetadata or {}
+
+        # Split the document into individual shared expressions
+        # Pattern: shared <name> = let ... in ... ;
+        shared_blocks = re.split(r"(?:^|\r?\n)shared\s+", document)
+
+        for block in shared_blocks:
+            if not block.strip():
+                continue
+
+            # Extract the entity name (handles quoted names like #"Channel Categories")
+            name_match = re.match(r'(?:#"([^"]+)"|(\S+))\s*=\s*let\b', block, re.DOTALL)
+            if not name_match:
+                continue
+            entity_name = name_match.group(1) or name_match.group(2)
+
+            # Only process entities that have loadEnabled=true in queriesMetadata
+            query_meta = queries_metadata.get(entity_name, {})
+            if isinstance(query_meta, dict) and not query_meta.get(
+                "loadEnabled", False
+            ):
+                continue
+
+            table_info_list = self._parse_sql_source(block)
+            if table_info_list:
+                sql_query = None
+                for table_info in table_info_list:
+                    if table_info.get("sql"):
+                        sql_query = table_info.pop("sql")
+                results.append(
+                    {
+                        "entity_name": entity_name,
+                        "tables": table_info_list,
+                        "sql": sql_query,
+                    }
+                )
+        return results
+
+    def _parse_sql_source(self, m_expression: str) -> Optional[List[dict]]:
+        """
+        Parse a Power Query M expression block from a dataflow document to extract
+        database table references. Handles:
+        1. Sql.Database("server", "db", [Query="SQL"]) - inline SQL query
+        2. Value.NativeQuery(Source, "SQL") - NativeQuery pattern
+        3. Sql.Database("server", "db") then Source{[Schema="x", Item="y"]}[Data] - catalog access
+        """
+        try:
+            if SQL_DATABASE_EXPRESSION_KW not in m_expression:
+                return None
+
+            # Pattern 1: Sql.Database with inline Query parameter
+            # e.g. Sql.Database("dwsql", "dw_integration", [Query = "SELECT ..."])
+            inline_query_match = re.search(
+                r'Sql\.Database\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*\[Query\s*=\s*"((?:[^"]|"")*)"',
+                m_expression,
+                re.DOTALL,
+            )
+            if inline_query_match:
+                server = inline_query_match.group(1)
+                database = inline_query_match.group(2)
+                sql_query = inline_query_match.group(3)
+                return self._extract_tables_from_sql(sql_query, database, server)
+
+            # Pattern 2: Value.NativeQuery with Sql.Database Source
+            # e.g. Value.NativeQuery(Source, "SELECT ... FROM schema.table")
+            native_query_match = re.search(
+                r'Value\.NativeQuery\(\s*\w+\s*,\s*"((?:[^"]|"")*)"',
+                m_expression,
+                re.DOTALL,
+            )
+            if native_query_match:
+                sql_query = native_query_match.group(1)
+                # Extract database info from Sql.Database call in the same block
+                db_match = re.search(
+                    r'Sql\.Database\(\s*"([^"]+)"\s*,\s*"([^"]+)"',
+                    m_expression,
+                )
+                database = db_match.group(2) if db_match else None
+                server = db_match.group(1) if db_match else None
+                return self._extract_tables_from_sql(sql_query, database, server)
+
+            # Pattern 3: Catalog access - Sql.Database("server", "db") then
+            # Source{[Schema="dbo", Item="TableName"]}[Data]
+            db_match = re.search(
+                r'Sql\.Database\(\s*"([^"]+)"\s*,\s*"([^"]+)"',
+                m_expression,
+            )
+            if db_match:
+                server = db_match.group(1)
+                database = db_match.group(2)
+
+                schema_match = re.search(
+                    r'\{?\[Schema\s*=\s*"([^"]+)"\s*,\s*Item\s*=\s*"([^"]+)"\]',
+                    m_expression,
+                )
+                if schema_match:
+                    schema = schema_match.group(1)
+                    table = schema_match.group(2)
+                    return [
+                        {
+                            "database": database,
+                            "schema": schema,
+                            "table": table,
+                        }
+                    ]
+
+            return None
+        except Exception as exc:
+            logger.debug(f"Error parsing dataflow SQL source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _extract_tables_from_sql(
+        self,
+        sql_query: str,
+        database: Optional[str],
+        server: Optional[str],
+    ) -> Optional[List[dict]]:
+        """
+        Extract table references from a SQL query found in a dataflow M expression.
+        Uses LineageParser to parse the SQL and extract source tables.
+        """
+        try:
+            # Clean PowerBI special characters
+            cleaned_sql = sql_query.replace("#(lf)", "\n")
+            cleaned_sql = cleaned_sql.replace("#(tab)", "\t")
+            cleaned_sql = cleaned_sql.replace('""', '"')
+            cleaned_sql = re.sub(r"\s+", " ", cleaned_sql).strip()
+
+            if not cleaned_sql:
+                return None
+
+            try:
+                parser = LineageParser(
+                    cleaned_sql,
+                    dialect=Dialect.ANSI,
+                    timeout_seconds=30,
+                    parser_type=self.get_query_parser_type(),
+                )
+            except Exception as parser_exc:
+                logger.debug(f"LineageParser failed for dataflow SQL: {parser_exc}")
+                return None
+
+            if not parser.source_tables:
+                logger.debug("No source tables found in dataflow SQL query")
+                return None
+
+            lineage_tables = []
+            for source_table in parser.source_tables:
+                table_name = source_table.raw_name
+                schema_name = None
+                database_name = database
+
+                if hasattr(source_table, "schema") and source_table.schema:
+                    schema_str = (
+                        source_table.schema.raw_name
+                        if hasattr(source_table.schema, "raw_name")
+                        else str(source_table.schema)
+                    )
+                    if "." in schema_str:
+                        parts = schema_str.split(".")
+                        if len(parts) == 2:
+                            database_name = parts[0] if parts[0] else database
+                            schema_name = parts[1]
+                        else:
+                            schema_name = schema_str
+                    else:
+                        schema_name = schema_str
+
+                if table_name:
+                    lineage_tables.append(
+                        {
+                            "database": database_name,
+                            "schema": schema_name,
+                            "table": table_name,
+                            "sql": cleaned_sql,
+                        }
+                    )
+            return lineage_tables if lineage_tables else None
+        except Exception as exc:
+            logger.debug(f"Error extracting tables from dataflow SQL: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
+    def create_dataflow_table_lineage(
+        self,
+        datamodel: Dataflow,
+        datamodel_entity: DashboardDataModel,
+        dataflow_export: DataflowExportResponse,
+        db_service_prefix: Optional[str],
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Create lineage between dataflow entities and database tables
+        by parsing the Power Query M document from the dataflow export.
+        Also creates column-level lineage where column names match.
+        """
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+
+        try:
+            parsed_entities = self._parse_dataflow_m_document(dataflow_export)
+            if not parsed_entities:
+                logger.debug(
+                    f"No table references found in dataflow [{datamodel.name}] M document"
+                )
+                return
+
+            # Build a map of entity_name -> entity attributes for column lineage
+            entity_attributes_map = {}
+            for entity in dataflow_export.entities or []:
+                entity_attributes_map[entity.name] = [
+                    attr.name for attr in entity.attributes or []
+                ]
+
+            for parsed_entity in parsed_entities:
+                entity_name = parsed_entity["entity_name"]
+                sql_query = parsed_entity.get("sql")
+
+                for table_info in parsed_entity.get("tables", []):
+                    table_name = table_info.get("table")
+                    schema_name = table_info.get("schema")
+                    database_name = table_info.get("database")
+
+                    if not table_name:
+                        continue
+
+                    if (
+                        prefix_table_name
+                        and table_name
+                        and prefix_table_name.lower() != table_name.lower()
+                    ):
+                        continue
+
+                    if (
+                        prefix_schema_name
+                        and schema_name
+                        and prefix_schema_name.lower() != schema_name.lower()
+                    ):
+                        continue
+
+                    if (
+                        prefix_database_name
+                        and database_name
+                        and prefix_database_name.lower() != database_name.lower()
+                    ):
+                        continue
+                    try:
+                        fqn_search_string = build_es_fqn_search_string(
+                            service_name=prefix_service_name or "*",
+                            table_name=prefix_table_name or table_name,
+                            schema_name=prefix_schema_name or schema_name,
+                            database_name=prefix_database_name or database_name,
+                        )
+                    except ValueError:
+                        logger.debug(
+                            f"Skipping table '{table_name}' with invalid FQN characters"
+                        )
+                        continue
+                    table_entity = self.metadata.search_in_any_service(
+                        entity_type=Table,
+                        fqn_search_string=fqn_search_string,
+                    )
+                    if table_entity and datamodel_entity:
+                        column_lineage = self._get_dataflow_column_lineage(
+                            table_entity=table_entity,
+                            datamodel_entity=datamodel_entity,
+                            entity_name=entity_name,
+                            entity_attributes=entity_attributes_map.get(
+                                entity_name, []
+                            ),
+                        )
+                        yield self._get_add_lineage_request(
+                            to_entity=datamodel_entity,
+                            from_entity=table_entity,
+                            column_lineage=column_lineage,
+                            sql=sql_query,
+                        )
+        except Exception as exc:  # pylint: disable=broad-except
+            yield Either(
+                left=StackTraceError(
+                    name="Dataflow Table Lineage",
+                    error=(
+                        f"Error to yield dataflow table lineage for "
+                        f"dataflow [{datamodel.name}]: {exc}"
+                    ),
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _get_dataflow_column_lineage(
+        self,
+        table_entity: Table,
+        datamodel_entity: DashboardDataModel,
+        entity_name: str,
+        entity_attributes: List[str],
+    ) -> List[ColumnLineage]:
+        """
+        Get column-level lineage between a database table and a dataflow entity.
+        Matches columns from the database table to the dataflow entity's attributes
+        within the datamodel.
+        """
+        try:
+            column_lineage = []
+            for attr_name in entity_attributes:
+                from_column = get_column_fqn(
+                    table_entity=table_entity, column=attr_name
+                )
+                to_column = self._get_downstream_data_model_column_fqn(
+                    data_model_entity=datamodel_entity,
+                    table_name=entity_name,
+                    column=attr_name,
+                )
+                if from_column and to_column:
+                    column_lineage.append(
+                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                    )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(f"Error getting dataflow column lineage: {exc}")
+            logger.debug(traceback.format_exc())
+        return []
+
     def create_dataflow_upstream_dataflow_lineage(
         self, datamodel: Dataflow, datamodel_entity: DashboardDataModel
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -1750,13 +2206,15 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 )
         """
-        Iterate loop for filtered datamodels so datamodels which are not connected to 
+        Iterate loop for filtered datamodels so datamodels which are not connected to
         any report but have tables would be eligible for a dataset-db_table lineage.
-        Also create below lineages: 
+        Also create below lineages:
         1. dataset-db_table
         2. dataset-upstreamDataflow
         3. dataset-upstreamDataset
-        4. dataflow-upstreamDataflow
+        4. dataset-db_table (from pbit files)
+        5. dataflow-db_table (from M document parsing)
+        6. dataflow-upstreamDataflow
         """
         for datamodel in self.filtered_datamodels or []:
             try:
@@ -1794,7 +2252,16 @@ class PowerbiSource(DashboardServiceSource):
                                 datamodel_entity=datamodel_entity,
                             )
                     elif isinstance(datamodel, Dataflow):
-                        # create dataflow-upstreamDataflow lineage
+                        # 5. dataflow-db_table lineage via M document parsing
+                        dataflow_export = self.dataflow_exports.get(datamodel.id)
+                        if dataflow_export:
+                            yield from self.create_dataflow_table_lineage(
+                                datamodel=datamodel,
+                                datamodel_entity=datamodel_entity,
+                                dataflow_export=dataflow_export,
+                                db_service_prefix=db_service_prefix,
+                            )
+                        # 6. dataflow-upstreamDataflow lineage
                         yield from self.create_dataflow_upstream_dataflow_lineage(
                             datamodel, datamodel_entity
                         )

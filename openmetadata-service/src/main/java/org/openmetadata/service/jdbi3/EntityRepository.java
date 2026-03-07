@@ -3152,6 +3152,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(fqn, extension);
   }
 
+  public final Map<String, String> getLatestExtensionFromTimeSeriesBatch(
+      List<String> fqnHashes, String extension) {
+    return daoCollection
+        .entityExtensionTimeSeriesDao()
+        .getLatestExtensionBatch(fqnHashes, extension);
+  }
+
   public final List<String> getResultsFromAndToTimestamps(
       String fullyQualifiedName, String extension, Long startTs, Long endTs) {
     return getResultsFromAndToTimestamps(
@@ -3163,6 +3170,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return daoCollection
         .entityExtensionTimeSeriesDao()
         .listBetweenTimestampsByOrder(fqn, extension, startTs, endTs, orderBy);
+  }
+
+  public final List<String> getResultsFromAndToTimestampsWithLimit(
+      String fqn,
+      String extension,
+      Long startTs,
+      Long endTs,
+      EntityTimeSeriesDAO.OrderBy orderBy,
+      int limit) {
+    return daoCollection
+        .entityExtensionTimeSeriesDao()
+        .listBetweenTimestampsByOrderWithLimit(fqn, extension, startTs, endTs, orderBy, limit);
   }
 
   @Transaction
@@ -4488,6 +4507,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Relationship relationship,
       BulkAssets request,
       boolean isAdd) {
+    return bulkAssetsOperation(entityId, fromEntity, relationship, request, isAdd, null);
+  }
+
+  @Transaction
+  protected BulkOperationResult bulkAssetsOperation(
+      UUID entityId,
+      String fromEntity,
+      Relationship relationship,
+      BulkAssets request,
+      boolean isAdd,
+      String userName) {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
@@ -4519,8 +4549,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
               entityInterface.getVersion(), isAdd, request.getAssets(), null);
+      String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
       ChangeEvent changeEvent =
-          getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
+          getChangeEvent(
+              entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     }
 
@@ -4542,6 +4574,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected ChangeEvent getChangeEvent(
       EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+    return getChangeEvent(updated, change, entityType, prevVersion, updated.getUpdatedBy());
+  }
+
+  protected ChangeEvent getChangeEvent(
+      EntityInterface updated,
+      ChangeDescription change,
+      String entityType,
+      Double prevVersion,
+      String userName) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEntity(updated)
@@ -4550,7 +4591,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .withEntityType(entityType)
         .withEntityId(updated.getId())
         .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
-        .withUserName(updated.getUpdatedBy())
+        .withUserName(userName)
         .withTimestamp(System.currentTimeMillis())
         .withCurrentVersion(updated.getVersion())
         .withPreviousVersion(prevVersion);
