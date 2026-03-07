@@ -91,3 +91,31 @@ export const STATUS_COLORS: Record<
   Assigned: { bg: '#FFF6E1', color: '#D99601', border: '#D99601' },
   Resolved: { bg: '#E8F5E9', color: '#4CAF50', border: '#81C784' },
 };
+
+export const CANVAS_BUTTON_COLORS = {
+  DEFAULT: {
+    border: '#eaecf5',
+    background: '#fff',
+    icon: '#181d27',
+  },
+  SUCCESS: {
+    border: '#00b871',
+    background: '#effffb',
+    icon: '#00b871',
+  },
+  FAILED: {
+    border: '#cf1800',
+    background: '#fcf0f1',
+    icon: '#cf1800',
+  },
+  PENDING: {
+    border: '#c18100',
+    background: '#FFFBE6',
+    icon: '#c18100',
+  },
+  HOVER: {
+    border: '#2e90f9',
+    background: '#fff',
+    icon: '#2e90f9',
+  },
+} as const;

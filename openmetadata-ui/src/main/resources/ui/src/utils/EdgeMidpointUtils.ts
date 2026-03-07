@@ -13,6 +13,7 @@
 import { Edge, Node, Position } from 'reactflow';
 import { getEdgeCoordinates } from './CanvasUtils';
 import { getEdgePathData } from './EntityLineageUtils';
+import { getEntityName } from './EntityUtils';
 
 export interface EdgeMidpoint {
   id: string;
@@ -60,9 +61,28 @@ export const calculateEdgeMidpoints = (
         centerY = pathData.edgeCenterY;
       }
 
+      const {
+        isColumnLineage,
+        edge: edgeDetails,
+        columnFunctionValue,
+        isExpanded,
+      } = edge.data || {};
+
+      const hasPipeline =
+        !isColumnLineage &&
+        edgeDetails?.pipeline &&
+        getEntityName(edgeDetails.pipeline);
+      const hasFunction = !isColumnLineage && columnFunctionValue && isExpanded;
+
+      let dataTestId = edge.data?.dataTestId;
+
+      if ((hasPipeline || hasFunction) && edgeDetails) {
+        dataTestId = `pipeline-label-${edgeDetails.fromEntity.fullyQualifiedName}-${edgeDetails.toEntity.fullyQualifiedName}`;
+      }
+
       return {
         id: edge.id,
-        dataTestId: edge.data?.dataTestId,
+        dataTestId,
         canvasX: centerX,
         canvasY: centerY,
         edge,
