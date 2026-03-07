@@ -58,7 +58,7 @@ const AccessTokenCard: FC<MockProps> = ({
     useState<boolean>(false);
   const [authenticationMechanism, setAuthenticationMechanism] =
     useState<PersonalAccessToken>(
-      USER_DEFAULT_AUTHENTICATION_MECHANISM as PersonalAccessToken,
+      USER_DEFAULT_AUTHENTICATION_MECHANISM as PersonalAccessToken
     );
   const { t } = useTranslation();
   const [authenticationMechanismBot, setAuthenticationMechanismBot] =
@@ -98,7 +98,7 @@ const AccessTokenCard: FC<MockProps> = ({
   };
 
   const handleAuthMechanismUpdateForBot = async (
-    updatedAuthMechanism: AuthenticationMechanism,
+    updatedAuthMechanism: AuthenticationMechanism
   ) => {
     setIsUpdating(true);
     if (botUserData && botData) {
@@ -180,7 +180,7 @@ const AccessTokenCard: FC<MockProps> = ({
     try {
       const response = await revokeAccessToken('removeAll=true');
       setAuthenticationMechanism(
-        response?.[0] ?? USER_DEFAULT_AUTHENTICATION_MECHANISM,
+        response?.[0] ?? USER_DEFAULT_AUTHENTICATION_MECHANISM
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -266,10 +266,9 @@ const AccessTokenCard: FC<MockProps> = ({
         'access-token-card',
         isBot ? 'page-layout-v1-left-panel mt-2 ' : '',
         { disabled },
-        isSCIMBot && 'scim-token-card',
+        isSCIMBot && 'scim-token-card'
       )}
-      data-testid="center-panel"
-    >
+      data-testid="center-panel">
       {!isDataLoaded ? <Loader /> : renderAuthComponent()}
       <ConfirmationModal
         bodyText={

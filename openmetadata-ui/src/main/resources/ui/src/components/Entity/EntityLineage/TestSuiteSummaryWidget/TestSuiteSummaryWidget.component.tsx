@@ -31,24 +31,21 @@ const TestSuiteSummaryWidget = ({
     <div className="d-flex justify-end">
       <div
         className={classNames(`profiler-item green`, size)}
-        data-testid="test-passed"
-      >
+        data-testid="test-passed">
         <div className="font-medium" data-testid="test-passed-value">
           {summary?.success ?? 0}
         </div>
       </div>
       <div
         className={classNames(`profiler-item amber`, size)}
-        data-testid="test-aborted"
-      >
+        data-testid="test-aborted">
         <div className="font-medium" data-testid="test-aborted-value">
           {summary?.aborted ?? 0}
         </div>
       </div>
       <div
         className={classNames(`profiler-item red`, size)}
-        data-testid="test-failed"
-      >
+        data-testid="test-failed">
         <div className="font-medium" data-testid="test-failed-value">
           {summary?.failed ?? 0}
         </div>

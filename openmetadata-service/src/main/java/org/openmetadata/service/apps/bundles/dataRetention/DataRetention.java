@@ -50,6 +50,7 @@ public class DataRetention extends AbstractNativeApplication {
   private final EntityTimeSeriesDAO testCaseResultsDAO;
   private final EntityTimeSeriesDAO profileDataDAO;
   private final CollectionDAO.AuditLogDAO auditLogDAO;
+  private final CollectionDAO.WorkflowDAO workflowDAO;
 
   public DataRetention(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -59,6 +60,7 @@ public class DataRetention extends AbstractNativeApplication {
     this.testCaseResultsDAO = collectionDAO.testCaseResultTimeSeriesDao();
     this.profileDataDAO = collectionDAO.profilerDataTimeSeriesDao();
     this.auditLogDAO = collectionDAO.auditLogDAO();
+    this.workflowDAO = collectionDAO.workflowDAO();
   }
 
   @Override
@@ -122,6 +124,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("broken_search_entities", new StepStats());
     entityStats.withAdditionalProperty("orphaned_tag_usages", new StepStats());
     entityStats.withAdditionalProperty("audit_logs", new StepStats());
+    entityStats.withAdditionalProperty("reverse_ingestion_workflows", new StepStats());
 
     retentionStats.setEntityStats(entityStats);
   }
@@ -166,6 +169,13 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info(
         "Starting cleanup for audit logs with retention period: {} days.", auditLogRetentionPeriod);
     cleanAuditLogs(auditLogRetentionPeriod);
+
+    int reverseIngestionWorkflowRetentionPeriod =
+        config.getReverseIngestionWorkflowRetentionPeriod();
+    LOG.info(
+        "Starting cleanup for reverse ingestion workflows with retention period: {} days.",
+        reverseIngestionWorkflowRetentionPeriod);
+    cleanReverseIngestionWorkflows(reverseIngestionWorkflowRetentionPeriod);
   }
 
   @Transaction
@@ -306,6 +316,19 @@ public class DataRetention extends AbstractNativeApplication {
         "audit_logs", () -> auditLogDAO.deleteInBatches(cutoffMillis, BATCH_SIZE));
 
     LOG.info("Audit logs cleanup complete.");
+  }
+
+  @Transaction
+  private void cleanReverseIngestionWorkflows(int retentionPeriod) {
+    LOG.info(
+        "Initiating reverse ingestion workflows cleanup: Retention = {} days.", retentionPeriod);
+    long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
+
+    executeWithStatsTracking(
+        "reverse_ingestion_workflows",
+        () -> workflowDAO.deleteReverseIngestionWorkflowsBeforeCutoff(cutoffMillis, BATCH_SIZE));
+
+    LOG.info("Reverse ingestion workflows cleanup complete.");
   }
 
   private void executeWithStatsTracking(String entity, Supplier<Integer> deleteFunction) {
