@@ -24,10 +24,13 @@ import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
+import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.NotificationFilterOperation;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
@@ -1540,7 +1543,10 @@ public class EventSubscriptionResourceIT
         new Webhook()
             .withEndpoint(URI.create("http://localhost:8585/api/v1/test/slack/test"))
             .withReceivers(new HashSet<>())
-            .withSecretKey("slackTest");
+            .withAuthType(
+                new WebhookBearerAuth()
+                    .withType(WebhookBearerAuth.Type.BEARER)
+                    .withSecretKey("slackTest"));
 
     return List.of(
         new SubscriptionDestination()
@@ -1555,7 +1561,10 @@ public class EventSubscriptionResourceIT
         new Webhook()
             .withEndpoint(URI.create("http://localhost:8585/api/v1/test/msteams/test"))
             .withReceivers(new HashSet<>())
-            .withSecretKey("msTeamsTest");
+            .withAuthType(
+                new WebhookBearerAuth()
+                    .withType(WebhookBearerAuth.Type.BEARER)
+                    .withSecretKey("msTeamsTest"));
 
     return List.of(
         new SubscriptionDestination()
@@ -1607,6 +1616,115 @@ public class EventSubscriptionResourceIT
         .withEffect(effect)
         .withArguments(List.of(fqnArgument))
         .withPrefixCondition(ArgumentsInput.PrefixCondition.AND);
+  }
+
+  // ===================================================================
+  // OAUTH2 WEBHOOK VALIDATION TESTS
+  // ===================================================================
+
+  @Test
+  void post_webhookOAuth2MissingTokenUrl_400(TestNamespace ns) {
+    WebhookOAuth2Config oauth2 =
+        new WebhookOAuth2Config()
+            .withType(WebhookOAuth2Config.Type.OAUTH_2)
+            .withClientId("my-client-id")
+            .withClientSecret("my-client-secret");
+    Map<String, Object> oauth2Map = JsonUtils.convertValue(oauth2, Map.class);
+    oauth2Map.remove("tokenUrl");
+
+    CreateEventSubscription request =
+        buildOAuth2SubscriptionRequest(ns, "oauth2_no_url", oauth2Map);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "OAuth2 config without tokenUrl should fail validation");
+  }
+
+  @Test
+  void post_webhookOAuth2MissingClientId_400(TestNamespace ns) {
+    WebhookOAuth2Config oauth2 =
+        new WebhookOAuth2Config()
+            .withType(WebhookOAuth2Config.Type.OAUTH_2)
+            .withTokenUrl(URI.create("https://auth.example.com/token"))
+            .withClientSecret("my-client-secret");
+    Map<String, Object> oauth2Map = JsonUtils.convertValue(oauth2, Map.class);
+    oauth2Map.remove("clientId");
+
+    CreateEventSubscription request =
+        buildOAuth2SubscriptionRequest(ns, "oauth2_no_cid", oauth2Map);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "OAuth2 config without clientId should fail validation");
+  }
+
+  @Test
+  void post_webhookOAuth2MissingClientSecret_400(TestNamespace ns) {
+    WebhookOAuth2Config oauth2 =
+        new WebhookOAuth2Config()
+            .withType(WebhookOAuth2Config.Type.OAUTH_2)
+            .withTokenUrl(URI.create("https://auth.example.com/token"))
+            .withClientId("my-client-id");
+    Map<String, Object> oauth2Map = JsonUtils.convertValue(oauth2, Map.class);
+    oauth2Map.remove("clientSecret");
+
+    CreateEventSubscription request =
+        buildOAuth2SubscriptionRequest(ns, "oauth2_no_csecret", oauth2Map);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "OAuth2 config without clientSecret should fail validation");
+  }
+
+  @Test
+  void post_webhookOAuth2ValidConfig_createsSubscription(TestNamespace ns) {
+    WebhookOAuth2Config oauth2 =
+        new WebhookOAuth2Config()
+            .withType(WebhookOAuth2Config.Type.OAUTH_2)
+            .withTokenUrl(URI.create("https://auth.example.com/token"))
+            .withClientId("my-client-id")
+            .withClientSecret("my-client-secret")
+            .withScope("read write");
+
+    CreateEventSubscription request =
+        buildOAuth2SubscriptionRequest(
+            ns, "oauth2_valid", JsonUtils.convertValue(oauth2, Map.class));
+
+    EventSubscription subscription = createEntity(request);
+    assertNotNull(subscription);
+    assertNotNull(subscription.getDestinations());
+    assertFalse(subscription.getDestinations().isEmpty());
+
+    SubscriptionDestination dest = subscription.getDestinations().get(0);
+    Map<String, Object> config = JsonUtils.convertValue(dest.getConfig(), Map.class);
+    assertNotNull(config.get("authType"));
+
+    Map<String, Object> authMap = (Map<String, Object>) config.get("authType");
+    assertEquals("oauth2", authMap.get("type"));
+  }
+
+  private CreateEventSubscription buildOAuth2SubscriptionRequest(
+      TestNamespace ns, String nameSuffix, Map<String, Object> oauth2Map) {
+    Map<String, Object> webhookConfig = new java.util.LinkedHashMap<>();
+    webhookConfig.put("endpoint", "http://localhost:8585/api/v1/test/webhook/test");
+    webhookConfig.put("authType", oauth2Map);
+
+    return new CreateEventSubscription()
+        .withName(ns.prefix(nameSuffix))
+        .withDescription("OAuth2 webhook test")
+        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+        .withResources(List.of("all"))
+        .withEnabled(false)
+        .withDestinations(
+            List.of(
+                new SubscriptionDestination()
+                    .withId(UUID.randomUUID())
+                    .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+                    .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                    .withConfig(webhookConfig)));
   }
 
   private org.openmetadata.schema.entity.events.NotificationTemplate getSystemTemplate(

@@ -259,6 +259,10 @@ export enum SubscriptionCategory {
  */
 export interface Webhook {
     /**
+     * Authentication configuration for the webhook.
+     */
+    authType?: WebhookNoAuth | WebhookBearerAuth | WebhookOAuth2Config;
+    /**
      * Endpoint to receive the webhook events over POST requests.
      */
     endpoint?: string;
@@ -279,11 +283,6 @@ export interface Webhook {
      */
     receivers?: string[];
     /**
-     * Secret set by the webhook client used for computing HMAC SHA256 signature of webhook
-     * payload and sent in `X-OM-Signature` header in POST requests to publish the events.
-     */
-    secretKey?: string;
-    /**
      * Send the Event to Admins
      *
      * Send the Mails to Admins
@@ -302,6 +301,29 @@ export interface Webhook {
      */
     sendToOwners?: boolean;
     [property: string]: any;
+}
+
+export interface WebhookNoAuth {
+    type: WebhookAuthType.None;
+}
+
+export interface WebhookBearerAuth {
+    type: WebhookAuthType.Bearer;
+    secretKey: string;
+}
+
+export interface WebhookOAuth2Config {
+    type: WebhookAuthType.OAuth2;
+    tokenUrl: string;
+    clientId: string;
+    clientSecret: string;
+    scope?: string;
+}
+
+export enum WebhookAuthType {
+    None = "none",
+    Bearer = "bearer",
+    OAuth2 = "oauth2",
 }
 
 /**
