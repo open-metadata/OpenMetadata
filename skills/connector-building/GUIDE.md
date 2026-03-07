@@ -28,6 +28,23 @@ can focus on the actual integration logic.
 
 ## Quick Start
 
+### Step 0: Set Up the Development Environment
+
+Before running any `make` or `python` commands, create and activate a Python virtual environment:
+
+```bash
+# From the root of the OpenMetadata project
+python3.11 -m venv env
+source env/bin/activate
+make install_dev generate
+```
+
+Always activate the env before running commands in subsequent sessions:
+
+```bash
+source env/bin/activate
+```
+
 ### Step 1: Run the Scaffold
 
 Interactive mode — answers a series of questions:
@@ -63,6 +80,8 @@ The interactive mode asks for:
 | SDK package | Included in AI context for implementation |
 | API endpoints | Included in AI context for implementation |
 | Implementation notes | Auth quirks, pagination, rate limits — AI context |
+| Docker image | If available, generates real testcontainers integration tests |
+| Container port | Port to expose from the Docker container |
 
 ### Step 2: Review Generated Files
 
@@ -134,6 +153,9 @@ The scaffold prints a checklist. These files need manual edits:
 ### Step 5: Run Code Generation
 
 ```bash
+# Make sure env is activated
+source env/bin/activate
+
 # Generate Python Pydantic models from JSON Schema
 make generate
 
@@ -147,15 +169,17 @@ cd openmetadata-ui/src/main/resources/ui && yarn parse-schema
 ### Step 6: Validate
 
 ```bash
-# Format
-mvn spotless:apply
-cd ingestion && make py_format
+# Make sure env is activated
+source env/bin/activate
 
-# Lint
-cd ingestion && make lint
+# Format Python code (from repo root)
+make py_format
+
+# Format Java code
+mvn spotless:apply
 
 # Tests
-cd ingestion && python -m pytest tests/unit/topology/{service_type}/test_{name}.py
+python -m pytest ingestion/tests/unit/topology/{service_type}/test_{name}.py
 ```
 
 ---

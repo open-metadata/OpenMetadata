@@ -27,11 +27,24 @@ Activate when a user asks to build, create, add, or scaffold a new connector, so
 
 ## Workflow: 7 Phases
 
+### Phase 0: ENVIRONMENT — Set Up Python Dev Environment
+
+Before any `make` or `python` commands, set up the environment from the repo root:
+
+```bash
+python3.11 -m venv env
+source env/bin/activate
+make install_dev generate
+```
+
+Always activate before running commands: `source env/bin/activate`
+
 ### Phase 1: SCAFFOLD — Generate Boilerplate
 
 Run the interactive scaffold CLI to collect all inputs and generate files:
 
 ```bash
+source env/bin/activate
 metadata scaffold-connector
 ```
 
@@ -45,6 +58,8 @@ This walks through an interactive form collecting:
 - **SDK package** — Python package name if applicable
 - **API endpoints** — Key endpoints to call
 - **Implementation notes** — Auth quirks, pagination, rate limits, etc.
+- **Docker image** — If available, generates real testcontainers-based integration tests
+- **Container port** — Port to expose from the Docker container
 
 Or non-interactively:
 
@@ -57,10 +72,12 @@ metadata scaffold-connector \
   --auth-types basic \
   --capabilities metadata lineage usage profiler \
   --docs-url "https://docs.example.com/api" \
-  --sdk-package "mydb-sdk"
+  --sdk-package "mydb-sdk" \
+  --docker-image "mydb/mydb:latest" \
+  --docker-port 5432
 ```
 
-**Output**: All boilerplate files + a `CONNECTOR_CONTEXT.md` in the connector directory that any AI agent can read to implement the connector in one shot.
+**Output**: All boilerplate files + a `CONNECTOR_CONTEXT.md` in the connector directory that any AI agent can read to implement the connector in one shot. When a Docker image is provided, integration tests use `testcontainers` to spin up a real instance.
 
 ### Phase 2: CLASSIFY — Understand the Source
 
@@ -144,6 +161,7 @@ The scaffold generates files with `# TODO` markers. Implement them:
 **`metadata.py`** — The source class:
 - Database: Usually works out of the box with `CommonDbSourceService`. Override methods only for custom behavior (stored procedures, custom type mapping)
 - Non-database: Implement the abstract methods from the base class. Study the reference connector
+- Non-database optional overrides: Lineage, usage, datamodel, ownership, and project/folder are implemented by overriding no-op methods in the base class — no extra files needed
 
 **`client.py`** (non-database only):
 - Initialize HTTP session or SDK client
@@ -167,9 +185,12 @@ Modify these existing files to register the new connector:
 ### Phase 6: GENERATE — Run Code Generation
 
 ```bash
+source env/bin/activate                      # Activate Python environment
 make generate                                # Python Pydantic models from JSON Schema
 mvn clean install -pl openmetadata-spec      # Java models from JSON Schema
 cd openmetadata-ui/src/main/resources/ui && yarn parse-schema  # Resolved JSON for UI forms
+make py_format                               # Format Python code to mergeable state
+mvn spotless:apply                           # Format Java code
 ```
 
 ### Phase 7: VALIDATE — End-to-End Checklist

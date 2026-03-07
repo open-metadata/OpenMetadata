@@ -215,6 +215,15 @@ def get_parser(args: Optional[List[str]] = None):
         "--docs-notes",
         help="Additional notes about the source (included in AI context)",
     )
+    scaffold_parser.add_argument(
+        "--docker-image",
+        help="Docker image for integration tests (e.g. 'metabase/metabase:latest')",
+    )
+    scaffold_parser.add_argument(
+        "--docker-port",
+        type=int,
+        help="Container port to expose for integration tests (e.g. 3000)",
+    )
 
     add_metadata_args(parser)
     parser.add_argument("--debug", help="Debug Mode", action="store_true")
