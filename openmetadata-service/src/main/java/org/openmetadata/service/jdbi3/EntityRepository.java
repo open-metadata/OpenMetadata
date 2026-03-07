@@ -1266,7 +1266,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
 
     if (fieldChanged != null && !fieldChanged.isEmpty()) {
-      return listVersionsWithFieldFilter(id, latest, extensionPrefix, limit, offset, fieldChanged);
+      String sanitized = fieldChanged.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+      return listVersionsWithFieldFilter(id, latest, extensionPrefix, limit, offset, sanitized);
     }
 
     final List<Object> versions = new ArrayList<>();
@@ -1287,10 +1288,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           daoCollection
               .entityExtensionDAO()
               .getExtensionsWithOffset(id, extensionPrefix, dbLimit, dbOffset);
-      List<EntityVersionPair> oldVersions = new ArrayList<>();
-      records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
-      oldVersions.sort(EntityUtil.compareVersion.reversed());
-      oldVersions.forEach(version -> versions.add(version.getEntityJson()));
+      records.forEach(r -> versions.add(new EntityVersionPair(r).getEntityJson()));
     }
 
     int extensionCount = daoCollection.entityExtensionDAO().getExtensionCount(id, extensionPrefix);
@@ -1331,10 +1329,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           daoCollection
               .entityExtensionDAO()
               .getExtensionsWithFieldChanged(id, extensionPrefix, fieldChanged, dbLimit, dbOffset);
-      List<EntityVersionPair> oldVersions = new ArrayList<>();
-      records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
-      oldVersions.sort(EntityUtil.compareVersion.reversed());
-      oldVersions.forEach(version -> versions.add(version.getEntityJson()));
+      records.forEach(r -> versions.add(new EntityVersionPair(r).getEntityJson()));
     }
 
     int extensionCount =
