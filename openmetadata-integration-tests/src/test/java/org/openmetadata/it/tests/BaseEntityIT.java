@@ -1450,6 +1450,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     created.setDescription("Description change for fieldChanged test");
     patchEntity(created.getId().toString(), created);
 
+    created.setDescription("Second description change for fieldChanged test");
+    patchEntity(created.getId().toString(), created);
+
     org.openmetadata.schema.type.EntityHistory filtered =
         getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
     assertNotNull(filtered, "Filtered version history should not be null");
