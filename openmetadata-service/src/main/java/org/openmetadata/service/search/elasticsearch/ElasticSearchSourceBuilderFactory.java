@@ -367,15 +367,21 @@ public class ElasticSearchSourceBuilderFactory
   }
 
   public ElasticSearchRequestBuilder buildColumnSearchBuilderV2(String query, int from, int size) {
-    Map<String, Float> fields = ColumnSearchIndex.getFields();
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
-        ElasticQueryBuilder.multiMatchQuery(
-            query,
-            fields,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.BestFields,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
-            String.valueOf(DEFAULT_TIE_BREAKER),
-            "0");
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder;
+    if (nullOrEmpty(query) || "*".equals(query.trim())) {
+      queryBuilder =
+          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(q -> q.matchAll(m -> m));
+    } else {
+      Map<String, Float> fields = ColumnSearchIndex.getFields();
+      queryBuilder =
+          ElasticQueryBuilder.multiMatchQuery(
+              query,
+              fields,
+              es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.BestFields,
+              es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
+              String.valueOf(DEFAULT_TIE_BREAKER),
+              "0");
+    }
     es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
         buildHighlightsV2(List.of("name", "displayName", "description"));
     return searchBuilderV2(queryBuilder, hb, from, size);

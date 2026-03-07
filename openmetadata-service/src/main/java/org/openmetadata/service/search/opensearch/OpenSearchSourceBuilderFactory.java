@@ -367,15 +367,21 @@ public class OpenSearchSourceBuilderFactory
   }
 
   public OpenSearchRequestBuilder buildColumnSearchBuilderV2(String query, int from, int size) {
-    Map<String, Float> fields = ColumnSearchIndex.getFields();
-    os.org.opensearch.client.opensearch._types.query_dsl.Query queryBuilder =
-        OpenSearchQueryBuilder.multiMatchQuery(
-            query,
-            fields,
-            os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.BestFields,
-            os.org.opensearch.client.opensearch._types.query_dsl.Operator.Or,
-            String.valueOf(DEFAULT_TIE_BREAKER),
-            "0");
+    os.org.opensearch.client.opensearch._types.query_dsl.Query queryBuilder;
+    if (nullOrEmpty(query) || "*".equals(query.trim())) {
+      queryBuilder =
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(q -> q.matchAll(m -> m));
+    } else {
+      Map<String, Float> fields = ColumnSearchIndex.getFields();
+      queryBuilder =
+          OpenSearchQueryBuilder.multiMatchQuery(
+              query,
+              fields,
+              os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.BestFields,
+              os.org.opensearch.client.opensearch._types.query_dsl.Operator.Or,
+              String.valueOf(DEFAULT_TIE_BREAKER),
+              "0");
+    }
     os.org.opensearch.client.opensearch.core.search.Highlight highlighter =
         buildHighlightsV2(List.of("name", "displayName", "description"));
     return searchBuilderV2(queryBuilder, highlighter, from, size);

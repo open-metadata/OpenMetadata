@@ -1006,16 +1006,16 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             () -> {
               java.util.Map<String, Integer> counts = client.teams().getAllTeamsWithAssetsCount();
               Integer teamCount = counts.get(team.getFullyQualifiedName());
-              return teamCount != null && teamCount >= 5;
+              return teamCount != null && teamCount >= 3;
             });
 
     java.util.Map<String, Integer> assetsCount = client.teams().getAllTeamsWithAssetsCount();
 
     assertNotNull(assetsCount);
     assertEquals(
-        5,
+        3,
         assetsCount.get(team.getFullyQualifiedName()),
-        "Team should have 5 assets: 1 schema + 2 inherited tables + 2 inherited columns");
+        "Team should have 3 assets: 1 schema + 2 inherited tables (columns excluded from counts)");
   }
 
   private Database createDatabase(TestNamespace ns, DatabaseService service) {
