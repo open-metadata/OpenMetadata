@@ -84,7 +84,6 @@ public class McpServer implements McpServerProvider {
             .tools(true)
             .prompts(true)
             .resources(true, true)
-            .logging()
             .build();
 
     HttpServletStatelessServerTransport statelessTransport =
