@@ -75,12 +75,6 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 @Slf4j
 public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
-  private static final String SESSION_MCP_PKCE_CHALLENGE = "mcp.pkce.challenge";
-  private static final String SESSION_MCP_PKCE_METHOD = "mcp.pkce.method";
-  private static final String SESSION_MCP_CLIENT_ID = "mcp.client.id";
-  private static final String SESSION_MCP_REDIRECT_URI = "mcp.redirect.uri";
-  private static final String SESSION_MCP_STATE = "mcp.state";
-  private static final String SESSION_MCP_SCOPES = "mcp.scopes";
   private static final int AUTH_CODE_EXPIRY_SECONDS = 600;
   private static final long JWT_EXPIRY_SECONDS = 3600L;
   private static final long REFRESH_TOKEN_EXPIRY_DAYS = 30L;
@@ -227,7 +221,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       throw e;
     } catch (Exception e) {
       LOG.error("Authorization failed for client: {}", client.getClientId(), e);
-      throw new AuthorizeException("authorization_failed", e.getMessage());
+      throw new AuthorizeException("authorization_failed", "Authorization request failed");
     }
   }
 
@@ -385,7 +379,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
     } catch (Exception e) {
       LOG.error("SSO authorization failed for client: {}", client.getClientId(), e);
-      throw new AuthorizeException("authorization_failed", e.getMessage());
+      throw new AuthorizeException("authorization_failed", "SSO authorization failed");
     }
   }
 
@@ -433,123 +427,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       throw e;
     } catch (Exception e) {
       LOG.error("Basic Auth authorization failed for client: {}", client.getClientId(), e);
-      throw new AuthorizeException("authorization_failed", e.getMessage());
+      throw new AuthorizeException("authorization_failed", "Basic Auth authorization failed");
     }
-  }
-
-  /**
-   * Regenerates session after successful authentication to prevent session fixation attacks.
-   *
-   * <p>SECURITY: After authentication, the session ID must be changed to prevent attackers from
-   * hijacking a session using a pre-set session ID. This method does NOT preserve old session
-   * attributes - callers must read needed values before calling this method.
-   *
-   * <p>Session fixation attack scenario: 1. Attacker sets victim's session ID to known value 2.
-   * Victim authenticates with that session ID 3. Attacker uses the known session ID to hijack the
-   * authenticated session
-   *
-   * <p>Prevention: Regenerate session ID after authentication, invalidating any pre-set session ID.
-   *
-   * @param oldSession The session to regenerate (will be invalidated)
-   */
-  private void regenerateSession(HttpSession oldSession) {
-    String oldSessionId = oldSession.getId();
-
-    try {
-      // Preferred method: Change session ID in-place (Servlet 3.1+)
-      // This keeps request attributes but changes the session ID
-      String newSessionId = currentRequest.get().changeSessionId();
-      LOG.info(
-          "SECURITY: Session ID regenerated after authentication to prevent fixation: {} -> {}",
-          oldSessionId,
-          newSessionId);
-    } catch (UnsupportedOperationException | IllegalStateException e) {
-      // Fallback for older servlet containers: invalidate and create new session
-      // SECURITY: Do NOT preserve old session attributes - caller must handle needed values
-      LOG.warn(
-          "Session ID change not supported by servlet container, using invalidate/recreate fallback. "
-              + "Note: Session attributes will be cleared (caller should preserve needed values).",
-          e);
-
-      oldSession.invalidate();
-      HttpSession newSession = currentRequest.get().getSession(true);
-
-      LOG.info(
-          "SECURITY: Session regenerated using invalidate/recreate: {} -> {}",
-          oldSessionId,
-          newSession.getId());
-    }
-  }
-
-  public void handleSSOCallback(
-      HttpServletRequest request, HttpServletResponse response, String userName, String email)
-      throws Exception {
-
-    // HIGH: Validate user identity from SSO provider
-    if (userName == null || userName.trim().isEmpty()) {
-      LOG.error("SECURITY ALERT: SSO callback received null or empty username");
-      throw new IllegalStateException(
-          "Invalid SSO response: username is required but was not provided by identity provider");
-    }
-
-    if (email == null || email.trim().isEmpty()) {
-      LOG.error("SECURITY ALERT: SSO callback received null or empty email for user: {}", userName);
-      throw new IllegalStateException(
-          "Invalid SSO response: email is required but was not provided by identity provider");
-    }
-
-    LOG.debug("SSO callback received valid user identity: username={}, email={}", userName, email);
-
-    HttpSession session = getHttpSession(request, false);
-    if (session == null) {
-      throw new IllegalStateException("No session found for SSO callback");
-    }
-
-    String codeChallenge = (String) session.getAttribute(SESSION_MCP_PKCE_CHALLENGE);
-    String clientId = (String) session.getAttribute(SESSION_MCP_CLIENT_ID);
-    String redirectUri = (String) session.getAttribute(SESSION_MCP_REDIRECT_URI);
-    String state = (String) session.getAttribute(SESSION_MCP_STATE);
-    String scopesStr = (String) session.getAttribute(SESSION_MCP_SCOPES);
-
-    if (codeChallenge == null || clientId == null || redirectUri == null) {
-      throw new IllegalStateException("Missing PKCE parameters in session");
-    }
-
-    regenerateSession(session);
-
-    // Get fresh session reference after regeneration (may be different if invalidate/recreate
-    // fallback was used)
-    HttpSession newSession = currentRequest.get().getSession(false);
-
-    List<String> scopes =
-        scopesStr != null && !scopesStr.isEmpty()
-            ? List.of(scopesStr.split(" "))
-            : List.of("openid", "profile", "email");
-
-    String authCode =
-        generateAuthorizationCode(
-            userName, clientId, codeChallenge, URI.create(redirectUri), scopes);
-
-    LOG.debug("Generated MCP authorization code via SSO");
-
-    Map<String, String> ssoQueryParams = new HashMap<>();
-    ssoQueryParams.put("code", authCode);
-    if (state != null) {
-      ssoQueryParams.put("state", state);
-    }
-    String redirectUrl = UriUtils.constructRedirectUri(redirectUri, ssoQueryParams);
-
-    if (newSession != null) {
-      newSession.removeAttribute(SESSION_MCP_PKCE_CHALLENGE);
-      newSession.removeAttribute(SESSION_MCP_PKCE_METHOD);
-      newSession.removeAttribute(SESSION_MCP_CLIENT_ID);
-      newSession.removeAttribute(SESSION_MCP_REDIRECT_URI);
-      newSession.removeAttribute(SESSION_MCP_STATE);
-      newSession.removeAttribute(SESSION_MCP_SCOPES);
-    }
-
-    LOG.info("Redirecting to client with authorization code: {}", redirectUri);
-    response.sendRedirect(redirectUrl);
   }
 
   /**
@@ -798,7 +677,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       throw e;
     } catch (Exception e) {
       LOG.error("Token exchange failed", e);
-      throw new TokenException("server_error", e.getMessage());
+      throw new TokenException("server_error", "Token exchange failed");
     }
   }
 
@@ -963,7 +842,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       throw e;
     } catch (Exception e) {
       LOG.error("Refresh token exchange failed unexpectedly", e);
-      throw new TokenException("server_error", "Token refresh failed: " + e.getMessage());
+      throw new TokenException("server_error", "Token refresh failed");
     }
   }
 

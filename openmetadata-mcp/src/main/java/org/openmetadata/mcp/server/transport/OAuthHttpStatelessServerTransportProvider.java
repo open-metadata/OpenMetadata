@@ -341,8 +341,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       validatePrefixedTokenRequest(jwtFilter, tokenWithType);
       return true;
     } catch (Exception e) {
-      String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-      sendAuthErrorWithChallenge(response, message, HttpServletResponse.SC_UNAUTHORIZED);
+      LOG.debug("Bearer token authentication failed", e);
+      sendAuthErrorWithChallenge(
+          response, "Invalid or expired token", HttpServletResponse.SC_UNAUTHORIZED);
       return false;
     }
   }
@@ -522,20 +523,37 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         response.setHeader("Cache-Control", "no-store");
         setCorsHeaders(request, response);
         response.sendRedirect(redirectUrl);
+      } else {
+        // No redirect URL — error case where redirect_uri is invalid or client is unknown.
+        // Per RFC 6749, display the error to the user instead of redirecting.
+        setCorsHeaders(request, response);
+        response.setContentType("application/json");
+        response.setStatus(400);
+        Map<String, String> error = new HashMap<>();
+        error.put("error", "invalid_request");
+        error.put("error_description", "Authorization request failed");
+        getObjectMapper().writeValue(response.getOutputStream(), error);
       }
 
     } catch (Exception ex) {
       LOG.error("Authorization request failed", ex);
       setCorsHeaders(request, response);
       response.setContentType("application/json");
-      response.setStatus(400);
+      Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+      boolean isClientError =
+          cause instanceof org.openmetadata.mcp.auth.exception.AuthorizeException;
+      response.setStatus(
+          isClientError
+              ? HttpServletResponse.SC_BAD_REQUEST
+              : HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 
       Map<String, String> error = new HashMap<>();
-      error.put("error", "invalid_request");
-      Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+      error.put("error", isClientError ? "invalid_request" : "server_error");
       error.put(
           "error_description",
-          cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+          isClientError
+              ? (cause.getMessage() != null ? cause.getMessage() : "Invalid request")
+              : "Internal server error during authorization");
       getObjectMapper().writeValue(response.getOutputStream(), error);
     } finally {
       if (authProvider instanceof org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) {
@@ -560,6 +578,15 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     LOG.debug("Token request params (sanitized): {}", sanitizeParamsForLogging(params));
 
+    // TODO: Add rate limiting on the token endpoint (per client_id and per IP) to mitigate
+    // brute-force attacks on client credentials and authorization code guessing.
+    // Registration endpoint already has rate limiting — apply similar pattern here.
+
+    if (authProvider instanceof org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) {
+      ((org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) authProvider)
+          .setRequestContext(request, response);
+    }
+
     try {
       String grantType = params.get("grant_type");
       String clientId = params.get("client_id");
@@ -571,8 +598,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       try {
         client = clientAuthenticator.authenticate(clientId, clientSecret).join();
       } catch (Exception e) {
-        Throwable cause = e.getCause() != null ? e.getCause() : e;
-        throw new TokenException("invalid_client", cause.getMessage());
+        LOG.warn("Client authentication failed for client_id: {}", clientId, e);
+        throw new TokenException("invalid_client", "Client authentication failed");
       }
 
       if ("authorization_code".equals(grantType)) {
@@ -647,32 +674,56 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       LOG.error("Token request failed", cause);
       setCorsHeaders(request, response);
       response.setContentType("application/json");
-      response.setStatus(400);
 
       Map<String, String> error = new HashMap<>();
-      if (cause instanceof TokenException) {
-        TokenException tokenEx = (TokenException) cause;
+      if (cause instanceof TokenException tokenEx) {
         error.put("error", tokenEx.getError());
         error.put("error_description", tokenEx.getErrorDescription());
+        // RFC 6749 Section 5.2: invalid_client → 401, server_error → 500, others → 400
+        int status =
+            "invalid_client".equals(tokenEx.getError())
+                ? HttpServletResponse.SC_UNAUTHORIZED
+                : "server_error".equals(tokenEx.getError())
+                    ? HttpServletResponse.SC_INTERNAL_SERVER_ERROR
+                    : HttpServletResponse.SC_BAD_REQUEST;
+        response.setStatus(status);
       } else {
-        error.put("error", "invalid_grant");
-        error.put(
-            "error_description",
-            cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+        error.put("error", "server_error");
+        error.put("error_description", "Internal server error during token exchange");
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
       }
+      getObjectMapper().writeValue(response.getOutputStream(), error);
+    } catch (TokenException ex) {
+      LOG.error("Token request failed", ex);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
+      int status =
+          "invalid_client".equals(ex.getError())
+              ? HttpServletResponse.SC_UNAUTHORIZED
+              : "server_error".equals(ex.getError())
+                  ? HttpServletResponse.SC_INTERNAL_SERVER_ERROR
+                  : HttpServletResponse.SC_BAD_REQUEST;
+      response.setStatus(status);
+
+      Map<String, String> error = new HashMap<>();
+      error.put("error", ex.getError());
+      error.put("error_description", ex.getErrorDescription());
       getObjectMapper().writeValue(response.getOutputStream(), error);
     } catch (Exception ex) {
       LOG.error("Token request failed", ex);
       setCorsHeaders(request, response);
       response.setContentType("application/json");
-      response.setStatus(400);
+      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 
       Map<String, String> error = new HashMap<>();
       error.put("error", "server_error");
-      error.put(
-          "error_description",
-          ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
+      error.put("error_description", "Internal server error during token exchange");
       getObjectMapper().writeValue(response.getOutputStream(), error);
+    } finally {
+      if (authProvider instanceof org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) {
+        ((org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) authProvider)
+            .clearRequestContext();
+      }
     }
   }
 
@@ -732,24 +783,31 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
 
-      // Extract error details if RegistrationException
-      if (cause.getCause() instanceof org.openmetadata.mcp.auth.exception.RegistrationException) {
-        org.openmetadata.mcp.auth.exception.RegistrationException regEx =
-            (org.openmetadata.mcp.auth.exception.RegistrationException) cause.getCause();
-        response.setStatus(400);
+      // Extract RegistrationException from cause chain
+      org.openmetadata.mcp.auth.exception.RegistrationException regEx = null;
+      if (cause instanceof org.openmetadata.mcp.auth.exception.RegistrationException r) {
+        regEx = r;
+      } else if (cause.getCause()
+          instanceof org.openmetadata.mcp.auth.exception.RegistrationException r) {
+        regEx = r;
+      }
+
+      if (regEx != null) {
+        int status =
+            "server_error".equals(regEx.getError())
+                ? HttpServletResponse.SC_INTERNAL_SERVER_ERROR
+                : HttpServletResponse.SC_BAD_REQUEST;
+        response.setStatus(status);
 
         Map<String, String> error = new HashMap<>();
         error.put("error", regEx.getError());
         error.put("error_description", regEx.getErrorDescription());
         getObjectMapper().writeValue(response.getOutputStream(), error);
       } else {
-        // Generic error
-        response.setStatus(400);
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         Map<String, String> error = new HashMap<>();
-        error.put("error", "invalid_client_metadata");
-        error.put(
-            "error_description",
-            cause.getMessage() != null ? cause.getMessage() : "Client registration failed");
+        error.put("error", "server_error");
+        error.put("error_description", "Client registration failed");
         getObjectMapper().writeValue(response.getOutputStream(), error);
       }
     } catch (Exception ex) {

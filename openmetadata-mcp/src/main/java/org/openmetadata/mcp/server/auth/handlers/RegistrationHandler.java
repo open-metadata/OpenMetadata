@@ -90,11 +90,13 @@ public class RegistrationHandler {
             LOG.info("Successfully registered OAuth client: {}", clientId);
             return clientInfo;
 
+          } catch (RegistrationException e) {
+            LOG.warn("Client registration rejected: {}", e.getMessage());
+            throw new RuntimeException(e);
           } catch (Exception e) {
-            LOG.error("Client registration failed", e);
+            LOG.error("Client registration failed due to server error", e);
             throw new RuntimeException(
-                new RegistrationException(
-                    "invalid_client_metadata", "Client registration failed: " + e.getMessage()));
+                new RegistrationException("server_error", "Client registration failed"));
           }
         });
   }

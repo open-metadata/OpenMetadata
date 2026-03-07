@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.server.auth.jobs;
 
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.quartz.Job;
@@ -19,6 +20,9 @@ public class OAuthTokenCleanupJob implements Job {
 
       OAuthAuthorizationCodeRepository codeRepository = new OAuthAuthorizationCodeRepository();
       codeRepository.deleteExpired();
+
+      McpPendingAuthRequestRepository pendingAuthRepository = new McpPendingAuthRequestRepository();
+      pendingAuthRepository.deleteExpired();
 
       LOG.info("OAuth token cleanup completed successfully");
     } catch (Exception e) {

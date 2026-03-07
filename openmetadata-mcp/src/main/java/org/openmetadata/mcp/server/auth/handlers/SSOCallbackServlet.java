@@ -7,15 +7,19 @@ import static org.openmetadata.service.security.SecurityUtil.findUserNameFromCla
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletResponseWrapper;
 import jakarta.servlet.http.HttpSession;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
@@ -246,15 +250,55 @@ public class SSOCallbackServlet extends HttpServlet {
       session.setAttribute(AuthenticationCodeFlowHandler.SESSION_SSO_CALLBACK_URL, mcpCallbackUrl);
       LOG.debug("Set session SSO callback URL to: {}", mcpCallbackUrl);
 
+      // Wrap response to intercept both redirects and error writes from handleCallback.
+      // handleCallback's error handler (getErrorMessage) writes via getOutputStream(),
+      // which would commit the real response and cause a double-write when we handle
+      // the error ourselves.
+      AtomicBoolean handlerWroteError = new AtomicBoolean(false);
       HttpServletResponseWrapper responseWrapper =
           new HttpServletResponseWrapper(response) {
             @Override
             public void sendRedirect(String location) throws IOException {
               LOG.debug("Capturing redirect to {} (will not execute)", location);
             }
+
+            @Override
+            public void setStatus(int sc) {
+              if (sc >= 400) {
+                handlerWroteError.set(true);
+              }
+            }
+
+            @Override
+            public ServletOutputStream getOutputStream() throws IOException {
+              if (handlerWroteError.get()) {
+                return new ServletOutputStream() {
+                  private final ByteArrayOutputStream sink = new ByteArrayOutputStream();
+
+                  @Override
+                  public void write(int b) {
+                    sink.write(b);
+                  }
+
+                  @Override
+                  public boolean isReady() {
+                    return true;
+                  }
+
+                  @Override
+                  public void setWriteListener(WriteListener writeListener) {}
+                };
+              }
+              return super.getOutputStream();
+            }
           };
 
       ssoHandler.handleCallback(request, responseWrapper);
+
+      if (handlerWroteError.get()) {
+        throw new IllegalStateException(
+            "SSO provider token exchange failed. Please restart authentication.");
+      }
 
       OidcCredentials credentials = (OidcCredentials) session.getAttribute(OIDC_CREDENTIAL_PROFILE);
       if (credentials == null || credentials.getIdToken() == null) {
