@@ -145,6 +145,10 @@ test.describe('Entity Version pages', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);
 
+    for (const entity of entities) {
+      await entity.delete(apiContext);
+    }
+
     await afterAction();
   });
 
@@ -156,9 +160,13 @@ test.describe('Entity Version pages', () => {
       await entity.visitEntityPage(page);
 
       await page.waitForLoadState('networkidle');
+      // Locally: 0.1 (create) → 0.2 (setup patch). In Collate CI the governance-bot
+      // adds an extra entityStatus bump making it 0.3, so accept either version.
       const versionDetailResponse = page.waitForResponse(
         (response) =>
-          response.url().includes('/versions/0.2') && response.status() === 200
+          (response.url().includes('/versions/0.2') ||
+            response.url().includes('/versions/0.3')) &&
+          response.status() === 200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
@@ -212,7 +220,14 @@ test.describe('Entity Version pages', () => {
 
         await reloadAndWaitForNetworkIdle(page);
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
+        // Locally: 0.2 → 0.3 (owner patch). In Collate CI the governance-bot adds an
+        // extra entityStatus bump, shifting the expected version to 0.4.
+        const versionDetailResponse = page.waitForResponse(
+          (response) =>
+            (response.url().includes('/versions/0.3') ||
+              response.url().includes('/versions/0.4')) &&
+            response.status() === 200
+        );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -280,7 +295,14 @@ test.describe('Entity Version pages', () => {
 
         await reloadAndWaitForNetworkIdle(page);
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
+        // Locally: 0.2 → 0.3 (tier patch). In Collate CI the governance-bot adds an
+        // extra entityStatus bump, shifting the expected version to 0.4.
+        const versionDetailResponse = page.waitForResponse(
+          (response) =>
+            (response.url().includes('/versions/0.3') ||
+              response.url().includes('/versions/0.4')) &&
+            response.status() === 200
+        );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -321,7 +343,14 @@ test.describe('Entity Version pages', () => {
 
           await expect(deletedBadge).toHaveText('Deleted');
 
-          const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
+          // Locally: 0.3 → 0.4 (soft delete). In Collate CI the governance-bot adds an
+          // extra entityStatus bump, shifting the expected version to 0.5.
+          const versionDetailResponse = page.waitForResponse(
+            (response) =>
+              (response.url().includes('/versions/0.4') ||
+                response.url().includes('/versions/0.5')) &&
+              response.status() === 200
+          );
           await page.locator('[data-testid="version-button"]').click();
           await versionDetailResponse;
 
