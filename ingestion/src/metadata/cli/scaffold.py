@@ -141,7 +141,9 @@ class ConnectorProfile:
 
     @property
     def module_name(self) -> str:
-        return self.name.replace("_", "")
+        """lowerCamelCase for schema file names (e.g. bigQuery, qlikCloud)."""
+        parts = self.name.split("_")
+        return parts[0] + "".join(word.capitalize() for word in parts[1:])
 
 
 # ---------------------------------------------------------------------------
@@ -264,10 +266,19 @@ def collect_interactive() -> ConnectorProfile:
             )
             port = _prompt_optional("Default port", "e.g. 3306, 5432")
             if port:
-                profile.default_port = int(port)
+                try:
+                    profile.default_port = int(port)
+                except ValueError:
+                    print("    Invalid port number, skipping.")
         print()
     else:
-        profile.connection_type = "rest_api"
+        print("--- Connection Type ---")
+        print("    rest_api    — Uses REST API client (most common)")
+        print("    sdk_client  — Uses vendor SDK")
+        profile.connection_type = _prompt(
+            "Connection type", default="rest_api", choices=["rest_api", "sdk_client"]
+        )
+        print()
 
     # --- Auth ---
     print("--- Authentication ---")
@@ -336,7 +347,10 @@ def collect_interactive() -> ConnectorProfile:
     if profile.docker_image:
         port_str = _prompt_optional("Container port to expose", "e.g. 80, 3000, 8080")
         if port_str:
-            profile.docker_port = int(port_str)
+            try:
+                profile.docker_port = int(port_str)
+            except ValueError:
+                print("    Invalid port number, skipping.")
     print()
 
     return profile
@@ -357,16 +371,22 @@ def to_camel_case(name: str) -> str:
 
 
 def _build_auth_refs(auth_types: list[str]) -> list[dict]:
-    refs = []
-    if "basic" in auth_types:
-        refs.append({"$ref": "./common/basicAuth.json"})
-    if "iam" in auth_types:
-        refs.append({"$ref": "./common/iamAuthConfig.json"})
-    if "azure" in auth_types:
-        refs.append({"$ref": "./common/azureConfig.json"})
-    if "jwt" in auth_types:
-        refs.append({"$ref": "./common/jwtAuth.json"})
-    return refs
+    mapping = {
+        "basic": "./common/basicAuth.json",
+        "iam": "./common/iamAuthConfig.json",
+        "azure": "./common/azureConfig.json",
+        "jwt": "./common/jwtAuth.json",
+    }
+    unsupported = [
+        a for a in auth_types if a in ("token", "oauth") and a not in mapping
+    ]
+    if unsupported:
+        logger.warning(
+            "Auth types %s are not supported as database authType $ref schemas. "
+            "They will be added as direct connection properties instead.",
+            unsupported,
+        )
+    return [{"$ref": mapping[a]} for a in auth_types if a in mapping]
 
 
 def generate_connection_schema(p: ConnectorProfile) -> dict:
@@ -1538,7 +1558,12 @@ def _gen_unit_test_generic(p: ConnectorProfile) -> str:
     }
     type_enum, svc_module, conn_class, svc_class = svc_type_map.get(
         p.service_type,
-        ("MessagingServiceType", "messagingService", "MessagingConnection", "MessagingService"),
+        (
+            "MessagingServiceType",
+            "messagingService",
+            "MessagingConnection",
+            "MessagingService",
+        ),
     )
     return f'''{COPYRIGHT_HEADER}
 """

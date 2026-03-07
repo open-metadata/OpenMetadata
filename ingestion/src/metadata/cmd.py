@@ -13,6 +13,7 @@ This module defines the CLI commands for OpenMetadata
 """
 import argparse
 import logging
+import sys
 from enum import Enum
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -255,8 +256,15 @@ def metadata(args: Optional[List[str]] = None):
         RUN_PATH_METHODS[metadata_workflow](path)
 
     if metadata_workflow == MetadataCommands.SCAFFOLD_CONNECTOR.value:
-        if contains_args.get("name") and contains_args.get("service_type"):
+        has_name = contains_args.get("name")
+        has_type = contains_args.get("service_type")
+        if has_name and has_type:
             run_scaffold_cli(argparse.Namespace(**contains_args))
+        elif has_name or has_type:
+            logger.error(
+                "Both --name and --service-type are required for non-interactive mode."
+            )
+            sys.exit(1)
         else:
             run_scaffold_interactive()
         return
