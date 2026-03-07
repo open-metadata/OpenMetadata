@@ -1302,7 +1302,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     EntityHistory entityHistory =
         new EntityHistory().withEntityType(entityType).withVersions(versions).withPaging(paging);
-    return new EntityHistoryWithOffset(entityHistory, offset + limit);
+    return new EntityHistoryWithOffset(entityHistory, Math.min(offset + limit, total));
   }
 
   private EntityHistoryWithOffset listVersionsWithFieldFilter(
@@ -1350,7 +1350,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     EntityHistory entityHistory =
         new EntityHistory().withEntityType(entityType).withVersions(versions).withPaging(paging);
-    return new EntityHistoryWithOffset(entityHistory, offset + limit);
+    return new EntityHistoryWithOffset(entityHistory, Math.min(offset + limit, total));
   }
 
   private boolean latestVersionMatchesFieldChanged(T latest, String fieldChanged) {
@@ -1368,7 +1368,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return false;
     }
     for (FieldChange fc : fieldChanges) {
-      if (fc.getName() != null && fc.getName().contains(fieldName)) {
+      if (fc.getName() != null
+          && (fc.getName().equals(fieldName) || fc.getName().endsWith("." + fieldName))) {
         return true;
       }
     }

@@ -378,7 +378,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     }
     if (fieldChanged != null && !fieldChanged.isEmpty()) {
       return repository
-          .listVersionsWithOffset(id, Integer.MAX_VALUE, 0, fieldChanged)
+          .listVersionsWithOffset(id, Integer.MAX_VALUE, offset, fieldChanged)
           .entityHistory();
     }
     return repository.listVersions(id);

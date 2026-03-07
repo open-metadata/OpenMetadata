@@ -505,17 +505,15 @@ const EntityVersionPage: FunctionComponent = () => {
           ],
         };
 
+        if (moreVersions.paging) {
+          const totalLoaded = combined.versions?.length ?? 0;
+          setHasMoreVersions(totalLoaded < moreVersions.paging.total);
+        } else {
+          setHasMoreVersions(false);
+        }
+
         return combined;
       });
-
-      if (moreVersions.paging) {
-        const totalLoaded =
-          (versionList.versions?.length ?? 0) +
-          (moreVersions.versions?.length ?? 0);
-        setHasMoreVersions(totalLoaded < moreVersions.paging.total);
-      } else {
-        setHasMoreVersions(false);
-      }
     } finally {
       setIsLoadingMore(false);
     }

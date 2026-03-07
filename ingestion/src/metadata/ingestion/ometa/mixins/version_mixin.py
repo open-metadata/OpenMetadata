@@ -141,7 +141,7 @@ class OMetaVersionMixin(Generic[T]):
         limit: int = 10,
         before: Optional[str] = None,
         after: Optional[str] = None,
-    ) -> Response:
+    ) -> dict:
         """
         Retrieve entity versions within a time range
 
@@ -162,7 +162,7 @@ class OMetaVersionMixin(Generic[T]):
 
         Returns
         -------
-        Response
+        dict
             paginated list of entity versions within the time range
         """
         params = {
