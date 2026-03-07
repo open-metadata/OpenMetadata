@@ -439,6 +439,13 @@ export const TEST_CASE_STATUS_LABELS: Record<TestCaseStatus, string> = {
   [TestCaseStatus.Success]: t('label.success'),
 };
 
+export const TEST_CASE_STATUS_FILTER_OPTIONS = values(TestCaseStatus).map(
+  (status) => ({
+    label: TEST_CASE_STATUS_LABELS[status],
+    value: status,
+  })
+);
+
 export const TEST_CASE_DIMENSIONS_OPTION = values(DataQualityDimensions).map(
   (value) => ({
     label: TEST_CASE_DIMENSION_LABELS[value],
