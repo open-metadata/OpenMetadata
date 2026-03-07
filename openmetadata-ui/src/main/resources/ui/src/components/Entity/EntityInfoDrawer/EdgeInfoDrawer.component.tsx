@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@mui/icons-material';
-import { GitMerge } from '@untitledui/icons';
+import { GitMerge, X } from '@untitledui/icons';
 import { Button, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -167,7 +166,8 @@ const EdgeInfoDrawer = ({
           onEdit={() => {
             setSqlFunction(functionValue ?? '');
             setShowSqlFunctionModal(true);
-          }}>
+          }}
+        >
           <Typography.Text className="m-b-0" data-testid="sql-function">
             {functionValue ?? NO_DATA_PLACEHOLDER}
           </Typography.Text>
@@ -181,7 +181,8 @@ const EdgeInfoDrawer = ({
           className="summary-panel-card"
           showEditButton={hasEditAccess}
           title={t('label.sql-uppercase-query')}
-          onEdit={() => setShowSqlQueryModal(true)}>
+          onEdit={() => setShowSqlQueryModal(true)}
+        >
           {mysqlQuery ? (
             <SchemaEditor
               className="edge-drawer-sql-editor"
@@ -201,7 +202,8 @@ const EdgeInfoDrawer = ({
         <SectionWithEdit
           className="summary-panel-card"
           showEditButton={false}
-          title={t('label.lineage-source')}>
+          title={t('label.lineage-source')}
+        >
           <Typography.Text className="lineage-source-text">
             {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
           </Typography.Text>
@@ -339,14 +341,16 @@ const EdgeInfoDrawer = ({
                   mouseEnterDelay={0.5}
                   placement="bottomLeft"
                   title={t('label.edge-information')}
-                  trigger="hover">
+                  trigger="hover"
+                >
                   <div className="d-flex items-center gap-2">
                     <span className="d-flex">
                       <GitMerge height={16} width={16} />
                     </span>
                     <Typography.Text
                       className="edge-info-drawer-title"
-                      data-testid="edge-header-title">
+                      data-testid="edge-header-title"
+                    >
                       {t('label.edge-information')}
                     </Typography.Text>
                   </div>
@@ -357,7 +361,7 @@ const EdgeInfoDrawer = ({
               aria-label={t('label.close')}
               className="drawer-close-icon flex-center mr-2"
               data-testid="drawer-close-icon"
-              icon={<CloseOutlined />}
+              icon={<X height={16} width={16} />}
               size="small"
               onClick={onClose}
             />

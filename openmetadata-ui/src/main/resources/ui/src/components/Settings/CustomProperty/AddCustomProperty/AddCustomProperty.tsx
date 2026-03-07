@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Chip, Typography, useTheme } from '@mui/material';
+import { Badge } from '@openmetadata/ui-core-components';
 import { Button, Col, Form, FormInstance, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
@@ -80,12 +80,12 @@ const AddCustomProperty = ({
 }: AddCustomPropertyProps) => {
   const [localForm] = Form.useForm();
   const form = formRef ?? localForm;
-  const { entityType: entityTypeParam } =
-    useRequiredParams<{ entityType: EntityType }>();
+  const { entityType: entityTypeParam } = useRequiredParams<{
+    entityType: EntityType;
+  }>();
   const entityType = entityTypeProp ?? entityTypeParam;
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const theme = useTheme();
   const [typeDetail, setTypeDetail] = useState<Type>();
 
   const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
@@ -235,24 +235,17 @@ const AddCustomProperty = ({
 
   const getAppliesToField = useCallback(() => {
     return (
-      <Chip
-        icon={<ColumnIcon height={14} width={14} />}
-        label={
-          <Typography
-            color={theme.palette.allShades.gray['700']}
-            variant="body2">
-            {t('label.table-column')}
-          </Typography>
-        }
-        sx={{
-          borderColor: theme.palette.allShades.blueGray['200'],
-          backgroundColor: theme.palette.allShades.blueGray['40'],
-        }}
-        variant="filled"
-        onClick={undefined}
-      />
+      <Badge
+        className="flex items-center gap-1"
+        color="gray"
+        size="md"
+        type="pill-color"
+      >
+        <ColumnIcon height={14} width={14} />
+        {t('label.table-column')}
+      </Badge>
     );
-  }, [theme, t]);
+  }, [t]);
 
   const supportedFormats = useMemo(() => {
     const propertyName = watchedOption?.key ?? '';
@@ -573,7 +566,8 @@ const AddCustomProperty = ({
       layout="vertical"
       onFieldsChange={handleFieldsChange}
       onFinish={handleFormSubmit}
-      onFocus={handleFieldFocus}>
+      onFocus={handleFieldFocus}
+    >
       {generateFormFields(formFields)}
       {
         // Only show enum value field if the property type has enum config
@@ -599,7 +593,8 @@ const AddCustomProperty = ({
             <Button
               data-testid="back-button"
               type="link"
-              onClick={handleCancel}>
+              onClick={handleCancel}
+            >
               {t('label.back')}
             </Button>
           </Col>
@@ -608,7 +603,8 @@ const AddCustomProperty = ({
               data-testid="create-button"
               htmlType="submit"
               loading={isCreating || loading}
-              type="primary">
+              type="primary"
+            >
               {t('label.create')}
             </Button>
           </Col>
@@ -635,7 +631,8 @@ const AddCustomProperty = ({
           </div>
         }
         title={t('label.add-entity', { entity: t('label.custom-property') })}
-        onClose={onClose ?? handleCancel}>
+        onClose={onClose ?? handleCancel}
+      >
         {formContent}
       </MuiDrawer>
     );
