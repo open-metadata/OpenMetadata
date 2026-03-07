@@ -18,7 +18,7 @@ import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-ci
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { computePathDataForEdge } from '../../../utils/CanvasUtils';
-import { getAbsolutePosition } from './PipelineEdgeButtons.component';
+import { getAbsolutePosition } from '../../../utils/ViewportUtils';
 
 export interface EdgeInteractionOverlayProps {
   onPipelineClick?: () => void;
