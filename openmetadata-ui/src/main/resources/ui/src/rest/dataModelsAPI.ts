@@ -73,7 +73,7 @@ export const removeDataModelFollower = async (id: string, userId: string) => {
 
 export const getDataModelVersionsList = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `${URL}/${id}/versions`;
 

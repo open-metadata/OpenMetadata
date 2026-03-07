@@ -31,7 +31,7 @@ const BASE_URL = '/pipelines';
 
 export const getPipelineVersions = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `${BASE_URL}/${id}/versions`;
 

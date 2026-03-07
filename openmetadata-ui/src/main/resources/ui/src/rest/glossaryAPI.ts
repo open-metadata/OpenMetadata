@@ -204,7 +204,7 @@ export const exportGlossaryTermsInCSVFormat = async (glossaryName: string) => {
 
 export const getGlossaryVersionsList = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `/glossaries/${id}/versions`;
 
@@ -222,7 +222,7 @@ export const getGlossaryVersion = async (id: string, version: string) => {
 
 export const getGlossaryTermsVersionsList = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `/glossaryTerms/${id}/versions`;
 

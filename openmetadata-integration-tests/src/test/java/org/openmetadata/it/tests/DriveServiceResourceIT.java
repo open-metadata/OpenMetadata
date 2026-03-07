@@ -162,6 +162,12 @@ public class DriveServiceResourceIT extends BaseServiceIT<DriveService, CreateDr
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().driveServices().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected DriveService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().driveServices().getVersion(id.toString(), version);
   }

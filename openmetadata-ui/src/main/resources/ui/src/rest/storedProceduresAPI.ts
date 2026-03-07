@@ -106,7 +106,7 @@ export const removeStoredProceduresFollower = async (
 
 export const getStoredProceduresVersionsList = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `${URL}/${id}/versions`;
 

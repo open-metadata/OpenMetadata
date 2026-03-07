@@ -163,6 +163,12 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().topics().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Topic getVersion(UUID id, Double version) {
     return SdkClients.adminClient().topics().getVersion(id.toString(), version);
   }

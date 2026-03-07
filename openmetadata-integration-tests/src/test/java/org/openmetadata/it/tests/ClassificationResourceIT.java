@@ -158,6 +158,14 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .classifications()
+        .getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Classification getVersion(UUID id, Double version) {
     return SdkClients.adminClient().classifications().getVersion(id.toString(), version);
   }

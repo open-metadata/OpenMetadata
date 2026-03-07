@@ -82,7 +82,7 @@ export const restoreApiEndPoint = async (id: string) => {
 
 export const getApiEndPointVersions = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `/apiEndpoints/${id}/versions`;
 

@@ -91,6 +91,7 @@ class OMetaVersionMixin(Generic[T]):
         entity: Type[T],
         limit: Optional[int] = None,
         offset: Optional[int] = None,
+        field_changed: Optional[str] = None,
     ) -> Union[Response, EntityVersionHistory]:
         """
         Retrieve the list of versions for a specific entity
@@ -105,6 +106,8 @@ class OMetaVersionMixin(Generic[T]):
             maximum number of versions to return
         offset: Optional[int]
             offset for pagination
+        field_changed: Optional[str]
+            filter versions by field name that was changed
 
         Returns
         -------
@@ -118,6 +121,8 @@ class OMetaVersionMixin(Generic[T]):
             params["limit"] = limit
         if offset is not None:
             params["offset"] = offset
+        if field_changed is not None:
+            params["fieldChanged"] = field_changed
 
         resp = self.client.get(
             f"{self.get_suffix(entity)}/{path}", data=params if params else None
@@ -127,3 +132,49 @@ class OMetaVersionMixin(Generic[T]):
             return resp
 
         return EntityVersionHistory(**resp)
+
+    def get_entity_history_by_timeline(
+        self,
+        entity: Type[T],
+        start_ts: int,
+        end_ts: int,
+        limit: int = 10,
+        before: Optional[str] = None,
+        after: Optional[str] = None,
+    ) -> Response:
+        """
+        Retrieve entity versions within a time range
+
+        Parameters
+        ----------
+        entity: T
+            the entity type
+        start_ts: int
+            start timestamp in milliseconds since epoch
+        end_ts: int
+            end timestamp in milliseconds since epoch
+        limit: int
+            maximum number of results to return
+        before: Optional[str]
+            cursor for backward pagination
+        after: Optional[str]
+            cursor for forward pagination
+
+        Returns
+        -------
+        Response
+            paginated list of entity versions within the time range
+        """
+        params = {
+            "startTs": start_ts,
+            "endTs": end_ts,
+            "limit": limit,
+        }
+        if before is not None:
+            params["before"] = before
+        if after is not None:
+            params["after"] = after
+
+        return self.client.get(
+            f"{self.get_suffix(entity)}/history", data=params
+        )

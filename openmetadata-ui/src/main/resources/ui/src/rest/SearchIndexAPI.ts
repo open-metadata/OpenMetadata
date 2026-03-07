@@ -137,7 +137,7 @@ export const updateSearchIndexVotes = async (id: string, data: QueryVote) => {
 
 export const getSearchIndexVersions = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `/searchIndexes/${id}/versions`;
 

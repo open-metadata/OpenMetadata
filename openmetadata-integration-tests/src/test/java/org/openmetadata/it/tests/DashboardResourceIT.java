@@ -163,6 +163,12 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().dashboards().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Dashboard getVersion(UUID id, Double version) {
     return SdkClients.adminClient().dashboards().getVersion(id.toString(), version);
   }

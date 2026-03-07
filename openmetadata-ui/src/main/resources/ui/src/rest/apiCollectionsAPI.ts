@@ -82,7 +82,7 @@ export const restoreApiCollection = async (id: string) => {
 
 export const getApiCollectionVersions = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `/apiCollections/${id}/versions`;
 

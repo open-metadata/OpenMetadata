@@ -150,6 +150,14 @@ public class MlModelServiceResourceIT extends BaseServiceIT<MlModelService, Crea
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .mlModelServices()
+        .getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected MlModelService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().mlModelServices().getVersion(id.toString(), version);
   }

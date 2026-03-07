@@ -178,6 +178,12 @@ public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLea
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return getLearningResourceService().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected LearningResource getVersion(UUID id, Double version) {
     return getLearningResourceService().getVersion(id.toString(), version);
   }

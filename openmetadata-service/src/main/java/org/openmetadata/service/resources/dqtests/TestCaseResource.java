@@ -511,13 +511,18 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("offset")
           @DefaultValue("0")
           @Min(0)
-          int offset) {
+          int offset,
+      @Parameter(
+              description =
+                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
+          @QueryParam("fieldChanged")
+          String fieldChanged) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
 
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     return super.listVersionsInternal(
-        securityContext, id, limit, offset, operationContext, resourceContext);
+        securityContext, id, limit, offset, fieldChanged, operationContext, resourceContext);
   }
 
   @GET

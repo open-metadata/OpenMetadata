@@ -178,6 +178,14 @@ public class StoredProcedureResourceIT
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .storedProcedures()
+        .getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected StoredProcedure getVersion(UUID id, Double version) {
     return SdkClients.adminClient().storedProcedures().getVersion(id.toString(), version);
   }

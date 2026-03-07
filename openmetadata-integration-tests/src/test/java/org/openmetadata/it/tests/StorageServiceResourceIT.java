@@ -136,6 +136,14 @@ public class StorageServiceResourceIT extends BaseServiceIT<StorageService, Crea
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .storageServices()
+        .getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected StorageService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().storageServices().getVersion(id.toString(), version);
   }

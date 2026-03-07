@@ -179,7 +179,7 @@ export const deleteTag = async (tagId: string) => {
 
 export const getClassificationVersionsList = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `${BASE_URL}/${id}/versions`;
 

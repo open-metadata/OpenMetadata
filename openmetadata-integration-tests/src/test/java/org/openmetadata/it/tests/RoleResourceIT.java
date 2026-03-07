@@ -385,6 +385,12 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().roles().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Role getVersion(UUID id, Double version) {
     return SdkClients.adminClient().roles().getVersion(id.toString(), version);
   }

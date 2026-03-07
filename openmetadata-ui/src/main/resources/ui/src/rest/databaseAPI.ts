@@ -189,7 +189,7 @@ export const restoreDatabase = async (id: string) => {
 
 export const getDatabaseVersions = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `/databases/${id}/versions`;
 
@@ -208,7 +208,7 @@ export const getDatabaseVersionData = async (id: string, version: string) => {
 
 export const getDatabaseSchemaVersions = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `/databaseSchemas/${id}/versions`;
 

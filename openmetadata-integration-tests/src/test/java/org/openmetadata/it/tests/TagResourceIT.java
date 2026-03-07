@@ -179,6 +179,12 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().tags().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Tag getVersion(UUID id, Double version) {
     return SdkClients.adminClient().tags().getVersion(id.toString(), version);
   }

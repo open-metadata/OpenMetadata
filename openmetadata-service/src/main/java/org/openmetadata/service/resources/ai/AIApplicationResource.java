@@ -435,8 +435,13 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
           @QueryParam("offset")
           @DefaultValue("0")
           @Min(0)
-          int offset) {
-    return super.listVersionsInternal(securityContext, id, limit, offset);
+          int offset,
+      @Parameter(
+              description =
+                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
+          @QueryParam("fieldChanged")
+          String fieldChanged) {
+    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
   }
 
   @GET

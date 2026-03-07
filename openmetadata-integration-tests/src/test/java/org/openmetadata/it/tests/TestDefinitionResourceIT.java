@@ -161,6 +161,14 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .testDefinitions()
+        .getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected TestDefinition getVersion(UUID id, Double version) {
     return SdkClients.adminClient().testDefinitions().getVersion(id.toString(), version);
   }

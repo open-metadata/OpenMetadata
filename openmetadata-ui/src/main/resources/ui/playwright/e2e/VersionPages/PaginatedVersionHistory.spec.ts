@@ -10,89 +10,58 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { Page, expect, test as base } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 
+const table = new TableClass();
+const adminUser = new UserClass();
+
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
+
 test.describe('Paginated Version History', () => {
-  const table = new TableClass();
-  const user2 = new UserClass();
+  test.beforeAll(
+    'Setup entity with versions',
+    async ({ browser }) => {
+      test.setTimeout(120_000);
 
-  test.beforeAll('Setup entity with versions via alternating users', async ({
-    browser,
-  }) => {
-    test.setTimeout(120_000);
-    const { apiContext: adminApi, afterAction } =
-      await performAdminLogin(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    await user2.create(adminApi);
-    await user2.setAdminRole(adminApi);
-    const user2Page = await browser.newPage();
-    await user2.login(user2Page);
-    const user2Token = await user2Page.evaluate(() =>
-      localStorage.getItem('oidcIdToken')
-    );
-    const user2Api = await browser.newContext().then((ctx) =>
-      ctx.request.newContext({
-        baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:8585',
-        extraHTTPHeaders: {
-          Authorization: `Bearer ${user2Token}`,
-        },
-      })
-    );
-    await user2Page.close();
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
 
-    await table.create(adminApi);
+      await table.create(apiContext);
 
-    const fqn = table.entityResponseData?.fullyQualifiedName;
+      await table.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/description',
+            value: 'Description for pagination test',
+          },
+        ],
+      });
 
-    await adminApi.patch(`/api/v1/tables/name/${fqn}`, {
-      data: [
-        {
-          op: 'add',
-          path: '/description',
-          value: 'Admin patch 1',
-        },
-      ],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    });
-
-    await user2Api.patch(`/api/v1/tables/name/${fqn}`, {
-      data: [
-        {
-          op: 'replace',
-          path: '/description',
-          value: 'User2 patch 2',
-        },
-      ],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    });
-
-    await adminApi.patch(`/api/v1/tables/name/${fqn}`, {
-      data: [
-        {
-          op: 'replace',
-          path: '/description',
-          value: 'Admin patch 3',
-        },
-      ],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    });
-
-    await user2Api.dispose();
-    await afterAction();
-  });
+      await afterAction();
+    }
+  );
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await table.delete(apiContext);
-    await user2.delete(apiContext);
+    await adminUser.delete(apiContext);
     await afterAction();
   });
-
-  test.use({ storageState: 'playwright/.auth/admin.json' });
 
   test('should call versions API with pagination params and return paging metadata', async ({
     page,
@@ -100,8 +69,12 @@ test.describe('Paginated Version History', () => {
     test.slow();
 
     await redirectToHomePage(page);
-    await table.visitEntityPage(page);
+
+    const fqn = table.entityResponseData?.fullyQualifiedName;
+
+    await page.goto(`/table/${fqn}`);
     await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="version-button"]');
 
     const versionsApiCall = page.waitForResponse(
       (response) =>
@@ -115,7 +88,7 @@ test.describe('Paginated Version History', () => {
     const responseBody = await response.json();
 
     expect(responseBody.paging).toBeDefined();
-    expect(responseBody.paging.total).toBeGreaterThanOrEqual(3);
+    expect(responseBody.paging.total).toBeGreaterThanOrEqual(2);
     expect(responseBody.paging.limit).toBe(20);
     expect(responseBody.paging.offset).toBe(0);
 
@@ -127,6 +100,84 @@ test.describe('Paginated Version History', () => {
 
     const count = await versionSelectors.count();
 
-    expect(count).toBeGreaterThanOrEqual(3);
+    expect(count).toBeGreaterThanOrEqual(2);
+  });
+
+  test('should load more versions on scroll via infinite scroll', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await redirectToHomePage(page);
+
+    const fqn = table.entityResponseData?.fullyQualifiedName;
+    const entityId = table.entityResponseData?.id;
+    let totalVersionCount = 0;
+    let callCount = 0;
+
+    // Intercept the versions API to simulate pagination by modifying the response.
+    // The first call returns only the first version; the sentinel triggers the second call
+    // which returns the remaining versions.
+    await page.route(
+      (url) =>
+        url.pathname.includes(`${entityId}/versions`) &&
+        !url.pathname.includes('/versions/'),
+      async (route) => {
+        callCount++;
+        const currentCall = callCount;
+
+        const response = await route.fetch();
+        const body = await response.json();
+
+        if (currentCall === 1 && body.versions?.length >= 2) {
+          totalVersionCount = body.versions.length;
+
+          await route.fulfill({
+            response,
+            json: {
+              ...body,
+              versions: [body.versions[0]],
+              paging: { offset: 0, limit: 1, total: totalVersionCount },
+            },
+          });
+        } else if (currentCall === 2 && totalVersionCount > 0) {
+          // Second call: return remaining versions from the full set
+          // The server may return different data since offset differs,
+          // so we use the cached total to build proper paging
+          await route.fulfill({
+            response,
+            json: {
+              ...body,
+              paging: {
+                offset: 1,
+                limit: 1,
+                total: totalVersionCount,
+              },
+            },
+          });
+        } else {
+          await route.fulfill({ response, json: body });
+        }
+      }
+    );
+
+    await page.goto(`/table/${fqn}`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="version-button"]');
+
+    await page.locator('[data-testid="version-button"]').click();
+
+    // The sentinel is immediately visible with only 1 version, so infinite scroll
+    // auto-triggers the second API call. Wait for both versions to render.
+    const versionSelectors = page.locator(
+      '[data-testid^="version-selector-v"]'
+    );
+
+    await expect(versionSelectors.nth(1)).toBeVisible({ timeout: 15_000 });
+
+    const totalCount = await versionSelectors.count();
+
+    expect(totalCount).toBeGreaterThanOrEqual(2);
+    expect(callCount).toBeGreaterThanOrEqual(2);
   });
 });

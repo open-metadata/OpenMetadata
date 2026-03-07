@@ -16,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import okhttp3.HttpUrl;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.AllModels;
 import org.openmetadata.sdk.models.ListParams;
@@ -610,12 +611,47 @@ public abstract class EntityServiceBase<T> {
 
   public EntityHistory getVersionList(String id, int limit, int offset)
       throws OpenMetadataException {
+    return getVersionList(id, limit, offset, null);
+  }
+
+  public EntityHistory getVersionList(UUID id, int limit, int offset, String fieldChanged)
+      throws OpenMetadataException {
+    return getVersionList(id.toString(), limit, offset, fieldChanged);
+  }
+
+  public EntityHistory getVersionList(String id, int limit, int offset, String fieldChanged)
+      throws OpenMetadataException {
     String path = basePath + "/" + id + "/versions";
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("limit", String.valueOf(limit));
     queryParams.put("offset", String.valueOf(offset));
+    if (fieldChanged != null && !fieldChanged.isEmpty()) {
+      queryParams.put("fieldChanged", fieldChanged);
+    }
     RequestOptions options = RequestOptions.builder().queryParams(queryParams).build();
     return httpClient.execute(HttpMethod.GET, path, null, EntityHistory.class, options);
+  }
+
+  public ResultList<T> getEntityHistory(long startTs, long endTs) throws OpenMetadataException {
+    return getEntityHistory(startTs, endTs, 10, null, null);
+  }
+
+  public ResultList<T> getEntityHistory(
+      long startTs, long endTs, int limit, String before, String after)
+      throws OpenMetadataException {
+    String path = basePath + "/history";
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("startTs", String.valueOf(startTs));
+    queryParams.put("endTs", String.valueOf(endTs));
+    queryParams.put("limit", String.valueOf(limit));
+    if (before != null) {
+      queryParams.put("before", before);
+    }
+    if (after != null) {
+      queryParams.put("after", after);
+    }
+    RequestOptions options = RequestOptions.builder().queryParams(queryParams).build();
+    return httpClient.execute(HttpMethod.GET, path, null, ResultList.class, options);
   }
 
   /**

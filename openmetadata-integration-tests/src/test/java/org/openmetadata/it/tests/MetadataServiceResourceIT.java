@@ -155,6 +155,14 @@ public class MetadataServiceResourceIT
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .metadataServices()
+        .getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected MetadataService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().metadataServices().getVersion(id.toString(), version);
   }

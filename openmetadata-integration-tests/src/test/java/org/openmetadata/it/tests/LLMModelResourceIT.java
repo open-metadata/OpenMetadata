@@ -151,6 +151,12 @@ public class LLMModelResourceIT extends BaseEntityIT<LLMModel, CreateLLMModel> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().llmModels().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected LLMModel getVersion(UUID id, Double version) {
     return SdkClients.adminClient().llmModels().getVersion(id.toString(), version);
   }

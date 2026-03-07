@@ -80,7 +80,7 @@ export const getDomainByName = async (fqn: string, params?: ListParams) => {
 
 export const getDomainVersionsList = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `${BASE_URL}/${id}/versions`;
   const response = await APIClient.get<EntityHistory>(url, { params });

@@ -1440,6 +1440,32 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
   }
 
+  @Test
+  void get_entityVersionHistory_fieldChanged_200(TestNamespace ns) {
+    if (!supportsPatch) return;
+
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    created.setDescription("Description change for fieldChanged test");
+    patchEntity(created.getId().toString(), created);
+
+    org.openmetadata.schema.type.EntityHistory filtered =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "description");
+    assertNotNull(filtered, "Filtered version history should not be null");
+    assertNotNull(filtered.getPaging(), "Paging metadata should be present");
+    assertTrue(
+        filtered.getVersions().size() >= 1,
+        "Should have at least 1 version with description change");
+    assertTrue(filtered.getPaging().getTotal() >= 1, "Total should reflect filtered count");
+
+    org.openmetadata.schema.type.EntityHistory noMatch =
+        getVersionHistoryWithFieldChanged(created.getId(), 100, 0, "nonExistentField_xyz_12345");
+    assertNotNull(noMatch);
+    assertEquals(0, noMatch.getVersions().size(), "No versions should match a bogus field name");
+    assertEquals(0, (int) noMatch.getPaging().getTotal());
+  }
+
   protected org.openmetadata.schema.type.EntityHistory getVersionHistory(UUID id) {
     throw new UnsupportedOperationException(
         "Version history not implemented - override in subclass");
@@ -1449,6 +1475,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       UUID id, int limit, int offset) {
     throw new UnsupportedOperationException(
         "Paginated version history not implemented - override in subclass");
+  }
+
+  protected org.openmetadata.schema.type.EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    throw new UnsupportedOperationException(
+        "fieldChanged version history not implemented - override in subclass");
   }
 
   protected T getVersion(UUID id, Double version) {

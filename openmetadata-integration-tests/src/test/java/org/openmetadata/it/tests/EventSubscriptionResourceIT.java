@@ -189,6 +189,14 @@ public class EventSubscriptionResourceIT
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .eventSubscriptions()
+        .getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected EventSubscription getVersion(UUID id, Double version) {
     return SdkClients.adminClient().eventSubscriptions().getVersion(id.toString(), version);
   }

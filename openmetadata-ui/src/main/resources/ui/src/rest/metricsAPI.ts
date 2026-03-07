@@ -70,7 +70,7 @@ export const restoreMetric = async (id: string) => {
 
 export const getMetricVersions = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const response = await APIClient.get<EntityHistory>(
     `/metrics/${id}/versions`,

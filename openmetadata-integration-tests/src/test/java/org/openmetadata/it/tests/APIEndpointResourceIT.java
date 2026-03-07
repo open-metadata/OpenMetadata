@@ -191,6 +191,12 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().apiEndpoints().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected APIEndpoint getVersion(UUID id, Double version) {
     return SdkClients.adminClient().apiEndpoints().getVersion(id.toString(), version);
   }

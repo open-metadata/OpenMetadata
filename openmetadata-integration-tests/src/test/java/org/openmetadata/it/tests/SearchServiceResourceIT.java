@@ -140,6 +140,14 @@ public class SearchServiceResourceIT extends BaseServiceIT<SearchService, Create
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .searchServices()
+        .getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected SearchService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().searchServices().getVersion(id.toString(), version);
   }

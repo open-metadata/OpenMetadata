@@ -140,6 +140,12 @@ public class LLMServiceResourceIT extends BaseServiceIT<LLMService, CreateLLMSer
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().llmServices().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected LLMService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().llmServices().getVersion(id.toString(), version);
   }

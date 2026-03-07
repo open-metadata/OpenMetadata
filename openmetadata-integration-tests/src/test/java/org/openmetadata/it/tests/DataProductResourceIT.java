@@ -207,6 +207,12 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().dataProducts().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected DataProduct getVersion(UUID id, Double version) {
     return SdkClients.adminClient().dataProducts().getVersion(id.toString(), version);
   }

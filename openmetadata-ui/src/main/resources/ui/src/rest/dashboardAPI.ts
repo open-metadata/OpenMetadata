@@ -42,7 +42,7 @@ const BASE_URL = '/dashboards';
 
 export const getDashboardVersions = async (
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `${BASE_URL}/${id}/versions`;
 

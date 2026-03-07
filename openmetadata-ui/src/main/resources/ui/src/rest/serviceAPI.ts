@@ -165,7 +165,7 @@ export const patchDomainSupportedService = async (
 export const getServiceVersions = async (
   serviceCategory: string,
   id: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
 ) => {
   const url = `/services/${serviceCategory}/${id}/versions`;
 
