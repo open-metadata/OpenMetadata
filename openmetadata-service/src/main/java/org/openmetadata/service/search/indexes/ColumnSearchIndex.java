@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -86,13 +85,13 @@ public class ColumnSearchIndex implements SearchIndex {
     doc.put("table", tableRef);
 
     if (parentTable.getService() != null) {
-      doc.put("service", getEntityRefMap(parentTable.getService()));
+      doc.put("service", SearchIndexUtils.toEntityRefMap(parentTable.getService()));
     }
     if (parentTable.getDatabase() != null) {
-      doc.put("database", getEntityRefMap(parentTable.getDatabase()));
+      doc.put("database", SearchIndexUtils.toEntityRefMap(parentTable.getDatabase()));
     }
     if (parentTable.getDatabaseSchema() != null) {
-      doc.put("databaseSchema", getEntityRefMap(parentTable.getDatabaseSchema()));
+      doc.put("databaseSchema", SearchIndexUtils.toEntityRefMap(parentTable.getDatabaseSchema()));
     }
     if (parentTable.getServiceType() != null) {
       doc.put("serviceType", parentTable.getServiceType().toString());
@@ -143,25 +142,6 @@ public class ColumnSearchIndex implements SearchIndex {
 
   public static String generateColumnId(String columnFQN) {
     return UUID.nameUUIDFromBytes(columnFQN.getBytes(StandardCharsets.UTF_8)).toString();
-  }
-
-  private Map<String, Object> getEntityRefMap(EntityReference entityRef) {
-    if (entityRef == null) {
-      return null;
-    }
-    Map<String, Object> refMap = new HashMap<>();
-    refMap.put("id", entityRef.getId() != null ? entityRef.getId().toString() : null);
-    refMap.put("name", entityRef.getName());
-    refMap.put(
-        "displayName",
-        entityRef.getDisplayName() != null && !entityRef.getDisplayName().isBlank()
-            ? entityRef.getDisplayName()
-            : entityRef.getName());
-    refMap.put("fullyQualifiedName", entityRef.getFullyQualifiedName());
-    refMap.put("description", entityRef.getDescription());
-    refMap.put("deleted", entityRef.getDeleted());
-    refMap.put("type", entityRef.getType());
-    return refMap;
   }
 
   public static Map<String, Float> getFields() {

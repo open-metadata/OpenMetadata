@@ -93,6 +93,10 @@ public class QueryFilterBuilder {
     deletedNode.putObject(TERM_KEY).put(DELETED_KEY, false);
     mustArray.add(deletedNode);
 
+    // Exclude data products and columns from team assets
+    ArrayNode mustNotArray = boolNode.putArray(MUST_NOT_KEY);
+    addEntityTypeExclusions(mustNotArray);
+
     return serializeQuery(queryFilter);
   }
 

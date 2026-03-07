@@ -622,11 +622,11 @@ public class SearchRepository {
     }
 
     // Check if columns field is in any of the change lists
-    return changeDescription.getFieldsAdded().stream()
+    return listOrEmpty(changeDescription.getFieldsAdded()).stream()
             .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
-        || changeDescription.getFieldsUpdated().stream()
+        || listOrEmpty(changeDescription.getFieldsUpdated()).stream()
             .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
-        || changeDescription.getFieldsDeleted().stream()
+        || listOrEmpty(changeDescription.getFieldsDeleted()).stream()
             .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS));
   }
 
@@ -662,13 +662,14 @@ public class SearchRepository {
       inheritedFields.put("version", table.getVersion());
 
       if (table.getService() != null) {
-        inheritedFields.put("service", buildEntityRefMap(table.getService()));
+        inheritedFields.put("service", SearchIndexUtils.toEntityRefMap(table.getService()));
       }
       if (table.getDatabase() != null) {
-        inheritedFields.put("database", buildEntityRefMap(table.getDatabase()));
+        inheritedFields.put("database", SearchIndexUtils.toEntityRefMap(table.getDatabase()));
       }
       if (table.getDatabaseSchema() != null) {
-        inheritedFields.put("databaseSchema", buildEntityRefMap(table.getDatabaseSchema()));
+        inheritedFields.put(
+            "databaseSchema", SearchIndexUtils.toEntityRefMap(table.getDatabaseSchema()));
       }
       if (table.getServiceType() != null) {
         inheritedFields.put("serviceType", table.getServiceType().toString());
@@ -709,45 +710,12 @@ public class SearchRepository {
     }
   }
 
-  private Map<String, Object> buildEntityRefMap(EntityReference entityRef) {
-    if (entityRef == null) {
-      return null;
-    }
-    Map<String, Object> refMap = new HashMap<>();
-    refMap.put("id", entityRef.getId() != null ? entityRef.getId().toString() : null);
-    refMap.put("name", entityRef.getName());
-    refMap.put(
-        "displayName",
-        entityRef.getDisplayName() != null && !entityRef.getDisplayName().isBlank()
-            ? entityRef.getDisplayName()
-            : entityRef.getName());
-    refMap.put("fullyQualifiedName", entityRef.getFullyQualifiedName());
-    refMap.put("description", entityRef.getDescription());
-    refMap.put("deleted", entityRef.getDeleted());
-    refMap.put("type", entityRef.getType());
-    return refMap;
-  }
-
   private List<Map<String, Object>> buildEntityRefListWithDisplayName(
       List<EntityReference> entities) {
     if (nullOrEmpty(entities)) {
       return Collections.emptyList();
     }
-    List<Map<String, Object>> result = new ArrayList<>();
-    for (EntityReference entity : entities) {
-      Map<String, Object> refMap = new HashMap<>();
-      refMap.put("id", entity.getId() != null ? entity.getId().toString() : null);
-      refMap.put("name", entity.getName());
-      refMap.put(
-          "displayName",
-          nullOrEmpty(entity.getDisplayName()) ? entity.getName() : entity.getDisplayName());
-      refMap.put("fullyQualifiedName", entity.getFullyQualifiedName());
-      refMap.put("description", entity.getDescription());
-      refMap.put("deleted", entity.getDeleted());
-      refMap.put("type", entity.getType());
-      result.add(refMap);
-    }
-    return result;
+    return entities.stream().map(SearchIndexUtils::toEntityRefMap).toList();
   }
 
   /**
@@ -783,12 +751,15 @@ public class SearchRepository {
     }
   }
 
+  private static final int COLUMN_BATCH_SIZE = 500;
+
   private void indexColumnsForTables(List<EntityInterface> entities) {
     IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
     if (columnIndexMapping == null) {
       return;
     }
 
+    String indexName = columnIndexMapping.getIndexName(clusterAlias);
     List<Map<String, String>> allColumnDocs = new ArrayList<>();
 
     for (EntityInterface entity : entities) {
@@ -804,6 +775,11 @@ public class SearchRepository {
           String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
           String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
           allColumnDocs.add(Collections.singletonMap(columnId, doc));
+
+          if (allColumnDocs.size() >= COLUMN_BATCH_SIZE) {
+            searchClient.createEntities(indexName, allColumnDocs);
+            allColumnDocs.clear();
+          }
         } catch (Exception e) {
           LOG.error(
               "Issue indexing column [{}] for table [{}]: {}",
@@ -816,7 +792,7 @@ public class SearchRepository {
 
     if (!allColumnDocs.isEmpty()) {
       try {
-        searchClient.createEntities(columnIndexMapping.getIndexName(clusterAlias), allColumnDocs);
+        searchClient.createEntities(indexName, allColumnDocs);
       } catch (Exception e) {
         LOG.error("Issue bulk indexing columns: {}", e.getMessage());
       }
