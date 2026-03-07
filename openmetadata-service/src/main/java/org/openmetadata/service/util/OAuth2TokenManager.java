@@ -86,33 +86,35 @@ public class OAuth2TokenManager {
         form.param("scope", oauth2Config.getScope());
       }
 
-      Response response =
-          client.target(tokenUrl).request(MediaType.APPLICATION_JSON).post(Entity.form(form));
+      try (Response response =
+          client.target(tokenUrl).request(MediaType.APPLICATION_JSON).post(Entity.form(form))) {
 
-      if (response.getStatus() != 200) {
-        LOG.error("OAuth2 token request to {} failed with HTTP {}", tokenUrl, response.getStatus());
-        throw new OAuth2TokenException(
-            String.format(
-                "OAuth2 token request failed with HTTP %d. Check the token URL and credentials.",
-                response.getStatus()));
+        if (response.getStatus() != 200) {
+          LOG.error(
+              "OAuth2 token request to {} failed with HTTP {}", tokenUrl, response.getStatus());
+          throw new OAuth2TokenException(
+              String.format(
+                  "OAuth2 token request failed with HTTP %d. Check the token URL and credentials.",
+                  response.getStatus()));
+        }
+
+        String responseBody = response.readEntity(String.class);
+        Map<String, Object> tokenResponse = JsonUtils.readValue(responseBody, Map.class);
+
+        String accessToken = (String) tokenResponse.get("access_token");
+        if (accessToken == null || accessToken.isEmpty()) {
+          throw new OAuth2TokenException("OAuth2 token response missing 'access_token' field");
+        }
+
+        long expiresIn = extractExpiresIn(tokenResponse);
+        Instant expiresAt =
+            Instant.now().plusSeconds(expiresIn).minusSeconds(TOKEN_EXPIRY_BUFFER_SECONDS);
+
+        tokenCache.put(cacheKey, new CachedToken(accessToken, expiresAt));
+        LOG.debug("Successfully fetched OAuth2 token, expires in {}s", expiresIn);
+
+        return accessToken;
       }
-
-      String responseBody = response.readEntity(String.class);
-      Map<String, Object> tokenResponse = JsonUtils.readValue(responseBody, Map.class);
-
-      String accessToken = (String) tokenResponse.get("access_token");
-      if (accessToken == null || accessToken.isEmpty()) {
-        throw new OAuth2TokenException("OAuth2 token response missing 'access_token' field");
-      }
-
-      long expiresIn = extractExpiresIn(tokenResponse);
-      Instant expiresAt =
-          Instant.now().plusSeconds(expiresIn).minusSeconds(TOKEN_EXPIRY_BUFFER_SECONDS);
-
-      tokenCache.put(cacheKey, new CachedToken(accessToken, expiresAt));
-      LOG.debug("Successfully fetched OAuth2 token, expires in {}s", expiresIn);
-
-      return accessToken;
     }
   }
 
