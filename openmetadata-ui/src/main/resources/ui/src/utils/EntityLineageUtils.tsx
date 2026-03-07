@@ -1988,7 +1988,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
           <img
             alt={fqn}
             className="header-icon"
-            src={serviceUtilClassBase.getServiceLogo(serviceType)}
+            src={serviceUtilClassBase.getServiceLogo(serviceType, { serviceType })}
           />
         )}
 

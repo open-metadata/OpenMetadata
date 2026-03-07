@@ -31,6 +31,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.URLValidator;
 
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
@@ -65,6 +66,15 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void prepare(T service, boolean update) {
+    // Validate logoUrl if provided
+    if (service.getLogoUrl() != null) {
+      try {
+        URLValidator.validateURL(service.getLogoUrl().toString());
+      } catch (Exception e) {
+        throw new IllegalArgumentException("Invalid logoUrl: " + e.getMessage());
+      }
+    }
+    
     if (service.getConnection() != null) {
       service
           .getConnection()

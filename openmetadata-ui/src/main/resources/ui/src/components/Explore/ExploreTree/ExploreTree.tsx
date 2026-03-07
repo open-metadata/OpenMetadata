@@ -27,7 +27,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getCountBadge, Transi18next } from '../../../utils/CommonUtils';
+import { getCountBadge, getServiceLogo, Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
@@ -182,14 +182,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               'service-icon w-4 h-4'
             ) ?? <></>;
           } else if (isServiceType) {
-            const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
-            logo = (
-              <img
-                alt="logo"
-                src={serviceIcon}
-                style={{ width: 18, height: 18 }}
-              />
-            );
+            logo = getServiceLogo(bucket.key, 'w-4 h-4', { serviceType: bucket.key });
           } else if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
             type = 'Database';
             logo = searchClassBase.getEntityIcon(
