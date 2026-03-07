@@ -124,6 +124,26 @@ public final class Pipelines {
     return getClient().pipelines().getVersionList(id);
   }
 
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset) {
+    return getClient().pipelines().getVersionList(id, limit, offset);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset, String fieldChanged) {
+    return getClient().pipelines().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
+      long startTs, long endTs) {
+    return getClient().pipelines().getEntityHistory(startTs, endTs);
+  }
+
+  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
+      long startTs, long endTs, int limit, String before, String after) {
+    return getClient().pipelines().getEntityHistory(startTs, endTs, limit, before, after);
+  }
+
   public static Pipeline getVersion(String id, Double version) {
     return getClient().pipelines().getVersion(id, version);
   }

@@ -116,6 +116,26 @@ public final class Teams {
     return getClient().teams().getVersionList(id);
   }
 
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset) {
+    return getClient().teams().getVersionList(id, limit, offset);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset, String fieldChanged) {
+    return getClient().teams().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
+      long startTs, long endTs) {
+    return getClient().teams().getEntityHistory(startTs, endTs);
+  }
+
+  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
+      long startTs, long endTs, int limit, String before, String after) {
+    return getClient().teams().getEntityHistory(startTs, endTs, limit, before, after);
+  }
+
   public static Team getVersion(String id, Double version) {
     return getClient().teams().getVersion(id, version);
   }

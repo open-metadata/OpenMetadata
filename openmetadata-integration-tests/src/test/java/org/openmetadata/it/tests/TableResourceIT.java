@@ -4907,6 +4907,17 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().tables().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().tables().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Table getVersion(UUID id, Double version) {
     return SdkClients.adminClient().tables().getVersion(id.toString(), version);
   }

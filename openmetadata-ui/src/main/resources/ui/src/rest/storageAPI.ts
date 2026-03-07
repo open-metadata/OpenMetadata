@@ -124,10 +124,13 @@ export const removeContainerFollower = async (id: string, userId: string) => {
   return response.data;
 };
 
-export const getContainerVersions = async (id: string) => {
+export const getContainerVersions = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `${BASE_URL}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };

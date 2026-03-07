@@ -72,7 +72,8 @@ jest.mock('./PipelineActions/PipelineActions', () =>
           id: 'id',
           name: 'name',
           state: 'waiting',
-        })}>
+        })}
+      >
         handleDeleteSelection
       </button>
     </div>

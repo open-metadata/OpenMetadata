@@ -78,9 +78,12 @@ export const getDomainByName = async (fqn: string, params?: ListParams) => {
   return response.data;
 };
 
-export const getDomainVersionsList = async (id: string) => {
+export const getDomainVersionsList = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `${BASE_URL}/${id}/versions`;
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };

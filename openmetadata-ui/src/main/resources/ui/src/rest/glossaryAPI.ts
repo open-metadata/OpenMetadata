@@ -202,10 +202,13 @@ export const exportGlossaryTermsInCSVFormat = async (glossaryName: string) => {
   return response.data;
 };
 
-export const getGlossaryVersionsList = async (id: string) => {
+export const getGlossaryVersionsList = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `/glossaries/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };
@@ -217,10 +220,13 @@ export const getGlossaryVersion = async (id: string, version: string) => {
   return response.data;
 };
 
-export const getGlossaryTermsVersionsList = async (id: string) => {
+export const getGlossaryTermsVersionsList = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `/glossaryTerms/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };

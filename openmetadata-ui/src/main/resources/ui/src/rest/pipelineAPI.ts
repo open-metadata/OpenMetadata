@@ -29,10 +29,13 @@ import { ListTestCaseResultsParams } from './testAPI';
 
 const BASE_URL = '/pipelines';
 
-export const getPipelineVersions = async (id: string) => {
+export const getPipelineVersions = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `${BASE_URL}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };

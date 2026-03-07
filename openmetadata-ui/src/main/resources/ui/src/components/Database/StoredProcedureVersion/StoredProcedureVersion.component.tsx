@@ -51,6 +51,9 @@ const StoredProcedureVersion = ({
   tier,
   slashedTableName,
   versionList,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -137,7 +140,8 @@ const StoredProcedureVersion = ({
             <Col
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
-              flex="220px">
+              flex="220px"
+            >
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -210,7 +214,8 @@ const StoredProcedureVersion = ({
               data={currentVersionData}
               permissions={entityPermissions}
               type={EntityType.STORED_PROCEDURE}
-              onUpdate={() => Promise.resolve()}>
+              onUpdate={() => Promise.resolve()}
+            >
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
                   className="tabs-new"
@@ -227,9 +232,12 @@ const StoredProcedureVersion = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.STORED_PROCEDURE}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
+        onLoadMore={onLoadMore}
       />
     </>
   );

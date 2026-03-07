@@ -431,6 +431,17 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().domains().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().domains().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Domain getVersion(UUID id, Double version) {
     return SdkClients.adminClient().domains().getVersion(id.toString(), version);
   }

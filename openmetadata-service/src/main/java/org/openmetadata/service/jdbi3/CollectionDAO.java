@@ -1412,7 +1412,7 @@ public interface CollectionDAO {
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
-            + "LIKE CONCAT (:extensionPrefix, '.%') "
+            + "LIKE CONCAT(:extensionPrefix, '.%') "
             + "ORDER BY extension DESC "
             + "LIMIT :limit OFFSET :offset")
     List<ExtensionRecord> getExtensionsWithOffset(
@@ -1420,6 +1420,34 @@ public interface CollectionDAO {
         @Bind("extensionPrefix") String extensionPrefix,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM entity_extension WHERE id = :id AND extension "
+            + "LIKE CONCAT(:extensionPrefix, '.%')")
+    int getExtensionCount(@BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
+
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension WHERE id = :id "
+            + "AND extension LIKE CONCAT(:extensionPrefix, '.%') "
+            + "AND changeDescriptionDoc LIKE CONCAT('%', :fieldName, '%') ESCAPE '!' "
+            + "ORDER BY extension DESC "
+            + "LIMIT :limit OFFSET :offset")
+    List<ExtensionRecord> getExtensionsWithFieldChanged(
+        @BindUUID("id") UUID id,
+        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("fieldName") String fieldName,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM entity_extension WHERE id = :id "
+            + "AND extension LIKE CONCAT(:extensionPrefix, '.%') "
+            + "AND changeDescriptionDoc LIKE CONCAT('%', :fieldName, '%') ESCAPE '!' ")
+    int getExtensionCountWithFieldChanged(
+        @BindUUID("id") UUID id,
+        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("fieldName") String fieldName);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
     void delete(@BindUUID("id") UUID id, @Bind("extension") String extension);

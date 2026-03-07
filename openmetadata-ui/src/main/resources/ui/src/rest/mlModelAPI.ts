@@ -28,10 +28,13 @@ import APIClient from './index';
 
 const BASE_URL = '/mlmodels';
 
-export const getMlModelVersions = async (id: string) => {
+export const getMlModelVersions = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `${BASE_URL}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };

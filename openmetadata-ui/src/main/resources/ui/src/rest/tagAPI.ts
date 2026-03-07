@@ -177,10 +177,13 @@ export const deleteTag = async (tagId: string) => {
   return response.data;
 };
 
-export const getClassificationVersionsList = async (id: string) => {
+export const getClassificationVersionsList = async (
+  id: string,
+  params?: { limit?: number; offset?: number; fieldChanged?: string }
+) => {
   const url = `${BASE_URL}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url);
+  const response = await APIClient.get<EntityHistory>(url, { params });
 
   return response.data;
 };

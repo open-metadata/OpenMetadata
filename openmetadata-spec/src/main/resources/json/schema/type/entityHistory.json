@@ -111,6 +111,9 @@
     "versions": {
       "descriptions": "All the versions of the entity ordered from the latest to the oldest version. Note the array element object has schema that corresponds to schema of the entity from the `entityType` attribute. For example, if `entityType` is `table`, then the schema of the object in the array is `table.json`.",
       "type": "array"
+    },
+    "paging": {
+      "$ref": "paging.json"
     }
   },
   "required": ["entityType", "versions"],

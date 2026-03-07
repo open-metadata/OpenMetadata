@@ -138,6 +138,17 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().personas().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().personas().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Persona getVersion(UUID id, Double version) {
     return SdkClients.adminClient().personas().getVersion(id.toString(), version);
   }

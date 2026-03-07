@@ -115,6 +115,26 @@ public final class Domains {
     return getClient().domains().getVersionList(id);
   }
 
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset) {
+    return getClient().domains().getVersionList(id, limit, offset);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(
+      java.util.UUID id, int limit, int offset, String fieldChanged) {
+    return getClient().domains().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
+      long startTs, long endTs) {
+    return getClient().domains().getEntityHistory(startTs, endTs);
+  }
+
+  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
+      long startTs, long endTs, int limit, String before, String after) {
+    return getClient().domains().getEntityHistory(startTs, endTs, limit, before, after);
+  }
+
   public static Domain getVersion(String id, Double version) {
     return getClient().domains().getVersion(id, version);
   }

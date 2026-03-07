@@ -255,6 +255,17 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().queries().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().queries().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Query getVersion(UUID id, Double version) {
     return SdkClients.adminClient().queries().getVersion(id.toString(), version);
   }

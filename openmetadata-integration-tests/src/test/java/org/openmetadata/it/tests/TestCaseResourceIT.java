@@ -271,6 +271,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(java.util.UUID id, int limit, int offset) {
+    return SdkClients.adminClient().testCases().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      java.util.UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient().testCases().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected TestCase getVersion(java.util.UUID id, Double version) {
     return SdkClients.adminClient().testCases().getVersion(id, version);
   }

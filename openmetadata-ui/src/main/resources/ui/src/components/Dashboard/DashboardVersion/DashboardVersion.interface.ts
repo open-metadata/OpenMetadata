@@ -27,6 +27,9 @@ export interface DashboardVersionProp {
   tier: TagLabel;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;

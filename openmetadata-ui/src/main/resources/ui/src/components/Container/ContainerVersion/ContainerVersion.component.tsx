@@ -61,6 +61,9 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   tier,
   breadCrumbList,
   versionList,
+  onLoadMore,
+  hasMore,
+  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -188,7 +191,8 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
             <Col
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
-              flex="220px">
+              flex="220px"
+            >
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
@@ -270,7 +274,8 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               data={currentVersionData}
               permissions={entityPermissions}
               type={EntityType.CONTAINER as CustomizeEntityType}
-              onUpdate={() => Promise.resolve()}>
+              onUpdate={() => Promise.resolve()}
+            >
               <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
                   className="tabs-new"
@@ -287,9 +292,12 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.CONTAINER}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
+        onLoadMore={onLoadMore}
       />
     </>
   );

@@ -119,6 +119,11 @@ public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLea
   }
 
   @Override
+  protected String getResourcePath() {
+    return "/v1/learning/resources/";
+  }
+
+  @Override
   protected void validateCreatedEntity(
       LearningResource entity, CreateLearningResource createRequest) {
     assertEquals(createRequest.getName(), entity.getName());
@@ -165,6 +170,17 @@ public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLea
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return getLearningResourceService().getVersionList(id);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return getLearningResourceService().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return getLearningResourceService().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

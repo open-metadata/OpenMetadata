@@ -155,6 +155,17 @@ public class DataInsightChartResourceIT
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return getDataInsightChartService().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return getDataInsightChartService().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected DataInsightChart getVersion(UUID id, Double version) {
     return getDataInsightChartService().getVersion(id.toString(), version);
   }

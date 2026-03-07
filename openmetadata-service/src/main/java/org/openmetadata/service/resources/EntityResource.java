@@ -335,8 +335,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
+    return listVersionsInternal(securityContext, id, 0, 0, null);
+  }
+
+  protected EntityHistory listVersionsInternal(
+      SecurityContext securityContext, UUID id, int limit, int offset) {
+    return listVersionsInternal(securityContext, id, limit, offset, null);
+  }
+
+  protected EntityHistory listVersionsInternal(
+      SecurityContext securityContext, UUID id, int limit, int offset, String fieldChanged) {
     OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
-    return listVersionsInternal(securityContext, id, operationContext, getResourceContextById(id));
+    return listVersionsInternal(
+        securityContext,
+        id,
+        limit,
+        offset,
+        fieldChanged,
+        operationContext,
+        getResourceContextById(id));
   }
 
   protected EntityHistory listVersionsInternal(
@@ -344,7 +361,26 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UUID id,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
+    return listVersionsInternal(securityContext, id, 0, 0, null, operationContext, resourceContext);
+  }
+
+  protected EntityHistory listVersionsInternal(
+      SecurityContext securityContext,
+      UUID id,
+      int limit,
+      int offset,
+      String fieldChanged,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (limit > 0) {
+      return repository.listVersionsWithOffset(id, limit, offset, fieldChanged).entityHistory();
+    }
+    if (fieldChanged != null && !fieldChanged.isEmpty()) {
+      return repository
+          .listVersionsWithOffset(id, Integer.MAX_VALUE, offset, fieldChanged)
+          .entityHistory();
+    }
     return repository.listVersions(id);
   }
 

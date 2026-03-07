@@ -40,7 +40,8 @@ export const KeyProfileMetrics = ({ profile }: KeyProfileMetricsProps) => {
           <div
             className="tw:flex-1 tw:rounded-lg tw:bg-secondary tw:p-2"
             data-testid={`key-profile-metric-${metric.label}`}
-            key={metric.label}>
+            key={metric.label}
+          >
             <div className="tw:flex tw:flex-col tw:gap-1">
               <div className="tw:flex tw:items-center tw:gap-1">
                 <span className="tw:text-xs tw:font-medium tw:text-tertiary">

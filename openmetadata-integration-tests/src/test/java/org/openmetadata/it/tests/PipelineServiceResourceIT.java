@@ -138,6 +138,19 @@ public class PipelineServiceResourceIT
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return SdkClients.adminClient().pipelineServices().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return SdkClients.adminClient()
+        .pipelineServices()
+        .getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected PipelineService getVersion(UUID id, Double version) {
     return SdkClients.adminClient().pipelineServices().getVersion(id.toString(), version);
   }

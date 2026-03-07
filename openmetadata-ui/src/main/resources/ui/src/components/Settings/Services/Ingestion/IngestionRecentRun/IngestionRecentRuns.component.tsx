@@ -135,7 +135,8 @@ export const IngestionRecentRuns = <
               )}
               data-testid="pipeline-status"
               key={`${runId}-status`}
-              onClick={() => handleRunStatusClick(r)}>
+              onClick={() => handleRunStatusClick(r)}
+            >
               {i === recentRunStatus.length - 1
                 ? upperFirst(pipelineState)
                 : ''}
@@ -168,7 +169,8 @@ export const IngestionRecentRuns = <
                   )}
                 </div>
               }
-              key={`${runId}-timestamp`}>
+              key={`${runId}-timestamp`}
+            >
               {status}
             </Popover>
           ) : (

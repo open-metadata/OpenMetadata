@@ -168,6 +168,17 @@ public class KpiResourceIT extends BaseEntityIT<Kpi, CreateKpiRequest> {
   }
 
   @Override
+  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
+    return getKpiService().getVersionList(id, limit, offset);
+  }
+
+  @Override
+  protected EntityHistory getVersionHistoryWithFieldChanged(
+      UUID id, int limit, int offset, String fieldChanged) {
+    return getKpiService().getVersionList(id, limit, offset, fieldChanged);
+  }
+
+  @Override
   protected Kpi getVersion(UUID id, Double version) {
     return getKpiService().getVersion(id.toString(), version);
   }
