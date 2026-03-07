@@ -29,6 +29,7 @@ test.describe('Health Check for OpenMetadata', PLAYWRIGHT_INGESTION_TAG_OBJ, () 
     await settingClick(page, GlobalSettingOptions.OM_HEALTH);
 
     await healthResponse;
+    await page.waitForLoadState('networkidle');
 
     await expect(
       page.locator('[data-testid="database"] .success-status')
