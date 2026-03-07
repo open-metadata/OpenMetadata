@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 
-import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
@@ -14,6 +13,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -25,6 +30,7 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchConfiguration;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
@@ -41,7 +47,6 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
-import org.openmetadata.service.workflows.interfaces.Source;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
@@ -65,6 +70,9 @@ public class DataAssetsWorkflow {
   private Processor entityProcessor;
   private Sink searchIndexSink;
   @Getter private final WorkflowStats workflowStats = new WorkflowStats("DataAssetsWorkflow");
+
+  private volatile boolean stopped = false;
+  private volatile ExecutorService executor;
 
   public DataAssetsWorkflow(
       DataAssetsConfig dataAssetsConfig,
@@ -179,6 +187,24 @@ public class DataAssetsWorkflow {
     }
   }
 
+  private int computeConcurrencyBudget() {
+    int cores = Runtime.getRuntime().availableProcessors();
+    int cpuBudget = cores * 2;
+
+    try {
+      int poolSize =
+          OpenMetadataApplicationConfigHolder.getInstance().getDataSourceFactory().getMaxSize();
+      if (poolSize > 0) {
+        return Math.max(4, Math.min(cpuBudget, poolSize / 2));
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Could not determine database pool size, using default concurrency budget: {}",
+          e.getMessage());
+    }
+    return Math.max(4, cpuBudget);
+  }
+
   public void process() throws SearchIndexException {
     if (!dataAssetsConfig.getEnabled()) {
       return;
@@ -190,7 +216,13 @@ public class DataAssetsWorkflow {
     contextData.put(START_TIMESTAMP_KEY, startTimestamp);
     contextData.put(END_TIMESTAMP_KEY, endTimestamp);
 
+    int budget = computeConcurrencyBudget();
+    LOG.info("[Data Insights] Using concurrency budget of {} virtual threads.", budget);
+
     for (PaginatedEntitiesSource source : sources) {
+      if (stopped) {
+        break;
+      }
       deleteBasedOnDataRetentionPolicy(
           getDataStreamName(searchRepository.getClusterAlias(), source.getEntityType()));
       deleteDataBeforeInserting(
@@ -204,12 +236,84 @@ public class DataAssetsWorkflow {
           searchInterface.getEntityAttributeFields(
               dataInsightsSearchConfiguration, source.getEntityType()));
 
+      processSource(source, Collections.unmodifiableMap(new HashMap<>(contextData)), budget);
+    }
+  }
+
+  /**
+   * Processes entities from {@code source} in parallel using virtual threads. Concurrency is
+   * bounded by a semaphore with {@code budget} permits. Bulk operations produced by each thread are
+   * collected in a concurrent queue and flushed to the search index after each batch. The method
+   * blocks until all entities in a batch complete before reading the next one.
+   */
+  private void processSource(
+      PaginatedEntitiesSource source, Map<String, Object> contextData, int budget)
+      throws SearchIndexException {
+    Semaphore concurrencyLimit = new Semaphore(budget);
+    ConcurrentLinkedQueue<Object> operationsQueue = new ConcurrentLinkedQueue<>();
+
+    try (ExecutorService sourceExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+      this.executor = sourceExecutor;
+
       String keysetCursor = null;
-      while (true) {
+      while (!stopped) {
         try {
-          ResultList<? extends EntityInterface> resultList = source.readNextKeyset(keysetCursor);
-          keysetCursor = resultList.getPaging().getAfter();
-          processEntity(resultList, contextData, source);
+          ResultList<? extends EntityInterface> batch = source.readNextKeyset(keysetCursor);
+          keysetCursor = batch.getPaging().getAfter();
+
+          if (batch.getData().isEmpty()) {
+            if (!batch.getErrors().isEmpty()) {
+              source.updateStats(0, batch.getErrors().size());
+            }
+            if (keysetCursor == null) {
+              break;
+            }
+            continue;
+          }
+
+          record EntityFuture(EntityInterface entity, Future<Void> future) {}
+          List<EntityFuture> entityFutures = new ArrayList<>();
+          for (EntityInterface entity : batch.getData()) {
+            entityFutures.add(
+                new EntityFuture(
+                    entity,
+                    sourceExecutor.submit(
+                        () -> {
+                          concurrencyLimit.acquire();
+                          try {
+                            List<Map<String, Object>> enriched =
+                                entityEnricher.enrichSingle(entity, contextData);
+                            List<?> bulkOps =
+                                (List<?>) entityProcessor.process(enriched, contextData);
+                            operationsQueue.addAll(bulkOps);
+                          } finally {
+                            concurrencyLimit.release();
+                          }
+                          return null;
+                        })));
+          }
+
+          int batchSuccess = 0;
+          int batchFailed = 0;
+          for (EntityFuture ef : entityFutures) {
+            try {
+              ef.future().get();
+              batchSuccess++;
+            } catch (ExecutionException e) {
+              batchFailed++;
+              LOG.debug(
+                  "[DataAssetsWorkflow] Failed to process entity '{}' (type={}): {}",
+                  ef.entity().getFullyQualifiedName(),
+                  source.getEntityType(),
+                  e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+            }
+          }
+
+          drainAndFlush(operationsQueue, contextData);
+
+          batchFailed += batch.getErrors().size();
+          source.updateStats(batchSuccess, batchFailed);
+
           if (keysetCursor == null) {
             break;
           }
@@ -220,36 +324,40 @@ public class DataAssetsWorkflow {
               String.format("Failed processing Data from %s: %s", source.getName(), ex);
           workflowStats.addFailure(errorMessage);
           break;
-        } finally {
-          updateWorkflowStats(source.getName(), source.getStats());
+        } catch (InterruptedException ex) {
+          Thread.currentThread().interrupt();
+          break;
         }
       }
+    } finally {
+      this.executor = null;
+    }
+
+    try {
+      drainAndFlush(operationsQueue, contextData);
+    } finally {
+      updateWorkflowStats(source.getName(), source.getStats());
     }
   }
 
-  private void processEntity(
-      ResultList<? extends EntityInterface> resultList,
-      Map<String, Object> contextData,
-      Source<?> paginatedSource)
+  @SuppressWarnings("unchecked")
+  private void drainAndFlush(ConcurrentLinkedQueue<Object> queue, Map<String, Object> contextData)
       throws SearchIndexException {
-    if (!resultList.getData().isEmpty()) {
-      searchIndexSink.write(
-          entityProcessor.process(entityEnricher.process(resultList, contextData), contextData),
-          contextData);
-      if (!resultList.getErrors().isEmpty()) {
-        throw new SearchIndexException(
-            new IndexingError()
-                .withErrorSource(READER)
-                .withLastFailedCursor(paginatedSource.getLastFailedCursor())
-                .withSubmittedCount(paginatedSource.getBatchSize())
-                .withSuccessCount(resultList.getData().size())
-                .withFailedCount(resultList.getErrors().size())
-                .withMessage(
-                    String.format(
-                        "Issues in Reading A Batch For Entities: %s", resultList.getErrors()))
-                .withFailedEntities(resultList.getErrors()));
-      }
-      paginatedSource.updateStats(resultList.getData().size(), 0);
+    List<Object> batch = new ArrayList<>();
+    Object op;
+    while ((op = queue.poll()) != null) {
+      batch.add(op);
+    }
+    if (!batch.isEmpty()) {
+      searchIndexSink.write((List) batch, contextData);
+    }
+  }
+
+  public void stop() {
+    this.stopped = true;
+    ExecutorService exec = this.executor;
+    if (exec != null) {
+      exec.shutdownNow();
     }
   }
 
@@ -267,9 +375,6 @@ public class DataAssetsWorkflow {
   }
 
   private void deleteDataBeforeInserting(String dataStreamName) throws SearchIndexException {
-    String rangeTermQuery =
-        String.format(
-            "{ \"@timestamp\": { \"gte\": %s, \"lte\": %s } }", startTimestamp, endTimestamp);
     try {
       if (dataAssetsConfig.getServiceFilter() == null) {
         searchRepository
