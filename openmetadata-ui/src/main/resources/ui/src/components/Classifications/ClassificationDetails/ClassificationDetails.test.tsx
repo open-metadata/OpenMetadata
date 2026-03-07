@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ProviderType } from '../../../generated/entity/bot';
@@ -277,18 +277,19 @@ describe('ClassificationDetails', () => {
   });
 
   it('should display classification name, tags, and sidebar info', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails {...defaultProps} />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tag-row-Tag1')).toBeInTheDocument()
+    );
 
     expect(screen.getByTestId('classification-name')).toHaveTextContent(
       'TestClassification'
     );
-    expect(screen.getByTestId('tag-row-Tag1')).toBeInTheDocument();
     expect(screen.getByTestId('tag-row-Tag2')).toBeInTheDocument();
     expect(screen.getByTestId('domain-label')).toBeInTheDocument();
     expect(screen.getByTestId('owner-label')).toBeInTheDocument();
@@ -297,25 +298,27 @@ describe('ClassificationDetails', () => {
   it('should show empty state when classification has no tags', async () => {
     mockGetTags.mockResolvedValueOnce({ data: [], paging: { total: 0 } });
 
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails {...defaultProps} />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
 
-    expect(screen.getByTestId('empty-tags-placeholder')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('empty-tags-placeholder')).toBeInTheDocument()
+    );
   });
 
   it('should allow user to add a new tag', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails {...defaultProps} />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('add-new-tag-button')).toBeInTheDocument()
+    );
 
     fireEvent.click(screen.getByTestId('add-new-tag-button'));
 
@@ -323,13 +326,15 @@ describe('ClassificationDetails', () => {
   });
 
   it('should allow user to edit description', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails {...defaultProps} />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('edit-description')).toBeInTheDocument()
+    );
 
     fireEvent.click(screen.getByTestId('edit-description'));
 
@@ -339,13 +344,15 @@ describe('ClassificationDetails', () => {
   });
 
   it('should allow user to edit display name', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails {...defaultProps} />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('edit-display-name')).toBeInTheDocument()
+    );
 
     fireEvent.click(screen.getByTestId('edit-display-name'));
 
@@ -355,13 +362,15 @@ describe('ClassificationDetails', () => {
   });
 
   it('should navigate to version history when version button is clicked', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails {...defaultProps} />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('version-button')).toBeInTheDocument()
+    );
 
     fireEvent.click(screen.getByTestId('version-button'));
 
@@ -369,23 +378,23 @@ describe('ClassificationDetails', () => {
   });
 
   it('should show mutually exclusive badge when classification is mutually exclusive', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails
-            {...defaultProps}
-            currentClassification={{
-              ...mockClassification,
-              mutuallyExclusive: true,
-            }}
-          />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails
+          {...defaultProps}
+          currentClassification={{
+            ...mockClassification,
+            mutuallyExclusive: true,
+          }}
+        />
+      </MemoryRouter>
+    );
 
-    expect(
-      screen.getByTestId('mutually-exclusive-container')
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('mutually-exclusive-container')
+      ).toBeInTheDocument()
+    );
   });
 
   it('should show system badge and enable/disable option for system classifications', async () => {
@@ -394,18 +403,19 @@ describe('ClassificationDetails', () => {
       provider: ProviderType.System,
     };
 
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails
-            {...defaultProps}
-            currentClassification={systemClassification}
-          />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails
+          {...defaultProps}
+          currentClassification={systemClassification}
+        />
+      </MemoryRouter>
+    );
 
-    expect(screen.getByTestId('system-badge')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('system-badge')).toBeInTheDocument()
+    );
+
     expect(screen.getByTestId('disable-button')).toBeInTheDocument();
   });
 
@@ -415,16 +425,18 @@ describe('ClassificationDetails', () => {
       provider: ProviderType.System,
     };
 
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails
-            {...defaultProps}
-            currentClassification={systemClassification}
-          />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails
+          {...defaultProps}
+          currentClassification={systemClassification}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('disable-button')).toBeInTheDocument()
+    );
 
     fireEvent.click(screen.getByTestId('disable-button'));
 
@@ -436,36 +448,37 @@ describe('ClassificationDetails', () => {
   it('should show disabled state and prevent adding tags when classification is disabled', async () => {
     const disabledClassification = { ...mockClassification, disabled: true };
 
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails
-            {...defaultProps}
-            currentClassification={disabledClassification}
-          />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails
+          {...defaultProps}
+          currentClassification={disabledClassification}
+        />
+      </MemoryRouter>
+    );
 
-    expect(screen.getByTestId('disabled-indicator')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('disabled-indicator')).toBeInTheDocument()
+    );
+
     expect(screen.getByTestId('add-new-tag-button')).toBeDisabled();
   });
 
   it('should hide edit controls when user is in version view or lacks permissions', async () => {
-    const { unmount } = await act(async () => {
-      return render(
-        <MemoryRouter>
-          <ClassificationDetails {...defaultProps} isVersionView />
-        </MemoryRouter>
-      );
-    });
+    const { unmount } = render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} isVersionView />
+      </MemoryRouter>
+    );
 
-    expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument()
+    );
+
     expect(screen.queryByTestId('add-new-tag-button')).not.toBeInTheDocument();
 
     unmount();
 
-    // No permissions
     const noEditPermissions = {
       ...ENTITY_PERMISSIONS,
       EditAll: false,
@@ -473,77 +486,77 @@ describe('ClassificationDetails', () => {
       EditDisplayName: false,
     };
 
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails
-            {...defaultProps}
-            classificationPermissions={noEditPermissions}
-          />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails
+          {...defaultProps}
+          classificationPermissions={noEditPermissions}
+        />
+      </MemoryRouter>
+    );
 
-    expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument()
+    );
   });
 
   it('should disable tag toggles when user lacks EditAll permission or classification is disabled', async () => {
-    // With EditAll permission - toggles should be enabled
-    const { unmount } = await act(async () => {
-      return render(
-        <MemoryRouter>
-          <ClassificationDetails {...defaultProps} />
-        </MemoryRouter>
-      );
-    });
+    const { unmount } = render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
 
-    const enabledToggle = screen.getByTestId('tag-disable-toggle-Tag1');
+    await waitFor(() =>
+      expect(screen.getByTestId('tag-disable-toggle-Tag1')).toBeInTheDocument()
+    );
 
-    expect(enabledToggle).not.toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByTestId('tag-disable-toggle-Tag1')).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
 
     unmount();
 
-    // Without EditAll permission - toggles should be disabled
     const noEditPermissions = {
       ...ENTITY_PERMISSIONS,
       EditAll: false,
     };
 
-    const { unmount: unmount2 } = await act(async () => {
-      return render(
-        <MemoryRouter>
-          <ClassificationDetails
-            {...defaultProps}
-            classificationPermissions={noEditPermissions}
-          />
-        </MemoryRouter>
-      );
-    });
+    const { unmount: unmount2 } = render(
+      <MemoryRouter>
+        <ClassificationDetails
+          {...defaultProps}
+          classificationPermissions={noEditPermissions}
+        />
+      </MemoryRouter>
+    );
 
-    expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
-      'aria-disabled',
-      'true'
+    await waitFor(() =>
+      expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
+        'aria-disabled',
+        'true'
+      )
     );
 
     unmount2();
 
-    // With disabled classification - toggles should be disabled
     const disabledClassification = { ...mockClassification, disabled: true };
 
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <ClassificationDetails
-            {...defaultProps}
-            currentClassification={disabledClassification}
-          />
-        </MemoryRouter>
-      );
-    });
+    render(
+      <MemoryRouter>
+        <ClassificationDetails
+          {...defaultProps}
+          currentClassification={disabledClassification}
+        />
+      </MemoryRouter>
+    );
 
-    expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
-      'aria-disabled',
-      'true'
+    await waitFor(() =>
+      expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
+        'aria-disabled',
+        'true'
+      )
     );
   });
 });

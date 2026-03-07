@@ -172,7 +172,7 @@ describe('FeedbackApprovalTask', () => {
     const taskWithIncorrectClassification = {
       ...mockProps.task,
       feedback: {
-        ...mockProps.task.feedback!,
+        ...mockProps.task.feedback,
         feedbackType: FeedbackType.IncorrectClassification,
       },
     };
@@ -190,7 +190,7 @@ describe('FeedbackApprovalTask', () => {
     const taskWithOverlyBroad = {
       ...mockProps.task,
       feedback: {
-        ...mockProps.task.feedback!,
+        ...mockProps.task.feedback,
         feedbackType: FeedbackType.OverlyBroad,
       },
     };
@@ -208,7 +208,7 @@ describe('FeedbackApprovalTask', () => {
     const taskWithContextSpecific = {
       ...mockProps.task,
       feedback: {
-        ...mockProps.task.feedback!,
+        ...mockProps.task.feedback,
         feedbackType: FeedbackType.ContextSpecific,
       },
     };
@@ -226,7 +226,7 @@ describe('FeedbackApprovalTask', () => {
     const taskWithoutComments = {
       ...mockProps.task,
       feedback: {
-        ...mockProps.task.feedback!,
+        ...mockProps.task.feedback,
         userComments: undefined,
       },
     };
@@ -242,7 +242,7 @@ describe('FeedbackApprovalTask', () => {
     const taskWithoutCreatedBy = {
       ...mockProps.task,
       feedback: {
-        ...mockProps.task.feedback!,
+        ...mockProps.task.feedback,
         createdBy: undefined,
       },
     };
@@ -269,7 +269,7 @@ describe('FeedbackApprovalTask', () => {
     const taskWithoutCreatedAt = {
       ...mockProps.task,
       feedback: {
-        ...mockProps.task.feedback!,
+        ...mockProps.task.feedback,
         createdAt: undefined,
       },
     };
@@ -285,7 +285,7 @@ describe('FeedbackApprovalTask', () => {
     const taskWithoutDisplayName = {
       ...mockProps.task,
       feedback: {
-        ...mockProps.task.feedback!,
+        ...mockProps.task.feedback,
         createdBy: {
           id: 'd6764107-e8b4-4748-b256-c86fecc66064',
           type: 'user',

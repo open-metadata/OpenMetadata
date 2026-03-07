@@ -13,7 +13,6 @@
  */
 
 import {
-  act,
   findAllByTestId,
   findByTestId,
   findByText,
@@ -25,6 +24,7 @@ import {
   waitFor,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
@@ -627,11 +627,7 @@ describe('Test TagsPage page', () => {
 
   it('Should render error placeholder if categories api fails', async () => {
     (getAllClassifications as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject({
-        response: {
-          data: { message: 'Error!' },
-        },
-      })
+      Promise.reject(new Error('Error!'))
     );
     const { container } = render(<TagsPage {...mockProps} />, {
       wrapper: Wrapper,
@@ -691,13 +687,8 @@ describe('Test TagsPage page', () => {
     expect(cancelAssociatedTag).toBeInTheDocument();
     expect(saveAssociatedTag).toBeInTheDocument();
 
-    await act(async () => {
-      fireEvent.change(tagCategoryHeading, {
-        target: {
-          value: 'newPII',
-        },
-      });
-    });
+    await userEvent.clear(tagCategoryHeading);
+    await userEvent.type(tagCategoryHeading, 'newPII');
 
     expect(tagCategoryHeading).toHaveValue('newPII');
   });
@@ -736,7 +727,7 @@ describe('Test TagsPage page', () => {
   describe('Render Sad Paths', () => {
     it.skip('Show error message on failing of deleteTag API', async () => {
       (deleteTag as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({ response: { data: 'error!' } })
+        Promise.reject(new Error('Error!'))
       );
       render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
       await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
@@ -785,17 +776,17 @@ describe('Test TagsPage page', () => {
       Promise.resolve(MOCK_ALL_CLASSIFICATIONS)
     );
 
-    await act(async () => {
-      render(<TagsPage {...mockProps} />, {
-        wrapper: Wrapper,
-      });
+    render(<TagsPage {...mockProps} />, {
+      wrapper: Wrapper,
     });
 
-    expect(ResizableLeftPanels).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pageTitle: 'PersonalData',
-      }),
-      expect.anything()
-    );
+    await waitFor(() => {
+      expect(ResizableLeftPanels).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'PersonalData',
+        }),
+        expect.anything()
+      );
+    });
   });
 });
