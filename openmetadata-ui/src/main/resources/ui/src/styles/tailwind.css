@@ -43,13 +43,6 @@ app ships a single prefixed Tailwind output. */
   transition-timing-function: inherit;
 }
 
-@layer base {
-  img {
-    height: revert-layer;
-    display: inline;
-  }
-}
-
 /* These are global overrided by antd, so adding default values here */
 svg {
   display: inline;
