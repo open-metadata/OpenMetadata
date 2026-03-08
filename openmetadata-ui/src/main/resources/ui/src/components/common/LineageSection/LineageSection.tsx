@@ -136,7 +136,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
           type="upstream"
           onClick={handleClick}
         />
-        <Divider className="self-center h-5 mx-4" orientation="vertical" />
+        <Divider className="tw:self-center tw:h-5" orientation="vertical" />
         <LineageItem
           Icon={DownstreamIcon}
           count={downstreamCount}

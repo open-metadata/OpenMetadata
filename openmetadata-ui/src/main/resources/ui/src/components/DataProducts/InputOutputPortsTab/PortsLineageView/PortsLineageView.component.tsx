@@ -217,7 +217,7 @@ const PortsLineageView = ({
     return (
       <div className="ports-lineage-view-empty tw:h-50 tw:flex tw:items-center tw:justify-center tw:bg-gray-50 tw:rounded-lg tw:border tw:border-gray-200">
         <ErrorPlaceHolder
-          className="tw:m-t-0"
+          className="m-t-0"
           icon={
             <AddPlaceHolderIcon
               className="tw:w-12 tw:h-12"

@@ -12,6 +12,7 @@
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityTitleSection } from './EntityTitleSection';
 
@@ -535,7 +536,7 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await user.click(editButton);
 
       expect(screen.getByTestId('entity-name-modal')).toBeInTheDocument();
@@ -558,7 +559,7 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await user.click(editButton);
 
       expect(screen.getByTestId('entity-name-modal')).toBeInTheDocument();
@@ -600,7 +601,7 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await user.click(editButton);
 
       const saveButton = screen.getByTestId('modal-save-button');
@@ -643,7 +644,7 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await user.click(editButton);
 
       const saveButton = screen.getByTestId('modal-save-button');
@@ -681,7 +682,7 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await user.click(editButton);
 
       const saveButton = screen.getByTestId('modal-save-button');
