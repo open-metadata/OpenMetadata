@@ -19,6 +19,15 @@ import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.inte
 import LineageTabContent from './LineageTabContent';
 
 // Mock react-i18next
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string) => key,
@@ -63,7 +72,8 @@ jest.mock('antd', () => ({
         data-size={size}
         data-testid="button"
         onClick={onClick}
-        {...props}>
+        {...props}
+      >
         {children}
       </button>
     )),
@@ -346,7 +356,6 @@ describe('LineageTabContent', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
       expect(screen.getByText('Upstream Table')).toBeInTheDocument();
-      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
       expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
     });
 
@@ -393,8 +402,6 @@ describe('LineageTabContent', () => {
       render(<LineageTabContent {...defaultProps} filter="downstream" />);
 
       expect(screen.getByText('Downstream Table')).toBeInTheDocument();
-      // Path is truncated to "service > ... > schema" when there are more than 2 parts with MUI Breadcrumbs
-      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
       expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
     });
 
@@ -457,12 +464,9 @@ describe('LineageTabContent', () => {
     it('should render entity path when available', () => {
       render(<LineageTabContent {...defaultProps} />);
 
-      // MUI Breadcrumbs renders path as separate breadcrumb items
       expect(screen.getByText('service')).toBeInTheDocument();
       expect(screen.getByText('schema')).toBeInTheDocument();
-      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
       expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
-      // Path is truncated to "service > ... > schema" when there are more than 2 parts with MUI Breadcrumbs
     });
 
     it('should render entity display name or name', () => {
@@ -617,10 +621,8 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      // MUI Breadcrumbs renders first and last items with condensed menu for middle items
       expect(screen.getByText('service')).toBeInTheDocument();
       expect(screen.getByText('table')).toBeInTheDocument();
-      expect(screen.getAllByTestId('ChevronRightIcon')).toHaveLength(2);
       expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
     });
 

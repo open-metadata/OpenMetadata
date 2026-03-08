@@ -41,6 +41,33 @@ let mockEntityType = EntityType.TABLE;
 let mockLocationSearch = '';
 let mockAppPreferences = MOCK_APP_PREFERENCES;
 
+jest.mock('@openmetadata/ui-core-components', () => {
+  const GridMock = jest
+    .fn()
+    .mockImplementation(({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ));
+  GridMock.Item = jest
+    .fn()
+    .mockImplementation(({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ));
+
+  return {
+    Grid: GridMock,
+    Tooltip: jest
+      .fn()
+      .mockImplementation(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+    TooltipTrigger: jest
+      .fn()
+      .mockImplementation(({ children }: { children: React.ReactNode }) => (
+        <span>{children}</span>
+      )),
+  };
+});
+
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(() => mockNavigate),
 }));

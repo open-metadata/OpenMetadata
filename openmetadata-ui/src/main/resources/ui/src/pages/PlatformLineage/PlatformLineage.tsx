@@ -257,7 +257,11 @@ const PlatformLineage = () => {
             })}
           >
             <TooltipTrigger>
-              <StyledIconButton size="large" onClick={handleExport}>
+              <StyledIconButton
+                data-testid="export-button"
+                size="large"
+                onClick={handleExport}
+              >
                 <DownloadIcon />
               </StyledIconButton>
             </TooltipTrigger>

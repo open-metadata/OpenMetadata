@@ -653,9 +653,9 @@ export const verifyCSVHeaders = async (headers: string[]) => {
 };
 
 export const getLineageCSVData = async (page: Page) => {
-  await expect(page.getByRole('button', { name: 'Export' })).toBeEnabled();
+  await expect(page.getByTestId('export-button')).toBeEnabled();
 
-  await page.getByRole('button', { name: 'Export' }).click();
+  await page.getByTestId('export-button').click();
 
   await page.waitForSelector(
     '[data-testid="export-entity-modal"] #submit-button',
@@ -750,9 +750,9 @@ export const verifyExportLineagePNG = async (
   page: Page,
   isPNGSelected?: boolean
 ) => {
-  await expect(page.getByRole('button', { name: 'Export' })).toBeEnabled();
+  await expect(page.getByTestId('export-button')).toBeEnabled();
 
-  await page.getByRole('button', { name: 'Export' }).click();
+  await page.getByTestId('export-button').click();
 
   await page.waitForSelector(
     '[data-testid="export-entity-modal"] #submit-button',
