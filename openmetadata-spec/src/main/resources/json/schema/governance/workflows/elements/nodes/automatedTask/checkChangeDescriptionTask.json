@@ -43,8 +43,8 @@
           "enum": ["AND", "OR"],
           "default": "OR"
         },
-        "include": {
-          "title": "Include Fields",
+        "rules": {
+          "title": "Rules",
           "description": "Map of fields to their required values/patterns. Checks fieldsAdded, fieldsUpdated, and fieldsDeleted.",
           "type": "object",
           "additionalProperties": {
@@ -57,7 +57,7 @@
         }
       },
       "additionalProperties": false,
-      "required": ["include"]
+      "required": ["rules"]
     },
     "input": {
       "type": "array",

@@ -45,7 +45,7 @@ public class CheckChangeDescriptionTask implements NodeInterface {
                 ? nodeDefinition.getConfig().getCondition().value()
                 : "OR",
             nodeDefinition.getConfig() != null
-                ? JsonUtils.pojoToJson(nodeDefinition.getConfig().getInclude())
+                ? JsonUtils.pojoToJson(nodeDefinition.getConfig().getRules())
                 : "{}",
             JsonUtils.pojoToJson(
                 nodeDefinition.getInputNamespaceMap() != null
@@ -79,18 +79,15 @@ public class CheckChangeDescriptionTask implements NodeInterface {
   }
 
   private ServiceTask getCheckChangeDescriptionServiceTask(
-      String subProcessId, String condition, String includeFields, String inputNamespaceMap) {
+      String subProcessId, String condition, String rules, String inputNamespaceMap) {
     LOG.debug("CheckChangeDescriptionTask: condition = {}", condition);
-    LOG.debug("CheckChangeDescriptionTask: includeFields = {}", includeFields);
+    LOG.debug("CheckChangeDescriptionTask: rules = {}", rules);
     LOG.debug("CheckChangeDescriptionTask: inputNamespaceMap = {}", inputNamespaceMap);
 
     FieldExtension conditionExpr =
         new FieldExtensionBuilder().fieldName("conditionExpr").fieldValue(condition).build();
-    FieldExtension includeFieldsExpr =
-        new FieldExtensionBuilder()
-            .fieldName("includeFieldsExpr")
-            .fieldValue(includeFields)
-            .build();
+    FieldExtension rulesExpr =
+        new FieldExtensionBuilder().fieldName("rulesExpr").fieldValue(rules).build();
     FieldExtension inputNamespaceMapExpr =
         new FieldExtensionBuilder()
             .fieldName("inputNamespaceMapExpr")
@@ -101,7 +98,7 @@ public class CheckChangeDescriptionTask implements NodeInterface {
         .id(getFlowableElementId(subProcessId, "checkChangeDescriptionTask"))
         .implementation(CheckChangeDescriptionTaskImpl.class.getName())
         .addFieldExtension(conditionExpr)
-        .addFieldExtension(includeFieldsExpr)
+        .addFieldExtension(rulesExpr)
         .addFieldExtension(inputNamespaceMapExpr)
         .build();
   }

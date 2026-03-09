@@ -7957,8 +7957,7 @@ public class WorkflowDefinitionResourceIT {
     triggerConfig.put("events", List.of("Updated"));
     triggerConfig.put("exclude", List.of());
 
-    Map<String, List<String>> includeFields = new HashMap<>();
-    includeFields.put("tags", List.of(privateTag.getFullyQualifiedName()));
+    List<String> includeFields = List.of("tags");
     triggerConfig.put("include", includeFields);
     triggerConfig.put("filter", new HashMap<>());
 
@@ -8050,9 +8049,9 @@ public class WorkflowDefinitionResourceIT {
     JsonNode workflow = MAPPER.readTree(getResponse);
 
     assertTrue(workflow.get("trigger").get("config").has("include"));
-    assertEquals(
-        privateTag.getFullyQualifiedName(),
-        workflow.get("trigger").get("config").get("include").get("tags").get(0).asText());
+    JsonNode includeArray = workflow.get("trigger").get("config").get("include");
+    assertTrue(includeArray.isArray());
+    assertEquals("tags", includeArray.get(0).asText());
 
     LOG.info("✓ Tag approval workflow with include fields created and verified successfully");
 
@@ -8183,8 +8182,7 @@ public class WorkflowDefinitionResourceIT {
     triggerConfig.put("events", List.of("Updated"));
     triggerConfig.put("exclude", List.of());
 
-    Map<String, List<String>> includeFields = new HashMap<>();
-    includeFields.put("domains", List.of(domain.getFullyQualifiedName()));
+    List<String> includeFields = List.of("domains");
     triggerConfig.put("include", includeFields);
     triggerConfig.put("filter", new HashMap<>());
 
@@ -8276,9 +8274,9 @@ public class WorkflowDefinitionResourceIT {
     JsonNode workflow = MAPPER.readTree(getResponse);
 
     assertTrue(workflow.get("trigger").get("config").has("include"));
-    assertEquals(
-        domain.getFullyQualifiedName(),
-        workflow.get("trigger").get("config").get("include").get("domains").get(0).asText());
+    JsonNode includeArray = workflow.get("trigger").get("config").get("include");
+    assertTrue(includeArray.isArray());
+    assertEquals("domains", includeArray.get(0).asText());
 
     LOG.info("✓ Domain approval workflow with include fields created and verified successfully");
 
@@ -8414,8 +8412,7 @@ public class WorkflowDefinitionResourceIT {
     triggerConfig.put("events", List.of("Updated"));
     triggerConfig.put("exclude", List.of("tags")); // Exclude tags field
 
-    Map<String, List<String>> includeFields = new HashMap<>();
-    includeFields.put("tags", List.of(tag.getFullyQualifiedName())); // But include specific tag
+    List<String> includeFields = List.of("tags"); // But include tags field (should have priority)
     triggerConfig.put("include", includeFields);
     triggerConfig.put("filter", new HashMap<>());
 
@@ -8511,8 +8508,9 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(triggerConfigNode.get("exclude").isArray());
     assertTrue(triggerConfigNode.get("exclude").size() > 0);
     assertEquals("tags", triggerConfigNode.get("exclude").get(0).asText());
-    assertEquals(
-        tag.getFullyQualifiedName(), triggerConfigNode.get("include").get("tags").get(0).asText());
+    JsonNode includeArray = triggerConfigNode.get("include");
+    assertTrue(includeArray.isArray());
+    assertEquals("tags", includeArray.get(0).asText());
 
     LOG.info("✓ Include priority workflow created with both include and exclude fields verified");
 
@@ -8607,7 +8605,7 @@ public class WorkflowDefinitionResourceIT {
     triggerConfig.put("entityTypes", List.of("table"));
     triggerConfig.put("events", List.of("Created"));
     triggerConfig.put("exclude", List.of());
-    triggerConfig.put("include", new HashMap<>()); // Empty include fields
+    triggerConfig.put("include", List.of()); // Empty include fields
     triggerConfig.put("filter", new HashMap<>());
 
     Map<String, Object> trigger = new HashMap<>();
@@ -8697,8 +8695,8 @@ public class WorkflowDefinitionResourceIT {
     JsonNode workflow = MAPPER.readTree(getResponse);
 
     JsonNode includeNode = workflow.get("trigger").get("config").get("include");
-    assertTrue(includeNode.isObject());
-    assertEquals(0, includeNode.size()); // Should be empty object
+    assertTrue(includeNode.isArray());
+    assertEquals(0, includeNode.size()); // Should be empty array
 
     LOG.info(
         "✓ Empty include fields workflow created successfully - backward compatibility verified");
@@ -8836,9 +8834,7 @@ public class WorkflowDefinitionResourceIT {
     triggerConfig.put("events", List.of("Updated"));
     triggerConfig.put("exclude", List.of());
 
-    Map<String, List<String>> includeFields = new HashMap<>();
-    includeFields.put("tags", List.of(tag.getFullyQualifiedName()));
-    includeFields.put("domains", List.of(domain.getFullyQualifiedName()));
+    List<String> includeFields = List.of("tags", "domains");
     triggerConfig.put("include", includeFields);
     triggerConfig.put("filter", new HashMap<>());
 
@@ -8929,10 +8925,10 @@ public class WorkflowDefinitionResourceIT {
     JsonNode workflow = MAPPER.readTree(getResponse);
 
     JsonNode includeNode = workflow.get("trigger").get("config").get("include");
-    assertTrue(includeNode.has("tags"));
-    assertTrue(includeNode.has("domains"));
-    assertEquals(tag.getFullyQualifiedName(), includeNode.get("tags").get(0).asText());
-    assertEquals(domain.getFullyQualifiedName(), includeNode.get("domains").get(0).asText());
+    assertTrue(includeNode.isArray());
+    assertEquals(2, includeNode.size());
+    assertTrue(includeNode.toString().contains("tags"));
+    assertTrue(includeNode.toString().contains("domains"));
 
     LOG.info("✓ Multi-field include workflow created with both tag and domain includes verified");
 
@@ -9175,7 +9171,7 @@ public class WorkflowDefinitionResourceIT {
               "displayName": "Check Tags or Domains Changed",
               "config": {
                 "condition": "OR",
-                "include": {
+                "rules": {
                   "tags": ["PII.Sensitive", "PII.None"],
                   "domains": ["Finance"]
                 }

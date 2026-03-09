@@ -28,7 +28,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 @Slf4j
 public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
   private Expression conditionExpr;
-  private Expression includeFieldsExpr;
+  private Expression rulesExpr;
   private Expression inputNamespaceMapExpr;
 
   @Override
@@ -70,15 +70,14 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       condition = (String) conditionExpr.getValue(execution);
     }
 
-    Map<String, List<String>> includeFields = null;
-    if (includeFieldsExpr != null && includeFieldsExpr.getValue(execution) != null) {
-      includeFields =
-          JsonUtils.readOrConvertValue(includeFieldsExpr.getValue(execution), Map.class);
+    Map<String, List<String>> rules = null;
+    if (rulesExpr != null && rulesExpr.getValue(execution) != null) {
+      rules = JsonUtils.readOrConvertValue(rulesExpr.getValue(execution), Map.class);
     }
 
-    // If no include fields specified, return true
-    if (includeFields == null || includeFields.isEmpty()) {
-      LOG.debug("No include fields specified, returning true");
+    // If no rules specified, return true
+    if (rules == null || rules.isEmpty()) {
+      LOG.debug("No rules specified, returning true");
       return true;
     }
 
@@ -91,9 +90,9 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     // Check fields based on condition (AND/OR)
     boolean result;
     if ("AND".equals(condition)) {
-      result = checkAllFieldsMatch(allChanges, includeFields);
+      result = checkAllFieldsMatch(allChanges, rules);
     } else {
-      result = checkAnyFieldMatches(allChanges, includeFields);
+      result = checkAnyFieldMatches(allChanges, rules);
     }
 
     LOG.debug(
@@ -104,9 +103,8 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     return result;
   }
 
-  private boolean checkAllFieldsMatch(
-      List<FieldChange> changes, Map<String, List<String>> includeFields) {
-    for (Map.Entry<String, List<String>> entry : includeFields.entrySet()) {
+  private boolean checkAllFieldsMatch(List<FieldChange> changes, Map<String, List<String>> rules) {
+    for (Map.Entry<String, List<String>> entry : rules.entrySet()) {
       String fieldName = entry.getKey();
       List<String> patterns = entry.getValue();
 
@@ -122,13 +120,12 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     return true;
   }
 
-  private boolean checkAnyFieldMatches(
-      List<FieldChange> changes, Map<String, List<String>> includeFields) {
+  private boolean checkAnyFieldMatches(List<FieldChange> changes, Map<String, List<String>> rules) {
     return changes.stream()
         .anyMatch(
             change -> {
               String fieldName = change.getName();
-              List<String> patterns = includeFields.get(fieldName);
+              List<String> patterns = rules.get(fieldName);
               if (patterns == null || patterns.isEmpty()) {
                 return false;
               }

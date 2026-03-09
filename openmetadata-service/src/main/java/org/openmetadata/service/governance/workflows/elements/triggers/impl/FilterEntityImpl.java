@@ -8,7 +8,6 @@ import static org.openmetadata.service.governance.workflows.elements.triggers.Ev
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -48,10 +47,10 @@ public class FilterEntityImpl implements JavaDelegate {
           JsonUtils.readOrConvertValue(excludedFieldsExpr.getValue(execution), List.class);
     }
 
-    Map<String, List<String>> includeFields = null;
+    List<String> includeFields = null;
     if (includeFieldsExpr != null && includeFieldsExpr.getValue(execution) != null) {
       includeFields =
-          JsonUtils.readOrConvertValue(includeFieldsExpr.getValue(execution), Map.class);
+          JsonUtils.readOrConvertValue(includeFieldsExpr.getValue(execution), List.class);
     }
 
     String entityLinkStr =
@@ -190,7 +189,7 @@ public class FilterEntityImpl implements JavaDelegate {
   private boolean passesExcludedFilter(
       String entityLinkStr,
       List<String> excludedFilter,
-      Map<String, List<String>> includeFields,
+      List<String> includeFields,
       String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
@@ -230,9 +229,7 @@ public class FilterEntityImpl implements JavaDelegate {
   }
 
   private boolean passesFieldBasedFilter(
-      List<FieldChange> changedFields,
-      Map<String, List<String>> includeFields,
-      List<String> excludedFilter) {
+      List<FieldChange> changedFields, List<String> includeFields, List<String> excludedFilter) {
     return changedFields.stream()
         .anyMatch(
             field -> {
@@ -248,26 +245,12 @@ public class FilterEntityImpl implements JavaDelegate {
               // Check include filter first (higher priority)
               if (includeFields != null && !includeFields.isEmpty()) {
                 // If include fields are specified, ONLY those fields should trigger
-                return passesIncludeFilter(field, includeFields);
+                return includeFields.contains(fieldName);
               }
 
               // If no include filter specified, check exclude filter
               return excludedFilter == null || !excludedFilter.contains(fieldName);
             });
-  }
-
-  private boolean passesIncludeFilter(
-      FieldChange fieldChange, Map<String, List<String>> includeFields) {
-    String fieldName = fieldChange.getName();
-    List<String> includeFqns = includeFields.get(fieldName);
-    if (includeFqns == null || includeFqns.isEmpty()) {
-      return false;
-    }
-    String fieldValue = getFieldValueForPatternMatching(fieldChange);
-    if (fieldValue == null) {
-      return false;
-    }
-    return includeFqns.stream().anyMatch(includeFqn -> fieldValue.contains(includeFqn));
   }
 
   private String getFieldValueForPatternMatching(FieldChange fieldChange) {
