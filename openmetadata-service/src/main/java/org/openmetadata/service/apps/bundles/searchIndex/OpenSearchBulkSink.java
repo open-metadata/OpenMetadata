@@ -885,7 +885,8 @@ public class OpenSearchBulkSink implements BulkSink {
       long timeoutMillis = unit.toMillis(timeout);
       long startTime = System.currentTimeMillis();
 
-      // Wait for all active bulk requests to complete
+      // Wait for all active bulk requests to complete with exponential backoff
+      long sleepMs = 100;
       while (activeBulkRequests.get() > 0) {
         long elapsed = System.currentTimeMillis() - startTime;
         if (elapsed >= timeoutMillis) {
@@ -893,7 +894,8 @@ public class OpenSearchBulkSink implements BulkSink {
               "Timeout waiting for {} active bulk requests to complete", activeBulkRequests.get());
           return false;
         }
-        Thread.sleep(100);
+        Thread.sleep(sleepMs);
+        sleepMs = Math.min(sleepMs * 2, 1000);
       }
       return true;
     }
@@ -1250,7 +1252,8 @@ public class OpenSearchBulkSink implements BulkSink {
       long timeoutMillis = unit.toMillis(timeout);
       long startTime = System.currentTimeMillis();
 
-      // Wait for all active bulk requests to complete
+      // Wait for all active bulk requests to complete with exponential backoff
+      long sleepMs = 100;
       while (activeBulkRequests.get() > 0) {
         long elapsed = System.currentTimeMillis() - startTime;
         if (elapsed >= timeoutMillis) {
@@ -1258,7 +1261,8 @@ public class OpenSearchBulkSink implements BulkSink {
               "Timeout waiting for {} active bulk requests to complete", activeBulkRequests.get());
           return false;
         }
-        Thread.sleep(100);
+        Thread.sleep(sleepMs);
+        sleepMs = Math.min(sleepMs * 2, 1000);
       }
 
       return scheduler.awaitTermination(
