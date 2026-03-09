@@ -22,9 +22,6 @@ import pytest
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.api.data.createDashboardDataModel import (
-    CreateDashboardDataModelRequest,
-)
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
@@ -38,10 +35,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSource
-from metadata.ingestion.source.dashboard.quicksight.models import (
-    DashboardDetail,
-    DescribeDataSourceResponse,
-)
+from metadata.ingestion.source.dashboard.quicksight.models import DashboardDetail
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/quicksight_dataset.json"
@@ -264,7 +258,9 @@ class QuickSightUnitTest(TestCase):
         each dataset should produce its own DataModel.
         """
         shared_datasource_id = "shared-datasource-001"
-        shared_datasource_arn = "arn:aws:quicksight:us-east-2:123456789:datasource/shared-datasource-001"
+        shared_datasource_arn = (
+            "arn:aws:quicksight:us-east-2:123456789:datasource/shared-datasource-001"
+        )
 
         mock_list_data_sets_response = {
             "DataSetSummaries": [

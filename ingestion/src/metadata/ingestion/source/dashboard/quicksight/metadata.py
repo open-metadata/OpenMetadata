@@ -702,9 +702,7 @@ class QuicksightSource(DashboardServiceSource):
                 for model in models:
                     columns.extend(self._get_column_info(model))
                 first_model = models[0]
-                display_name = (
-                    first_model.dataset_name or first_model.DataSource.Name
-                )
+                display_name = first_model.dataset_name or first_model.DataSource.Name
                 data_model_request = CreateDashboardDataModelRequest(
                     name=EntityName(dataset_id),
                     displayName=display_name,
