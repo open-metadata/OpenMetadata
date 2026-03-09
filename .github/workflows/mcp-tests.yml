@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: Integration Tests - MySQL + Elasticsearch
+name: MCP Tests
 
 on:
   workflow_dispatch:
@@ -17,52 +17,34 @@ on:
     branches:
       - main
     paths:
+      - "openmetadata-mcp/**"
       - "openmetadata-service/**"
-      - "openmetadata-integration-tests/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-sdk/**"
       - "common/**"
       - "pom.xml"
-      - "bootstrap/**"
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "openmetadata-mcp/**"
+      - "openmetadata-service/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-sdk/**"
+      - "common/**"
+      - "pom.xml"
 
 permissions:
   contents: read
   checks: write
 
 concurrency:
-  group: integration-tests-mysql-es-${{ github.event.pull_request.number || github.run_id }}
+  group: mcp-tests-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
+
 jobs:
-  # Detect whether relevant paths changed. When no matching files are modified
-  # the downstream job is skipped via its `if` condition.
-  # A job skipped by `if` reports as "Success", so required checks still pass.
-  changes:
-    name: Detect Changes
+  mcp-tests:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
-    outputs:
-      backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
-    steps:
-      - uses: dorny/paths-filter@v3
-        id: filter
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        with:
-          filters: |
-            backend:
-              - 'openmetadata-service/**'
-              - 'openmetadata-integration-tests/**'
-              - 'openmetadata-spec/src/main/resources/json/schema/**'
-              - 'openmetadata-sdk/**'
-              - 'common/**'
-              - 'pom.xml'
-              - 'bootstrap/**'
-
-  integration-tests-mysql-elasticsearch:
-    needs: changes
-    runs-on: ubuntu-latest
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -91,7 +73,7 @@ jobs:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
           valid-labels: 'safe to test'
           pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
+          disable-reviews: true
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -122,10 +104,10 @@ jobs:
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Build for Integration Tests (MySQL + Elasticsearch)
+      - name: Build MCP module and dependencies
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+        run: mvn -DskipTests clean install -pl :openmetadata-mcp -am
 
       - name: Free build artifacts
         run: |
@@ -134,12 +116,13 @@ jobs:
           rm -rf openmetadata-shaded-deps/*/target
           df -h /
 
-      - name: Run Integration Tests (MySQL + Elasticsearch)
+      - name: Run MCP Tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn verify -pl :openmetadata-integration-tests -Pmysql-elasticsearch
+        run: mvn test -pl :openmetadata-mcp
 
       - name: Clean Up
+        if: ${{ always() }}
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
@@ -151,4 +134,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
-          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
+          report_paths: 'openmetadata-mcp/target/surefire-reports/TEST-*.xml'
