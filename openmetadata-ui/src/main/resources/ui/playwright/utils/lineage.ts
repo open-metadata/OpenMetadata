@@ -453,9 +453,11 @@ export const verifyPipelineDataInDrawer = async (
     .dispatchEvent('click');
 
   await page.locator('.edge-info-drawer').isVisible();
-  page
-    .locator('.edge-info-drawer [data-testid="Edge"] a')
-    .filter({ hasText: pipelineName });
+  await expect(
+    page
+      .locator('.edge-info-drawer [data-testid="Edge"] a')
+      .filter({ hasText: pipelineName })
+  ).toBeVisible();
 
   if (bVisitPipelinePageFromDrawer) {
     await expect(page.getByTestId('edge-header-title')).toHaveText(
