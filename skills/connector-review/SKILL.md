@@ -1,8 +1,8 @@
 ---
 name: connector-review
-description: Review an OpenMetadata connector PR or implementation against golden standards. Runs multi-agent analysis covering architecture, code quality, type safety, testing, and performance.
+description: Review an OpenMetadata connector PR or implementation against golden standards. Runs multi-agent analysis covering architecture, code quality, type safety, testing, and performance. Optionally posts review findings as GitHub PR comments.
 user-invocable: true
-argument-hint: "[PR number, branch name, or connector path]"
+argument-hint: "[PR number, branch name, or connector path] [--post-review]"
 allowed-tools:
   - Bash
   - Read
@@ -260,6 +260,100 @@ Use the appropriate template from `${CLAUDE_SKILL_DIR}/templates/`:
 - Specialized: `specialized-review-report.md`
 
 Include confidence scores in the report for transparency.
+
+### Step 6: Post Review to GitHub PR (Optional)
+
+If the user provided a PR number or asked to post the review, publish the findings as a GitHub PR review.
+
+#### 6a. Map Verdict to GitHub Review Action
+
+| Verdict | GitHub Action | Flag |
+|---------|--------------|------|
+| APPROVED | approve | `--approve` |
+| NEEDS CHANGES | request changes | `--request-changes` |
+| BLOCKED | request changes | `--request-changes` |
+
+#### 6b. Format the PR Comment Body
+
+Condense the full report into a PR-friendly format. The body must include:
+- Overall score and verdict
+- Score breakdown table
+- All BLOCKERs with file paths and line references
+- All WARNINGs summarized
+- SUGGESTIONs as a collapsed `<details>` block
+
+Use this structure:
+```markdown
+## Connector Review: {connector_name}
+
+**Verdict**: {VERDICT} | **Score**: {SCORE}/10
+
+### Score Breakdown
+| Category | Score |
+|----------|-------|
+| Schema & Registration | X/10 |
+| Connection & Auth | X/10 |
+| Source, Topology & Performance | X/10 |
+| Test Quality | X/10 |
+| Code Quality & Style | X/10 |
+
+### Blockers (Must Fix)
+- **[file:line]** Description of the issue
+
+### Warnings (Should Fix)
+- **[file:line]** Description of the issue
+
+<details>
+<summary>Suggestions (X items)</summary>
+
+- Description
+</details>
+
+---
+*Automated review by OpenMetadata Connector Review Skill*
+```
+
+#### 6c. Post the Review
+
+```bash
+# Post as a PR review with the appropriate action
+gh pr review {PR_NUMBER} {FLAG} --body "$(cat <<'EOF'
+{formatted review body}
+EOF
+)"
+```
+
+If the review is too long for a single comment (>65000 chars), split into:
+1. A summary review comment with verdict + blockers
+2. A follow-up PR comment with warnings + suggestions:
+```bash
+gh pr comment {PR_NUMBER} --body "$(cat <<'EOF'
+{warnings and suggestions}
+EOF
+)"
+```
+
+#### 6d. Confirm to User
+
+Tell the user:
+- The review was posted to PR #{number}
+- Link: `https://github.com/{owner}/{repo}/pull/{number}#pullrequestreview-{id}`
+- If verdict is BLOCKED/NEEDS CHANGES, remind them to re-request review after fixes
+
+### Step 7: Check Previous Comment Resolution (Optional)
+
+If this is a follow-up review (the PR was already reviewed before), use the comment-resolution-checker agent to verify previous findings were addressed:
+
+```
+Launch Agent: comment-resolution-checker
+Prompt: Check PR #{number} in {owner}/{repo}. Compare the current diff against
+previous review comments. Classify each as ADDRESSED, PARTIALLY ADDRESSED,
+NOT ADDRESSED, or SUPERSEDED.
+```
+
+See `${CLAUDE_SKILL_DIR}/../agents/comment-resolution-checker.md` for the full agent spec.
+
+Include the resolution status in the review body under a "### Previous Review Follow-up" section.
 
 ## Confidence Scoring Guide
 
