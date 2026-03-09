@@ -49,7 +49,7 @@ public class EntityLifecycleEventDispatcher {
             60L,
             TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(),
-            Thread.ofVirtual().name("lifecycle-async-", 0).factory());
+            Thread.ofVirtual().name("om-lifecycle-async-", 0).factory());
     pool.allowCoreThreadTimeOut(true);
     this.asyncExecutor = pool;
   }

@@ -313,7 +313,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             60L,
             TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(),
-            java.lang.Thread.ofVirtual().name("field-fetch-", 0).factory());
+            java.lang.Thread.ofVirtual().name("om-field-fetch-", 0).factory());
     pool.allowCoreThreadTimeOut(true);
     return pool;
   }

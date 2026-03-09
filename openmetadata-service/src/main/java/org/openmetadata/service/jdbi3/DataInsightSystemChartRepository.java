@@ -116,7 +116,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   // Lazy initialization for scheduler
   private ScheduledExecutorService getScheduler() {
     if (scheduler == null) {
-      scheduler = Executors.newScheduledThreadPool(10);
+      scheduler =
+          Executors.newScheduledThreadPool(
+              10, Thread.ofPlatform().name("om-data-insight-scheduler-", 0).factory());
     }
     return scheduler;
   }

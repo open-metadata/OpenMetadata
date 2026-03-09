@@ -103,7 +103,9 @@ public class AppScheduler {
         .getListenerManager()
         .addJobListener(new OmAppJobListener(), jobGroupEquals(APPS_JOB_GROUP));
 
-    ScheduledExecutorService threadScheduler = Executors.newScheduledThreadPool(1);
+    ScheduledExecutorService threadScheduler =
+        Executors.newScheduledThreadPool(
+            1, Thread.ofPlatform().name("om-app-error-trigger-reset").factory());
     threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
 
     // Start Scheduler

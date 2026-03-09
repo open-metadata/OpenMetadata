@@ -1172,7 +1172,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = repository.getByName(uriInfo, name, fields);
     if (Boolean.TRUE.equals(app.getSupportsInterrupt())) {
       if (app.getAppType().equals(AppType.Internal)) {
-        new Thread(() -> AppScheduler.getInstance().stopApplicationRun(app)).start();
+        Thread.ofVirtual()
+            .name("om-app-stop-" + name)
+            .start(() -> AppScheduler.getInstance().stopApplicationRun(app));
         return Response.status(Response.Status.OK)
             .entity("Application stop in progress. Please check status via.")
             .build();
