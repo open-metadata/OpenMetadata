@@ -24,6 +24,7 @@ import {
   getApiContext,
   redirectToHomePage,
   testTableSearch,
+  uuid,
 } from '../../utils/common';
 import { test } from '../fixtures/pages';
 
@@ -141,9 +142,80 @@ test.describe('Table Search', () => {
       );
       await testTableSearch(
         page,
-        'dashboard_data_model_search_index',
+        'dashboardDataModel',
         dataModel1.entity.name,
         dataModel2.entity.name
+      );
+
+      await afterAction();
+    });
+
+    test('Data Models Table should find data models by displayName', async ({
+      page,
+    }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const dataModel1 = EntityDataClass.dashboardDataModel1.get();
+      const uniqueId = uuid();
+      const entityName = `pw-dm-name-${uniqueId}`;
+      const displayName = `PwDMDisplay-${uniqueId}`;
+
+      const dataModel = new DashboardDataModelClass();
+      dataModel.service.name = dataModel1.service.name;
+      dataModel.entity.service = dataModel1.service.fullyQualifiedName;
+      dataModel.entity.name = entityName;
+      dataModel.entity.displayName = displayName;
+
+      const response = await apiContext.post(
+        `/api/v1/${EntityTypeEndpoint.DataModel}`,
+        {
+          data: dataModel.entity,
+        }
+      );
+      dataModel.entityResponseData = await response.json();
+
+      await page.goto(
+        `/service/dashboardServices/${dataModel1.service.name}/data-model`
+      );
+      await testTableSearch(
+        page,
+        'dashboardDataModel',
+        displayName,
+        dataModel1.entity.name
+      );
+
+      await afterAction();
+    });
+
+    test('Data Models Table should find data models by mixed-case name', async ({
+      page,
+    }) => {
+      const { afterAction, apiContext } = await getApiContext(page);
+      const dataModel1 = EntityDataClass.dashboardDataModel1.get();
+      const uniqueId = uuid();
+      const mixedCaseName = `PwDMName-${uniqueId}`;
+
+      const dataModel = new DashboardDataModelClass();
+      dataModel.service.name = dataModel1.service.name;
+      dataModel.entity.service = dataModel1.service.fullyQualifiedName;
+      dataModel.entity.name = mixedCaseName;
+      dataModel.entity.displayName = mixedCaseName;
+
+      const response = await apiContext.post(
+        `/api/v1/${EntityTypeEndpoint.DataModel}`,
+        {
+          data: dataModel.entity,
+        }
+      );
+      dataModel.entityResponseData = await response.json();
+
+      await page.goto(
+        `/service/dashboardServices/${dataModel1.service.name}/data-model`
+      );
+      await testTableSearch(
+        page,
+        'dashboardDataModel',
+        mixedCaseName,
+        dataModel1.entity.name
       );
 
       await afterAction();
