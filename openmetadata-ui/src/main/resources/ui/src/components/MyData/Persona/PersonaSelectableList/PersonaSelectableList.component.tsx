@@ -207,7 +207,8 @@ export const PersonaSelectableList = ({
           className="user-profile-edit-popover-card relative"
           style={{
             height: `${popoverHeight}px`,
-          }}>
+          }}
+        >
           <div className="d-flex justify-start items-center gap-2 m-b-sm">
             <div className="d-flex flex-start items-center">
               <PersonaIcon height={16} />
@@ -294,12 +295,14 @@ export const PersonaSelectableList = ({
       style={{ borderRadius: '12px' }}
       trigger="click"
       onOpenChange={setPopupVisible}
-      {...popoverProps}>
+      {...popoverProps}
+    >
       {children ?? (
         <Tooltip
           title={t('label.edit-entity', {
             entity: t('label.persona'),
-          })}>
+          })}
+        >
           <EditIcon
             className="cursor-pointer"
             data-testid={`${

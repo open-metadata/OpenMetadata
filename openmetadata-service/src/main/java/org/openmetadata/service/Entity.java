@@ -120,6 +120,7 @@ public final class Entity {
   public static final String FIELD_FOLLOWERS = "followers";
   public static final String FIELD_VOTES = "votes";
   public static final String FIELD_TAGS = "tags";
+  public static final String FIELD_TIER = "tier";
   public static final String FIELD_DELETED = "deleted";
   public static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
   public static final String FIELD_DISPLAY_NAME = "displayName";
@@ -141,6 +142,8 @@ public final class Entity {
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
   public static final String FIELD_CERTIFICATION = "certification";
   public static final String FIELD_ENTITY_STATUS = "entityStatus";
+  public static final String FIELD_ENTITY_TYPE = "entityType";
+  public static final String FIELD_SERVICE_TYPE = "serviceType";
 
   public static final String FIELD_DISABLED = "disabled";
 

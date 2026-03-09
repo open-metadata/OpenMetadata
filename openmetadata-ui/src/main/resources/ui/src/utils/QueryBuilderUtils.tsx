@@ -453,7 +453,8 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
         className="action action--ADD-RULE"
         data-testid="add-condition-button"
         type="primary"
-        onClick={props?.onClick}>
+        onClick={props?.onClick}
+      >
         {t('label.add-entity', {
           entity: t('label.condition'),
         })}
@@ -508,6 +509,10 @@ export interface ElasticsearchQuery {
     filter?: ElasticsearchQuery[];
     must_not?: ElasticsearchQuery | ElasticsearchQuery[];
     minimum_should_match?: number;
+  };
+  nested?: {
+    path: string;
+    query: ElasticsearchQuery;
   };
   term?: {
     [key: string]: string | number | boolean;
