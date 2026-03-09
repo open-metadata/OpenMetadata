@@ -27,10 +27,19 @@ jobs:
 
       - name: Validate JSON files
         run: |
-          find skills/ -name '*.json' -print0 | while IFS= read -r -d '' file; do
-            echo "Validating $file"
-            python3 -c "import json; json.load(open('$file'))" || exit 1
-          done
+          python3 -c "
+          import json, pathlib, sys
+          failed = False
+          for f in sorted(pathlib.Path('skills').rglob('*.json')):
+              try:
+                  json.loads(f.read_text())
+                  print(f'OK: {f}')
+              except Exception as e:
+                  print(f'INVALID: {f}: {e}', file=sys.stderr)
+                  failed = True
+          if failed:
+              sys.exit(1)
+          "
 
   check-symlinks:
     runs-on: ubuntu-latest

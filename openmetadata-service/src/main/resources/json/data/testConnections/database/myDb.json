@@ -18,14 +18,14 @@
         },
         {
             "name": "GetTables",
-            "description": "From a given schema, list the tables belonging to that schema.",
-            "errorMessage": "Failed to from a given schema, list the tables belonging to that schema.",
+            "description": "List the tables belonging to a schema.",
+            "errorMessage": "Failed to list the tables belonging to a schema.",
             "mandatory": true
         },
         {
             "name": "GetViews",
-            "description": "From a given schema, list the views belonging to that schema.",
-            "errorMessage": "Failed to from a given schema, list the views belonging to that schema.",
+            "description": "List the views belonging to a schema.",
+            "errorMessage": "Failed to list the views belonging to a schema.",
             "mandatory": false
         }
     ]

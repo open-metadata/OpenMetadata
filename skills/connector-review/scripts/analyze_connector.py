@@ -91,7 +91,7 @@ def analyze_connector(service_type: str, name: str) -> dict:
         ]:
             if cap in props:
                 report["capabilities"].append(cap)
-        if not schema.get("additionalProperties", True) is False:
+        if schema.get("additionalProperties", True) is not False:
             report["issues"].append("Schema missing additionalProperties: false")
         if "$id" not in schema:
             report["issues"].append("Schema missing $id")
@@ -285,35 +285,45 @@ def analyze_connector(service_type: str, name: str) -> dict:
                         )
 
             # Detect unbounded caches (dicts assigned in __init__ without maxsize)
-            if "def __init__" in content:
-                init_match = re.search(
-                    r"def __init__\(.*?\):\s*\n((?:\s+.*\n)*)", content
-                )
-                if init_match:
-                    init_body = init_match.group(1)
-                    cache_patterns = re.findall(
-                        r"self\.(_?\w*cache\w*)\s*=\s*\{\}", init_body, re.IGNORECASE
+            in_init = False
+            for line in lines:
+                if "def __init__" in line:
+                    in_init = True
+                    continue
+                if in_init:
+                    if re.match(r"\s+def \w+\(", line):
+                        break
+                    cache_match = re.search(
+                        r"self\.(_?\w*cache\w*)\s*=\s*\{\}",
+                        line,
+                        re.IGNORECASE,
                     )
-                    for cache_name in cache_patterns:
-                        # Check if there's a clear() call or lru_cache
+                    if cache_match:
+                        cache_name = cache_match.group(1)
                         if f"{cache_name}.clear()" not in content:
                             report["memory"]["unbounded_caches"].append(
                                 f"{py_name}: self.{cache_name}"
                             )
 
             # Detect list accumulation in yield methods
-            for match in re.finditer(
-                r"def (yield_\w+)\(.*?\).*?:\s*\n((?:\s+.*\n)*?)(?=\n\s*def |\Z)",
-                content,
-            ):
-                method_name = match.group(1)
-                method_body = match.group(2)
-                if (
-                    "results = []" in method_body or "results.append(" in method_body
-                ) and "yield" not in method_body:
-                    report["memory"]["list_accumulation_in_yields"].append(
-                        f"{py_name}: {method_name}"
-                    )
+            for i, line in enumerate(lines):
+                yield_match = re.match(r"\s+def (yield_\w+)\(", line)
+                if yield_match:
+                    method_name = yield_match.group(1)
+                    # Collect body lines until next def or end of file
+                    body_lines = []
+                    for j in range(i + 1, min(i + 40, len(lines))):
+                        if re.match(r"\s+def \w+\(", lines[j]):
+                            break
+                        body_lines.append(lines[j])
+                    body = "\n".join(body_lines)
+                    if (
+                        "results = []" in body
+                        or "results.append(" in body
+                    ) and "yield" not in body:
+                        report["memory"]["list_accumulation_in_yields"].append(
+                            f"{py_name}: {method_name}"
+                        )
 
         # Check for gc.collect() usage anywhere in source
         all_source = " ".join(

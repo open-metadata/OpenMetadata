@@ -847,12 +847,12 @@ def generate_test_connection_json(p: ConnectorProfile) -> dict:
             ("GetSchemas", "List all the schemas available to the user.", True),
             (
                 "GetTables",
-                "From a given schema, list the tables belonging to that schema.",
+                "List the tables belonging to a schema.",
                 True,
             ),
             (
                 "GetViews",
-                "From a given schema, list the views belonging to that schema.",
+                "List the views belonging to a schema.",
                 False,
             ),
         ],
