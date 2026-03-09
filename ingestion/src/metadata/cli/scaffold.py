@@ -201,7 +201,13 @@ def _prompt(label: str, default: str = "", choices: Optional[list[str]] = None) 
     suffix += ": "
 
     while True:
-        value = input(f"  {label}{suffix}").strip()
+        try:
+            value = input(f"  {label}{suffix}").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            if default:
+                return default
+            raise SystemExit(1)
         if not value and default:
             return default
         if choices and value not in choices:
@@ -222,7 +228,13 @@ def _prompt_multi(
     suffix += ": "
 
     while True:
-        value = input(f"  {label}{suffix}").strip()
+        try:
+            value = input(f"  {label}{suffix}").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            if defaults:
+                return defaults
+            raise SystemExit(1)
         if not value and defaults:
             return defaults
         if not value:
@@ -241,18 +253,27 @@ def _prompt_multi(
 def _prompt_optional(label: str, hint: str = "") -> str:
     suffix = f" ({hint})" if hint else ""
     suffix += " [press Enter to skip]: "
-    return input(f"  {label}{suffix}").strip()
+    try:
+        return input(f"  {label}{suffix}").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return ""
 
 
 def _prompt_multiline(label: str, hint: str = "") -> str:
     print(f"  {label}" + (f" ({hint})" if hint else ""))
     print("  Enter text below. Type a blank line to finish:")
     lines = []
-    while True:
-        line = input("  > ")
-        if not line:
-            break
-        lines.append(line)
+    try:
+        while True:
+            line = input("  > ")
+            if not line:
+                break
+            lines.append(line)
+    except EOFError:
+        pass
+    except KeyboardInterrupt:
+        print()
     return "\n".join(lines)
 
 
