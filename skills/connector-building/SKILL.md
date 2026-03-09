@@ -114,10 +114,24 @@ Find: API docs, auth methods, key endpoints, pagination, rate limits, SDK packag
 The scaffold generates files with `# TODO` markers. Read the relevant standards before implementing:
 - `${CLAUDE_SKILL_DIR}/standards/connection.md` — Connection patterns
 - `${CLAUDE_SKILL_DIR}/standards/patterns.md` — Error handling, pagination, auth
+- `${CLAUDE_SKILL_DIR}/standards/performance.md` — Pagination, lookup optimization, anti-patterns
+- `${CLAUDE_SKILL_DIR}/standards/memory.md` — Memory management, streaming, OOM prevention
 - `${CLAUDE_SKILL_DIR}/standards/source_types/{service_type}.md` — Service-specific patterns
 
 **SQLAlchemy database**: Templates are mostly complete. Customize `_get_client()` if needed.
 **Non-SQLAlchemy**: Study the reference connector, then implement each skeleton file.
+
+**Critical for non-database connectors (client.py)**:
+- Every list endpoint MUST implement pagination if the API supports it. Check the API docs.
+- Missing pagination causes silent data loss — only the first page is ingested.
+- Build dicts for repeated lookups (e.g., folder path → folder name) instead of iterating lists.
+- See `${CLAUDE_SKILL_DIR}/standards/performance.md` for correct patterns and anti-patterns.
+
+**Critical for storage connectors and any connector that reads files**:
+- Never `.read()` entire files without a size check — causes OOM on production instances.
+- Use framework streaming readers (`metadata/readers/dataframe/`) for data files.
+- `del` large objects after processing and call `gc.collect()`.
+- See `${CLAUDE_SKILL_DIR}/standards/memory.md` for correct patterns.
 
 ### Phase 5: REGISTER — Integration Points
 
@@ -198,4 +212,17 @@ All standards are in `${CLAUDE_SKILL_DIR}/standards/`:
 | `service_spec.md` | DefaultDatabaseSpec vs BaseSpec |
 | `registration.md` | Service enum, UI utils, i18n |
 | `performance.md` | Pagination, batching, rate limiting |
+| `memory.md` | Memory management, streaming, OOM prevention |
+| `lineage.md` | Lineage extraction methods, dialect mapping, query logs |
+| `sql.md` | SQLAlchemy patterns, URL building, auth, multi-DB |
 | `source_types/*.md` | Service-type-specific patterns |
+
+## References
+
+Architecture guides in `${CLAUDE_SKILL_DIR}/references/`:
+
+| Reference | Content |
+|-----------|---------|
+| `architecture-decision-tree.md` | Service type, connection type, base class selection |
+| `connection-type-guide.md` | SQLAlchemy vs REST API vs SDK client |
+| `capability-mapping.md` | Capabilities by service type, schema flags, generated files |

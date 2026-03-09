@@ -21,7 +21,9 @@ AI-powered connector development toolkit for OpenMetadata. Scaffold, implement, 
 
 ## Standards
 
-9 core standards + 8 source-type standards in [standards/](standards/):
+12 core standards + 11 source-type standards in [standards/](standards/):
+
+### Core Standards
 
 | Standard | Content |
 |----------|---------|
@@ -34,9 +36,50 @@ AI-powered connector development toolkit for OpenMetadata. Scaffold, implement, 
 | [service_spec.md](standards/service_spec.md) | DefaultDatabaseSpec vs BaseSpec |
 | [registration.md](standards/registration.md) | Service enum, UI utils, i18n steps |
 | [performance.md](standards/performance.md) | Pagination, batching, rate limiting |
+| [memory.md](standards/memory.md) | Memory management, streaming, OOM prevention |
+| [lineage.md](standards/lineage.md) | Lineage extraction methods, dialect mapping, query logs |
+| [sql.md](standards/sql.md) | SQLAlchemy patterns, URL building, auth, multi-DB |
 
-Source-type standards in [standards/source_types/](standards/source_types/):
-`database.md`, `dashboard.md`, `pipeline.md`, `messaging.md`, `mlmodel.md`, `storage.md`, `search.md`, `api.md`
+### Source-Type Standards
+
+| Standard | Covers |
+|----------|--------|
+| [database.md](standards/source_types/database.md) | General database patterns |
+| [sql_databases.md](standards/source_types/sql_databases.md) | MySQL, PostgreSQL, Oracle, MSSQL |
+| [data_warehouses.md](standards/source_types/data_warehouses.md) | BigQuery, Snowflake, Redshift, Databricks |
+| [nosql_databases.md](standards/source_types/nosql_databases.md) | MongoDB, DynamoDB, Couchbase, Cassandra |
+| [dashboard.md](standards/source_types/dashboard.md) | Dashboard connectors |
+| [pipeline.md](standards/source_types/pipeline.md) | Pipeline connectors |
+| [messaging.md](standards/source_types/messaging.md) | Messaging connectors |
+| [mlmodel.md](standards/source_types/mlmodel.md) | ML model connectors |
+| [storage.md](standards/source_types/storage.md) | Storage connectors |
+| [search.md](standards/source_types/search.md) | Search connectors |
+| [api.md](standards/source_types/api.md) | API connectors |
+
+## References
+
+Architecture guides and decision trees in [connector-building/references/](connector-building/references/):
+
+| Reference | Content |
+|-----------|---------|
+| [architecture-decision-tree.md](connector-building/references/architecture-decision-tree.md) | Service type, connection type, and base class selection |
+| [connection-type-guide.md](connector-building/references/connection-type-guide.md) | SQLAlchemy vs REST API vs SDK client comparison |
+| [capability-mapping.md](connector-building/references/capability-mapping.md) | Capabilities by service type, schema flags, generated files |
+
+## Review Templates
+
+| Template | Purpose |
+|----------|---------|
+| [full-review-report.md](connector-review/templates/full-review-report.md) | New connector or major refactor review |
+| [incremental-review-report.md](connector-review/templates/incremental-review-report.md) | PR with changes to existing connector |
+| [specialized-review-report.md](connector-review/templates/specialized-review-report.md) | Focused review on one area (tests, security, schema, etc.) |
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| [gather-connector-context.sh](connector-review/scripts/gather-connector-context.sh) | Shell script to collect connector file inventory |
+| [analyze_connector.py](connector-review/scripts/analyze_connector.py) | Python script for structured connector analysis (supports `--json` output) |
 
 ## Installation
 
@@ -52,6 +95,18 @@ Or reference the skills directory in your Claude Code configuration.
 ### Cursor
 
 Settings → Rules → Add Rule → select the skills directory, or add to `.cursor/skills/`.
+
+### Codex
+
+Add the skills directory to your Codex workspace context.
+
+### GitHub Copilot
+
+Reference the skills directory in your workspace instructions.
+
+### Windsurf
+
+Add the skills directory to your Windsurf rules configuration.
 
 ### Manual
 
@@ -87,3 +142,7 @@ claude "Read CONNECTOR_CONTEXT.md and implement all TODO items"
 # 3. Review the implementation
 # /connector-review ingestion/src/metadata/ingestion/source/database/my_db/
 ```
+
+## CI
+
+The [`.github/workflows/lint-standards.yml`](.github/workflows/lint-standards.yml) workflow lints all standards markdown, validates JSON files, and checks symlink integrity on PRs that modify `skills/`.
