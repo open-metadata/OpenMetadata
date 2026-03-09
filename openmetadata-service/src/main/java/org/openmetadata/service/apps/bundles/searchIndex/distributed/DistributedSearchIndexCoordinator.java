@@ -779,6 +779,38 @@ public class DistributedSearchIndexCoordinator {
   }
 
   /**
+   * Force-complete any partitions still in PROCESSING state. Called during shutdown/stop to ensure
+   * partitions don't stay stuck and block the job from reaching a terminal state.
+   */
+  public void forceCompleteProcessingPartitions(UUID jobId) {
+    SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
+    List<SearchIndexPartitionRecord> processing =
+        partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name());
+
+    if (!processing.isEmpty()) {
+      long now = System.currentTimeMillis();
+      for (SearchIndexPartitionRecord p : processing) {
+        partitionDAO.update(
+            p.id(),
+            PartitionStatus.COMPLETED.name(),
+            p.cursor(),
+            p.processedCount(),
+            p.successCount(),
+            p.failedCount(),
+            p.assignedServer(),
+            p.claimedAt(),
+            p.startedAt(),
+            now,
+            now,
+            "Force-completed during job stop",
+            p.retryCount());
+      }
+      LOG.info(
+          "Force-completed {} processing partitions for stopping job {}", processing.size(), jobId);
+    }
+  }
+
+  /**
    * Reclaim stale partitions that have not been updated within the timeout period.
    *
    * <p>Partitions that can still be retried are reset to PENDING. Partitions that have exceeded

@@ -493,6 +493,20 @@ public class DistributedSearchIndexExecutor {
       Thread.currentThread().interrupt();
       LOG.warn("Execution interrupted for job {}", jobId);
     } finally {
+      // If the job is stopping, force-complete any partitions still stuck in PROCESSING
+      // so the job can transition to a terminal state
+      try {
+        SearchIndexJob currentState = coordinator.getJob(jobId).orElse(null);
+        if (currentState != null
+            && (currentState.getStatus() == IndexJobStatus.STOPPING
+                || currentState.getStatus() == IndexJobStatus.RUNNING)) {
+          coordinator.forceCompleteProcessingPartitions(jobId);
+        }
+        coordinator.checkAndUpdateJobCompletion(jobId);
+      } catch (Exception e) {
+        LOG.warn("Error during job cleanup for job {}", jobId, e);
+      }
+
       interruptAndJoin(staleReclaimerThread, "stale-reclaimer");
       interruptAndJoin(lockRefreshThread, "lock-refresh");
       interruptAndJoin(partitionHeartbeatThread, "partition-heartbeat");
