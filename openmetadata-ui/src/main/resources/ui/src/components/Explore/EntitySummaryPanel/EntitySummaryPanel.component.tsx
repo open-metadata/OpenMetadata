@@ -483,6 +483,10 @@ export default function EntitySummaryPanel({
         return updatedTags;
       }
 
+      if (!entityType) {
+        return;
+      }
+
       try {
         let res: Partial<EntityData> = {};
         if (entityType === EntityType.TABLE_COLUMN) {
@@ -565,6 +569,10 @@ export default function EntitySummaryPanel({
 
       if (isEmpty(jsonPatch)) {
         return updatedTags;
+      }
+
+      if (!entityType) {
+        return;
       }
 
       try {
@@ -1006,7 +1014,7 @@ export default function EntitySummaryPanel({
               Operation.EditDisplayName
             )}
             testId="entity-header-title"
-            tooltipPlacement="bottomLeft"
+            tooltipPlacement="bottom left"
             onDisplayNameUpdate={handleDisplayNameUpdate}
           />
           <Button

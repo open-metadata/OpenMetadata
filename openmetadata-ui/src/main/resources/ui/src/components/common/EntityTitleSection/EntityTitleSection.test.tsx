@@ -22,6 +22,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   )),
+  Tooltip: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
 }));
 
 // Mock react-router-dom
