@@ -621,6 +621,7 @@ def _add_database_non_sqlalchemy_props(
         "description": f"Host and port of the {camel} service.",
         "type": "string",
     }
+    required.append("hostPort")
     if "basic" in p.auth_types:
         props["username"] = {
             "title": "Username",
@@ -1885,6 +1886,12 @@ def run_scaffold_cli(args: argparse.Namespace) -> None:
 
     if not re.match(r"^[a-z][a-z0-9_]*$", profile.name):
         logger.error("Connector name must be snake_case.")
+        sys.exit(1)
+
+    if profile.service_type != "database" and profile.connection_type == "sqlalchemy":
+        logger.error(
+            "--connection-type sqlalchemy is only valid for database service type."
+        )
         sys.exit(1)
 
     run_scaffold(profile)

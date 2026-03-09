@@ -241,6 +241,18 @@ class TestGenerateConnectionSchema:
         reparsed = json.loads(serialized)
         assert reparsed == schema
 
+    def test_database_non_sqlalchemy_host_port_required(self):
+        p = self._make_profile(
+            name="test_rest_db",
+            service_type="database",
+            connection_type="rest_api",
+            scheme=None,
+        )
+        schema = generate_connection_schema(p)
+
+        assert "hostPort" in schema["properties"]
+        assert "hostPort" in schema["required"]
+
     def test_dashboard_schema(self):
         p = self._make_profile(
             name="my_dash",
@@ -514,6 +526,26 @@ class TestRunScaffoldCliValidation:
     def test_rejects_name_with_spaces(self):
         args = self._make_args(name="my connector")
         with pytest.raises(SystemExit):
+            run_scaffold_cli(args)
+
+    def test_rejects_sqlalchemy_for_non_database(self):
+        args = self._make_args(
+            name="my_dash",
+            service_type="dashboard",
+            connection_type="sqlalchemy",
+        )
+        with pytest.raises(SystemExit):
+            run_scaffold_cli(args)
+
+    def test_allows_rest_api_for_non_database(self):
+        args = self._make_args(
+            name="my_dash",
+            service_type="dashboard",
+            connection_type="rest_api",
+        )
+        # Passes validation, then proceeds to run_scaffold (which writes files).
+        # We just verify it doesn't exit during validation.
+        with patch("metadata.cli.scaffold.run_scaffold"):
             run_scaffold_cli(args)
 
 
