@@ -8,7 +8,7 @@ AI-powered connector development toolkit for OpenMetadata. Scaffold, implement, 
 |-------|---------|---------|
 | [Connector Building](connector-building/SKILL.md) | `/scaffold-connector` | Scaffold a new connector with JSON Schema, Python boilerplate, and AI context |
 | [Connector Review](connector-review/SKILL.md) | `/connector-review` | Review connector code against golden standards with multi-agent analysis |
-| [Load Standards](load-standards/SKILL.md) | `/load-standards` | Load connector development standards into agent context |
+| [Connector Standards](connector-standards/SKILL.md) | `/connector-standards` | Load connector development standards into agent context |
 | [Test Locally](commands/test-locally.md) | `/test-locally` | Build and deploy a full local Docker stack to test your connector in the UI |
 
 ## Agents

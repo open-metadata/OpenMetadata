@@ -48,7 +48,7 @@ jobs:
 
       - name: Verify standards symlinks
         run: |
-          for skill_dir in skills/connector-building skills/connector-review skills/load-standards; do
+          for skill_dir in skills/connector-building skills/connector-review skills/connector-standards; do
             if [ -L "$skill_dir/standards" ]; then
               target=$(readlink "$skill_dir/standards")
               if [ "$target" != "../standards" ]; then

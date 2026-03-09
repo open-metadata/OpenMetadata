@@ -1,5 +1,5 @@
 ---
-name: load-standards
+name: connector-standards
 description: Load all OpenMetadata connector development standards into context. Use before building or reviewing connectors to ensure consistent patterns.
 user-invocable: true
 argument-hint: "[optional: specific standard name like 'testing' or 'database']"
