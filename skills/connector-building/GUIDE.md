@@ -182,6 +182,33 @@ mvn spotless:apply
 python -m pytest ingestion/tests/unit/topology/{service_type}/test_{name}.py
 ```
 
+### Step 7: Test Locally in Docker
+
+Build everything and bring up a full local OpenMetadata stack:
+
+```bash
+# Full build (first time or after Java/UI changes)
+./docker/run_local_docker.sh -m ui -d mysql -s false -i true -r true
+
+# Fast rebuild (ingestion-only changes, ~2-3 minutes)
+./docker/run_local_docker.sh -m ui -d mysql -s true -i true -r false
+```
+
+Once services are up (~3-5 minutes):
+1. Open **http://localhost:8585**
+2. Go to **Settings → Services → {Your Service Type}**
+3. Click **Add New Service** and select your connector
+4. Configure connection details and **Test Connection**
+5. Run metadata ingestion to verify entities are created
+
+| Service | URL |
+|---------|-----|
+| OpenMetadata UI + API | http://localhost:8585 |
+| Airflow | http://localhost:8080 (admin / admin) |
+| Elasticsearch | http://localhost:9200 |
+
+Tear down: `cd docker/development && docker compose down -v`
+
 ---
 
 ## Using AI Agents

@@ -30,6 +30,7 @@ from metadata.cli.ingest_dbt import run_ingest_dbt
 from metadata.cli.lineage import run_lineage
 from metadata.cli.profile import run_profiler
 from metadata.cli.scaffold import (
+    AUTH_CHOICES,
     CAPABILITY_CHOICES,
     CONNECTION_TYPES,
     SERVICE_TYPES,
@@ -191,6 +192,7 @@ def get_parser(args: Optional[List[str]] = None):
         "--auth-types",
         nargs="+",
         default=None,
+        choices=AUTH_CHOICES,
         help="Auth types: basic, iam, azure, jwt, token, oauth",
     )
     scaffold_parser.add_argument(

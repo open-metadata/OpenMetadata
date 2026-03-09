@@ -41,7 +41,7 @@ logger = cli_logger()
 # Constants
 # ---------------------------------------------------------------------------
 
-COPYRIGHT_HEADER = """#  Copyright 2025 Collate
+COPYRIGHT_HEADER = """#  Copyright 2025 OpenMetadata
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -64,6 +64,8 @@ SERVICE_TYPES = [
 ]
 
 CONNECTION_TYPES = ["sqlalchemy", "rest_api", "sdk_client"]
+
+AUTH_CHOICES = ["basic", "iam", "azure", "jwt", "token", "oauth"]
 
 CAPABILITY_CHOICES = [
     "metadata",
@@ -320,9 +322,7 @@ def collect_interactive() -> ConnectorProfile:
     # --- Auth ---
     print("--- Authentication ---")
     print("    Available: basic, iam, azure, jwt, token, oauth")
-    profile.auth_types = _prompt_multi(
-        "Auth types", ["basic", "iam", "azure", "jwt", "token", "oauth"], ["basic"]
-    )
+    profile.auth_types = _prompt_multi("Auth types", AUTH_CHOICES, ["basic"])
     print()
 
     # --- Capabilities ---
@@ -1724,8 +1724,9 @@ def get_repo_root() -> Path:
         if (current / "openmetadata-spec").is_dir():
             return current
         current = current.parent
-    logger.error("Could not find repository root")
-    sys.exit(1)
+    raise RuntimeError(
+        "Could not find repository root (no 'openmetadata-spec' directory found)"
+    )
 
 
 def run_scaffold(profile: ConnectorProfile) -> None:

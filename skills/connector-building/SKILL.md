@@ -151,6 +151,38 @@ mvn spotless:apply                           # Format Java
 [ ] Build: mvn spotless:apply, make py_format, make lint all pass
 ```
 
+### Phase 8: TEST LOCALLY — Deploy and Test in the UI
+
+Build everything and bring up a full local OpenMetadata stack with Docker:
+
+**Full build** (first time or after Java/UI changes):
+```bash
+./docker/run_local_docker.sh -m ui -d mysql -s false -i true -r true
+```
+
+**Fast rebuild** (ingestion-only changes, ~2-3 minutes):
+```bash
+./docker/run_local_docker.sh -m ui -d mysql -s true -i true -r false
+```
+
+Once services are up (~3-5 minutes):
+1. Open **http://localhost:8585**
+2. Go to **Settings → Services → {Your Service Type}**
+3. Click **Add New Service** and select your connector
+4. Configure connection details and click **Test Connection**
+5. If test passes, run metadata ingestion to verify entities are created
+
+Other service URLs:
+- Airflow: http://localhost:8080 (admin / admin)
+- Elasticsearch: http://localhost:9200
+
+**Tear down**: `cd docker/development && docker compose down -v`
+
+**Troubleshooting**:
+- Connector not in dropdown → check service schema registration, rebuild without `-s true`
+- Test connection fails → check `test_fn` keys match test connection JSON step names
+- Container logs: `docker compose -f docker/development/docker-compose.yml logs ingestion`
+
 ## Standards Reference
 
 All standards are in `${CLAUDE_SKILL_DIR}/standards/`:
