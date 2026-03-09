@@ -2,14 +2,12 @@ package org.openmetadata.service.governance.workflows.util;
 
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 
 public class FieldChangeValueExtractor {
 
-  public static String extractFieldValueForMatching(
-      FieldChange fieldChange, EntityInterface entity) {
+  public static String extractFieldValueForMatching(FieldChange fieldChange) {
     Object valueToCheck = fieldChange.getNewValue();
     if (valueToCheck == null && fieldChange.getOldValue() != null) {
       valueToCheck = fieldChange.getOldValue();

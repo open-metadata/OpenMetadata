@@ -91,11 +91,9 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     // Check fields based on condition (AND/OR)
     boolean result;
     if ("AND".equals(condition)) {
-      // ALL specified fields must match
-      result = checkAllFieldsMatch(allChanges, includeFields, entity);
+      result = checkAllFieldsMatch(allChanges, includeFields);
     } else {
-      // ANY specified field matches (OR)
-      result = checkAnyFieldMatches(allChanges, includeFields, entity);
+      result = checkAnyFieldMatches(allChanges, includeFields);
     }
 
     LOG.debug(
@@ -107,8 +105,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
   }
 
   private boolean checkAllFieldsMatch(
-      List<FieldChange> changes, Map<String, List<String>> includeFields, EntityInterface entity) {
-    // For AND: all fields in includeFields must be present in changes and match
+      List<FieldChange> changes, Map<String, List<String>> includeFields) {
     for (Map.Entry<String, List<String>> entry : includeFields.entrySet()) {
       String fieldName = entry.getKey();
       List<String> patterns = entry.getValue();
@@ -116,42 +113,40 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       boolean fieldMatches =
           changes.stream()
               .filter(change -> change.getName().equals(fieldName))
-              .anyMatch(change -> matchesAnyPattern(change, patterns, entity));
+              .anyMatch(change -> matchesAnyPattern(change, patterns));
 
       if (!fieldMatches) {
-        return false; // One field doesn't match, AND fails
+        return false;
       }
     }
-    return true; // All fields matched
+    return true;
   }
 
   private boolean checkAnyFieldMatches(
-      List<FieldChange> changes, Map<String, List<String>> includeFields, EntityInterface entity) {
-    // For OR: any field in changes that's in includeFields and matches its pattern
+      List<FieldChange> changes, Map<String, List<String>> includeFields) {
     return changes.stream()
         .anyMatch(
             change -> {
               String fieldName = change.getName();
               List<String> patterns = includeFields.get(fieldName);
               if (patterns == null || patterns.isEmpty()) {
-                return false; // Field not in include list
+                return false;
               }
-              return matchesAnyPattern(change, patterns, entity);
+              return matchesAnyPattern(change, patterns);
             });
   }
 
-  private boolean matchesAnyPattern(
-      FieldChange change, List<String> patterns, EntityInterface entity) {
-    String fieldValue = extractFieldValue(change, entity);
+  private boolean matchesAnyPattern(FieldChange change, List<String> patterns) {
+    String fieldValue = extractFieldValue(change);
     if (fieldValue == null) {
+      LOG.debug("Could not extract value for field '{}', skipping pattern match", change.getName());
       return false;
     }
 
-    // Check if fieldValue contains any of the patterns
     return patterns.stream().anyMatch(pattern -> fieldValue.contains(pattern));
   }
 
-  private String extractFieldValue(FieldChange change, EntityInterface entity) {
-    return FieldChangeValueExtractor.extractFieldValueForMatching(change, entity);
+  private String extractFieldValue(FieldChange change) {
+    return FieldChangeValueExtractor.extractFieldValueForMatching(change);
   }
 }

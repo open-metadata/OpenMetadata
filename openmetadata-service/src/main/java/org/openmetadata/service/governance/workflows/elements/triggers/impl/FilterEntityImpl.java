@@ -48,10 +48,10 @@ public class FilterEntityImpl implements JavaDelegate {
           JsonUtils.readOrConvertValue(excludedFieldsExpr.getValue(execution), List.class);
     }
 
-    java.util.Map<String, java.util.List<String>> includeFields = null;
+    Map<String, List<String>> includeFields = null;
     if (includeFieldsExpr != null && includeFieldsExpr.getValue(execution) != null) {
       includeFields =
-          JsonUtils.readOrConvertValue(includeFieldsExpr.getValue(execution), java.util.Map.class);
+          JsonUtils.readOrConvertValue(includeFieldsExpr.getValue(execution), Map.class);
     }
 
     String entityLinkStr =
@@ -208,7 +208,7 @@ public class FilterEntityImpl implements JavaDelegate {
 
       fieldBasedFilter =
           changedFields.isEmpty()
-              || passesFieldBasedFilter(changedFields, includeFields, excludedFilter, entity);
+              || passesFieldBasedFilter(changedFields, includeFields, excludedFilter);
     }
 
     // Apply JSON filter
@@ -232,8 +232,7 @@ public class FilterEntityImpl implements JavaDelegate {
   private boolean passesFieldBasedFilter(
       List<FieldChange> changedFields,
       Map<String, List<String>> includeFields,
-      List<String> excludedFilter,
-      EntityInterface entity) {
+      List<String> excludedFilter) {
     return changedFields.stream()
         .anyMatch(
             field -> {
@@ -249,7 +248,7 @@ public class FilterEntityImpl implements JavaDelegate {
               // Check include filter first (higher priority)
               if (includeFields != null && !includeFields.isEmpty()) {
                 // If include fields are specified, ONLY those fields should trigger
-                return passesIncludeFilter(field, includeFields, entity);
+                return passesIncludeFilter(field, includeFields);
               }
 
               // If no include filter specified, check exclude filter
@@ -258,21 +257,20 @@ public class FilterEntityImpl implements JavaDelegate {
   }
 
   private boolean passesIncludeFilter(
-      FieldChange fieldChange, Map<String, List<String>> includeFields, EntityInterface entity) {
+      FieldChange fieldChange, Map<String, List<String>> includeFields) {
     String fieldName = fieldChange.getName();
     List<String> includeFqns = includeFields.get(fieldName);
     if (includeFqns == null || includeFqns.isEmpty()) {
       return false;
     }
-    String fieldValue = getFieldValueForPatternMatching(fieldChange, entity);
+    String fieldValue = getFieldValueForPatternMatching(fieldChange);
     if (fieldValue == null) {
       return false;
     }
-    // Check if fieldValue contains ANY of the patterns in the include array
     return includeFqns.stream().anyMatch(includeFqn -> fieldValue.contains(includeFqn));
   }
 
-  private String getFieldValueForPatternMatching(FieldChange fieldChange, EntityInterface entity) {
-    return FieldChangeValueExtractor.extractFieldValueForMatching(fieldChange, entity);
+  private String getFieldValueForPatternMatching(FieldChange fieldChange) {
+    return FieldChangeValueExtractor.extractFieldValueForMatching(fieldChange);
   }
 }

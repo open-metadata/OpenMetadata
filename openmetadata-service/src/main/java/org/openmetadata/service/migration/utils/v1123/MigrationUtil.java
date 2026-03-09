@@ -72,6 +72,12 @@ public class MigrationUtil {
     LOG.info(
         "Completed v1123 migration: {} workflow definitions updated with include fields support",
         totalUpdated);
+
+    if (totalUpdated == 0 && !allWorkflows.isEmpty()) {
+      throw new RuntimeException(
+          "v1123 migration: failed to update any workflow definitions out of "
+              + allWorkflows.size());
+    }
   }
 
   /**
