@@ -134,6 +134,9 @@ public class SearchUtil {
    * For queries with more than 2 words, disable fuzziness to prevent clause explosion.
    */
   public static String getFuzziness(String query) {
+    if (query == null || query.isBlank()) {
+      return "1";
+    }
     int termCount = query.trim().split("\\s+").length;
     return termCount > 2 ? "0" : "1";
   }
@@ -143,6 +146,9 @@ public class SearchUtil {
    * For queries with more than 2 words, reduce expansions to prevent clause explosion.
    */
   public static int getMaxExpansions(String query) {
+    if (query == null || query.isBlank()) {
+      return 10;
+    }
     int termCount = query.trim().split("\\s+").length;
     return termCount > 2 ? 2 : 10;
   }
