@@ -66,7 +66,7 @@ describe('Test IngestionRecentRun component', () => {
 
     expect(getRunHistoryForPipeline).toHaveBeenCalledWith(
       'test',
-      expect.anything()
+      expect.objectContaining({ limit: 5 })
     );
   });
 

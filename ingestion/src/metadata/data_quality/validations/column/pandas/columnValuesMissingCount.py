@@ -55,6 +55,13 @@ class ColumnValuesMissingCountValidator(
         """
         return self.run_dataframe_results(self.runner, metric, column, **kwargs)
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        metric_values = self._build_metric_values_from_row(
+            row, metrics_to_compute, test_params
+        )
+        metric_values[self.TOTAL_MISSING_COUNT] = row.get(self.TOTAL_MISSING_COUNT)
+        return metric_values
+
     def _execute_dimensional_validation(
         self,
         column: SQALikeColumn,
@@ -186,29 +193,12 @@ class ColumnValuesMissingCountValidator(
                     # No violation_predicate needed - deviation IS the failed_count
                 )
 
-                for row_dict in results_df.to_dict("records"):
-                    metric_values = self._build_metric_values_from_row(
-                        row_dict, metrics_to_compute, test_params
-                    )
-
-                    # Need to add the calculated metric here.
-                    metric_values[self.TOTAL_MISSING_COUNT] = row_dict.get(
-                        self.TOTAL_MISSING_COUNT
-                    )
-
-                    evaluation = self._evaluate_test_condition(
-                        metric_values, test_params
-                    )
-
-                    dimension_result = self._create_dimension_result(
-                        row_dict,
-                        dimension_col.name,
-                        metric_values,
-                        evaluation,
-                        test_params,
-                    )
-
-                    dimension_results.append(dimension_result)
+                dimension_results = self._process_dimension_rows(
+                    results_df.to_dict("records"),
+                    dimension_col.name,
+                    metrics_to_compute,
+                    test_params,
+                )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

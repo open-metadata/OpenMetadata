@@ -1,0 +1,11 @@
+{
+  "name": "openmetadata-skills",
+  "version": "1.1.0",
+  "description": "OpenMetadata connector development toolkit — scaffold, review, and validate connectors using schema-first architecture with code generation across Python, Java, TypeScript, and auto-rendered UI forms.",
+  "author": {
+    "name": "OpenMetadata Project",
+    "url": "https://open-metadata.org"
+  },
+  "repository": "https://github.com/open-metadata/OpenMetadata",
+  "license": "Collate Community License 1.0"
+}

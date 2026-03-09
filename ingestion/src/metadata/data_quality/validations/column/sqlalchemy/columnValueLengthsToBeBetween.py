@@ -77,6 +77,18 @@ class ColumnValueLengthsToBeBetweenValidator(
 
         return row_count, failed_rows
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        min_len_value = row.get(Metrics.minLength.name)
+        max_len_value = row.get(Metrics.maxLength.name)
+        if min_len_value is None or max_len_value is None:
+            return None
+        return {
+            Metrics.minLength.name: min_len_value,
+            Metrics.maxLength.name: max_len_value,
+            DIMENSION_TOTAL_COUNT_KEY: row.get(DIMENSION_TOTAL_COUNT_KEY),
+            DIMENSION_FAILED_COUNT_KEY: row.get(DIMENSION_FAILED_COUNT_KEY),
+        }
+
     def _execute_dimensional_validation(
         self,
         column: Column,
@@ -126,31 +138,9 @@ class ColumnValueLengthsToBeBetweenValidator(
                 top_n=top_n,
             )
 
-            for row in result_rows:
-                min_len_value = row.get(Metrics.minLength.name)
-                max_len_value = row.get(Metrics.maxLength.name)
-
-                if min_len_value is None or max_len_value is None:
-                    continue
-
-                metric_values = {
-                    Metrics.minLength.name: min_len_value,
-                    Metrics.maxLength.name: max_len_value,
-                    DIMENSION_TOTAL_COUNT_KEY: row.get(DIMENSION_TOTAL_COUNT_KEY),
-                    DIMENSION_FAILED_COUNT_KEY: row.get(DIMENSION_FAILED_COUNT_KEY),
-                }
-
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                dimension_result = self._create_dimension_result(
-                    row,
-                    dimension_col.name,
-                    metric_values,
-                    evaluation,
-                    test_params,
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

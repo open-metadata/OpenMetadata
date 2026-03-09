@@ -5,7 +5,7 @@ import "@fontsource/inter/700.css";
 import "@fontsource/inter/800.css";
 import "@fontsource/inter/900.css";
 import type { Preview, StoryFn } from "@storybook/react";
-import "../src/styles/globals.css";
+import "../src/styles/storybook.css";
 import "./index.css";
 
 const preview: Preview = {

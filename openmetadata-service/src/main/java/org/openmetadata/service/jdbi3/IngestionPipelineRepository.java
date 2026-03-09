@@ -21,6 +21,7 @@ import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +81,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
+  private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
@@ -156,17 +158,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Batch fetch service references for all pipelines
     Map<UUID, EntityReference> serviceRefs = batchFetchServices(pipelines);
 
-    // Set service field for all pipelines
+    // Batch fetch latest pipeline statuses if requested
+    Map<String, PipelineStatus> statusMap = Map.of();
+    if (fields.contains("pipelineStatuses")) {
+      statusMap = batchFetchLatestPipelineStatuses(pipelines);
+    }
+
     for (IngestionPipeline pipeline : pipelines) {
+      if (fields.contains("pipelineStatuses")) {
+        String fqnHash = FullyQualifiedName.buildHash(pipeline.getFullyQualifiedName());
+        pipeline.setPipelineStatuses(statusMap.get(fqnHash));
+      }
       EntityReference serviceRef = serviceRefs.get(pipeline.getId());
-      pipeline.setPipelineStatuses(
-          fields.contains("pipelineStatuses")
-              ? getLatestPipelineStatus(pipeline)
-              : pipeline.getPipelineStatuses());
       if (serviceRef != null) {
         pipeline.withService(serviceRef);
       } else {
-        // Service is guaranteed to exist, so fetch it individually if batch fetch missed it
         LOG.warn(
             "Service not found in batch fetch for pipeline: {} (id: {}). Fetching individually.",
             pipeline.getName(),
@@ -182,6 +188,24 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         }
       }
     }
+  }
+
+  private Map<String, PipelineStatus> batchFetchLatestPipelineStatuses(
+      List<IngestionPipeline> pipelines) {
+    List<String> fqnHashes =
+        pipelines.stream()
+            .map(p -> FullyQualifiedName.buildHash(p.getFullyQualifiedName()))
+            .toList();
+    Map<String, String> jsonMap =
+        getLatestExtensionFromTimeSeriesBatch(fqnHashes, PIPELINE_STATUS_EXTENSION);
+    Map<String, PipelineStatus> result = new HashMap<>();
+    for (Map.Entry<String, String> entry : jsonMap.entrySet()) {
+      PipelineStatus status = JsonUtils.readValue(entry.getValue(), PipelineStatus.class);
+      if (status != null) {
+        result.put(entry.getKey(), status);
+      }
+    }
+    return result;
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<IngestionPipeline> pipelines) {
@@ -597,26 +621,61 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public ResultList<PipelineStatus> listPipelineStatus(
       String ingestionPipelineFQN, Long startTs, Long endTs) {
+    return listPipelineStatus(ingestionPipelineFQN, startTs, endTs, null);
+  }
+
+  public ResultList<PipelineStatus> listPipelineStatus(
+      String ingestionPipelineFQN, Long startTs, Long endTs, Integer limit) {
     IngestionPipeline ingestionPipeline =
         getByName(null, ingestionPipelineFQN, getFields("service"));
+    Integer effectiveLimit = resolvePipelineStatusLimit(startTs, endTs, limit);
+    Long effectiveStartTs = Optional.ofNullable(startTs).orElse(Long.MIN_VALUE);
+    Long effectiveEndTs = Optional.ofNullable(endTs).orElse(Long.MAX_VALUE);
+    List<String> jsonResults;
+    if (effectiveLimit != null) {
+      jsonResults =
+          getResultsFromAndToTimestampsWithLimit(
+              ingestionPipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              effectiveStartTs,
+              effectiveEndTs,
+              EntityTimeSeriesDAO.OrderBy.DESC,
+              effectiveLimit);
+    } else {
+      jsonResults =
+          getResultsFromAndToTimestamps(
+              ingestionPipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              effectiveStartTs,
+              effectiveEndTs);
+    }
     List<PipelineStatus> pipelineStatusList =
-        JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(
-                ingestionPipeline.getFullyQualifiedName(),
-                PIPELINE_STATUS_EXTENSION,
-                startTs,
-                endTs),
-            PipelineStatus.class);
+        JsonUtils.readObjects(jsonResults, PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
     if (pipelineServiceClient != null) {
       allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
     }
     allPipelineStatusList.addAll(pipelineStatusList);
+    allPipelineStatusList.sort(
+        Comparator.comparing(
+            PipelineStatus::getTimestamp, Comparator.nullsLast(Comparator.reverseOrder())));
+
+    if (effectiveLimit != null && allPipelineStatusList.size() > effectiveLimit) {
+      allPipelineStatusList = new ArrayList<>(allPipelineStatusList.subList(0, effectiveLimit));
+    }
+
     return new ResultList<>(
         allPipelineStatusList,
-        String.valueOf(startTs),
-        String.valueOf(endTs),
+        startTs != null ? String.valueOf(startTs) : null,
+        endTs != null ? String.valueOf(endTs) : null,
         allPipelineStatusList.size());
+  }
+
+  private Integer resolvePipelineStatusLimit(Long startTs, Long endTs, Integer limit) {
+    if (limit != null) {
+      return limit;
+    }
+    return startTs == null && endTs == null ? DEFAULT_RECENT_RUN_LIMIT : null;
   }
 
   /* Get the status of the external application by converting the configuration so that it can be
