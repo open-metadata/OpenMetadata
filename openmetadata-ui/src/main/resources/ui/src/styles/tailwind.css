@@ -14,14 +14,34 @@
 @import 'tailwindcss/preflight.css' prefix(tw);
 @import 'tailwindcss/utilities.css' prefix(tw);
 
-/* Importing the theme.css from ui-core-components to ensure that the theme 
-variables are available in this file. This is an explicit decision to maintain theme 
-file in the core components and loading in here. */
-@import '@openmetadata/ui-core-components/theme.css';
+/* Pull shared core-component styles into the app-owned Tailwind bundle so the
+app ships a single prefixed Tailwind output. */
+@import '@openmetadata/ui-core-components/globals.css';
 
 @source '../**/*.{tsx,ts,jsx,js,css}';
 
+@plugin '@tailwindcss/typography';
+@plugin 'tailwindcss-react-aria-components';
+@plugin 'tailwindcss-animate';
+
 @custom-variant dark (&:where(.dark-mode, .dark-mode *));
+@custom-variant label (& [data-label]);
+@custom-variant focus-input-within (&:has(input:focus));
+
+@utility scrollbar-hide {
+  &::-webkit-scrollbar {
+    display: none;
+    -webkit-appearance: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@utility transition-inherit-all {
+  transition-property: inherit;
+  transition-duration: inherit;
+  transition-timing-function: inherit;
+}
 
 /* These are global overrided by antd, so adding default values here */
 svg {
@@ -32,4 +52,8 @@ svg {
 img {
   display: inline;
   max-width: none;
+}
+
+a {
+  color: var(--tw-color-brand-700);
 }

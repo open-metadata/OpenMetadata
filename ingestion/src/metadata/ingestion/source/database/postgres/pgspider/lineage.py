@@ -14,6 +14,8 @@ PGSpider lineage module
 """
 from typing import Iterable, Iterator
 
+from sqlalchemy.sql import text
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
@@ -38,7 +40,7 @@ def _get_multi_tenant_tables(connection) -> Iterable[any]:
     sql = PGSPIDER_GET_MULTI_TENANT_TABLES
 
     with get_connection(connection).connect() as conn:
-        rows = conn.execute(sql)
+        rows = conn.execute(text(sql))
         return rows
 
 
@@ -49,7 +51,7 @@ def _get_child_tables(connection, multi_tenant_table: str) -> Iterable[any]:
     sql = PGSPIDER_GET_CHILD_TABLES.format(multi_tenant_table=multi_tenant_table)
 
     with get_connection(connection).connect() as conn:
-        rows = conn.execute(sql)
+        rows = conn.execute(text(sql))
         return rows
 
 

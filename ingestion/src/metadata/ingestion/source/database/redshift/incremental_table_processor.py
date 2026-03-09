@@ -17,6 +17,7 @@ from datetime import datetime
 from typing import Dict, FrozenSet, Iterable, List, Optional, Tuple
 
 from sqlalchemy.engine import Connection
+from sqlalchemy.sql import text
 
 from metadata.ingestion.source.database.redshift.models import (
     RedshiftTable,
@@ -141,8 +142,10 @@ class RedshiftIncrementalTableProcessor:
         """Queries the Redshift database for the Table Changes."""
         for row in (
             self.connection.execute(
-                self.table_changes_query.format(
-                    database=database, start_date=start_date
+                text(
+                    self.table_changes_query.format(
+                        database=database, start_date=start_date
+                    )
                 )
             )
             or []

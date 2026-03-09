@@ -7931,19 +7931,36 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("incidentStateId") String incidentStateId);
 
-    @SqlQuery(
-        """
-              SELECT dqdts1.json FROM
-              data_quality_data_time_series dqdts1
-              INNER JOIN (
-                  SELECT tc.fqnHash
-                  FROM entity_relationship er
-                  INNER JOIN test_case tc ON er.toId = tc.id
-                  where fromEntity = 'testSuite' AND toEntity = 'testCase' and fromId = :testSuiteId
-              ) ts ON dqdts1.entityFQNHash = ts.fqnHash
-              LEFT JOIN data_quality_data_time_series dqdts2 ON
-                  (dqdts1.entityFQNHash = dqdts2.entityFQNHash and dqdts1.timestamp < dqdts2.timestamp)
-              WHERE dqdts2.entityFQNHash IS NULL""")
+    @ConnectionAwareSqlQuery(
+        value =
+            """
+            SELECT dqdts1.json FROM
+            data_quality_data_time_series dqdts1
+            INNER JOIN (
+                SELECT tc.fqnHash
+                FROM entity_relationship er
+                INNER JOIN test_case tc ON er.toId = tc.id
+                WHERE fromEntity = 'testSuite' AND toEntity = 'testCase' AND fromId = :testSuiteId
+            ) ts ON dqdts1.entityFQNHash = ts.fqnHash
+            LEFT JOIN data_quality_data_time_series dqdts2 FORCE INDEX (idx_entity_timestamp_desc) ON
+                (dqdts1.entityFQNHash = dqdts2.entityFQNHash AND dqdts1.timestamp < dqdts2.timestamp)
+            WHERE dqdts2.entityFQNHash IS NULL""",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            """
+            SELECT dqdts1.json FROM
+            data_quality_data_time_series dqdts1
+            INNER JOIN (
+                SELECT tc.fqnHash
+                FROM entity_relationship er
+                INNER JOIN test_case tc ON er.toId = tc.id
+                WHERE fromEntity = 'testSuite' AND toEntity = 'testCase' AND fromId = :testSuiteId
+            ) ts ON dqdts1.entityFQNHash = ts.fqnHash
+            LEFT JOIN data_quality_data_time_series dqdts2 ON
+                (dqdts1.entityFQNHash = dqdts2.entityFQNHash AND dqdts1.timestamp < dqdts2.timestamp)
+            WHERE dqdts2.entityFQNHash IS NULL""",
+        connectionType = POSTGRES)
     List<String> listLastTestCaseResultsForTestSuite(@BindMap Map<String, String> params);
 
     @SqlQuery(
