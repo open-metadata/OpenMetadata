@@ -8,11 +8,17 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.service.util.TestUtils.simulateWork;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException;
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -21,8 +27,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
@@ -137,11 +147,103 @@ public class WorkflowDefinitionResourceIT {
   private static final String BASE_PATH = "/v1/governance/workflowDefinitions";
   private static final Logger LOG = LoggerFactory.getLogger(WorkflowDefinitionResourceIT.class);
 
-  // Test entities to track for cleanup and verification
-  private DatabaseService databaseService;
-  private Database database;
-  private DatabaseSchema databaseSchema;
-  private final List<Table> testTables = new ArrayList<>();
+  // Retry configuration for handling MySQL deadlocks
+  private static final RetryConfig DEADLOCK_RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(3)
+          .intervalFunction(
+              IntervalFunction.ofExponentialBackoff(1000, 2)) // Start at 1s, multiply by 2
+          .retryOnException(
+              e -> {
+                String message = e.getMessage();
+                Throwable cause = e.getCause();
+
+                // Check for MySQL deadlock in the exception or its cause
+                if (message != null && message.contains("Deadlock found when trying to get lock")) {
+                  return true;
+                }
+
+                while (cause != null) {
+                  if (cause instanceof MySQLTransactionRollbackException) {
+                    return true;
+                  }
+                  if (cause.getMessage() != null
+                      && cause.getMessage().contains("Deadlock found when trying to get lock")) {
+                    return true;
+                  }
+                  cause = cause.getCause();
+                }
+                return false;
+              })
+          .failAfterMaxAttempts(true)
+          .build();
+
+  private static final RetryRegistry RETRY_REGISTRY = RetryRegistry.of(DEADLOCK_RETRY_CONFIG);
+
+  // Track workflows created in each test for targeted cleanup
+  private final ConcurrentHashMap<String, String> createdWorkflows = new ConcurrentHashMap<>();
+
+  // Inner class to hold test entities for each test
+  private static class TestEntities {
+    final DatabaseService databaseService;
+    final Database database;
+    final DatabaseSchema databaseSchema;
+    final List<Table> testTables;
+
+    TestEntities(DatabaseService service, Database db, DatabaseSchema schema, List<Table> tables) {
+      this.databaseService = service;
+      this.database = db;
+      this.databaseSchema = schema;
+      this.testTables = tables;
+    }
+  }
+
+  @BeforeEach
+  void resetWorkflowTracking() {
+    // Clear the tracking map for each test
+    createdWorkflows.clear();
+    LOG.debug("Workflow tracking reset for new test");
+  }
+
+  @AfterEach
+  void cleanupCreatedWorkflows() {
+    if (!createdWorkflows.isEmpty()) {
+      OpenMetadataClient client = SdkClients.adminClient();
+      LOG.debug("Cleaning up {} workflows created in this test", createdWorkflows.size());
+
+      createdWorkflows.forEach(
+          (name, id) -> {
+            try {
+              // Try to delete by ID first (more reliable)
+              String deletePath = BASE_PATH + "/" + id + "?hardDelete=true&recursive=true";
+              executeWithDeadlockRetryVoid(
+                  () -> {
+                    try {
+                      client
+                          .getHttpClient()
+                          .executeForString(
+                              HttpMethod.DELETE,
+                              deletePath,
+                              null,
+                              RequestOptions.builder().build());
+                      LOG.debug("Successfully deleted workflow: {} ({})", name, id);
+                    } catch (Exception e) {
+                      // If 404, workflow was already deleted, which is fine
+                      if (!e.getMessage().contains("404")) {
+                        LOG.warn("Failed to delete workflow {} ({}): {}", name, id, e.getMessage());
+                      }
+                    }
+                  },
+                  "delete-workflow-" + name);
+            } catch (Exception e) {
+              LOG.debug("Workflow {} already deleted or not found", name);
+            }
+          });
+
+      // Clear the map after cleanup
+      createdWorkflows.clear();
+    }
+  }
 
   @Test
   @Order(1)
@@ -176,6 +278,9 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(created.has("name"));
     assertEquals("testWorkflow", created.get("name").asText());
 
+    // Track the created workflow for cleanup
+    trackWorkflowFromJson(created);
+
     String workflowId = created.get("id").asText();
     String getResponse =
         client
@@ -206,6 +311,9 @@ public class WorkflowDefinitionResourceIT {
 
     JsonNode created = MAPPER.readTree(createResponse);
     String workflowId = created.get("id").asText();
+
+    // Track the created workflow for cleanup
+    trackWorkflowFromJson(created);
 
     String getResponse =
         client
@@ -1051,7 +1159,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName(request.get("name").toString(), null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted UnifiedApprovalWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting UnifiedApprovalWorkflow: {}", e.getMessage());
@@ -1121,7 +1237,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName(created.get("name").asText(), null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted test_CreateEventBasedWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting test_CreateEventBasedWorkflow: {}", e.getMessage());
@@ -1200,7 +1324,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName(created.get("name").asText(), null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted test_CreateWorkflowWithCheckEntityAttributesTask");
     } catch (Exception e) {
       LOG.warn(
@@ -1275,7 +1407,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName(created.get("name").asText(), null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted UnifiedApprovalWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting UnifiedApprovalWorkflow: {}", e.getMessage());
@@ -1338,7 +1478,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName(created.get("name").asText(), null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted UnifiedApprovalWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting UnifiedApprovalWorkflow: {}", e.getMessage());
@@ -1411,7 +1559,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName(created.get("name").asText(), null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted UnifiedApprovalWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting UnifiedApprovalWorkflow: {}", e.getMessage());
@@ -1462,7 +1618,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName(created.get("name").asText(), null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted UnifiedApprovalWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting UnifiedApprovalWorkflow: {}", e.getMessage());
@@ -1519,7 +1683,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName(created.get("name").asText(), null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted UnifiedApprovalWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting UnifiedApprovalWorkflow: {}", e.getMessage());
@@ -1664,10 +1836,132 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName(created.get("name").asText(), null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted UnifiedApprovalWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting UnifiedApprovalWorkflow: {}", e.getMessage());
+    }
+  }
+
+  // Helper methods for retry mechanism
+  private <T> T executeWithDeadlockRetry(Supplier<T> operation, String operationName) {
+    Retry retry = RETRY_REGISTRY.retry(operationName, DEADLOCK_RETRY_CONFIG);
+
+    retry
+        .getEventPublisher()
+        .onRetry(
+            event ->
+                LOG.warn(
+                    "Deadlock detected in {} - attempt {}/{}. Waiting {}ms before retry",
+                    operationName,
+                    event.getNumberOfRetryAttempts(),
+                    DEADLOCK_RETRY_CONFIG.getMaxAttempts(),
+                    event.getWaitInterval().toMillis()))
+        .onSuccess(
+            event -> {
+              if (event.getNumberOfRetryAttempts() > 0) {
+                LOG.info(
+                    "Operation {} succeeded after {} retries",
+                    operationName,
+                    event.getNumberOfRetryAttempts());
+              }
+            })
+        .onError(
+            event ->
+                LOG.error(
+                    "Operation {} failed after {} attempts",
+                    operationName,
+                    DEADLOCK_RETRY_CONFIG.getMaxAttempts(),
+                    event.getLastThrowable()));
+
+    return Retry.decorateSupplier(retry, operation).get();
+  }
+
+  private void executeWithDeadlockRetryVoid(Runnable operation, String operationName) {
+    executeWithDeadlockRetry(
+        () -> {
+          operation.run();
+          return null;
+        },
+        operationName);
+  }
+
+  private void safeDeleteWorkflow(OpenMetadataClient client, String workflowName) {
+    try {
+      WorkflowDefinition wd = client.workflowDefinitions().getByName(workflowName, null);
+
+      // Force delete with hardDelete=true and recursive=true to clean up properly
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              String deletePath =
+                  BASE_PATH + "/name/" + workflowName + "?hardDelete=true&recursive=true";
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.DELETE, deletePath, null, RequestOptions.builder().build());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to force delete workflow", e);
+            }
+          },
+          "force-delete-workflow-" + workflowName);
+
+      // Wait for deletion to complete using retry mechanism
+      await()
+          .atMost(Duration.ofSeconds(10))
+          .pollInterval(Duration.ofSeconds(1))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                try {
+                  client.workflowDefinitions().getByName(workflowName, null);
+                  return false; // Still exists
+                } catch (Exception e) {
+                  return true; // Deleted successfully
+                }
+              });
+
+      LOG.debug("Successfully force deleted workflow: {}", workflowName);
+    } catch (Exception e) {
+      LOG.warn("Error while force deleting workflow {}: {}", workflowName, e.getMessage());
+      // Try alternative cleanup with retry
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              String deletePath =
+                  BASE_PATH + "/name/" + workflowName + "?hardDelete=true&recursive=true";
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.DELETE, deletePath, null, RequestOptions.builder().build());
+            } catch (Exception fallbackError) {
+              throw new RuntimeException("Failed fallback cleanup for workflow", fallbackError);
+            }
+          },
+          "fallback-delete-workflow-" + workflowName);
+    }
+  }
+
+  // Helper method to register a workflow for cleanup
+  private void trackWorkflow(String name, String id) {
+    if (name != null && id != null) {
+      createdWorkflows.put(name, id);
+      LOG.debug("Tracked workflow for cleanup: {} ({})", name, id);
+    }
+  }
+
+  // Helper method to register a workflow from JsonNode
+  private void trackWorkflowFromJson(JsonNode workflow) {
+    if (workflow != null && workflow.has("name") && workflow.has("id")) {
+      trackWorkflow(workflow.get("name").asText(), workflow.get("id").asText());
     }
   }
 
@@ -1732,30 +2026,20 @@ public class WorkflowDefinitionResourceIT {
     // Step 1: Setup Brass certification tag
     setupCertificationTags_SDK();
 
-    // Step 2: Create test entities using SDK clients
-    createTestEntities_SDK(ns, test);
+    // Step 2: Create test entities using SDK clients - LOCAL VARIABLES
+    TestEntities entities = createTestEntities_SDK(ns, test);
 
     // Step 3: Create DataCompleteness workflow using SDK
     createDataCompletenessWorkflow_SDK(ns);
 
     // Step 4: Trigger the workflow using SDK
-    triggerWorkflow_SDK(ns);
+    triggerWorkflow_SDK(ns, entities.testTables);
 
     // Step 5: Wait for workflow to process and verify results
-    verifyTableCertifications_SDK();
+    verifyTableCertifications_SDK(entities.testTables);
 
-    // Step 6: Delete the workflow to prevent it from running during other tests
-    try {
-      SdkClients.adminClient()
-          .getHttpClient()
-          .executeForString(
-              HttpMethod.DELETE,
-              BASE_PATH + "/name/DataCompletenessWorkflow?hardDelete=true&recursive=true",
-              null,
-              RequestOptions.builder().build());
-    } catch (Exception e) {
-      LOG.warn("Failed to delete DataCompletenessWorkflow: {}", e.getMessage());
-    }
+    // Step 6: Delete the workflow safely
+    safeDeleteWorkflow(SdkClients.adminClient(), "DataCompletenessWorkflow");
 
     LOG.info("test_DataCompletenessWorkflow_SDK completed successfully");
   }
@@ -2659,7 +2943,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName("MultiEntityPeriodicQuery", null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted UnifiedApprovalWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting UnifiedApprovalWorkflow: {}", e.getMessage());
@@ -2844,6 +3136,9 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(created.has("id"));
     LOG.info("{} created successfully", workflowName);
 
+    // Track the created workflow for cleanup
+    trackWorkflowFromJson(created);
+
     waitForWorkflowDeployment(client, workflowName);
     ensureWorkflowEventConsumerIsActive(client);
 
@@ -2949,7 +3244,15 @@ public class WorkflowDefinitionResourceIT {
 
     try {
       WorkflowDefinition wd = client.workflowDefinitions().getByName(workflowName, null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted {}", workflowName);
     } catch (Exception e) {
       LOG.warn("Error while deleting {}: {}", workflowName, e.getMessage());
@@ -3135,7 +3438,15 @@ public class WorkflowDefinitionResourceIT {
           "Workflow with user approval task for multiple non-reviewer entities created successfully");
 
       // Clean up - delete the created workflow
-      client.workflowDefinitions().delete(created.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(created.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + created.getName());
       LOG.debug("Test workflow deleted successfully");
 
     } catch (Exception e) {
@@ -3238,7 +3549,15 @@ public class WorkflowDefinitionResourceIT {
       LOG.debug("Workflow with user approval task for mixed entity types created successfully");
 
       // Clean up - delete the created workflow
-      client.workflowDefinitions().delete(created.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(created.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + created.getName());
       LOG.debug("Test workflow deleted successfully");
 
     } catch (Exception e) {
@@ -4774,12 +5093,24 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(created.has("id"));
     LOG.debug("MutualExclusivityWorkflow created successfully");
 
+    // Track the created workflow for cleanup
+    trackWorkflowFromJson(created);
+
     // Step 5: Trigger the workflow
     String workflowName = ns.prefix("MutualExclusivityWorkflow");
     String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
-    client
-        .getHttpClient()
-        .executeForString(HttpMethod.POST, triggerPath, "{}", RequestOptions.builder().build());
+    executeWithDeadlockRetry(
+        () -> {
+          try {
+            return client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.POST, triggerPath, "{}", RequestOptions.builder().build());
+          } catch (Exception e) {
+            throw new RuntimeException("Failed to trigger workflow", e);
+          }
+        },
+        "trigger-" + workflowName);
     LOG.debug("Workflow triggered successfully");
 
     final UUID tableId = table.getId();
@@ -5012,7 +5343,7 @@ public class WorkflowDefinitionResourceIT {
             .withDomains(List.of(domain.getEntityReference()));
     LOG.debug("Created database schema: {}", schema.getName());
 
-    databaseSchema = schema;
+    DatabaseSchema databaseSchema = schema;
 
     // Create a table for dataContract
     List<Column> columns =
@@ -5276,7 +5607,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName(unifiedWorkflow.getName(), null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted UnifiedApprovalWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting UnifiedApprovalWorkflow: {}", e.getMessage());
@@ -5554,6 +5893,7 @@ public class WorkflowDefinitionResourceIT {
         client.dataProducts().create(createDataProduct);
     LOG.debug("Created data product without reviewers: {}", dataProduct.getName());
 
+    simulateWork(1000);
     // Add asset using bulk API - simulating client behavior
 
     org.openmetadata.schema.type.api.BulkAssets bulkAssets =
@@ -6142,12 +6482,25 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(created.has("id"));
     LOG.debug("ApiEndpointProcessingWorkflow created successfully");
 
+    // Track the created workflow for cleanup
+    trackWorkflowFromJson(created);
+
     // Step 5: Trigger the workflow
     String workflowName = "ApiEndpointProcessingWorkflow";
     String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
-    client
-        .getHttpClient()
-        .executeForString(HttpMethod.POST, triggerPath, "{}", RequestOptions.builder().build());
+    OpenMetadataClient finalClient1 = client;
+    executeWithDeadlockRetry(
+        () -> {
+          try {
+            return finalClient1
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.POST, triggerPath, "{}", RequestOptions.builder().build());
+          } catch (Exception e) {
+            throw new RuntimeException("Failed to trigger workflow", e);
+          }
+        },
+        "trigger-" + workflowName);
     LOG.debug("Workflow triggered successfully");
 
     // Store IDs for lambda expressions
@@ -6291,40 +6644,48 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  private void createTestEntities_SDK(TestNamespace ns, TestInfo test) {
+  private TestEntities createTestEntities_SDK(TestNamespace ns, TestInfo test) {
     // Create database service using namespaced name
     String serviceBaseName =
         "test_db_service_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", "");
     CreateDatabaseService createService = createDatabaseServiceRequest(ns.prefix(serviceBaseName));
-    databaseService = SdkClients.adminClient().databaseServices().create(createService);
-    LOG.debug("Created database service: {}", databaseService.getName());
+    DatabaseService localDatabaseService =
+        SdkClients.adminClient().databaseServices().create(createService);
+    LOG.debug("Created database service: {}", localDatabaseService.getName());
 
     // Create database using namespaced name
     String dbBaseName = "test_db_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", "");
     CreateDatabase createDatabase =
         new CreateDatabase()
             .withName(ns.prefix(dbBaseName))
-            .withService(databaseService.getFullyQualifiedName())
+            .withService(localDatabaseService.getFullyQualifiedName())
             .withDescription("Test database for workflow");
-    database = SdkClients.adminClient().databases().create(createDatabase);
-    LOG.debug("Created database: {}", database.getName());
+    Database localDatabase = SdkClients.adminClient().databases().create(createDatabase);
+    LOG.debug("Created database: {}", localDatabase.getName());
 
     // Create database schema using namespaced name
     String schemaBaseName = "test_schema_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", "");
     CreateDatabaseSchema createSchema =
         new CreateDatabaseSchema()
             .withName(ns.prefix(schemaBaseName))
-            .withDatabase(database.getFullyQualifiedName())
+            .withDatabase(localDatabase.getFullyQualifiedName())
             .withDescription("Test schema for workflow");
-    databaseSchema = SdkClients.adminClient().databaseSchemas().create(createSchema);
-    LOG.debug("Created database schema: {}", databaseSchema.getName());
+    DatabaseSchema localDatabaseSchema =
+        SdkClients.adminClient().databaseSchemas().create(createSchema);
+    LOG.debug("Created database schema: {}", localDatabaseSchema.getName());
 
     // Create tables with varying column descriptions
-    createTablesWithVaryingDescriptions_SDK(ns, test);
+    List<Table> localTestTables =
+        createTablesWithVaryingDescriptions_SDK(ns, localDatabaseSchema, test);
+
+    return new TestEntities(
+        localDatabaseService, localDatabase, localDatabaseSchema, localTestTables);
   }
 
-  private void createTablesWithVaryingDescriptions_SDK(TestNamespace ns, TestInfo test) {
+  private List<Table> createTablesWithVaryingDescriptions_SDK(
+      TestNamespace ns, DatabaseSchema schema, TestInfo test) {
     String testName = test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", "");
+    List<Table> localTestTables = new ArrayList<>();
 
     // Table 1: All 4 columns with descriptions (should get Gold - 100%)
     List<Column> table1Columns =
@@ -6349,11 +6710,11 @@ public class WorkflowDefinitionResourceIT {
     CreateTable createTable1 =
         new CreateTable()
             .withName(ns.prefix(testName + "_table1_gold"))
-            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("Table with all column descriptions")
             .withColumns(table1Columns);
     Table table1 = SdkClients.adminClient().tables().create(createTable1);
-    testTables.add(table1);
+    localTestTables.add(table1);
     LOG.debug("Created table1 (gold): {}", table1.getName());
 
     // Table 2: 3 columns with descriptions (should get Silver - 75%)
@@ -6377,11 +6738,11 @@ public class WorkflowDefinitionResourceIT {
     CreateTable createTable2 =
         new CreateTable()
             .withName(ns.prefix(testName + "_table2_silver"))
-            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("Table with 3 column descriptions")
             .withColumns(table2Columns);
     Table table2 = SdkClients.adminClient().tables().create(createTable2);
-    testTables.add(table2);
+    localTestTables.add(table2);
     LOG.debug("Created table2 (silver): {}", table2.getName());
 
     // Table 3: 2 columns with descriptions (should get Bronze - 50%)
@@ -6402,11 +6763,11 @@ public class WorkflowDefinitionResourceIT {
     CreateTable createTable3 =
         new CreateTable()
             .withName(ns.prefix(testName + "_table3_bronze"))
-            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("Table with 2 column descriptions")
             .withColumns(table3Columns);
     Table table3 = SdkClients.adminClient().tables().create(createTable3);
-    testTables.add(table3);
+    localTestTables.add(table3);
     LOG.debug("Created table3 (bronze): {}", table3.getName());
 
     // Table 4: No columns with descriptions (should get Brass - 0%)
@@ -6420,14 +6781,15 @@ public class WorkflowDefinitionResourceIT {
     CreateTable createTable4 =
         new CreateTable()
             .withName(ns.prefix(testName + "_table4_brass"))
-            .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
+            .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("Table with no column descriptions")
             .withColumns(table4Columns);
     Table table4 = SdkClients.adminClient().tables().create(createTable4);
-    testTables.add(table4);
+    localTestTables.add(table4);
     LOG.debug("Created table4 (brass): {}", table4.getName());
 
-    LOG.debug("Created {} test tables", testTables.size());
+    LOG.debug("Created {} test tables", localTestTables.size());
+    return localTestTables;
   }
 
   private void createDataCompletenessWorkflow_SDK(TestNamespace ns) throws Exception {
@@ -6511,22 +6873,33 @@ public class WorkflowDefinitionResourceIT {
         .formatted(workflowName, workflowName);
   }
 
-  private void triggerWorkflow_SDK(TestNamespace ns) throws Exception {
+  private void triggerWorkflow_SDK(TestNamespace ns, List<Table> localTestTables) throws Exception {
     String workflowName = "DataCompletenessWorkflow";
     OpenMetadataClient client = SdkClients.adminClient();
 
     waitForWorkflowDeployment(client, workflowName);
-    for (Table table : testTables) {
+    for (Table table : localTestTables) {
       waitForEntityIndexedInSearch(client, "table_search_index", table.getFullyQualifiedName());
     }
 
-    // Trigger the workflow using SDK
+    // Trigger the workflow using SDK with retry
     String triggerPath = BASE_PATH + "/name/" + workflowName + "/trigger";
     String response =
-        client
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.POST, triggerPath, new HashMap<>(), RequestOptions.builder().build());
+        executeWithDeadlockRetry(
+            () -> {
+              try {
+                return client
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        triggerPath,
+                        new HashMap<>(),
+                        RequestOptions.builder().build());
+              } catch (Exception e) {
+                throw new RuntimeException("Failed to trigger workflow", e);
+              }
+            },
+            "trigger-" + workflowName);
 
     if (response != null && !response.trim().isEmpty()) {
       LOG.debug("Workflow triggered successfully: {}", workflowName);
@@ -6574,14 +6947,14 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  private void verifyTableCertifications_SDK() throws Exception {
+  private void verifyTableCertifications_SDK(List<Table> localTestTables) throws Exception {
     await()
         .atMost(Duration.ofSeconds(180))
         .pollInterval(Duration.ofSeconds(2))
         .pollDelay(Duration.ofSeconds(1))
         .untilAsserted(
             () -> {
-              for (Table table : testTables) {
+              for (Table table : localTestTables) {
                 Table updatedTable =
                     SdkClients.adminClient()
                         .tables()
@@ -7734,14 +8107,8 @@ public class WorkflowDefinitionResourceIT {
             });
     LOG.debug("✓ Public tag change did NOT trigger approval task");
 
-    // Cleanup using proper SDK methods
-    try {
-      WorkflowDefinition wd = client.workflowDefinitions().getByName("TagApprovalWorkflow", null);
-      client.workflowDefinitions().delete(wd.getId());
-      LOG.debug("Successfully deleted TagApprovalWorkflow");
-    } catch (Exception e) {
-      LOG.warn("Error while deleting TagApprovalWorkflow: {}", e.getMessage());
-    }
+    // Cleanup using safe deletion method
+    safeDeleteWorkflow(client, "TagApprovalWorkflow");
 
     // Cleanup test entities
     try {
@@ -7977,15 +8344,8 @@ public class WorkflowDefinitionResourceIT {
             });
     LOG.debug("✓ Marketing domain change did NOT trigger approval task");
 
-    // Cleanup using proper SDK methods
-    try {
-      WorkflowDefinition wd =
-          client.workflowDefinitions().getByName("DomainApprovalWorkflow", null);
-      client.workflowDefinitions().delete(wd.getId());
-      LOG.debug("Successfully deleted DomainApprovalWorkflow");
-    } catch (Exception e) {
-      LOG.warn("Error while deleting DomainApprovalWorkflow: {}", e.getMessage());
-    }
+    // Cleanup using safe deletion method
+    safeDeleteWorkflow(client, "DomainApprovalWorkflow");
 
     // Cleanup test entities
     try {
@@ -8195,14 +8555,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("✓ Approval task created successfully - include field priority verified");
 
     // Cleanup workflow
-    try {
-      WorkflowDefinition wd =
-          client.workflowDefinitions().getByName("includePriorityWorkflow", null);
-      client.workflowDefinitions().delete(wd.getId());
-      LOG.debug("Successfully deleted IncludePriorityWorkflow");
-    } catch (Exception e) {
-      LOG.warn("Error while deleting IncludePriorityWorkflow: {}", e.getMessage());
-    }
+    safeDeleteWorkflow(client, "includePriorityWorkflow");
 
     // Cleanup test entities
     try {
@@ -8390,7 +8743,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName("workflow_" + randomSuffix, null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted EmptyIncludeWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting EmptyIncludeWorkflow: {}", e.getMessage());
@@ -8652,7 +9013,15 @@ public class WorkflowDefinitionResourceIT {
     try {
       WorkflowDefinition wd =
           client.workflowDefinitions().getByName("workflow_" + randomSuffix, null);
-      client.workflowDefinitions().delete(wd.getId());
+      executeWithDeadlockRetryVoid(
+          () -> {
+            try {
+              client.workflowDefinitions().delete(wd.getId());
+            } catch (Exception e) {
+              throw new RuntimeException("Failed to delete workflow", e);
+            }
+          },
+          "delete-workflow-" + wd.getName());
       LOG.debug("Successfully deleted MultiFieldIncludeWorkflow");
     } catch (Exception e) {
       LOG.warn("Error while deleting MultiFieldIncludeWorkflow: {}", e.getMessage());
