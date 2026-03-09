@@ -438,7 +438,10 @@ public class DistributedSearchIndexExecutor {
     workerExecutor =
         Executors.newFixedThreadPool(
             numWorkers,
-            Thread.ofPlatform().name("reindex-partition-worker-" + jobIdShort + "-", 0).factory());
+            Thread.ofPlatform()
+                .name("reindex-partition-worker-" + jobIdShort + "-", 0)
+                .priority(Thread.MIN_PRIORITY)
+                .factory());
 
     AtomicLong totalSuccess = new AtomicLong(0);
     AtomicLong totalFailed = new AtomicLong(0);

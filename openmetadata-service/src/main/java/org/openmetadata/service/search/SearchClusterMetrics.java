@@ -254,10 +254,16 @@ public class SearchClusterMetrics {
     recommendedQueueSize = Math.max(1000, recommendedQueueSize);
 
     // --- CPU budget: derive internal thread pool sizes from available cores ---
+    // Each worker is a platform thread driving: DB read → field-fetch → doc-build → bulk send
+    // On small instances (2 vCPUs), uncapped threads cause 99%+ CPU and throughput collapse
     double targetCpuPercent = 0.70;
     double cpuBudget = availableCores * targetCpuPercent;
+    int cpuBudgetedWorkers = Math.max(1, availableCores - 1);
+    recommendedConsumerThreads = Math.min(recommendedConsumerThreads, cpuBudgetedWorkers);
     int recommendedFieldFetchThreads = Math.max(2, Math.min(50, availableCores * 2));
     int recommendedDocBuildThreads = Math.max(1, Math.min(50, (int) Math.floor(cpuBudget * 2)));
+    recommendedConcurrentRequests =
+        Math.min(recommendedConcurrentRequests, Math.max(10, availableCores * 10));
     long recommendedStatsIntervalMs =
         availableCores <= 2 ? 2000 : availableCores <= 4 ? 1500 : 1000;
 
@@ -267,12 +273,14 @@ public class SearchClusterMetrics {
     }
 
     LOG.info(
-        "CPU budget: {} cores × {}% target = {} budget → fieldFetch={}, docBuild={}, statsInterval={}ms",
+        "CPU budget: {} cores × {}% = {} → workers={}, fieldFetch={}, docBuild={}, concurrentReqs={}, statsInterval={}ms",
         availableCores,
         (int) (targetCpuPercent * 100),
         String.format("%.1f", cpuBudget),
+        recommendedConsumerThreads,
         recommendedFieldFetchThreads,
         recommendedDocBuildThreads,
+        recommendedConcurrentRequests,
         recommendedStatsIntervalMs);
 
     return SearchClusterMetrics.builder()
@@ -419,10 +427,12 @@ public class SearchClusterMetrics {
     }
 
     int availCores = Runtime.getRuntime().availableProcessors();
+    double conservativeCpuBudget = availCores * 0.70;
     int conservativeThreads = Math.min((maxDbConnections * 3) / 4, availCores * 4);
     int conservativeConcurrentRequests = totalEntities > 100000 ? 50 : 25;
-    conservativeConcurrentRequests = Math.min(conservativeConcurrentRequests, availCores * 25);
-    int conservativeConsumerThreads = Math.min(20, availCores * 2);
+    conservativeConcurrentRequests =
+        Math.min(conservativeConcurrentRequests, Math.max(10, availCores * 10));
+    int conservativeConsumerThreads = Math.min(20, Math.max(1, availCores - 1));
     int conservativeQueueSize = conservativeBatchSize * conservativeConcurrentRequests * 2;
 
     long maxHeap = Runtime.getRuntime().maxMemory();
