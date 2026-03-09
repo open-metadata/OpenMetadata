@@ -743,7 +743,7 @@ test.describe(
               .url()
               .includes(
                 `/api/v1/tables/name/${encodeURIComponent(
-                  createdTable.fullyQualifiedName!
+                  createdTable.fullyQualifiedName
                 )}/columns`
               ) &&
             response.url().includes('fields=') &&
