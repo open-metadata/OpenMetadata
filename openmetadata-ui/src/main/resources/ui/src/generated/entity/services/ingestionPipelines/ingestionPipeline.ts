@@ -697,6 +697,8 @@ export enum OpenmetadataType {
  * Flag to verify SSL Certificate for OpenMetadata Server.
  *
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
  */
 export enum VerifySSL {
     Ignore = "ignore",
@@ -4120,10 +4122,10 @@ export interface ConfigObject {
      */
     siteName?: string;
     /**
+     * SSL Configuration details.
+     *
      * SSL Configuration details for DB2 connection. Provide CA certificate for server
      * validation, and optionally client certificate and key for mutual TLS authentication.
-     *
-     * SSL Configuration details.
      *
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
@@ -4133,6 +4135,8 @@ export interface ConfigObject {
     sslConfig?: SSLConfigObject;
     /**
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
+     * Client SSL verification.
      *
      * Flag to verify SSL Certificate for OpenMetadata Server.
      *

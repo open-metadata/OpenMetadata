@@ -570,6 +570,8 @@ export enum OpenmetadataType {
  * Flag to verify SSL Certificate for OpenMetadata Server.
  *
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
  */
 export enum VerifySSL {
     Ignore = "ignore",
@@ -1997,6 +1999,8 @@ export interface ConfigObject {
     paginationLimit?: number;
     /**
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
+     * Client SSL verification.
      *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.

@@ -294,10 +294,15 @@ export interface Connection {
     /**
      * Tableau Site Name.
      */
-    siteName?:  string;
+    siteName?: string;
+    /**
+     * SSL Configuration details.
+     */
     sslConfig?: CertificatesSSLConfig;
     /**
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
+     * Client SSL verification.
      */
     verifySSL?: boolean | VerifySSL;
     /**
@@ -916,6 +921,8 @@ export enum SupersetConnectionType {
 
 /**
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
  */
 export enum VerifySSL {
     Ignore = "ignore",

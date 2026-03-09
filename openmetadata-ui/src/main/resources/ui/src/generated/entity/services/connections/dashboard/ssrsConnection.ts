@@ -34,7 +34,11 @@ export interface SsrsConnection {
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
-    projectFilterPattern?:       FilterPattern;
+    projectFilterPattern?: FilterPattern;
+    /**
+     * SSL Configuration details.
+     */
+    sslConfig?:                  Config;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -44,6 +48,10 @@ export interface SsrsConnection {
      * Username to connect to Ssrs.
      */
     username: string;
+    /**
+     * Client SSL verification.
+     */
+    verifySSL?: VerifySSL;
 }
 
 /**
@@ -67,10 +75,43 @@ export interface FilterPattern {
 }
 
 /**
+ * SSL Configuration details.
+ *
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
  * Service Type
  *
  * Service type.
  */
 export enum SsrsType {
     Ssrs = "Ssrs",
+}
+
+/**
+ * Client SSL verification.
+ *
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }

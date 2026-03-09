@@ -1473,6 +1473,8 @@ export interface ConfigObject {
     /**
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
+     * Client SSL verification.
+     *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
      *
@@ -3883,6 +3885,8 @@ export enum ConnectionType {
 
 /**
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
  *
  * Flag to verify SSL Certificate for OpenMetadata Server.
  */
