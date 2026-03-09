@@ -66,7 +66,7 @@ Common steps by service type:
 
 | Service Type | Steps |
 |---|---|
-| Database | `CheckAccess`, `GetDatabases`, `GetSchemas`, `GetTables`, `GetViews` |
+| Database | `CheckAccess`, `GetSchemas`, `GetTables`, `GetViews` (add `GetDatabases` for multi-database sources) |
 | Dashboard | `CheckAccess`, `GetDashboards`, `GetCharts` |
 | Pipeline | `CheckAccess`, `GetPipelines` |
 | Messaging | `CheckAccess`, `GetTopics` |

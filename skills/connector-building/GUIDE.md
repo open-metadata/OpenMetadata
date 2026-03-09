@@ -85,7 +85,7 @@ The interactive mode asks for:
 
 ### Step 2: Review Generated Files
 
-The scaffold creates ~10-15 files depending on service type:
+The scaffold generates the following files:
 
 ```
 # Connection schema (the single source of truth)
@@ -106,8 +106,11 @@ ingestion/src/metadata/ingestion/source/{service_type}/{name}/
 ├── usage.py             # ← If usage capability selected
 ├── query_parser.py      # ← If lineage or usage selected
 └── CONNECTOR_CONTEXT.md # ← AI implementation brief
+```
 
-# Tests
+Tests are **not** scaffolded — write them using the reference connector's tests as a pattern:
+
+```
 ingestion/tests/unit/topology/{service_type}/test_{name}.py
 ingestion/tests/integration/connections/test_{name}_connection.py
 ingestion/tests/integration/{name}/conftest.py
