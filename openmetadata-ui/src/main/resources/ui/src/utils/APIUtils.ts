@@ -44,6 +44,7 @@ export const formatTeamsResponse = (
     return {
       name: d._source.name,
       displayName: d._source.displayName,
+      fullyQualifiedName: d._source.fullyQualifiedName,
       type: d._source.entityType,
       id: d._source.id,
       isJoinable: d._source.isJoinable,

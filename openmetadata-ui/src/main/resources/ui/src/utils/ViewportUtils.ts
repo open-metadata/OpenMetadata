@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,25 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../../../styles/variables.less';
+import { CSSProperties } from 'react';
+import { Viewport } from 'reactflow';
 
-.profiler-item {
-  width: 100px;
-  height: 80px;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  cursor: pointer;
-  border-radius: 10px;
-  &.green {
-    background: @green-2;
-  }
-  &.amber {
-    background: @yellow-1;
-  }
-  &.red {
-    background: @red-2;
-  }
+export function getAbsolutePosition(
+  x: number,
+  y: number,
+  viewport: Viewport
+): CSSProperties {
+  return {
+    position: 'absolute',
+    left: `${x * viewport.zoom + viewport.x}px`,
+    top: `${y * viewport.zoom + viewport.y}px`,
+  };
 }

@@ -10,15 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import '@/styles/variables.less';
 
-import { Box, styled } from '@mui/material';
-
-export const DataPill = styled(Box)(({ theme }) => ({
-  backgroundColor: theme.palette.grey[100],
-  color: theme.palette.grey[900],
-  borderRadius: '6px',
-  padding: '6px 12px',
-  fontSize: theme.typography.pxToRem(14),
-  fontWeight: 600,
-  display: 'inline-block',
-}));
+.profiler-item {
+  width: 100px;
+  height: 80px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  cursor: pointer;
+  border-radius: 10px;
+  &.green {
+    background: @green-2;
+  }
+  &.amber {
+    background: @yellow-1;
+  }
+  &.red {
+    background: @red-2;
+  }
+}

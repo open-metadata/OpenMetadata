@@ -419,6 +419,44 @@ class BaseTestValidator(ABC):
             for metric_name in metrics_to_compute.keys()
         }
 
+    def _build_dimension_metric_values(
+        self,
+        row: dict,
+        metrics_to_compute: dict,
+        test_params: Optional[dict] = None,
+    ) -> Optional[dict]:
+        """Hook for custom metric extraction in dimensional validation.
+
+        Override in child classes that need custom metric extraction logic,
+        such as None-skipping or adding extra keys from the row.
+
+        Return None to skip the row.
+        """
+        return self._build_metric_values_from_row(row, metrics_to_compute, test_params)
+
+    def _process_dimension_rows(
+        self,
+        result_rows,
+        dimension_col_name: str,
+        metrics_to_compute: dict,
+        test_params: Optional[dict],
+    ) -> List["DimensionResult"]:
+        """Common loop: build metrics, evaluate, create result for each row."""
+        results: List[DimensionResult] = []
+        for row in result_rows:
+            metric_values = self._build_dimension_metric_values(
+                row, metrics_to_compute, test_params
+            )
+            if metric_values is None:
+                continue
+            evaluation = self._evaluate_test_condition(metric_values, test_params)
+            results.append(
+                self._create_dimension_result(
+                    row, dimension_col_name, metric_values, evaluation, test_params
+                )
+            )
+        return results
+
     def _create_dimension_result(
         self,
         row: dict,
