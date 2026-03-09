@@ -155,6 +155,7 @@ test.describe(
 
       await test.step('Click export and verify download triggered', async () => {
         await page.getByTestId('sample-data-manage-button').click();
+        await page.getByTestId('delete-button').waitFor({ state: 'visible' });
         await expect(page.getByTestId('export-button')).toBeVisible();
 
         const [download] = await Promise.all([
@@ -163,6 +164,28 @@ test.describe(
         ]);
 
         expect(download.suggestedFilename()).toMatch(/sample_data_.*\.csv/);
+
+        const stream = await download.createReadStream();
+
+        if (stream) {
+          const chunks: Buffer[] = [];
+          for await (const chunk of stream) {
+            chunks.push(Buffer.from(chunk));
+          }
+          const csvContent = Buffer.concat(chunks).toString('utf-8');
+
+          // Verify CSV headers match the table column names
+          const expectedColumns = (
+            tableWithData.entityResponseData.columns ?? []
+          ).map((col) => col.name ?? '');
+
+          for (const col of expectedColumns) {
+            expect(csvContent).toContain(col);
+          }
+
+          // Verify sample data values are present (added via addSampleDataViaApi)
+          expect(csvContent).toContain('sample_value_0_0');
+        }
       });
     });
 

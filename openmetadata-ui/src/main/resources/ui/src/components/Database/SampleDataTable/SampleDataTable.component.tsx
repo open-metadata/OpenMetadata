@@ -88,6 +88,11 @@ const SampleDataTable: FC<SampleDataProps> = ({
     []
   );
 
+  const slicedRows = useMemo(
+    () => sampleData?.rows?.slice(0, rowLimit),
+    [sampleData?.rows, rowLimit]
+  );
+
   const exportToCSV = useCallback(() => {
     if (!sampleData?.rows || !sampleData?.columns) {
       return;
@@ -269,8 +274,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
         'h-70vh overflow-hidden': isTourPage,
       })}
       data-testid="sample-data"
-      id="sampleDataDetails"
-    >
+      id="sampleDataDetails">
       <Space className="m-y-xss justify-between w-full">
         <Space>
           <Typography.Text className="text-grey-muted">
@@ -280,14 +284,12 @@ const SampleDataTable: FC<SampleDataProps> = ({
             className="w-28"
             data-testid="row-limit-select"
             value={rowLimit}
-            onChange={setRowLimit}
-          >
+            onChange={setRowLimit}>
             {ROW_LIMIT_OPTIONS.map((limit) => (
               <Select.Option
                 data-testid={`row-limit-option-${limit}`}
                 key={limit}
-                value={limit}
-              >
+                value={limit}>
                 {limit}
               </Select.Option>
             ))}
@@ -301,20 +303,16 @@ const SampleDataTable: FC<SampleDataProps> = ({
           overlayClassName="manage-dropdown-list-container"
           overlayStyle={{ width: '350px' }}
           placement="bottomRight"
-          trigger={['click']}
-          onOpenChange={setShowActions}
-        >
+          onOpenChange={setShowActions}>
           <Tooltip
             placement="topLeft"
             title={t('label.manage-entity', {
               entity: t('label.sample-data'),
-            })}
-          >
+            })}>
             <Button
               className="flex-center px-1.5"
               data-testid="sample-data-manage-button"
-              onClick={() => setShowActions(true)}
-            >
+              onClick={() => setShowActions(true)}>
               <IconDropdown className="anticon self-center " />
             </Button>
           </Tooltip>
@@ -324,7 +322,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       <TableComponent
         columns={sampleData?.columns}
         data-testid="sample-data-table"
-        dataSource={sampleData?.rows?.slice(0, rowLimit)}
+        dataSource={slicedRows}
         pagination={false}
         rowKey="name"
         scroll={{ y: 'calc(100vh - 160px)' }}
