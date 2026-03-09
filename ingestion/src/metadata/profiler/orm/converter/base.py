@@ -123,6 +123,15 @@ def ometa_to_sqa_orm(
         databaseService.DatabaseServiceType, table.serviceType
     )  # satisfy mypy
 
+    # SQA 2.x raises a hard error if no primary key columns are found (was just a warning in 1.x).
+    # Since build_orm_col assigns PK to the first column, we need at least one column.
+    if not table.columns:
+        raise ValueError(
+            f"Table '{table.name.root}' has no columns. "
+            "Cannot create ORM class without at least one column. "
+            "Ensure the table's column metadata was ingested correctly."
+        )
+
     orm_database_name = get_orm_database(table, metadata)
     # SQLite does not support schemas
     orm_schema_name = (
