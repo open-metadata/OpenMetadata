@@ -367,7 +367,6 @@ public class PartitionWorker {
    * We wait for both:
    * <ul>
    *   <li>The StageStatsTracker's pending operations (for stats accuracy)</li>
-   *   <li>The BulkSink's pending vector tasks (for vector completion)</li>
    * </ul>
    *
    * @param statsTracker The stats tracker to flush after waiting

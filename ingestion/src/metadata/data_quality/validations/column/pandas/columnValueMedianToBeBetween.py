@@ -26,10 +26,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValueMedianToBeBetween import (
     BaseColumnValueMedianToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
@@ -63,6 +60,7 @@ class ColumnValueMedianToBeBetweenValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for median with proper weighted aggregation
 
@@ -191,30 +189,17 @@ class ColumnValueMedianToBeBetweenValidator(
                     },
                     final_metric_calculators={Metrics.median.name: recalculate_median},
                     exclude_from_final=["RAW_MEDIAN_ARRAYS", Metrics.valuesCount.name],
-                    top_n=DEFAULT_TOP_DIMENSIONS,
+                    top_n=top_n,
                     violation_metrics=[Metrics.median.name],
                     violation_predicate=checker.violates_pandas,
                 )
 
-                for row_dict in results_df.to_dict("records"):
-
-                    metric_values = self._build_metric_values_from_row(
-                        row_dict, metrics_to_compute, test_params
-                    )
-
-                    evaluation = self._evaluate_test_condition(
-                        metric_values, test_params
-                    )
-
-                    dimension_result = self._create_dimension_result(
-                        row_dict,
-                        dimension_col.name,
-                        metric_values,
-                        evaluation,
-                        test_params,
-                    )
-
-                    dimension_results.append(dimension_result)
+                dimension_results = self._process_dimension_rows(
+                    results_df.to_dict("records"),
+                    dimension_col.name,
+                    metrics_to_compute,
+                    test_params,
+                )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

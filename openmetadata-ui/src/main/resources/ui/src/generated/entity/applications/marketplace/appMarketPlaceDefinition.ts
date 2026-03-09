@@ -79,6 +79,10 @@ export interface AppMarketPlaceDefinition {
      */
     domains?: EntityReference[];
     /**
+     * Flag to enable/disable the application. If the app is not enabled, it can't be installed.
+     */
+    enabled?: boolean;
+    /**
      * Event subscriptions that will be created when the application is installed.
      */
     eventSubscriptions?: CreateEventSubscription[];
@@ -118,11 +122,6 @@ export interface AppMarketPlaceDefinition {
      * Permission used by Native Applications.
      */
     permission: Permissions;
-    /**
-     * Flag to enable/disable preview for the application. If the app is in preview mode, it
-     * can't be installed.
-     */
-    preview?: boolean;
     /**
      * Privacy Policy for the developer
      */

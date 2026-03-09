@@ -1120,6 +1120,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Map<String, Object> configPayload) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
+    if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {
+      throw AppException.byMessage(
+          name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");
+    }
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
           .triggerApplicationOnDemand(
@@ -1207,6 +1211,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
+    if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {
+      throw AppException.byMessage(
+          name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");
+    }
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
           .installApplication(

@@ -18,7 +18,6 @@ from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_TOTAL_COUNT_KEY,
-    DIMENSION_VALUE_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValueStdDevToBeBetween import (
     BaseColumnValueStdDevToBeBetweenValidator,
@@ -47,12 +46,19 @@ class ColumnValueStdDevToBeBetweenValidator(
         """
         return self.run_query_results(self.runner, metric, column)
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        stddev_value = row.get(Metrics.stddev.name)
+        if stddev_value is None:
+            return None
+        return {Metrics.stddev.name: stddev_value}
+
     def _execute_dimensional_validation(
         self,
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for stddev using two-pass approach
 
@@ -104,34 +110,12 @@ class ColumnValueStdDevToBeBetweenValidator(
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
                 failed_count_builder=failed_count_builder,
+                top_n=top_n,
             )
 
-            for row in result_rows:
-                stddev_value = row.get(Metrics.stddev.name)
-
-                if stddev_value is None:
-                    logger.debug(
-                        "Skipping dimension '%s=%s' with None stddev",
-                        dimension_col.name,
-                        row.get(DIMENSION_VALUE_KEY),
-                    )
-                    continue
-
-                metric_values = {
-                    Metrics.stddev.name: stddev_value,
-                }
-
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                dimension_result = self._create_dimension_result(
-                    row,
-                    dimension_col.name,
-                    metric_values,
-                    evaluation,
-                    test_params,
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

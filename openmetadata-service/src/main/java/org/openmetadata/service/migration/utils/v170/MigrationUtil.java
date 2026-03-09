@@ -326,7 +326,7 @@ public class MigrationUtil {
                 List.of(
                     new LineChartMetric()
                         .withFormula(
-                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100"))));
+                            "(count(k='id.keyword',q='ownerName: *')/count(k='id.keyword'))*100"))));
 
     createChart(
         "assets_with_pii",

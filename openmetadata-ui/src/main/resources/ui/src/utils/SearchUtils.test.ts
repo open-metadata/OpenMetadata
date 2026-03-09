@@ -1284,7 +1284,12 @@ describe('getTermQuery', () => {
         query: {
           bool: {
             must: [
-              { term: { 'owners.id': 'user123' } },
+              {
+                nested: {
+                  path: 'owners',
+                  query: { term: { 'owners.id': 'user123' } },
+                },
+              },
               {
                 bool: {
                   should: [

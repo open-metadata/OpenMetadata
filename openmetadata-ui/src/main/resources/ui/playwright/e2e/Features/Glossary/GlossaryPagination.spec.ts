@@ -81,7 +81,8 @@ test.describe('Glossary tests', () => {
 
     // Wait for search API call with new endpoint
     await page.waitForResponse('api/v1/glossaryTerms/search?*');
-    const filteredTerms = await page.locator('tbody .ant-table-row').count();
+    const table = page.getByTestId('glossary-terms-table');
+    const filteredTerms = await table.locator('tbody .ant-table-row').count();
 
     expect(filteredTerms).toBe(1);
     await expect(
@@ -100,7 +101,7 @@ test.describe('Glossary tests', () => {
 
     await page.waitForResponse('api/v1/glossaryTerms/search?*');
 
-    const partialFilteredTerms = await page
+    const partialFilteredTerms = await table
       .locator('tbody .ant-table-row')
       .count();
 
@@ -137,7 +138,10 @@ test.describe('Glossary tests', () => {
 
     // Wait for search API call with parent filter
     await page.waitForResponse('api/v1/glossaryTerms/search?*');
-    const filteredTerms = await page.locator('tbody .ant-table-row').count();
+    const nestedTable = page.getByTestId('glossary-terms-table');
+    const filteredTerms = await nestedTable
+      .locator('tbody .ant-table-row')
+      .count();
 
     expect(filteredTerms).toBe(5);
 
@@ -231,11 +235,6 @@ test.describe('Glossary tests', () => {
     await searchInput.fill('NonExistentTermXYZ12345');
     await page.waitForResponse('api/v1/glossaryTerms/search?*');
 
-    // Verify no results are shown
-    const rowCount = await page.locator('tbody .ant-table-row').count();
-
-    expect(rowCount).toBe(0);
-
     // Verify empty state message is shown (uses ErrorPlaceHolder component)
     await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
 
@@ -243,10 +242,9 @@ test.describe('Glossary tests', () => {
     await searchInput.clear();
     await page.waitForResponse('api/v1/glossaryTerms?*');
 
-    // Verify terms are visible again
-    const restoredRowCount = await page.locator('tbody .ant-table-row').count();
-
-    expect(restoredRowCount).toBeGreaterThan(0);
+    // Verify terms are visible again after clearing search
+    await expect(page.getByTestId('no-data-placeholder')).not.toBeVisible();
+    await expect(page.getByTestId('glossary-terms-table')).toBeVisible();
   });
 
   // S-F03: Filter by InReview status

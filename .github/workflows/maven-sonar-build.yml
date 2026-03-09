@@ -89,4 +89,4 @@ jobs:
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -Pstatic-code-analysis clean package -DskipTests -am
+        run: mvn -Pstatic-code-analysis clean verify -DskipTests -am

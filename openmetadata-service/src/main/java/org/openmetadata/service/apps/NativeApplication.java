@@ -20,7 +20,7 @@ public interface NativeApplication extends InterruptableJob {
 
   void cleanup();
 
-  void raisePreviewMessage(App app);
+  void raiseNotEnabledMessage(App app);
 
   default void startApp(JobExecutionContext jobExecutionContext) {}
 }

@@ -46,12 +46,19 @@ class ColumnValueMinToBeBetweenValidator(
         """
         return self.run_query_results(self.runner, metric, column)
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        min_value = row.get(Metrics.min.name)
+        if min_value is None:
+            return None
+        return {Metrics.min.name: min_value}
+
     def _execute_dimensional_validation(
         self,
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for min with proper aggregation
 
@@ -96,29 +103,12 @@ class ColumnValueMinToBeBetweenValidator(
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
                 failed_count_builder=failed_count_builder,
+                top_n=top_n,
             )
 
-            for row in result_rows:
-                min_value = row.get(Metrics.min.name)
-
-                if min_value is None:
-                    continue
-
-                metric_values = {
-                    Metrics.min.name: min_value,
-                }
-
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                dimension_result = self._create_dimension_result(
-                    row,
-                    dimension_col.name,
-                    metric_values,
-                    evaluation,
-                    test_params,
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

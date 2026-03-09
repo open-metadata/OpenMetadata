@@ -37,27 +37,6 @@ jest.mock('../../../Entity/EntityLineage/CanvasEdgeRenderer.component', () => ({
 }));
 
 jest.mock(
-  '../../../Entity/EntityLineage/PipelineEdgeButtons.component',
-  () => ({
-    PipelineEdgeButtons: ({
-      onAddPipeline,
-      onRemovePipeline,
-    }: {
-      onAddPipeline?: () => void;
-      onRemovePipeline?: () => void;
-    }) => (
-      <div
-        data-testid="pipeline-edge-buttons"
-        onClick={() => {
-          onAddPipeline?.();
-          onRemovePipeline?.();
-        }}
-      />
-    ),
-  })
-);
-
-jest.mock(
   '../../../Entity/EntityLineage/EdgeInteractionOverlay.component',
   () => ({
     EdgeInteractionOverlay: ({

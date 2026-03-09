@@ -41,7 +41,13 @@ export interface DatalakeConnection {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?:        FilterPattern;
+    schemaFilterPattern?: FilterPattern;
+    /**
+     * Skip files in cold storage tiers (e.g., S3 Glacier, Azure Archive/Cool/Cold, GCS
+     * Coldline/Archive). When enabled, only files in hot/standard storage tiers will be
+     * processed.
+     */
+    skipColdStorage?:            boolean;
     supportsMetadataExtraction?: boolean;
     supportsProfiler?:           boolean;
     /**

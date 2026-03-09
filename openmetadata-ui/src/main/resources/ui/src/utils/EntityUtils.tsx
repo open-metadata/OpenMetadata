@@ -30,6 +30,7 @@ import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
@@ -158,7 +159,6 @@ import {
   getUsagePercentile,
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
-import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 
 export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',

@@ -274,6 +274,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         dimension_col: Union[SQALikeColumn, Column],
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query for column values to be in set
 
@@ -283,6 +284,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             metrics_to_compute: Dictionary mapping Metrics enum names to Metrics objects
                               e.g., {"COUNT_IN_SET": Metrics.countInSet}
             test_params: Dictionary with test-specific parameters (allowed_values, match_enum)
+            top_n: Number of top dimension values before grouping as "Others"
 
         Returns:
             List[DimensionResult]: List of dimension results for this dimension column

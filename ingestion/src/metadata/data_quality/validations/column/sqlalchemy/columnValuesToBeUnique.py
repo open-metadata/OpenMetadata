@@ -111,7 +111,8 @@ class ColumnValuesToBeUniqueValidator(
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
-        test_params: Optional[dict] = None,
+        test_params: Optional[dict],
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for uniqueness using two-pass approach
 
@@ -172,17 +173,12 @@ class ColumnValuesToBeUniqueValidator(
                 metric_expressions=metric_expressions,
                 others_source_builder=self._get_others_source_builder(value_counts_cte),
                 others_metric_expressions_builder=self._get_others_metric_expressions_builder(),
+                top_n=top_n,
             )
 
-            for row in result_rows:
-                metric_values = self._build_metric_values_from_row(
-                    row, metrics_to_compute, test_params
-                )
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-                dimension_result = self._create_dimension_result(
-                    row, dimension_col.name, metric_values, evaluation, test_params
-                )
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

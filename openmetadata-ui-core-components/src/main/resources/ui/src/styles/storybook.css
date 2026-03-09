@@ -1,0 +1,35 @@
+@import "tailwindcss/theme.css" prefix(tw);
+@import "tailwindcss/preflight.css" prefix(tw);
+@import "tailwindcss/utilities.css" prefix(tw);
+
+@import "./globals.css";
+
+@plugin "@tailwindcss/typography";
+@plugin "tailwindcss-react-aria-components";
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:where(.dark-mode, .dark-mode *));
+@custom-variant label (& [data-label]);
+@custom-variant focus-input-within (&:has(input:focus));
+
+@utility scrollbar-hide {
+  &::-webkit-scrollbar {
+    display: none;
+    -webkit-appearance: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@utility transition-inherit-all {
+  transition-property: inherit;
+  transition-duration: inherit;
+  transition-timing-function: inherit;
+}
+
+@layer base {
+  img {
+    height: revert-layer;
+    display: inline;
+  }
+}

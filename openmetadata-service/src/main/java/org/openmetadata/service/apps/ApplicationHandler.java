@@ -74,7 +74,7 @@ public class ApplicationHandler {
         new OpenMetadataConnectionBuilder(config, app.getBot().getName()).build());
     try {
       AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
-      app.setPreview(appPrivateConfig.getPreview());
+      app.setEnabled(appPrivateConfig.getEnabled());
 
       if (appPrivateConfig.getParameters() != null
           && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
@@ -87,16 +87,16 @@ public class ApplicationHandler {
     }
   }
 
-  public Boolean isPreview(String appName) {
+  public Boolean isEnabled(String appName) {
     try {
       AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(appName);
-      return appPrivateConfig.getPreview();
+      return appPrivateConfig.getEnabled();
     } catch (IOException e) {
       LOG.debug("Config file for app {} not found: ", appName, e);
-      return false;
+      return true;
     } catch (ConfigurationException e) {
       LOG.error("Error reading config file for app {}", appName, e);
-      return false;
+      return true;
     }
   }
 
@@ -166,7 +166,7 @@ public class ApplicationHandler {
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     try {
       Map<String, Object> decryptedAppConfig =
-          runAppInit(app, daoCollection, searchRepository)
+          runAppInit(app, daoCollection, searchRepository, true)
               .decryptConfiguration(JsonUtils.getMap(app.getAppConfiguration()));
       return app.withAppConfiguration(decryptedAppConfig);
     } catch (ClassNotFoundException
@@ -187,7 +187,7 @@ public class ApplicationHandler {
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     try {
       Map<String, Object> encryptedAppConfig =
-          runAppInit(app, daoCollection, searchRepository)
+          runAppInit(app, daoCollection, searchRepository, true)
               .encryptConfiguration(JsonUtils.getMap(app.getAppConfiguration()));
       return app.withAppConfiguration(encryptedAppConfig);
     } catch (ClassNotFoundException
@@ -298,7 +298,10 @@ public class ApplicationHandler {
   }
 
   public AbstractNativeApplication runAppInit(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository, boolean forDelete)
+      App app,
+      CollectionDAO daoCollection,
+      SearchRepository searchRepository,
+      boolean skipEnabledCheck)
       throws ClassNotFoundException,
           NoSuchMethodException,
           InvocationTargetException,
@@ -311,9 +314,8 @@ public class ApplicationHandler {
     AbstractNativeApplication resource =
         clz.getDeclaredConstructor(CollectionDAO.class, SearchRepository.class)
             .newInstance(daoCollection, searchRepository);
-    // Raise preview message if the app is in Preview mode
-    if (!forDelete && Boolean.TRUE.equals(app.getPreview())) {
-      resource.raisePreviewMessage(app);
+    if (!skipEnabledCheck && Boolean.FALSE.equals(app.getEnabled())) {
+      resource.raiseNotEnabledMessage(app);
     }
 
     resource.init(app);
