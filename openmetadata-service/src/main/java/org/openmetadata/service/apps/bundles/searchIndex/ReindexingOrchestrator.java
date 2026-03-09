@@ -223,7 +223,8 @@ public class ReindexingOrchestrator {
         context.createReindexingContext(Boolean.TRUE.equals(jobData.getUseDistributedIndexing()));
 
     ReindexingConfiguration config = ReindexingConfiguration.from(jobData);
-    config = ReindexingConfiguration.applyAutoTuning(config, searchRepository);
+    long totalEntities = countTotalEntities();
+    config = ReindexingConfiguration.applyAutoTuning(config, searchRepository, totalEntities);
     config.applyTo(jobData);
     updateRunRecordConfig(config);
 
@@ -458,6 +459,25 @@ public class ReindexingOrchestrator {
         && !jobData.getSlackBotToken().isEmpty()
         && jobData.getSlackChannel() != null
         && !jobData.getSlackChannel().isEmpty();
+  }
+
+  private long countTotalEntities() {
+    long total = 0;
+    for (String entityType : jobData.getEntities()) {
+      try {
+        if (!SearchIndexApp.TIME_SERIES_ENTITIES.contains(entityType)) {
+          total +=
+              Entity.getEntityRepository(entityType)
+                  .getDao()
+                  .listCount(
+                      new org.openmetadata.service.jdbi3.ListFilter(
+                          org.openmetadata.schema.type.Include.ALL));
+        }
+      } catch (Exception e) {
+        LOG.debug("Could not count entities for {}: {}", entityType, e.getMessage());
+      }
+    }
+    return total;
   }
 
   private String getInstanceUrl() {

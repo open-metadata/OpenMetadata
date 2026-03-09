@@ -50,11 +50,11 @@ public record ReindexingConfiguration(
   private static final int DEFAULT_TIME_SERIES_MAX_DAYS = 0;
 
   public static ReindexingConfiguration applyAutoTuning(
-      ReindexingConfiguration config, SearchRepository searchRepository) {
+      ReindexingConfiguration config, SearchRepository searchRepository, long totalEntities) {
     if (!config.autoTune()) {
       return config;
     }
-    SearchClusterMetrics metrics = fetchClusterMetrics(searchRepository);
+    SearchClusterMetrics metrics = fetchClusterMetrics(searchRepository, totalEntities);
     if (metrics == null) {
       return config;
     }
@@ -83,10 +83,11 @@ public record ReindexingConfiguration(
         .build();
   }
 
-  private static SearchClusterMetrics fetchClusterMetrics(SearchRepository searchRepository) {
+  private static SearchClusterMetrics fetchClusterMetrics(
+      SearchRepository searchRepository, long totalEntities) {
     try {
       return SearchClusterMetrics.fetchClusterMetrics(
-          searchRepository, 0, searchRepository.getMaxDBConnections());
+          searchRepository, totalEntities, searchRepository.getMaxDBConnections());
     } catch (Exception e) {
       LOG.warn("Failed to fetch cluster metrics for auto-tuning, using configured values", e);
       return null;
