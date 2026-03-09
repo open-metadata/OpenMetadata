@@ -55,7 +55,9 @@ public class SearchUtil {
           "spreadsheet_search_index",
           Entity.SPREADSHEET,
           "file_search_index",
-          Entity.FILE -> true;
+          Entity.FILE,
+          "metric_search_index",
+          Entity.METRIC -> true;
       default -> false;
     };
   }
@@ -121,8 +123,33 @@ public class SearchUtil {
       case "file_search_index", Entity.FILE -> Entity.FILE;
       case "worksheet_search_index", Entity.WORKSHEET -> Entity.WORKSHEET;
       case "spreadsheet_search_index", Entity.SPREADSHEET -> Entity.SPREADSHEET;
+      case "metric_search_index", Entity.METRIC -> Entity.METRIC;
       case "dataAsset" -> "dataAsset";
       default -> "dataAsset";
     };
+  }
+
+  /**
+   * Get fuzziness value based on query term count.
+   * For queries with more than 2 words, disable fuzziness to prevent clause explosion.
+   */
+  public static String getFuzziness(String query) {
+    if (query == null || query.isBlank()) {
+      return "1";
+    }
+    int termCount = query.trim().split("\\s+").length;
+    return termCount > 2 ? "0" : "1";
+  }
+
+  /**
+   * Get max expansions value based on query term count.
+   * For queries with more than 2 words, reduce expansions to prevent clause explosion.
+   */
+  public static int getMaxExpansions(String query) {
+    if (query == null || query.isBlank()) {
+      return 10;
+    }
+    int termCount = query.trim().split("\\s+").length;
+    return termCount > 2 ? 2 : 10;
   }
 }

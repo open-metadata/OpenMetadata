@@ -11,6 +11,7 @@
 """QuickSight source module"""
 
 import traceback
+from collections import defaultdict
 from typing import Iterable, List, Optional
 
 from pydantic import ValidationError
@@ -238,19 +239,21 @@ class QuicksightSource(DashboardServiceSource):
 
     def _describe_data_sets(
         self, dataset_id, dashboard_details: DashboardDetail
-    ) -> List:
+    ) -> tuple:
         """call botocore's describe api for datasets"""
         try:
-            return list(
-                self.client.describe_data_set(
-                    AwsAccountId=self.aws_account_id, DataSetId=dataset_id
-                )["DataSet"]["PhysicalTableMap"].values()
+            dataset_response = self.client.describe_data_set(
+                AwsAccountId=self.aws_account_id, DataSetId=dataset_id
             )
+            dataset = dataset_response["DataSet"]
+            dataset_name = dataset.get("Name", dataset_id)
+            physical_tables = list(dataset.get("PhysicalTableMap", {}).values())
+            return dataset_name, physical_tables
         except Exception as err:
             logger.info(
                 f"Cannot parse lineage from the dashboard: {dashboard_details.Name} to dataset due to: {err}"
             )
-            return []
+            return dataset_id, []
 
     def _yield_lineage_from_query(
         self,
@@ -536,7 +539,9 @@ class QuicksightSource(DashboardServiceSource):
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(
-                    datamodel_id=datamodel.DataSource.DataSourceId
+                    datamodel_id=datamodel.dataset_id
+                    if datamodel.dataset_id is not None
+                    else datamodel.DataSource.DataSourceId
                 )
                 if isinstance(
                     datamodel.DataSource.data_source_resp, DataSourceRespQuery
@@ -613,7 +618,9 @@ class QuicksightSource(DashboardServiceSource):
             )
 
         for dataset_id in dataset_ids or []:
-            data_source_list = self._describe_data_sets(dataset_id, dashboard_details)
+            dataset_name, data_source_list = self._describe_data_sets(
+                dataset_id, dashboard_details
+            )
             for data_source in data_source_list:
                 try:
                     if data_source.get("RelationalTable"):
@@ -660,6 +667,8 @@ class QuicksightSource(DashboardServiceSource):
                             desribed_source.DataSource.data_source_resp = (
                                 data_source_resp
                             )
+                            desribed_source.dataset_id = dataset_id
+                            desribed_source.dataset_name = dataset_name
                             data_models.append(desribed_source)
                     except Exception as err:
                         logger.info(
@@ -671,30 +680,49 @@ class QuicksightSource(DashboardServiceSource):
         self, dashboard_details: DashboardDetail
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         """
-        Method to ingest the Datasources(Published and Embedded) as DataModels from Quicksight
+        Method to ingest the Datasets as DataModels from Quicksight.
+        Each QuickSight dataset produces a separate DataModel entity,
+        identified by dataset_id rather than datasource_id.
         """
         self.data_models: List[
             DescribeDataSourceResponse
         ] = self._get_dashboard_datamodels(dashboard_details)
+        dataset_groups: dict[str, List[DescribeDataSourceResponse]] = defaultdict(list)
         for data_model in self.data_models:
+            key = (
+                data_model.dataset_id
+                if data_model.dataset_id is not None
+                else data_model.DataSource.DataSourceId
+            )
+            dataset_groups[key].append(data_model)
+        for dataset_id, models in dataset_groups.items():
             try:
+                columns = []
+                seen_column_names = set()
+                for model in models:
+                    for col in self._get_column_info(model):
+                        if col.name.root not in seen_column_names:
+                            seen_column_names.add(col.name.root)
+                            columns.append(col)
+                first_model = models[0]
+                display_name = first_model.dataset_name or first_model.DataSource.Name
                 data_model_request = CreateDashboardDataModelRequest(
-                    name=EntityName(data_model.DataSource.DataSourceId),
-                    displayName=data_model.DataSource.Name,
+                    name=EntityName(dataset_id),
+                    displayName=display_name,
                     service=FullyQualifiedEntityName(
                         self.context.get().dashboard_service
                     ),
                     dataModelType=DataModelType.QuickSightDataModel.value,
                     serviceType=self.service_connection.type.value,
-                    columns=self._get_column_info(data_model),
+                    columns=columns,
                 )
                 yield Either(right=data_model_request)
                 self.register_record_datamodel(datamodel_request=data_model_request)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=data_model.DataSource.Name,
-                        error=f"Error yielding Data Model [{data_model.DataSource.Name}]: {exc}",
+                        name=dataset_id,
+                        error=f"Error yielding Data Model [{dataset_id}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )

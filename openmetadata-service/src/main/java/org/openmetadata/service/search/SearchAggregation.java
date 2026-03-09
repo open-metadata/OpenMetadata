@@ -133,6 +133,15 @@ public class SearchAggregation {
   }
 
   /**
+   * Static builder method for nested aggregation.
+   */
+  public static SearchAggregationNode nested(String name, String path) {
+    Map<String, String> value = new HashMap<>();
+    value.put("path", path);
+    return new SearchAggregationNode("nested", name, value);
+  }
+
+  /**
    * Static builder method for stats_bucket pipeline aggregation.
    */
   public static SearchAggregationNode statsBucket(String name, String bucketsPath) {
