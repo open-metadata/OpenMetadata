@@ -45,7 +45,7 @@ export interface NodeConfiguration {
      * Map of fields to their required values/patterns. Checks fieldsAdded, fieldsUpdated, and
      * fieldsDeleted.
      */
-    include: { [key: string]: string[] };
+    rules: { [key: string]: string[] };
 }
 
 /**
