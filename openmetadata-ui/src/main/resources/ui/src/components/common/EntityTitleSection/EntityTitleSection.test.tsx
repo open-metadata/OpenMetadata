@@ -16,6 +16,14 @@ import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityTitleSection } from './EntityTitleSection';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
+    <button onClick={onClick} {...props}>
+      {children}
+    </button>
+  )),
+}));
+
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
