@@ -996,7 +996,7 @@ export default function EntitySummaryPanel({
       {isSideDrawer && (
         <div className="d-flex items-center justify-between">
           <EntityTitleSection
-            className="tw:bg-transparent"
+            className="tw:bg-transparent!"
             entityDetails={entityDetails.details}
             entityDisplayName={entityData?.displayName}
             entityLink={entityLink}
