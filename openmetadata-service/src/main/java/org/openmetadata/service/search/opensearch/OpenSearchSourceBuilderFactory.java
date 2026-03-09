@@ -4,6 +4,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.SearchUtil.getFuzziness;
+import static org.openmetadata.service.search.SearchUtil.getMaxExpansions;
 import static org.openmetadata.service.search.SearchUtil.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtil.isDataQualityIndex;
 import static org.openmetadata.service.search.SearchUtil.isServiceIndex;
@@ -1085,9 +1087,8 @@ public class OpenSearchSourceBuilderFactory
             }
           });
 
-      int termCount = query.trim().split("\\s+").length;
-      String fuzziness = termCount > 2 ? "0" : "1";
-      int maxExpansions = termCount > 2 ? 2 : 10;
+      String fuzziness = getFuzziness(query);
+      int maxExpansions = getMaxExpansions(query);
 
       os.org.opensearch.client.opensearch._types.query_dsl.Query fuzzyQuery =
           os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
@@ -1142,15 +1143,13 @@ public class OpenSearchSourceBuilderFactory
 
   private os.org.opensearch.client.opensearch._types.query_dsl.Query createStandardFuzzyQueryV2(
       String query, Map<String, Float> fields) {
-    int termCount = query.trim().split("\\s+").length;
-    String fuzziness = termCount > 2 ? "0" : "1";
     return OpenSearchQueryBuilder.multiMatchQuery(
         query,
         fields,
         os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.MostFields,
         os.org.opensearch.client.opensearch._types.query_dsl.Operator.Or,
         String.valueOf(DEFAULT_TIE_BREAKER),
-        fuzziness);
+        getFuzziness(query));
   }
 
   private os.org.opensearch.client.opensearch._types.query_dsl.Query createStandardNonFuzzyQueryV2(

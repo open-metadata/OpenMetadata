@@ -128,4 +128,22 @@ public class SearchUtil {
       default -> "dataAsset";
     };
   }
+
+  /**
+   * Get fuzziness value based on query term count.
+   * For queries with more than 2 words, disable fuzziness to prevent clause explosion.
+   */
+  public static String getFuzziness(String query) {
+    int termCount = query.trim().split("\\s+").length;
+    return termCount > 2 ? "0" : "1";
+  }
+
+  /**
+   * Get max expansions value based on query term count.
+   * For queries with more than 2 words, reduce expansions to prevent clause explosion.
+   */
+  public static int getMaxExpansions(String query) {
+    int termCount = query.trim().split("\\s+").length;
+    return termCount > 2 ? 2 : 10;
+  }
 }

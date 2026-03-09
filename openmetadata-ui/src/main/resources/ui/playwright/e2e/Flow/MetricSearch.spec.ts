@@ -56,8 +56,7 @@ test.describe(
 
     test.afterAll('Cleanup metric', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
-      // Skip deletion to keep metric for debugging
-      // await metric.delete(apiContext);
+      await metric.delete(apiContext);
       await afterAction();
     });
 

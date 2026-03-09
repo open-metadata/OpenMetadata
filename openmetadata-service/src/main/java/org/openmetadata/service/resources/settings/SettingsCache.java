@@ -184,8 +184,12 @@ public class SettingsCache {
           SearchSettings mergedSettings =
               new SearchSettingsHandler()
                   .mergeSearchSettings(defaultSearchSettings, existingSearchSettings);
-          storedSearchSettings.setConfigValue(mergedSettings);
-          Entity.getSystemRepository().createOrUpdate(storedSearchSettings);
+          // Only update if merged settings differ from existing settings
+          if (!JsonUtils.pojoToJson(mergedSettings)
+              .equals(JsonUtils.pojoToJson(existingSearchSettings))) {
+            storedSearchSettings.setConfigValue(mergedSettings);
+            Entity.getSystemRepository().createOrUpdate(storedSearchSettings);
+          }
         }
       }
     } catch (IOException e) {
