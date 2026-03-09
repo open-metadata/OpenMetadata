@@ -475,7 +475,6 @@ const IncidentManagerDetailPage = ({
                   <Tooltip title={t('label.version-plural-history')}>
                     <Button
                       className="version-button"
-                      color="secondary"
                       data-testid="version-button"
                       icon={<Icon component={VersionIcon} />}
                       onClick={onVersionClick}
