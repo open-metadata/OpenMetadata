@@ -418,9 +418,11 @@ export const editPipelineEdgeDescription = async (
     `[data-testid="pipeline-label-${fromNodeFqn}-${toNodeFqn}"]`
   );
   await page.locator('.edge-info-drawer').isVisible();
-  page
-    .locator('.edge-info-drawer [data-testid="Edge"] a')
-    .filter({ hasText: pipelineData.name });
+  await expect(
+    page
+      .locator('.edge-info-drawer [data-testid="Edge"] a')
+      .filter({ hasText: pipelineData.name })
+  ).toBeVisible();
 
   await page.click('.edge-info-drawer [data-testid="edit-description"]');
   await page.locator('.ProseMirror').first().click();

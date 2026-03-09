@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
@@ -143,13 +144,16 @@ export const EntityTitleSection = ({
         </Tooltip>
         {hasEditPermission && entityType && entityDetails.id && (
           <Tooltip placement="top" title={t('label.edit')}>
-            <button
-              className="tw:shrink-0 tw:p-0.5 tw:rounded tw:hover:bg-gray-100"
-              data-testid="edit-displayName-button"
-              onClick={() => setIsEditModalOpen(true)}
-            >
-              <IconEdit color={DE_ACTIVE_COLOR} height={16} width={16} />
-            </button>
+            <TooltipTrigger>
+              <Button
+                color="tertiary"
+                data-testid="edit-displayName-button"
+                iconLeading={
+                  <IconEdit color={DE_ACTIVE_COLOR} height={16} width={16} />
+                }
+                onClick={() => setIsEditModalOpen(true)}
+              />
+            </TooltipTrigger>
           </Tooltip>
         )}
       </div>

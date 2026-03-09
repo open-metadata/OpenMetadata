@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
 import {
   LineageData,
   LineageEntityReference,
@@ -18,6 +19,14 @@ import {
 import { User } from '../../../../generated/entity/teams/user';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import LineageTabContent from './LineageTabContent';
+
+jest.mock('@untitledui/icons', () => ({
+  ChevronRight: jest
+    .fn()
+    .mockImplementation((props: React.SVGProps<SVGSVGElement>) => (
+      <svg data-testid="chevron-right-icon" {...props} />
+    )),
+}));
 
 // Mock react-i18next
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -358,6 +367,7 @@ describe('LineageTabContent', () => {
 
       expect(screen.getByText('Upstream Table')).toBeInTheDocument();
       expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 
     it('should render direction icon for upstream items', () => {
@@ -404,6 +414,7 @@ describe('LineageTabContent', () => {
 
       expect(screen.getByText('Downstream Table')).toBeInTheDocument();
       expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 
     it('should render downstream direction text', () => {
@@ -468,6 +479,7 @@ describe('LineageTabContent', () => {
       expect(screen.getByText('service')).toBeInTheDocument();
       expect(screen.getByText('schema')).toBeInTheDocument();
       expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 
     it('should render entity display name or name', () => {
@@ -625,6 +637,7 @@ describe('LineageTabContent', () => {
       expect(screen.getByText('service')).toBeInTheDocument();
       expect(screen.getByText('table')).toBeInTheDocument();
       expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 
     it('should handle entities without fullyQualifiedName', () => {
