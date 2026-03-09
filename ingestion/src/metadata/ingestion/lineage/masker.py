@@ -53,10 +53,7 @@ def mask_literals_with_sqlparse(
 
         def _is_integer_literal(token) -> bool:
             """Check if a token is an integer literal (positional reference candidate)."""
-            return token.ttype in (
-                Literal.Number.Integer,
-                Number.Integer,
-            )
+            return token.ttype is Number.Integer
 
         def mask_token(token, in_groupby_orderby=False):
             """Mask literal tokens, preserving integer ordinal references in
@@ -87,13 +84,10 @@ def mask_literals_with_sqlparse(
                     "ORDER BY",
                 ):
                     current_in_groupby_orderby = True
-                elif token.ttype is Keyword and token.value.upper() not in (
-                    "ASC",
-                    "DESC",
-                    "NULLS FIRST",
-                    "NULLS LAST",
-                    "GROUPING",
-                ):
+                elif token.ttype is Keyword.Order:
+                    # ASC, DESC, NULLS FIRST, NULLS LAST — keep context
+                    pass
+                elif token.ttype is Keyword and token.value.upper() != "GROUPING":
                     # Any other keyword resets the context (HAVING, LIMIT, WHERE, etc.)
                     current_in_groupby_orderby = False
 
