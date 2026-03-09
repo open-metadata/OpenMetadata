@@ -123,11 +123,14 @@ test.describe('Table Search', () => {
       page,
     }) => {
       const { afterAction, apiContext } = await getApiContext(page);
-      const dataModel1 = EntityDataClass.dashboardDataModel1.get();
+      const dataModel1 = new DashboardDataModelClass();
       const dataModel2 = new DashboardDataModelClass();
 
+      await dataModel1.create(apiContext);
+
       dataModel2.service.name = dataModel1.service.name;
-      dataModel2.entity.service = dataModel1.service.fullyQualifiedName;
+      dataModel2.entity.service =
+        dataModel1.serviceResponseData.fullyQualifiedName;
 
       const response = await apiContext.post(
         `/api/v1/${EntityTypeEndpoint.DataModel}`,
@@ -142,11 +145,12 @@ test.describe('Table Search', () => {
       );
       await testTableSearch(
         page,
-        'dashboardDataModel',
+        'dashboard_data_model_search_index',
         dataModel1.entity.name,
         dataModel2.entity.name
       );
 
+      await dataModel1.delete(apiContext);
       await afterAction();
     });
 
@@ -154,14 +158,18 @@ test.describe('Table Search', () => {
       page,
     }) => {
       const { afterAction, apiContext } = await getApiContext(page);
-      const dataModel1 = EntityDataClass.dashboardDataModel1.get();
+      const baseDataModel = new DashboardDataModelClass();
+
+      await baseDataModel.create(apiContext);
+
       const uniqueId = uuid();
       const entityName = `pw-dm-name-${uniqueId}`;
       const displayName = `PwDMDisplay-${uniqueId}`;
 
       const dataModel = new DashboardDataModelClass();
-      dataModel.service.name = dataModel1.service.name;
-      dataModel.entity.service = dataModel1.service.fullyQualifiedName;
+      dataModel.service.name = baseDataModel.service.name;
+      dataModel.entity.service =
+        baseDataModel.serviceResponseData.fullyQualifiedName;
       dataModel.entity.name = entityName;
       dataModel.entity.displayName = displayName;
 
@@ -174,15 +182,21 @@ test.describe('Table Search', () => {
       dataModel.entityResponseData = await response.json();
 
       await page.goto(
-        `/service/dashboardServices/${dataModel1.service.name}/data-model`
+        `/service/dashboardServices/${baseDataModel.service.name}/data-model`
       );
       await testTableSearch(
         page,
-        'dashboardDataModel',
+        'dashboard_data_model_search_index',
         displayName,
-        dataModel1.entity.name
+        baseDataModel.entity.name
       );
 
+      await apiContext.delete(
+        `/api/v1/dashboard/datamodels/name/${encodeURIComponent(
+          dataModel.entityResponseData.fullyQualifiedName ?? ''
+        )}?hardDelete=true`
+      );
+      await baseDataModel.delete(apiContext);
       await afterAction();
     });
 
@@ -190,13 +204,17 @@ test.describe('Table Search', () => {
       page,
     }) => {
       const { afterAction, apiContext } = await getApiContext(page);
-      const dataModel1 = EntityDataClass.dashboardDataModel1.get();
+      const baseDataModel = new DashboardDataModelClass();
+
+      await baseDataModel.create(apiContext);
+
       const uniqueId = uuid();
       const mixedCaseName = `PwDMName-${uniqueId}`;
 
       const dataModel = new DashboardDataModelClass();
-      dataModel.service.name = dataModel1.service.name;
-      dataModel.entity.service = dataModel1.service.fullyQualifiedName;
+      dataModel.service.name = baseDataModel.service.name;
+      dataModel.entity.service =
+        baseDataModel.serviceResponseData.fullyQualifiedName;
       dataModel.entity.name = mixedCaseName;
       dataModel.entity.displayName = mixedCaseName;
 
@@ -209,36 +227,42 @@ test.describe('Table Search', () => {
       dataModel.entityResponseData = await response.json();
 
       await page.goto(
-        `/service/dashboardServices/${dataModel1.service.name}/data-model`
+        `/service/dashboardServices/${baseDataModel.service.name}/data-model`
       );
 
       await test.step('search with original mixed-case term', async () => {
         await testTableSearch(
           page,
-          'dashboardDataModel',
+          'dashboard_data_model_search_index',
           mixedCaseName,
-          dataModel1.entity.name
+          baseDataModel.entity.name
         );
       });
 
       await test.step('search with all-uppercase term', async () => {
         await testTableSearch(
           page,
-          'dashboardDataModel',
+          'dashboard_data_model_search_index',
           mixedCaseName.toUpperCase(),
-          dataModel1.entity.name
+          baseDataModel.entity.name
         );
       });
 
       await test.step('search with all-lowercase term', async () => {
         await testTableSearch(
           page,
-          'dashboardDataModel',
+          'dashboard_data_model_search_index',
           mixedCaseName.toLowerCase(),
-          dataModel1.entity.name
+          baseDataModel.entity.name
         );
       });
 
+      await apiContext.delete(
+        `/api/v1/dashboard/datamodels/name/${encodeURIComponent(
+          dataModel.entityResponseData.fullyQualifiedName ?? ''
+        )}?hardDelete=true`
+      );
+      await baseDataModel.delete(apiContext);
       await afterAction();
     });
   });
