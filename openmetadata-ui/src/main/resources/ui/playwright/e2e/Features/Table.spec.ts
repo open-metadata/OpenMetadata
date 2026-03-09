@@ -328,11 +328,17 @@ test.describe(
       });
 
       const colsResponse = page.waitForResponse(
-        '/api/v1/tables/name/*/columns?*'
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns'
+            ) && response.request().method() === 'GET'
       );
       await page.getByRole('tab', { name: 'Column Profile' }).click();
 
-      await colsResponse;
+      const data = await colsResponse;
+      await expect(data.status()).toBe(200);
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -727,11 +733,22 @@ test.describe(
       expect(clipboardText).toContain(targetColumnName);
 
       // 5. Visit the copied Link
+      const keyProfileMetricsResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              `/api/v1/tables/name/${encodeURIComponent(createdTable.fullyQualifiedName!)}/columns`
+            ) &&
+          response.url().includes('fields=profile') &&
+          response.request().method() === 'GET'
+      );
       const visitLinkResponse = page.waitForResponse((response) =>
         response.url().includes(`/table/${createdTable.fullyQualifiedName}`)
       );
       await page.goto(clipboardText);
       await visitLinkResponse;
+      await keyProfileMetricsResponse;
       await waitForAllLoadersToDisappear(page);
 
       // 6. Verify Side Panel is open

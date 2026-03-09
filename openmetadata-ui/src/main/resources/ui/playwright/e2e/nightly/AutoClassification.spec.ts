@@ -16,7 +16,11 @@ import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
 import { addAndTriggerAutoClassificationPipeline } from '../../utils/autoClassification';
 import { resetTokenFromBotPage } from '../../utils/bot';
-import { createNewPage, getApiContext, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+} from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const mysqlService = new MysqlIngestionClass({
@@ -40,7 +44,7 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     if (!process.env.PLAYWRIGHT_IS_OSS) {
       // Todo: Remove this patch once the issue is fixed #19140
       const { page, afterAction } = await createNewPage(browser);
-      await resetTokenFromBotPage(page, 'testsuite-bot');
+      await resetTokenFromBotPage(page, 'autoClassification-bot');
       await afterAction();
     }
   });

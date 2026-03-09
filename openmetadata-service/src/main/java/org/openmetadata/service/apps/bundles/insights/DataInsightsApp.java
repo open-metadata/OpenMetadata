@@ -69,6 +69,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Getter private Optional<Backfill> backfill;
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
+  private volatile DataAssetsWorkflow activeDataAssetsWorkflow;
 
   public final Set<String> dataAssetTypes =
       Set.of(
@@ -375,11 +376,14 @@ public class DataInsightsApp extends AbstractNativeApplication {
             getSearchInterface());
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
+    this.activeDataAssetsWorkflow = workflow;
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(ex.getIndexingError());
+    } finally {
+      this.activeDataAssetsWorkflow = null;
     }
 
     return workflowStats;
@@ -425,6 +429,15 @@ public class DataInsightsApp extends AbstractNativeApplication {
       } else {
         jobData.setStatus(EventPublisherJob.Status.COMPLETED);
       }
+    }
+  }
+
+  @Override
+  protected void stop() {
+    this.stopped = true;
+    DataAssetsWorkflow workflow = this.activeDataAssetsWorkflow;
+    if (workflow != null) {
+      workflow.stop();
     }
   }
 

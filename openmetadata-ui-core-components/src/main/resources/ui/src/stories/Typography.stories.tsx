@@ -36,6 +36,22 @@ export const Default: Story = {
   },
 };
 
+export const WithAsProp: Story = {
+  name: "as prop — wraps children in inner element",
+  render: () => (
+    <Typography as="p">Hello</Typography>
+  ),
+};
+
+export const WithAsAndClassName: Story = {
+  name: "as prop with className on inner element",
+  render: () => (
+    <Typography as="p" className="font-bold text-blue-600">
+      Hello with className on the inner &lt;p&gt;
+    </Typography>
+  ),
+};
+
 export const Headings: StoryObj = {
   render: () => (
     <Typography>
@@ -51,81 +67,118 @@ export const Headings: StoryObj = {
 
 export const Paragraphs: StoryObj = {
   render: () => (
-    <Typography style={{ maxWidth: 600 }}>
-      <p>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-        tempor incididunt ut labore et dolore magna aliqua.
-      </p>
-      <p>
-        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi
-        ut aliquip ex ea commodo consequat.
-      </p>
-    </Typography>
+    <div style={{ maxWidth: 600 }}>
+      <Typography>
+        <p>
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
+          tempor incididunt ut labore et dolore magna aliqua.
+        </p>
+        <p>
+          Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi
+          ut aliquip ex ea commodo consequat.
+        </p>
+      </Typography>
+    </div>
   ),
 };
 
 export const Lists: StoryObj = {
   render: () => (
-    <Typography style={{ maxWidth: 400 }}>
-      <h3>Unordered List</h3>
-      <ul>
-        <li>Item one</li>
-        <li>Item two</li>
-        <li>Item three with nested items
-          <ul>
-            <li>Nested item 1</li>
-            <li>Nested item 2</li>
-          </ul>
-        </li>
-      </ul>
-      <h3>Ordered List</h3>
-      <ol>
-        <li>First item</li>
-        <li>Second item</li>
-        <li>Third item</li>
-      </ol>
-    </Typography>
+    <div style={{ maxWidth: 400 }}>
+      <Typography>
+        <h3>Unordered List</h3>
+        <ul>
+          <li>Item one</li>
+          <li>Item two</li>
+          <li>Item three with nested items
+            <ul>
+              <li>Nested item 1</li>
+              <li>Nested item 2</li>
+            </ul>
+          </li>
+        </ul>
+        <h3>Ordered List</h3>
+        <ol>
+          <li>First item</li>
+          <li>Second item</li>
+          <li>Third item</li>
+        </ol>
+      </Typography>
+    </div>
   ),
 };
 
 export const Links: StoryObj = {
   render: () => (
-    <Typography style={{ maxWidth: 400 }}>
-      <p>
-        Visit the <a href="#">OpenMetadata documentation</a> to learn more about
-        the platform.
-      </p>
-    </Typography>
+    <div style={{ maxWidth: 400 }}>
+      <Typography>
+        <p>
+          Visit the <a href="#">OpenMetadata documentation</a> to learn more about
+          the platform.
+        </p>
+      </Typography>
+    </div>
   ),
 };
 
 export const CodeBlocks: StoryObj = {
   render: () => (
-    <Typography style={{ maxWidth: 500 }}>
-      <p>Use inline <code>code formatting</code> for short snippets.</p>
-      <pre>
-        <code>{`const greeting = "Hello, World!";
+    <div style={{ maxWidth: 500 }}>
+      <Typography>
+        <p>Use inline <code>code formatting</code> for short snippets.</p>
+        <pre>
+          <code>{`const greeting = "Hello, World!";
 console.log(greeting);`}</code>
-      </pre>
-    </Typography>
+        </pre>
+      </Typography>
+    </div>
   ),
 };
 
 export const Blockquote: StoryObj = {
   render: () => (
-    <Typography style={{ maxWidth: 500 }} quoteVariant="default">
-      <blockquote>
-        <p>The only way to do great work is to love what you do.</p>
-      </blockquote>
-    </Typography>
+    <div style={{ maxWidth: 500 }}>
+      <Typography quoteVariant="default">
+        <blockquote>
+          <p>The only way to do great work is to love what you do.</p>
+        </blockquote>
+      </Typography>
+    </div>
   ),
 };
 
-export const CustomElement: StoryObj = {
+export const CenteredQuote: StoryObj = {
   render: () => (
-    <Typography as="article" style={{ maxWidth: 500 }}>
-      <h1>Article Title</h1>
-      <p>This Typography component renders as an article element.</p>
-    </Typography>
+    <div style={{ maxWidth: 500 }}>
+      <Typography quoteVariant="centered-quote">
+        <blockquote>
+          <p>The only way to do great work is to love what you do.</p>
+        </blockquote>
+      </Typography>
+    </div>
+  ),
+};
+
+export const MinimalQuote: StoryObj = {
+  render: () => (
+    <div style={{ maxWidth: 500 }}>
+      <Typography quoteVariant="minimal-quote">
+        <blockquote>
+          <p>The only way to do great work is to love what you do.</p>
+        </blockquote>
+      </Typography>
+    </div>
+  ),
+};
+
+export const AsArticle: StoryObj = {
+  name: "as='article' — inner element is article",
+  render: () => (
+    <div style={{ maxWidth: 500 }}>
+      <Typography as="article">
+        <h1>Article Title</h1>
+        <p>This Typography component renders the inner element as an article.</p>
+      </Typography>
+    </div>
   ),
 };
