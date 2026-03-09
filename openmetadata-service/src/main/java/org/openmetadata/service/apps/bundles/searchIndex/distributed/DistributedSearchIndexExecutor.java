@@ -505,9 +505,7 @@ public class DistributedSearchIndexExecutor {
       // so the job can transition to a terminal state
       try {
         SearchIndexJob currentState = coordinator.getJob(jobId).orElse(null);
-        if (currentState != null
-            && (currentState.getStatus() == IndexJobStatus.STOPPING
-                || currentState.getStatus() == IndexJobStatus.RUNNING)) {
+        if (currentState != null && currentState.getStatus() == IndexJobStatus.STOPPING) {
           coordinator.forceCompleteProcessingPartitions(jobId);
         }
         coordinator.checkAndUpdateJobCompletion(jobId);

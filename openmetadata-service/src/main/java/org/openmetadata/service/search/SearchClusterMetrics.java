@@ -427,7 +427,6 @@ public class SearchClusterMetrics {
     }
 
     int availCores = Runtime.getRuntime().availableProcessors();
-    double conservativeCpuBudget = availCores * 0.70;
     int conservativeThreads = Math.min((maxDbConnections * 3) / 4, availCores * 4);
     int conservativeConcurrentRequests = totalEntities > 100000 ? 50 : 25;
     conservativeConcurrentRequests =

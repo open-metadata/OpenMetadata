@@ -82,7 +82,7 @@ public class OpenSearchBulkSink implements BulkSink {
     return pool;
   }
 
-  public static void setDocBuildPoolSize(int size) {
+  public static synchronized void setDocBuildPoolSize(int size) {
     int newSize = Math.max(1, Math.min(50, size));
     if (newSize <= DOC_BUILD_EXECUTOR.getMaximumPoolSize()) {
       DOC_BUILD_EXECUTOR.setCorePoolSize(newSize);
@@ -94,7 +94,7 @@ public class OpenSearchBulkSink implements BulkSink {
     LOG.info("OpenSearch doc-build pool resized to {} threads", newSize);
   }
 
-  public static void resetDocBuildPoolSize() {
+  public static synchronized void resetDocBuildPoolSize() {
     setDocBuildPoolSize(DEFAULT_DOC_BUILD_POOL_SIZE);
   }
 

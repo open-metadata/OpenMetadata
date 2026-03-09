@@ -319,8 +319,11 @@ public class PartitionWorker {
       long processFailed =
           statsTracker != null ? statsTracker.getProcess().getCumulativeFailed().get() : 0;
       if (processFailed > 0) {
-        successCount.addAndGet(-processFailed);
-        failedCount.addAndGet(processFailed);
+        long adjustment = Math.min(processFailed, successCount.get());
+        if (adjustment > 0) {
+          successCount.addAndGet(-adjustment);
+          failedCount.addAndGet(adjustment);
+        }
       }
 
       // Mark partition as completed (stats are now in the database)

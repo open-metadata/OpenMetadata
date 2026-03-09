@@ -190,30 +190,35 @@ public class DiagnosticsResource {
 
     for (String queryType : new String[] {"select", "insert", "update", "delete"}) {
       Search search = registry.find("db.query.duration").tag("type", queryType);
+      long count = 0;
+      double totalMs = 0;
+      double maxMs = 0;
+      double p95Ms = 0;
       for (Meter meter : search.meters()) {
         if (!(meter instanceof Timer timer) || timer.count() == 0) {
           continue;
         }
-        long count = timer.count();
+        count += timer.count();
+        totalMs += timer.totalTime(TimeUnit.MILLISECONDS);
+        maxMs = Math.max(maxMs, timer.max(TimeUnit.MILLISECONDS));
+        HistogramSnapshot snapshot = timer.takeSnapshot();
+        for (ValueAtPercentile vap : snapshot.percentileValues()) {
+          if (Math.abs(vap.percentile() - 0.95) < 0.001) {
+            p95Ms = Math.max(p95Ms, vap.value(TimeUnit.MILLISECONDS));
+          }
+        }
+      }
+      if (count > 0) {
         totalOperations += count;
-        double meanMs = timer.mean(TimeUnit.MILLISECONDS);
-        double maxMs = timer.max(TimeUnit.MILLISECONDS);
-        double totalMs = timer.totalTime(TimeUnit.MILLISECONDS);
-
+        double meanMs = totalMs / count;
         Map<String, Object> entry = new LinkedHashMap<>();
         entry.put("count", count);
         entry.put("mean_ms", Math.round(meanMs * 10.0) / 10.0);
         entry.put("max_ms", Math.round(maxMs * 10.0) / 10.0);
         entry.put("total_ms", Math.round(totalMs * 10.0) / 10.0);
-
-        HistogramSnapshot snapshot = timer.takeSnapshot();
-        ValueAtPercentile[] percentiles = snapshot.percentileValues();
-        for (ValueAtPercentile vap : percentiles) {
-          if (Math.abs(vap.percentile() - 0.95) < 0.001) {
-            entry.put("p95_ms", Math.round(vap.value(TimeUnit.MILLISECONDS) * 10.0) / 10.0);
-          }
+        if (p95Ms > 0) {
+          entry.put("p95_ms", Math.round(p95Ms * 10.0) / 10.0);
         }
-
         queries.put(queryType, entry);
       }
     }

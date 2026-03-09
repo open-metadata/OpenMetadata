@@ -742,14 +742,16 @@ public class DistributedSearchIndexCoordinator {
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name());
     List<SearchIndexPartitionRecord> failed =
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.FAILED.name());
+    List<SearchIndexPartitionRecord> cancelled =
+        partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name());
 
     if (pending.isEmpty() && processing.isEmpty()) {
       // All partitions are done
       IndexJobStatus newStatus;
-      if (!failed.isEmpty()) {
-        newStatus = IndexJobStatus.COMPLETED_WITH_ERRORS;
-      } else if (job.getStatus() == IndexJobStatus.STOPPING) {
+      if (job.getStatus() == IndexJobStatus.STOPPING) {
         newStatus = IndexJobStatus.STOPPED;
+      } else if (!failed.isEmpty() || !cancelled.isEmpty()) {
+        newStatus = IndexJobStatus.COMPLETED_WITH_ERRORS;
       } else {
         newStatus = IndexJobStatus.COMPLETED;
       }
@@ -790,9 +792,16 @@ public class DistributedSearchIndexCoordinator {
     if (!processing.isEmpty()) {
       long now = System.currentTimeMillis();
       for (SearchIndexPartitionRecord p : processing) {
+        LOG.warn(
+            "Force-cancelling partition {} (entity={}, processed={}, success={}, failed={}) during job stop",
+            p.id(),
+            p.entityType(),
+            p.processedCount(),
+            p.successCount(),
+            p.failedCount());
         partitionDAO.update(
             p.id(),
-            PartitionStatus.COMPLETED.name(),
+            PartitionStatus.CANCELLED.name(),
             p.cursor(),
             p.processedCount(),
             p.successCount(),
@@ -802,11 +811,11 @@ public class DistributedSearchIndexCoordinator {
             p.startedAt(),
             now,
             now,
-            "Force-completed during job stop",
+            "Force-cancelled during job stop",
             p.retryCount());
       }
       LOG.info(
-          "Force-completed {} processing partitions for stopping job {}", processing.size(), jobId);
+          "Force-cancelled {} processing partitions for stopping job {}", processing.size(), jobId);
     }
   }
 

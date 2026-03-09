@@ -318,7 +318,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return pool;
   }
 
-  public static void setFieldFetchPoolSize(int size) {
+  public static synchronized void setFieldFetchPoolSize(int size) {
     int newSize = Math.max(1, Math.min(50, size));
     if (newSize <= FIELD_FETCH_EXECUTOR.getMaximumPoolSize()) {
       FIELD_FETCH_EXECUTOR.setCorePoolSize(newSize);
@@ -330,7 +330,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     LOG.info("Field-fetch pool resized to {} threads", newSize);
   }
 
-  public static void resetFieldFetchPoolSize() {
+  public static synchronized void resetFieldFetchPoolSize() {
     setFieldFetchPoolSize(DEFAULT_FIELD_FETCH_POOL_SIZE);
   }
 
