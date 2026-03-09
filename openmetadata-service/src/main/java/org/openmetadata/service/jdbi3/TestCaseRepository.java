@@ -97,6 +97,7 @@ import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
@@ -421,16 +422,51 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           testCase.getTags() != null ? new ArrayList<>(testCase.getTags()) : new ArrayList<>();
       List<TagLabel> tableTags =
           table.getTags() != null ? new ArrayList<>(table.getTags()) : new ArrayList<>();
-      EntityUtil.mergeTags(testCaseTags, tableTags);
+      EntityUtil.mergeTags(testCaseTags, filterMutuallyExclusiveConflicts(testCaseTags, tableTags));
       if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-        // if we have a column test case inherit the columns tags as well
         table.getColumns().stream()
             .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
             .findFirst()
-            .ifPresent(column -> EntityUtil.mergeTags(testCaseTags, column.getTags()));
+            .ifPresent(
+                column ->
+                    EntityUtil.mergeTags(
+                        testCaseTags,
+                        filterMutuallyExclusiveConflicts(testCaseTags, column.getTags())));
       }
       testCase.setTags(testCaseTags);
     }
+  }
+
+  /**
+   * Filter out incoming tags that conflict with mutually exclusive tags already present. The test
+   * case's own tags take precedence over inherited table/column tags.
+   */
+  private List<TagLabel> filterMutuallyExclusiveConflicts(
+      List<TagLabel> existingTags, List<TagLabel> incomingTags) {
+    if (nullOrEmpty(incomingTags) || nullOrEmpty(existingTags)) {
+      return incomingTags != null ? incomingTags : new ArrayList<>();
+    }
+    Set<String> existingExclusiveParents =
+        existingTags.stream()
+            .filter(
+                tag -> {
+                  try {
+                    return TagLabelUtil.mutuallyExclusive(tag);
+                  } catch (Exception e) {
+                    return false;
+                  }
+                })
+            .map(tag -> FullyQualifiedName.getParentFQN(tag.getTagFQN()))
+            .collect(Collectors.toSet());
+    if (existingExclusiveParents.isEmpty()) {
+      return incomingTags;
+    }
+    return incomingTags.stream()
+        .filter(
+            tag ->
+                !existingExclusiveParents.contains(
+                    FullyQualifiedName.getParentFQN(tag.getTagFQN())))
+        .toList();
   }
 
   @Override
