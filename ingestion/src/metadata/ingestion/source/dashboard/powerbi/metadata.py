@@ -1154,10 +1154,18 @@ class PowerbiSource(DashboardServiceSource):
 
             # Check if this is a direct BigQuery connection
             if "GoogleBigQuery.Database" not in source_expression:
+                logger.debug(
+                    "GoogleBigQuery.Database not found in source expression "
+                    f"for table: {table.name}"
+                )
                 return None
 
             # Handle Value.NativeQuery with inline SQL
             if BIGQUERY_QUERY_EXPRESSION_KW in source_expression:
+                logger.debug(
+                    "Parsing BigQuery NativeQuery source expression "
+                    f"through query parser: {source_expression}\nfor table: {table.name}"
+                )
                 return self._parse_bigquery_query_source(source_expression)
 
             logger.debug(f"Found GoogleBigQuery.Database in expression")
@@ -1170,7 +1178,9 @@ class PowerbiSource(DashboardServiceSource):
             )
 
             if not name_matches:
-                logger.debug("No Name patterns found in BigQuery expression")
+                logger.debug(
+                    f"No Name patterns found in BigQuery expression: {table.name}"
+                )
                 return None
 
             # BigQuery structure: project -> dataset (Schema) -> table (Table/View)
@@ -1192,7 +1202,8 @@ class PowerbiSource(DashboardServiceSource):
             )
             if not table_name:
                 logger.debug(
-                    f"Parsing BigQuery source expression for powerbi table ({table.name}):: {source_expression}"
+                    "Table name not found in Parsing BigQuery source expression for "
+                    f"powerbi table ({table.name}):: {source_expression}"
                 )
             if table_name:
                 return [{"database": project, "schema": dataset, "table": table_name}]
