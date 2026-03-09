@@ -64,11 +64,15 @@ from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPIS
 from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
 from metadata.ingestion.source.dashboard.superset.metadata import SupersetSource
 from metadata.ingestion.source.dashboard.superset.models import (
+    DatabaseResult,
+    DataSourceResult,
     FetchChart,
     FetchColumn,
     FetchDashboard,
+    ListDatabaseResult,
     SupersetChart,
     SupersetDashboardCount,
+    SupersetDatasource,
 )
 
 mock_file_path = Path(__file__).parent / "resources/superset_dataset.json"
@@ -210,6 +214,19 @@ EXPECTED_ALL_CHARTS_DB = {1: MOCK_CHART_DB_2}
 NOT_FOUND_RESP = {"message": "Not found"}
 EXPECTED_API_DATASET_FQN = "test_postgres.*.main.wb_health_population"
 EXPECTED_DATASET_FQN = "test_postgres.examples.main.wb_health_population"
+
+MOCK_DATASOURCE_RESPONSE = SupersetDatasource(
+    result=DataSourceResult.model_validate(
+        {
+            "database": {"id": 1, "database_name": "examples"},
+            "table_name": "wb_health_population",
+            "schema": "main",
+        }
+    )
+)
+MOCK_DATABASE_RESPONSE = ListDatabaseResult(
+    result=DatabaseResult(database_name="examples", id=1, parameters=None)
+)
 
 
 def setup_sample_data(postgres_container):
@@ -564,12 +581,20 @@ class SupersetUnitTest(TestCase):
         self.assertEqual(dashboard_charts, EXPECTED_CHART)
 
     def test_api_get_datasource_fqn(self):
+        """
+        Test generated datasource fqn for api source
+        """
         with patch.object(
             OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE
+        ), patch.object(
+            self.superset_api.client,
+            "fetch_datasource",
+            return_value=MOCK_DATASOURCE_RESPONSE,
+        ), patch.object(
+            self.superset_api.client,
+            "fetch_database",
+            return_value=MOCK_DATABASE_RESPONSE,
         ):
-            """
-            Test generated datasource fqn for api source
-            """
             fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
                 1, MOCK_DB_POSTGRES_SERVICE.name.root
             )

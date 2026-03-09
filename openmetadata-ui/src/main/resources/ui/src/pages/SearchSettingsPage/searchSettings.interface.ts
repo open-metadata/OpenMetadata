@@ -24,7 +24,11 @@ export interface EntitySearchSettingsState
 
 type PropertyKey = keyof Pick<
   GlobalSettings,
-  'maxAggregateSize' | 'maxResultHits' | 'maxAnalyzedOffset'
+  | 'maxAggregateSize'
+  | 'maxResultHits'
+  | 'maxAnalyzedOffset'
+  | 'keywordWeight'
+  | 'semanticWeight'
 >;
 
 export interface Property {
@@ -32,6 +36,7 @@ export interface Property {
   label: string;
   min?: number;
   max?: number;
+  step?: number;
 }
 
 export interface SettingCategoryData {
@@ -48,6 +53,8 @@ export interface UpdateConfigParams {
     | 'maxAggregateSize'
     | 'maxResultHits'
     | 'maxAnalyzedOffset'
+    | 'keywordWeight'
+    | 'semanticWeight'
     | 'enableAccessControl'
     | 'termBoosts'
     | 'fieldValueBoosts';

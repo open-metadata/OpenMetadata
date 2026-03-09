@@ -210,12 +210,6 @@ public class SearchResource {
           boolean explain,
       @Parameter(
               description =
-                  "Enable semantic search using embeddings and RDF context. When true, combines vector similarity with traditional BM25 scoring.")
-          @DefaultValue("false")
-          @QueryParam("semanticSearch")
-          boolean semanticSearch,
-      @Parameter(
-              description =
                   "Include aggregations in the search response. Defaults to true. Set to false to skip aggregations for faster response times when only search results are needed.")
           @DefaultValue("true")
           @QueryParam("include_aggregations")
@@ -253,7 +247,6 @@ public class SearchResource {
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain)
-            .withSemanticSearch(semanticSearch)
             .withIncludeAggregations(includeAggregations);
     return searchRepository.search(request, subjectContext);
   }
