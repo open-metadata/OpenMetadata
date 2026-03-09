@@ -12,7 +12,7 @@
 SSRS REST client
 """
 import traceback
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import requests
 from requests_ntlm import HttpNtlmAuth
@@ -38,7 +38,11 @@ PAGE_SIZE = 100
 
 
 class SsrsClient:
-    def __init__(self, config: SsrsConnection):
+    def __init__(
+        self,
+        config: SsrsConnection,
+        verify_ssl: Optional[Union[bool, str]] = None,
+    ):
         self.config = config
         self.base_url = f"{clean_uri(config.hostPort)}/{API_VERSION}"
         self.session = requests.Session()
@@ -47,6 +51,12 @@ class SsrsClient:
                 config.username, config.password.get_secret_value()
             )
         self.session.headers.update({"Accept": "application/json"})
+        if verify_ssl is not None:
+            self.session.verify = verify_ssl
+
+    def close(self) -> None:
+        if self.session:
+            self.session.close()
 
     def _get(self, path: str, params: Optional[dict] = None) -> dict:
         url = f"{self.base_url}{path}"

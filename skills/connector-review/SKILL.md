@@ -115,8 +115,9 @@ Verify:
 - Test connection JSON steps match test_fn dict keys
 - AUTH REQUIRED: If the service requires authentication by default, username/password/token
   must be in the "required" array. Optional auth that fails with opaque 401 is a WARNING.
-- SSL CONFIG: HTTPS connectors should include verifySSL + sslConfig $ref for enterprise
-  deployments. Missing SSL config is a SUGGESTION.
+- SSL CONFIG: HTTPS connectors MUST include verifySSL + sslConfig $ref for enterprise
+  deployments. Missing SSL config is a WARNING (SonarQube Security Review will fail).
+  Both the schema definition AND the code wiring (connection.py → client.py) are required.
 - TEST STEPS: Each test step should validate a distinct capability. Duplicate steps
   (same function mapped to different names) are a SUGGESTION.
 
@@ -144,6 +145,11 @@ Verify:
   (Python attribute names won't work, tests will break).
 - SCAFFOLDING ARTIFACTS: Check if CONNECTOR_CONTEXT.md is included in the PR diff
   (it should be gitignored). If committed, flag as WARNING — it's a local working doc.
+- SSL VERIFICATION WIRING (SonarQube): If the JSON schema defines verifySSL/sslConfig,
+  then connection.py MUST resolve SSL config (using get_verify_ssl_fn from ssl_registry)
+  and client.py MUST apply it (session.verify = verify_ssl). Missing SSL wiring is a
+  BLOCKER — SonarQube Security Review will fail the PR. Reference: Grafana connector
+  (session.verify pattern) or Tableau connector (SSLManager pattern).
 
 For each finding, assign:
 - Severity: BLOCKER / WARNING / SUGGESTION

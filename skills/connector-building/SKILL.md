@@ -126,6 +126,7 @@ The scaffold generates files with `# TODO` markers. Read the relevant standards 
 **Critical for JSON Schema**:
 - Make auth fields (`username`, `password`, `token`) **required** when the service needs authentication by default. If omitting a field means an opaque 401 at runtime, make it required so the UI validates upfront.
 - Include SSL/TLS config (`verifySSL` + `sslConfig` `$ref`) for any connector that communicates over HTTPS — enterprise deployments use internal CAs.
+- **SSL must be wired end-to-end**: schema → `connection.py` (resolve with `get_verify_ssl_fn`) → `client.py` (`session.verify = verify_ssl`). Missing wiring triggers SonarQube Security Review failure.
 - See `${CLAUDE_SKILL_DIR}/standards/schema.md` for the `$ref` patterns and required fields guidance.
 
 **Critical for Pydantic API models (models.py)**:

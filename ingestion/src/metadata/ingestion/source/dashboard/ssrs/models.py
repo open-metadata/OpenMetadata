@@ -37,6 +37,8 @@ class SsrsFolder(BaseModel):
 
 
 class SsrsODataResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     odata_count: Optional[int] = Field(None, alias="@odata.count")
 
 

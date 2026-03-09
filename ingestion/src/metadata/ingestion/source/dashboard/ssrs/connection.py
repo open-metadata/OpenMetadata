@@ -26,10 +26,15 @@ from metadata.ingestion.connections.test_connections import test_connection_step
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.ssrs.client import SsrsClient
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 
 def get_connection(connection: SsrsConnection) -> SsrsClient:
-    return SsrsClient(connection)
+    verify_ssl = None
+    if connection.verifySSL:
+        verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL)
+        verify_ssl = verify_ssl_fn(connection.sslConfig)
+    return SsrsClient(connection, verify_ssl=verify_ssl)
 
 
 def test_connection(
@@ -42,7 +47,6 @@ def test_connection(
     test_fn = {
         "CheckAccess": client.test_access,
         "GetDashboards": client.get_reports,
-        "GetCharts": client.get_reports,
     }
 
     return test_connection_steps(

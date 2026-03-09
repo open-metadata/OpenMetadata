@@ -185,3 +185,7 @@ class SsrsSource(DashboardServiceSource):
         db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         return
+
+    def close(self):
+        self.client.close()
+        return super().close()

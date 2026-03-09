@@ -387,6 +387,45 @@ def analyze_connector(service_type: str, name: str) -> dict:
                 "enterprise deployments with internal CAs need this"
             )
 
+    # SonarQube security checks — SSL verification wiring
+    if schema_files and source_dir.is_dir():
+        schema = json.loads(schema_files[0].read_text())
+        props = schema.get("properties", {})
+        has_ssl_in_schema = "verifySSL" in props or "sslConfig" in props
+
+        if has_ssl_in_schema:
+            # Check client.py uses session.verify
+            if client_py.is_file():
+                client_content = client_py.read_text()
+                uses_verify = (
+                    "session.verify" in client_content
+                    or ".verify =" in client_content
+                    or "verify=" in client_content
+                    or "verify_ssl" in client_content
+                )
+                if not uses_verify:
+                    report["issues"].append(
+                        "SECURITY: client.py does not set session.verify — "
+                        "schema defines verifySSL/sslConfig but client ignores it "
+                        "(SonarQube: Security Review will fail)"
+                    )
+
+            # Check connection.py resolves SSL config
+            if conn_py.is_file():
+                conn_content = conn_py.read_text()
+                resolves_ssl = (
+                    "get_verify_ssl_fn" in conn_content
+                    or "ssl_registry" in conn_content
+                    or "set_verify_ssl" in conn_content
+                    or "verify_ssl" in conn_content
+                )
+                if not resolves_ssl:
+                    report["issues"].append(
+                        "SECURITY: connection.py does not resolve SSL config — "
+                        "schema defines verifySSL/sslConfig but get_connection() "
+                        "does not pass it to client (SonarQube: Security Review will fail)"
+                    )
+
     # Pydantic model checks
     models_py = source_dir / "models.py"
     if models_py.is_file():

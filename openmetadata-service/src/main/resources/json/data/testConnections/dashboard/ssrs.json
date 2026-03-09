@@ -15,12 +15,6 @@
             "description": "List all dashboards available to the user.",
             "errorMessage": "Failed to list all dashboards available to the user.",
             "mandatory": true
-        },
-        {
-            "name": "GetCharts",
-            "description": "List charts from dashboards.",
-            "errorMessage": "Failed to list charts from dashboards.",
-            "mandatory": false
         }
     ]
 }

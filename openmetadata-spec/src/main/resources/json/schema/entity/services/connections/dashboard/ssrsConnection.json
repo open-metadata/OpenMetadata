@@ -55,6 +55,17 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "title": "Default Project Filter Pattern"
     },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Client SSL verification.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "title": "SSL Configuration",
+      "description": "SSL Configuration details.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
