@@ -230,6 +230,7 @@ export function buildSchemaQueryFilter(
           wildcardShouldQueries: {
             'displayName.keyword': `*${searchValue}*`,
             'name.keyword': `*${searchValue}*`,
+            'description.keyword': `*${searchValue}*`,
           },
         }
       : undefined

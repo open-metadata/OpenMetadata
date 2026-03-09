@@ -211,12 +211,33 @@ test.describe('Table Search', () => {
       await page.goto(
         `/service/dashboardServices/${dataModel1.service.name}/data-model`
       );
-      await testTableSearch(
-        page,
-        'dashboardDataModel',
-        mixedCaseName,
-        dataModel1.entity.name
-      );
+
+      await test.step('search with original mixed-case term', async () => {
+        await testTableSearch(
+          page,
+          'dashboardDataModel',
+          mixedCaseName,
+          dataModel1.entity.name
+        );
+      });
+
+      await test.step('search with all-uppercase term', async () => {
+        await testTableSearch(
+          page,
+          'dashboardDataModel',
+          mixedCaseName.toUpperCase(),
+          dataModel1.entity.name
+        );
+      });
+
+      await test.step('search with all-lowercase term', async () => {
+        await testTableSearch(
+          page,
+          'dashboardDataModel',
+          mixedCaseName.toLowerCase(),
+          dataModel1.entity.name
+        );
+      });
 
       await afterAction();
     });
