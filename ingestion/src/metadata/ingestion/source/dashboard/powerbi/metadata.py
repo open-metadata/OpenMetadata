@@ -1085,7 +1085,12 @@ class PowerbiSource(DashboardServiceSource):
                         if hasattr(source_table.schema, "raw_name")
                         else str(source_table.schema)
                     )
-                    schema = schema_str
+                    if "." in schema_str:
+                        parts = schema_str.split(".")
+                        database = parts[0]
+                        schema = parts[1] if len(parts) > 1 else None
+                    else:
+                        schema = schema_str
 
                 table_name = source_table.raw_name
                 if table_name:
