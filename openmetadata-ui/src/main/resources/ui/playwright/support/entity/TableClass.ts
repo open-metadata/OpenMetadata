@@ -31,24 +31,26 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
-export class TableClass extends EntityClass {
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        scheme: string;
-        username: string;
-        authType: { password: string };
-        hostPort: string;
-        supportsMetadataExtraction: boolean;
-        supportsDBTExtraction: boolean;
-        supportsProfiler: boolean;
-        supportsQueryComment: boolean;
-      };
+interface Service {
+  name: string;
+  serviceType: string;
+  connection: {
+    config: {
+      type: string;
+      scheme: string;
+      username: string;
+      authType: { password: string };
+      hostPort: string;
+      supportsMetadataExtraction: boolean;
+      supportsDBTExtraction: boolean;
+      supportsProfiler: boolean;
+      supportsQueryComment: boolean;
     };
   };
+}
+
+export class TableClass extends EntityClass {
+  service: Service;
   database: { name: string; service: string };
   schema: { name: string; database: string };
   columnsName: string[];
@@ -75,18 +77,14 @@ export class TableClass extends EntityClass {
   queryResponseData: ResponseDataType[] = [];
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
-  constructor(
-    name?: string,
-    tableType?: string,
-    service?: Record<string, unknown>
-  ) {
+  constructor(name?: string, tableType?: string, service?: Partial<Service>) {
     super(EntityTypeEndpoint.Table);
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
 
-    const serviceName = `pw-database-service-${uuid()}`;
+    const serviceName = service?.name ?? `pw-database-service-${uuid()}`;
     const databaseName = `pw-database-${uuid()}`;
     const schemaName = `pw-database-schema-${uuid()}`;
 

@@ -90,6 +90,26 @@ jest.mock('antd', () => ({
   },
 }));
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest.fn().mockImplementation(
+    ({
+      children,
+      onClick,
+      'data-testid': testId,
+      isDisabled,
+    }: React.PropsWithChildren<{
+      onClick?: React.MouseEventHandler;
+      'data-testid'?: string;
+      isDisabled?: boolean;
+      [key: string]: unknown;
+    }>) => (
+      <button data-testid={testId} disabled={isDisabled} onClick={onClick}>
+        {children}
+      </button>
+    )
+  ),
+}));
+
 jest.mock('@mui/material', () => ({
   ...jest.requireActual('@mui/material'),
   Chip: jest.fn().mockImplementation(({ label, ...props }) => (
@@ -650,6 +670,10 @@ describe('ColumnDetailPanel', () => {
         />
       );
 
+      await waitFor(() => {
+        expect(getByTestId('tags-section')).toBeInTheDocument();
+      });
+
       const updateButton = getByTestId('update-tags');
       fireEvent.click(updateButton);
 
@@ -669,6 +693,10 @@ describe('ColumnDetailPanel', () => {
           onColumnFieldUpdate={onColumnFieldUpdate}
         />
       );
+
+      await waitFor(() => {
+        expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
+      });
 
       const updateButton = getByTestId('update-glossary-terms');
       fireEvent.click(updateButton);

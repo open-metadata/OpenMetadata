@@ -5,6 +5,7 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -12,6 +13,7 @@ import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -474,6 +476,40 @@ public interface EntityTimeSeriesDAO {
     return getLatestExtension(getTimeSeriesTableName(), entityFQNHash, extension);
   }
 
+  record FQNHashJsonRow(String entityFQNHash, String json) {}
+
+  class FQNHashJsonRowMapper implements RowMapper<FQNHashJsonRow> {
+    @Override
+    public FQNHashJsonRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new FQNHashJsonRow(rs.getString("entityFQNHash"), rs.getString("json"));
+    }
+  }
+
+  @SqlQuery(
+      "SELECT entityFQNHash, json FROM (SELECT entityFQNHash, json, "
+          + "ROW_NUMBER() OVER (PARTITION BY entityFQNHash ORDER BY timestamp DESC) AS rn "
+          + "FROM <table> WHERE entityFQNHash IN (<entityFQNHashes>) "
+          + "AND extension = :extension) ranked WHERE rn = 1")
+  @RegisterRowMapper(FQNHashJsonRowMapper.class)
+  List<FQNHashJsonRow> getLatestExtensionBatch(
+      @Define("table") String table,
+      @BindList("entityFQNHashes") List<String> entityFQNHashes,
+      @Bind("extension") String extension);
+
+  default Map<String, String> getLatestExtensionBatch(
+      List<String> entityFQNHashes, String extension) {
+    if (entityFQNHashes == null || entityFQNHashes.isEmpty()) {
+      return Map.of();
+    }
+    List<FQNHashJsonRow> rows =
+        getLatestExtensionBatch(getTimeSeriesTableName(), entityFQNHashes, extension);
+    Map<String, String> result = new HashMap<>();
+    for (FQNHashJsonRow row : rows) {
+      result.put(row.entityFQNHash(), row.json());
+    }
+    return result;
+  }
+
   @SqlQuery(
       "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash "
           + "ORDER BY timestamp DESC LIMIT 1")
@@ -578,6 +614,29 @@ public interface EntityTimeSeriesDAO {
       String entityFQNHash, String extension, Long startTs, long endTs, OrderBy orderBy) {
     return listBetweenTimestampsByOrder(
         getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs, orderBy);
+  }
+
+  @SqlQuery(
+      "SELECT json FROM <table> where entityFQNHash = :entityFQNHash and extension = :extension "
+          + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp <orderBy> LIMIT :limit")
+  List<String> listBetweenTimestampsByOrderWithLimit(
+      @Define("table") String table,
+      @BindFQN("entityFQNHash") String entityFQNHash,
+      @Bind("extension") String extension,
+      @Bind("startTs") Long startTs,
+      @Bind("endTs") long endTs,
+      @Define("orderBy") OrderBy orderBy,
+      @Bind("limit") int limit);
+
+  default List<String> listBetweenTimestampsByOrderWithLimit(
+      String entityFQNHash,
+      String extension,
+      Long startTs,
+      long endTs,
+      OrderBy orderBy,
+      int limit) {
+    return listBetweenTimestampsByOrderWithLimit(
+        getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs, orderBy, limit);
   }
 
   @ConnectionAwareSqlUpdate(

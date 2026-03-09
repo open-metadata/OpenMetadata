@@ -19,7 +19,7 @@ variables are available in this file. This is an explicit decision to maintain t
 file in the core components and loading in here. */
 @import '@openmetadata/ui-core-components/theme.css';
 
-@source '../';
+@source '../**/*.{tsx,ts,jsx,js,css}';
 
 @custom-variant dark (&:where(.dark-mode, .dark-mode *));
 

@@ -12,7 +12,7 @@
  */
 
 import { isNil } from 'lodash';
-import { omitDeep } from './APIUtils';
+import { formatTeamsResponse, omitDeep } from './APIUtils';
 
 const APIHits = [
   {
@@ -53,6 +53,80 @@ describe('Test APIUtils utility', () => {
         tableType: 'REGULAR',
       },
     ]);
+  });
+
+  describe('formatTeamsResponse', () => {
+    it('maps search hits to teams including fullyQualifiedName', () => {
+      const teamHits = [
+        {
+          _source: {
+            name: 'Engineering',
+            displayName: 'Engineering Team',
+            fullyQualifiedName: 'Engineering',
+            entityType: 'Team',
+            id: 'team-uuid-1',
+            isJoinable: true,
+            teamType: 'Group',
+            href: 'http://localhost/team/Engineering',
+          },
+        },
+      ];
+
+      const result = formatTeamsResponse(teamHits);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        name: 'Engineering',
+        displayName: 'Engineering Team',
+        fullyQualifiedName: 'Engineering',
+        type: 'Team',
+        id: 'team-uuid-1',
+        isJoinable: true,
+        teamType: 'Group',
+        href: 'http://localhost/team/Engineering',
+      });
+    });
+
+    it('returns empty array when hits is empty', () => {
+      const result = formatTeamsResponse([]);
+
+      expect(result).toEqual([]);
+    });
+
+    it('maps multiple hits with distinct fullyQualifiedName values', () => {
+      const teamHits = [
+        {
+          _source: {
+            name: 'TeamA',
+            displayName: 'Team A',
+            fullyQualifiedName: 'org.TeamA',
+            entityType: 'Team',
+            id: 'id-1',
+            isJoinable: false,
+            teamType: 'Group',
+            href: '/team/TeamA',
+          },
+        },
+        {
+          _source: {
+            name: 'TeamB',
+            displayName: 'Team B',
+            fullyQualifiedName: 'org.TeamB',
+            entityType: 'Team',
+            id: 'id-2',
+            isJoinable: true,
+            teamType: 'Department',
+            href: '/team/TeamB',
+          },
+        },
+      ];
+
+      const result = formatTeamsResponse(teamHits);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].fullyQualifiedName).toBe('org.TeamA');
+      expect(result[1].fullyQualifiedName).toBe('org.TeamB');
+    });
   });
 
   it('omitDeep w isNil removes nested undefined and null', () => {
