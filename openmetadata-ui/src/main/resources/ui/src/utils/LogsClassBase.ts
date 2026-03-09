@@ -113,16 +113,22 @@ class LogsClassBase {
 
     const urlPath = [serviceType, ...updateIngestionName];
     const pipelineDisplayName =
-      getEntityName(ingestionDetails) ||
-      updateIngestionName[updateIngestionName.length - 1];
+      getEntityName(ingestionDetails) || updateIngestionName.at(-1);
 
     return urlPath.map((path, index) => {
       const isLast = index === urlPath.length - 1;
+      let name: string;
+      if (index === 0) {
+        name = startCase(path);
+      } else if (isLast) {
+        name = pipelineDisplayName ?? path;
+      } else {
+        name = path;
+      }
 
       return {
-        name:
-          index === 0 ? startCase(path) : isLast ? pipelineDisplayName : path,
-        url: !isLast ? getLogEntityPath(path, serviceType) : '',
+        name,
+        url: isLast ? '' : getLogEntityPath(path, serviceType),
       };
     });
   }
