@@ -18,6 +18,24 @@ import { ExportTypes } from '../../constants/Export.constants';
 import i18n from '../i18next/LocalUtil';
 import { showErrorToast } from '../ToastUtils';
 
+export const downloadFile = (
+  content: string,
+  fileName: string,
+  mimeType: string = 'text/plain'
+): void => {
+  const blob = new Blob([content], { type: mimeType });
+  const link = document.createElement('a');
+
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+
+  URL.revokeObjectURL(link.href);
+  document.body.removeChild(link);
+};
+
 export const downloadImageFromBase64 = (
   dataUrl: string,
   fileName: string,

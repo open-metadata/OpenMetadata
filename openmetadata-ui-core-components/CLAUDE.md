@@ -67,9 +67,8 @@ src/
 │       ├── featured-icon.tsx  # FeaturedIcon (light, outline themes)
 │       └── payment-icons/
 ├── styles/
-│   ├── globals.css        # Tailwind v4 config, plugins, custom variants/utilities
-│   ├── theme.css          # CSS custom properties (design tokens, light/dark)
-│   └── typography.css     # Typography scale
+│   ├── globals.css        # Shared Tailwind-facing CSS entry (tokens, typography, shared styles)
+│   └── typography.css     # Typography prose rules
 ├── theme/                 # MUI theme configuration
 ├── colors/                # Color generation utilities
 ├── utils/                 # cx, sortCx, isReactComponent
@@ -90,7 +89,7 @@ All Tailwind classes use the `tw:` prefix: `tw:flex`, `tw:bg-primary`, `tw:text-
 
 ### CSS Custom Properties (Design Tokens)
 
-Theme colors are defined as CSS custom properties in `src/styles/theme.css` with light and dark mode variants. Components reference these semantic tokens:
+Theme colors are defined as CSS custom properties in `src/styles/globals.css` with light and dark mode variants. Components reference these semantic tokens:
 
 - **Backgrounds**: `bg-primary`, `bg-secondary`, `bg-error-secondary`, `bg-error-solid`
 - **Text**: `text-primary`, `text-secondary`, `text-tertiary`, `text-fg-error-primary`
