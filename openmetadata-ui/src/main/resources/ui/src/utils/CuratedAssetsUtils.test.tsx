@@ -427,7 +427,7 @@ describe('CuratedAssetsUtils', () => {
                       bool: {
                         must_not: {
                           exists: {
-                            field: 'owners.displayName.keyword',
+                            field: 'ownerDisplayName',
                           },
                         },
                       },
@@ -471,7 +471,7 @@ describe('CuratedAssetsUtils', () => {
             must: [
               {
                 term: {
-                  'owners.displayName.keyword': 'John',
+                  ownerDisplayName: 'John',
                 },
               },
             ],
@@ -489,7 +489,7 @@ describe('CuratedAssetsUtils', () => {
             must: [
               {
                 exists: {
-                  field: 'owners.displayName.keyword',
+                  field: 'ownerDisplayName',
                 },
               },
             ],

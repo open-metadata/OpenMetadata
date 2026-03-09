@@ -284,11 +284,15 @@ public class RBACConditionEvaluator {
 
   public void isOwner(User user, ConditionCollector collector) {
     List<OMQueryBuilder> ownerQueries = new ArrayList<>();
-    ownerQueries.add(queryBuilderFactory.termQuery("owners.id", user.getId().toString()));
+    ownerQueries.add(
+        queryBuilderFactory.nestedQuery(
+            "owners", queryBuilderFactory.termQuery("owners.id", user.getId().toString())));
 
     if (user.getTeams() != null) {
       for (EntityReference team : user.getTeams()) {
-        ownerQueries.add(queryBuilderFactory.termQuery("owners.id", team.getId().toString()));
+        ownerQueries.add(
+            queryBuilderFactory.nestedQuery(
+                "owners", queryBuilderFactory.termQuery("owners.id", team.getId().toString())));
       }
     }
 
@@ -303,8 +307,9 @@ public class RBACConditionEvaluator {
   }
 
   public void noOwner(ConditionCollector collector) {
-    OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("owners.id");
-    collector.addMustNot(existsQuery); // Wrap existsQuery in a List
+    OMQueryBuilder existsQuery =
+        queryBuilderFactory.nestedQuery("owners", queryBuilderFactory.existsQuery("owners.id"));
+    collector.addMustNot(existsQuery);
   }
 
   public void isReviewer(User user, ConditionCollector collector) {

@@ -97,7 +97,6 @@ jobs:
               --project=chromium \
               --grep-invert @dataAssetRules \
               --shard=${CHROMIUM_SHARD}/5
-              --workers=50%
           fi
 
         env:
