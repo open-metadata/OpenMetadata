@@ -92,6 +92,7 @@ def mask_literals_with_sqlparse(
                     "DESC",
                     "NULLS FIRST",
                     "NULLS LAST",
+                    "GROUPING",
                 ):
                     # Any other keyword resets the context (HAVING, LIMIT, WHERE, etc.)
                     current_in_groupby_orderby = False

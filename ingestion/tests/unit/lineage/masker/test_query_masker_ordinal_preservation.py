@@ -423,6 +423,40 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
                 "SqlParse",
             )
 
+    def test_grouping_sets_ordinals_preserved(self):
+        """
+        Test that integer ordinals inside GROUPING SETS are preserved.
+        This is especially important for the SqlParse path, where the
+        standalone GROUPING keyword must not reset GROUP BY context.
+        """
+        query_test_cases = [
+            {
+                "query": "SELECT a, b FROM t WHERE x > 5 GROUP BY GROUPING SETS((1), (2), (1, 2)) ORDER BY 1;",  # noqa: E501
+                "expected": "SELECT a, b FROM t WHERE x > ? GROUP BY GROUPING SETS((1), (2), (1, 2)) ORDER BY 1;",  # noqa: E501
+                "dialect": Dialect.ANSI.value,
+            },
+        ]
+
+        for test_case in query_test_cases:
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlGlot",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlFluff",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlParse",
+            )
+
     def test_where_group_by_order_by_context_isolation(self):
         """
         Test that WHERE integers are masked, GROUP BY/ORDER BY integers are
