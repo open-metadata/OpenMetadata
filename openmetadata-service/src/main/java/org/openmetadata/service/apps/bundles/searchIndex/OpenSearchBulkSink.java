@@ -64,21 +64,38 @@ public class OpenSearchBulkSink implements BulkSink {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
-  private static final int MAX_CONCURRENT_DOC_BUILDS =
+  private static final int DEFAULT_DOC_BUILD_POOL_SIZE =
       Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
-  private static final ExecutorService DOC_BUILD_EXECUTOR = createDocBuildExecutor();
+  private static final ThreadPoolExecutor DOC_BUILD_EXECUTOR =
+      createDocBuildExecutor(DEFAULT_DOC_BUILD_POOL_SIZE);
 
-  private static ExecutorService createDocBuildExecutor() {
+  private static ThreadPoolExecutor createDocBuildExecutor(int poolSize) {
     ThreadPoolExecutor pool =
         new ThreadPoolExecutor(
-            MAX_CONCURRENT_DOC_BUILDS,
-            MAX_CONCURRENT_DOC_BUILDS,
+            poolSize,
+            poolSize,
             60L,
             TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(),
             Thread.ofVirtual().name("reindex-os-doc-build-", 0).factory());
     pool.allowCoreThreadTimeOut(true);
     return pool;
+  }
+
+  public static void setDocBuildPoolSize(int size) {
+    int newSize = Math.max(1, Math.min(50, size));
+    if (newSize <= DOC_BUILD_EXECUTOR.getMaximumPoolSize()) {
+      DOC_BUILD_EXECUTOR.setCorePoolSize(newSize);
+      DOC_BUILD_EXECUTOR.setMaximumPoolSize(newSize);
+    } else {
+      DOC_BUILD_EXECUTOR.setMaximumPoolSize(newSize);
+      DOC_BUILD_EXECUTOR.setCorePoolSize(newSize);
+    }
+    LOG.info("OpenSearch doc-build pool resized to {} threads", newSize);
+  }
+
+  public static void resetDocBuildPoolSize() {
+    setDocBuildPoolSize(DEFAULT_DOC_BUILD_POOL_SIZE);
   }
 
   /** Callback interface for reporting sink statistics per entity type. */

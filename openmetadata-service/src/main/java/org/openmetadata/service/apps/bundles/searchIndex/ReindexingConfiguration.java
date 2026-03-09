@@ -22,6 +22,9 @@ public record ReindexingConfiguration(
     int queueSize,
     int maxConcurrentRequests,
     long payloadSize,
+    int fieldFetchThreads,
+    int docBuildThreads,
+    long statsIntervalMs,
     boolean recreateIndex,
     boolean autoTune,
     boolean useDistributedIndexing,
@@ -44,6 +47,9 @@ public record ReindexingConfiguration(
   private static final int DEFAULT_QUEUE_SIZE = 100;
   private static final int DEFAULT_MAX_CONCURRENT_REQUESTS = 100;
   private static final long DEFAULT_PAYLOAD_SIZE = 104857600L;
+  private static final int DEFAULT_FIELD_FETCH_THREADS = 0;
+  private static final int DEFAULT_DOC_BUILD_THREADS = 0;
+  private static final long DEFAULT_STATS_INTERVAL_MS = 0;
   private static final int DEFAULT_MAX_RETRIES = 5;
   private static final int DEFAULT_INITIAL_BACKOFF = 1000;
   private static final int DEFAULT_MAX_BACKOFF = 10000;
@@ -67,6 +73,9 @@ public record ReindexingConfiguration(
         .queueSize(metrics.getRecommendedQueueSize())
         .maxConcurrentRequests(metrics.getRecommendedConcurrentRequests())
         .payloadSize(metrics.getMaxPayloadSizeBytes())
+        .fieldFetchThreads(metrics.getRecommendedFieldFetchThreads())
+        .docBuildThreads(metrics.getRecommendedDocBuildThreads())
+        .statsIntervalMs(metrics.getRecommendedStatsIntervalMs())
         .recreateIndex(config.recreateIndex())
         .autoTune(true)
         .useDistributedIndexing(config.useDistributedIndexing())
@@ -115,6 +124,9 @@ public record ReindexingConfiguration(
             ? jobData.getMaxConcurrentRequests()
             : DEFAULT_MAX_CONCURRENT_REQUESTS,
         jobData.getPayLoadSize() != null ? jobData.getPayLoadSize() : DEFAULT_PAYLOAD_SIZE,
+        DEFAULT_FIELD_FETCH_THREADS,
+        DEFAULT_DOC_BUILD_THREADS,
+        DEFAULT_STATS_INTERVAL_MS,
         Boolean.TRUE.equals(jobData.getRecreateIndex()),
         Boolean.TRUE.equals(jobData.getAutoTune()),
         Boolean.TRUE.equals(jobData.getUseDistributedIndexing()),
@@ -190,6 +202,9 @@ public record ReindexingConfiguration(
     private int queueSize = DEFAULT_QUEUE_SIZE;
     private int maxConcurrentRequests = DEFAULT_MAX_CONCURRENT_REQUESTS;
     private long payloadSize = DEFAULT_PAYLOAD_SIZE;
+    private int fieldFetchThreads = DEFAULT_FIELD_FETCH_THREADS;
+    private int docBuildThreads = DEFAULT_DOC_BUILD_THREADS;
+    private long statsIntervalMs = DEFAULT_STATS_INTERVAL_MS;
     private boolean recreateIndex = false;
     private boolean autoTune = false;
     private boolean useDistributedIndexing = false;
@@ -236,6 +251,21 @@ public record ReindexingConfiguration(
 
     public Builder payloadSize(long payloadSize) {
       this.payloadSize = payloadSize;
+      return this;
+    }
+
+    public Builder fieldFetchThreads(int fieldFetchThreads) {
+      this.fieldFetchThreads = fieldFetchThreads;
+      return this;
+    }
+
+    public Builder docBuildThreads(int docBuildThreads) {
+      this.docBuildThreads = docBuildThreads;
+      return this;
+    }
+
+    public Builder statsIntervalMs(long statsIntervalMs) {
+      this.statsIntervalMs = statsIntervalMs;
       return this;
     }
 
@@ -313,6 +343,9 @@ public record ReindexingConfiguration(
           queueSize,
           maxConcurrentRequests,
           payloadSize,
+          fieldFetchThreads,
+          docBuildThreads,
+          statsIntervalMs,
           recreateIndex,
           autoTune,
           useDistributedIndexing,

@@ -38,12 +38,15 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.CompositeProgressListener;
+import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
+import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
@@ -365,13 +368,12 @@ public class DistributedSearchIndexExecutor {
     }
 
     // Create stats aggregator with app context for proper WebSocket matching
+    long statsInterval =
+        reindexConfig.statsIntervalMs() > 0
+            ? reindexConfig.statsIntervalMs()
+            : DistributedJobStatsAggregator.DEFAULT_POLL_INTERVAL_MS;
     statsAggregator =
-        new DistributedJobStatsAggregator(
-            coordinator,
-            jobId,
-            appId,
-            appStartTime,
-            DistributedJobStatsAggregator.DEFAULT_POLL_INTERVAL_MS);
+        new DistributedJobStatsAggregator(coordinator, jobId, appId, appStartTime, statsInterval);
 
     // Set up progress listener on stats aggregator
     if (listeners.getListenerCount() > 0) {
@@ -420,6 +422,9 @@ public class DistributedSearchIndexExecutor {
         Thread.ofVirtual()
             .name("reindex-partition-heartbeat-" + jobId.toString().substring(0, 8))
             .start(() -> runPartitionHeartbeatLoop());
+
+    // Apply CPU-budgeted pool sizes from auto-tune
+    applyPoolSizes(reindexConfig, bulkSink);
 
     // Calculate worker threads from auto-tuned configuration
     int numWorkers = Math.min(Math.max(1, reindexConfig.consumerThreads()), MAX_WORKER_THREADS);
@@ -587,6 +592,9 @@ public class DistributedSearchIndexExecutor {
         LOG.debug("Error notifying job completion", e);
       }
 
+      // Restore default pool sizes
+      resetPoolSizes(bulkSink);
+
       // Release lock
       try {
         coordinator.releaseReindexLock(jobId);
@@ -609,6 +617,32 @@ public class DistributedSearchIndexExecutor {
         currentJob.getFailedRecords(),
         currentJob.getStartedAt(),
         currentJob.getCompletedAt());
+  }
+
+  private void applyPoolSizes(ReindexingConfiguration config, BulkSink sink) {
+    if (config.fieldFetchThreads() > 0) {
+      EntityRepository.setFieldFetchPoolSize(config.fieldFetchThreads());
+    }
+    if (config.docBuildThreads() > 0) {
+      if (sink instanceof OpenSearchBulkSink) {
+        OpenSearchBulkSink.setDocBuildPoolSize(config.docBuildThreads());
+      } else if (sink instanceof ElasticSearchBulkSink) {
+        ElasticSearchBulkSink.setDocBuildPoolSize(config.docBuildThreads());
+      }
+    }
+  }
+
+  private void resetPoolSizes(BulkSink sink) {
+    try {
+      EntityRepository.resetFieldFetchPoolSize();
+      if (sink instanceof OpenSearchBulkSink) {
+        OpenSearchBulkSink.resetDocBuildPoolSize();
+      } else if (sink instanceof ElasticSearchBulkSink) {
+        ElasticSearchBulkSink.resetDocBuildPoolSize();
+      }
+    } catch (Exception e) {
+      LOG.debug("Error resetting pool sizes", e);
+    }
   }
 
   /**

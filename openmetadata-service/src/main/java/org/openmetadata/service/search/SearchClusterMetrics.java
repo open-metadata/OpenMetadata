@@ -26,6 +26,9 @@ public class SearchClusterMetrics {
   private final int recommendedProducerThreads;
   private final int recommendedConsumerThreads;
   private final int recommendedQueueSize;
+  private final int recommendedFieldFetchThreads;
+  private final int recommendedDocBuildThreads;
+  private final long recommendedStatsIntervalMs;
 
   public static final double DEFAULT_CPU_PERCENT = 50.0;
   public static final long DEFAULT_HEAP_USED_BYTES = 512L * 1024 * 1024; // 512 MB
@@ -250,6 +253,28 @@ public class SearchClusterMetrics {
     int recommendedQueueSize = Math.min(10000, recommendedBatchSize * queueBatches);
     recommendedQueueSize = Math.max(1000, recommendedQueueSize);
 
+    // --- CPU budget: derive internal thread pool sizes from available cores ---
+    double targetCpuPercent = 0.70;
+    double cpuBudget = availableCores * targetCpuPercent;
+    int recommendedFieldFetchThreads = Math.max(2, Math.min(50, availableCores * 2));
+    int recommendedDocBuildThreads = Math.max(1, Math.min(50, (int) Math.floor(cpuBudget * 2)));
+    long recommendedStatsIntervalMs =
+        availableCores <= 2 ? 2000 : availableCores <= 4 ? 1500 : 1000;
+
+    if (clusterOverloaded) {
+      recommendedFieldFetchThreads = Math.max(2, (recommendedFieldFetchThreads * 3) / 4);
+      recommendedDocBuildThreads = Math.max(1, (recommendedDocBuildThreads * 3) / 4);
+    }
+
+    LOG.info(
+        "CPU budget: {} cores × {}% target = {} budget → fieldFetch={}, docBuild={}, statsInterval={}ms",
+        availableCores,
+        (int) (targetCpuPercent * 100),
+        String.format("%.1f", cpuBudget),
+        recommendedFieldFetchThreads,
+        recommendedDocBuildThreads,
+        recommendedStatsIntervalMs);
+
     return SearchClusterMetrics.builder()
         .availableProcessors(availableCores)
         .heapSizeBytes(heapMaxBytes)
@@ -265,6 +290,9 @@ public class SearchClusterMetrics {
         .recommendedProducerThreads(recommendedProducerThreads)
         .recommendedConsumerThreads(recommendedConsumerThreads)
         .recommendedQueueSize(recommendedQueueSize)
+        .recommendedFieldFetchThreads(recommendedFieldFetchThreads)
+        .recommendedDocBuildThreads(recommendedDocBuildThreads)
+        .recommendedStatsIntervalMs(recommendedStatsIntervalMs)
         .build();
   }
 
@@ -439,6 +467,11 @@ public class SearchClusterMetrics {
           "Could not fetch max content length from cluster, using default: {}", e.getMessage());
     }
 
+    double cpuBudget = availCores * 0.70;
+    int conservativeFieldFetchThreads = Math.max(2, Math.min(50, availCores * 2));
+    int conservativeDocBuildThreads = Math.max(1, Math.min(50, (int) Math.floor(cpuBudget * 2)));
+    long conservativeStatsIntervalMs = availCores <= 2 ? 2000 : availCores <= 4 ? 1500 : 1000;
+
     return SearchClusterMetrics.builder()
         .availableProcessors(Runtime.getRuntime().availableProcessors())
         .heapSizeBytes(maxHeap)
@@ -454,6 +487,9 @@ public class SearchClusterMetrics {
         .recommendedProducerThreads(conservativeThreads)
         .recommendedConsumerThreads(conservativeConsumerThreads)
         .recommendedQueueSize(conservativeQueueSize)
+        .recommendedFieldFetchThreads(conservativeFieldFetchThreads)
+        .recommendedDocBuildThreads(conservativeDocBuildThreads)
+        .recommendedStatsIntervalMs(conservativeStatsIntervalMs)
         .build();
   }
 
@@ -477,6 +513,9 @@ public class SearchClusterMetrics {
     LOG.info("Consumer Threads: {} (ES/OS writers)", recommendedConsumerThreads);
     LOG.info("Queue Size: {} (buffered entities)", recommendedQueueSize);
     LOG.info("Concurrent Bulk Requests: {}", recommendedConcurrentRequests);
+    LOG.info("Field-Fetch Threads: {} (Jackson deserialization)", recommendedFieldFetchThreads);
+    LOG.info("Doc-Build Threads: {} (Jackson serialization)", recommendedDocBuildThreads);
+    LOG.info("Stats Poll Interval: {} ms", recommendedStatsIntervalMs);
     LOG.info("Max Payload Size: {} MB per bulk request", maxPayloadSizeBytes / (1024 * 1024));
     LOG.info("=== Estimated Performance ===");
 
