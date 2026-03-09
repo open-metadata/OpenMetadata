@@ -76,7 +76,7 @@ public class OpenSearchBulkSink implements BulkSink {
             60L,
             TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(),
-            Thread.ofVirtual().name("doc-build-", 0).factory());
+            Thread.ofVirtual().name("reindex-os-doc-build-", 0).factory());
     pool.allowCoreThreadTimeOut(true);
     return pool;
   }
@@ -140,7 +140,7 @@ public class OpenSearchBulkSink implements BulkSink {
             60L,
             TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(),
-            Thread.ofVirtual().name("vector-", 0).factory());
+            Thread.ofVirtual().name("reindex-vector-", 0).factory());
     vectorPool.allowCoreThreadTimeOut(true);
     this.vectorExecutor = vectorPool;
     this.phaser = new Phaser(1);
@@ -789,7 +789,9 @@ public class OpenSearchBulkSink implements BulkSink {
       this.totalFailed = totalFailed;
       this.statsUpdater = statsUpdater;
       this.circuitBreaker = circuitBreaker;
-      this.scheduler = Executors.newScheduledThreadPool(1);
+      this.scheduler =
+          Executors.newScheduledThreadPool(
+              1, Thread.ofPlatform().name("reindex-os-bulk-flush").factory());
 
       scheduler.scheduleAtFixedRate(
           this::flushIfNeeded, flushIntervalMillis, flushIntervalMillis, TimeUnit.MILLISECONDS);

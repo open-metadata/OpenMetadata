@@ -123,7 +123,7 @@ public class DistributedJobStatsAggregator {
       scheduler =
           Executors.newSingleThreadScheduledExecutor(
               Thread.ofPlatform()
-                  .name("stats-aggregator-" + jobId.toString().substring(0, 8))
+                  .name("reindex-stats-aggregator-" + jobId.toString().substring(0, 8))
                   .factory());
 
       scheduler.scheduleAtFixedRate(

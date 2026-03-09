@@ -219,7 +219,7 @@ public class DistributedJobParticipant implements Managed {
 
     participantThread =
         Thread.ofVirtual()
-            .name("job-participant-" + job.getId().toString().substring(0, 8))
+            .name("reindex-participant-" + job.getId().toString().substring(0, 8))
             .start(
                 () -> {
                   try {

@@ -385,21 +385,25 @@ public class SearchIndexExecutor implements AutoCloseable {
     taskQueue = new LinkedBlockingQueue<>(effectiveQueueSize);
     producersDone.set(false);
 
+    String jobIdTag = MDC.get("reindexJobId");
+    String threadPrefix = "reindex-" + (jobIdTag != null ? jobIdTag + "-" : "");
+
     int maxJobThreads =
         Math.max(1, MAX_TOTAL_THREADS - threadConfig.numProducers() - threadConfig.numConsumers());
     int cappedEntityCount = Math.min(entityCount, maxJobThreads);
     jobExecutor =
         Executors.newFixedThreadPool(
-            cappedEntityCount, Thread.ofPlatform().name("job-", 0).factory());
+            cappedEntityCount, Thread.ofPlatform().name(threadPrefix + "job-", 0).factory());
 
     int finalNumConsumers = Math.min(threadConfig.numConsumers(), MAX_CONSUMER_THREADS);
     consumerExecutor =
         Executors.newFixedThreadPool(
-            finalNumConsumers, Thread.ofPlatform().name("consumer-", 0).factory());
+            finalNumConsumers, Thread.ofPlatform().name(threadPrefix + "consumer-", 0).factory());
 
     producerExecutor =
         Executors.newFixedThreadPool(
-            threadConfig.numProducers(), Thread.ofPlatform().name("producer-", 0).factory());
+            threadConfig.numProducers(),
+            Thread.ofPlatform().name(threadPrefix + "producer-", 0).factory());
 
     return effectiveQueueSize;
   }

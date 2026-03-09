@@ -412,13 +412,13 @@ public class DistributedSearchIndexExecutor {
     // Start lock refresh thread to prevent lock expiration during long-running jobs
     lockRefreshThread =
         Thread.ofVirtual()
-            .name("lock-refresh-" + jobId.toString().substring(0, 8))
+            .name("reindex-lock-refresh-" + jobId.toString().substring(0, 8))
             .start(() -> runLockRefreshLoop(jobId));
 
     // Start partition heartbeat thread to keep owned partitions alive
     partitionHeartbeatThread =
         Thread.ofVirtual()
-            .name("partition-heartbeat-" + jobId.toString().substring(0, 8))
+            .name("reindex-partition-heartbeat-" + jobId.toString().substring(0, 8))
             .start(() -> runPartitionHeartbeatLoop());
 
     // Calculate worker threads from auto-tuned configuration
@@ -429,9 +429,11 @@ public class DistributedSearchIndexExecutor {
         reindexConfig.batchSize(),
         reindexConfig.autoTune());
 
+    String jobIdShort = jobId.toString().substring(0, 8);
     workerExecutor =
         Executors.newFixedThreadPool(
-            numWorkers, Thread.ofPlatform().name("partition-worker-", 0).factory());
+            numWorkers,
+            Thread.ofPlatform().name("reindex-partition-worker-" + jobIdShort + "-", 0).factory());
 
     AtomicLong totalSuccess = new AtomicLong(0);
     AtomicLong totalFailed = new AtomicLong(0);
@@ -462,7 +464,7 @@ public class DistributedSearchIndexExecutor {
 
     staleReclaimerThread =
         Thread.ofVirtual()
-            .name("stale-reclaimer-" + jobId.toString().substring(0, 8))
+            .name("reindex-stale-reclaimer-" + jobId.toString().substring(0, 8))
             .start(() -> runStaleReclaimerLoop(jobId));
 
     try {
