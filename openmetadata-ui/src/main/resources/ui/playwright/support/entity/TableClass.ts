@@ -72,6 +72,7 @@ export class TableClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   entityResponseData: Table = {} as Table;
   testSuiteResponseData: ResponseDataType = {} as ResponseDataType;
+  bundleTestSuiteResponseData: ResponseDataType = {} as ResponseDataType;
   testSuitePipelineResponseData: ResponseDataType[] = [];
   testCasesResponseData: ResponseDataType[] = [];
   queryResponseData: ResponseDataType[] = [];
@@ -373,6 +374,81 @@ export class TableClass extends EntityClass {
       testSuiteData,
       pipeline,
     };
+  }
+
+  async createBundleTestSuite(apiContext: APIRequestContext) {
+    const testSuiteData = await apiContext
+      .post('/api/v1/dataQuality/testSuites', {
+        data: {
+          name: `pw-bundle-suite-${uuid()}`,
+          description: 'Playwright bundle test suite for logs viewer e2e',
+        },
+      })
+      .then((res) => res.json());
+
+    this.bundleTestSuiteResponseData = testSuiteData;
+
+    return testSuiteData;
+  }
+
+  async createBundleTestSuitePipeline(apiContext: APIRequestContext) {
+    const testSuiteData = this.bundleTestSuiteResponseData;
+    if (!testSuiteData?.id || !testSuiteData?.fullyQualifiedName) {
+      throw new Error(
+        'createBundleTestSuite must be called before createBundleTestSuitePipeline'
+      );
+    }
+
+    const pipelineData = await apiContext
+      .post('/api/v1/services/ingestionPipelines', {
+        data: {
+          airflowConfig: {
+            scheduleInterval: '0 * * * *',
+          },
+          name: `pw-bundle-suite-pipeline-${uuid()}`,
+          loggerLevel: 'INFO',
+          pipelineType: 'TestSuite',
+          service: {
+            id: testSuiteData.id,
+            type: 'testSuite',
+          },
+          sourceConfig: {
+            config: {
+              type: 'TestSuite',
+              entityFullyQualifiedName: testSuiteData.fullyQualifiedName,
+            },
+          },
+        },
+      })
+      .then((res) => res.json());
+
+    this.testSuitePipelineResponseData.push(pipelineData);
+
+    return { pipeline: pipelineData };
+  }
+
+  async runIngestionPipeline(
+    apiContext: APIRequestContext,
+    pipelineId: string
+  ) {
+    await apiContext.post(
+      `/api/v1/services/ingestionPipelines/deploy/${pipelineId}`
+    );
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    const triggerResponse = await apiContext.post(
+      `/api/v1/services/ingestionPipelines/trigger/${pipelineId}`
+    );
+    if (triggerResponse.status() !== 200) {
+      throw new Error(
+        `Failed to trigger pipeline ${pipelineId}: ${triggerResponse.status()}`
+      );
+    }
+  }
+
+  async createBundleTestSuiteAndPipeline(apiContext: APIRequestContext) {
+    const testSuiteData = await this.createBundleTestSuite(apiContext);
+    const { pipeline } = await this.createBundleTestSuitePipeline(apiContext);
+    return { testSuiteData, pipeline };
   }
 
   async createTestSuitePipeline(

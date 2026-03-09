@@ -22,12 +22,14 @@ const table = new TableClass();
 
 test.describe('Logs viewer page journey', () => {
   test.beforeAll(
-    'Create table, bundle test suite and test suite pipeline',
+    'Create table, bundle test suite, pipeline, and run pipeline for logs viewer',
     async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await table.create(apiContext);
-      await table.createTestSuiteAndPipelines(apiContext);
+      await table.createBundleTestSuite(apiContext);
+      const { pipeline } = await table.createBundleTestSuitePipeline(apiContext);
+      await table.runIngestionPipeline(apiContext, pipeline.id);
 
       await afterAction();
     }
@@ -38,18 +40,21 @@ test.describe('Logs viewer page journey', () => {
   }) => {
     test.slow();
 
-    await test.step('Open Data Quality → Bundle Suites and click on a bundle', async () => {
+    await test.step('Open Data Quality → Bundle Suites and click on the newly created bundle', async () => {
       await redirectToHomePage(page);
       await page.goto('/data-quality/test-suites/bundle-suites');
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
-      const firstBundleLink = page
+      const bundleSuiteFqn =
+        table.bundleTestSuiteResponseData?.fullyQualifiedName ??
+        table.bundleTestSuiteResponseData?.name;
+      expect(bundleSuiteFqn, 'bundle suite created in beforeAll').toBeTruthy();
+      const bundleSuiteLink = page
         .getByTestId('test-suite-table')
-        .locator('a[href*="/test-suites/"]')
-        .first();
-      await expect(firstBundleLink).toBeVisible();
-      await firstBundleLink.click();
+        .locator(`a[href*="${encodeURIComponent(bundleSuiteFqn)}"]`);
+      await expect(bundleSuiteLink).toBeVisible();
+      await bundleSuiteLink.click();
       await waitForAllLoadersToDisappear(page);
     });
 
