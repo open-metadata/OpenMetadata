@@ -142,6 +142,7 @@ class HiveSource(CommonDbSourceService):
         """
         Get the DDL statement or View Definition for a table
         """
+        schema_definition = None
         try:
             if self.source_config.includeDDL or table_type in (
                 TableType.View,

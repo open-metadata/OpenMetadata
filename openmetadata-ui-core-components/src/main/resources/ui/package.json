@@ -32,12 +32,11 @@
       "import": "./dist/utils/index.es.js",
       "require": "./dist/utils/index.cjs.js"
     },
-    "./styles.css": "./dist/ui-core-components.css",
-    "./theme.css": "./src/styles/theme.css"
+    "./globals.css": "./src/styles/globals.css"
   },
   "files": [
     "dist",
-    "src/styles/theme.css",
+    "src/styles/globals.css",
     "README.md",
     "LICENSE"
   ],
