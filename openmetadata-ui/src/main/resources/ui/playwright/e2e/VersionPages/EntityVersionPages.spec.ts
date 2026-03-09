@@ -145,10 +145,6 @@ test.describe('Entity Version pages', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);
 
-    for (const entity of entities) {
-      await entity.delete(apiContext);
-    }
-
     await afterAction();
   });
 
