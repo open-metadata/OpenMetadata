@@ -11,6 +11,7 @@
 """QuickSight source module"""
 
 import traceback
+from collections import defaultdict
 from typing import Iterable, List, Optional
 
 from pydantic import ValidationError
@@ -686,21 +687,23 @@ class QuicksightSource(DashboardServiceSource):
         self.data_models: List[
             DescribeDataSourceResponse
         ] = self._get_dashboard_datamodels(dashboard_details)
-        dataset_groups: dict[str, List[DescribeDataSourceResponse]] = {}
+        dataset_groups: dict[str, List[DescribeDataSourceResponse]] = defaultdict(list)
         for data_model in self.data_models:
             key = (
                 data_model.dataset_id
                 if data_model.dataset_id is not None
                 else data_model.DataSource.DataSourceId
             )
-            if key not in dataset_groups:
-                dataset_groups[key] = []
             dataset_groups[key].append(data_model)
         for dataset_id, models in dataset_groups.items():
             try:
                 columns = []
+                seen_column_names = set()
                 for model in models:
-                    columns.extend(self._get_column_info(model))
+                    for col in self._get_column_info(model):
+                        if col.name.root not in seen_column_names:
+                            seen_column_names.add(col.name.root)
+                            columns.append(col)
                 first_model = models[0]
                 display_name = first_model.dataset_name or first_model.DataSource.Name
                 data_model_request = CreateDashboardDataModelRequest(
