@@ -60,7 +60,7 @@ export const processGenericOptions = (
 export const processOwnerOptions = (
   result: AggregationResult
 ): SearchDropdownOption[] => {
-  return processGenericOptions(result, 'sterms#owners.displayName.keyword');
+  return processGenericOptions(result, 'sterms#ownerDisplayName');
 };
 
 export const processTagOptions = (

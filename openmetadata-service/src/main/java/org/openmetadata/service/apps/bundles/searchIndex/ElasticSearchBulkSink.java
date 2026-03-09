@@ -136,9 +136,6 @@ public class ElasticSearchBulkSink implements BulkSink {
     // Extract StageStatsTracker from context for stats recording
     StageStatsTracker tracker = extractTracker(contextData);
 
-    // Check if embeddings are enabled for this specific entity type
-    boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
-
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
     if (indexMapping == null) {
       LOG.warn(
@@ -199,11 +196,6 @@ public class ElasticSearchBulkSink implements BulkSink {
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
-
-        // Process vector embeddings in batch (no-op in base class)
-        if (embeddingsEnabled) {
-          addEntitiesToVectorIndexBatch(bulkProcessor, entityInterfaces, recreateIndex);
-        }
       }
     } catch (Exception e) {
       LOG.error("Failed to write {} entities of type {}", entities.size(), entityType, e);
@@ -490,19 +482,6 @@ public class ElasticSearchBulkSink implements BulkSink {
   public void updateConcurrentRequests(int concurrentRequests) {
     this.maxConcurrentRequests = concurrentRequests;
     LOG.info("Concurrent requests updated to: {}", concurrentRequests);
-  }
-
-  /**
-   * Checks if vector embeddings are enabled for a specific entity type.
-   * This combines SearchRepository capability check with job configuration.
-   */
-  boolean isVectorEmbeddingEnabledForEntity(String entityType) {
-    return false;
-  }
-
-  void addEntitiesToVectorIndexBatch(
-      CustomBulkProcessor bulkProcessor, List<EntityInterface> entities, boolean recreateIndex) {
-    // TODO: Implement Elasticsearch vector embedding support
   }
 
   public static class CustomBulkProcessor {

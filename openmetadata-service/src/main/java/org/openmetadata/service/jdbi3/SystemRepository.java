@@ -48,6 +48,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -564,22 +565,20 @@ public class SystemRepository {
     String description = "Embeddings are used to allow Semantic Search";
     SearchRepository searchRepository = Entity.getSearchRepository();
 
+    if (searchRepository.getSearchType() == ElasticSearchConfiguration.SearchType.ELASTICSEARCH) {
+      return embeddingsValidation
+          .withDescription(description)
+          .withMessage(
+              "Elasticsearch is not supported for Semantic Search embeddings. Please use OpenSearch.")
+          .withPassed(false);
+    }
+
     String configMessage = getEmbeddingConfigurationMessage(applicationConfig);
 
     if (searchRepository.getVectorIndexService() == null) {
       return embeddingsValidation
           .withDescription(description)
           .withMessage("Embeddings are not configured properly. " + configMessage)
-          .withPassed(false);
-    }
-
-    try {
-      searchRepository.ensureVectorIndexDimension();
-    } catch (Exception e) {
-      LOG.error("Vector dimension mismatch detected", e);
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage("Vector dimension mismatch: " + e.getMessage())
           .withPassed(false);
     }
 
