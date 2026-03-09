@@ -42,16 +42,16 @@ let mockLocationSearch = '';
 let mockAppPreferences = MOCK_APP_PREFERENCES;
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const GridMock = jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ));
-  GridMock.Item = jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ));
+  type GridProps = { children?: React.ReactNode };
+
+  type GridMockType = jest.Mock<JSX.Element, [GridProps]> & {
+    Item: jest.Mock<JSX.Element, [GridProps]>;
+  };
+  const GridMock = jest.fn(({ children }: GridProps) => (
+    <div>{children}</div>
+  )) as GridMockType;
+
+  GridMock.Item = jest.fn(({ children }: GridProps) => <div>{children}</div>);
 
   return {
     Grid: GridMock,
@@ -449,8 +449,7 @@ describe('PlatformLineage Component Logic', () => {
         expect(mockLineage).toHaveBeenCalled();
       });
 
-      const lineageCall =
-        mockLineage.mock.calls[mockLineage.mock.calls.length - 1];
+      const lineageCall = mockLineage.mock.calls.at(-1);
       const platformHeader = lineageCall[0].platformHeader;
       const headerElement = render(platformHeader);
       const searchInput = headerElement.container.querySelector('input');
@@ -484,8 +483,7 @@ describe('PlatformLineage Component Logic', () => {
         expect(mockLineage).toHaveBeenCalled();
       });
 
-      const lineageCall =
-        mockLineage.mock.calls[mockLineage.mock.calls.length - 1];
+      const lineageCall = mockLineage.mock.calls.at(-1);
       const platformHeader = lineageCall[0].platformHeader;
       const headerElement = render(platformHeader);
       const searchInput = headerElement.container.querySelector('input');
@@ -557,8 +555,7 @@ describe('PlatformLineage Component Logic', () => {
         expect(mockLineage).toHaveBeenCalled();
       });
 
-      const lineageCall =
-        mockLineage.mock.calls[mockLineage.mock.calls.length - 1];
+      const lineageCall = mockLineage.mock.calls.at(-1);
       const platformHeader = lineageCall[0].platformHeader;
 
       expect(platformHeader).toBeDefined();
@@ -813,8 +810,7 @@ describe('PlatformLineage Component Logic', () => {
         expect(mockLineage).toHaveBeenCalled();
       });
 
-      const lineageCall =
-        mockLineage.mock.calls[mockLineage.mock.calls.length - 1];
+      const lineageCall = mockLineage.mock.calls.at(-1);
       const platformHeader = lineageCall[0].platformHeader;
       const headerElement = render(platformHeader);
 

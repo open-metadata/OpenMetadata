@@ -15,6 +15,7 @@ import {
   LineageData,
   LineageEntityReference,
 } from '../../../../components/Lineage/Lineage.interface';
+import { User } from '../../../../generated/entity/teams/user';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import LineageTabContent from './LineageTabContent';
 
@@ -96,7 +97,7 @@ jest.mock('antd', () => ({
 // Mock SVG components with unique implementations
 jest.mock('../../../../assets/svg/downstream.svg', () => ({
   __esModule: true,
-  ReactComponent: (props: any) => (
+  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="downstream-icon" {...props}>
       <title>DownstreamIcon</title>
     </svg>
@@ -105,7 +106,7 @@ jest.mock('../../../../assets/svg/downstream.svg', () => ({
 
 jest.mock('../../../../assets/svg/upstream.svg', () => ({
   __esModule: true,
-  ReactComponent: (props: any) => (
+  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="upstream-icon" {...props}>
       <title>UpstreamIcon</title>
     </svg>
@@ -114,7 +115,7 @@ jest.mock('../../../../assets/svg/upstream.svg', () => ({
 
 jest.mock('../../../../assets/svg/ic-task-empty.svg', () => ({
   __esModule: true,
-  ReactComponent: (props: any) => (
+  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="no-data-icon" {...props}>
       <title>NoDataIcon</title>
     </svg>
@@ -174,7 +175,7 @@ jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
     .fn()
     .mockImplementation(({ owners }) => (
       <div data-testid="owner-label">
-        {owners?.map((owner: any) => owner.name).join(', ')}
+        {owners?.map((owner: User) => owner.name).join(', ')}
       </div>
     )),
 }));
