@@ -173,8 +173,7 @@ const CardinalityDistributionChart = ({
           opacity={isHighlighted ? 0.5 : 1}
           textAnchor="end"
           x={-8}
-          onClick={() => handleCategoryClick(categoryName)}
-        >
+          onClick={() => handleCategoryClick(categoryName)}>
           {categoryName.length > 15
             ? `${categoryName.slice(0, 15)}...`
             : categoryName}
@@ -235,8 +234,7 @@ const CardinalityDistributionChart = ({
                         color="gray"
                         data-testid="date"
                         size="lg"
-                        type="color"
-                      >
+                        type="color">
                         {graphDate}
                       </Badge>
                       <Badge
@@ -244,8 +242,7 @@ const CardinalityDistributionChart = ({
                         color="gray"
                         data-testid="cardinality-tag"
                         size="lg"
-                        type="color"
-                      >
+                        type="color">
                         {`${t('label.total-entity', {
                           entity: t('label.category-plural'),
                         })}: ${cardinalityData.categories?.length || 0}`}
@@ -256,13 +253,11 @@ const CardinalityDistributionChart = ({
                         debounce={200}
                         height={containerHeight}
                         id={`${key}-cardinality`}
-                        width="100%"
-                      >
+                        width="100%">
                         <BarChart
                           className="tw:w-full"
                           data={graphData}
-                          layout="vertical"
-                        >
+                          layout="vertical">
                           <CartesianGrid
                             horizontal={renderHorizontalGridLine}
                             stroke={GRAPH_BACKGROUND_COLOR}
@@ -300,8 +295,7 @@ const CardinalityDistributionChart = ({
                           <Bar
                             barSize={22}
                             dataKey="percentage"
-                            radius={[0, 8, 8, 0]}
-                          >
+                            radius={[0, 8, 8, 0]}>
                             {graphData.map((entry) => {
                               const isSelected =
                                 selectedCategory === entry.name;

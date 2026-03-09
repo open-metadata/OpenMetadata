@@ -558,8 +558,7 @@ export const useAssetSelectionContent = ({
           disabled={!selectedItems?.size || isLoading}
           loading={isSaveLoading || !isUndefined(assetJobResponse)}
           variant="contained"
-          onClick={onSaveAction}
-        >
+          onClick={onSaveAction}>
           {t('label.save')}
         </Button>
       </div>
@@ -572,8 +571,7 @@ export const useAssetSelectionContent = ({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-      }}
-    >
+      }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {selectedItems && selectedItems.size >= 1 && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -615,8 +613,7 @@ export const useAssetSelectionContent = ({
             )
           }
           variant="contained"
-          onClick={onSaveAction}
-        >
+          onClick={onSaveAction}>
           {t('label.save')}
         </Button>
       </Box>
@@ -629,8 +626,7 @@ export const useAssetSelectionContent = ({
     <Space
       className="w-full h-full overflow-hidden asset-selection-space"
       direction="vertical"
-      size={16}
-    >
+      size={16}>
       {(assetJobResponse || exportJob?.error) && (
         <Banner
           className="border-radius"
@@ -669,8 +665,7 @@ export const useAssetSelectionContent = ({
         {quickFilterQuery && (
           <Typography.Text
             className="text-primary cursor-pointer"
-            onClick={clearFilters}
-          >
+            onClick={clearFilters}>
             {t('label.clear-entity', {
               entity: '',
             })}
@@ -708,8 +703,7 @@ export const useAssetSelectionContent = ({
         <div className="border p-xs asset-list-wrapper">
           <Checkbox
             className="assets-checkbox p-x-sm"
-            onChange={(e) => onSelectAll(e.target.checked)}
-          >
+            onChange={(e) => onSelectAll(e.target.checked)}>
             {t('label.select-field', {
               field: t('label.all'),
             })}
@@ -719,8 +713,7 @@ export const useAssetSelectionContent = ({
               data={items}
               height={variant === 'modal' ? 500 : undefined}
               itemKey="id"
-              onScroll={onScroll}
-            >
+              onScroll={onScroll}>
               {({ _source: item }) => {
                 const { isError, errorMessage } = getErrorStatusAndMessage(
                   item.id ?? ''
@@ -731,8 +724,7 @@ export const useAssetSelectionContent = ({
                     className={classNames({
                       'm-y-sm border-danger rounded-4': isError,
                     })}
-                    key={item.id}
-                  >
+                    key={item.id}>
                     <TableDataCardV2
                       openEntityInNewPage
                       showCheckboxes

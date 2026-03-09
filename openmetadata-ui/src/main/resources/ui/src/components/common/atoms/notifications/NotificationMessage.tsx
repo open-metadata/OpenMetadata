@@ -68,8 +68,7 @@ const NotificationMessage: React.FC<NotificationMessageProps> = ({
       <div
         className={`tw:flex tw:items-center tw:justify-center tw:shrink-0 tw:my-0 tw:mr-4.75 tw:ml-1.25 ${VARIANT_COLOR_CLASS[variant]}`}
         data-testid="alert-icon"
-        style={iconRingVariants.notification as React.CSSProperties}
-      >
+        style={iconRingVariants.notification as React.CSSProperties}>
         {icon}
       </div>
       <div className="tw:flex-1">{message}</div>

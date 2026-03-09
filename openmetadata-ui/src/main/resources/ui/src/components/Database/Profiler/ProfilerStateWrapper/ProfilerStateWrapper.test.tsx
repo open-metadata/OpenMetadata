@@ -94,8 +94,7 @@ describe('ProfilerStateWrapper', () => {
       <ProfilerStateWrapper
         isLoading={isLoading}
         profilerLatestValueProps={profilerLatestValueProps}
-        title={title}
-      >
+        title={title}>
         <div>
           <h1>Custom Header</h1>
           <p>Custom Paragraph</p>

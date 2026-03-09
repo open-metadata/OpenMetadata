@@ -31,8 +31,7 @@ const NestedColumnItem: React.FC<{
     <div key={column.fullyQualifiedName}>
       <p
         className="tw:group tw:flex tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:py-1 tw:text-left"
-        style={{ paddingLeft: `${depth * 8}px` }}
-      >
+        style={{ paddingLeft: `${depth * 8}px` }}>
         <ColumnIcon
           className="tw:text-brand-700"
           style={{
@@ -43,8 +42,7 @@ const NestedColumnItem: React.FC<{
         />
         <Typography.Link
           className="nested-column-name tw:text-sm tw:font-normal group-hover:tw:underline"
-          onClick={() => onColumnClick(column)}
-        >
+          onClick={() => onColumnClick(column)}>
           {getEntityName(column)}
         </Typography.Link>
       </p>
@@ -86,8 +84,7 @@ export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
           className="tw:text-[10px] tw:font-medium tw:text-tertiary"
           color="gray"
           size="sm"
-          type="color"
-        >
+          type="color">
           {columns.length}
         </Badge>
       </div>

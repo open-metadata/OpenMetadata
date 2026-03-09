@@ -30,15 +30,13 @@ const ProfilerStateWrapper = ({
       {title && (
         <p
           className="tw:m-0 tw:mb-3 tw:text-md tw:font-semibold tw:text-primary"
-          data-testid={`${title}-title`}
-        >
+          data-testid={`${title}-title`}>
           {title}
         </p>
       )}
       <div
         className="tw:rounded-[10px] tw:border tw:border-border-secondary tw:p-4 tw:shadow-none"
-        data-testid={dataTestId ?? 'profiler-details-card-container'}
-      >
+        data-testid={dataTestId ?? 'profiler-details-card-container'}>
         <div className="tw:flex tw:flex-col tw:gap-4">
           {profilerLatestValueProps && (
             <ProfilerLatestValue {...profilerLatestValueProps} />

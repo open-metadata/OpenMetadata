@@ -228,8 +228,7 @@ const TabFilters = () => {
                   color="primary"
                   data-testid="profiler-add-table-test-btn"
                   iconTrailing={<ChevronDown className="tw:size-4" />}
-                  size="sm"
-                >
+                  size="sm">
                   {t('label.add')}
                 </Button>
                 <Dropdown.Popover className="tw:w-max">
@@ -256,8 +255,7 @@ const TabFilters = () => {
                 color="secondary"
                 data-testid="profiler-setting-btn"
                 size="sm"
-                onClick={onSettingButtonClick}
-              >
+                onClick={onSettingButtonClick}>
                 <SettingIcon />
               </Button>
             </Tooltip>

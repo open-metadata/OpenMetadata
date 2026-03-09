@@ -44,8 +44,7 @@ const ColumnPickerMenu: FC<ColumnPickerMenuProps> = ({
           color="secondary"
           data-testid="column-picker-menu-button"
           iconTrailing={<ChevronDown className="tw:size-4" />}
-          size="sm"
-        >
+          size="sm">
           {getEntityName(selectedItem)}
         </Button>
         <Dropdown.Popover className="tw:max-h-87 tw:min-w-50 tw:w-max">
@@ -55,15 +54,13 @@ const ColumnPickerMenu: FC<ColumnPickerMenuProps> = ({
             onAction={(key) => {
               handleChange(key as string);
               setIsMenuOpen(false);
-            }}
-          >
+            }}>
             {columns.map((column) => (
               <Dropdown.Item
                 className="tw:[&[data-selected]>div]:bg-brand-solid! tw:[&[data-selected]>div]:hover:bg-brand-solid_hover! tw:[&[data-selected]>div>span]:text-white!"
                 data-testid={`column-picker-menu-item-${column.fullyQualifiedName}`}
                 id={column.fullyQualifiedName || ''}
-                key={column.fullyQualifiedName}
-              >
+                key={column.fullyQualifiedName}>
                 <>
                   <span>{getEntityName(column)}</span>{' '}
                   <span className="tw:text-xs tw:font-normal">
