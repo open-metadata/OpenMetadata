@@ -13,14 +13,15 @@
 
 import { expect } from '@playwright/test';
 import { DELETE_TERM } from '../../constant/common';
-import { GlobalSettingOptions } from '../../constant/settings';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
+import { descriptionBox, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
-import { navigateToPersonaWithPagination } from '../../utils/persona';
-import { settingClick } from '../../utils/sidebar';
+import {
+  navigateToPersonaSettings,
+  navigateToPersonaWithPagination,
+} from '../../utils/persona';
 import { visitUserProfilePage } from '../../utils/user';
 import { test } from '../fixtures/pages';
 
@@ -50,9 +51,7 @@ test.describe.serial('User profile works after persona deletion', () => {
   }) => {
     // Step 1: Create persona and add user
     await test.step('Create persona with user', async () => {
-      await redirectToHomePage(page);
-      await settingClick(page, GlobalSettingOptions.PERSONA);
-      await waitForAllLoadersToDisappear(page);
+      await navigateToPersonaSettings(page);
 
       // Create persona
       await page.getByTestId('add-persona-button').click();
@@ -132,10 +131,7 @@ test.describe.serial('User profile works after persona deletion', () => {
 
     // Step 3: Delete the persona
     await test.step('Delete the persona', async () => {
-      const listPersonas = page.waitForResponse('/api/v1/personas?*');
-      await settingClick(page, GlobalSettingOptions.PERSONA);
-      await listPersonas;
-      await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
+      await navigateToPersonaSettings(page);
 
       await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name);
       await waitForAllLoadersToDisappear(page);
