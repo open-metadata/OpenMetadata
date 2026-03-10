@@ -1055,6 +1055,7 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table =
         get(
@@ -1105,8 +1106,8 @@ public class TableRepository extends EntityRepository<Table> {
       }
       List<TagLabel> mergedColumnTags =
           mergeTagsWithIncomingPrecedence(stored.getTags(), modelColumn.getTags());
-      stored.setTags(mergedColumnTags);
       if (stored.getFullyQualifiedName() != null) {
+        stored.setTags(mergedColumnTags);
         updatedColumnFqns.add(stored.getFullyQualifiedName());
       }
     }
