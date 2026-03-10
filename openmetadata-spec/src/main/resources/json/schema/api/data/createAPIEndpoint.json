@@ -87,6 +87,6 @@
       "maxLength": 32
     }
   },
-  "required": ["name", "endpointURL", "apiCollection"],
+  "required": ["name", "apiCollection"],
   "additionalProperties": false
 }

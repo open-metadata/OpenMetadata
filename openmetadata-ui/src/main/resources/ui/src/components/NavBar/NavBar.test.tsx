@@ -174,6 +174,7 @@ jest.mock('../../utils/EntityUtilClassBase', () => ({
 
 jest.mock('../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('MockedEntityName'),
+  getDomainDisplayName: jest.fn().mockReturnValue('All Domains'),
 }));
 
 jest.mock(

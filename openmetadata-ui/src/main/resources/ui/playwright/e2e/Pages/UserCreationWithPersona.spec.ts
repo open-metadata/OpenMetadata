@@ -25,6 +25,7 @@ import {
   visitUserProfilePage,
 } from '../../utils/user';
 
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { test } from '../fixtures/pages';
 
 const adminUser = new UserClass();
@@ -42,7 +43,7 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.describe('Create user with persona', async () => {
+test.describe('Create user with persona', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test('Create user with persona and verify on profile', async ({ page }) => {
     await redirectToHomePage(page);
     await visitUserListPage(page);

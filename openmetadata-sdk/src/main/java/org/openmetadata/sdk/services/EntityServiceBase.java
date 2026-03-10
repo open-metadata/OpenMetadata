@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -27,6 +28,27 @@ public abstract class EntityServiceBase<T> {
   protected final String basePath;
   protected final ObjectMapper objectMapper;
 
+  private static final int MAX_SNAPSHOTS = 500;
+
+  /**
+   * Stores JSON snapshots of entities returned by get() methods. When update() is called, the
+   * snapshot serves as the baseline for JSON Patch diff generation. This allows the diff to
+   * correctly detect field removals (fields set to null after fetching), which would otherwise be
+   * invisible due to NON_NULL serialization omitting null fields.
+   *
+   * <p>Bounded to {@link #MAX_SNAPSHOTS} entries (LRU eviction) to prevent memory leaks in
+   * long-running clients that fetch many entities without updating them.
+   */
+  @SuppressWarnings("serial")
+  private final Map<String, JsonNode> entitySnapshots =
+      Collections.synchronizedMap(
+          new java.util.LinkedHashMap<>(16, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, JsonNode> eldest) {
+              return size() > MAX_SNAPSHOTS;
+            }
+          });
+
   protected EntityServiceBase(HttpClient httpClient, String basePath) {
     this.httpClient = httpClient;
     this.basePath = basePath;
@@ -34,6 +56,25 @@ public abstract class EntityServiceBase<T> {
     // Configure to exclude null values to avoid sending computed fields like childrenCount
     this.objectMapper.setSerializationInclusion(
         com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
+  }
+
+  private void storeSnapshot(String id, T entity) {
+    JsonNode node = objectMapper.valueToTree(entity);
+    if (id != null) {
+      entitySnapshots.put(id, node);
+    } else if (node.has("id")) {
+      entitySnapshots.put(node.get("id").asText(), node);
+    }
+  }
+
+  /** Fetch an entity by ID without storing a snapshot (for internal use in update fallback). */
+  private T fetchEntity(String id, String fields) throws OpenMetadataException {
+    if (fields != null) {
+      RequestOptions options = RequestOptions.builder().queryParam("fields", fields).build();
+      return httpClient.execute(
+          HttpMethod.GET, basePath + "/" + id, null, getEntityClass(), options);
+    }
+    return httpClient.execute(HttpMethod.GET, basePath + "/" + id, null, getEntityClass());
   }
 
   public T create(T entity) throws OpenMetadataException {
@@ -63,12 +104,17 @@ public abstract class EntityServiceBase<T> {
   }
 
   public T get(String id) throws OpenMetadataException {
-    return httpClient.execute(HttpMethod.GET, basePath + "/" + id, null, getEntityClass());
+    T result = httpClient.execute(HttpMethod.GET, basePath + "/" + id, null, getEntityClass());
+    storeSnapshot(id, result);
+    return result;
   }
 
   public T get(String id, String fields) throws OpenMetadataException {
     RequestOptions options = RequestOptions.builder().queryParam("fields", fields).build();
-    return httpClient.execute(HttpMethod.GET, basePath + "/" + id, null, getEntityClass(), options);
+    T result =
+        httpClient.execute(HttpMethod.GET, basePath + "/" + id, null, getEntityClass(), options);
+    storeSnapshot(id, result);
+    return result;
   }
 
   public T get(String id, String fields, String include) throws OpenMetadataException {
@@ -79,8 +125,11 @@ public abstract class EntityServiceBase<T> {
     if (include != null) {
       optionsBuilder.queryParam("include", include);
     }
-    return httpClient.execute(
-        HttpMethod.GET, basePath + "/" + id, null, getEntityClass(), optionsBuilder.build());
+    T result =
+        httpClient.execute(
+            HttpMethod.GET, basePath + "/" + id, null, getEntityClass(), optionsBuilder.build());
+    storeSnapshot(id, result);
+    return result;
   }
 
   public T getByName(String name) throws OpenMetadataException {
@@ -95,7 +144,9 @@ public abstract class EntityServiceBase<T> {
     RequestOptions options =
         fields != null ? RequestOptions.builder().queryParam("fields", fields).build() : null;
 
-    return httpClient.execute(HttpMethod.GET, encodedPath, null, getEntityClass(), options);
+    T result = httpClient.execute(HttpMethod.GET, encodedPath, null, getEntityClass(), options);
+    storeSnapshot(null, result);
+    return result;
   }
 
   /**
@@ -178,43 +229,44 @@ public abstract class EntityServiceBase<T> {
 
   public T update(String id, T entity, String etag) throws OpenMetadataException {
     try {
-      // First, analyze what fields are present in the entity being updated
       JsonNode updatedNode = objectMapper.valueToTree(entity);
 
-      // Collect all field names from the update that might need special fetching
-      // These are typically fields that are references or complex objects
-      Set<String> fieldsToFetch = new HashSet<>();
-      Iterator<String> fieldNames = updatedNode.fieldNames();
+      // Try to use a stored snapshot from a previous get() call as the baseline.
+      // This correctly handles field removals: if a field was non-null when fetched
+      // and the user set it to null, the snapshot still has the field but the updated
+      // JSON (NON_NULL) omits it, producing a "remove" patch operation.
+      JsonNode originalNode = entitySnapshots.remove(id);
 
-      while (fieldNames.hasNext()) {
-        String fieldName = fieldNames.next();
-        JsonNode fieldValue = updatedNode.get(fieldName);
+      if (originalNode == null) {
+        // No snapshot available — fall back to re-fetching from the server.
+        // This path cannot detect field removals (null fields are omitted by NON_NULL
+        // in both original and updated), but handles additions and modifications.
+        Set<String> fieldsToFetch = new HashSet<>();
+        Iterator<String> fieldNames = updatedNode.fieldNames();
 
-        // Skip basic fields that are always returned
-        if (!isBasicField(fieldName)) {
-          // Check if it's a reference field (has id/type) or an array of references
-          if (isReferenceField(fieldValue)) {
-            fieldsToFetch.add(fieldName);
+        while (fieldNames.hasNext()) {
+          String fieldName = fieldNames.next();
+          JsonNode fieldValue = updatedNode.get(fieldName);
+
+          if (!isBasicField(fieldName)) {
+            if (isReferenceField(fieldValue)) {
+              fieldsToFetch.add(fieldName);
+            }
           }
         }
+
+        // Fetch original directly without storing a snapshot (avoids polluting the cache
+        // with a server-state snapshot that doesn't reflect the user's baseline).
+        T original;
+        if (!fieldsToFetch.isEmpty()) {
+          String fields = String.join(",", fieldsToFetch);
+          original = fetchEntity(id, fields);
+        } else {
+          original = fetchEntity(id, null);
+        }
+
+        originalNode = objectMapper.readTree(objectMapper.writeValueAsString(original));
       }
-
-      // Fetch the original from server with the same fields that are being updated
-      T original;
-      if (!fieldsToFetch.isEmpty()) {
-        String fields = String.join(",", fieldsToFetch);
-        original = get(id, fields);
-      } else {
-        // No special fields, just get basic entity
-        original = get(id);
-      }
-
-      // Generate JSON Patch between original and updated
-      String originalJson = objectMapper.writeValueAsString(original);
-      String updatedJson = objectMapper.writeValueAsString(entity);
-
-      JsonNode originalNode = objectMapper.readTree(originalJson);
-      updatedNode = objectMapper.readTree(updatedJson);
 
       // Remove computed/read-only fields that cannot be patched
       removeComputedFields(originalNode);
@@ -222,13 +274,11 @@ public abstract class EntityServiceBase<T> {
 
       JsonNode patch = JsonDiff.asJson(originalNode, updatedNode);
 
-      // Build request options with ETag if provided
       RequestOptions options = null;
       if (etag != null) {
         options = RequestOptions.builder().header("If-Match", etag).build();
       }
 
-      // Send PATCH request with the JSON Patch document
       return httpClient.execute(
           HttpMethod.PATCH, basePath + "/" + id, patch, getEntityClass(), options);
     } catch (Exception e) {

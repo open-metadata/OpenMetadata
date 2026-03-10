@@ -80,6 +80,7 @@ runs:
         source env/bin/activate
         uv pip install "setuptools<81"
         uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+        uv pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-databricks==0.2.0" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
         uv pip install "${{ github.workspace }}/ingestion[all]"
         uv pip install "${{ github.workspace }}/ingestion[test]"
         uv pip install nox

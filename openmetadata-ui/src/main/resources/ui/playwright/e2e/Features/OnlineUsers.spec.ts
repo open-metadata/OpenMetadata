@@ -12,6 +12,7 @@
  */
 
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { UserClass } from '../../support/user/UserClass';
@@ -22,7 +23,7 @@ import { test } from '../fixtures/pages';
 
 const testUser = new UserClass();
 
-test.describe('Online Users Feature', () => {
+test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await testUser.create(apiContext);

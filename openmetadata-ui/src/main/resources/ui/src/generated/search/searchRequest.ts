@@ -88,11 +88,6 @@ export interface SearchRequest {
      */
     searchAfter?: any;
     /**
-     * Enable semantic search using embeddings and RDF context. When true, combines vector
-     * similarity with traditional BM25 scoring.
-     */
-    semanticSearch?: boolean;
-    /**
      * Size to limit the no.of results returned.
      */
     size?: number;

@@ -30,7 +30,7 @@ import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/DataAssetSummaryPanel.interface';
+import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
@@ -49,6 +49,7 @@ import {
 import TagsV1 from '../components/Tag/TagsV1/TagsV1.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  DEFAULT_DOMAIN_VALUE,
   NO_DATA,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
@@ -174,6 +175,19 @@ export const getEntityName = (entity?: {
   displayName?: string;
 }) => {
   return entity?.displayName || entity?.name || '';
+};
+
+export const getDomainDisplayName = (
+  activeDomainEntityRef?: EntityReference,
+  activeDomain?: string
+) => {
+  if (activeDomainEntityRef) {
+    return getEntityName(activeDomainEntityRef);
+  }
+
+  return activeDomain === DEFAULT_DOMAIN_VALUE
+    ? t('label.all-domain-plural')
+    : activeDomain;
 };
 
 export const getEntityLabel = (entity: {
@@ -2921,6 +2935,7 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.SPREADSHEET]: t('label.spreadsheet'),
   [EntityType.WORKSHEET]: t('label.worksheet'),
   [EntityType.NOTIFICATION_TEMPLATE]: t('label.notification-template'),
+  [EntityType.TABLE_COLUMN]: t('label.table-column'),
 };
 
 export const hasSchemaTab = (entityType: EntityType): boolean =>

@@ -9,18 +9,22 @@
     "oracleType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Oracle"],
+      "enum": [
+        "Oracle"
+      ],
       "default": "Oracle"
     },
     "oracleScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["oracle+cx_oracle"],
+      "enum": [
+        "oracle+cx_oracle"
+      ],
       "default": "oracle+cx_oracle"
     },
     "OracleDatabaseSchema": {
       "title": "Database Schema",
-      "type":"object",
+      "type": "object",
       "properties": {
         "databaseSchema": {
           "title": "DatabaseSchema",
@@ -28,11 +32,13 @@
           "type": "string"
         }
       },
-      "required": ["databaseSchema"]
+      "required": [
+        "databaseSchema"
+      ]
     },
     "OracleServiceName": {
       "title": "Oracle Service Name",
-      "type":"object",
+      "type": "object",
       "properties": {
         "oracleServiceName": {
           "title": "Oracle Service Name",
@@ -40,11 +46,13 @@
           "type": "string"
         }
       },
-      "required": ["oracleServiceName"]
+      "required": [
+        "oracleServiceName"
+      ]
     },
     "OracleTNSConnection": {
       "title": "Oracle TNS Connection",
-      "type":"object",
+      "type": "object",
       "properties": {
         "oracleTNSConnection": {
           "title": "Oracle TNS Connection String",
@@ -52,7 +60,9 @@
           "type": "string"
         }
       },
-      "required": ["oracleTNSConnection"]
+      "required": [
+        "oracleTNSConnection"
+      ]
     }
   },
   "properties": {
@@ -111,6 +121,12 @@
       "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
       "type": "string"
     },
+    "preserveIdentifierCase": {
+      "title": "Preserve Identifier Case",
+      "type": "boolean",
+      "description": "Controls how Oracle identifier names (tables, columns, schemas) are stored in OpenMetadata. When disabled (default), Oracle's UPPERCASE unquoted identifiers (e.g. EMPLOYEES) are not guaranteed to be stored as-is — identifiers with the same letters but different case (e.g. unquoted EMPLOYEES and quoted 'employees') will collide into the same name. When enabled, names are stored exactly as Oracle persists them, which solves same-name collisions between quoted and unquoted identifiers. WARNING: enabling this after data has already been ingested with the default setting will change the stored names of all existing tables, columns, schemas, and constraints — breaking attached tags, descriptions, lineage, data quality tests, and any other metadata associated with those entities. If you must switch, soft-delete all previously ingested entities before re-ingesting.",
+      "default": false
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -119,13 +135,18 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^sys$", "^ctxsys$", "^dbsnmp$", "^outln$"]
+        "excludes": [
+          "^sys$",
+          "^ctxsys$",
+          "^dbsnmp$",
+          "^outln$"
+        ]
       }
     },
     "tableFilterPattern": {
@@ -165,8 +186,8 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     },
     "supportsDataDiff": {
-        "title": "Supports Data Diff Extraction.",
-        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
@@ -174,5 +195,8 @@
     }
   },
   "additionalProperties": false,
-  "required": ["username", "oracleConnectionType"]
+  "required": [
+    "username",
+    "oracleConnectionType"
+  ]
 }

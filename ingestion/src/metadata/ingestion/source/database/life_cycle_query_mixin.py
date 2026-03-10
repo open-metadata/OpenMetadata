@@ -18,6 +18,7 @@ from functools import lru_cache
 from typing import Dict, Iterable, List, Optional, Type
 
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.data.table import Table
@@ -74,12 +75,15 @@ class LifeCycleQueryMixin:
         We will run this for each different schema and db name.
         The dictionary key will be the case-insensitive table name.
         """
-        results = self.engine.execute(query).all()
+        with self.engine.connect() as conn:
+            results = conn.execute(text(query)).all()
         queries_dict = defaultdict()
 
         for row in results:
             try:
-                life_cycle_by_table = LifeCycleQueryByTable.model_validate(dict(row))
+                life_cycle_by_table = LifeCycleQueryByTable.model_validate(
+                    row._asdict()
+                )
                 queries_dict[life_cycle_by_table.table_name] = life_cycle_by_table
             except Exception as exc:
                 self.status.failed(

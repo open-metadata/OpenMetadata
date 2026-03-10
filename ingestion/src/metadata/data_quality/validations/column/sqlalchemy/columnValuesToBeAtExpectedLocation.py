@@ -43,4 +43,5 @@ class ColumnValuesToBeAtExpectedLocationValidator(
         for col in cols:
             col.key = col.name
 
-        yield from self.runner.yield_from_sample(*cols)
+        for row in self.runner.yield_from_sample(*cols):
+            yield row._mapping

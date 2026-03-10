@@ -28,6 +28,7 @@ import {
   TEXT_FIELD_DESCRIPTION_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
+import { SEMANTIC_TAG_OPERATORS } from '../constants/DataContract.constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
   GLOSSARY_ENTITY_FIELDS_KEYS,
@@ -316,6 +317,26 @@ class JSONLogicSearchClassBase {
                 fieldName: 'fullyQualifiedName',
                 fieldLabel: 'name',
               }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
+      [EntityReferenceFields.TIER]: {
+        label: t('label.tier'),
+        type: '!group',
+        mode: 'some',
+        fieldName: 'tags',
+        defaultField: 'tagFQN',
+        subfields: {
+          tagFQN: {
+            label: t('label.tier'),
+            type: 'multiselect',
+            defaultOperator: 'array_contains',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: SEMANTIC_TAG_OPERATORS,
+            fieldSettings: {
+              asyncFetch: this.autoCompleteTier,
               useAsyncSearch: true,
             },
           },

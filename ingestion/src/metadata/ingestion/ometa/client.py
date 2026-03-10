@@ -14,11 +14,10 @@ Python API REST wrapper and helpers
 import time
 import traceback
 from datetime import datetime, timezone
-from json import JSONDecodeError
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, JSONDecodeError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version

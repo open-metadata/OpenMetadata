@@ -20,6 +20,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
+import { useLineageStore } from '../../hooks/useLineageStore';
 import {
   getLineageByEntityCount,
   getLineageDataByFQN,
@@ -48,6 +49,7 @@ jest.mock('../../utils/StringsUtils', () => ({
   ...jest.requireActual('../../utils/StringsUtils'),
   stringToHTML: jest.fn((str: string) => str),
 }));
+jest.mock('../../hooks/useLineageStore');
 jest.mock('../../utils/Lineage/LineageUtils');
 jest.mock('./LineageTable.styled', () => {
   const { Menu: MuiMenu } = jest.requireActual('@mui/material');
@@ -91,6 +93,9 @@ jest.mock('../Entity/EntityLineage/CustomControls.component', () => {
 
 const mockUseLineageProvider = useLineageProvider as jest.MockedFunction<
   typeof useLineageProvider
+>;
+const mockUseLineageStore = useLineageStore as jest.MockedFunction<
+  typeof useLineageStore
 >;
 const mockUsePaging = usePaging as jest.MockedFunction<typeof usePaging>;
 const mockUseFqn = useFqn as jest.MockedFunction<typeof useFqn>;
@@ -211,8 +216,15 @@ describe('LineageTable', () => {
       } as LineageConfig,
       updateEntityData: jest.fn(),
       onExportClick: jest.fn(),
-      onLineageConfigUpdate: jest.fn(),
     } as unknown as LineageContextType);
+
+    mockUseLineageStore.mockReturnValue({
+      lineageConfig: {
+        downstreamDepth: 2,
+        upstreamDepth: 2,
+      } as LineageConfig,
+      setLineageConfig: jest.fn(),
+    });
 
     mockUsePaging.mockReturnValue({
       currentPage: 1,
@@ -227,6 +239,7 @@ describe('LineageTable', () => {
       fqn: 'test.table',
       ingestionFQN: '',
       ruleName: '',
+      entityFqn: '',
     });
 
     mockUseRequiredParams.mockReturnValue({

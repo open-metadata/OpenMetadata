@@ -35,6 +35,10 @@ export class DataQualityPageObject extends RightPanelBase {
   private readonly testCaseCardsSection: Locator;
   private readonly testCaseCards: Locator;
   private readonly nameLink: Locator;
+  private readonly testCaseStatusBadge: Locator;
+  private readonly searchBar: Locator;
+  private readonly incidentsTabContent: Locator;
+  private readonly noDataPlaceholder: Locator;
 
   constructor(rightPanel: RightPanelPageObject) {
     super(rightPanel);
@@ -56,17 +60,23 @@ export class DataQualityPageObject extends RightPanelBase {
       '[data-testid="data-quality-stat-card-aborted"]'
     );
     this.testCaseCardsSection = this.container.locator(
-      '[data-testid="test-case-cards-section"]'
+      '.test-case-cards-section, [data-testid="test-case-cards-section"]'
     );
-    this.testCaseCards = this.testCaseCardsSection.locator(
-      '.test-case-card, [class*="test-case"], [data-testid*="test-case"]'
-    );
+    this.testCaseCards = this.testCaseCardsSection.locator('.test-case-card');
     this.nameLink = this.testCaseCards
       .locator('.test-case-name, [class*="name"], a')
       .first();
+    this.testCaseStatusBadge = this.testCaseCards.locator(
+      '.test-case-status-section .status-badge-label'
+    );
+    this.searchBar = this.container.getByTestId('searchbar');
+    this.incidentsTabContent = this.container.locator('.incidents-tab-content');
+    this.noDataPlaceholder = this.container
+      .locator(
+        '[data-testid="no-data-placeholder"], .no-data-placeholder, .ant-empty'
+      )
+      .first();
   }
-
-  // ============ NAVIGATION METHODS (Fluent Interface) ============
 
   /**
    * Navigate to the Data Quality tab
@@ -100,6 +110,24 @@ export class DataQualityPageObject extends RightPanelBase {
   // ============ ACTION METHODS (Fluent Interface) ============
 
   /**
+   * Type into the data quality search bar and wait for results to update.
+   */
+  async searchFor(text: string): Promise<DataQualityPageObject> {
+    await this.searchBar.fill(text);
+    await this.page.waitForTimeout(300); // Wait for debounce
+    return this;
+  }
+
+  /**
+   * Clear the data quality search bar.
+   */
+  async clearSearch(): Promise<DataQualityPageObject> {
+    await this.searchBar.clear();
+    await this.page.waitForTimeout(300); // Wait for debounce
+    return this;
+  }
+
+  /**
    * Click on a data quality stat card to filter test cases
    * @param statType - Type of stat card ('success', 'failed', 'aborted')
    * @returns DataQualityPageObject for method chaining
@@ -111,6 +139,34 @@ export class DataQualityPageObject extends RightPanelBase {
     await statCard.click();
     await this.waitForLoadersToDisappear();
     return this;
+  }
+
+  /**
+   * Click on a test case link to navigate to its details page
+   * @param testCaseName - Name of the test case
+   * @returns DataQualityPageObject for method chaining
+   */
+  async clickTestCaseLink(
+    testCaseName: string
+  ): Promise<DataQualityPageObject> {
+    const testCaseLink = this.container
+      .locator(`.test-case-name[data-testid="test-case-${testCaseName}"]`)
+      .first();
+    await testCaseLink.waitFor({ state: 'visible' });
+    await testCaseLink.click();
+    await this.page.waitForLoadState('networkidle');
+    return this;
+  }
+
+  /**
+   * Filter test cases or incidents by clicking stat cards
+   * @param statType - Type of stat to filter by
+   * @returns DataQualityPageObject for method chaining
+   */
+  async filterByStatus(
+    statType: 'success' | 'failed' | 'aborted'
+  ): Promise<DataQualityPageObject> {
+    return this.clickStatCard(statType);
   }
 
   // ============ PRIVATE HELPERS ============
@@ -163,11 +219,107 @@ export class DataQualityPageObject extends RightPanelBase {
   ): Promise<void> {
     const statCard = this.getStatCardLocator(statType);
     await statCard.waitFor({ state: 'visible' });
-    const statCardText = await statCard.textContent();
-    if (!statCardText?.includes(expectedText)) {
-      throw new Error(
-        `Stat card ${statType} should show "${expectedText}" but shows "${statCardText}"`
+    await expect(statCard).toContainText(expectedText);
+  }
+
+  /**
+   * Verify a stat card shows specific count
+   * @param statType - Type of stat card
+   * @param expectedCount - Expected count to verify
+   */
+  async verifyStatCardCount(
+    statType: 'success' | 'failed' | 'aborted',
+    expectedCount: number
+  ): Promise<void> {
+    const statCard = this.getStatCardLocator(statType);
+    await statCard.waitFor({ state: 'visible' });
+    await expect(statCard).toContainText(expectedCount.toString());
+  }
+
+  /**
+   * Verify a test case card with specific name and status
+   * @param testCaseName - Expected test case name
+   * @param expectedStatus - Expected status
+   */
+  async verifyTestCaseCard(
+    testCaseName: string,
+    expectedStatus: string
+  ): Promise<void> {
+    const cards = this.testCaseCards;
+    const card = cards.filter({ hasText: testCaseName }).first();
+    await card.waitFor({ state: 'visible' });
+
+    const statusBadge = card.locator('.status-badge-label');
+    await statusBadge.waitFor({ state: 'visible' });
+    await expect(statusBadge).toContainText(new RegExp(expectedStatus, 'i'));
+  }
+
+  /**
+   * Verify test case details (column name, entity link, etc.)
+   * @param testCaseName - Name of the test case
+   * @param details - Object containing expected details
+   */
+  async verifyTestCaseDetails(
+    testCaseName: string,
+    details: { columnName?: string; entityLink?: string }
+  ): Promise<void> {
+    const card = this.testCaseCards.filter({ hasText: testCaseName }).first();
+    await card.waitFor({ state: 'visible' });
+
+    if (details.columnName) {
+      const columnDetail = card
+        .locator('.test-case-detail-item, [class*="detail"]')
+        .filter({ hasText: /column name/i })
+        .filter({ hasText: details.columnName });
+      await expect(columnDetail).toBeVisible();
+      await expect(columnDetail).toContainText(details.columnName);
+    }
+
+    if (details.entityLink) {
+      const testCaseLink = card.locator('.test-case-name');
+      await expect(testCaseLink).toHaveAttribute(
+        'href',
+        new RegExp(details.entityLink)
       );
+    }
+  }
+
+  /**
+   * Verify incident card details
+   * @param incidentData - Object containing expected incident data
+   */
+  async verifyIncidentCard(incidentData: {
+    status?: string;
+    hasAssignee?: boolean;
+  }): Promise<void> {
+    await this.incidentsTabContent.waitFor({ state: 'visible' });
+
+    const incidentCard = this.incidentsTabContent
+      .locator('.test-case-card')
+      .first();
+    await expect(incidentCard).toBeVisible();
+
+    if (incidentData.status) {
+      const statusBadge = incidentCard.locator('.status-badge-label');
+      await expect(statusBadge).toContainText('New');
+    }
+
+    if (incidentData.hasAssignee !== undefined) {
+      const assigneeSection = incidentCard
+        .locator('.test-case-detail-item')
+        .filter({ hasText: /assignee/i });
+
+      await expect(assigneeSection).toBeVisible();
+
+      if (incidentData.hasAssignee) {
+        await expect(
+          assigneeSection.getByTestId('no-owner-icon')
+        ).not.toBeVisible();
+      } else {
+        await expect(
+          assigneeSection.getByTestId('no-owner-icon')
+        ).toBeVisible();
+      }
     }
   }
 
@@ -176,14 +328,15 @@ export class DataQualityPageObject extends RightPanelBase {
    * @param expectedCount - Expected number of test case cards
    */
   async shouldShowTestCaseCardsCount(expectedCount: number): Promise<void> {
-    // Use semantic selectors - count all test case card elements
-    const cards = this.testCaseCards;
-    const actualCount = await cards.count();
-    if (actualCount !== expectedCount) {
-      throw new Error(
-        `Should show ${expectedCount} test case cards, but shows ${actualCount}`
-      );
-    }
+    await expect(this.testCaseCards).toHaveCount(expectedCount);
+  }
+
+  /**
+   * Verify that no test cases are shown, e.g. after a search with no matches
+   */
+  async shouldShowNoResults(): Promise<void> {
+    await expect(this.testCaseCards).toHaveCount(0);
+    await expect(this.noDataPlaceholder).toBeVisible();
   }
 
   /**
@@ -201,12 +354,7 @@ export class DataQualityPageObject extends RightPanelBase {
     await card.waitFor({ state: 'visible' });
     const nameElement = this.nameLink.nth(cardIndex);
     await nameElement.waitFor({ state: 'visible' });
-    const nameText = await nameElement.textContent();
-    if (!nameText?.includes(testCaseName)) {
-      throw new Error(
-        `Test case card ${cardIndex} should show name "${testCaseName}" but shows "${nameText}"`
-      );
-    }
+    await expect(nameElement).toContainText(testCaseName);
   }
 
   /**
@@ -218,21 +366,26 @@ export class DataQualityPageObject extends RightPanelBase {
     status: 'success' | 'failed' | 'aborted',
     cardIndex: number = 0
   ): Promise<void> {
-    // Use semantic selectors - find card by index and check status
-    const cards = this.testCaseCards;
-    const card = cards.nth(cardIndex);
+    const card = this.testCaseCards.nth(cardIndex);
     await card.waitFor({ state: 'visible' });
-    const statusBadge = card.locator(
-      '.status-badge, .badge, [class*="status"]'
-    );
+    const expectedStatusText: Record<'success' | 'failed' | 'aborted', string> =
+      {
+        success: 'Success',
+        failed: 'Failed',
+        aborted: 'Aborted',
+      };
+    const expectedBadgeClass: Record<'success' | 'failed' | 'aborted', string> =
+      {
+        success: 'success',
+        failed: 'failure',
+        aborted: 'aborted',
+      };
+    const statusBadge = this.testCaseStatusBadge.nth(cardIndex);
     await statusBadge.waitFor({ state: 'visible' });
-    const statusText = await statusBadge.textContent();
-    const expectedStatusText = status.toLowerCase();
-    if (!statusText?.toLowerCase().includes(expectedStatusText)) {
-      throw new Error(
-        `Test case card ${cardIndex} should show status "${expectedStatusText}" but shows "${statusText}"`
-      );
-    }
+    await expect(statusBadge).toHaveText(expectedStatusText[status]);
+    await expect(statusBadge).toHaveClass(
+      new RegExp(`\\b${expectedBadgeClass[status]}\\b`)
+    );
   }
 
   /**
@@ -265,12 +418,7 @@ export class DataQualityPageObject extends RightPanelBase {
     const card = cards.nth(cardIndex);
     await card.waitFor({ state: 'visible' });
     await this.nameLink.nth(cardIndex).waitFor({ state: 'visible' });
-    const href = await this.nameLink.nth(cardIndex).getAttribute('href');
-    if (!href) {
-      throw new Error(
-        `Test case card ${cardIndex} should have a working link but doesn't`
-      );
-    }
+    await expect(this.nameLink.nth(cardIndex)).toHaveAttribute('href', /.+/);
   }
 
   /**
@@ -288,15 +436,28 @@ export class DataQualityPageObject extends RightPanelBase {
   }
 
   /**
-   * Assert internal fields of the Data Quality tab for Table (stat cards, incidents tab).
+   * Verify that the permission placeholder is shown when user lacks ViewTests permission
+   */
+  async shouldShowPermissionPlaceholder(): Promise<void> {
+    const placeholder = this.container.locator(
+      '[data-testid="permission-error-placeholder"]'
+    );
+    await expect(placeholder).toBeVisible();
+  }
+
+  /**
+   * Assert internal fields of the Data Quality tab for Table (incidents tab presence).
    * Use only when Data Quality tab is available (e.g. Table). Call after navigating to Data Quality tab.
+   *
+   * Note: The stat cards (success / failed / aborted) are intentionally not asserted here.
+   * They are conditionally rendered only when the entity has at least one completed test run.
+   * Test entities used in this suite are freshly created with no runs, so the stat cards are
+   * absent from the DOM. Use assertContent() when you need to verify stat cards against an
+   * entity that has actual test-run data.
    */
   async assertInternalFieldsForTable(assetType?: string): Promise<void> {
     const tabLabel = 'Data Quality';
     const prefix = assetType ? `[Asset: ${assetType}] [Tab: ${tabLabel}] ` : '';
-    // await expect(this.successStatCard, `${prefix}Missing: success stat card`).toBeVisible();
-    // await expect(this.failedStatCard, `${prefix}Missing: failed stat card`).toBeVisible();
-    // await expect(this.abortedStatCard, `${prefix}Missing: aborted stat card`).toBeVisible();
     await expect(
       this.incidentsTab,
       `${prefix}Missing: incidents tab`

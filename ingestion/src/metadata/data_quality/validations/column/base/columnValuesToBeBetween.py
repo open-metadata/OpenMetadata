@@ -67,15 +67,15 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
 
         try:
             column: Union[SQALikeColumn, Column] = self.get_column()
-            min_res = self._run_results(Metrics.MIN, column)
-            max_res = self._run_results(Metrics.MAX, column)
+            min_res = self._run_results(Metrics.min, column)
+            max_res = self._run_results(Metrics.max, column)
 
             min_res = self._normalize_metric_value(min_res, is_min=True)
             max_res = self._normalize_metric_value(max_res, is_min=False)
 
             metric_values = {
-                Metrics.MIN.name: min_res,
-                Metrics.MAX.name: max_res,
+                Metrics.min.name: min_res,
+                Metrics.max.name: max_res,
             }
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -150,7 +150,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
 
     def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:
         """Get Metrics needed to compute"""
-        return {Metrics.MIN.name: Metrics.MIN, Metrics.MAX.name: Metrics.MAX}
+        return {Metrics.min.name: Metrics.min, Metrics.max.name: Metrics.max}
 
     def _evaluate_test_condition(
         self, metric_values: dict, test_params: dict
@@ -174,8 +174,8 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
                 - total_rows: None - not applicable for statistical validators
         """
 
-        min_value = metric_values[Metrics.MIN.name]
-        max_value = metric_values[Metrics.MAX.name]
+        min_value = metric_values[Metrics.min.name]
+        max_value = metric_values[Metrics.max.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -216,8 +216,8 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
                 "test_params is required for columnValuesToBeBetween._format_result_message"
             )
 
-        min_value = metric_values[Metrics.MIN.name]
-        max_value = metric_values[Metrics.MAX.name]
+        min_value = metric_values[Metrics.min.name]
+        max_value = metric_values[Metrics.max.name]
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
@@ -239,8 +239,8 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             List[TestResultValue]: Test result values for the test case
         """
         return [
-            TestResultValue(name=MIN, value=str(metric_values[Metrics.MIN.name])),
-            TestResultValue(name=MAX, value=str(metric_values[Metrics.MAX.name])),
+            TestResultValue(name=MIN, value=str(metric_values[Metrics.min.name])),
+            TestResultValue(name=MAX, value=str(metric_values[Metrics.max.name])),
         ]
 
     def _get_validation_checker(self, test_params: dict) -> BetweenBoundsChecker:
@@ -264,6 +264,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         dimension_col: Union[SQALikeColumn, Column],
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation query for a single dimension column
 
@@ -272,6 +273,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             dimension_col: The dimension column to group by (e.g., region)
             metrics_to_compute: Dict mapping metric names to Metrics enum values
             test_params: Test parameters including min and max bounds
+            top_n: Number of top dimension values before grouping as "Others"
 
         Returns:
             List of DimensionResult objects for each dimension value

@@ -35,6 +35,7 @@ export interface TeamHierarchyProps {
   isTeamDeleted: boolean;
   handleTeamSearch: (text: string) => void;
   isTeamBasicDataLoading: boolean;
+  teamAssetCounts?: Record<string, number>;
 }
 
 export interface MovedTeamProps {

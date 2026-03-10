@@ -43,8 +43,10 @@ class RegexCount(StaticMetric):
     rows that match it
 
     This Metric needs to be initialised passing the expression to check
-    add_props(expression="j.*")(Metrics.REGEX_COUNT.value)
+    add_props(expression="j.*")(Metrics.regexCount.value)
     """
+
+    schema_metric_type = MetricType.regexCount
 
     expression: str
 
@@ -64,18 +66,16 @@ class RegexCount(StaticMetric):
         """sqlalchemy function"""
         if not hasattr(self, "expression"):
             raise AttributeError(
-                "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
+                "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.regexCount)"
             )
         return SumFn(
             case(
-                [
-                    (
-                        RegexpMatchFn(
-                            column(self.col.name, self.col.type), self.expression
-                        ),
-                        1,
-                    )
-                ],
+                (
+                    RegexpMatchFn(
+                        column(self.col.name, self.col.type), self.expression
+                    ),
+                    1,
+                ),
                 else_=0,
             )
         )
@@ -101,7 +101,7 @@ class RegexCount(StaticMetric):
         """Returns the logic to compute this metric using Pandas"""
         if not hasattr(self, "expression"):
             raise AttributeError(
-                "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
+                "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.regexCount)"
             )
 
         return PandasComputation[int, int](

@@ -1,3 +1,4 @@
+import contextlib
 import copy
 import json
 import unittest
@@ -13,12 +14,16 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     ConsumerOffsets,
+    ConsumerOffsets1,
     SecurityProtocol,
 )
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
     PipelineServiceType,
+)
+from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline import (
+    LineageInformation,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -28,11 +33,24 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
-from metadata.ingestion.source.pipeline.openlineage.models import OpenLineageEvent
+from metadata.ingestion.source.pipeline.openlineage.models import (
+    EntityDetails,
+    OpenLineageEvent,
+)
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     FQNNotFoundException,
     message_to_open_lineage_event,
 )
+
+MOCK_WORKFLOW_CONFIG = {
+    "openMetadataServerConfig": {
+        "hostPort": "http://localhost:8585/api",
+        "authProvider": "openmetadata",
+        "securityConfig": {
+            "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+        },
+    }
+}
 
 # Global constants
 MOCK_OL_CONFIG = {
@@ -42,32 +60,52 @@ MOCK_OL_CONFIG = {
         "serviceConnection": {
             "config": {
                 "type": "OpenLineage",
-                "brokersUrl": "testbroker:9092",
-                "topicName": "test-topic",
-                "consumerGroupName": "test-consumergroup",
-                "consumerOffsets": ConsumerOffsets.earliest,
-                "securityProtocol": SecurityProtocol.PLAINTEXT,
-                "sslConfig": {
-                    "caCertificate": "",
-                    "sslCertificate": "",
-                    "sslKey": "",
+                "brokerConfig": {
+                    "brokersUrl": "testbroker:9092",
+                    "topicName": "test-topic",
+                    "consumerGroupName": "test-consumergroup",
+                    "consumerOffsets": ConsumerOffsets.earliest,
+                    "securityProtocol": SecurityProtocol.PLAINTEXT,
+                    "sslConfig": {
+                        "caCertificate": "",
+                        "sslCertificate": "",
+                        "sslKey": "",
+                    },
+                    "poolTimeout": 0.3,
+                    "sessionTimeout": 1,
                 },
-                "poolTimeout": 0.3,
-                "sessionTimeout": 1,
             }
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "http://localhost:8585/api",
-            "authProvider": "openmetadata",
-            "securityConfig": {
-                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-            },
-        }
+    "workflowConfig": MOCK_WORKFLOW_CONFIG,
+}
+
+MOCK_OL_KINESIS_CONFIG = {
+    "source": {
+        "type": "openlineage",
+        "serviceName": "openlineage_kinesis_source",
+        "serviceConnection": {
+            "config": {
+                "type": "OpenLineage",
+                "brokerConfig": {
+                    "streamName": "test-openlineage-stream",
+                    "awsConfig": {
+                        "awsRegion": "us-east-1",
+                        "awsAccessKeyId": "test-access-key",
+                        "awsSecretAccessKey": "test-secret-key",
+                    },
+                    "consumerOffsets": ConsumerOffsets1.TRIM_HORIZON,
+                    "poolTimeout": 0.5,
+                    "sessionTimeout": 2,
+                },
+            }
+        },
+        "sourceConfig": {"config": {"type": "PipelineMetadata"}},
     },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": MOCK_WORKFLOW_CONFIG,
 }
 MOCK_SPLINE_UI_URL = "http://localhost:9090"
 PIPELINE_ID = "3f784e72-5bf7-5704-8828-ae8464fe915b:lhq160w0"
@@ -116,6 +154,14 @@ del MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT["run"]["facets"]["parent"]["job"]["
 MALFORMED_NESTED_STRUCTURE_EVENT = copy.deepcopy(VALID_EVENT)
 MALFORMED_NESTED_STRUCTURE_EVENT["run"]["facets"]["parent"]["job"] = "Not a dict"
 
+EVENT_WITHOUT_PARENT_FACET = {
+    "run": {"facets": {}},
+    "inputs": [],
+    "outputs": [],
+    "eventType": "COMPLETE",
+    "job": {"name": "standalone-job", "namespace": "standalone-namespace"},
+}
+
 with open(
     f"{Path(__file__).parent}/../../resources/datasets/openlineage_event.json"
 ) as ol_file:
@@ -137,6 +183,8 @@ class OpenLineageUnitTest(unittest.TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
+
+        # Kafka source
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_CONFIG)
         self.open_lineage_source = OpenlineageSource.create(
             MOCK_OL_CONFIG["source"],
@@ -146,9 +194,27 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.open_lineage_source.context.get().pipeline_service = (
             MOCK_PIPELINE_SERVICE.name.root
         )
-        self.open_lineage_source.source_config.lineageInformation = {
-            "dbServiceNames": ["skun"]
-        }
+        self.open_lineage_source.source_config.lineageInformation = LineageInformation(
+            dbServiceNames=["skun"]
+        )
+
+        # Kinesis source
+        kinesis_config = OpenMetadataWorkflowConfig.model_validate(
+            MOCK_OL_KINESIS_CONFIG
+        )
+        self.open_lineage_kinesis_source = OpenlineageSource.create(
+            MOCK_OL_KINESIS_CONFIG["source"],
+            kinesis_config.workflowConfig.openMetadataServerConfig,
+        )
+        self.open_lineage_kinesis_source.context.get().pipeline = (
+            MOCK_PIPELINE.name.root
+        )
+        self.open_lineage_kinesis_source.context.get().pipeline_service = (
+            MOCK_PIPELINE_SERVICE.name.root
+        )
+        self.open_lineage_kinesis_source.source_config.lineageInformation = (
+            LineageInformation(dbServiceNames=["skun"])
+        )
 
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
@@ -179,14 +245,44 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertIsInstance(result, OpenLineageEvent)
 
     def test_message_to_ol_event_missing_run_facets_parent_job_name(self):
-        """Test conversion with missing 'run.facets.parent.job.name' field."""
-        with self.assertRaises(ValueError):
-            message_to_open_lineage_event(MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT)
+        """Test that parent facet is optional - missing parent job name is allowed."""
+        result = message_to_open_lineage_event(MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT)
+        self.assertIsInstance(result, OpenLineageEvent)
 
     def test_message_to_ol_event_malformed_nested_structure(self):
-        """Test conversion with a malformed nested structure."""
-        with self.assertRaises(TypeError):
-            message_to_open_lineage_event(MALFORMED_NESTED_STRUCTURE_EVENT)
+        """Test that parent facet is optional - malformed parent structure is allowed."""
+        result = message_to_open_lineage_event(MALFORMED_NESTED_STRUCTURE_EVENT)
+        self.assertIsInstance(result, OpenLineageEvent)
+
+    def test_render_pipeline_name_falls_back_to_job_when_no_parent_facet(self):
+        """Test that pipeline name uses job namespace/name when parent facet is absent."""
+        event = message_to_open_lineage_event(EVENT_WITHOUT_PARENT_FACET)
+        result = OpenlineageSource._render_pipeline_name(event)
+        self.assertEqual(result, "standalone-namespace-standalone-job")
+
+    def test_render_pipeline_name_falls_back_to_job_when_parent_job_name_missing(self):
+        """Test that pipeline name falls back to job fields when parent.job.name is missing."""
+        event = message_to_open_lineage_event(MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT)
+        result = OpenlineageSource._render_pipeline_name(event)
+        self.assertEqual(result, "test-namespace-test-job")
+
+    def test_render_pipeline_name_falls_back_to_job_when_parent_job_malformed(self):
+        """Test that pipeline name falls back to job fields when parent.job is not a dict."""
+        event = message_to_open_lineage_event(MALFORMED_NESTED_STRUCTURE_EVENT)
+        result = OpenlineageSource._render_pipeline_name(event)
+        self.assertEqual(result, "test-namespace-test-job")
+
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_event_without_parent_facet(self, mock_consumer_class):
+        """Test that events without a parent facet are processed successfully."""
+        self.setup_mock_consumer_with_kafka_event(EVENT_WITHOUT_PARENT_FACET)
+
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "COMPLETE")
 
     def test_poll_message_receives_message(self):
         """Test if poll_message receives a kafka  message."""
@@ -409,6 +505,77 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
         self.assertEqual(result, expected)
 
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn"
+    )
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map"
+    )
+    def test_get_column_lineage_normalizes_caps_columns_to_lowercase(
+        self, mock_build_map, mock_get_table_fqn
+    ):
+        """Test that CAPS column names from OL events are normalized to lowercase in column FQNs."""
+        mock_get_table_fqn.side_effect = (
+            lambda table_details: f"database.schema.{table_details.name}"
+        )
+        mock_build_map.return_value = {
+            "sqlserver:/host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
+        }
+
+        inputs = [
+            {
+                "name": "hk_schema.CASE_TEST_SOURCE",
+                "facets": {},
+                "namespace": "sqlserver://host:1433",
+            },
+        ]
+        outputs = [
+            {
+                "name": "hk_schema.CASE_TEST_TARGET",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            "FIRST_NAME": {
+                                "inputFields": [
+                                    {
+                                        "field": "FIRST_NAME",
+                                        "namespace": "sqlserver://host:1433",
+                                        "name": "hk_schema.CASE_TEST_SOURCE",
+                                    }
+                                ]
+                            },
+                            "LAST_NAME": {
+                                "inputFields": [
+                                    {
+                                        "field": "LAST_NAME",
+                                        "namespace": "sqlserver://host:1433",
+                                        "name": "hk_schema.CASE_TEST_SOURCE",
+                                    }
+                                ]
+                            },
+                        }
+                    }
+                },
+            }
+        ]
+        result = self.open_lineage_source._get_column_lineage(inputs, outputs)
+
+        expected = {
+            "database.schema.case_test_target": {
+                "database.schema.case_test_source": [
+                    ColumnLineage(
+                        toColumn="database.schema.case_test_target.first_name",
+                        fromColumns=["database.schema.case_test_source.first_name"],
+                    ),
+                    ColumnLineage(
+                        toColumn="database.schema.case_test_target.last_name",
+                        fromColumns=["database.schema.case_test_source.last_name"],
+                    ),
+                ],
+            }
+        }
+        self.assertEqual(result, expected)
+
     def test_get_column_lineage__invalid_inputs_outputs_structure(self):
         """Test with invalid input and output structure."""
         inputs = [{"invalid": "data"}]
@@ -431,6 +598,33 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = self.open_lineage_source._get_table_details(data)
         self.assertEqual(result.name, "table")
         self.assertEqual(result.schema, "schema")
+
+    def test_get_table_details_normalizes_caps_symlinks_to_lowercase(self):
+        """Test that CAPS table/schema names from symlinks are normalized to lowercase."""
+        data = {
+            "facets": {
+                "symlinks": {
+                    "identifiers": [{"name": "PROJECT.SCHEMA.CASE_TEST_SOURCE"}]
+                }
+            }
+        }
+        result = self.open_lineage_source._get_table_details(data)
+        self.assertEqual(result.name, "case_test_source")
+        self.assertEqual(result.schema, "schema")
+
+    def test_get_table_details_normalizes_caps_name_to_lowercase(self):
+        """Test that CAPS table/schema names from name attribute are normalized to lowercase."""
+        data = {"name": "HK_SCHEMA.CASE_TEST_SOURCE"}
+        result = self.open_lineage_source._get_table_details(data)
+        self.assertEqual(result.name, "case_test_source")
+        self.assertEqual(result.schema, "hk_schema")
+
+    def test_get_table_details_normalizes_mixed_case_to_lowercase(self):
+        """Test that mixed-case names are normalized to lowercase."""
+        data = {"name": "MySchema.MyTable"}
+        result = self.open_lineage_source._get_table_details(data)
+        self.assertEqual(result.name, "mytable")
+        self.assertEqual(result.schema, "myschema")
 
     def test_get_table_details_invalid_data_missing_symlinks_and_name(self):
         """Test with invalid data missing both symlinks and name."""
@@ -468,10 +662,10 @@ class OpenLineageUnitTest(unittest.TestCase):
         def mock_get_uuid_by_name(entity, fqn):
             if fqn == "testService.shopify.raw_product_catalog":
                 # source of table lineage
-                return Mock(id="69fc8906-4a4a-45ab-9a54-9cc2d399e10e")
+                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             elif fqn == "testService.shopify.fact_order_new5":
                 # dst of table lineage
-                return Mock(id="59fc8906-4a4a-45ab-9a54-9cc2d399e10e")
+                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             else:
                 # pipeline
                 z = Mock()
@@ -703,9 +897,9 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         def mock_get_uuid_by_name(entity, fqn):
             if fqn == "testService.shopify.raw_product_catalog":
-                return Mock(id=from_table_id)
+                return Mock(id=Mock(root=from_table_id))
             elif fqn == "testService.shopify.fact_order_new5":
-                return Mock(id=to_table_id)
+                return Mock(id=Mock(root=to_table_id))
             elif "openlineage_source" in fqn:  # Pipeline entity
                 return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             return None
@@ -777,6 +971,513 @@ class OpenLineageUnitTest(unittest.TestCase):
             len(running_lineage_requests),
             0,
             "RUNNING event with empty inputs/outputs should not produce any lineage requests",
+        )
+
+    def _build_mock_kinesis_client(self, events):
+        mock_kinesis = MagicMock()
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [{"Shards": [{"ShardId": "shard-0001"}]}]
+        mock_kinesis.get_paginator.return_value = mock_paginator
+
+        mock_kinesis.get_shard_iterator.return_value = {
+            "ShardIterator": "test-iterator"
+        }
+
+        records = [{"Data": json.dumps(event).encode()} for event in events]
+        mock_kinesis.get_records.side_effect = [
+            {"Records": records, "NextShardIterator": "next-iter"},
+            {"Records": [], "NextShardIterator": "next-iter"},
+            {"Records": [], "NextShardIterator": "next-iter"},
+            {"Records": [], "NextShardIterator": "next-iter"},
+            {"Records": [], "NextShardIterator": None},
+        ]
+
+        self.open_lineage_kinesis_source.client = mock_kinesis
+        return mock_kinesis
+
+    def test_kinesis_config_validation(self):
+        """Test that Kinesis config is parsed and validated correctly."""
+        config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_KINESIS_CONFIG)
+        connection = config.source.serviceConnection.root.config
+        self.assertEqual(connection.type.value, "OpenLineage")
+        broker = connection.brokerConfig
+        self.assertEqual(broker.streamName, "test-openlineage-stream")
+        self.assertEqual(broker.awsConfig.awsRegion, "us-east-1")
+        self.assertEqual(broker.consumerOffsets, ConsumerOffsets1.TRIM_HORIZON)
+
+    def test_get_pipelines_list_kinesis(self):
+        """Test get_pipelines_list with Kinesis broker."""
+        self._build_mock_kinesis_client([FULL_OL_KAFKA_EVENT])
+
+        result_generator = self.open_lineage_kinesis_source.get_pipelines_list()
+        results = list(result_generator)
+
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0], EXPECTED_OL_EVENT)
+
+    def test_get_pipelines_list_kinesis_filters_complete_events(self):
+        """Test that Kinesis get_pipelines_list returns COMPLETE events."""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "COMPLETE"
+        self._build_mock_kinesis_client([event])
+
+        results = list(self.open_lineage_kinesis_source.get_pipelines_list())
+
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "COMPLETE")
+
+    def test_get_pipelines_list_kinesis_filters_running_events(self):
+        """Test that Kinesis get_pipelines_list returns RUNNING events."""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "RUNNING"
+        self._build_mock_kinesis_client([event])
+
+        results = list(self.open_lineage_kinesis_source.get_pipelines_list())
+
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "RUNNING")
+
+    def test_get_pipelines_list_kinesis_filters_start_events(self):
+        """Test that Kinesis get_pipelines_list returns START events."""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "START"
+        self._build_mock_kinesis_client([event])
+
+        results = list(self.open_lineage_kinesis_source.get_pipelines_list())
+
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "START")
+
+    def test_get_pipelines_list_kinesis_filters_out_fail_events(self):
+        """Test that Kinesis get_pipelines_list filters out FAIL events."""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "FAIL"
+        self._build_mock_kinesis_client([event])
+
+        results = list(self.open_lineage_kinesis_source.get_pipelines_list())
+
+        self.assertEqual(len(results), 0)
+
+    def test_get_pipelines_list_kinesis_filters_out_abort_events(self):
+        """Test that Kinesis get_pipelines_list filters out ABORT events."""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "ABORT"
+        self._build_mock_kinesis_client([event])
+
+        results = list(self.open_lineage_kinesis_source.get_pipelines_list())
+
+        self.assertEqual(len(results), 0)
+
+    def test_get_pipelines_list_kinesis_multiple_records(self):
+        """Test Kinesis polling with multiple records in a single batch."""
+        event1 = copy.deepcopy(VALID_EVENT)
+        event1["eventType"] = "COMPLETE"
+        event1["job"]["name"] = "job-1"
+        event2 = copy.deepcopy(VALID_EVENT)
+        event2["eventType"] = "START"
+        event2["job"]["name"] = "job-2"
+        self._build_mock_kinesis_client([event1, event2])
+
+        results = list(self.open_lineage_kinesis_source.get_pipelines_list())
+
+        self.assertEqual(len(results), 2)
+
+    def test_get_pipelines_list_kinesis_empty_stream(self):
+        """Test Kinesis polling with no records."""
+        mock_kinesis = MagicMock()
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [{"Shards": [{"ShardId": "shard-0001"}]}]
+        mock_kinesis.get_paginator.return_value = mock_paginator
+        mock_kinesis.get_shard_iterator.return_value = {
+            "ShardIterator": "test-iterator"
+        }
+        mock_kinesis.get_records.side_effect = [
+            {"Records": [], "NextShardIterator": "next-iter"},
+            {"Records": [], "NextShardIterator": "next-iter"},
+            {"Records": [], "NextShardIterator": "next-iter"},
+            {"Records": [], "NextShardIterator": "next-iter"},
+            {"Records": [], "NextShardIterator": None},
+        ]
+        self.open_lineage_kinesis_source.client = mock_kinesis
+
+        results = list(self.open_lineage_kinesis_source.get_pipelines_list())
+
+        self.assertEqual(len(results), 0)
+
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
+    )
+    def test_yield_pipeline_lineage_details_kinesis(self, mock_get_entity):
+        """Test lineage extraction from a Kinesis-sourced event."""
+
+        def t_fqn_build_side_effect(table_details):
+            return f"testService.shopify.{table_details.name}"
+
+        def mock_get_uuid_by_name(entity, fqn):
+            if fqn == "testService.shopify.raw_product_catalog":
+                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+            elif fqn == "testService.shopify.fact_order_new5":
+                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+            else:
+                return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+
+        mock_get_entity.side_effect = t_fqn_build_side_effect
+
+        self._build_mock_kinesis_client([FULL_OL_KAFKA_EVENT])
+        results = list(self.open_lineage_kinesis_source.get_pipelines_list())
+        ol_event = results[0]
+
+        with patch.object(
+            OpenMetadataConnection,
+            "get_by_name",
+            create=True,
+            side_effect=mock_get_uuid_by_name,
+        ):
+            pip_results = list(
+                self.open_lineage_kinesis_source.yield_pipeline_lineage_details(
+                    ol_event
+                )
+            )
+
+        lineage_requests = [
+            r.right
+            for r in pip_results
+            if r.right and isinstance(r.right, AddLineageRequest)
+        ]
+        self.assertGreater(len(lineage_requests), 0)
+
+        for req in lineage_requests:
+            if req.edge.lineageDetails and req.edge.lineageDetails.columnsLineage:
+                self.assertGreater(len(req.edge.lineageDetails.columnsLineage), 0)
+
+    def test_entity_detection_kafka_namespace_returns_topic(self):
+        """Test that _get_entity_details correctly identifies Kafka topics vs tables
+        based on the namespace prefix, exercising the full detection path including
+        _get_topic_details for kafka:// and _get_table_details for other namespaces."""
+        kafka_data = {
+            "name": "my-events-topic",
+            "namespace": "kafka://broker-host:9092",
+            "facets": {},
+        }
+        result = OpenlineageSource._get_entity_details(kafka_data)
+        self.assertIsInstance(result, EntityDetails)
+        self.assertEqual(result.entity_type, "topic")
+        self.assertIsNotNone(result.topic_details)
+        self.assertIsNone(result.table_details)
+        self.assertEqual(result.topic_details.name, "my-events-topic")
+        self.assertEqual(result.topic_details.broker_hostname, "broker-host")
+
+    def test_entity_detection_non_kafka_namespace_returns_table(self):
+        """Test that non-kafka namespaces (e.g. bigquery, hive) are detected as tables."""
+        table_data = {
+            "name": "schema.my_table",
+            "namespace": "bigquery",
+            "facets": {},
+        }
+        result = OpenlineageSource._get_entity_details(table_data)
+        self.assertEqual(result.entity_type, "table")
+        self.assertIsNotNone(result.table_details)
+        self.assertIsNone(result.topic_details)
+        self.assertEqual(result.table_details.name, "my_table")
+        self.assertEqual(result.table_details.schema, "schema")
+
+    def test_topic_details_extraction_various_broker_formats(self):
+        """Test _get_topic_details extracts broker hostname correctly from various
+        kafka:// namespace formats (with port, without port, multi-segment hostname)."""
+        # Standard broker:port format
+        result = OpenlineageSource._get_topic_details(
+            {"name": "topic1", "namespace": "kafka://my-broker:9092"}
+        )
+        self.assertEqual(result.name, "topic1")
+        self.assertEqual(result.broker_hostname, "my-broker")
+
+        # Broker without port
+        result = OpenlineageSource._get_topic_details(
+            {"name": "topic2", "namespace": "kafka://broker-only"}
+        )
+        self.assertEqual(result.name, "topic2")
+        self.assertEqual(result.broker_hostname, "broker-only")
+
+    def test_topic_details_missing_fields_raises_value_error(self):
+        """Test that _get_topic_details raises ValueError when namespace or name is missing."""
+        with self.assertRaises(ValueError):
+            OpenlineageSource._get_topic_details(
+                {"name": "topic1"}
+            )  # missing namespace
+
+        with self.assertRaises(ValueError):
+            OpenlineageSource._get_topic_details(
+                {"namespace": "kafka://broker:9092"}
+            )  # missing name
+
+    def _run_lineage_with_kafka_broker(
+        self, ol_event, get_by_name_fn, extra_patches=None
+    ):
+        """Run yield_pipeline_lineage_details with a kafka-broker:9092 messaging service
+        mock and return the AddLineageRequest results."""
+        mock_svc = Mock()
+        mock_svc.connection.config.bootstrapServers = "kafka-broker:9092"
+        mock_svc.fullyQualifiedName.root = "kafka-service"
+        mock_svc.name = "kafka-service"
+
+        if hasattr(self.open_lineage_source, "_broker_to_service"):
+            del self.open_lineage_source._broker_to_service
+
+        with contextlib.ExitStack() as stack:
+            mock_metadata = stack.enter_context(
+                patch.object(self.open_lineage_source, "metadata")
+            )
+            for p in extra_patches or []:
+                stack.enter_context(p)
+            mock_metadata.list_all_entities.return_value = iter([mock_svc])
+            mock_metadata.get_by_name.side_effect = get_by_name_fn
+            results = list(
+                self.open_lineage_source.yield_pipeline_lineage_details(ol_event)
+            )
+
+        return [
+            r.right
+            for r in results
+            if r.right and isinstance(r.right, AddLineageRequest)
+        ]
+
+    def test_yield_pipeline_lineage_with_kafka_topic_input_and_kafka_topic_output(self):
+        """End-to-end test: Kafka topic input and Kafka topic output produces a
+        single topic -> topic lineage edge."""
+        input_topic_id = UUID("aaaa1111-1111-1111-1111-111111111111")
+        output_topic_id = UUID("bbbb2222-2222-2222-2222-222222222222")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_input_topic = Mock()
+        mock_input_topic.id.root = input_topic_id
+        mock_input_topic.fullyQualifiedName.root = "kafka-service.input-topic"
+
+        mock_output_topic = Mock()
+        mock_output_topic.id.root = output_topic_id
+        mock_output_topic.fullyQualifiedName.root = "kafka-service.output-topic"
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "kafka-to-kafka-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
+            job={"name": "kafka-to-kafka-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[
+                {
+                    "name": "input-topic",
+                    "namespace": "kafka://kafka-broker:9092",
+                    "facets": {},
+                }
+            ],
+            outputs=[
+                {
+                    "name": "output-topic",
+                    "namespace": "kafka://kafka-broker:9092",
+                    "facets": {},
+                }
+            ],
+        )
+
+        from metadata.generated.schema.entity.data.topic import Topic
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Topic and fqn == "kafka-service.input-topic":
+                return mock_input_topic
+            if entity == Topic and fqn == "kafka-service.output-topic":
+                return mock_output_topic
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name)
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, input_topic_id)
+        self.assertEqual(edge.fromEntity.type, "topic")
+        self.assertEqual(edge.toEntity.id.root, output_topic_id)
+        self.assertEqual(edge.toEntity.type, "topic")
+
+    def test_yield_pipeline_lineage_with_kafka_topic_input_and_table_output(self):
+        """End-to-end test: Kafka topic input and table output produces a single
+        topic -> table lineage edge."""
+        topic_id = UUID("aaaa1111-1111-1111-1111-111111111111")
+        table_id = UUID("bbbb2222-2222-2222-2222-222222222222")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_topic = Mock()
+        mock_topic.id.root = topic_id
+        mock_topic.fullyQualifiedName.root = "kafka-service.input-events-topic"
+
+        mock_table = Mock()
+        mock_table.id.root = table_id
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "kafka-to-table-job",
+                            "namespace": "test-namespace",
+                        }
+                    }
+                }
+            },
+            job={"name": "kafka-to-table-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[
+                {
+                    "name": "input-events-topic",
+                    "namespace": "kafka://kafka-broker:9092",
+                    "facets": {},
+                }
+            ],
+            outputs=[
+                {
+                    "name": "public.output_table",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+        )
+
+        from metadata.generated.schema.entity.data.table import Table
+        from metadata.generated.schema.entity.data.topic import Topic
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Topic:
+                return mock_topic
+            if entity == Table:
+                return mock_table
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        extra_patches = [
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn",
+                return_value="db-service.public.output_table",
+            ),
+            patch.object(
+                self.open_lineage_source, "get_create_table_request", return_value=None
+            ),
+        ]
+
+        lineage_requests = self._run_lineage_with_kafka_broker(
+            ol_event, get_by_name, extra_patches
+        )
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, topic_id)
+        self.assertEqual(edge.fromEntity.type, "topic")
+        self.assertEqual(edge.toEntity.id.root, table_id)
+        self.assertEqual(edge.toEntity.type, "table")
+
+    def test_yield_pipeline_lineage_topic_not_found_skips_gracefully(self):
+        """When a Kafka topic input cannot be resolved (no matching messaging service),
+        no lineage edge should be produced for that topic, even though the table output
+        is resolvable. The topic is silently skipped."""
+        ol_event = OpenLineageEvent(
+            run_facet={
+                "facets": {
+                    "parent": {
+                        "job": {
+                            "name": "unknown-broker-job",
+                            "namespace": "test-ns",
+                        }
+                    }
+                }
+            },
+            job={"name": "unknown-broker-job", "namespace": "test-ns"},
+            event_type="COMPLETE",
+            inputs=[
+                {
+                    "name": "orphan-topic",
+                    "namespace": "kafka://unknown-broker:9092",
+                    "facets": {},
+                }
+            ],
+            outputs=[
+                {
+                    "name": "public.some_table",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+        )
+
+        table_id = "dddd4444-4444-4444-4444-444444444444"
+        pipeline_id = "eeee5555-5555-5555-5555-555555555555"
+
+        mock_table = Mock()
+        mock_table.id.root = table_id
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        with patch.object(
+            self.open_lineage_source, "metadata"
+        ) as mock_metadata, patch.object(
+            self.open_lineage_source,
+            "_get_table_fqn",
+            return_value="db-service.public.some_table",
+        ), patch.object(
+            self.open_lineage_source,
+            "get_create_table_request",
+            return_value=None,
+        ):
+            # Empty messaging services list — no broker match for unknown-broker
+            mock_metadata.list_all_entities.return_value = iter([])
+
+            def mock_get_by_name(entity, fqn, **kwargs):
+                from metadata.generated.schema.entity.data.table import Table
+
+                if entity == Table:
+                    return mock_table
+                elif entity == Pipeline:
+                    return mock_pipeline
+                return None
+
+            mock_metadata.get_by_name.side_effect = mock_get_by_name
+
+            if hasattr(self.open_lineage_source, "_broker_to_service"):
+                del self.open_lineage_source._broker_to_service
+
+            results = list(
+                self.open_lineage_source.yield_pipeline_lineage_details(ol_event)
+            )
+
+        lineage_requests = [
+            r.right
+            for r in results
+            if r.right and isinstance(r.right, AddLineageRequest)
+        ]
+
+        # No lineage should be produced because the topic input couldn't be resolved
+        # (no matching broker), so there are no input edges to pair with the table output
+        self.assertEqual(
+            len(lineage_requests),
+            0,
+            "No lineage edges should be produced when input topic cannot be resolved",
         )
 
 

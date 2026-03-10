@@ -52,44 +52,40 @@ class ListFilterTest {
   void test_getAgentTypeCondition_singleAgentType() {
     ListFilter filter = new ListFilter();
 
-    // Test single agent type for MySQL
     filter.addQueryParam("agentType", "CollateAI");
     String condition = filter.getCondition("app_entity");
     assertTrue(
-        condition.contains("JSON_EXTRACT(json, '$.agentType') IN ('CollateAI')")
-            || condition.contains("json->>'agentType' IN ('CollateAI')"));
+        condition.contains("JSON_EXTRACT(json, '$.agentType') IN (:agentType_0)")
+            || condition.contains("json->>'agentType' IN (:agentType_0)"));
+    assertEquals("CollateAI", filter.getQueryParams().get("agentType_0"));
   }
 
   @Test
   void test_getAgentTypeCondition_multipleAgentTypes() {
     ListFilter filter = new ListFilter();
 
-    // Test multiple agent types
     filter.addQueryParam("agentType", "CollateAI,Metadata,CollateAITierAgent");
     String condition = filter.getCondition("app_entity");
 
-    // Should contain IN condition instead of OR
-    assertTrue(condition.contains("IN ("));
-    assertTrue(condition.contains("CollateAI"));
-    assertTrue(condition.contains("Metadata"));
-    assertTrue(condition.contains("CollateAITierAgent"));
+    assertTrue(condition.contains("IN (:agentType_0,:agentType_1,:agentType_2)"));
     assertFalse(condition.contains(" OR "));
+    assertEquals("CollateAI", filter.getQueryParams().get("agentType_0"));
+    assertEquals("Metadata", filter.getQueryParams().get("agentType_1"));
+    assertEquals("CollateAITierAgent", filter.getQueryParams().get("agentType_2"));
   }
 
   @Test
   void test_getAgentTypeCondition_withWhitespace() {
     ListFilter filter = new ListFilter();
 
-    // Test with whitespace around values
     filter.addQueryParam("agentType", " CollateAI , Metadata , CollateAITierAgent ");
     String condition = filter.getCondition("app_entity");
 
-    // Should handle whitespace properly and use IN clause
-    assertTrue(condition.contains("CollateAI"));
-    assertTrue(condition.contains("Metadata"));
-    assertTrue(condition.contains("CollateAITierAgent"));
-    assertTrue(condition.contains("IN ("));
+    assertTrue(condition.contains("IN (:agentType_0,:agentType_1,:agentType_2)"));
     assertFalse(condition.contains(" OR "));
+    assertEquals("CollateAI", filter.getQueryParams().get("agentType_0"));
+    assertEquals("Metadata", filter.getQueryParams().get("agentType_1"));
+    assertEquals("CollateAITierAgent", filter.getQueryParams().get("agentType_2"));
   }
 
   @Test
@@ -116,11 +112,11 @@ class ListFilterTest {
   void test_getAgentTypeCondition_singleAgentTypeWithComma() {
     ListFilter filter = new ListFilter();
 
-    // Test single agent type that happens to be passed with trailing comma
     filter.addQueryParam("agentType", "CollateAI,");
     String condition = filter.getCondition("app_entity");
 
-    // Should handle single agent type even with comma
-    assertTrue(condition.contains("CollateAI"));
+    assertTrue(condition.contains(":agentType_0"));
+    assertEquals("CollateAI", filter.getQueryParams().get("agentType_0"));
+    assertNull(filter.getQueryParams().get("agentType_1"));
   }
 }

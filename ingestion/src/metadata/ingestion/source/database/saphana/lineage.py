@@ -107,7 +107,7 @@ class SaphanaLineageSource(Source):
             ).execute(text(SAPHANA_LINEAGE))
             for row in result:
                 try:
-                    lineage_model = SapHanaLineageModel.validate(dict(row))
+                    lineage_model = SapHanaLineageModel.validate(row._asdict())
 
                     if filter_by_table(
                         self.source_config.tableFilterPattern,

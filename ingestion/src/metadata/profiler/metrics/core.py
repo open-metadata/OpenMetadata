@@ -21,7 +21,7 @@ from functools import wraps
 from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
 
 from sqlalchemy import Column
-from sqlalchemy.orm import DeclarativeMeta, Session
+from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
@@ -65,7 +65,7 @@ def add_props(**kwargs):
     or `expression` for LIKE & ILIKE.
 
     This function is a class decorator that we can run as:
-    new_hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
+    new_hist = add_props(bins=5)(Metrics.histogram.value)
 
     new_hist will still be a class, so we can safely pass it
     to the profiler to be initialized for all the columns.
@@ -201,9 +201,7 @@ class QueryMetric(Metric, ABC):
     """
 
     @abstractmethod
-    def query(
-        self, sample: Optional[DeclarativeMeta], session: Optional[Session] = None
-    ):
+    def query(self, sample: Optional[type], session: Optional[Session] = None):
         """
         SQLAlchemy query to execute with .all()
 
@@ -223,7 +221,7 @@ class HybridMetric(Metric, ABC):
     @abstractmethod
     def fn(
         self,
-        sample: Optional[DeclarativeMeta],
+        sample: Optional[type],
         res: Dict[str, Any],
         session: Optional[Session] = None,
     ):

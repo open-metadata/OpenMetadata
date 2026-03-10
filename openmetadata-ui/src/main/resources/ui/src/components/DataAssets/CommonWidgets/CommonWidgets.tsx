@@ -53,8 +53,10 @@ import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface'
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
+import CertificationWidget from '../../common/CertificationWidget/CertificationWidget';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import TierWidget from '../../common/TierWidget/TierWidget';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -417,6 +419,10 @@ export const CommonWidgets = ({
           multiple={entityRules.canAddMultipleDomains}
         />
       );
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TIER)) {
+      return <TierWidget />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.CERTIFICATION)) {
+      return <CertificationWidget />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
       return (
         <LeftPanelContainer

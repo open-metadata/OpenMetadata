@@ -56,7 +56,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                 row_count = 0
                 for row in rows:
                     row_count += 1
-                    row = dict(row)
+                    row = row._asdict()
                     try:
                         queries.append(
                             TableQuery(

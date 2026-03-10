@@ -229,25 +229,24 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    if (
-        service_connection.metastoreConnection
-        and isinstance(service_connection.metastoreConnection, dict)
-        and len(service_connection.metastoreConnection) > 0
-    ):
-        try:
-            service_connection.metastoreConnection = MysqlConnection.model_validate(
-                service_connection.metastoreConnection
-            )
-        except ValidationError:
+    metastore_conn = service_connection.metastoreConnection
+
+    if metastore_conn:
+        if isinstance(metastore_conn, (PostgresConnection, MysqlConnection)):
+            engine = get_metastore_connection(metastore_conn)
+        elif isinstance(metastore_conn, dict) and len(metastore_conn) > 0:
             try:
                 service_connection.metastoreConnection = (
-                    PostgresConnection.model_validate(
-                        service_connection.metastoreConnection
-                    )
+                    PostgresConnection.model_validate(metastore_conn)
                 )
             except ValidationError:
-                raise ValueError("Invalid metastore connection")
-        engine = get_metastore_connection(service_connection.metastoreConnection)
+                try:
+                    service_connection.metastoreConnection = (
+                        MysqlConnection.model_validate(metastore_conn)
+                    )
+                except ValidationError:
+                    raise ValueError("Invalid metastore connection")
+            engine = get_metastore_connection(service_connection.metastoreConnection)
 
     return test_connection_db_schema_sources(
         metadata=metadata,

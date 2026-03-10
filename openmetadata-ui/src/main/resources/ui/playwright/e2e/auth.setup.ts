@@ -15,6 +15,7 @@ import {
   EDIT_DESCRIPTION_RULE,
   EDIT_GLOSSARY_TERM_RULE,
   EDIT_TAGS_RULE,
+  VIEW_ONLY_RULE,
 } from '../constant/permission';
 import { AdminClass } from '../support/user/AdminClass';
 import { UserClass } from '../support/user/UserClass';
@@ -27,6 +28,7 @@ const dataStewardFile = 'playwright/.auth/dataSteward.json';
 const editDescriptionFile = 'playwright/.auth/editDescription.json';
 const editTagsFile = 'playwright/.auth/editTags.json';
 const editGlossaryTermFile = 'playwright/.auth/editGlossaryTerm.json';
+const viewOnlyFile = 'playwright/.auth/viewOnly.json';
 const ownerFile = 'playwright/.auth/owner.json';
 
 const userUUID = uuid();
@@ -62,6 +64,12 @@ const editGlossaryTermUser = new UserClass({
   email: `pw-edit-glossary-term-${userUUID}@gmail.com`,
   password: 'User@OMD123',
 });
+const viewOnlyUser = new UserClass({
+  firstName: 'PW ',
+  lastName: `ViewOnly ${userUUID}`,
+  email: `pw-view-only-${userUUID}@gmail.com`,
+  password: 'User@OMD123',
+});
 const ownerUser = new UserClass({
   firstName: 'PW ',
   lastName: `Owner ${userUUID}`,
@@ -79,8 +87,10 @@ setup('authenticate all users', async ({ browser }) => {
     editDescriptionPage,
     editTagsPage,
     editGlossaryTermPage,
+    viewOnlyPage,
     ownerPage,
   ] = await Promise.all([
+    browser.newPage(),
     browser.newPage(),
     browser.newPage(),
     browser.newPage(),
@@ -112,6 +122,7 @@ setup('authenticate all users', async ({ browser }) => {
       editDescriptionUser.create(apiContext, false),
       editTagsUser.create(apiContext, false),
       editGlossaryTermUser.create(apiContext, false),
+      viewOnlyUser.create(apiContext, false),
       ownerUser.create(apiContext, false),
     ]);
 
@@ -133,6 +144,11 @@ setup('authenticate all users', async ({ browser }) => {
         apiContext,
         EDIT_GLOSSARY_TERM_RULE,
         'PW%Edit-Glossary-Term'
+      ),
+      viewOnlyUser.setCustomRulePolicy(
+        apiContext,
+        VIEW_ONLY_RULE,
+        'PW%View-Only'
       ),
       ownerUser.setDataConsumerRole(apiContext),
     ]);
@@ -179,6 +195,12 @@ setup('authenticate all users', async ({ browser }) => {
       .context()
       .storageState({ path: editGlossaryTermFile, indexedDB: true });
 
+    await viewOnlyUser.login(viewOnlyPage);
+    await viewOnlyPage.waitForLoadState('networkidle');
+    await viewOnlyPage
+      .context()
+      .storageState({ path: viewOnlyFile, indexedDB: true });
+
     await ownerUser.login(ownerPage);
     await ownerPage.waitForLoadState('networkidle');
     await ownerPage
@@ -211,6 +233,9 @@ setup('authenticate all users', async ({ browser }) => {
     }
     if (editGlossaryTermPage) {
       await editGlossaryTermPage.close();
+    }
+    if (viewOnlyPage) {
+      await viewOnlyPage.close();
     }
     if (ownerPage) {
       await ownerPage.close();

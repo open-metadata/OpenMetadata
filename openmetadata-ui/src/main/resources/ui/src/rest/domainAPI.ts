@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE_MEDIUM,
@@ -203,6 +204,15 @@ export const removeFollower = async (domainID: string, userId: string) => {
   const response = await APIClient.delete<{
     changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
   }>(`${BASE_URL}/${domainID}/followers/${userId}`);
+
+  return response.data;
+};
+
+export const updateDomainVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Domain>>(
+    `${BASE_URL}/${id}/vote`,
+    data
+  );
 
   return response.data;
 };

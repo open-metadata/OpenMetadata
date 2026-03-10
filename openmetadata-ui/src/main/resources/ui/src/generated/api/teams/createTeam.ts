@@ -22,6 +22,10 @@ export interface CreateTeam {
      */
     children?: string[];
     /**
+     * Default persona for all users in this team. Only applicable to Group type teams.
+     */
+    defaultPersona?: string;
+    /**
      * Roles to be assigned to all users that are part of this team.
      */
     defaultRoles?: string[];

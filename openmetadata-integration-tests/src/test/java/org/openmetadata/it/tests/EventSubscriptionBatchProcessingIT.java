@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -67,7 +69,10 @@ public class EventSubscriptionBatchProcessingIT {
       createTestTable(ns, schema.getFullyQualifiedName(), "batch_table_" + i);
     }
 
-    Thread.sleep(5000);
+    Awaitility.await("Wait for event batch processing")
+        .pollDelay(Duration.ofSeconds(5))
+        .atMost(Duration.ofSeconds(15))
+        .until(() -> true);
 
     client.eventSubscriptions().delete(subscription.getId().toString());
   }

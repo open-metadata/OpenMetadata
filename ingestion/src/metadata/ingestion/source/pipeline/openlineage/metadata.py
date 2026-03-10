@@ -10,13 +10,15 @@
 #  limitations under the License.
 
 """
-OpenLineage source to extract metadata from Kafka events
+OpenLineage source to extract metadata from Kafka or Kinesis events
 """
 import json
+import time
 import traceback
 from collections import defaultdict
 from itertools import groupby, product
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+from urllib.parse import urlparse
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -24,12 +26,16 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
+    KafkaBrokerConfig,
+    KinesisBrokerConfig,
     OpenLineageConnection,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -46,12 +52,15 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.pipeline.openlineage.models import (
+    EntityDetails,
     EventType,
     LineageEdge,
     LineageNode,
     OpenLineageEvent,
     TableDetails,
     TableFQN,
+    TopicDetails,
+    TopicFQN,
 )
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     FQNNotFoundException,
@@ -69,13 +78,15 @@ class OpenlineageSource(PipelineServiceSource):
     Implements the necessary methods of PipelineServiceSource to facilitate registering OpenLineage pipelines with
     metadata into Open Metadata.
 
-    Works under the assumption that OpenLineage integrations produce events to Kafka topic, which is a source of events
-    for this connector.
+    Works under the assumption that OpenLineage integrations produce events to Kafka topic or Kinesis stream,
+    which is a source of events for this connector.
 
     Only OpenLineage events that indicate successfull data movement (COMPLETE, RUNNING, START) are taken into account in this connector.
 
     Configuring OpenLineage integrations: https://openlineage.io/docs/integrations/about
     """
+
+    _db_service_names_warned: bool = False
 
     @classmethod
     def create(
@@ -96,6 +107,29 @@ class OpenlineageSource(PipelineServiceSource):
     def close(self) -> None:
         self.metadata.compute_percentile(Pipeline, self.today)
         self.metadata.close()
+
+    @staticmethod
+    def _get_entity_details(data: Dict) -> EntityDetails:
+        """
+        Determine the entity type (table or topic) from an OpenLineage input/output entry
+        based on the namespace prefix.
+
+        :param data: single input/output entry from an OpenLineage event
+        :return: EntityDetails with entity_type and corresponding details (TableDetails or TopicDetails)
+        """
+        namespace = data.get("namespace", "")
+
+        # Kafka topic detection
+        if namespace.startswith("kafka://"):
+            return EntityDetails(
+                entity_type="topic",
+                topic_details=OpenlineageSource._get_topic_details(data),
+            )
+        else:
+            return EntityDetails(
+                entity_type="table",
+                table_details=OpenlineageSource._get_table_details(data),
+            )
 
     @classmethod
     def _get_table_details(cls, data: Dict) -> TableDetails:
@@ -135,9 +169,47 @@ class OpenlineageSource(PipelineServiceSource):
         # we take last two elements to explicitly collect schema and table names
         # in BigQuery Open Lineage events name_parts would be list of 3 elements as first one is GCP Project ID
         # however, concept of GCP Project ID is not represented in Open Metadata and hence - we need to skip this part
-        return TableDetails(name=name_parts[-1], schema=name_parts[-2])
+        # Normalize to lowercase for case-insensitive FQN matching: different connectors
+        # may store names in different cases (e.g. Trino lowercases, Spark preserves original)
+        return TableDetails(name=name_parts[-1].lower(), schema=name_parts[-2].lower())
+
+    @staticmethod
+    def _get_topic_details(data: Dict) -> TopicDetails:
+        """
+        Extract topic name and broker hostname from an OpenLineage event.
+
+        :param data: single input/output entry from an OpenLineage event
+        :return: TopicDetails with topic name and broker hostname
+        :raises ValueError: if namespace or name is missing from the data
+        """
+        try:
+            namespace = data["namespace"]
+        except KeyError:
+            raise ValueError("Topic namespace is not present")
+
+        try:
+            name = data["name"]
+        except KeyError:
+            raise ValueError("Topic name is not present")
+
+        broker_hostname = urlparse(namespace).hostname
+        if not broker_hostname:
+            raise ValueError(
+                f"Could not extract broker hostname from namespace: {namespace}"
+            )
+
+        return TopicDetails(name=name, broker_hostname=broker_hostname)
 
     def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
+        if not self.get_db_service_names():
+            if not self._db_service_names_warned:
+                logger.warning(
+                    "No Database Service Names configured in Lineage Information. "
+                    "Skipping table/schema FQN resolution. Configure 'Database Service "
+                    "Names' in the pipeline metadata ingestion to enable lineage."
+                )
+                self._db_service_names_warned = True
+            return None
         try:
             return self._get_table_fqn_from_om(table_details)
         except FQNNotFoundException:
@@ -147,6 +219,81 @@ class OpenlineageSource(PipelineServiceSource):
                 return f"{schema_fqn}.{table_details.name}"
             except FQNNotFoundException:
                 return None
+
+    def _build_broker_to_service_map(self) -> Dict[str, str]:
+        """
+        Build a cache mapping broker hostnames to messaging service FQNs.
+        Reads each messaging service's connection config to extract bootstrapServers.
+
+        :return: dictionary with key=broker_hostname and value=service FQN
+        """
+        if not hasattr(self, "_broker_to_service"):
+            self._broker_to_service = {}
+            try:
+                services = self.metadata.list_all_entities(
+                    entity=MessagingService,
+                    fields=["connection"],
+                )
+
+                for svc in services:
+                    try:
+                        bootstrap_servers = svc.connection.config.bootstrapServers or ""
+                        svc_fqn = svc.fullyQualifiedName.root
+                        for broker in bootstrap_servers.split(","):
+                            hostname = broker.strip().split(":")[0]
+                            if hostname:
+                                self._broker_to_service[hostname] = svc_fqn
+                    except Exception:
+                        logger.debug(
+                            f"Could not extract bootstrapServers from service {svc.name}"
+                        )
+
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error building broker-to-service map: {exc}")
+
+        return self._broker_to_service
+
+    def _find_service_fqn_by_broker(self, broker_hostname: str) -> Optional[str]:
+        """
+        Find the messaging service FQN whose bootstrapServers contains the given broker hostname.
+
+        :param broker_hostname: hostname extracted from OpenLineage kafka:// namespace
+        :return: fully qualified name of the matching MessagingService, or None
+        """
+        broker_map = self._build_broker_to_service_map()
+        return broker_map.get(broker_hostname)
+
+    def _get_topic_entity(self, topic_details: TopicDetails) -> Optional[Topic]:
+        """
+        Look up a Topic entity by finding the messaging service from the broker hostname,
+        then constructing the topic FQN as {service_fqn}.{topic_name}.
+
+        :param topic_details: TopicDetails with name and broker_hostname
+        :return: Topic entity from OpenMetadata, or None
+        """
+        try:
+            service_fqn = self._find_service_fqn_by_broker(
+                topic_details.broker_hostname
+            )
+            if not service_fqn:
+                logger.warning(
+                    f"No messaging service found for broker: {topic_details.broker_hostname}"
+                )
+                return None
+
+            topic_fqn = f"{service_fqn}.{fqn.quote_name(topic_details.name)}"
+            topic = self.metadata.get_by_name(Topic, topic_fqn)
+
+            if not topic:
+                logger.warning(f"Topic not found in OpenMetadata: {topic_fqn}")
+
+            return topic
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error finding topic for {topic_details.name}: {exc}")
+            return None
 
     def _get_schema_fqn_from_om(self, schema: str) -> Optional[str]:
         """
@@ -181,16 +328,21 @@ class OpenlineageSource(PipelineServiceSource):
     @classmethod
     def _render_pipeline_name(cls, pipeline_details: OpenLineageEvent) -> str:
         """
-        Renders pipeline name from parent facet of run facet. It is our expectation that every OL event contains parent
-        run facet so we can always create pipeline entities and link them to lineage events.
+        Construct a pipeline name from an OpenLineage event. If the event's run facet
+        contains a parent job reference, the pipeline name is derived from the parent's
+        namespace and name. Otherwise, it falls back to the top-level job's namespace and name.
 
         :param run_facet: Open Lineage run facet
         :return: pipeline name (not fully qualified name)
         """
         run_facet = pipeline_details.run_facet
 
-        namespace = run_facet["facets"]["parent"]["job"]["namespace"]
-        name = run_facet["facets"]["parent"]["job"]["name"]
+        try:
+            namespace = run_facet["facets"]["parent"]["job"]["namespace"]
+            name = run_facet["facets"]["parent"]["job"]["name"]
+        except (KeyError, TypeError):
+            namespace = pipeline_details.job["namespace"]
+            name = pipeline_details.job["name"]
 
         return f"{namespace}-{name}"
 
@@ -241,6 +393,9 @@ class OpenlineageSource(PipelineServiceSource):
         :param table: single object from inputs/outputs facet
         :return: request to create the entity (if needed)
         """
+        if not self.get_db_service_names():
+            return None
+
         om_table_fqn = None
 
         try:
@@ -297,7 +452,10 @@ class OpenlineageSource(PipelineServiceSource):
         result = {}
 
         for table in tables:
-            table_fqn = self._get_table_fqn(OpenlineageSource._get_table_details(table))
+            entity_details = self._get_entity_details(table)
+            if entity_details.entity_type != "table":
+                continue
+            table_fqn = self._get_table_fqn(entity_details.table_details)
 
             if table_fqn:
                 result[OpenlineageSource._get_ol_table_name(table)] = table_fqn
@@ -328,9 +486,12 @@ class OpenlineageSource(PipelineServiceSource):
         ol_name_to_fqn_map = self._build_ol_name_to_fqn_map(inputs + outputs)
 
         for table in outputs:
-            output_table_fqn = self._get_table_fqn(
-                OpenlineageSource._get_table_details(table)
-            )
+            entity_details = self._get_entity_details(table)
+            # Column-level lineage is only supported for tables for now.
+            if entity_details.entity_type != "table":
+                continue
+
+            output_table_fqn = self._get_table_fqn(entity_details.table_details)
             for field_name, field_spec in (
                 table.get("facets", {})
                 .get("columnLineage", {})
@@ -346,8 +507,8 @@ class OpenlineageSource(PipelineServiceSource):
                         (
                             output_table_fqn,
                             ol_name_to_fqn_map.get(input_table_ol_name),
-                            f"{output_table_fqn}.{field_name}",
-                            f'{ol_name_to_fqn_map.get(input_table_ol_name)}.{input_field.get("field")}',
+                            f"{output_table_fqn}.{field_name.lower()}",
+                            f'{ol_name_to_fqn_map.get(input_table_ol_name)}.{input_field.get("field", "").lower()}',
                         )
                     )
 
@@ -386,32 +547,55 @@ class OpenlineageSource(PipelineServiceSource):
         output_edges: List[LineageNode] = []
 
         for spec in [(inputs, input_edges), (outputs, output_edges)]:
-            tables, tables_list = spec
+            entities, entity_list = spec
+            for entity_data in entities:
+                entity_details = self._get_entity_details(entity_data)
+                if entity_details.entity_type == "table":
+                    create_table_request = self.get_create_table_request(entity_data)
 
-            for table in tables:
-                create_table_request = self.get_create_table_request(table)
+                    if create_table_request:
+                        yield create_table_request
 
-                if create_table_request:
-                    yield create_table_request
+                    table_fqn = self._get_table_fqn(entity_details.table_details)
 
-                table_fqn = self._get_table_fqn(
-                    OpenlineageSource._get_table_details(table)
-                )
-
-                if table_fqn:
-                    tables_list.append(
-                        LineageNode(
-                            fqn=TableFQN(value=table_fqn),
-                            uuid=self.metadata.get_by_name(Table, table_fqn).id,
+                    if table_fqn:
+                        entity_list.append(
+                            LineageNode(
+                                fqn=TableFQN(value=table_fqn),
+                                uuid=self.metadata.get_by_name(
+                                    Table, table_fqn
+                                ).id.root,
+                                node_type="table",
+                            )
                         )
-                    )
+
+                elif entity_details.entity_type == "topic":
+                    topic_entity = self._get_topic_entity(entity_details.topic_details)
+
+                    if topic_entity:
+                        entity_list.append(
+                            LineageNode(
+                                fqn=TopicFQN(
+                                    value=topic_entity.fullyQualifiedName.root
+                                ),
+                                uuid=topic_entity.id.root,
+                                node_type="topic",
+                            )
+                        )
+                    else:
+                        logger.warning(
+                            f"Topic entity not found for topic: {entity_details.topic_details.name} "
+                            f"with broker: {entity_details.topic_details.broker_hostname}. "
+                            f"Ensure the topic exists in OpenMetadata and the messaging service "
+                            f"has matching bootstrapServers."
+                        )
+
+        column_lineage = self._get_column_lineage(inputs, outputs)
 
         edges = [
             LineageEdge(from_node=n[0], to_node=n[1])
             for n in product(input_edges, output_edges)
         ]
-
-        column_lineage = self._get_column_lineage(inputs, outputs)
 
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
@@ -448,21 +632,38 @@ class OpenlineageSource(PipelineServiceSource):
 
     def get_pipelines_list(self) -> Optional[List[Any]]:
         """Get List of all pipelines"""
+        broker = self.service_connection.brokerConfig
+
+        if isinstance(broker, KafkaBrokerConfig):
+            yield from self._poll_kafka(broker)
+        elif isinstance(broker, KinesisBrokerConfig):
+            yield from self._poll_kinesis(broker)
+        else:
+            raise InvalidSourceException(
+                f"Unsupported broker config type: {type(broker)}"
+            )
+
+    def _poll_kafka(self, broker: KafkaBrokerConfig) -> Iterable[OpenLineageEvent]:
+        """Poll events from Kafka topic."""
         try:
             consumer = self.client
             session_active = True
             empty_msg_cnt = 0
-            pool_timeout = self.service_connection.poolTimeout
+            pool_timeout = broker.poolTimeout
             while session_active:
                 message = consumer.poll(timeout=pool_timeout)
                 if message is None:
                     logger.debug("no new messages")
                     empty_msg_cnt += 1
+                    if empty_msg_cnt * pool_timeout > broker.sessionTimeout:
+                        session_active = False
+                elif message.error():
+                    logger.warning(f"Kafka consumer error: {message.error()}")
+                    empty_msg_cnt += 1
                     if (
                         empty_msg_cnt * pool_timeout
                         > self.service_connection.sessionTimeout
                     ):
-                        # There is no new messages, timeout is passed
                         session_active = False
                 else:
                     logger.debug(f"new message {message.value()}")
@@ -482,13 +683,72 @@ class OpenlineageSource(PipelineServiceSource):
 
         except Exception as e:
             traceback.print_exc()
-
             raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")
 
         finally:
             # Close down consumer to commit final offsets.
             # @todo address this
             consumer.close()
+
+    def _poll_kinesis(self, broker: KinesisBrokerConfig) -> Iterable[OpenLineageEvent]:
+        """Poll events from Kinesis Data Stream."""
+        try:
+            kinesis_client = self.client
+            shards = []
+            paginator = kinesis_client.get_paginator("list_shards")
+            for page in paginator.paginate(StreamName=broker.streamName):
+                shards.extend(page.get("Shards", []))
+
+            iterator_type = broker.consumerOffsets.value
+            pool_timeout = broker.poolTimeout
+            session_timeout = broker.sessionTimeout
+            empty_response_time = 0.0
+
+            for shard in shards:
+                shard_id = shard["ShardId"]
+                iterator_resp = kinesis_client.get_shard_iterator(
+                    StreamName=broker.streamName,
+                    ShardId=shard_id,
+                    ShardIteratorType=iterator_type,
+                )
+                shard_iterator = iterator_resp["ShardIterator"]
+
+                while shard_iterator and empty_response_time <= session_timeout:
+                    response = kinesis_client.get_records(
+                        ShardIterator=shard_iterator,
+                        Limit=100,
+                    )
+                    records = response.get("Records", [])
+                    shard_iterator = response.get("NextShardIterator")
+
+                    if not records:
+                        empty_response_time += pool_timeout
+                        time.sleep(pool_timeout)
+                        continue
+
+                    empty_response_time = 0.0
+                    for record in records:
+                        try:
+                            data = json.loads(record["Data"])
+                            _result = message_to_open_lineage_event(data)
+                            result = self._filter_event_by_types(
+                                _result,
+                                [
+                                    EventType.COMPLETE,
+                                    EventType.RUNNING,
+                                    EventType.START,
+                                ],
+                            )
+                            if result:
+                                yield result
+                        except Exception as e:
+                            logger.debug(e)
+
+                    time.sleep(pool_timeout)
+
+        except Exception as e:
+            traceback.print_exc()
+            raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)

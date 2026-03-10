@@ -256,7 +256,7 @@ public class RunAppImpl {
 
     pipelineServiceClient.deployPipeline(
         ingestionPipeline,
-        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED));
+        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
 
     return ingestionPipeline;
   }
@@ -272,7 +272,7 @@ public class RunAppImpl {
 
     pipelineServiceClient.runPipeline(
         ingestionPipeline,
-        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED));
+        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
 
     if (waitForCompletion) {
       return waitForCompletion(repository, ingestionPipeline, startTime, timeoutMillis);

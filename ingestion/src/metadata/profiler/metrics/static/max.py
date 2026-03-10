@@ -89,6 +89,8 @@ class Max(StaticMetric):
     Given a column, return the max value.
     """
 
+    schema_metric_type = MetricType.max
+
     @classmethod
     def name(cls):
         return MetricType.max.value

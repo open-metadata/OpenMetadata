@@ -6,6 +6,7 @@ import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.get
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -18,6 +19,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -48,10 +50,6 @@ public class AuditLogRepository {
   }
 
   public void write(ChangeEvent changeEvent) {
-    write(changeEvent, false);
-  }
-
-  public void write(ChangeEvent changeEvent, boolean isBot) {
     if (!SUPPORTED_EVENT_TYPES.contains(changeEvent.getEventType())) {
       LOG.debug(
           "Skipping unsupported event type {} for change event {}",
@@ -78,7 +76,7 @@ public class AuditLogRepository {
       String entityFqnHash =
           nullOrEmpty(entityFqn) ? null : FullyQualifiedName.buildHash(entityFqn);
 
-      AuditLogRecord.ActorType actorType = determineActorType(changeEvent.getUserName(), isBot);
+      AuditLogRecord.ActorType actorType = determineActorType(changeEvent.getUserName());
       String serviceName = extractServiceName(entityFqn);
 
       AuditLogRecord record =
@@ -99,6 +97,7 @@ public class AuditLogRepository {
               .entityFQN(entityFqn)
               .entityFQNHash(entityFqnHash)
               .eventJson(JsonUtils.pojoToJson(changeEvent))
+              .searchText(buildSearchText(changeEvent))
               .createdAt(System.currentTimeMillis())
               .build();
       LOG.debug(
@@ -138,25 +137,28 @@ public class AuditLogRepository {
             });
   }
 
-  /** Determine actor type from username pattern - agents, bots, or regular users. */
-  private AuditLogRecord.ActorType determineActorType(String userName, boolean isBot) {
+  /** Determine actor type from username pattern and user entity — agents, bots, or regular users. */
+  private AuditLogRecord.ActorType determineActorType(String userName) {
     if (nullOrEmpty(userName)) {
-      return isBot ? AuditLogRecord.ActorType.BOT : AuditLogRecord.ActorType.USER;
+      return AuditLogRecord.ActorType.USER;
     }
     String lowerName = userName.toLowerCase();
-    // Check for AI agent patterns first (documentation-agent, auto-classification, etc.)
     for (String indicator : AGENT_INDICATORS) {
       if (lowerName.contains(indicator)) {
         return AuditLogRecord.ActorType.AGENT;
       }
     }
-    // Check for bot patterns (ingestion-bot, metadata-bot, etc.)
     if (lowerName.endsWith("-bot") || lowerName.endsWith("_bot") || lowerName.equals("bot")) {
       return AuditLogRecord.ActorType.BOT;
     }
-    // Explicit isBot flag from caller (e.g., auth context)
-    if (isBot) {
-      return AuditLogRecord.ActorType.BOT;
+    try {
+      org.openmetadata.schema.entity.teams.User user =
+          Entity.getEntityByName(Entity.USER, userName, "isBot", Include.ALL);
+      if (Boolean.TRUE.equals(user.getIsBot())) {
+        return AuditLogRecord.ActorType.BOT;
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not resolve user entity for actor type detection: {}", userName);
     }
     return AuditLogRecord.ActorType.USER;
   }
@@ -167,6 +169,58 @@ public class AuditLogRepository {
     }
     String[] parts = FullyQualifiedName.split(entityFqn);
     return parts.length > 0 ? parts[0] : null;
+  }
+
+  private static final int MAX_SEARCH_TEXT_LENGTH = 2000;
+
+  private String buildSearchText(ChangeEvent changeEvent) {
+    try {
+      StringJoiner joiner = new StringJoiner(" ");
+      addIfNotEmpty(joiner, changeEvent.getUserName());
+      addIfNotEmpty(joiner, changeEvent.getEntityType());
+      addIfNotEmpty(joiner, changeEvent.getEntityFullyQualifiedName());
+      addIfNotEmpty(joiner, extractServiceName(changeEvent.getEntityFullyQualifiedName()));
+      if (changeEvent.getEventType() != null) {
+        addIfNotEmpty(joiner, changeEvent.getEventType().value());
+      }
+      ChangeDescription desc = changeEvent.getChangeDescription();
+      if (desc != null) {
+        appendFieldChanges(joiner, desc.getFieldsAdded());
+        appendFieldChanges(joiner, desc.getFieldsUpdated());
+        appendFieldChanges(joiner, desc.getFieldsDeleted());
+      }
+      String text = joiner.toString();
+      if (text.length() > MAX_SEARCH_TEXT_LENGTH) {
+        text = text.substring(0, MAX_SEARCH_TEXT_LENGTH);
+      }
+      return text.isEmpty() ? null : text.toLowerCase();
+    } catch (Exception ex) {
+      LOG.debug("Failed to build search text for change event {}", changeEvent.getId(), ex);
+      return null;
+    }
+  }
+
+  private void appendFieldChanges(StringJoiner joiner, List<FieldChange> fields) {
+    if (fields == null) {
+      return;
+    }
+    for (FieldChange field : fields) {
+      addIfNotEmpty(joiner, field.getName());
+      String value = getFieldValue(field.getNewValue());
+      if (!nullOrEmpty(value) && value.length() <= 200) {
+        joiner.add(value);
+      }
+      String oldVal = getFieldValue(field.getOldValue());
+      if (!nullOrEmpty(oldVal) && oldVal.length() <= 200) {
+        joiner.add(oldVal);
+      }
+    }
+  }
+
+  private void addIfNotEmpty(StringJoiner joiner, String value) {
+    if (!nullOrEmpty(value)) {
+      joiner.add(value);
+    }
   }
 
   private UUID parseUuid(String value) {
@@ -216,7 +270,6 @@ public class AuditLogRepository {
     // Get total count for progress reporting
     String baseCondition = buildBaseCondition(searchTerm);
     String entityFqnHash = null;
-    String searchPattern = nullOrEmpty(searchTerm) ? null : "%" + searchTerm.toLowerCase() + "%";
     int estimatedTotal =
         auditLogDAO.count(
             baseCondition,
@@ -229,7 +282,7 @@ public class AuditLogRepository {
             eventType,
             startTs,
             endTs,
-            searchPattern);
+            searchTerm);
     int actualTotal = Math.min(estimatedTotal, totalLimit);
 
     // Send initial progress
@@ -339,8 +392,6 @@ public class AuditLogRepository {
 
     String baseCondition = buildBaseCondition(searchTerm);
     String entityFqnHash = nullOrEmpty(entityFqn) ? null : FullyQualifiedName.buildHash(entityFqn);
-    // Lowercase the search pattern for case-insensitive matching (works with LOWER() in SQL)
-    String searchPattern = nullOrEmpty(searchTerm) ? null : "%" + searchTerm.toLowerCase() + "%";
 
     List<AuditLogRecord> records;
     boolean isBackward = beforeCursor != null;
@@ -363,7 +414,7 @@ public class AuditLogRepository {
               eventType,
               startTs,
               endTs,
-              searchPattern,
+              searchTerm,
               beforeCursor.eventTs(),
               beforeCursor.id(),
               limit + 1);
@@ -389,7 +440,7 @@ public class AuditLogRepository {
               eventType,
               startTs,
               endTs,
-              searchPattern,
+              searchTerm,
               afterCursor != null ? afterCursor.eventTs() : null,
               afterCursor != null ? afterCursor.id() : null,
               limit + 1);
@@ -418,7 +469,7 @@ public class AuditLogRepository {
             eventType,
             startTs,
             endTs,
-            searchPattern);
+            searchTerm);
 
     List<AuditLogEntry> resultEntries = records.stream().map(this::toAuditLogEntry).toList();
 
@@ -446,9 +497,14 @@ public class AuditLogRepository {
 
   private AuditLogEntry toAuditLogEntry(AuditLogRecord record) {
     ChangeEvent changeEvent = deserializeChangeEvent(record);
-    EntityReference resolvedRef = resolveEntityReference(record);
 
-    enrichWithResolvedReference(record, changeEvent, resolvedRef);
+    // Only resolve entity reference when entityFQN is missing.
+    // Most records already have entityFQN populated from the write path,
+    // so this avoids an extra DB query per result row.
+    if (record.getEntityFQN() == null) {
+      EntityReference resolvedRef = resolveEntityReference(record);
+      enrichWithResolvedReference(record, changeEvent, resolvedRef);
+    }
 
     return AuditLogEntry.builder()
         .id(record.getId())
@@ -652,17 +708,13 @@ public class AuditLogRepository {
                 + "AND (:startTs IS NULL OR event_ts >= :startTs) "
                 + "AND (:endTs IS NULL OR event_ts <= :endTs)");
 
-    // Add search condition if searchTerm is provided
-    // Uses LOWER() + LIKE for case-insensitive search across multiple columns
-    // Works consistently on both MySQL and PostgreSQL
     if (!nullOrEmpty(searchTerm)) {
-      condition.append(
-          " AND (:searchPattern IS NULL OR "
-              + "LOWER(user_name) LIKE :searchPattern OR "
-              + "LOWER(entity_fqn) LIKE :searchPattern OR "
-              + "LOWER(service_name) LIKE :searchPattern OR "
-              + "LOWER(entity_type) LIKE :searchPattern OR "
-              + "LOWER(event_json) LIKE :searchPattern)");
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        condition.append(" AND (MATCH(search_text) AGAINST(:searchTerm IN NATURAL LANGUAGE MODE))");
+      } else {
+        condition.append(
+            " AND (to_tsvector('english', coalesce(search_text, '')) @@ plainto_tsquery('english', :searchTerm))");
+      }
     }
     return condition.toString();
   }

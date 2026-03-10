@@ -442,7 +442,9 @@ describe('ClassificationDetails', () => {
       );
     });
 
-    const enabledToggle = screen.getByTestId('tag-disable-toggle-Tag1');
+    const enabledToggle = screen
+      .getByTestId('tag-disable-toggle-Tag1')
+      .getElementsByTagName('input')[0];
 
     expect(enabledToggle).not.toBeDisabled();
 
@@ -465,10 +467,11 @@ describe('ClassificationDetails', () => {
       );
     });
 
-    expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(
+      screen
+        .getByTestId('tag-disable-toggle-Tag1')
+        .getElementsByTagName('input')[0]
+    ).toBeDisabled();
 
     unmount2();
 
@@ -486,9 +489,10 @@ describe('ClassificationDetails', () => {
       );
     });
 
-    expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(
+      screen
+        .getByTestId('tag-disable-toggle-Tag1')
+        .getElementsByTagName('input')[0]
+    ).toBeDisabled();
   });
 });

@@ -18,7 +18,7 @@ import traceback
 from typing import Dict, Optional, Tuple
 
 from packaging import version
-from sqlalchemy import sql, util
+from sqlalchemy import sql, text, util
 from sqlalchemy.dialects.postgresql.base import ENUM
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
@@ -495,7 +495,8 @@ def get_postgres_version(engine) -> Optional[str]:
     return the postgres version in major.minor.patch format
     """
     try:
-        results = engine.execute(POSTGRES_GET_SERVER_VERSION)
+        with engine.connect() as conn:
+            results = conn.execute(text(POSTGRES_GET_SERVER_VERSION)).all()
         for res in results:
             version_string = str(res[0])
             return version_string
@@ -513,7 +514,9 @@ def get_postgres_time_column_name(engine) -> str:
     try:
         with engine.connect() as conn:
             result = conn.execute(
-                "SELECT column_name FROM information_schema.columns WHERE table_name = 'pg_stat_statements'"
+                text(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = 'pg_stat_statements'"
+                )
             )
             columns = {row[0] for row in result}
             if "total_exec_time" in columns:

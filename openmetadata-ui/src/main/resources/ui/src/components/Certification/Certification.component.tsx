@@ -225,8 +225,14 @@ const Certification = ({
   };
 
   useEffect(() => {
-    if (popoverProps?.open && certifications.length === 0) {
+    if (popoverProps?.open) {
+      setSelectedCertification(currentCertificate);
+      setCurrentPage(1);
+      setPaging({} as Paging);
       getCertificationData(1);
+    } else if (popoverProps?.open === false) {
+      setCertifications([]);
+      setSelectedCertification('');
     }
   }, [popoverProps?.open]);
 

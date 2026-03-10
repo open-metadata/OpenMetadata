@@ -33,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.profiler.metrics.core import add_props
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 from metadata.profiler.registry import MetricRegistry
@@ -54,6 +55,19 @@ from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import get_context_entities
 
 logger = profiler_logger()
+
+TABLE_PROPS_METRICS = {"columnCount", "columnNames"}
+SYSTEM_PROPS_METRICS = {"system"}
+# These are metrics that require properties to be passed at runtime
+# and should be skipped if added as profiler metrics
+RUNTIME_PROPS_METRICS = {
+    "countInSet",
+    "likeCount",
+    "ilikeCount",
+    "notLikeCount",
+    "regexCount",
+    "notRegexCount",
+}
 
 
 class ProfilerSource(ProfilerSourceInterface):
@@ -194,6 +208,7 @@ class ProfilerSource(ProfilerSourceInterface):
         """
         Returns the runner for the profiler
         """
+        source_metrics = None
         if metrics_registry is None:
             raise DependencyNotFoundError(
                 "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
@@ -207,7 +222,10 @@ class ProfilerSource(ProfilerSourceInterface):
             entity, table_config, schema_entity, database_entity
         )
 
-        if not profiler_config.profiler:
+        if self.source_config and self.source_config.metrics:
+            source_metrics = [m.value for m in self.source_config.metrics]
+
+        if not profiler_config.profiler and not source_metrics:
             return DefaultProfiler(
                 profiler_interface=profiler_interface,
                 metrics_registry=metrics_registry,
@@ -217,16 +235,43 @@ class ProfilerSource(ProfilerSourceInterface):
                 db_service=db_service,
             )
 
-        metrics = (
-            [metrics_registry.get(name) for name in profiler_config.profiler.metrics]
-            if profiler_config.profiler.metrics
-            else get_default_metrics(
+        reference_metrics = (
+            profiler_config.profiler.metrics
+            if profiler_config.profiler
+            else source_metrics
+        )
+
+        if not reference_metrics:
+            metrics = get_default_metrics(
                 metrics_registry=metrics_registry,
                 table=profiler_interface.table,
                 ometa_client=self.ometa_client,
                 db_service=db_service,
             )
-        )
+        else:
+            metrics = []
+            for name in reference_metrics:
+                metric = metrics_registry.get(name)
+                if metric is None:
+                    logger.warning(
+                        f"Metric {name} not found in registry. Skipping this metric."
+                    )
+                    continue
+                if metric.name() in RUNTIME_PROPS_METRICS:
+                    logger.warning(
+                        f"Metric {name} requires runtime properties and cannot be "
+                        f"added as a profiler metric. Skipping this metric."
+                    )
+                    continue
+                if metric.name() in TABLE_PROPS_METRICS:
+                    metric = add_props(table=profiler_interface.table)(metric)
+                if metric.name() in SYSTEM_PROPS_METRICS:
+                    metric = add_props(
+                        table=profiler_interface.table,
+                        ometa_client=self.ometa_client,
+                        db_service=db_service,
+                    )(metric)
+                metrics.append(metric)
 
         return Profiler(
             *metrics,  # type: ignore

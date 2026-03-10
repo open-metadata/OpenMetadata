@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -23,6 +23,43 @@ import { Operation } from '../../../../generated/entity/policies/accessControl/r
 import '../../../../test/unit/mocks/mui.mock';
 import { TableProfilerProps } from '../TableProfiler/TableProfiler.interface';
 import DataObservabilityTab from './DataObservabilityTab';
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  type TabsItemClassName =
+    | string
+    | ((props: { isSelected: boolean; isHovered: boolean }) => string);
+
+  const Tabs = ({
+    children,
+    className,
+  }: PropsWithChildren<{ className?: string }>) => (
+    <div className={className}>{children}</div>
+  );
+
+  Tabs.List = ({ children }: PropsWithChildren) => <div>{children}</div>;
+
+  Tabs.Item = ({
+    children,
+    id,
+    className,
+  }: PropsWithChildren<{
+    id: string;
+    className?: TabsItemClassName;
+  }>) => (
+    <button
+      className={
+        typeof className === 'function'
+          ? className({ isSelected: false, isHovered: false })
+          : className
+      }
+      id={id}
+      type="button">
+      {children}
+    </button>
+  );
+
+  return { Tabs };
+});
 
 const mockNavigate = jest.fn();
 const mockUseParams = jest.fn(() => ({ subTab: 'table-profile' }));
@@ -235,9 +272,9 @@ describe('DataObservabilityTab', () => {
       renderComponent();
 
       await waitFor(() => {
-        const backButton = screen.getByText('Column Profile').closest('button');
+        const backLink = screen.getByText('Column Profile').closest('a');
 
-        expect(backButton).toBeInTheDocument();
+        expect(backLink).toBeInTheDocument();
         expect(screen.queryByText('Table Profile')).not.toBeInTheDocument();
         expect(screen.queryByText('Data Quality')).not.toBeInTheDocument();
       });
@@ -337,14 +374,12 @@ describe('DataObservabilityTab', () => {
         expect(screen.getByText('Column Profile')).toBeInTheDocument();
       });
 
-      const backButton = screen.getByText('Column Profile');
+      const backLink = screen.getByText('Column Profile').closest('a');
 
-      fireEvent.click(backButton);
-
-      expect(mockNavigate).toHaveBeenCalledWith({
-        pathname: '/entity-details/column-profile',
-        search: expect.not.stringContaining('activeColumnFqn'),
-      });
+      expect(backLink).toHaveAttribute(
+        'href',
+        '/entity-details/column-profile'
+      );
     });
 
     it('should clear activeColumnFqn when navigating back', async () => {
@@ -359,16 +394,11 @@ describe('DataObservabilityTab', () => {
         expect(screen.getByText('Column Profile')).toBeInTheDocument();
       });
 
-      const backButton = screen.getByText('Column Profile');
+      const backLink = screen.getByText('Column Profile').closest('a');
 
-      fireEvent.click(backButton);
-
-      expect(mockNavigate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          search: expect.stringMatching(
-            /^(?!.*activeColumnFqn).*startTs=1234567890000/
-          ),
-        })
+      expect(backLink).toHaveAttribute(
+        'href',
+        '/entity-details/column-profile?startTs=1234567890000'
       );
     });
 
@@ -381,9 +411,9 @@ describe('DataObservabilityTab', () => {
       renderComponent();
 
       await waitFor(() => {
-        const backButton = screen.getByText('Column Profile').closest('button');
+        const backLink = screen.getByText('Column Profile').closest('a');
 
-        expect(backButton).toBeInTheDocument();
+        expect(backLink).toBeInTheDocument();
       });
     });
   });
@@ -636,9 +666,12 @@ describe('DataObservabilityTab', () => {
       renderComponent();
 
       await waitFor(() => {
-        const backButton = screen.getByText('Column Profile').closest('button');
+        const backLink = screen.getByText('Column Profile').closest('a');
 
-        expect(backButton).toBeEnabled();
+        expect(backLink).toHaveAttribute(
+          'href',
+          '/entity-details/column-profile'
+        );
       });
     });
   });

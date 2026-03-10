@@ -18,6 +18,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
 import org.openmetadata.service.util.RestUtil;
@@ -145,6 +146,39 @@ public class PaginatedWebAnalyticEventDataSource
               .withLastFailedCursor(lastFailedCursor)
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(indexingError.getMessage());
+      throw new SearchIndexException(indexingError);
+    }
+    return result;
+  }
+
+  public ResultList<WebAnalyticEventData> readNextKeyset(String keysetCursor)
+      throws SearchIndexException {
+    LOG.debug("[PaginatedWebAnalyticEventDataSource] Fetching keyset batch of size: {}", batchSize);
+    ResultList<WebAnalyticEventData> result;
+    try {
+      EntityTimeSeriesDAO.TimeSeriesCursor cursor =
+          EntityTimeSeriesDAO.TimeSeriesCursor.parse(keysetCursor);
+      int cachedTotal = stats.getTotalRecords() != null ? stats.getTotalRecords() : 0;
+      result =
+          repository.listWebAnalyticEventDataWithKeyset(
+              eventType,
+              batchSize,
+              startTs,
+              endTs,
+              cursor.afterTs(),
+              cursor.afterFQNHash(),
+              cachedTotal,
+              true);
+    } catch (Exception e) {
+      LOG.error("Error reading keyset batch for web analytics with cursor: {}", keysetCursor, e);
+      IndexingError indexingError =
+          new IndexingError()
+              .withErrorSource(READER)
+              .withSuccessCount(0)
+              .withMessage(
+                  String.format(
+                      "Failed to read keyset batch for web analytics. Error: %s", e.getMessage()))
+              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       throw new SearchIndexException(indexingError);
     }
     return result;

@@ -79,6 +79,10 @@ export interface User {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Personas inherited through membership in teams that have set a team default persona.
+     */
+    inheritedPersonas?: EntityReference[];
+    /**
      * Roles that a user is inheriting through membership in teams that have set team default
      * roles.
      */

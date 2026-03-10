@@ -115,7 +115,10 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         return self.get_sampled_dataframe(raw_dataset, self.sample_config)
 
     def _fetch_rows(self, data_frame):
-        return data_frame.dropna().values.tolist()
+        return [
+            [self._truncate_cell(cell) for cell in row]
+            for row in data_frame.dropna().values.tolist()
+        ]
 
     def fetch_sample_data(
         self, columns: Optional[List[SQALikeColumn]] = None

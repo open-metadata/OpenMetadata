@@ -54,8 +54,8 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         # Verify connection.execute was called
         self.assertTrue(mock_connection.execute.called)
 
-        # Get the query that was executed
-        executed_query = mock_connection.execute.call_args[0][0]
+        # Get the query that was executed (may be a TextClause, so convert to str)
+        executed_query = str(mock_connection.execute.call_args[0][0])
 
         # Verify the query does NOT contain WITH clause (CTE)
         self.assertNotIn("WITH", executed_query.upper())
@@ -103,8 +103,8 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         # Verify connection.execute was called
         self.assertTrue(mock_connection.execute.called)
 
-        # Get the query that was executed
-        executed_query = mock_connection.execute.call_args[0][0]
+        # Get the query that was executed (may be a TextClause, so convert to str)
+        executed_query = str(mock_connection.execute.call_args[0][0])
 
         # Verify no CTE syntax
         self.assertNotIn("WITH", executed_query.upper())
@@ -128,8 +128,8 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         # Call the method
         self.dialect._get_table_columns(mock_connection, "test_table", "test_schema")
 
-        # Get the executed query
-        executed_query = mock_connection.execute.call_args[0][0]
+        # Get the executed query (may be a TextClause, so convert to str)
+        executed_query = str(mock_connection.execute.call_args[0][0])
 
         # Verify SELECT statements are present
         select_count = executed_query.upper().count("SELECT")
@@ -163,8 +163,8 @@ class TestHiveMySQLMetastoreDialect(TestCase):
         # Call the method
         self.dialect._get_table_columns(mock_connection, "test_table", "test_schema")
 
-        # Get the executed query
-        executed_query = mock_connection.execute.call_args[0][0]
+        # Get the executed query (may be a TextClause, so convert to str)
+        executed_query = str(mock_connection.execute.call_args[0][0])
 
         # List of MySQL 8.0+ features that should NOT be present
         mysql_80_features = [

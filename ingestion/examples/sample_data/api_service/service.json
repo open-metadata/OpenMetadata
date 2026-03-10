@@ -4,7 +4,9 @@
 	"serviceConnection": {
 		"config": {
 			"type": "Rest",
-			"openAPISchemaURL": "https://petstore3.swagger.io/",
+			"openAPISchemaConnection": {
+				"openAPISchemaURL": "https://petstore3.swagger.io/"
+			},
     		"token":"mock_token"
 		}
 	},

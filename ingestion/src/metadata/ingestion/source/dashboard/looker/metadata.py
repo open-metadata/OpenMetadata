@@ -156,7 +156,6 @@ GET_DASHBOARD_FIELDS = [
     "title",
     "dashboard_elements",
     "dashboard_filters",
-    "view_count",
     "description",
     "folder",
     "user_id",  # Use as owner
@@ -217,6 +216,7 @@ class LookerSource(DashboardServiceSource):
         self._project_parsers: Optional[Dict[str, BulkLkmlParser]] = None
         self._main_lookml_repos: Optional[List[LookMLRepo]] = None
         self._main__lookml_manifest: Optional[LookMLManifest] = None
+        self._lookml_constants_map: Dict[str, str] = {}
         self._view_data_model: Optional[DashboardDataModel] = None
 
         self._parsed_views: Optional[Dict[str, str]] = {}
@@ -344,6 +344,14 @@ class LookerSource(DashboardServiceSource):
                 self._main__lookml_manifest = self.__read_manifest(
                     credentials, self._main_lookml_repos[0]
                 )
+                if (
+                    self._main__lookml_manifest
+                    and self._main__lookml_manifest.constants
+                ):
+                    self._lookml_constants_map = {
+                        c["name"]: c.get("value", "")
+                        for c in self._main__lookml_manifest.constants
+                    }
 
     @property
     def parser(self) -> Optional[Dict[str, BulkLkmlParser]]:
@@ -1053,7 +1061,8 @@ class LookerSource(DashboardServiceSource):
             db_service_prefixes = self.get_db_service_prefixes()
 
             if view.sql_table_name:
-                sql_table_name = self._render_table_name(view.sql_table_name)
+                sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
+                sql_table_name = self._render_table_name(sql_table_name)
 
                 for db_service_prefix in db_service_prefixes or []:
                     db_service_name, *_ = self.parse_db_service_prefix(
@@ -1078,6 +1087,9 @@ class LookerSource(DashboardServiceSource):
                 sql_query = view.derived_table.sql
                 if not sql_query:
                     return
+                sql_query = self._resolve_lookml_constants(
+                    sql_query, strip_unresolved=False
+                )
                 if find_derived_references(sql_query):
                     sql_query = self.replace_derived_references(sql_query)
                     if view_references := find_derived_references(sql_query):
@@ -1171,7 +1183,8 @@ class LookerSource(DashboardServiceSource):
             db_service_prefixes = self.get_db_service_prefixes()
 
             if view.sql_table_name:
-                sql_table_name = self._render_table_name(view.sql_table_name)
+                sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
+                sql_table_name = self._render_table_name(sql_table_name)
 
                 for db_service_prefix in db_service_prefixes or []:
                     db_service_name, *_ = self.parse_db_service_prefix(
@@ -1196,6 +1209,9 @@ class LookerSource(DashboardServiceSource):
                 sql_query = view.derived_table.sql
                 if not sql_query:
                     return
+                sql_query = self._resolve_lookml_constants(
+                    sql_query, strip_unresolved=False
+                )
                 if find_derived_references(sql_query):
                     sql_query = self.replace_derived_references(sql_query)
                     # If we still have derived references, we cannot process the view
@@ -1298,9 +1314,10 @@ class LookerSource(DashboardServiceSource):
         """
         Get Dashboard Details
         """
-        return self.client.dashboard(
-            dashboard_id=dashboard.id, fields=",".join(GET_DASHBOARD_FIELDS)
-        )
+        fields = GET_DASHBOARD_FIELDS.copy()
+        if self.source_config.includeUsage:
+            fields.append("view_count")
+        return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
 
     def get_owner_ref(
         self, dashboard_details: LookerDashboard
@@ -1394,6 +1411,39 @@ class LookerSource(DashboardServiceSource):
         if dialect == Dialect.BIGQUERY:
             clean_table_name = clean_table_name.strip("`")
         return clean_table_name
+
+    def _resolve_lookml_constants(
+        self, text: str, strip_unresolved: bool = True
+    ) -> str:
+        """Replace @{constant_name} references with values from manifest constants.
+        When strip_unresolved=True (default, for sql_table_name), unresolved constants
+        are removed and leftover dots cleaned up so the table name is still usable.
+        When strip_unresolved=False (for derived_table SQL), unresolved constants are
+        left as-is to avoid producing invalid SQL.
+        """
+        if "@{" not in text:
+            return text
+
+        def replace_constant(match):
+            const_name = match.group(1)
+            if strip_unresolved:
+                return self._lookml_constants_map.get(const_name, "")
+            return self._lookml_constants_map.get(const_name, match.group(0))
+
+        # Match LookML constant syntax: @{constant_name} where names are ASCII alphanumeric + underscore
+        resolved = re.sub(r"@\{([a-zA-Z0-9_]+)\}", replace_constant, text)
+
+        if strip_unresolved:
+            # Collapse consecutive dots left after stripping constants (e.g., "a..b" -> "a.b")
+            resolved = re.sub(r"\.{2,}", ".", resolved)
+            # Remove dots immediately after opening backtick (e.g., "`.table" -> "`table")
+            resolved = re.sub(r"(`)\.+", r"\1", resolved)
+            # Remove dots immediately before closing backtick (e.g., "table.`" -> "table`")
+            resolved = re.sub(r"\.+(`)", r"\1", resolved)
+            # Remove any remaining leading/trailing dots
+            resolved = resolved.strip(".")
+
+        return resolved
 
     @staticmethod
     def _render_table_name(table_name: str) -> str:
@@ -1754,6 +1804,8 @@ class LookerSource(DashboardServiceSource):
         :param dashboard_details: Looker Dashboard
         :return: UsageRequest, if not computed
         """
+        if not self.source_config.includeUsage:
+            return
 
         dashboard_name = self.context.get().dashboard
 
@@ -1795,9 +1847,11 @@ class LookerSource(DashboardServiceSource):
 
                 new_usage = current_views - latest_usage
                 if new_usage < 0:
-                    raise ValueError(
-                        f"Wrong computation of usage difference. Got new_usage={new_usage}."
+                    logger.warning(
+                        f"Wrong computation of usage difference for {dashboard.fullyQualifiedName.root}."
+                        f" Got new_usage={new_usage}."
                     )
+                    return
 
                 logger.info(
                     f"Yielding new usage for {dashboard.fullyQualifiedName.root}"

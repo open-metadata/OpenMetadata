@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { DOMAIN_TAGS, PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../../constant/config';
+import {
+  DOMAIN_TAGS,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+} from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
@@ -37,6 +40,10 @@ import {
   visitDataQualityTab,
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
+import {
+  ObservabilityFeature,
+  selectAddObservabilityFeature,
+} from '../../../utils/dataQuality';
 
 const table1 = new TableClass();
 const table2 = new TableClass();
@@ -71,7 +78,12 @@ const testCaseResult = {
 
 test.describe(
   'Data Quality',
-  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, PLAYWRIGHT_INGESTION_TAG_OBJ.tag] },
+  {
+    tag: [
+      `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`,
+      PLAYWRIGHT_INGESTION_TAG_OBJ.tag,
+    ],
+  },
   () => {
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -165,7 +177,7 @@ test.describe(
       await visitDataQualityTab(page, table1);
 
       await page.click('[data-testid="profiler-add-table-test-btn"]');
-      await page.getByRole('menuitem', { name: 'Test case' }).click();
+      await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
 
       /**
        * Step: Create table test case
@@ -369,7 +381,7 @@ test.describe(
 
       await visitDataQualityTab(page, table1);
       await page.click('[data-testid="profiler-add-table-test-btn"]');
-      await page.getByRole('menuitem', { name: 'Test case' }).click();
+      await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
       await page
         .getByTestId('select-table-card')
         .getByText('Column Level')
@@ -988,7 +1000,9 @@ test.describe(
         );
 
         await page
-          .getByTestId(filterTable1.entityResponseData?.['fullyQualifiedName'])
+          .getByTestId(
+            filterTable1.entityResponseData?.['fullyQualifiedName'] || ''
+          )
           .click();
         await getTestCaseByTable;
         await verifyFilterTestCase(page);
@@ -1141,7 +1155,7 @@ test.describe(
         );
         await page
           .getByTestId('table-profiler-container')
-          .getByTestId('searchbar')
+          .getByRole('textbox', { name: 'Search test case' })
           .fill(testCases[0]);
         await searchTestCase;
 

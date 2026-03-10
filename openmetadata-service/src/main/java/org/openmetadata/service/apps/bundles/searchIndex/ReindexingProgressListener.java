@@ -18,6 +18,15 @@ import org.openmetadata.schema.system.StepStats;
  */
 public interface ReindexingProgressListener {
 
+  /** Failure type classification for per-stage failure hooks */
+  enum FailureType {
+    ENTITY_NOT_FOUND,
+    JSON_PROCESSING,
+    DB_ERROR,
+    SINK_ERROR,
+    UNKNOWN
+  }
+
   /** Called when reindexing job starts initialization */
   default void onJobStarted(ReindexingJobContext context) {}
 
@@ -38,6 +47,20 @@ public interface ReindexingProgressListener {
 
   /** Called when an error occurs during processing */
   default void onError(String entityType, IndexingError error, Stats currentStats) {}
+
+  /** Called when a reader-stage failure occurs for a specific entity */
+  default void onReaderFailure(
+      String entityType, String entityId, String error, FailureType type) {}
+
+  /** Called when a process-stage failure occurs (entity -> search doc conversion) */
+  default void onProcessFailure(String entityType, String entityId, String error) {}
+
+  /** Called when a sink-stage failure occurs (ES/OS bulk indexing) */
+  default void onSinkFailure(String entityType, String entityId, String error) {}
+
+  /** Called when sub-indexing (columns, vectors) completes for an entity type */
+  default void onSubIndexingCompleted(
+      String entityType, String subIndex, StepStats subIndexStats) {}
 
   /** Called when job completes successfully */
   default void onJobCompleted(Stats finalStats, long elapsedMillis) {}

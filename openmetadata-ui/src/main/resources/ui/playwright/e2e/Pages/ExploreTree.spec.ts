@@ -45,6 +45,7 @@ import {
   testCopyLinkButton,
   updateDisplayNameForEntity,
   validateCopiedLinkFormat,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
   Bucket,
@@ -162,6 +163,91 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await expect(
           page.getByTestId('search-dropdown-Data Assets')
         ).toContainText('Data Assets: metric');
+      }
+    );
+  });
+
+  test('Verify Tags navigation via Governance tree and breadcrumb renders page correctly', async ({
+    page,
+  }) => {
+    await test.step('Expand Governance node in explore tree', async () => {
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('explore-tree-title-Governance')
+      ).toBeVisible();
+
+      await page
+        .locator('.ant-tree-treenode', {
+          has: page.getByTestId('explore-tree-title-Governance'),
+        })
+        .locator('.ant-tree-switcher')
+        .click();
+    });
+
+    await test.step('Click on Tags under Governance', async () => {
+      await expect(page.getByTestId('explore-tree-title-Tags')).toBeVisible();
+
+      const tagsSearchRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=dataAsset*'
+      );
+      await page.getByTestId('explore-tree-title-Tags').click();
+      const tagsSearchResponse = await tagsSearchRes;
+
+      expect(tagsSearchResponse.status()).toBe(200);
+    });
+
+    await test.step(
+      'Click parent classification breadcrumb from a tag result',
+      async () => {
+        await waitForAllLoadersToDisappear(page);
+        const classificationBreadcrumb = page
+          .locator('[data-testid="breadcrumb-link"] a[href*="/tags/"]')
+          .first();
+
+        await expect(classificationBreadcrumb).toBeVisible();
+        await expect(classificationBreadcrumb).toBeEnabled();
+
+        const classificationsRes = page.waitForResponse(
+          '/api/v1/classifications*'
+        );
+        const tagsTableRes = page.waitForResponse('/api/v1/tags*');
+
+        await classificationBreadcrumb.click();
+
+        const classificationResponse = await classificationsRes;
+        const tagsTableResponse = await tagsTableRes;
+
+        expect(classificationResponse.status()).toBe(200);
+        expect(tagsTableResponse.status()).toBe(200);
+      }
+    );
+
+    await test.step(
+      'Verify full Tags page renders with left panel, table and headers',
+      async () => {
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('side-panel-classification')
+        ).not.toHaveCount(0);
+
+        await expect(page.getByTestId('tags-container')).toBeVisible();
+
+        await expect(page.getByTestId('table')).toBeVisible();
+
+        // Verify all table column headers are correct
+        const headers = await page
+          .locator('.ant-table-thead > tr > .ant-table-cell')
+          .allTextContents();
+
+        expect(headers).toEqual([
+          'Enabled',
+          'Tag',
+          'Display Name',
+          'Description',
+          'Actions',
+        ]);
       }
     );
   });

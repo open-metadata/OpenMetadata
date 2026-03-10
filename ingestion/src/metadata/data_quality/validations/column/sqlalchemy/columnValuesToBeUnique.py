@@ -62,14 +62,14 @@ class ColumnValuesToBeUniqueValidator(
             metric: metric
             column: column
         """
-        count = Metrics.COUNT.value(column).fn()
+        count = Metrics.valuesCount.value(column).fn()
         grouped_cte = (
             select(count.label(column.name))
             .select_from(self.runner.dataset)
             .group_by(column)
             .cte("grouped_cte")
         )
-        unique_count = Metrics.UNIQUE_COUNT.value(column).query(
+        unique_count = Metrics.uniqueCount.value(column).query(
             sample=self.runner.dataset,
             session=self.runner._session,  # pylint: disable=protected-access
         )  # type: ignore
@@ -80,15 +80,14 @@ class ColumnValuesToBeUniqueValidator(
             else:
                 query_group_by_ = None
 
-            self.value = dict(
-                self.runner._select_from_dataset(
-                    grouped_cte,
-                    func.sum(grouped_cte.c[column.name]).label(Metrics.COUNT.name),
-                    unique_count.label(Metrics.UNIQUE_COUNT.name),
-                    query_group_by_=query_group_by_,
-                ).first()
-            )  # type: ignore
-            res = self.value.get(Metrics.COUNT.name)
+            row = self.runner._select_from_dataset(
+                grouped_cte,
+                func.sum(grouped_cte.c[column.name]).label(Metrics.valuesCount.name),
+                unique_count.label(Metrics.uniqueCount.name),
+                query_group_by_=query_group_by_,
+            ).first()
+            self.value = dict(row._mapping)  # type: ignore
+            res = self.value.get(Metrics.valuesCount.name)
         except Exception as exc:
             raise SQLAlchemyError(exc)
 
@@ -112,7 +111,8 @@ class ColumnValuesToBeUniqueValidator(
         column: Column,
         dimension_col: Column,
         metrics_to_compute: dict,
-        test_params: Optional[dict] = None,
+        test_params: Optional[dict],
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional validation for uniqueness using two-pass approach
 
@@ -146,7 +146,7 @@ class ColumnValuesToBeUniqueValidator(
 
                 table = self.runner.dataset
 
-            dialect = self.runner._session.bind.dialect.name
+            dialect = self.runner._session.get_bind().dialect.name
 
             normalized_dimension = self._get_normalized_dimension_expression(
                 dimension_col
@@ -159,8 +159,8 @@ class ColumnValuesToBeUniqueValidator(
 
             metric_expressions = {
                 DIMENSION_TOTAL_COUNT_KEY: func.sum(value_counts_cte.c.row_count),
-                Metrics.COUNT.name: func.sum(value_counts_cte.c.occurrence_count),
-                Metrics.UNIQUE_COUNT.name: unique_count_expr,
+                Metrics.valuesCount.name: func.sum(value_counts_cte.c.occurrence_count),
+                Metrics.uniqueCount.name: unique_count_expr,
                 DIMENSION_FAILED_COUNT_KEY: func.sum(
                     value_counts_cte.c.occurrence_count
                 )
@@ -173,17 +173,12 @@ class ColumnValuesToBeUniqueValidator(
                 metric_expressions=metric_expressions,
                 others_source_builder=self._get_others_source_builder(value_counts_cte),
                 others_metric_expressions_builder=self._get_others_metric_expressions_builder(),
+                top_n=top_n,
             )
 
-            for row in result_rows:
-                metric_values = self._build_metric_values_from_row(
-                    row, metrics_to_compute, test_params
-                )
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-                dimension_result = self._create_dimension_result(
-                    row, dimension_col.name, metric_values, evaluation, test_params
-                )
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")
@@ -215,8 +210,8 @@ class ColumnValuesToBeUniqueValidator(
             )
             return {
                 DIMENSION_TOTAL_COUNT_KEY: func.sum(others_source.c.row_count),
-                Metrics.COUNT.name: func.sum(others_source.c.occurrence_count),
-                Metrics.UNIQUE_COUNT.name: unique_count_expr,
+                Metrics.valuesCount.name: func.sum(others_source.c.occurrence_count),
+                Metrics.uniqueCount.name: unique_count_expr,
                 DIMENSION_FAILED_COUNT_KEY: func.sum(others_source.c.occurrence_count)
                 - unique_count_expr,
             }

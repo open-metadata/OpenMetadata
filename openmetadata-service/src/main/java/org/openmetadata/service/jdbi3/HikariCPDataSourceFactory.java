@@ -45,7 +45,7 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
   private int minimumIdle = 10;
 
   @JsonProperty
-  @Max(100)
+  @Max(500)
   private int maximumPoolSize = 100;
 
   @JsonProperty private Long connectionTimeout;
@@ -91,6 +91,14 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
 
     if (metricRegistry != null) {
       config.setMetricRegistry(metricRegistry);
+    }
+
+    try {
+      config.setMetricsTrackerFactory(
+          new com.zaxxer.hikari.metrics.micrometer.MicrometerMetricsTrackerFactory(
+              io.micrometer.core.instrument.Metrics.globalRegistry));
+    } catch (Exception e) {
+      LOG.debug("Could not set Micrometer metrics tracker: {}", e.getMessage());
     }
 
     LOG.debug(

@@ -1373,7 +1373,7 @@ public class TableRepository extends EntityRepository<Table> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName().equals(COLUMN_FIELD)) {
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals(COLUMN_FIELD)) {
       TaskType taskType = threadContext.getThread().getTask().getType();
       if (EntityUtil.isDescriptionTask(taskType)) {
         return new ColumnDescriptionWorkflow(threadContext);
@@ -1909,6 +1909,10 @@ public class TableRepository extends EntityRepository<Table> {
       Table updatedTable = updated;
       DatabaseUtil.validateColumns(updatedTable.getColumns());
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
+      if (updatedTable.getDataModel() == null && origTable.getDataModel() != null) {
+        updatedTable.withDataModel(origTable.getDataModel());
+      }
+      recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel());
       updateTableConstraints(origTable, updatedTable, operation);
       updateProcessedLineage(origTable, updatedTable);
       updateColumns(

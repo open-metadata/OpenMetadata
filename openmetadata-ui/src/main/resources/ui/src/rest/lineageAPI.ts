@@ -23,7 +23,6 @@ import {
   LineagePagingInfo,
 } from '../components/LineageTable/LineageTable.interface';
 import { EntityType } from '../enums/entity.enum';
-
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import APIClient from './index';

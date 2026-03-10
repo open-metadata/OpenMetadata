@@ -4,7 +4,10 @@ source:
   serviceConnection:
     config:
       type: Rest
-      openAPISchemaURL: https://petstore3.swagger.io/api/v3/openapi.json
+      openAPISchemaConnection:
+        openAPISchemaURL: https://petstore3.swagger.io/api/v3/openapi.json
+        # Or use a local file path instead:
+        # openAPISchemaFilePath: /path/to/openapi.json
       docURL: https://petstore3.swagger.io/
       # token: <jwt_token>
   sourceConfig:

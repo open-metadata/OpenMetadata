@@ -84,7 +84,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
     await page.fill('#root\\/username', redshiftUsername);
     await checkServiceFieldSectionHighlighting(page, 'username');
-    await page.fill('#root\\/password', redshiftPassword);
+    await page.fill('#root\\/authType\\/password', redshiftPassword);
     await checkServiceFieldSectionHighlighting(page, 'password');
     await page.fill('#root\\/hostPort', redshiftHost);
     await checkServiceFieldSectionHighlighting(page, 'hostPort');

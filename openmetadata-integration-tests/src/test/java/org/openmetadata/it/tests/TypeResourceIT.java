@@ -58,6 +58,8 @@ public class TypeResourceIT {
   private static Type TOPIC_ENTITY_TYPE;
   private static Type TABLE_ENTITY_TYPE;
   private static Type CONTAINER_ENTITY_TYPE;
+  private static Type TABLE_COLUMN_ENTITY_TYPE;
+  private static Type DASHBOARD_DATA_MODEL_COLUMN_ENTITY_TYPE;
 
   @BeforeAll
   static void setupTypes() throws Exception {
@@ -70,6 +72,8 @@ public class TypeResourceIT {
     TOPIC_ENTITY_TYPE = getTypeByName(client, "topic");
     TABLE_ENTITY_TYPE = getTypeByName(client, "table");
     CONTAINER_ENTITY_TYPE = getTypeByName(client, "container");
+    TABLE_COLUMN_ENTITY_TYPE = getTypeByName(client, "tableColumn");
+    DASHBOARD_DATA_MODEL_COLUMN_ENTITY_TYPE = getTypeByName(client, "dashboardDataModelColumn");
   }
 
   @Test
@@ -607,6 +611,158 @@ public class TypeResourceIT {
     }
   }
 
+  @Test
+  void test_addCustomPropertyToTableColumn(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String propertyName = ns.prefix("tableColProp");
+    CustomProperty customProperty = new CustomProperty();
+    customProperty.setName(propertyName);
+    customProperty.setDescription("Custom property for table column");
+    customProperty.setPropertyType(STRING_TYPE.getEntityReference());
+
+    Type updatedType = addCustomProperty(client, TABLE_COLUMN_ENTITY_TYPE.getId(), customProperty);
+
+    assertNotNull(updatedType);
+    assertNotNull(updatedType.getCustomProperties());
+
+    boolean hasCustomProperty =
+        updatedType.getCustomProperties().stream()
+            .anyMatch(cp -> propertyName.equals(cp.getName()));
+    assertTrue(hasCustomProperty, "tableColumn type should have the new custom property");
+  }
+
+  @Test
+  void test_addCustomPropertyToDashboardDataModelColumn(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String propertyName = ns.prefix("dashColProp");
+    CustomProperty customProperty = new CustomProperty();
+    customProperty.setName(propertyName);
+    customProperty.setDescription("Custom property for dashboard data model column");
+    customProperty.setPropertyType(INT_TYPE.getEntityReference());
+
+    Type updatedType =
+        addCustomProperty(client, DASHBOARD_DATA_MODEL_COLUMN_ENTITY_TYPE.getId(), customProperty);
+
+    assertNotNull(updatedType);
+    assertNotNull(updatedType.getCustomProperties());
+
+    boolean hasCustomProperty =
+        updatedType.getCustomProperties().stream()
+            .anyMatch(cp -> propertyName.equals(cp.getName()));
+    assertTrue(
+        hasCustomProperty, "dashboardDataModelColumn type should have the new custom property");
+  }
+
+  @Test
+  void test_columnCustomPropertiesAreIsolated(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String tableColPropName = ns.prefix("isolatedTableColProp");
+    CustomProperty tableColProp = new CustomProperty();
+    tableColProp.setName(tableColPropName);
+    tableColProp.setDescription("Property only for table column");
+    tableColProp.setPropertyType(STRING_TYPE.getEntityReference());
+
+    addCustomProperty(client, TABLE_COLUMN_ENTITY_TYPE.getId(), tableColProp);
+
+    String dashColPropName = ns.prefix("isolatedDashColProp");
+    CustomProperty dashColProp = new CustomProperty();
+    dashColProp.setName(dashColPropName);
+    dashColProp.setDescription("Property only for dashboard data model column");
+    dashColProp.setPropertyType(INT_TYPE.getEntityReference());
+
+    addCustomProperty(client, DASHBOARD_DATA_MODEL_COLUMN_ENTITY_TYPE.getId(), dashColProp);
+
+    Type tableColumnType = getTypeByName(client, "tableColumn", "customProperties");
+    Type dashboardColumnType =
+        getTypeByName(client, "dashboardDataModelColumn", "customProperties");
+
+    boolean tableColHasOwnProp =
+        tableColumnType.getCustomProperties().stream()
+            .anyMatch(cp -> tableColPropName.equals(cp.getName()));
+    boolean tableColHasDashProp =
+        tableColumnType.getCustomProperties().stream()
+            .anyMatch(cp -> dashColPropName.equals(cp.getName()));
+
+    boolean dashColHasOwnProp =
+        dashboardColumnType.getCustomProperties().stream()
+            .anyMatch(cp -> dashColPropName.equals(cp.getName()));
+    boolean dashColHasTableProp =
+        dashboardColumnType.getCustomProperties().stream()
+            .anyMatch(cp -> tableColPropName.equals(cp.getName()));
+
+    assertTrue(tableColHasOwnProp, "tableColumn should have its own custom property");
+    assertFalse(
+        tableColHasDashProp,
+        "tableColumn should NOT have dashboardDataModelColumn's custom property");
+
+    assertTrue(dashColHasOwnProp, "dashboardDataModelColumn should have its own custom property");
+    assertFalse(
+        dashColHasTableProp,
+        "dashboardDataModelColumn should NOT have tableColumn's custom property");
+  }
+
+  @Test
+  void test_getAllCustomPropertiesIncludesColumnTypes(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String tableColPropName = ns.prefix("allPropsTableColProp");
+    CustomProperty tableColProp = new CustomProperty();
+    tableColProp.setName(tableColPropName);
+    tableColProp.setDescription("Table column property for getAllCustomProperties test");
+    tableColProp.setPropertyType(STRING_TYPE.getEntityReference());
+
+    addCustomProperty(client, TABLE_COLUMN_ENTITY_TYPE.getId(), tableColProp);
+
+    String dashColPropName = ns.prefix("allPropsDashColProp");
+    CustomProperty dashColProp = new CustomProperty();
+    dashColProp.setName(dashColPropName);
+    dashColProp.setDescription("Dashboard column property for getAllCustomProperties test");
+    dashColProp.setPropertyType(INT_TYPE.getEntityReference());
+
+    addCustomProperty(client, DASHBOARD_DATA_MODEL_COLUMN_ENTITY_TYPE.getId(), dashColProp);
+
+    Map<String, List<Map<String, Object>>> allCustomProperties = getAllCustomProperties(client);
+
+    assertNotNull(allCustomProperties);
+    assertTrue(
+        allCustomProperties.containsKey("tableColumn"),
+        "getAllCustomProperties should include tableColumn");
+    assertTrue(
+        allCustomProperties.containsKey("dashboardDataModelColumn"),
+        "getAllCustomProperties should include dashboardDataModelColumn");
+
+    List<Map<String, Object>> tableColumnProps = allCustomProperties.get("tableColumn");
+    List<Map<String, Object>> dashboardColumnProps =
+        allCustomProperties.get("dashboardDataModelColumn");
+
+    boolean tableColHasProp =
+        tableColumnProps.stream().anyMatch(p -> tableColPropName.equals(p.get("name")));
+    boolean dashColHasProp =
+        dashboardColumnProps.stream().anyMatch(p -> dashColPropName.equals(p.get("name")));
+
+    assertTrue(
+        tableColHasProp,
+        "tableColumn in getAllCustomProperties should contain tableColumn custom property");
+    assertTrue(
+        dashColHasProp,
+        "dashboardDataModelColumn in getAllCustomProperties should contain dashboardDataModelColumn custom property");
+
+    boolean tableColHasDashProp =
+        tableColumnProps.stream().anyMatch(p -> dashColPropName.equals(p.get("name")));
+    boolean dashColHasTableProp =
+        dashboardColumnProps.stream().anyMatch(p -> tableColPropName.equals(p.get("name")));
+
+    assertFalse(
+        tableColHasDashProp,
+        "tableColumn should NOT contain dashboardDataModelColumn's property in getAllCustomProperties");
+    assertFalse(
+        dashColHasTableProp,
+        "dashboardDataModelColumn should NOT contain tableColumn's property in getAllCustomProperties");
+  }
+
   private static Type createType(OpenMetadataClient client, CreateType createRequest)
       throws Exception {
     return client
@@ -672,6 +828,22 @@ public class TypeResourceIT {
             .executeForString(HttpMethod.GET, "/v1/metadata/types/fields/" + entityType, null);
     return OBJECT_MAPPER.readValue(
         response, OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, Map.class));
+  }
+
+  private static Map<String, List<Map<String, Object>>> getAllCustomProperties(
+      OpenMetadataClient client) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/metadata/types/customProperties", null);
+    return OBJECT_MAPPER.readValue(
+        response,
+        OBJECT_MAPPER
+            .getTypeFactory()
+            .constructMapType(
+                Map.class,
+                OBJECT_MAPPER.getTypeFactory().constructType(String.class),
+                OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, Map.class)));
   }
 
   private static class TypeList {

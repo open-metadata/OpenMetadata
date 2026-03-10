@@ -145,25 +145,28 @@ export interface NodeConfiguration {
  */
 export interface Assignees {
     /**
+     * Add the Owners to the assignees List.
+     */
+    addOwners?: boolean;
+    /**
      * Add the Reviewers to the assignees List.
      */
     addReviewers?: boolean;
-}
-
-export interface InputNamespaceMap {
-    relatedEntity: string;
-    updatedBy?:    string;
+    /**
+     * List of specific candidates (users or teams) assigned to this task.
+     */
+    candidates?: EntityReference[];
 }
 
 /**
- * Owners of this API Collection
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * Owners of this API Collection
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -209,6 +212,11 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+export interface InputNamespaceMap {
+    relatedEntity: string;
+    updatedBy?:    string;
 }
 
 /**

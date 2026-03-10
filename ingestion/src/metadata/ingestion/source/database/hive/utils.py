@@ -14,7 +14,7 @@ Hive source methods.
 import re
 
 from pyhive.sqlalchemy_hive import _type_map
-from sqlalchemy import types, util
+from sqlalchemy import text, types, util
 from sqlalchemy.engine import reflection
 
 from metadata.ingestion.source.database.hive.queries import HIVE_GET_COMMENTS
@@ -43,9 +43,14 @@ def get_columns(
     rows = [[col.strip() if col else None for col in row] for row in rows]
     rows = [row for row in rows if row[0] and row[0] != "# col_name"]
     result = []
+    seen_columns = set()
     for col_name, col_type, comment in rows:
         if col_name == "# Partition Information":
             break
+
+        # Skip duplicate column names (partition columns appear twice in DESCRIBE output)
+        if col_name in seen_columns:
+            continue
 
         col_raw_type = col_type
         attype = re.sub(r"\(.*\)", "", col_type)
@@ -79,6 +84,7 @@ def get_columns(
                 "is_complex": col_type in complex_data_types,
             }
         )
+        seen_columns.add(col_name)
     return result
 
 
@@ -88,7 +94,7 @@ def get_table_names_older_versions(
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
-    tables_in_schema = connection.execute(query)
+    tables_in_schema = connection.execute(text(query))
     tables = []
     for row in tables_in_schema:
         # check number of columns in result
@@ -107,7 +113,7 @@ def get_table_names(
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
-    tables_in_schema = connection.execute(query)
+    tables_in_schema = connection.execute(text(query))
     tables = []
     for row in tables_in_schema:
         # check number of columns in result
@@ -129,7 +135,7 @@ def get_view_names(
     query = "SHOW VIEWS"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
-    view_in_schema = connection.execute(query)
+    view_in_schema = connection.execute(text(query))
     views = []
     for row in view_in_schema:
         # check number of columns in result
@@ -158,7 +164,7 @@ def get_table_comment(  # pylint: disable=unused-argument
     Returns comment of table.
     """
     cursor = connection.execute(
-        HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name)
+        text(HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name))
     )
     try:
         for result in list(cursor):
@@ -177,7 +183,7 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     Gets the view definition
     """
     full_view_name = f"`{view_name}`" if not schema else f"`{schema}`.`{view_name}`"
-    res = connection.execute(f"SHOW CREATE TABLE {full_view_name}").fetchall()
+    res = connection.execute(text(f"SHOW CREATE TABLE {full_view_name}")).fetchall()
     if res:
         return "\n".join(i[0] for i in res)
     return None

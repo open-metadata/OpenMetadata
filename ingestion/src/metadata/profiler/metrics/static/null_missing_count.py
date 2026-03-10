@@ -47,6 +47,8 @@ class NullMissingCount(StaticMetric):
     ```
     """
 
+    schema_metric_type = MetricType.nullMissingCount
+
     @classmethod
     def name(cls):
         """
@@ -68,10 +70,8 @@ class NullMissingCount(StaticMetric):
         """
         return SumFn(
             case(
-                [
-                    (column(self.col.name, self.col.type).is_(None), 1),
-                    (column(self.col.name, self.col.type).__eq__(""), 1),
-                ],
+                (column(self.col.name, self.col.type).is_(None), 1),
+                (column(self.col.name, self.col.type).__eq__(""), 1),
                 else_=0,
             )
         )

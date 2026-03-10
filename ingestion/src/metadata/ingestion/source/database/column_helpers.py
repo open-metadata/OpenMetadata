@@ -16,8 +16,7 @@ their raw information from the source
 
 def truncate_column_name(col_name: str):
     """
-    OpenMetadata table column specification limits column name to 128 characters.
-    To allow ingestion of tables we set name to truncate to 128 characters if its longer
-    and use displayName to have the raw column name
+    OpenMetadata column name specification limits column name to 256 characters.
+    Truncate to 256 characters if longer and use displayName to have the raw column name.
     """
     return col_name[:256]

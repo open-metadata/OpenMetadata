@@ -135,6 +135,40 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     }
   }
 
+  @SuppressWarnings("unchecked")
+  public ResultList<WebAnalyticEventData> listWebAnalyticEventDataWithKeyset(
+      String eventType,
+      int limitParam,
+      long startTs,
+      long endTs,
+      long afterTs,
+      String afterFQNHash,
+      int cachedTotal,
+      boolean skipErrors) {
+    CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDao =
+        daoCollection.entityExtensionTimeSeriesDao();
+    ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(eventType));
+
+    if (limitParam <= 0) {
+      return getWebAnalyticEventDataResultList(new ArrayList<>(), null, null, cachedTotal);
+    }
+
+    List<EntityTimeSeriesDAO.TimeSeriesRow> rows =
+        timeSeriesDao.listAfterKeysetWithRange(
+            filter, limitParam + 1, startTs, endTs, afterTs, afterFQNHash);
+    EntityTimeSeriesDAO.KeysetPage page = EntityTimeSeriesDAO.KeysetPage.from(rows, limitParam);
+    Map<String, List<?>> entityListMap = getEntityList(page.jsons(), skipErrors);
+    List<WebAnalyticEventData> webAnalyticEventData =
+        (List<WebAnalyticEventData>) entityListMap.get("entityList");
+    List<EntityError> errors = null;
+    if (skipErrors) {
+      errors = (List<EntityError>) entityListMap.get("errors");
+    }
+    return getWebAnalyticEventDataResultList(
+        webAnalyticEventData, null, page.afterCursor(), cachedTotal, errors);
+  }
+
   private ResultList<WebAnalyticEventData> getWebAnalyticEventDataResultList(
       List<WebAnalyticEventData> entities,
       String beforeCursor,

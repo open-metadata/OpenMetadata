@@ -54,8 +54,13 @@ class ApiIngestionClass extends ServiceBaseClass {
   async fillConnectionDetails(page: Page) {
     const openAPISchemaURL = 'https://petstore3.swagger.io/api/v3/openapi.json';
 
-    await page.locator('#root\\/openAPISchemaURL').fill(openAPISchemaURL);
-    await checkServiceFieldSectionHighlighting(page, 'openAPISchemaURL');
+    await page
+      .locator('#root\\/openAPISchemaConnection\\/openAPISchemaURL')
+      .fill(openAPISchemaURL);
+    await checkServiceFieldSectionHighlighting(
+      page,
+      'openAPISchemaURL'
+    );
   }
 
   async deleteService(page: Page): Promise<void> {
