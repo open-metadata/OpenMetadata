@@ -58,7 +58,7 @@ describe('buildSchemaQueryFilter', () => {
     });
   });
 
-  it('should include displayName, name, and description wildcard should-queries when searchValue is provided', () => {
+  it('should include displayName and name wildcard should-queries when searchValue is provided', () => {
     const result = buildSchemaQueryFilter(
       'service.fullyQualifiedName.keyword',
       'my-service',
@@ -75,7 +75,6 @@ describe('buildSchemaQueryFilter', () => {
                 should: [
                   { wildcard: { 'displayName.keyword': '*PowerBI*' } },
                   { wildcard: { 'name.keyword': '*PowerBI*' } },
-                  { wildcard: { 'description.keyword': '*PowerBI*' } },
                 ],
                 minimum_should_match: 1,
               },
@@ -93,10 +92,10 @@ describe('buildSchemaQueryFilter', () => {
       'PowerBIBigquery'
     );
 
-    const mustClauses = result.query.bool.must;
-    const nestedBool = mustClauses.find(
-      (clause: Record<string, unknown>) => 'bool' in clause
-    ) as { bool: { should: { wildcard: Record<string, string> }[] } };
+    const mustClauses = result.query.bool.must as Record<string, unknown>[];
+    const nestedBool = mustClauses.find((clause) => 'bool' in clause) as {
+      bool: { should: { wildcard: Record<string, string> }[] };
+    };
 
     nestedBool.bool.should.forEach((s) => {
       const value = Object.values(s.wildcard)[0];
@@ -105,27 +104,23 @@ describe('buildSchemaQueryFilter', () => {
     });
   });
 
-  it('should search across displayName.keyword, name.keyword, and description.keyword fields', () => {
+  it('should search across displayName.keyword and name.keyword fields only', () => {
     const result = buildSchemaQueryFilter(
       'service.fullyQualifiedName.keyword',
       'my-service',
       'test'
     );
 
-    const mustClauses = result.query.bool.must;
-    const nestedBool = mustClauses.find(
-      (clause: Record<string, unknown>) => 'bool' in clause
-    ) as { bool: { should: { wildcard: Record<string, string> }[] } };
+    const mustClauses = result.query.bool.must as Record<string, unknown>[];
+    const nestedBool = mustClauses.find((clause) => 'bool' in clause) as {
+      bool: { should: { wildcard: Record<string, string> }[] };
+    };
 
     const searchedFields = nestedBool.bool.should.map(
       (s) => Object.keys(s.wildcard)[0]
     );
 
-    expect(searchedFields).toEqual([
-      'displayName.keyword',
-      'name.keyword',
-      'description.keyword',
-    ]);
+    expect(searchedFields).toEqual(['displayName.keyword', 'name.keyword']);
   });
 });
 
