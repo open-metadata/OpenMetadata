@@ -82,6 +82,35 @@ public class DataInsightsEntityEnricherProcessor
     return enrichedMaps;
   }
 
+  public List<Map<String, Object>> enrichSingle(
+      EntityInterface entity, Map<String, Object> contextData) throws SearchIndexException {
+    try {
+      return getEntityVersions(entity, contextData).stream()
+          .flatMap(
+              entityVersionMap ->
+                  generateDailyEntitySnapshots(enrichEntity(entityVersionMap, contextData))
+                      .stream())
+          .toList();
+    } catch (Exception e) {
+      IndexingError error =
+          new IndexingError()
+              .withErrorSource(IndexingError.ErrorSource.PROCESSOR)
+              .withSubmittedCount(1)
+              .withFailedCount(1)
+              .withSuccessCount(0)
+              .withMessage(
+                  String.format(
+                      "Entity Enricher Encountered Failure for entity '%s': %s",
+                      entity.getFullyQualifiedName(), e.getMessage()))
+              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
+      LOG.debug(
+          "[DataInsightsEntityEnricherProcessor] Single entity enrichment failed. Details: {}",
+          JsonUtils.pojoToJson(error));
+      updateStats(0, 1);
+      throw new SearchIndexException(error);
+    }
+  }
+
   private List<Map<String, Object>> getEntityVersions(
       EntityInterface entity, Map<String, Object> contextData) {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
@@ -183,12 +212,15 @@ public class DataInsightsEntityEnricherProcessor
 
     if (SearchIndexUtils.hasColumns(entity)) {
       entityMap.put("numberOfColumns", ((ColumnsEntityInterface) entity).getColumns().size());
-      entityMap.put(
-          "numberOfColumnsWithDescription",
+      int columnsWithDescription =
           ((ColumnsEntityInterface) entity)
               .getColumns().stream()
                   .map(column -> CommonUtil.nullOrEmpty(column.getDescription()) ? 0 : 1)
-                  .reduce(0, Integer::sum));
+                  .reduce(0, Integer::sum);
+      entityMap.put("numberOfColumnsWithDescription", columnsWithDescription);
+      entityMap.put(
+          "hasColumnDescription",
+          columnsWithDescription == ((ColumnsEntityInterface) entity).getColumns().size() ? 1 : 0);
     }
 
     // Modify Custom Property key
@@ -293,7 +325,7 @@ public class DataInsightsEntityEnricherProcessor
   }
 
   @Override
-  public void updateStats(int currentSuccess, int currentFailed) {
+  public synchronized void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
   }
 

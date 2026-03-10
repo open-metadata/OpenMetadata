@@ -221,10 +221,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return new DataProductUpdater(original, updated, operation);
   }
 
-  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
+  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request, String userName) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
     BulkOperationResult result =
-        bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true);
+        bulkAssetsOperation(
+            dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true, userName);
     if (result.getStatus().equals(ApiStatus.SUCCESS)) {
       for (EntityReference ref : listOrEmpty(request.getAssets())) {
         LineageUtil.addDataProductsLineage(
@@ -234,10 +235,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return result;
   }
 
-  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+  public BulkOperationResult bulkRemoveAssets(
+      String domainName, BulkAssets request, String userName) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
     BulkOperationResult result =
-        bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false);
+        bulkAssetsOperation(
+            dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false, userName);
     for (BulkResponse response : listOrEmpty(result.getSuccessRequest())) {
       EntityReference ref = (EntityReference) response.getRequest();
       LineageUtil.removeDataProductsLineage(
@@ -574,7 +577,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       String fromEntity,
       Relationship relationship,
       BulkAssets request,
-      boolean isAdd) {
+      boolean isAdd,
+      String userName) {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
@@ -660,8 +664,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
               entityInterface.getVersion(), isAdd, successfulAssets, null);
+      String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
       ChangeEvent changeEvent =
-          getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
+          getChangeEvent(
+              entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     }
 

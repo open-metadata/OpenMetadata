@@ -1,0 +1,20 @@
+{
+    "name": "Ssrs",
+    "displayName": "Ssrs Test Connection",
+    "description": "This Test Connection validates the access against the Ssrs service and basic metadata extraction.",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description": "Validate that we can properly reach the service and authenticate with the given credentials.",
+            "errorMessage": "Failed to connect to Ssrs, please validate the credentials",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "GetDashboards",
+            "description": "List all dashboards available to the user.",
+            "errorMessage": "Failed to list all dashboards available to the user.",
+            "mandatory": true
+        }
+    ]
+}

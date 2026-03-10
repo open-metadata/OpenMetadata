@@ -187,3 +187,6 @@ memory
 .claude/agents
 ingestion/.claude/agents
 
+# AI scaffold working documents — stay local, never committed
+**/CONNECTOR_CONTEXT.md
+

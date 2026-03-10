@@ -459,9 +459,8 @@ describe('withDomainFilter', () => {
       const result = withDomainFilter(config);
       const queryFilter = JSON.parse(result.params?.query_filter as string);
       const shouldClauses =
-        queryFilter.query.bool.must[
-          queryFilter.query.bool.must.length - 1
-        ].bool.should;
+        queryFilter.query.bool.must[queryFilter.query.bool.must.length - 1].bool
+          .should;
 
       expect(shouldClauses).toEqual([
         { term: { fullyQualifiedName: 'engineering' } },

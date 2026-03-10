@@ -18,10 +18,13 @@ from sqlalchemy.engine import reflection
 from metadata.ingestion.source.database.hive.metastore_dialects.mixin import (
     HiveMetaStoreDialectMixin,
 )
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
+
+logger = ingestion_logger()
 
 
 # pylint: disable=abstract-method
@@ -36,14 +39,20 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
 
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
-        return [row[0] for row in connection.execute(text("select NAME from DBS;"))]
+        schema_names = [
+            row[0] for row in connection.execute(text("select NAME from DBS;"))
+        ]
+        logger.debug(f"Fetched schema names: {schema_names}")
+        return schema_names
 
     def get_view_names(self, connection, schema=None, **kw):
         # Hive does not provide functionality to query tableType
         # This allows reflection to not crash at the cost of being inaccurate
         query = self._get_table_names_base_query(schema=schema)
         query += """ WHERE TBL_TYPE = 'VIRTUAL_VIEW'"""
-        return [row[0] for row in connection.execute(text(query))]
+        view_names = [row[0] for row in connection.execute(text(query))]
+        logger.debug(f"Fetched view names for schema '{schema}': {view_names}")
+        return view_names
 
     def _get_table_columns(self, connection, table_name, schema):
         schema_join = (
@@ -91,7 +100,9 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
     def get_table_names(self, connection, schema=None, **kw):
         query = self._get_table_names_base_query(schema=schema)
         query += """ WHERE TBL_TYPE != 'VIRTUAL_VIEW'"""
-        return [row[0] for row in connection.execute(text(query))]
+        table_names = [row[0] for row in connection.execute(text(query))]
+        logger.debug(f"Fetched table names for schema '{schema}': {table_names}")
+        return table_names
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):

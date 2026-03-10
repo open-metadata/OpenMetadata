@@ -97,7 +97,8 @@ export const renderLegend = (
             onMouseLeave={(e) =>
               legendData.onMouseLeave &&
               legendData.onMouseLeave(entry, index, e)
-            }>
+            }
+          >
             <Surface className="m-r-xss" height={14} version="1.1" width={14}>
               <rect
                 fill={isActive ? entry.color : GRAYED_OUT_COLOR}
@@ -171,10 +172,12 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
           <Typography.Title level={5} style={titleStyles}>
             {timestamp}
           </Typography.Title>
-        }>
+        }
+      >
         <ul
           className="custom-data-insight-tooltip-container"
-          style={listContainerStyles}>
+          style={listContainerStyles}
+        >
           {payloadValue.map((entry, index) => {
             const value = customValueKey
               ? entry.payload[customValueKey]
@@ -183,13 +186,15 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
             return (
               <li
                 className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-                key={`item-${index}`}>
+                key={`item-${index}`}
+              >
                 <span className="flex items-center text-grey-muted">
                   <Surface
                     className="mr-2"
                     height={12}
                     version="1.1"
-                    width={12}>
+                    width={12}
+                  >
                     <rect fill={entry.color} height="14" rx="2" width="14" />
                   </Surface>
                   <span style={labelStyles}>
@@ -574,10 +579,15 @@ export const getQueryFilterForDataInsightChart = (
           ...(teamFilter
             ? [
                 {
-                  bool: {
-                    should: teamFilter.map((team) => ({
-                      term: { 'owners.name.keyword': team },
-                    })),
+                  nested: {
+                    path: 'owners',
+                    query: {
+                      bool: {
+                        should: teamFilter.map((team) => ({
+                          term: { 'owners.name.keyword': team },
+                        })),
+                      },
+                    },
                   },
                 },
               ]

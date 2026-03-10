@@ -135,8 +135,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -300,9 +300,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .recordStats()
           .build(new EntityLoaderWithId());
 
-  private static final ExecutorService FIELD_FETCH_EXECUTOR =
-      Executors.newThreadPerTaskExecutor(
-          java.lang.Thread.ofVirtual().name("field-fetch-", 0).factory());
+  private static final int DEFAULT_FIELD_FETCH_POOL_SIZE =
+      Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
+  private static final ThreadPoolExecutor FIELD_FETCH_EXECUTOR =
+      createFieldFetchExecutor(DEFAULT_FIELD_FETCH_POOL_SIZE);
+
+  private static ThreadPoolExecutor createFieldFetchExecutor(int poolSize) {
+    ThreadPoolExecutor pool =
+        new ThreadPoolExecutor(
+            poolSize,
+            poolSize,
+            60L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(),
+            java.lang.Thread.ofVirtual().name("om-field-fetch-", 0).factory());
+    pool.allowCoreThreadTimeOut(true);
+    return pool;
+  }
+
+  public static synchronized void setFieldFetchPoolSize(int size) {
+    int newSize = Math.max(1, Math.min(50, size));
+    if (newSize <= FIELD_FETCH_EXECUTOR.getMaximumPoolSize()) {
+      FIELD_FETCH_EXECUTOR.setCorePoolSize(newSize);
+      FIELD_FETCH_EXECUTOR.setMaximumPoolSize(newSize);
+    } else {
+      FIELD_FETCH_EXECUTOR.setMaximumPoolSize(newSize);
+      FIELD_FETCH_EXECUTOR.setCorePoolSize(newSize);
+    }
+    LOG.info("Field-fetch pool resized to {} threads", newSize);
+  }
+
+  public static synchronized void resetFieldFetchPoolSize() {
+    setFieldFetchPoolSize(DEFAULT_FIELD_FETCH_POOL_SIZE);
+  }
 
   private static final LoadingCache<String, Integer> COUNT_CACHE =
       CacheBuilder.newBuilder()
@@ -3054,6 +3084,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(fqn, extension);
   }
 
+  public final Map<String, String> getLatestExtensionFromTimeSeriesBatch(
+      List<String> fqnHashes, String extension) {
+    return daoCollection
+        .entityExtensionTimeSeriesDao()
+        .getLatestExtensionBatch(fqnHashes, extension);
+  }
+
   public final List<String> getResultsFromAndToTimestamps(
       String fullyQualifiedName, String extension, Long startTs, Long endTs) {
     return getResultsFromAndToTimestamps(
@@ -3065,6 +3102,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return daoCollection
         .entityExtensionTimeSeriesDao()
         .listBetweenTimestampsByOrder(fqn, extension, startTs, endTs, orderBy);
+  }
+
+  public final List<String> getResultsFromAndToTimestampsWithLimit(
+      String fqn,
+      String extension,
+      Long startTs,
+      Long endTs,
+      EntityTimeSeriesDAO.OrderBy orderBy,
+      int limit) {
+    return daoCollection
+        .entityExtensionTimeSeriesDao()
+        .listBetweenTimestampsByOrderWithLimit(fqn, extension, startTs, endTs, orderBy, limit);
   }
 
   @Transaction
@@ -4390,6 +4439,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Relationship relationship,
       BulkAssets request,
       boolean isAdd) {
+    return bulkAssetsOperation(entityId, fromEntity, relationship, request, isAdd, null);
+  }
+
+  @Transaction
+  protected BulkOperationResult bulkAssetsOperation(
+      UUID entityId,
+      String fromEntity,
+      Relationship relationship,
+      BulkAssets request,
+      boolean isAdd,
+      String userName) {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
@@ -4421,8 +4481,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
               entityInterface.getVersion(), isAdd, request.getAssets(), null);
+      String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
       ChangeEvent changeEvent =
-          getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
+          getChangeEvent(
+              entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     }
 
@@ -4444,6 +4506,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected ChangeEvent getChangeEvent(
       EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+    return getChangeEvent(updated, change, entityType, prevVersion, updated.getUpdatedBy());
+  }
+
+  protected ChangeEvent getChangeEvent(
+      EntityInterface updated,
+      ChangeDescription change,
+      String entityType,
+      Double prevVersion,
+      String userName) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEntity(updated)
@@ -4452,7 +4523,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .withEntityType(entityType)
         .withEntityId(updated.getId())
         .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
-        .withUserName(updated.getUpdatedBy())
+        .withUserName(userName)
         .withTimestamp(System.currentTimeMillis())
         .withCurrentVersion(updated.getVersion())
         .withPreviousVersion(prevVersion);
