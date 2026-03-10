@@ -212,12 +212,15 @@ public class DataInsightsEntityEnricherProcessor
 
     if (SearchIndexUtils.hasColumns(entity)) {
       entityMap.put("numberOfColumns", ((ColumnsEntityInterface) entity).getColumns().size());
-      entityMap.put(
-          "numberOfColumnsWithDescription",
+      int columnsWithDescription =
           ((ColumnsEntityInterface) entity)
               .getColumns().stream()
                   .map(column -> CommonUtil.nullOrEmpty(column.getDescription()) ? 0 : 1)
-                  .reduce(0, Integer::sum));
+                  .reduce(0, Integer::sum);
+      entityMap.put("numberOfColumnsWithDescription", columnsWithDescription);
+      entityMap.put(
+          "hasColumnDescription",
+          columnsWithDescription == ((ColumnsEntityInterface) entity).getColumns().size() ? 1 : 0);
     }
 
     // Modify Custom Property key

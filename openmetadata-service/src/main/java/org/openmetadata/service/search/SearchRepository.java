@@ -109,6 +109,7 @@ import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
@@ -128,6 +129,7 @@ import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -306,12 +308,7 @@ public class SearchRepository {
   }
 
   public void updateIndexes() {
-    boolean isOpenSearch = getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH;
     for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
-      if (VectorIndexService.VECTOR_INDEX_KEY.equals(entry.getKey()) && !isOpenSearch) {
-        LOG.info("Skipping vector search index update - only supported with OpenSearch");
-        continue;
-      }
       updateIndex(entry.getValue());
     }
   }
@@ -348,14 +345,45 @@ public class SearchRepository {
       this.vectorEmbeddingHandler = new VectorEmbeddingHandler(vectorIndexService);
 
       vectorServiceInitialized = true;
+
+      NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
+      double keywordWeight =
+          nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
+      double semanticWeight =
+          nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
+
+      try {
+        SearchSettings ss =
+            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+        if (ss != null && ss.getGlobalSettings() != null) {
+          if (ss.getGlobalSettings().getKeywordWeight() != null) {
+            keywordWeight = ss.getGlobalSettings().getKeywordWeight();
+          }
+          if (ss.getGlobalSettings().getSemanticWeight() != null) {
+            semanticWeight = ss.getGlobalSettings().getSemanticWeight();
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
+      }
+
+      ((OpenSearchVectorService) vectorIndexService)
+          .ensureHybridSearchPipeline(keywordWeight, semanticWeight);
+
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",
           cfg.getNaturalLanguageSearch().getEmbeddingProvider(),
           embeddingClient.getDimension());
-
-      ensureVectorIndexDimension();
     } catch (Exception e) {
       LOG.error("Failed to initialize vector search service: {}", e.getMessage(), e);
+    }
+  }
+
+  public void updateHybridSearchPipeline(double keywordWeight, double semanticWeight) {
+    if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
+      openSearchVectorService.ensureHybridSearchPipeline(keywordWeight, semanticWeight);
+    } else {
+      LOG.warn("Hybrid search pipeline update is only supported with OpenSearch");
     }
   }
 
@@ -390,9 +418,6 @@ public class SearchRepository {
   }
 
   public void createIndex(IndexMapping indexMapping) {
-    if (isVectorEmbeddingEnabled() && vectorIndexService != null) {
-      ensureVectorIndexDimension();
-    }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
       if (!indexExists(indexMapping)) {
@@ -403,7 +428,7 @@ public class SearchRepository {
           searchClient.deleteIndex(target);
         }
 
-        String indexMappingContent = getIndexMapping(indexMapping);
+        String indexMappingContent = readIndexMapping(indexMapping);
         searchClient.createIndex(indexMapping, indexMappingContent);
         searchClient.createAliases(indexMapping);
       }
@@ -417,7 +442,7 @@ public class SearchRepository {
 
   public void updateIndex(IndexMapping indexMapping) {
     try {
-      String indexMappingContent = getIndexMapping(indexMapping);
+      String indexMappingContent = readIndexMapping(indexMapping);
       if (indexExists(indexMapping)) {
         searchClient.updateIndex(indexMapping, indexMappingContent);
       } else {
@@ -2011,17 +2036,6 @@ public class SearchRepository {
     return inheritedReferences;
   }
 
-  public void ensureVectorIndexDimension() {
-    if (embeddingClient == null || vectorIndexService == null) {
-      return;
-    }
-    try {
-      vectorIndexService.createOrUpdateIndex(embeddingClient.getDimension());
-    } catch (Exception e) {
-      LOG.error("Failed to ensure vector index dimension: {}", e.getMessage(), e);
-    }
-  }
-
   private String reformatVectorIndexWithDimension(String mapping, int dimension) {
     try {
       com.fasterxml.jackson.databind.ObjectMapper mapper =
@@ -2029,30 +2043,17 @@ public class SearchRepository {
       JsonNode root = mapper.readTree(mapping);
       if (root.has("mappings")) {
         JsonNode mappings = root.get("mappings");
-        if (mappings.has("properties")) {
-          JsonNode properties = mappings.get("properties");
-          if (properties.has("embedding")) {
-            ((com.fasterxml.jackson.databind.node.ObjectNode) properties.get("embedding"))
-                .put("dimension", dimension);
-          }
-        }
-        JsonNode meta =
+        com.fasterxml.jackson.databind.node.ObjectNode meta =
             ((com.fasterxml.jackson.databind.node.ObjectNode) mappings).putObject("_meta");
-        ((com.fasterxml.jackson.databind.node.ObjectNode) meta)
-            .put(
+        meta.put(
                 "embedding_model",
                 embeddingClient != null ? embeddingClient.getModelId() : "unknown")
             .put("embedding_dimension", dimension);
       }
       return mapper.writeValueAsString(root);
     } catch (Exception e) {
-      LOG.warn(
-          "Failed to parse mapping JSON for dimension patching, falling back to string replace");
-      return mapping
-          .replace("\"dimension\": 768", "\"dimension\": " + dimension)
-          .replace("\"dimension\":768", "\"dimension\":" + dimension)
-          .replace("\"dimension\": 512", "\"dimension\": " + dimension)
-          .replace("\"dimension\":512", "\"dimension\":" + dimension);
+      LOG.warn("Failed to set embedding _meta in mapping JSON", e);
+      return mapping;
     }
   }
 

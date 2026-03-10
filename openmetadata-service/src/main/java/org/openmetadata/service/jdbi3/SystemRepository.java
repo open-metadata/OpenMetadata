@@ -48,6 +48,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -564,22 +565,20 @@ public class SystemRepository {
     String description = "Embeddings are used to allow Semantic Search";
     SearchRepository searchRepository = Entity.getSearchRepository();
 
+    if (searchRepository.getSearchType() == ElasticSearchConfiguration.SearchType.ELASTICSEARCH) {
+      return embeddingsValidation
+          .withDescription(description)
+          .withMessage(
+              "Elasticsearch is not supported for Semantic Search embeddings. Please use OpenSearch.")
+          .withPassed(false);
+    }
+
     String configMessage = getEmbeddingConfigurationMessage(applicationConfig);
 
     if (searchRepository.getVectorIndexService() == null) {
       return embeddingsValidation
           .withDescription(description)
           .withMessage("Embeddings are not configured properly. " + configMessage)
-          .withPassed(false);
-    }
-
-    try {
-      searchRepository.ensureVectorIndexDimension();
-    } catch (Exception e) {
-      LOG.error("Vector dimension mismatch detected", e);
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage("Vector dimension mismatch: " + e.getMessage())
           .withPassed(false);
     }
 
@@ -709,13 +708,19 @@ public class SystemRepository {
             .getSearchClient()
             .indexExists(Entity.getSearchRepository().getIndexOrAliasName(INDEX_NAME))) {
       if (validateDataInsights()) {
+        List<String> missingIndexes = findMissingIndexes(searchRepository);
+        String message =
+            String.format(
+                "Connected to %s", applicationConfig.getElasticSearchConfiguration().getHost());
+        if (!missingIndexes.isEmpty()) {
+          message +=
+              String.format(
+                  ". WARNING: %d missing indexes: %s", missingIndexes.size(), missingIndexes);
+        }
         return new StepValidation()
             .withDescription(ValidationStepDescription.SEARCH.key)
-            .withPassed(Boolean.TRUE)
-            .withMessage(
-                String.format(
-                    "Connected to %s",
-                    applicationConfig.getElasticSearchConfiguration().getHost()));
+            .withPassed(missingIndexes.isEmpty())
+            .withMessage(message);
       } else {
         return new StepValidation()
             .withDescription(ValidationStepDescription.SEARCH.key)
@@ -729,6 +734,22 @@ public class SystemRepository {
           .withPassed(Boolean.FALSE)
           .withMessage("Search instance is not reachable or available");
     }
+  }
+
+  private List<String> findMissingIndexes(SearchRepository searchRepository) {
+    List<String> missing = new ArrayList<>();
+    try {
+      Map<String, org.openmetadata.search.IndexMapping> indexMap =
+          searchRepository.getEntityIndexMap();
+      for (Map.Entry<String, org.openmetadata.search.IndexMapping> entry : indexMap.entrySet()) {
+        if (!searchRepository.indexExists(entry.getValue())) {
+          missing.add(entry.getKey());
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to check for missing indexes: {}", e.getMessage());
+    }
+    return missing;
   }
 
   private boolean validateDataInsights() {
@@ -757,21 +778,28 @@ public class SystemRepository {
       OpenMetadataApplicationConfig applicationConfig,
       PipelineServiceClientInterface pipelineServiceClient) {
     if (pipelineServiceClient != null) {
-      PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
-      if (pipelineResponse.getCode() == 200) {
-        return new StepValidation()
-            .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
-            .withPassed(Boolean.TRUE)
-            .withMessage(
-                String.format(
-                    "%s is available at %s",
-                    pipelineServiceClient.getPlatform(),
-                    applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
-      } else {
+      try {
+        PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
+        if (pipelineResponse.getCode() == 200) {
+          return new StepValidation()
+              .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+              .withPassed(Boolean.TRUE)
+              .withMessage(
+                  String.format(
+                      "%s is available at %s",
+                      pipelineServiceClient.getPlatform(),
+                      applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
+        } else {
+          return new StepValidation()
+              .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+              .withPassed(Boolean.FALSE)
+              .withMessage(pipelineResponse.getReason());
+        }
+      } catch (Exception e) {
         return new StepValidation()
             .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
             .withPassed(Boolean.FALSE)
-            .withMessage(pipelineResponse.getReason());
+            .withMessage(e.getMessage());
       }
     }
     return new StepValidation()

@@ -1085,7 +1085,12 @@ class PowerbiSource(DashboardServiceSource):
                         if hasattr(source_table.schema, "raw_name")
                         else str(source_table.schema)
                     )
-                    schema = schema_str
+                    if "." in schema_str:
+                        parts = schema_str.split(".")
+                        database = parts[0]
+                        schema = parts[1] if len(parts) > 1 else None
+                    else:
+                        schema = schema_str
 
                 table_name = source_table.raw_name
                 if table_name:
@@ -1154,10 +1159,19 @@ class PowerbiSource(DashboardServiceSource):
 
             # Check if this is a direct BigQuery connection
             if "GoogleBigQuery.Database" not in source_expression:
+                logger.debug(
+                    "GoogleBigQuery.Database not found in source expression "
+                    f"for datamodel: {datamodel_entity.name.root}, table: {table.name}"
+                )
                 return None
 
             # Handle Value.NativeQuery with inline SQL
             if BIGQUERY_QUERY_EXPRESSION_KW in source_expression:
+                logger.debug(
+                    "Parsing BigQuery NativeQuery source expression "
+                    f"through query parser: {source_expression}\nfor "
+                    f"datamodel: {datamodel_entity.name.root}, table: {table.name}"
+                )
                 return self._parse_bigquery_query_source(source_expression)
 
             logger.debug(f"Found GoogleBigQuery.Database in expression")
@@ -1170,7 +1184,10 @@ class PowerbiSource(DashboardServiceSource):
             )
 
             if not name_matches:
-                logger.debug("No Name patterns found in BigQuery expression")
+                logger.debug(
+                    "No Name patterns found in BigQuery expression for "
+                    f"datamodel: {datamodel_entity.name.root}, table: {table.name}"
+                )
                 return None
 
             # BigQuery structure: project -> dataset (Schema) -> table (Table/View)
@@ -1192,7 +1209,8 @@ class PowerbiSource(DashboardServiceSource):
             )
             if not table_name:
                 logger.debug(
-                    f"Parsing BigQuery source expression for powerbi table ({table.name}):: {source_expression}"
+                    "Table name not found in Parsing BigQuery source expression for "
+                    f"datamodel: {datamodel_entity.name.root}, powerbi table ({table.name}): {source_expression}"
                 )
             if table_name:
                 return [{"database": project, "schema": dataset, "table": table_name}]

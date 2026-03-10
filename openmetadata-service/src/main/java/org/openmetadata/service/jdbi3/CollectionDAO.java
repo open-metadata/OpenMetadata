@@ -7543,6 +7543,33 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'failed') WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')) = 'running' AND extension = 'status' AND appName != :appName",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"failed\"') WHERE json->>'status' = 'running' AND extension = 'status' AND appName != :appName",
+        connectionType = POSTGRES)
+    void markAllStaleEntriesFailedExcludingApp(@Bind("appName") String appName);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'running') WHERE appId = :appId AND extension = 'status' AND timestamp = :timestamp",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(json, '{status}', '\"running\"') WHERE appId = :appId AND extension = 'status' AND timestamp = :timestamp",
+        connectionType = POSTGRES)
+    void markEntryRunning(@Bind("appId") String appId, @Bind("timestamp") long timestamp);
+
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series WHERE appId = :appId AND extension = :extension AND timestamp = :timestamp")
+    String getByAppIdAndTimestamp(
+        @Bind("appId") String appId,
+        @Bind("timestamp") long timestamp,
+        @Bind("extension") String extension);
+
+    @ConnectionAwareSqlUpdate(
+        value =
             "UPDATE apps_extension_time_series set json = :json where appId=:appId and timestamp=:timestamp and extension=:extension",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(

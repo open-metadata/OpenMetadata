@@ -335,6 +335,42 @@ public class TagLabelUtil {
     }
   }
 
+  public static List<TagLabel> mergeTagsWithIncomingPrecedence(
+      List<TagLabel> existingTags, List<TagLabel> incomingTags) {
+    if (nullOrEmpty(incomingTags)) {
+      return new ArrayList<>(listOrEmpty(existingTags));
+    }
+    Set<String> incomingParents =
+        listOrEmpty(incomingTags).stream()
+            .map(t -> FullyQualifiedName.getParentFQN(t.getTagFQN()))
+            .collect(Collectors.toSet());
+
+    List<TagLabel> result = new ArrayList<>();
+    for (TagLabel existing : listOrEmpty(existingTags)) {
+      String existingParent = FullyQualifiedName.getParentFQN(existing.getTagFQN());
+      boolean isMutuallyExclusive = false;
+      try {
+        isMutuallyExclusive = mutuallyExclusive(existing);
+      } catch (Exception ex) {
+        LOG.warn(
+            "Could not check mutual exclusivity for tag '{}': {}",
+            existing.getTagFQN(),
+            ex.getMessage());
+      }
+      if (isMutuallyExclusive && incomingParents.contains(existingParent)) {
+        continue;
+      }
+      result.add(existing);
+    }
+    Set<String> resultFQNs = result.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+    for (TagLabel incoming : incomingTags) {
+      if (!resultFQNs.contains(incoming.getTagFQN())) {
+        result.add(incoming);
+      }
+    }
+    return result;
+  }
+
   public static void checkDisabledTags(List<TagLabel> tagLabels) {
     if (nullOrEmpty(tagLabels)) {
       return;

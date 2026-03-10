@@ -93,6 +93,37 @@ Non-database schemas follow the same structure but without `scheme`:
 }
 ```
 
+## Required Fields Guidance
+
+The `required` array must include all fields needed for a working connection:
+
+- **`hostPort`**: Always required
+- **`username` + `password`**: Required when the service requires authentication by default (e.g., NTLM, basic auth). Only make optional if the service supports anonymous access as a common deployment
+- **`token` / `apiKey`**: Required when token-based auth is the only auth method
+- **`authType`**: Required when multiple auth methods exist and none is a sensible default
+
+**Rule**: If omitting a field means the connection will fail with an opaque auth error at runtime, make it `required` in the schema so the UI validates upfront.
+
+## SSL/TLS Configuration
+
+All connectors that communicate over HTTPS should include the SSL config `$ref` so users can configure certificate verification for enterprise deployments with internal CAs:
+
+```json
+"verifySSL": {
+    "title": "Verify SSL",
+    "description": "Client SSL verification.",
+    "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSLConfig",
+    "default": "no-ssl"
+},
+"sslConfig": {
+    "title": "SSL Configuration",
+    "description": "SSL Configuration details.",
+    "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+}
+```
+
+Skip SSL config only for connectors that exclusively use non-TLS protocols (e.g., JDBC with no TLS, local file-based connectors).
+
 ## Shared $ref Schemas
 
 ### Auth Schemas (under `connections/{service_type}/common/`)

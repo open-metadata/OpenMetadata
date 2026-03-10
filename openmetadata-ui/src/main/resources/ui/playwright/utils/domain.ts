@@ -42,7 +42,6 @@ import {
   NAME_VALIDATION_ERROR,
   readElementInListWithScroll,
   redirectToHomePage,
-  toastNotification,
   uuid,
 } from './common';
 import { addOwner, waitForAllLoadersToDisappear } from './entity';
@@ -534,8 +533,6 @@ export const createDomain = async (
   const domainRes = page.waitForResponse('/api/v1/domains');
   await saveButton.click();
   await domainRes;
-
-  await toastNotification(page, /Domain created successfully/);
 
   await selectDomain(page, domain);
 
