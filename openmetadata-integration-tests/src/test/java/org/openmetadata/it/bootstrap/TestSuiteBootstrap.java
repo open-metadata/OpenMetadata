@@ -440,7 +440,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     configurePipelineServiceClient(config);
     configureRdf(config);
 
-    IndexMappingLoader.init(getSearchConfig());
+    IndexMappingLoader.init(getBaseSearchConfig());
 
     APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, config);
 
@@ -553,15 +553,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void createIndices() {
-    ElasticSearchConfiguration config = getSearchConfig();
+    ElasticSearchConfiguration config = getBaseSearchConfig();
     SearchRepository searchRepository = SearchRepositoryFactory.createSearchRepository(config, 50);
     Entity.setSearchRepository(searchRepository);
-    searchRepository.initializeVectorSearchService();
     LOG.info("Creating {} indexes...", searchType);
     searchRepository.createIndexes();
   }
 
-  private ElasticSearchConfiguration getSearchConfig() {
+  private ElasticSearchConfiguration getBaseSearchConfig() {
     ElasticSearchConfiguration config = new ElasticSearchConfiguration();
     ElasticSearchConfiguration.SearchType type =
         "opensearch".equalsIgnoreCase(searchType)
@@ -580,7 +579,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(type);
+    return config;
+  }
 
+  private ElasticSearchConfiguration getSearchConfig() {
+    ElasticSearchConfiguration config = getBaseSearchConfig();
     if ("opensearch".equalsIgnoreCase(searchType)) {
       org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration
           nlSearch =
@@ -597,7 +600,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       nlSearch.setDjl(djlConfig);
       config.setNaturalLanguageSearch(nlSearch);
     }
-
     return config;
   }
 
