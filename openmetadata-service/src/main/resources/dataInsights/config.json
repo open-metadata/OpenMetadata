@@ -108,7 +108,7 @@
       "relatedTerms",
       "references",
       "reviewers",
-      "status",
+      "entityStatus",
       "usageCount",
       "childrenCount"
     ],

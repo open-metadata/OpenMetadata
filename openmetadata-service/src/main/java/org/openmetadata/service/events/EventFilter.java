@@ -42,7 +42,18 @@ public class EventFilter implements ContainerResponseFilter {
   private final List<EventHandler> eventHandlers;
 
   public EventFilter(OpenMetadataApplicationConfig config) {
-    this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
+    this.forkJoinPool =
+        new ForkJoinPool(
+            FORK_JOIN_POOL_PARALLELISM,
+            pool -> {
+              ForkJoinPool.ForkJoinWorkerThreadFactory defaultFactory =
+                  ForkJoinPool.defaultForkJoinWorkerThreadFactory;
+              java.util.concurrent.ForkJoinWorkerThread thread = defaultFactory.newThread(pool);
+              thread.setName("om-event-filter-" + thread.getPoolIndex());
+              return thread;
+            },
+            null,
+            false);
     this.eventHandlers = new ArrayList<>();
     registerEventHandlers(config);
   }

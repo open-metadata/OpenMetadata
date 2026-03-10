@@ -138,8 +138,7 @@
   },
   "resolutions": {
     "rollup": "4.59.0",
-    "@storybook/react-vite/minimatch": "9.0.7",
-    "vite-plugin-dts/minimatch": "10.2.3"
+    "minimatch": "10.2.3"
   },
   "publishConfig": {
     "access": "restricted",

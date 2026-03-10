@@ -13,8 +13,8 @@
 import { expect } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { TableClass } from '../../support/entity/TableClass';
-import { UserClass } from '../../support/user/UserClass';
 import { test } from '../../support/fixtures/userPages';
+import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,
@@ -124,6 +124,7 @@ test.describe('Custom properties with custom property config', () => {
       .serial(`Add update and delete custom properties for ${entity.name}`, () => {
       propertiesWithConfigList.forEach((propertyConfig) => {
         test(propertyConfig.name, async ({ page }) => {
+          test.slow();
           const propertyName = `pwcp${Date.now()}test${entity.name}`;
           await settingClick(
             page,

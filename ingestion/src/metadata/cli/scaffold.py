@@ -1826,6 +1826,9 @@ def run_scaffold(profile: ConnectorProfile) -> None:
         )
 
     # 4. CONNECTOR_CONTEXT.md — the AI agent brief
+    # Written to the source directory so any AI tool (Claude Code, Cursor, Codex,
+    # Copilot, Windsurf) can discover it next to the connector code.
+    # .gitignore prevents it from being committed accidentally.
     context_md = generate_connector_context(p, root)
     write_file(source_dir / "CONNECTOR_CONTEXT.md", context_md)
 
@@ -1841,7 +1844,7 @@ def run_scaffold(profile: ConnectorProfile) -> None:
     logger.info(
         f"    - {'Concrete code templates' if is_sqla else 'Skeleton files'} in {source_dir.relative_to(root)}"
     )
-    logger.info("    - CONNECTOR_CONTEXT.md (AI agent implementation brief)")
+    logger.info("    - CONNECTOR_CONTEXT.md (AI agent working document)")
     logger.info("")
     logger.info("  Next steps:")
     logger.info(f"  1. Read {source_dir.relative_to(root)}/CONNECTOR_CONTEXT.md")
@@ -1850,11 +1853,14 @@ def run_scaffold(profile: ConnectorProfile) -> None:
     else:
         logger.info("  2. Implement the connector files (use the reference connector)")
     logger.info("  3. Register the connector (see CONNECTOR_CONTEXT.md Step 3)")
-    logger.info("  4. Run code generation + formatting")
+    logger.info("  4. Run code generation + formatting (make py_format)")
     logger.info("  5. Write tests and validate")
     logger.info("")
     logger.info("  For AI-assisted implementation, point your agent at:")
     logger.info(f"    {source_dir.relative_to(root)}/CONNECTOR_CONTEXT.md")
+    logger.info("")
+    logger.info("  NOTE: CONNECTOR_CONTEXT.md is gitignored — it stays local")
+    logger.info("  as a working document and won't be committed to the repo.")
     logger.info("")
 
 

@@ -313,18 +313,32 @@ public class PartitionWorker {
       waitForSinkOperations(statsTracker);
       LOG.debug("waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
 
+      // Adjust partition counts to include process-stage failures.
+      // BatchResult.successCount counts entities READ, not entities successfully PROCESSED.
+      // Process failures happen async in addEntity() and are tracked by StageStatsTracker.
+      long processFailed =
+          statsTracker != null ? statsTracker.getProcess().getCumulativeFailed().get() : 0;
+      if (processFailed > 0) {
+        long adjustment = Math.min(processFailed, successCount.get());
+        if (adjustment > 0) {
+          successCount.addAndGet(-adjustment);
+          failedCount.addAndGet(adjustment);
+        }
+      }
+
       // Mark partition as completed (stats are now in the database)
       coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
 
       long expectedRecords = rangeEnd - rangeStart;
       long actualProcessed = successCount.get() + failedCount.get();
       LOG.info(
-          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, warnings: {})",
+          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, warnings: {})",
           partition.getId(),
           entityType,
           successCount.get(),
           failedCount.get(),
           readerFailedCount.get(),
+          processFailed,
           warningsCount.get());
       if (actualProcessed < expectedRecords) {
         LOG.debug(
