@@ -6,6 +6,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.SearchUtil.getFuzziness;
 import static org.openmetadata.service.search.SearchUtil.getMaxExpansions;
+import static org.openmetadata.service.search.SearchUtil.isColumnIndex;
 import static org.openmetadata.service.search.SearchUtil.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtil.isDataQualityIndex;
 import static org.openmetadata.service.search.SearchUtil.isServiceIndex;

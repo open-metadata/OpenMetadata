@@ -489,8 +489,6 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
       entitiesToFinalize.remove(Entity.TABLE_COLUMN);
     }
 
-    boolean hasVectorIndex = entitiesToFinalize.remove(VectorIndexService.VECTOR_INDEX_KEY);
-
     LOG.debug("Entities to finalize={}, already promoted={}", entitiesToFinalize, promotedEntities);
 
     try {
