@@ -87,7 +87,12 @@ def mask_literals_with_sqlparse(
                 elif token.ttype is Keyword.Order:
                     # ASC, DESC, NULLS FIRST, NULLS LAST — keep context
                     pass
-                elif token.ttype is Keyword and token.value.upper() != "GROUPING":
+                elif token.ttype is Keyword and token.value.upper() not in (
+                    "GROUPING",
+                    "SETS",
+                    "CUBE",
+                    "ROLLUP",
+                ):
                     # Any other keyword resets the context (HAVING, LIMIT, WHERE, etc.)
                     current_in_groupby_orderby = False
 

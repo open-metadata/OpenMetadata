@@ -457,6 +457,78 @@ class TestQueryMaskerOrdinalPreservation(TestCase):
                 "SqlParse",
             )
 
+    def test_rollup_ordinals_preserved(self):
+        """
+        Test that integer ordinals inside GROUP BY ROLLUP are preserved.
+        sqlparse currently tokenizes ROLLUP as Token.Name (not Keyword),
+        so it inherits context naturally. The ROLLUP keyword is also
+        defensively allowlisted in masker.py to guard against future
+        sqlparse tokenization changes.
+        """
+        query_test_cases = [
+            {
+                "query": "SELECT a, b FROM t WHERE x > 5 GROUP BY ROLLUP(1, 2) ORDER BY 1;",
+                "expected": "SELECT a, b FROM t WHERE x > ? GROUP BY ROLLUP(1, 2) ORDER BY 1;",
+                "dialect": Dialect.ANSI.value,
+            },
+        ]
+
+        for test_case in query_test_cases:
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlGlot",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlFluff",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlParse",
+            )
+
+    def test_cube_ordinals_preserved(self):
+        """
+        Test that integer ordinals inside GROUP BY CUBE are preserved.
+        sqlparse currently tokenizes CUBE as Token.Name (not Keyword),
+        so it inherits context naturally. The CUBE keyword is also
+        defensively allowlisted in masker.py to guard against future
+        sqlparse tokenization changes.
+        """
+        query_test_cases = [
+            {
+                "query": "SELECT a, b, c FROM t WHERE x > 5 GROUP BY CUBE(1, 2, 3) ORDER BY 1;",
+                "expected": "SELECT a, b, c FROM t WHERE x > ? GROUP BY CUBE(1, 2, 3) ORDER BY 1;",
+                "dialect": Dialect.ANSI.value,
+            },
+        ]
+
+        for test_case in query_test_cases:
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlGlot",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlFluff",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlParse",
+            )
+
     def test_where_group_by_order_by_context_isolation(self):
         """
         Test that WHERE integers are masked, GROUP BY/ORDER BY integers are
