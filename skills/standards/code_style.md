@@ -40,6 +40,28 @@ from metadata.utils.logger import ingestion_logger
 - No Google-style docstrings with `Args:` / `Returns:` on simple methods
 - If code needs a comment to be understood, refactor the code instead
 
+### Pydantic Models
+
+When defining Pydantic models for API responses with aliased fields:
+- Always set `model_config = ConfigDict(populate_by_name=True)` when using `Field(alias=...)` — without it, constructing instances with Python attribute names raises `ValidationError`
+- Use `Optional[T]` with `Field(None, alias=...)` for nullable fields
+- Create list response wrapper models inheriting from a base OData/pagination response
+
+```python
+from pydantic import BaseModel, ConfigDict, Field
+
+class MyApiReport(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str = Field(alias="Id")
+    name: str = Field(alias="Name")
+    description: Optional[str] = Field(None, alias="Description")
+
+
+class MyApiListResponse(BaseModel):
+    value: List[MyApiReport] = Field(default_factory=list)
+```
+
 ### Error Messages
 Include context in error messages:
 
@@ -106,3 +128,26 @@ All Python files must start with:
 - Python: `black` + `isort` + `pycln` (run `make py_format`)
 - Java: `spotless` (run `mvn spotless:apply`)
 - Line length: 88 (black default)
+
+**Always run formatting before committing**:
+```bash
+source env/bin/activate
+make py_format
+mvn spotless:apply
+```
+
+If `make py_format` fails because tools are not installed:
+```bash
+source env/bin/activate
+make install_dev generate
+make py_format
+```
+
+## Pre-Merge Cleanup
+
+`CONNECTOR_CONTEXT.md` is gitignored and stays local — no action needed for that file.
+
+Before submitting a PR, verify:
+- No scaffolding artifacts are staged (check `git status` — CONNECTOR_CONTEXT.md should not appear)
+- Remove any `TODO` comments that are implementation instructions (keep only genuine future-work TODOs with ticket references)
+- Remove any temporary test fixtures or mock data files that aren't part of the test suite
