@@ -103,9 +103,7 @@ test.describe('Domain & DataProduct - Tier, Certification, and Voting', () => {
       await domain.visitEntityPage(viewOnlyPage);
       await viewOnlyPage.waitForLoadState('networkidle');
 
-      await expect(
-        viewOnlyPage.getByTestId('edit-tier')
-      ).not.toBeVisible();
+      await expect(viewOnlyPage.getByTestId('edit-tier')).not.toBeVisible();
       await expect(
         viewOnlyPage.getByTestId('edit-certification')
       ).not.toBeVisible();
@@ -118,9 +116,7 @@ test.describe('Domain & DataProduct - Tier, Certification, and Voting', () => {
       await dataProduct.visitEntityPage(viewOnlyPage);
       await viewOnlyPage.waitForLoadState('networkidle');
 
-      await expect(
-        viewOnlyPage.getByTestId('edit-tier')
-      ).not.toBeVisible();
+      await expect(viewOnlyPage.getByTestId('edit-tier')).not.toBeVisible();
       await expect(
         viewOnlyPage.getByTestId('edit-certification')
       ).not.toBeVisible();

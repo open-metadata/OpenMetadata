@@ -163,34 +163,29 @@ test.describe('Entity Version pages', () => {
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
 
-      await test.step(
-        'should show edited tags and description changes',
-        async () => {
-          await expect(
-            page.locator(
-              '[data-testid="domain-link"] [data-testid="diff-added"]'
-            )
-          ).toBeVisible();
+      await test.step('should show edited tags and description changes', async () => {
+        await expect(
+          page.locator('[data-testid="domain-link"] [data-testid="diff-added"]')
+        ).toBeVisible();
 
-          await expect(
-            page.locator(
-              `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
-            )
-          ).toBeVisible();
+        await expect(
+          page.locator(
+            `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
+          )
+        ).toBeVisible();
 
-          await expect(
-            page.locator(
-              '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
-            )
-          ).toBeVisible();
+        await expect(
+          page.locator(
+            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
+          )
+        ).toBeVisible();
 
-          await expect(
-            page.locator(
-              '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
-            )
-          ).toBeVisible();
-        }
-      );
+        await expect(
+          page.locator(
+            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
+          )
+        ).toBeVisible();
+      });
 
       await test.step('should show owner changes', async () => {
         await page.locator('[data-testid="version-button"]').click();
@@ -222,41 +217,38 @@ test.describe('Entity Version pages', () => {
       });
 
       if (entity.endpoint === 'tables') {
-        await test.step(
-          'should show column display name changes properly',
-          async () => {
-            await page.locator('[data-testid="version-button"]').click();
+        await test.step('should show column display name changes properly', async () => {
+          await page.locator('[data-testid="version-button"]').click();
 
-            await page
-              .locator(
-                `[data-row-key$="${
-                  (entity as TableClass).entity.columns[0].name
-                }"] [data-testid="edit-displayName-button"]`
-              )
-              .click();
+          await page
+            .locator(
+              `[data-row-key$="${
+                (entity as TableClass).entity.columns[0].name
+              }"] [data-testid="edit-displayName-button"]`
+            )
+            .click();
 
-            await page.locator('#displayName').clear();
-            await page.locator('#displayName').fill('New Column Name');
+          await page.locator('#displayName').clear();
+          await page.locator('#displayName').fill('New Column Name');
 
-            await page
-              .locator('.ant-modal-footer [data-testid="save-button"]')
-              .click();
+          await page
+            .locator('.ant-modal-footer [data-testid="save-button"]')
+            .click();
 
-            await page.waitForSelector('.ant-modal-body', {
-              state: 'detached',
-            });
+          await page.waitForSelector('.ant-modal-body', {
+            state: 'detached',
+          });
 
-            await page.locator('[data-testid="version-button"]').click();
+          await page.locator('[data-testid="version-button"]').click();
 
-            await expect(
-              page.locator(
-                `[data-row-key$="${
-                  (entity as TableClass).entity.columns[0].name
-                }"] [data-testid="diff-added"]`
-              )
-            ).toBeVisible();
-          }
-        );
+          await expect(
+            page.locator(
+              `[data-row-key$="${
+                (entity as TableClass).entity.columns[0].name
+              }"] [data-testid="diff-added"]`
+            )
+          ).toBeVisible();
+        });
       }
 
       await test.step('should show tier changes', async () => {
@@ -289,48 +281,45 @@ test.describe('Entity Version pages', () => {
         ).toBeVisible();
       });
 
-      await test.step(
-        'should show version details after soft deleted',
-        async () => {
-          await page.locator('[data-testid="version-button"]').click();
+      await test.step('should show version details after soft deleted', async () => {
+        await page.locator('[data-testid="version-button"]').click();
 
-          await page.click('[data-testid="manage-button"]');
-          await page.click('[data-testid="delete-button"]');
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="delete-button"]');
 
-          await page.waitForSelector('[role="dialog"].ant-modal');
+        await page.waitForSelector('[role="dialog"].ant-modal');
 
-          await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
-          await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-          const deleteResponse = page.waitForResponse(
-            `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
-          );
-          await page.click('[data-testid="confirm-button"]');
+        await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+        const deleteResponse = page.waitForResponse(
+          `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
+        );
+        await page.click('[data-testid="confirm-button"]');
 
-          await deleteResponse;
+        await deleteResponse;
 
-          await toastNotification(
-            page,
-            /deleted successfully!/,
-            BIG_ENTITY_DELETE_TIMEOUT
-          );
+        await toastNotification(
+          page,
+          /deleted successfully!/,
+          BIG_ENTITY_DELETE_TIMEOUT
+        );
 
-          await page.reload();
+        await page.reload();
 
-          const deletedBadge = page.locator('[data-testid="deleted-badge"]');
+        const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
-          await expect(deletedBadge).toHaveText('Deleted');
+        await expect(deletedBadge).toHaveText('Deleted');
 
-          const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
-          await page.locator('[data-testid="version-button"]').click();
-          await versionDetailResponse;
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
+        await page.locator('[data-testid="version-button"]').click();
+        await versionDetailResponse;
 
-          // Deleted badge should be visible
-          await expect(
-            page.locator('[data-testid="deleted-badge"]')
-          ).toBeVisible();
-        }
-      );
+        // Deleted badge should be visible
+        await expect(
+          page.locator('[data-testid="deleted-badge"]')
+        ).toBeVisible();
+      });
     });
   });
 });

@@ -80,8 +80,9 @@ const AddCustomProperty = ({
 }: AddCustomPropertyProps) => {
   const [localForm] = Form.useForm();
   const form = formRef ?? localForm;
-  const { entityType: entityTypeParam } =
-    useRequiredParams<{ entityType: EntityType }>();
+  const { entityType: entityTypeParam } = useRequiredParams<{
+    entityType: EntityType;
+  }>();
   const entityType = entityTypeProp ?? entityTypeParam;
   const navigate = useNavigate();
   const { t } = useTranslation();

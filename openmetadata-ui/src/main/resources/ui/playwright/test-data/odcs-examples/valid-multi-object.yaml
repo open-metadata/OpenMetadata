@@ -12,7 +12,7 @@ apiVersion: v3.1.0
 kind: DataContract
 id: multi-object-contract
 name: Multi-Object Data Contract
-version: "1.0.0"
+version: '1.0.0'
 status: active
 description:
   purpose: Contract with multiple schema objects for testing multi-object import
@@ -64,5 +64,5 @@ schema:
         logicalType: number
 slaProperties:
   - property: freshness
-    value: "24"
+    value: '24'
     unit: hours

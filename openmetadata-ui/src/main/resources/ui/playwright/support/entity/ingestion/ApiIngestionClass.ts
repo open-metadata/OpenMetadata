@@ -57,10 +57,7 @@ class ApiIngestionClass extends ServiceBaseClass {
     await page
       .locator('#root\\/openAPISchemaConnection\\/openAPISchemaURL')
       .fill(openAPISchemaURL);
-    await checkServiceFieldSectionHighlighting(
-      page,
-      'openAPISchemaURL'
-    );
+    await checkServiceFieldSectionHighlighting(page, 'openAPISchemaURL');
   }
 
   async deleteService(page: Page): Promise<void> {

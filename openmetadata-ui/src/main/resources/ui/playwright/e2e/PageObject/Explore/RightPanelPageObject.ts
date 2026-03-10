@@ -60,7 +60,7 @@ export const RIGHT_PANEL_ASSET_TYPES = [
   'Metric',
 ] as const;
 
-export type AssetType = typeof RIGHT_PANEL_ASSET_TYPES[number] | string;
+export type AssetType = (typeof RIGHT_PANEL_ASSET_TYPES)[number] | string;
 
 // Interface for entities that have children
 interface EntityWithChildren extends EntityClass {

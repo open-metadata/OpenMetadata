@@ -93,8 +93,9 @@ function FileDetails({
 }: Readonly<FileDetailsProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { tab: activeTab = EntityTabs.OVERVIEW } =
-    useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.OVERVIEW } = useRequiredParams<{
+    tab: EntityTabs;
+  }>();
 
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.File);

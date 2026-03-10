@@ -1132,7 +1132,10 @@ const moveToNextColumnWithVerification = async (page: Page): Promise<void> => {
   let newColIndex = await activeCell.getAttribute('aria-colindex');
   let retries = 0;
 
-  while (currentColIndex === newColIndex && retries < MAX_COLUMN_NAVIGATION_RETRIES) {
+  while (
+    currentColIndex === newColIndex &&
+    retries < MAX_COLUMN_NAVIGATION_RETRIES
+  ) {
     await page.keyboard.press('ArrowRight', { delay: 100 });
     newColIndex = await activeCell.getAttribute('aria-colindex');
     retries++;

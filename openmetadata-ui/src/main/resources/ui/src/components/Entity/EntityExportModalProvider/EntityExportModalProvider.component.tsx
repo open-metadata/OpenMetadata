@@ -253,25 +253,21 @@ export const EntityExportModalProvider = ({
             }}
             okText={t('label.export')}
             title={exportData.title ?? t('label.export')}
-            onCancel={handleCancel}
-          >
+            onCancel={handleCancel}>
             <Form
               form={form}
               id="export-form"
               layout="vertical"
-              onFinish={handleExport}
-            >
+              onFinish={handleExport}>
               <Form.Item label={`${t('label.export-type')}:`} name="exportType">
                 <Select
                   data-testid="export-type-select"
-                  disabled={exportData.exportTypes.length === 1}
-                >
+                  disabled={exportData.exportTypes.length === 1}>
                   {exportTypesOptions.map((type) => (
                     <Select.Option
                       key={type.value}
                       title={type.value}
-                      value={type.value}
-                    >
+                      value={type.value}>
                       <div className="d-flex items-center">
                         {type.label}
                         {BETA_EXPORT_TYPES.includes(type.value) && (
@@ -292,8 +288,7 @@ export const EntityExportModalProvider = ({
                 label={`${t('label.entity-name', {
                   entity: t('label.file'),
                 })}:`}
-                name="fileName"
-              >
+                name="fileName">
                 <Input
                   addonAfter={`.${lowerCase(selectedExportType)}`}
                   data-testid="file-name-input"

@@ -70,7 +70,6 @@ test.describe(
         await expect(
           page.getByTestId('sample-data-manage-button')
         ).toBeVisible();
-
       });
 
       await test.step('Verify sample data rows are visible', async () => {
@@ -113,9 +112,7 @@ test.describe(
         await expect(page.getByTestId('row-limit-option-100')).toBeVisible();
         await page.getByTestId('row-limit-option-100').click();
 
-        await expect(page.getByTestId('row-limit-select')).toContainText(
-          '100'
-        );
+        await expect(page.getByTestId('row-limit-select')).toContainText('100');
       });
     });
 
@@ -213,9 +210,7 @@ test.describe(
       });
 
       await test.step('Type DELETE to enable confirm button', async () => {
-        await page
-          .getByTestId('confirmation-text-input')
-          .fill('DELETE');
+        await page.getByTestId('confirmation-text-input').fill('DELETE');
 
         const confirmButton = page.getByTestId('confirm-button');
         await expect(confirmButton).toBeEnabled();
@@ -247,9 +242,7 @@ test.describe(
       });
 
       await test.step('Type DELETE and confirm deletion', async () => {
-        await page
-          .getByTestId('confirmation-text-input')
-          .fill('DELETE');
+        await page.getByTestId('confirmation-text-input').fill('DELETE');
 
         const deleteResponse = page.waitForResponse(
           (response) =>
@@ -280,9 +273,7 @@ test.describe(
       });
 
       await test.step('Verify empty state is shown after deletion', async () => {
-        await expect(
-          page.getByTestId('no-data-placeholder')
-        ).toBeVisible();
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('sample-data')).not.toBeVisible();
       });
     });

@@ -204,18 +204,20 @@ jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
           props.entityDetails?.displayName ??
           props.entityDetails?.name}
       </span>
-      {props.hasEditPermission && props.entityType && props.entityDetails?.id && (
-        <button
-          data-testid="edit-displayName-button"
-          onClick={() => {
-            if (props.onDisplayNameUpdate) {
-              props.onDisplayNameUpdate('Updated Display Name');
-              mockOnDisplayNameUpdate('Updated Display Name');
-            }
-          }}>
-          Edit
-        </button>
-      )}
+      {props.hasEditPermission &&
+        props.entityType &&
+        props.entityDetails?.id && (
+          <button
+            data-testid="edit-displayName-button"
+            onClick={() => {
+              if (props.onDisplayNameUpdate) {
+                props.onDisplayNameUpdate('Updated Display Name');
+                mockOnDisplayNameUpdate('Updated Display Name');
+              }
+            }}>
+            Edit
+          </button>
+        )}
     </div>
   )),
 }));

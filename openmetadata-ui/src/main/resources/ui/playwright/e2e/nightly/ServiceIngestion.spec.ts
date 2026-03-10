@@ -338,48 +338,43 @@ test.describe.serial(
         });
       }
 
-      await test.step(
-        'Verify all 5 run statuses are visible in the UI',
-        async () => {
-          await visitServiceDetailsPage(
-            page,
-            {
-              type: mysqlService.category,
-              name: mysqlService.getServiceName(),
-            },
-            false,
-            false
-          );
-          await page.waitForSelector('[data-testid="data-assets-header"]');
-          await page.getByTestId('agents').click();
+      await test.step('Verify all 5 run statuses are visible in the UI', async () => {
+        await visitServiceDetailsPage(
+          page,
+          {
+            type: mysqlService.category,
+            name: mysqlService.getServiceName(),
+          },
+          false,
+          false
+        );
+        await page.waitForSelector('[data-testid="data-assets-header"]');
+        await page.getByTestId('agents').click();
 
-          const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
-          if (await metadataTab.isVisible()) {
-            await metadataTab.click();
-          }
-
-          await page
-            .getByLabel('agents')
-            .getByTestId('loader')
-            .waitFor({ state: 'detached' });
-
-          const pipelineRow = page.locator(
-            `[data-row-key*="${pipeline.name}"]`
-          );
-
-          await expect(pipelineRow).toBeVisible();
-
-          const runStatusBadges = pipelineRow.getByTestId('pipeline-status');
-
-          await expect(runStatusBadges).toHaveCount(TOTAL_RUNS);
-
-          const latestBadge = runStatusBadges.last();
-
-          await expect(latestBadge).toContainText(
-            /(Success|Failed|PartialSuccess)/i
-          );
+        const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+        if (await metadataTab.isVisible()) {
+          await metadataTab.click();
         }
-      );
+
+        await page
+          .getByLabel('agents')
+          .getByTestId('loader')
+          .waitFor({ state: 'detached' });
+
+        const pipelineRow = page.locator(`[data-row-key*="${pipeline.name}"]`);
+
+        await expect(pipelineRow).toBeVisible();
+
+        const runStatusBadges = pipelineRow.getByTestId('pipeline-status');
+
+        await expect(runStatusBadges).toHaveCount(TOTAL_RUNS);
+
+        const latestBadge = runStatusBadges.last();
+
+        await expect(latestBadge).toContainText(
+          /(Success|Failed|PartialSuccess)/i
+        );
+      });
     });
   }
 );

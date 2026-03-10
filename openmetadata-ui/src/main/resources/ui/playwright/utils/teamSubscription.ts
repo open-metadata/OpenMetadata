@@ -30,7 +30,10 @@ export const closeSubscriptionModal = async (page: Page) => {
   await expect(page.getByTestId('subscription-modal')).not.toBeVisible();
 };
 
-export const selectWebhookType = async (page: Page, webhookType: WebhookType) => {
+export const selectWebhookType = async (
+  page: Page,
+  webhookType: WebhookType
+) => {
   const webhookInput = page.locator('#webhook');
   const selectContainer = page
     .getByTestId('subscription-modal')

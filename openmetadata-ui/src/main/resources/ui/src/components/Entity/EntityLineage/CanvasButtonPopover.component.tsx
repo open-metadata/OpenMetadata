@@ -61,8 +61,7 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
         zIndex: 1000,
       }}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
+      onMouseLeave={onMouseLeave}>
       <EntityPopOverCard
         defaultOpen
         entityFQN={pipelineData?.fullyQualifiedName ?? ''}
@@ -70,13 +69,13 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
         extraInfo={
           pipelineStatus && (
             <Tag
-              className={getPipelineStatusClass(pipelineStatus.executionStatus)}
-            >
+              className={getPipelineStatusClass(
+                pipelineStatus.executionStatus
+              )}>
               {pipelineStatus.executionStatus}
             </Tag>
           )
-        }
-      >
+        }>
         <div style={{ width: '36px', height: '36px' }} />
       </EntityPopOverCard>
     </button>

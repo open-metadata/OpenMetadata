@@ -262,16 +262,14 @@ export const getSuggestionElement = (
         />
       }
       key={fqdn}
-      type="text"
-    >
+      type="text">
       <Link
         className="text-sm no-underline"
         data-testid="data-name"
         id={fqdn.replace(/\./g, '')}
         target={searchClassBase.getSearchEntityLinkTarget(entitySource)}
         to={entityLink}
-        onClick={onClickHandler}
-      >
+        onClick={onClickHandler}>
         {displayText}
         <Typography.Text className="m-l-xs text-xs" type="secondary">
           {fqn}

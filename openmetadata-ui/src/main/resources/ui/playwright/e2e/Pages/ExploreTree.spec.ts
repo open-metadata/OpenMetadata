@@ -155,16 +155,13 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       ).toContainText('Data Assets: tag');
     });
 
-    await test.step(
-      'Click on tree item metrics and check quick filter',
-      async () => {
-        await page.getByTestId('explore-tree-title-Metrics').click();
+    await test.step('Click on tree item metrics and check quick filter', async () => {
+      await page.getByTestId('explore-tree-title-Metrics').click();
 
-        await expect(
-          page.getByTestId('search-dropdown-Data Assets')
-        ).toContainText('Data Assets: metric');
-      }
-    );
+      await expect(
+        page.getByTestId('search-dropdown-Data Assets')
+      ).toContainText('Data Assets: metric');
+    });
   });
 
   test('Verify Tags navigation via Governance tree and breadcrumb renders page correctly', async ({
@@ -197,59 +194,53 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       expect(tagsSearchResponse.status()).toBe(200);
     });
 
-    await test.step(
-      'Click parent classification breadcrumb from a tag result',
-      async () => {
-        await waitForAllLoadersToDisappear(page);
-        const classificationBreadcrumb = page
-          .locator('[data-testid="breadcrumb-link"] a[href*="/tags/"]')
-          .first();
+    await test.step('Click parent classification breadcrumb from a tag result', async () => {
+      await waitForAllLoadersToDisappear(page);
+      const classificationBreadcrumb = page
+        .locator('[data-testid="breadcrumb-link"] a[href*="/tags/"]')
+        .first();
 
-        await expect(classificationBreadcrumb).toBeVisible();
-        await expect(classificationBreadcrumb).toBeEnabled();
+      await expect(classificationBreadcrumb).toBeVisible();
+      await expect(classificationBreadcrumb).toBeEnabled();
 
-        const classificationsRes = page.waitForResponse(
-          '/api/v1/classifications*'
-        );
-        const tagsTableRes = page.waitForResponse('/api/v1/tags*');
+      const classificationsRes = page.waitForResponse(
+        '/api/v1/classifications*'
+      );
+      const tagsTableRes = page.waitForResponse('/api/v1/tags*');
 
-        await classificationBreadcrumb.click();
+      await classificationBreadcrumb.click();
 
-        const classificationResponse = await classificationsRes;
-        const tagsTableResponse = await tagsTableRes;
+      const classificationResponse = await classificationsRes;
+      const tagsTableResponse = await tagsTableRes;
 
-        expect(classificationResponse.status()).toBe(200);
-        expect(tagsTableResponse.status()).toBe(200);
-      }
-    );
+      expect(classificationResponse.status()).toBe(200);
+      expect(tagsTableResponse.status()).toBe(200);
+    });
 
-    await test.step(
-      'Verify full Tags page renders with left panel, table and headers',
-      async () => {
-        await waitForAllLoadersToDisappear(page);
+    await test.step('Verify full Tags page renders with left panel, table and headers', async () => {
+      await waitForAllLoadersToDisappear(page);
 
-        await expect(
-          page.getByTestId('side-panel-classification')
-        ).not.toHaveCount(0);
+      await expect(
+        page.getByTestId('side-panel-classification')
+      ).not.toHaveCount(0);
 
-        await expect(page.getByTestId('tags-container')).toBeVisible();
+      await expect(page.getByTestId('tags-container')).toBeVisible();
 
-        await expect(page.getByTestId('table')).toBeVisible();
+      await expect(page.getByTestId('table')).toBeVisible();
 
-        // Verify all table column headers are correct
-        const headers = await page
-          .locator('.ant-table-thead > tr > .ant-table-cell')
-          .allTextContents();
+      // Verify all table column headers are correct
+      const headers = await page
+        .locator('.ant-table-thead > tr > .ant-table-cell')
+        .allTextContents();
 
-        expect(headers).toEqual([
-          'Enabled',
-          'Tag',
-          'Display Name',
-          'Description',
-          'Actions',
-        ]);
-      }
-    );
+      expect(headers).toEqual([
+        'Enabled',
+        'Tag',
+        'Display Name',
+        'Description',
+        'Actions',
+      ]);
+    });
   });
 
   test('Verify Database and Database Schema available in explore tree', async ({
@@ -312,21 +303,18 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const updatedDbName = `Test ${dbName} updated`;
 
     // Step 1: Visit explore page and check existing values before rename
-    await test.step(
-      'Visit explore page and verify existing values',
-      async () => {
-        await sidebarClick(page, SidebarItem.EXPLORE);
-        await page.waitForLoadState('networkidle');
+    await test.step('Visit explore page and verify existing values', async () => {
+      await sidebarClick(page, SidebarItem.EXPLORE);
+      await page.waitForLoadState('networkidle');
 
-        // Verify original database and schema names using utility function
-        await verifyDatabaseAndSchemaInExploreTree(
-          page,
-          serviceName,
-          dbName,
-          schemaName
-        );
-      }
-    );
+      // Verify original database and schema names using utility function
+      await verifyDatabaseAndSchemaInExploreTree(
+        page,
+        serviceName,
+        dbName,
+        schemaName
+      );
+    });
 
     // Step 2: Perform rename operations
     await test.step('Rename schema and database', async () => {

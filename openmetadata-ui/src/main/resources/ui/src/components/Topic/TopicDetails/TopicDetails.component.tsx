@@ -87,8 +87,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { tab: activeTab = EntityTabs.SCHEMA } =
-    useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.SCHEMA } = useRequiredParams<{
+    tab: EntityTabs;
+  }>();
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Topic);
   const [isTabExpanded, setIsTabExpanded] = useState(false);

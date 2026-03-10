@@ -113,27 +113,24 @@ test(
      * @description Opens pipeline actions, enters edit flow, adjusts the weekly schedule segment, deploys, and
      * validates the updated success messaging before returning to the service view.
      */
-    await test.step(
-      'Verify test case count column displays correct values',
-      async () => {
-        await page.getByRole('tab', { name: 'Pipeline' }).click();
+    await test.step('Verify test case count column displays correct values', async () => {
+      await page.getByRole('tab', { name: 'Pipeline' }).click();
 
-        // Verify the pipeline with selected test case shows count "1"
-        const pipelineRow = page.getByRole('row', {
-          name: new RegExp(pipelineName),
-        });
-        await expect(
-          pipelineRow.getByTestId(new RegExp('test-case-count-'))
-        ).toContainText('1');
+      // Verify the pipeline with selected test case shows count "1"
+      const pipelineRow = page.getByRole('row', {
+        name: new RegExp(pipelineName),
+      });
+      await expect(
+        pipelineRow.getByTestId(new RegExp('test-case-count-'))
+      ).toContainText('1');
 
-        // Verify the default pipeline shows "All" for test case count
-        const defaultPipelineTestCaseCount = page
-          .getByTestId('ingestion-list-table')
-          .getByTestId(new RegExp('test-case-count-'))
-          .filter({ hasNotText: '1' });
-        await expect(defaultPipelineTestCaseCount.first()).toContainText('All');
-      }
-    );
+      // Verify the default pipeline shows "All" for test case count
+      const defaultPipelineTestCaseCount = page
+        .getByTestId('ingestion-list-table')
+        .getByTestId(new RegExp('test-case-count-'))
+        .filter({ hasNotText: '1' });
+      await expect(defaultPipelineTestCaseCount.first()).toContainText('All');
+    });
 
     await test.step('Update the pipeline', async () => {
       await page.getByRole('tab', { name: 'Pipeline' }).click();

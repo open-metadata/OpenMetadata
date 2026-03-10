@@ -89,66 +89,85 @@ test.describe(
     let draftChild: GlossaryTerm;
     let mixedStatusChild: GlossaryTerm;
 
-    test.beforeAll('Setup glossary with mixed-status terms', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+    test.beforeAll(
+      'Setup glossary with mixed-status terms',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
 
-      await glossary.create(apiContext);
+        await glossary.create(apiContext);
 
-      approvedParent = new GlossaryTerm(glossary, undefined, 'ApprovedParent');
-      await approvedParent.create(apiContext);
+        approvedParent = new GlossaryTerm(
+          glossary,
+          undefined,
+          'ApprovedParent'
+        );
+        await approvedParent.create(apiContext);
 
-      approvedChild1 = new GlossaryTerm(glossary, undefined, 'ApprovedChild1');
-      approvedChild1.data.parent =
-        approvedParent.responseData.fullyQualifiedName;
-      await approvedChild1.create(apiContext);
+        approvedChild1 = new GlossaryTerm(
+          glossary,
+          undefined,
+          'ApprovedChild1'
+        );
+        approvedChild1.data.parent =
+          approvedParent.responseData.fullyQualifiedName;
+        await approvedChild1.create(apiContext);
 
-      approvedChild2 = new GlossaryTerm(glossary, undefined, 'ApprovedChild2');
-      approvedChild2.data.parent =
-        approvedParent.responseData.fullyQualifiedName;
-      await approvedChild2.create(apiContext);
+        approvedChild2 = new GlossaryTerm(
+          glossary,
+          undefined,
+          'ApprovedChild2'
+        );
+        approvedChild2.data.parent =
+          approvedParent.responseData.fullyQualifiedName;
+        await approvedChild2.create(apiContext);
 
-      // Draft child under Approved parent (mixed-status hierarchy)
-      mixedStatusChild = new GlossaryTerm(glossary, undefined, 'MixedStatusChild');
-      mixedStatusChild.data.parent =
-        approvedParent.responseData.fullyQualifiedName;
-      await mixedStatusChild.create(apiContext);
+        // Draft child under Approved parent (mixed-status hierarchy)
+        mixedStatusChild = new GlossaryTerm(
+          glossary,
+          undefined,
+          'MixedStatusChild'
+        );
+        mixedStatusChild.data.parent =
+          approvedParent.responseData.fullyQualifiedName;
+        await mixedStatusChild.create(apiContext);
 
-      const mixedStatusChildPatch = await apiContext.patch(
-        `/api/v1/glossaryTerms/${mixedStatusChild.responseData.id}`,
-        {
-          data: [{ op: 'replace', path: '/entityStatus', value: 'Draft' }],
-          headers: { 'Content-Type': 'application/json-patch+json' },
-        }
-      );
-      expect(mixedStatusChildPatch.status()).toBe(200);
+        const mixedStatusChildPatch = await apiContext.patch(
+          `/api/v1/glossaryTerms/${mixedStatusChild.responseData.id}`,
+          {
+            data: [{ op: 'replace', path: '/entityStatus', value: 'Draft' }],
+            headers: { 'Content-Type': 'application/json-patch+json' },
+          }
+        );
+        expect(mixedStatusChildPatch.status()).toBe(200);
 
-      draftParent = new GlossaryTerm(glossary, undefined, 'DraftParent');
-      await draftParent.create(apiContext);
+        draftParent = new GlossaryTerm(glossary, undefined, 'DraftParent');
+        await draftParent.create(apiContext);
 
-      const draftParentPatch = await apiContext.patch(
-        `/api/v1/glossaryTerms/${draftParent.responseData.id}`,
-        {
-          data: [{ op: 'replace', path: '/entityStatus', value: 'Draft' }],
-          headers: { 'Content-Type': 'application/json-patch+json' },
-        }
-      );
-      expect(draftParentPatch.status()).toBe(200);
+        const draftParentPatch = await apiContext.patch(
+          `/api/v1/glossaryTerms/${draftParent.responseData.id}`,
+          {
+            data: [{ op: 'replace', path: '/entityStatus', value: 'Draft' }],
+            headers: { 'Content-Type': 'application/json-patch+json' },
+          }
+        );
+        expect(draftParentPatch.status()).toBe(200);
 
-      draftChild = new GlossaryTerm(glossary, undefined, 'DraftChild');
-      draftChild.data.parent = draftParent.responseData.fullyQualifiedName;
-      await draftChild.create(apiContext);
+        draftChild = new GlossaryTerm(glossary, undefined, 'DraftChild');
+        draftChild.data.parent = draftParent.responseData.fullyQualifiedName;
+        await draftChild.create(apiContext);
 
-      const draftChildPatch = await apiContext.patch(
-        `/api/v1/glossaryTerms/${draftChild.responseData.id}`,
-        {
-          data: [{ op: 'replace', path: '/entityStatus', value: 'Draft' }],
-          headers: { 'Content-Type': 'application/json-patch+json' },
-        }
-      );
-      expect(draftChildPatch.status()).toBe(200);
+        const draftChildPatch = await apiContext.patch(
+          `/api/v1/glossaryTerms/${draftChild.responseData.id}`,
+          {
+            data: [{ op: 'replace', path: '/entityStatus', value: 'Draft' }],
+            headers: { 'Content-Type': 'application/json-patch+json' },
+          }
+        );
+        expect(draftChildPatch.status()).toBe(200);
 
-      await afterAction();
-    });
+        await afterAction();
+      }
+    );
 
     test.afterAll('Cleanup glossary', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -204,9 +223,7 @@ test.describe(
       });
     });
 
-    test('Expand All with default filter shows all terms', async ({
-      page,
-    }) => {
+    test('Expand All with default filter shows all terms', async ({ page }) => {
       test.slow();
 
       await test.step('Expand all and verify all terms are visible', async () => {
