@@ -170,6 +170,12 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
     return this;
   }
 
+  public ElasticQueryBuilder nestedQuery(String path, OMQueryBuilder innerQuery) {
+    Query inner = ((ElasticQueryBuilder) innerQuery).build();
+    this.query = Query.of(q -> q.nested(n -> n.path(path).query(inner)));
+    return this;
+  }
+
   private BoolQuery.Builder getOrCreateBoolQueryBuilder() {
     if (query != null && query.isBool()) {
       // Create a new builder with existing clauses

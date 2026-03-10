@@ -42,8 +42,10 @@ public class IndexingPipeline implements AutoCloseable {
 
   private static final String POISON_PILL = "__POISON_PILL__";
   private static final int DEFAULT_QUEUE_SIZE = 20000;
-  private static final int MAX_CONSUMER_THREADS = 20;
-  private static final int MAX_JOB_THREADS = 30;
+  private static final int MAX_CONSUMER_THREADS =
+      Math.min(20, Runtime.getRuntime().availableProcessors() * 2);
+  private static final int MAX_JOB_THREADS =
+      Math.min(30, Runtime.getRuntime().availableProcessors() * 4);
   private static final String ENTITY_TYPE_KEY = "entityType";
   private static final String RECREATE_INDEX = "recreateIndex";
 
@@ -109,17 +111,20 @@ public class IndexingPipeline implements AutoCloseable {
     int batchSize = config.batchSize();
 
     taskQueue = new LinkedBlockingQueue<>(queueSize);
+    String jobIdTag = MDC.get("reindexJobId");
+    String threadPrefix = "reindex-" + (jobIdTag != null ? jobIdTag + "-" : "");
     consumerExecutor =
         Executors.newFixedThreadPool(
-            numConsumers, Thread.ofPlatform().name("pipeline-consumer-", 0).factory());
+            numConsumers,
+            Thread.ofPlatform().name(threadPrefix + "pipeline-consumer-", 0).factory());
     producerExecutor =
         Executors.newFixedThreadPool(
             config.producerThreads() > 0 ? config.producerThreads() : 2,
-            Thread.ofPlatform().name("pipeline-producer-", 0).factory());
+            Thread.ofPlatform().name(threadPrefix + "pipeline-producer-", 0).factory());
     jobExecutor =
         Executors.newFixedThreadPool(
             Math.min(entities.size(), MAX_JOB_THREADS),
-            Thread.ofPlatform().name("pipeline-job-", 0).factory());
+            Thread.ofPlatform().name(threadPrefix + "pipeline-job-", 0).factory());
 
     entityReader = new EntityReader(producerExecutor, stopped);
 

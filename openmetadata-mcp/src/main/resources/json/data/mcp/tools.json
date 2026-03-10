@@ -17,7 +17,7 @@
           },
           "queryFilter": {
             "type": "string",
-            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested."
+            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"nested\": {\"path\": \"owners\", \"query\": {\"term\": {\"owners.name\": \"marketing\"}}}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested, owners IS nested (wrap owners queries in {\"nested\": {\"path\": \"owners\", \"query\": ...}})."
           },
           "from": {
             "type": "integer",
@@ -78,7 +78,7 @@
           },
           {
             "description": "Advanced - Owner filter with OpenSearch",
-            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}"
+            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"nested\": {\"path\": \"owners\", \"query\": {\"term\": {\"owners.name\": \"marketing\"}}}}]}}"
           },
           {
             "description": "Advanced - Column search with OpenSearch",
@@ -112,7 +112,7 @@
           },
           "filters": {
             "type": "object",
-            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entity_type' (e.g., ['table', 'dashboard']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entity_type\": [\"table\"], \"service\": [\"BigQuery\"]}.",
+            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entityType\": [\"table\"], \"service\": [\"BigQuery\"]}.",
             "additionalProperties": {
               "type": "array",
               "items": {
@@ -145,7 +145,7 @@
           {
             "description": "Find dashboards about revenue in BigQuery",
             "query": "revenue metrics dashboard",
-            "filters": {"entity_type": ["dashboard"], "service": ["BigQuery"]}
+            "filters": {"entityType": ["dashboard"], "service": ["BigQuery"]}
           },
           {
             "description": "High-confidence search for PII data",
@@ -155,7 +155,7 @@
           {
             "description": "Find pipeline assets processing user events",
             "query": "user event processing pipeline",
-            "filters": {"entity_type": ["pipeline"]}
+            "filters": {"entityType": ["pipeline"]}
           }
         ]
       }

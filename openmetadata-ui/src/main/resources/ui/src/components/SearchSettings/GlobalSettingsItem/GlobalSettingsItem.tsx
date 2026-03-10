@@ -23,6 +23,7 @@ interface GlobalSettingItemProps {
   value: number;
   min?: number;
   max?: number;
+  step?: number;
   onUpdate: (value: number) => Promise<void>;
 }
 
@@ -31,6 +32,7 @@ export const GlobalSettingItem = ({
   value,
   min,
   max,
+  step,
   onUpdate,
 }: GlobalSettingItemProps) => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -67,7 +69,8 @@ export const GlobalSettingItem = ({
           <InlineEdit
             isLoading={isUpdating}
             onCancel={handleCancel}
-            onSave={handleSave}>
+            onSave={handleSave}
+          >
             <Input
               data-testid="value-input"
               disabled={isUpdating}
@@ -75,9 +78,14 @@ export const GlobalSettingItem = ({
               max={max}
               min={min}
               placeholder="value"
+              step={step}
               type="number"
               value={updatedValue}
-              onChange={(e) => setUpdatedValue(parseInt(e.target.value))}
+              onChange={(e) =>
+                setUpdatedValue(
+                  step ? parseFloat(e.target.value) : parseInt(e.target.value)
+                )
+              }
             />
           </InlineEdit>
         </div>
@@ -85,7 +93,8 @@ export const GlobalSettingItem = ({
         <div className="d-flex items-center justify-end flex-wrap value-container">
           <span
             className="m-l-xlg font-semibold p-x-xss global-settings-item-value"
-            data-testid={`global-setting-value-${label}`}>
+            data-testid={`global-setting-value-${label}`}
+          >
             {value}
           </span>
           <Icon

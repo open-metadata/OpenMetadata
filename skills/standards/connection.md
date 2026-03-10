@@ -92,29 +92,64 @@ def get_connection(connection: MyDbConnection) -> Engine:
     )
 ```
 
-## SSL Configuration
+## SSL Configuration (SonarQube Required)
 
-If the connector supports SSL, include in the JSON Schema:
+SSL must be wired **end-to-end** — schema, connection handler, and client. Missing any layer triggers SonarQube Security Review failure.
+
+### Step 1: JSON Schema
 
 ```json
-"sslConfig": {
-    "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
-},
 "verifySSL": {
     "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
     "default": "no-ssl"
+},
+"sslConfig": {
+    "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
 }
 ```
+
+### Step 2: connection.py — resolve SSL config
+
+```python
+from metadata.utils.ssl_registry import get_verify_ssl_fn
+
+def get_connection(connection: MyDashConnection) -> MyDashClient:
+    verify_ssl = None
+    if connection.verifySSL:
+        verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL)
+        verify_ssl = verify_ssl_fn(connection.sslConfig)
+    return MyDashClient(connection, verify_ssl=verify_ssl)
+```
+
+The `ssl_registry` maps the `VerifySSL` enum:
+- `no-ssl` → `None` (requests default behavior)
+- `ignore` → `False` (skip certificate validation)
+- `validate` → CA certificate path string from `sslConfig`
+
+### Step 3: client.py — apply to session
+
+```python
+class MyDashClient:
+    def __init__(self, config, verify_ssl=None):
+        self.session = requests.Session()
+        # ... auth setup ...
+        if verify_ssl is not None:
+            self.session.verify = verify_ssl
+```
+
+**References**: Grafana connector (`session.verify = self.verify_ssl`), Tableau connector (`SSLManager` pattern for temp cert files).
 
 ## Client Wrapper Pattern (Non-Database)
 
 ```python
 class MyDashClient:
-    def __init__(self, config: MyDashConnection):
+    def __init__(self, config: MyDashConnection, verify_ssl=None):
         self.config = config
         self._session = requests.Session()
         self._base_url = config.hostPort
         self._setup_auth()
+        if verify_ssl is not None:
+            self._session.verify = verify_ssl
 
     def _setup_auth(self):
         if self.config.token:

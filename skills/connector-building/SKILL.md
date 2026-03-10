@@ -1,6 +1,6 @@
 ---
 name: scaffold-connector
-description: Build a new OpenMetadata connector from scratch — scaffold JSON Schema, Python boilerplate, and CONNECTOR_CONTEXT.md using schema-first architecture with code generation across Python, Java, TypeScript, and auto-rendered UI forms.
+description: Build a new OpenMetadata connector from scratch — scaffold JSON Schema, Python boilerplate, and AI context using schema-first architecture with code generation across Python, Java, TypeScript, and auto-rendered UI forms.
 user-invocable: true
 argument-hint: "[connector name or description]"
 allowed-tools:
@@ -67,7 +67,9 @@ metadata scaffold-connector \
   --docker-port 5432
 ```
 
-**Output**: JSON Schema + test connection JSON + Python files + `CONNECTOR_CONTEXT.md` in the connector directory. SQLAlchemy database connectors get concrete code templates; all others get skeleton files with pointers to reference connectors.
+**Output**: JSON Schema + test connection JSON + Python files + `CONNECTOR_CONTEXT.md` as an AI working document. SQLAlchemy database connectors get concrete code templates; all others get skeleton files with pointers to reference connectors.
+
+**CONNECTOR_CONTEXT.md handling**: The scaffold generates `CONNECTOR_CONTEXT.md` in the connector directory as a working document for any AI tool (Claude Code, Cursor, Codex, Copilot, Windsurf). It is **gitignored** — it stays local and is never committed to the repo. No cleanup needed.
 
 ### Phase 2: CLASSIFY — Understand the Source
 
@@ -121,6 +123,16 @@ The scaffold generates files with `# TODO` markers. Read the relevant standards 
 **SQLAlchemy database**: Templates are mostly complete. Customize `_get_client()` if needed.
 **Non-SQLAlchemy**: Study the reference connector, then implement each skeleton file.
 
+**Critical for JSON Schema**:
+- Make auth fields (`username`, `password`, `token`) **required** when the service needs authentication by default. If omitting a field means an opaque 401 at runtime, make it required so the UI validates upfront.
+- Include SSL/TLS config (`verifySSL` + `sslConfig` `$ref`) for any connector that communicates over HTTPS — enterprise deployments use internal CAs.
+- **SSL must be wired end-to-end**: schema → `connection.py` (resolve with `get_verify_ssl_fn`) → `client.py` (`session.verify = verify_ssl`). Missing wiring triggers SonarQube Security Review failure.
+- See `${CLAUDE_SKILL_DIR}/standards/schema.md` for the `$ref` patterns and required fields guidance.
+
+**Critical for Pydantic API models (models.py)**:
+- Always set `model_config = ConfigDict(populate_by_name=True)` when using `Field(alias=...)` — without this, constructing instances with Python attribute names raises `ValidationError`.
+- See `${CLAUDE_SKILL_DIR}/standards/code_style.md` for the full pattern.
+
 **Critical for non-database connectors (client.py)**:
 - Every list endpoint MUST implement pagination if the API supports it. Check the API docs.
 - Missing pagination causes silent data loss — only the first page is ingested.
@@ -133,6 +145,11 @@ The scaffold generates files with `# TODO` markers. Read the relevant standards 
 - `del` large objects after processing and call `gc.collect()`.
 - See `${CLAUDE_SKILL_DIR}/standards/memory.md` for correct patterns.
 
+**Critical for lineage**:
+- Never use wildcard `table_name="*"` in search queries — this links every table in a database to each entity, producing incorrect lineage.
+- If the source doesn't provide table-level info, skip lineage and document the limitation.
+- See `${CLAUDE_SKILL_DIR}/standards/lineage.md` for correct patterns.
+
 ### Phase 5: REGISTER — Integration Points
 
 Read `${CLAUDE_SKILL_DIR}/standards/registration.md` for detailed instructions. Summary:
@@ -143,26 +160,54 @@ Read `${CLAUDE_SKILL_DIR}/standards/registration.md` for detailed instructions. 
 | 2 | `openmetadata-ui/.../utils/{ServiceType}ServiceUtils.tsx` | Import schema + add switch case |
 | 3 | `openmetadata-ui/.../locale/languages/` | Add i18n display name keys |
 
-### Phase 6: GENERATE — Run Code Generation
+### Phase 6: GENERATE & FORMAT — Run Code Generation and Formatting
+
+This step is **mandatory** — always run it before committing. Ensure the Python environment is set up:
 
 ```bash
+# Ensure environment is active and tools are installed
 source env/bin/activate
+pip install -e ".[dev]" 2>/dev/null || make install_dev
+
+# Generate models from schemas
 make generate                                # Python Pydantic models
 mvn clean install -pl openmetadata-spec      # Java models
 cd openmetadata-ui/src/main/resources/ui && yarn parse-schema  # UI schemas
-make py_format                               # Format Python
+
+# Format ALL code (mandatory before commit)
+cd /path/to/repo/root
+make py_format                               # black + isort + pycln
 mvn spotless:apply                           # Format Java
 ```
 
-### Phase 7: VALIDATE — End-to-End Checklist
+**If `make py_format` fails**: The most common cause is missing dev dependencies. Run `make install_dev` first, then retry.
+
+**Never skip formatting** — unformatted code will fail CI.
+
+### Phase 7: VALIDATE — Run Static Analysis and Checklist
+
+Run the static analyzer as a self-check before submitting:
+```bash
+python skills/connector-review/scripts/analyze_connector.py {service_type} {name}
+```
+
+Fix any issues it reports. Then verify the full checklist:
 
 ```
 [ ] JSON Schema: validates, $ref resolves, supports* flags correct
+[ ] JSON Schema: auth fields required when service mandates authentication
+[ ] JSON Schema: SSL/TLS config included for HTTPS connectors
 [ ] Code gen: make generate + mvn install + yarn parse-schema succeed
 [ ] Connection: creates client, test_connection passes all steps
 [ ] Source: create() validates config type, ServiceSpec is discoverable
-[ ] Tests: unit + connection integration + metadata integration pass
-[ ] Build: mvn spotless:apply, make py_format, make lint all pass
+[ ] Pydantic models: populate_by_name=True on all aliased models
+[ ] Client: all list endpoints paginate (check API docs for pagination support)
+[ ] Client: dict lookups in prepare(), not list iteration per entity
+[ ] Lineage: no wildcard table_name="*" — skip if no table-level info available
+[ ] Tests: unit + connection integration + metadata integration pass (no empty stubs)
+[ ] Formatting: make py_format + mvn spotless:apply pass with no changes
+[ ] Cleanup: CONNECTOR_CONTEXT.md is gitignored (verify it's not staged)
+[ ] Cleanup: no leftover TODO scaffolding comments
 ```
 
 ### Phase 8: TEST LOCALLY — Deploy and Test in the UI
@@ -196,6 +241,53 @@ Other service URLs:
 - Connector not in dropdown → check service schema registration, rebuild without `-s true`
 - Test connection fails → check `test_fn` keys match test connection JSON step names
 - Container logs: `docker compose -f docker/development/docker-compose.yml logs ingestion`
+
+### Phase 9: CREATE PR — Submit with Quality Summary
+
+When creating a PR for the connector, include the review summary in the PR description so reviewers see the quality assessment upfront:
+
+```bash
+# Run the static analyzer
+analysis=$(python skills/connector-review/scripts/analyze_connector.py {service_type} {name} --json)
+
+# Create PR with quality summary in description
+gh pr create --title "feat(ingestion): Add {Name} {service_type} connector" --body "$(cat <<'EOF'
+## Summary
+- New {service_type} connector for {Name}
+- Capabilities: {list capabilities}
+
+## Test plan
+- [ ] Unit tests pass (`pytest ingestion/tests/unit/topology/{service_type}/test_{name}.py`)
+- [ ] Integration tests pass
+- [ ] Local Docker test: connector appears in UI, test connection passes
+
+## Connector Quality Review
+
+**Verdict**: {VERDICT} | **Score**: {SCORE}/10
+
+| Category | Score |
+|----------|-------|
+| Schema & Registration | X/10 |
+| Connection & Auth | X/10 |
+| Source, Topology & Performance | X/10 |
+| Test Quality | X/10 |
+| Code Quality & Style | X/10 |
+
+**Blockers**: 0 | **Warnings**: {count} | **Suggestions**: {count}
+
+<details>
+<summary>Static analysis output</summary>
+
+{paste analyze_connector.py output here}
+
+</details>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
+The quality summary gives maintainers confidence about the connector's state without needing to review every file manually.
 
 ## Standards Reference
 

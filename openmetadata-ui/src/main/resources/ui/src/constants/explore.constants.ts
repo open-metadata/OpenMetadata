@@ -164,7 +164,7 @@ export const NO_OWNER_ADVANCE_SEARCH_FILTER = {
         ownerID2: {
           type: 'rule',
           properties: {
-            field: 'owners.displayName.keyword',
+            field: 'ownerDisplayName',
             operator: 'is_null',
             value: [],
             valueSrc: [],

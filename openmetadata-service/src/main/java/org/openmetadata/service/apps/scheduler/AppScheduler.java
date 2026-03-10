@@ -103,7 +103,9 @@ public class AppScheduler {
         .getListenerManager()
         .addJobListener(new OmAppJobListener(), jobGroupEquals(APPS_JOB_GROUP));
 
-    ScheduledExecutorService threadScheduler = Executors.newScheduledThreadPool(1);
+    ScheduledExecutorService threadScheduler =
+        Executors.newScheduledThreadPool(
+            1, Thread.ofPlatform().name("om-app-error-trigger-reset").factory());
     threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
 
     // Start Scheduler
@@ -392,7 +394,16 @@ public class AppScheduler {
         }
       }
 
-      // Delete the job after interrupting
+      // Wait briefly for the interrupt to propagate and cleanup to start before deleting
+      // the job. Deleting immediately can kill the Quartz thread before the application's
+      // stop/cleanup logic (e.g., flushing sinks, transitioning job status) can complete.
+      try {
+        Thread.sleep(2000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+
+      // Delete the job after interrupt has had time to propagate
       JobKey scheduledJobKey = new JobKey(application.getName(), APPS_JOB_GROUP);
       if (jobDetailScheduled != null) {
         LOG.info("Deleting Scheduled Job for App: {}", application.getName());

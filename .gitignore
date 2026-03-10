@@ -187,11 +187,6 @@ memory
 .claude/agents
 ingestion/.claude/agents
 
-/.entire/.gitignore
-/openmetadata-ui/src/main/resources/ui/.husky/commit-msg
-/openmetadata-ui/src/main/resources/ui/.husky/post-commit
-/openmetadata-ui/src/main/resources/ui/.husky/pre-push
-/openmetadata-ui/src/main/resources/ui/.husky/prepare-commit-msg
-/openmetadata-ui/src/main/resources/ui/.husky/prepare-commit-msg.pre-entire
-/.claude/settings.json
-/.entire/settings.json
+# AI scaffold working documents — stay local, never committed
+**/CONNECTOR_CONTEXT.md
+

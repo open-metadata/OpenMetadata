@@ -20,10 +20,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -57,10 +58,39 @@ public class ElasticSearchBulkSink implements BulkSink {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
-  private static final int MAX_CONCURRENT_DOC_BUILDS = 8;
-  private static final Semaphore DOC_BUILD_SEMAPHORE = new Semaphore(MAX_CONCURRENT_DOC_BUILDS);
-  private static final ExecutorService DOC_BUILD_EXECUTOR =
-      Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("es-doc-build-", 0).factory());
+  private static final int DEFAULT_DOC_BUILD_POOL_SIZE =
+      Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
+  private static final ThreadPoolExecutor DOC_BUILD_EXECUTOR =
+      createDocBuildExecutor(DEFAULT_DOC_BUILD_POOL_SIZE);
+
+  private static ThreadPoolExecutor createDocBuildExecutor(int poolSize) {
+    ThreadPoolExecutor pool =
+        new ThreadPoolExecutor(
+            poolSize,
+            poolSize,
+            60L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(),
+            Thread.ofVirtual().name("reindex-es-doc-build-", 0).factory());
+    pool.allowCoreThreadTimeOut(true);
+    return pool;
+  }
+
+  public static synchronized void setDocBuildPoolSize(int size) {
+    int newSize = Math.max(1, Math.min(50, size));
+    if (newSize <= DOC_BUILD_EXECUTOR.getMaximumPoolSize()) {
+      DOC_BUILD_EXECUTOR.setCorePoolSize(newSize);
+      DOC_BUILD_EXECUTOR.setMaximumPoolSize(newSize);
+    } else {
+      DOC_BUILD_EXECUTOR.setMaximumPoolSize(newSize);
+      DOC_BUILD_EXECUTOR.setCorePoolSize(newSize);
+    }
+    LOG.info("ElasticSearch doc-build pool resized to {} threads", newSize);
+  }
+
+  public static synchronized void resetDocBuildPoolSize() {
+    setDocBuildPoolSize(DEFAULT_DOC_BUILD_POOL_SIZE);
+  }
 
   private final ElasticSearchClient searchClient;
   protected final SearchRepository searchRepository;
@@ -150,9 +180,6 @@ public class ElasticSearchBulkSink implements BulkSink {
     // Extract StageStatsTracker from context for stats recording
     StageStatsTracker tracker = extractTracker(contextData);
 
-    // Check if embeddings are enabled for this specific entity type
-    boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
-
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
     if (indexMapping == null) {
       LOG.warn(
@@ -182,14 +209,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> {
-                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
-                              try {
-                                addTimeSeriesEntity(entity, indexName, entityType, tracker);
-                              } finally {
-                                DOC_BUILD_SEMAPHORE.release();
-                              }
-                            },
+                            () -> addTimeSeriesEntity(entity, indexName, entityType, tracker),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -202,26 +222,10 @@ public class ElasticSearchBulkSink implements BulkSink {
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> {
-                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
-                              try {
-                                addEntity(entity, indexName, recreateIndex, tracker);
-                                // Index columns separately when processing table entities
-                                if (Entity.TABLE.equals(entityType)) {
-                                  indexTableColumns(entity, recreateIndex, reindexContext);
-                                }
-                              } finally {
-                                DOC_BUILD_SEMAPHORE.release();
-                              }
-                            },
+                            () -> addEntity(entity, indexName, recreateIndex, tracker),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
-
-        // Process vector embeddings in batch (no-op in base class)
-        if (embeddingsEnabled) {
-          addEntitiesToVectorIndexBatch(bulkProcessor, entityInterfaces, recreateIndex);
-        }
       }
     } catch (Exception e) {
       LOG.error("Failed to write {} entities of type {}", entities.size(), entityType, e);
@@ -585,19 +589,6 @@ public class ElasticSearchBulkSink implements BulkSink {
     LOG.info("Concurrent requests updated to: {}", concurrentRequests);
   }
 
-  /**
-   * Checks if vector embeddings are enabled for a specific entity type.
-   * This combines SearchRepository capability check with job configuration.
-   */
-  boolean isVectorEmbeddingEnabledForEntity(String entityType) {
-    return false;
-  }
-
-  void addEntitiesToVectorIndexBatch(
-      CustomBulkProcessor bulkProcessor, List<EntityInterface> entities, boolean recreateIndex) {
-    // TODO: Implement Elasticsearch vector embedding support
-  }
-
   public static class CustomBulkProcessor {
     private final ElasticsearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();
@@ -651,7 +642,9 @@ public class ElasticSearchBulkSink implements BulkSink {
       this.totalFailed = totalFailed;
       this.statsUpdater = statsUpdater;
       this.circuitBreaker = circuitBreaker;
-      this.scheduler = Executors.newScheduledThreadPool(1);
+      this.scheduler =
+          Executors.newScheduledThreadPool(
+              1, Thread.ofPlatform().name("reindex-es-bulk-flush").factory());
 
       scheduler.scheduleAtFixedRate(
           this::flushIfNeeded, flushIntervalMillis, flushIntervalMillis, TimeUnit.MILLISECONDS);
@@ -741,7 +734,8 @@ public class ElasticSearchBulkSink implements BulkSink {
       long timeoutMillis = unit.toMillis(timeout);
       long startTime = System.currentTimeMillis();
 
-      // Wait for all active bulk requests to complete
+      // Wait for all active bulk requests to complete with exponential backoff
+      long sleepMs = 100;
       while (activeBulkRequests.get() > 0) {
         long elapsed = System.currentTimeMillis() - startTime;
         if (elapsed >= timeoutMillis) {
@@ -749,7 +743,8 @@ public class ElasticSearchBulkSink implements BulkSink {
               "Timeout waiting for {} active bulk requests to complete", activeBulkRequests.get());
           return false;
         }
-        Thread.sleep(100);
+        Thread.sleep(sleepMs);
+        sleepMs = Math.min(sleepMs * 2, 1000);
       }
       return true;
     }
@@ -1038,7 +1033,8 @@ public class ElasticSearchBulkSink implements BulkSink {
       long timeoutMillis = unit.toMillis(timeout);
       long startTime = System.currentTimeMillis();
 
-      // Wait for all active bulk requests to complete
+      // Wait for all active bulk requests to complete with exponential backoff
+      long sleepMs = 100;
       while (activeBulkRequests.get() > 0) {
         long elapsed = System.currentTimeMillis() - startTime;
         if (elapsed >= timeoutMillis) {
@@ -1046,7 +1042,8 @@ public class ElasticSearchBulkSink implements BulkSink {
               "Timeout waiting for {} active bulk requests to complete", activeBulkRequests.get());
           return false;
         }
-        Thread.sleep(100);
+        Thread.sleep(sleepMs);
+        sleepMs = Math.min(sleepMs * 2, 1000);
       }
 
       return scheduler.awaitTermination(
