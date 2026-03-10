@@ -332,7 +332,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   SlideoutMenu: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
-  createMuiTheme: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
