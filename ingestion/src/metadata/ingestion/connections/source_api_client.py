@@ -109,20 +109,20 @@ class TrackedREST(REST):
             entity_type=self._source_name,
         )
 
-    def get(self, path, data=None):
+    def get(self, path, data=None, headers=None):
         """GET method with tracking."""
         start = perf_counter()
         try:
-            return super().get(path, data)
+            return super().get(path, data, headers)
         finally:
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("GET", path, duration_ms)
 
-    def post(self, path, data=None, json=None):
+    def post(self, path, data=None, json=None, headers=None):
         """POST method with tracking."""
         start = perf_counter()
         try:
-            return super().post(path, data, json)
+            return super().post(path, data, json, headers)
         finally:
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("POST", path, duration_ms)
@@ -145,11 +145,11 @@ class TrackedREST(REST):
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("PATCH", path, duration_ms)
 
-    def delete(self, path, data=None):
+    def delete(self, path, data=None, headers=None):
         """DELETE method with tracking."""
         start = perf_counter()
         try:
-            return super().delete(path, data)
+            return super().delete(path, data, headers)
         finally:
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("DELETE", path, duration_ms)

@@ -169,30 +169,25 @@ class TopologyRunnerMixin(Generic[C]):
                     time.sleep(0.01)
 
     def _process_node(self, node: TopologyNode) -> Iterable[Entity]:
-        """Processing of a Node in a single thread with progress tracking."""
+        """Processing of a Node in a single thread with progress tracking.
+
+        Uses lazy iteration to preserve the producer contract where connectors
+        set up state (e.g., database inspectors, session tags) before each yield.
+        Eager materialization with list() would break 12+ database connectors
+        (Postgres, Snowflake, Redshift, etc.) that rely on this pattern.
+
+        Progress totals are tracked incrementally via add_to_total. For nodes
+        needing upfront totals (e.g., tables), _multithread_process_node is used.
+        """
         child_nodes = self._get_child_nodes(node)
         entity_type_name = self._get_entity_type_for_node(node)
         progress_tracker = ProgressTrackerState()
-        operation_metrics = OperationMetricsState()
 
-        # Track SOURCE time - fetching entities from producer
-        source_start = perf_counter()
-        node_entities = list(self._run_node_producer(node) or [])
-        source_time_ms = (perf_counter() - source_start) * 1000
-
-        if entity_type_name:
-            operation_metrics.record_operation(
-                category="source_fetch",
-                operation=node.producer,
-                duration_ms=source_time_ms,
-                entity_type=entity_type_name,
-            )
-
-        if entity_type_name and node_entities:
-            progress_tracker.set_total(entity_type_name, len(node_entities))
-
-        for node_entity in node_entities:
+        for node_entity in self._run_node_producer(node) or []:
             start_time = perf_counter()
+
+            if entity_type_name:
+                progress_tracker.add_to_total(entity_type_name, 1)
 
             for stage in node.stages:
                 yield from self._process_stage(
