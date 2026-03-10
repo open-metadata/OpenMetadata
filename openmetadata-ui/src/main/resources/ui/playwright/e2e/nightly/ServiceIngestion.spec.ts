@@ -289,18 +289,24 @@ test.describe.serial(
 
       expect(pipeline).toBeDefined();
 
+      type PipelineRun = { pipelineState?: string };
+
+      const listUrl = `/api/v1/services/ingestionPipelines/${encodeURIComponent(
+        pipeline.fullyQualifiedName
+      )}/pipelineStatus?limit=10`;
+
       for (let i = 0; i < TOTAL_RUNS; i++) {
-        await test.step(`Trigger and wait for run ${i + 1}`, async () => {
+        await test.step(`Trigger run ${i + 1}`, async () => {
           await expect
             .poll(
               async () => {
-                const triggerResponse = await apiContext.post(
+                const res = await apiContext.post(
                   `/api/v1/services/ingestionPipelines/trigger/${encodeURIComponent(
                     pipeline.id
                   )}`
                 );
 
-                return triggerResponse.status();
+                return res.status();
               },
               {
                 message: `Wait for pipeline trigger to succeed for run ${
@@ -311,75 +317,72 @@ test.describe.serial(
               }
             )
             .toBe(200);
-
-          await expect
-            .poll(
-              async () => {
-                try {
-                  const statusResponse = await makeRetryRequest({
-                    url: `/api/v1/services/ingestionPipelines/${encodeURIComponent(
-                      pipeline.fullyQualifiedName
-                    )}/pipelineStatus?limit=1`,
-                    page,
-                  });
-
-                  return statusResponse.data[0]?.pipelineState;
-                } catch {
-                  return 'running';
-                }
-              },
-              {
-                message: `Wait for run ${i + 1} to complete`,
-                timeout: 180_000,
-                intervals: [30_000, 15_000, 5_000],
-              }
-            )
-            .toEqual(expect.stringMatching(/(success|failed|partialSuccess)/));
         });
       }
 
-      await test.step(
-        'Verify all 5 run statuses are visible in the UI',
-        async () => {
-          await visitServiceDetailsPage(
-            page,
-            {
-              type: mysqlService.category,
-              name: mysqlService.getServiceName(),
+      await test.step('Wait for all runs to reach terminal state', async () => {
+        const terminalStates = /^(success|failed|partialSuccess)$/;
+
+        await expect
+          .poll(
+            async () => {
+              try {
+                const runs: PipelineRun[] =
+                  (await makeRetryRequest({ url: listUrl, page })).data ?? [];
+
+                return runs.filter((r) =>
+                  terminalStates.test(r.pipelineState ?? '')
+                ).length;
+              } catch {
+                return 0;
+              }
             },
-            false,
-            false
-          );
-          await page.waitForSelector('[data-testid="data-assets-header"]');
-          await page.getByTestId('agents').click();
+            {
+              message: `Wait for ${TOTAL_RUNS} pipeline runs to complete`,
+              timeout: 600_000,
+              intervals: [30_000, 15_000, 5_000],
+            }
+          )
+          .toBeGreaterThanOrEqual(TOTAL_RUNS);
+      });
 
-          const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
-          if (await metadataTab.isVisible()) {
-            await metadataTab.click();
-          }
+      await test.step('Verify all 5 run statuses are visible in the UI', async () => {
+        await visitServiceDetailsPage(
+          page,
+          {
+            type: mysqlService.category,
+            name: mysqlService.getServiceName(),
+          },
+          false,
+          false
+        );
+        await page.waitForSelector('[data-testid="data-assets-header"]');
+        await page.getByTestId('agents').click();
 
-          await page
-            .getByLabel('agents')
-            .getByTestId('loader')
-            .waitFor({ state: 'detached' });
-
-          const pipelineRow = page.locator(
-            `[data-row-key*="${pipeline.name}"]`
-          );
-
-          await expect(pipelineRow).toBeVisible();
-
-          const runStatusBadges = pipelineRow.getByTestId('pipeline-status');
-
-          await expect(runStatusBadges).toHaveCount(TOTAL_RUNS);
-
-          const latestBadge = runStatusBadges.last();
-
-          await expect(latestBadge).toContainText(
-            /(Success|Failed|PartialSuccess)/i
-          );
+        const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+        if (await metadataTab.isVisible()) {
+          await metadataTab.click();
         }
-      );
+
+        await page
+          .getByLabel('agents')
+          .getByTestId('loader')
+          .waitFor({ state: 'detached' });
+
+        const pipelineRow = page.locator(`[data-row-key*="${pipeline.name}"]`);
+
+        await expect(pipelineRow).toBeVisible();
+
+        const runStatusBadges = pipelineRow.getByTestId('pipeline-status');
+
+        await expect(runStatusBadges).toHaveCount(TOTAL_RUNS);
+
+        const latestBadge = runStatusBadges.last();
+
+        await expect(latestBadge).toContainText(
+          /(Success|Failed|PartialSuccess)/i
+        );
+      });
     });
   }
 );

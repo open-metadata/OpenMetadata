@@ -26,6 +26,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.AggregationManagementClient;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
@@ -121,7 +122,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         searchRequestBuilder.query(query);
       }
 
-      String aggregationField = request.getFieldName();
+      String aggregationField =
+          SearchSourceBuilderFactory.remapAggregationField(request.getFieldName());
       if (aggregationField == null || aggregationField.isBlank()) {
         throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
       }

@@ -32,6 +32,7 @@ import {
 } from '../../../constants/Export.constants';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { downloadFile } from '../../../utils/Export/ExportUtils';
 import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
@@ -90,25 +91,6 @@ export const EntityExportModalProvider = ({
     setExportData(data);
   };
 
-  /**
-   * Creates a downloadable file from csv string and download it on users system
-   * @param data - csv string
-   */
-  const handleDownload = (data: string, fileName: string) => {
-    const element = document.createElement('a');
-
-    const file = new Blob([data], { type: 'text/plain' });
-
-    element.textContent = 'download-file';
-    element.href = URL.createObjectURL(file);
-    element.download = `${fileName}.csv`;
-    document.body.appendChild(element);
-    element.click();
-
-    URL.revokeObjectURL(element.href);
-    document.body.removeChild(element);
-  };
-
   const handleExport = async ({
     fileName,
     exportType,
@@ -148,7 +130,7 @@ export const EntityExportModalProvider = ({
       });
 
       if (isString(data)) {
-        handleDownload(data, fileName);
+        downloadFile(data, `${fileName}.csv`);
         handleCancel();
         setDownloading(false);
       } else {
@@ -172,10 +154,9 @@ export const EntityExportModalProvider = ({
       if (isBulkEdit) {
         setCSVExportData(data);
       } else {
-        handleDownload(
-          data,
-          fileName ?? `${exportData?.name}_${getCurrentISODate()}`
-        );
+        const csvFileName =
+          fileName ?? `${exportData?.name}_${getCurrentISODate()}`;
+        downloadFile(data, `${csvFileName}.csv`);
       }
       setDownloading(false);
       handleCancel();
@@ -272,21 +253,25 @@ export const EntityExportModalProvider = ({
             }}
             okText={t('label.export')}
             title={exportData.title ?? t('label.export')}
-            onCancel={handleCancel}>
+            onCancel={handleCancel}
+          >
             <Form
               form={form}
               id="export-form"
               layout="vertical"
-              onFinish={handleExport}>
+              onFinish={handleExport}
+            >
               <Form.Item label={`${t('label.export-type')}:`} name="exportType">
                 <Select
                   data-testid="export-type-select"
-                  disabled={exportData.exportTypes.length === 1}>
+                  disabled={exportData.exportTypes.length === 1}
+                >
                   {exportTypesOptions.map((type) => (
                     <Select.Option
                       key={type.value}
                       title={type.value}
-                      value={type.value}>
+                      value={type.value}
+                    >
                       <div className="d-flex items-center">
                         {type.label}
                         {BETA_EXPORT_TYPES.includes(type.value) && (
@@ -307,7 +292,8 @@ export const EntityExportModalProvider = ({
                 label={`${t('label.entity-name', {
                   entity: t('label.file'),
                 })}:`}
-                name="fileName">
+                name="fileName"
+              >
                 <Input
                   addonAfter={`.${lowerCase(selectedExportType)}`}
                   data-testid="file-name-input"

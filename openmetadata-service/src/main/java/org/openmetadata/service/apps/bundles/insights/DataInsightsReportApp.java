@@ -476,7 +476,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     if (!CommonUtil.nullOrEmpty(team)) {
       filter =
           String.format(
-              "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":\"%s\"}}]}}]}}}",
+              "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"nested\":{\"path\":\"owners\",\"query\":{\"term\":{\"owners.displayName.keyword\":\"%s\"}}}}]}}]}}}",
               team);
     }
 

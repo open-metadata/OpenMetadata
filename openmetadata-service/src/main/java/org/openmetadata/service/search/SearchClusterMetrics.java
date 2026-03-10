@@ -26,6 +26,9 @@ public class SearchClusterMetrics {
   private final int recommendedProducerThreads;
   private final int recommendedConsumerThreads;
   private final int recommendedQueueSize;
+  private final int recommendedFieldFetchThreads;
+  private final int recommendedDocBuildThreads;
+  private final long recommendedStatsIntervalMs;
 
   public static final double DEFAULT_CPU_PERCENT = 50.0;
   public static final long DEFAULT_HEAP_USED_BYTES = 512L * 1024 * 1024; // 512 MB
@@ -163,88 +166,125 @@ public class SearchClusterMetrics {
       long totalEntities,
       int maxDbConnections) {
 
-    int maxProducerThreads = (maxDbConnections * 3) / 4;
-    int recommendedProducerThreads = Math.min(maxProducerThreads, 10 * totalNodes);
+    int availableCores = Runtime.getRuntime().availableProcessors();
+    long jvmMaxHeap = Runtime.getRuntime().maxMemory();
+    long jvmUsedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+    double jvmHeapUsagePercent = (jvmMaxHeap > 0) ? (double) jvmUsedMemory / jvmMaxHeap * 100 : 50;
 
-    if (memoryUsagePercent > 80) {
-      recommendedProducerThreads = Math.max(10, recommendedProducerThreads / 4);
-    } else if (memoryUsagePercent > 60) {
-      recommendedProducerThreads = Math.max(20, recommendedProducerThreads / 2);
+    boolean clusterOverloaded = cpuUsagePercent > 80 || memoryUsagePercent > 80;
+
+    LOG.info(
+        "Auto-tune inputs: {} entities, {} cores, {} MB JVM heap ({}% used), "
+            + "cluster: {} nodes, CPU {}%, mem {}%{}",
+        totalEntities,
+        availableCores,
+        jvmMaxHeap / (1024 * 1024),
+        String.format("%.0f", jvmHeapUsagePercent),
+        totalNodes,
+        String.format("%.0f", cpuUsagePercent),
+        String.format("%.0f", memoryUsagePercent),
+        clusterOverloaded ? " [OVERLOADED]" : "");
+
+    // --- Producer threads: bounded by DB connections and JVM cores ---
+    // Use at most 75% of DB connections, capped by cores
+    int maxProducerThreads = Math.max(2, (maxDbConnections * 3) / 4);
+    int recommendedProducerThreads = Math.min(maxProducerThreads, availableCores * 2);
+    // Scale with cluster nodes but don't go wild
+    recommendedProducerThreads = Math.min(recommendedProducerThreads, 5 * totalNodes);
+    if (clusterOverloaded) {
+      recommendedProducerThreads = Math.max(2, (recommendedProducerThreads * 3) / 4);
     }
 
-    // Consumers transform entities to search documents - can be CPU intensive
-    // With virtual threads, we can have more consumers for better throughput
-    int availableCores = Runtime.getRuntime().availableProcessors();
-    int recommendedConsumerThreads =
-        Math.min(30, Math.max(10, availableCores * 2)); // 2x cores, bounded
-
+    // --- Consumer threads: based on cores and cluster capacity ---
+    int recommendedConsumerThreads = Math.min(30, Math.max(2, availableCores * 2));
     if (totalNodes > 3) {
       recommendedConsumerThreads = Math.min(40, recommendedConsumerThreads + (totalNodes * 2));
     }
-
-    if (memoryUsagePercent > 80) {
-      recommendedConsumerThreads = Math.max(10, recommendedConsumerThreads / 2);
-    } else if (memoryUsagePercent < 40 && totalEntities > 100000) {
-      recommendedConsumerThreads = Math.min(50, (int) (recommendedConsumerThreads * 1.5));
+    if (clusterOverloaded) {
+      recommendedConsumerThreads = Math.max(2, (recommendedConsumerThreads * 3) / 4);
     }
 
-    int requestsPerNode = 50; // Base requests per node
-    if (cpuUsagePercent > 70 || memoryUsagePercent > 70) {
-      requestsPerNode = 25;
-    } else if (cpuUsagePercent < 30 && memoryUsagePercent < 50) {
-      requestsPerNode = 75;
-    }
+    // --- Concurrent requests: based on cluster nodes ---
+    int requestsPerNode = clusterOverloaded ? 25 : 50;
+    int recommendedConcurrentRequests = Math.min(200, totalNodes * requestsPerNode);
+    recommendedConcurrentRequests = Math.min(recommendedConcurrentRequests, availableCores * 25);
 
-    int baseConcurrentRequests = Math.min(200, totalNodes * requestsPerNode);
-    if (memoryUsagePercent > 80) {
-      baseConcurrentRequests = Math.max(10, baseConcurrentRequests / 2);
-    }
-
-    long heapBasedPayloadSize =
-        Math.min(500 * 1024 * 1024L, heapMaxBytes / 20); // Max 500MB or 5% of heap
-
-    // Don't assume compression - use actual content length limit
-    // Some clusters might have compression disabled
-    // Use 90% of limit to leave small buffer for request overhead
-    long maxPayloadSize =
-        Math.min(heapBasedPayloadSize, maxContentLength * 9 / 10); // Use 90% of limit
+    // --- Payload size: use cluster content length limit and JVM heap ---
+    long heapBasedPayloadSize = Math.min(500 * 1024 * 1024L, jvmMaxHeap / 20);
+    long maxPayloadSize = Math.min(heapBasedPayloadSize, maxContentLength * 9 / 10);
 
     LOG.info(
-        "Calculated max payload size: {} MB (heap-based: {} MB, cluster limit: {} MB)",
+        "Payload size: {} MB (JVM-based: {} MB, cluster limit: {} MB)",
         maxPayloadSize / (1024 * 1024),
         heapBasedPayloadSize / (1024 * 1024),
         maxContentLength / (1024 * 1024));
-    int avgEntitySizeKB = maxPayloadSize <= 10 * 1024 * 1024 ? 20 : 10; // More conservative for AWS
+
+    // --- Batch size: derived from payload size and entity count tier ---
+    int avgEntitySizeKB = maxPayloadSize <= 10 * 1024 * 1024 ? 20 : 10;
     int recommendedBatchSize = (int) Math.min(1000, maxPayloadSize / (avgEntitySizeKB * 1024L));
-
     if (maxPayloadSize <= 10 * 1024 * 1024) {
-      recommendedBatchSize = Math.min(500, recommendedBatchSize); // Cap at 500 for AWS
+      recommendedBatchSize = Math.min(500, recommendedBatchSize);
     }
-    recommendedBatchSize = Math.max(50, recommendedBatchSize); // Lower minimum for safety
+    recommendedBatchSize = Math.max(50, recommendedBatchSize);
 
-    if (totalEntities > 1000000) {
+    // Scale down for large datasets to control memory pressure from in-flight entities
+    if (totalEntities > 1_000_000) {
+      recommendedBatchSize = Math.min(300, recommendedBatchSize);
+      recommendedProducerThreads = Math.min(15, recommendedProducerThreads);
+      recommendedConcurrentRequests = Math.min(100, recommendedConcurrentRequests);
+    } else if (totalEntities > 500_000) {
       recommendedBatchSize = Math.min(500, recommendedBatchSize);
       recommendedProducerThreads = Math.min(20, recommendedProducerThreads);
-      baseConcurrentRequests = Math.min(150, baseConcurrentRequests);
-    } else if (totalEntities > 500000) {
-      recommendedBatchSize = Math.min(600, recommendedBatchSize);
-      recommendedProducerThreads = Math.min(25, recommendedProducerThreads);
-    } else if (totalEntities > 100000) {
+    } else if (totalEntities > 100_000) {
       recommendedBatchSize = Math.min(800, recommendedBatchSize);
-      recommendedProducerThreads = Math.min(30, recommendedProducerThreads);
     }
 
-    if (totalEntities < 50000 && memoryUsagePercent < 60) {
-      recommendedBatchSize = Math.min(1000, recommendedBatchSize * 2);
+    // JVM heap pressure: if the OM server JVM itself is tight, scale down
+    if (jvmHeapUsagePercent > 70) {
+      recommendedBatchSize = Math.max(50, (recommendedBatchSize * 3) / 4);
+      recommendedProducerThreads = Math.max(2, (recommendedProducerThreads * 3) / 4);
+      LOG.info(
+          "JVM heap usage {}% > 70%, reducing batch size and producer threads",
+          String.format("%.0f", jvmHeapUsagePercent));
     }
 
+    // --- Queue size: proportional to batch size and producer threads ---
     int queueBatches = Math.min(recommendedProducerThreads * 2, 20);
     int recommendedQueueSize = Math.min(10000, recommendedBatchSize * queueBatches);
-
     recommendedQueueSize = Math.max(1000, recommendedQueueSize);
 
+    // --- CPU budget: derive internal thread pool sizes from available cores ---
+    // Each worker is a platform thread driving: DB read → field-fetch → doc-build → bulk send
+    // On small instances (2 vCPUs), uncapped threads cause 99%+ CPU and throughput collapse
+    double targetCpuPercent = 0.70;
+    double cpuBudget = availableCores * targetCpuPercent;
+    int cpuBudgetedWorkers = Math.max(1, availableCores - 1);
+    recommendedConsumerThreads = Math.min(recommendedConsumerThreads, cpuBudgetedWorkers);
+    int recommendedFieldFetchThreads = Math.max(2, Math.min(50, availableCores * 2));
+    int recommendedDocBuildThreads = Math.max(1, Math.min(50, (int) Math.floor(cpuBudget * 2)));
+    recommendedConcurrentRequests =
+        Math.min(recommendedConcurrentRequests, Math.max(10, availableCores * 10));
+    long recommendedStatsIntervalMs =
+        availableCores <= 2 ? 2000 : availableCores <= 4 ? 1500 : 1000;
+
+    if (clusterOverloaded) {
+      recommendedFieldFetchThreads = Math.max(2, (recommendedFieldFetchThreads * 3) / 4);
+      recommendedDocBuildThreads = Math.max(1, (recommendedDocBuildThreads * 3) / 4);
+    }
+
+    LOG.info(
+        "CPU budget: {} cores × {}% = {} → workers={}, fieldFetch={}, docBuild={}, concurrentReqs={}, statsInterval={}ms",
+        availableCores,
+        (int) (targetCpuPercent * 100),
+        String.format("%.1f", cpuBudget),
+        recommendedConsumerThreads,
+        recommendedFieldFetchThreads,
+        recommendedDocBuildThreads,
+        recommendedConcurrentRequests,
+        recommendedStatsIntervalMs);
+
     return SearchClusterMetrics.builder()
-        .availableProcessors(Runtime.getRuntime().availableProcessors())
+        .availableProcessors(availableCores)
         .heapSizeBytes(heapMaxBytes)
         .availableMemoryBytes(heapMaxBytes - (long) (heapMaxBytes * memoryUsagePercent / 100))
         .totalShards(totalShards)
@@ -253,11 +293,14 @@ public class SearchClusterMetrics {
         .memoryUsagePercent(memoryUsagePercent)
         .maxPayloadSizeBytes(maxPayloadSize)
         .maxContentLength(maxContentLength)
-        .recommendedConcurrentRequests(baseConcurrentRequests)
+        .recommendedConcurrentRequests(recommendedConcurrentRequests)
         .recommendedBatchSize(recommendedBatchSize)
         .recommendedProducerThreads(recommendedProducerThreads)
         .recommendedConsumerThreads(recommendedConsumerThreads)
         .recommendedQueueSize(recommendedQueueSize)
+        .recommendedFieldFetchThreads(recommendedFieldFetchThreads)
+        .recommendedDocBuildThreads(recommendedDocBuildThreads)
+        .recommendedStatsIntervalMs(recommendedStatsIntervalMs)
         .build();
   }
 
@@ -383,9 +426,12 @@ public class SearchClusterMetrics {
       conservativeBatchSize = 100;
     }
 
-    int conservativeThreads = (maxDbConnections * 3) / 4;
+    int availCores = Runtime.getRuntime().availableProcessors();
+    int conservativeThreads = Math.min((maxDbConnections * 3) / 4, availCores * 4);
     int conservativeConcurrentRequests = totalEntities > 100000 ? 50 : 25;
-    int conservativeConsumerThreads = 20;
+    conservativeConcurrentRequests =
+        Math.min(conservativeConcurrentRequests, Math.max(10, availCores * 10));
+    int conservativeConsumerThreads = Math.min(20, Math.max(1, availCores - 1));
     int conservativeQueueSize = conservativeBatchSize * conservativeConcurrentRequests * 2;
 
     long maxHeap = Runtime.getRuntime().maxMemory();
@@ -430,6 +476,11 @@ public class SearchClusterMetrics {
           "Could not fetch max content length from cluster, using default: {}", e.getMessage());
     }
 
+    double cpuBudget = availCores * 0.70;
+    int conservativeFieldFetchThreads = Math.max(2, Math.min(50, availCores * 2));
+    int conservativeDocBuildThreads = Math.max(1, Math.min(50, (int) Math.floor(cpuBudget * 2)));
+    long conservativeStatsIntervalMs = availCores <= 2 ? 2000 : availCores <= 4 ? 1500 : 1000;
+
     return SearchClusterMetrics.builder()
         .availableProcessors(Runtime.getRuntime().availableProcessors())
         .heapSizeBytes(maxHeap)
@@ -445,11 +496,18 @@ public class SearchClusterMetrics {
         .recommendedProducerThreads(conservativeThreads)
         .recommendedConsumerThreads(conservativeConsumerThreads)
         .recommendedQueueSize(conservativeQueueSize)
+        .recommendedFieldFetchThreads(conservativeFieldFetchThreads)
+        .recommendedDocBuildThreads(conservativeDocBuildThreads)
+        .recommendedStatsIntervalMs(conservativeStatsIntervalMs)
         .build();
   }
 
   public void logRecommendations() {
     LOG.info("=== Auto-Tune Cluster Analysis ===");
+    LOG.info(
+        "JVM: {} CPUs, {} MB max heap",
+        Runtime.getRuntime().availableProcessors(),
+        Runtime.getRuntime().maxMemory() / (1024 * 1024));
     LOG.info("Cluster: {} nodes, {} shards", totalNodes, totalShards);
     LOG.info(
         "Resource Usage: CPU {}%, Memory {}%",
@@ -464,6 +522,9 @@ public class SearchClusterMetrics {
     LOG.info("Consumer Threads: {} (ES/OS writers)", recommendedConsumerThreads);
     LOG.info("Queue Size: {} (buffered entities)", recommendedQueueSize);
     LOG.info("Concurrent Bulk Requests: {}", recommendedConcurrentRequests);
+    LOG.info("Field-Fetch Threads: {} (Jackson deserialization)", recommendedFieldFetchThreads);
+    LOG.info("Doc-Build Threads: {} (Jackson serialization)", recommendedDocBuildThreads);
+    LOG.info("Stats Poll Interval: {} ms", recommendedStatsIntervalMs);
     LOG.info("Max Payload Size: {} MB per bulk request", maxPayloadSizeBytes / (1024 * 1024));
     LOG.info("=== Estimated Performance ===");
 

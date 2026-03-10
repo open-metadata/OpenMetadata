@@ -39,6 +39,9 @@ public class JobRecoveryManager {
   /** Grace period before considering a lock as abandoned (should be > LOCK_TIMEOUT_MS) */
   private static final long ABANDONED_LOCK_THRESHOLD_MS = TimeUnit.MINUTES.toMillis(10);
 
+  /** Maximum time a job can stay in STOPPING state before being force-completed */
+  private static final long STOPPING_GRACE_PERIOD_MS = TimeUnit.SECONDS.toMillis(30);
+
   /** Maximum age for a job to be considered for recovery vs marking as failed */
   private static final long RECOVERY_WINDOW_MS = TimeUnit.HOURS.toMillis(1);
 
@@ -117,7 +120,6 @@ public class JobRecoveryManager {
    * @return Optional containing the blocking job if one exists, empty if can proceed
    */
   public Optional<SearchIndexJob> checkForBlockingJob() {
-    // Check for any running or ready jobs
     List<SearchIndexJob> activeJobs =
         coordinator.getRecentJobs(
             List.of(
@@ -130,13 +132,19 @@ public class JobRecoveryManager {
     if (!activeJobs.isEmpty()) {
       SearchIndexJob blockingJob = activeJobs.getFirst();
 
+      // STOPPING jobs get a grace period, then are force-completed
+      if (blockingJob.getStatus() == IndexJobStatus.STOPPING) {
+        if (forceCompleteStaleStoppingJob(blockingJob)) {
+          return Optional.empty();
+        }
+      }
+
       // Check if the blocking job is actually orphaned
       if (isJobOrphaned(blockingJob)) {
         LOG.warn(
             "Found orphaned blocking job {}, attempting recovery before allowing new job",
             blockingJob.getId());
 
-        // Try to recover/fail the orphaned job
         RecoveryResult.Builder builder = RecoveryResult.builder();
         processOrphanedJob(blockingJob, builder);
 
@@ -159,6 +167,29 @@ public class JobRecoveryManager {
     }
 
     return Optional.empty();
+  }
+
+  private boolean forceCompleteStaleStoppingJob(SearchIndexJob job) {
+    long stoppingDuration = System.currentTimeMillis() - job.getUpdatedAt();
+    if (stoppingDuration > STOPPING_GRACE_PERIOD_MS) {
+      LOG.warn(
+          "Job {} has been in STOPPING state for {} ms (grace period: {} ms), force-completing",
+          job.getId(),
+          stoppingDuration,
+          STOPPING_GRACE_PERIOD_MS);
+      failJob(job, "Force-completed: stuck in STOPPING state");
+
+      // Release the lock so the new job can acquire it
+      SearchReindexLockDAO lockDAO = collectionDAO.searchReindexLockDAO();
+      lockDAO.releaseLock("SEARCH_REINDEX_LOCK", job.getId().toString());
+      return true;
+    }
+    LOG.info(
+        "Job {} is in STOPPING state for {} ms, waiting for grace period ({} ms)",
+        job.getId(),
+        stoppingDuration,
+        STOPPING_GRACE_PERIOD_MS);
+    return false;
   }
 
   /**
