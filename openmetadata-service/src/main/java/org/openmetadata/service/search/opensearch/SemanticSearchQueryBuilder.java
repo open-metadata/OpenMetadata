@@ -95,9 +95,9 @@ public class SemanticSearchQueryBuilder {
                                                                 ._types.BuiltinScriptLanguage
                                                                 .Painless))
                                                 .source(
-                                                    "cosineSimilarity(params.query_vector, '"
+                                                    "cosineSimilarity(params.query_vector, doc['"
                                                         + KNN_FIELD
-                                                        + "') + 1.0")
+                                                        + "']) + 1.0")
                                                 .params(convertToJsonDataMap(params)))))));
   }
 
