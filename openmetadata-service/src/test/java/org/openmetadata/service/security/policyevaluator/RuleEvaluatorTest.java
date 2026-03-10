@@ -12,7 +12,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TAGS;
-import static org.openmetadata.service.resources.EntityResourceTest.DATA_CONSUMER_ROLE_NAME;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 import static org.openmetadata.service.security.policyevaluator.SubjectContext.TEAM_FIELDS;
 
@@ -59,6 +58,7 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 class RuleEvaluatorTest {
+  private static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
   private static final Table table =
       new Table().withId(UUID.randomUUID()).withName("table").withFullyQualifiedName("test.table");
   private static User user;

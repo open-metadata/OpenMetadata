@@ -7,6 +7,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.api.services.CreateApiService.ApiServiceType;
 import org.openmetadata.schema.entity.services.ApiService;
+import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.type.ApiConnection;
 
@@ -26,7 +27,10 @@ public class APIServiceTestFactory {
     String name = ns.prefix("restApiService_" + uniqueId);
 
     RestConnection restConn =
-        new RestConnection().withOpenAPISchemaURL(URI.create("http://localhost:8585/swagger.json"));
+        new RestConnection()
+            .withOpenAPISchemaConnection(
+                new OpenAPISchemaURL()
+                    .withOpenAPISchemaURL(URI.create("http://localhost:8585/swagger.json")));
 
     ApiConnection conn = new ApiConnection().withConfig(restConn);
 

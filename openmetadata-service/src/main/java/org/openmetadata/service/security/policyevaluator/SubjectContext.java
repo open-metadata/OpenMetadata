@@ -43,7 +43,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public record SubjectContext(User user, String impersonatedBy) {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
-  public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile,domains";
+  public static final String TEAM_FIELDS =
+      "defaultRoles, defaultPersona, policies, parents, profile,domains";
 
   public static SubjectContext getSubjectContext(String userName) {
     User user = SubjectCache.getUserContext(userName);

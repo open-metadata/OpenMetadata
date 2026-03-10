@@ -1,8 +1,14 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.service.search.SearchClusterMetrics;
+import org.openmetadata.service.search.SearchRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Immutable configuration for a reindexing job. This record encapsulates all the configuration
@@ -26,7 +32,11 @@ public record ReindexingConfiguration(
     IndexMappingLanguage searchIndexMappingLanguage,
     String afterCursor,
     String slackBotToken,
-    String slackChannel) {
+    String slackChannel,
+    int timeSeriesMaxDays,
+    Map<String, Integer> timeSeriesEntityDays) {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ReindexingConfiguration.class);
 
   private static final int DEFAULT_BATCH_SIZE = 100;
   private static final int DEFAULT_CONSUMER_THREADS = 1;
@@ -37,6 +47,50 @@ public record ReindexingConfiguration(
   private static final int DEFAULT_MAX_RETRIES = 5;
   private static final int DEFAULT_INITIAL_BACKOFF = 1000;
   private static final int DEFAULT_MAX_BACKOFF = 10000;
+  private static final int DEFAULT_TIME_SERIES_MAX_DAYS = 0;
+
+  public static ReindexingConfiguration applyAutoTuning(
+      ReindexingConfiguration config, SearchRepository searchRepository) {
+    if (!config.autoTune()) {
+      return config;
+    }
+    SearchClusterMetrics metrics = fetchClusterMetrics(searchRepository);
+    if (metrics == null) {
+      return config;
+    }
+    return ReindexingConfiguration.builder()
+        .entities(config.entities())
+        .batchSize(metrics.getRecommendedBatchSize())
+        .consumerThreads(metrics.getRecommendedConsumerThreads())
+        .producerThreads(metrics.getRecommendedProducerThreads())
+        .queueSize(metrics.getRecommendedQueueSize())
+        .maxConcurrentRequests(metrics.getRecommendedConcurrentRequests())
+        .payloadSize(metrics.getMaxPayloadSizeBytes())
+        .recreateIndex(config.recreateIndex())
+        .autoTune(true)
+        .useDistributedIndexing(config.useDistributedIndexing())
+        .force(config.force())
+        .maxRetries(config.maxRetries())
+        .initialBackoff(config.initialBackoff())
+        .maxBackoff(config.maxBackoff())
+        .searchIndexMappingLanguage(config.searchIndexMappingLanguage())
+        .afterCursor(config.afterCursor())
+        .slackBotToken(config.slackBotToken())
+        .slackChannel(config.slackChannel())
+        .timeSeriesMaxDays(config.timeSeriesMaxDays())
+        .timeSeriesEntityDays(config.timeSeriesEntityDays())
+        .build();
+  }
+
+  private static SearchClusterMetrics fetchClusterMetrics(SearchRepository searchRepository) {
+    try {
+      return SearchClusterMetrics.fetchClusterMetrics(
+          searchRepository, 0, searchRepository.getMaxDBConnections());
+    } catch (Exception e) {
+      LOG.warn("Failed to fetch cluster metrics for auto-tuning, using configured values", e);
+      return null;
+    }
+  }
 
   /**
    * Creates a ReindexingConfiguration from an EventPublisherJob.
@@ -69,7 +123,30 @@ public record ReindexingConfiguration(
         jobData.getSearchIndexMappingLanguage(),
         jobData.getAfterCursor(),
         jobData.getSlackBotToken(),
-        jobData.getSlackChannel());
+        jobData.getSlackChannel(),
+        jobData.getTimeSeriesMaxDays() != null
+            ? jobData.getTimeSeriesMaxDays()
+            : DEFAULT_TIME_SERIES_MAX_DAYS,
+        jobData.getTimeSeriesEntityDays() != null
+            ? jobData.getTimeSeriesEntityDays()
+            : Collections.emptyMap());
+  }
+
+  /**
+   * Returns the start timestamp for time series date filtering for the given entity type. Uses
+   * per-entity override if configured, otherwise falls back to the default timeSeriesMaxDays.
+   *
+   * @return start timestamp in millis, or -1 if no filtering should be applied (days <= 0)
+   */
+  public long getTimeSeriesStartTs(String entityType) {
+    int days = timeSeriesMaxDays;
+    if (timeSeriesEntityDays != null && timeSeriesEntityDays.containsKey(entityType)) {
+      days = timeSeriesEntityDays.get(entityType);
+    }
+    if (days <= 0) {
+      return -1;
+    }
+    return System.currentTimeMillis() - (days * 86_400_000L);
   }
 
   /** Check if Slack notifications are configured */
@@ -109,6 +186,8 @@ public record ReindexingConfiguration(
     private String afterCursor;
     private String slackBotToken;
     private String slackChannel;
+    private int timeSeriesMaxDays = DEFAULT_TIME_SERIES_MAX_DAYS;
+    private Map<String, Integer> timeSeriesEntityDays = Collections.emptyMap();
 
     public Builder entities(Set<String> entities) {
       this.entities = entities;
@@ -200,6 +279,16 @@ public record ReindexingConfiguration(
       return this;
     }
 
+    public Builder timeSeriesMaxDays(int timeSeriesMaxDays) {
+      this.timeSeriesMaxDays = timeSeriesMaxDays;
+      return this;
+    }
+
+    public Builder timeSeriesEntityDays(Map<String, Integer> timeSeriesEntityDays) {
+      this.timeSeriesEntityDays = timeSeriesEntityDays;
+      return this;
+    }
+
     public ReindexingConfiguration build() {
       return new ReindexingConfiguration(
           entities,
@@ -219,7 +308,9 @@ public record ReindexingConfiguration(
           searchIndexMappingLanguage,
           afterCursor,
           slackBotToken,
-          slackChannel);
+          slackChannel,
+          timeSeriesMaxDays,
+          timeSeriesEntityDays);
     }
   }
 }

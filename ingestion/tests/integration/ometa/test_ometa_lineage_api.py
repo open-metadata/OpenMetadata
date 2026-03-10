@@ -46,6 +46,9 @@ from metadata.generated.schema.entity.services.apiService import (
     ApiService,
     ApiServiceType,
 )
+from metadata.generated.schema.entity.services.connections.api.openAPISchemaURL import (
+    OpenAPISchemaURL,
+)
 from metadata.generated.schema.entity.services.connections.api.restConnection import (
     RestConnection,
     RestType,
@@ -148,7 +151,9 @@ def lineage_api_service(metadata):
         serviceType=ApiServiceType.Rest,
         connection=ApiConnection(
             config=RestConnection(
-                openAPISchemaURL="https://petstore.swagger.io/v2/swagger.json",
+                openAPISchemaConnection=OpenAPISchemaURL(
+                    openAPISchemaURL="https://petstore.swagger.io/v2/swagger.json"
+                ),
                 type=RestType.Rest,
             )
         ),

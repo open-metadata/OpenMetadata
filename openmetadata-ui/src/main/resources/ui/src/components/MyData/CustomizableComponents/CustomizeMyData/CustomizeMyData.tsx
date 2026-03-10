@@ -232,7 +232,13 @@ function CustomizeMyData({
             onReset={handleReset}
             onSave={handleSave}
           />
-          <div className="grid-wrapper">
+          {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
+          {/*
+            ReactGridLayout has known issues with RTL layouts, 
+            setting dir="ltr" on the container ensures correct behavior
+            without affecting the overall RTL layout of the page
+          */}
+          <div className="grid-wrapper" dir="ltr">
             <CustomiseLandingPageHeader
               overlappedContainer
               addedWidgetsList={addedWidgetsList}

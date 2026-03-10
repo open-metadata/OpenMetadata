@@ -320,9 +320,10 @@ class DorisSource(CommonDbSourceService):
         check if the table is partitioned table and return the partition details
         """
         try:
-            result = self.engine.execute(
-                sql.text(DORIS_PARTITION_DETAILS.format(schema_name, table_name))
-            ).all()
+            with self.engine.connect() as conn:
+                result = conn.execute(
+                    sql.text(DORIS_PARTITION_DETAILS.format(schema_name, table_name))
+                ).all()
 
             if result and result[0].PartitionKey != "":
                 partition_details = TablePartition(

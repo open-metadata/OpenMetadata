@@ -13,7 +13,7 @@ import traceback
 from typing import Iterable, Optional
 
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.engine.row import LegacyRow
+from sqlalchemy.engine.row import Row
 from sqlalchemy.sql.sqltypes import BINARY, BOOLEAN, VARBINARY
 
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
@@ -102,7 +102,7 @@ class Db2Source(CommonDbSourceService):
                 description = table_info["text"]
 
                 # DB2 connector does not return a str type
-                if isinstance(description, LegacyRow):
+                if isinstance(description, Row):
                     for table_description in description:
                         return table_description
 

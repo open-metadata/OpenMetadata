@@ -23,6 +23,9 @@ from metadata.generated.schema.api.data.createAPIEndpoint import (
 )
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import ApiRequestMethod
+from metadata.generated.schema.entity.services.connections.api.openAPISchemaURL import (
+    OpenAPISchemaURL,
+)
 from metadata.generated.schema.entity.services.connections.api.restConnection import (
     RestConnection,
 )
@@ -80,7 +83,10 @@ class RestSource(ApiServiceSource):
         Here is where filtering happens
         """
         try:
-            self.json_response = parse_openapi_schema(self.connection)
+            if isinstance(self.connection, dict):
+                self.json_response = self.connection
+            else:
+                self.json_response = parse_openapi_schema(self.connection)
             collections_list = []
             tags_collection_set = set()
             if self.json_response.get("tags", []):
@@ -222,6 +228,13 @@ class RestSource(ApiServiceSource):
             logger.warning(f"Error while parsing endpoint data: {err}")
         return None
 
+    def _get_fallback_url(self) -> Optional[AnyUrl]:
+        """Return openAPISchemaURL if available, otherwise None."""
+        schema_conn = self.config.serviceConnection.root.config.openAPISchemaConnection
+        if isinstance(schema_conn, OpenAPISchemaURL):
+            return schema_conn.openAPISchemaURL
+        return None
+
     def _generate_collection_url(self, collection_name: str) -> Optional[AnyUrl]:
         """generate collection url"""
         try:
@@ -231,7 +244,7 @@ class RestSource(ApiServiceSource):
                     f"Could not generate collection url for {collection_name}"
                     " because docURL is not present"
                 )
-                return self.config.serviceConnection.root.config.openAPISchemaURL
+                return self._get_fallback_url()
             base_url = str(base_url)
             if base_url.endswith("#/") or base_url.endswith("#"):
                 base_url = base_url.split("#")[0]
@@ -240,11 +253,11 @@ class RestSource(ApiServiceSource):
             logger.warning(
                 f"Error while generating collection url for {collection_name}: {err}"
             )
-        return self.config.serviceConnection.root.config.openAPISchemaURL
+        return self._get_fallback_url()
 
     def _generate_endpoint_url(
         self, collection: RESTCollection, endpoint: RESTEndpoint
-    ) -> AnyUrl:
+    ) -> Optional[AnyUrl]:
         """generate endpoint url"""
         try:
             if not collection.url or not endpoint.operationId:
@@ -253,11 +266,11 @@ class RestSource(ApiServiceSource):
                     f" collection url: {str(collection.url)},"
                     f" endpoint operation id: {str(endpoint.operationId)}"
                 )
-                return self.config.serviceConnection.root.config.openAPISchemaURL
+                return self._get_fallback_url()
             return AnyUrl(f"{str(collection.url)}/{endpoint.operationId}")
         except Exception as err:
             logger.warning(f"Error while generating collection url: {err}")
-        return self.config.serviceConnection.root.config.openAPISchemaURL
+        return self._get_fallback_url()
 
     def _get_api_request_method(self, method_type: str) -> Optional[str]:
         """fetch endpoint request method"""

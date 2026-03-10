@@ -127,6 +127,6 @@
       "$ref": "../../type/status.json"
     }
   },
-  "required": ["id", "name", "service", "endpointURL"],
+  "required": ["id", "name", "service"],
   "additionalProperties": false
 }

@@ -21,11 +21,11 @@ import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.util.ClientBuilder;
 import io.kubernetes.client.util.Config;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -45,32 +45,57 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
   private static final String SKIP_INIT = "skipInit";
   private static final String DEFAULT_NAMESPACE = "default";
   private static final String SECRET_KEY = "value";
+  private static final int K8S_SECRET_NAME_MAX_LENGTH = 253;
 
   private static KubernetesSecretsManager instance = null;
   @Getter private CoreV1Api apiClient;
   private String namespace;
 
-  private String prefix;
-
   private KubernetesSecretsManager(SecretsConfig secretsConfig) {
     super(SecretsManagerProvider.KUBERNETES, secretsConfig, 100);
-    prefix =
-        Objects.isNull(secretsConfig.prefix()) || secretsConfig.prefix().isEmpty()
-            ? "om"
-            : secretsConfig.prefix();
 
     // Check if we should skip initialization (for testing)
     boolean skipInit =
         Boolean.parseBoolean(
-            (String)
+            String.valueOf(
                 secretsConfig
                     .parameters()
                     .getAdditionalProperties()
-                    .getOrDefault(SKIP_INIT, "false"));
+                    .getOrDefault(SKIP_INIT, "false")));
 
     if (!skipInit) {
       initializeKubernetesClient();
     }
+  }
+
+  @Override
+  protected SecretsIdConfig builSecretsIdConfig() {
+    // Use '-' separator and no leading separator to produce K8s-compatible secret names directly.
+    // This way the DB stores names like "openmetadata-bot-name-config-jwttoken"
+    // which can be used as-is by any client (Java, Python) without sanitization.
+    return new SecretsIdConfig("-", Boolean.FALSE, "-", Pattern.compile("[^A-Za-z0-9\\-]"));
+  }
+
+  @Override
+  protected String buildSecretId(boolean addClusterPrefix, String... secretIdValues) {
+    String secretId = super.buildSecretId(addClusterPrefix, secretIdValues);
+    return sanitizeForK8s(secretId);
+  }
+
+  @VisibleForTesting
+  static String sanitizeForK8s(String name) {
+    String sanitized = name.replaceAll("-{2,}", "-");
+    sanitized = sanitized.replaceAll("^-+", "");
+    sanitized = sanitized.replaceAll("-+$", "");
+    if (sanitized.length() > K8S_SECRET_NAME_MAX_LENGTH) {
+      sanitized = sanitized.substring(0, K8S_SECRET_NAME_MAX_LENGTH);
+      sanitized = sanitized.replaceAll("-+$", "");
+    }
+    if (sanitized.isEmpty()) {
+      throw new SecretsManagerException(
+          "Cannot create K8s secret with empty name after sanitization: " + name);
+    }
+    return sanitized;
   }
 
   public static KubernetesSecretsManager getInstance(SecretsConfig secretsConfig) {
@@ -86,23 +111,23 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
 
       boolean inCluster =
           Boolean.parseBoolean(
-              (String)
+              String.valueOf(
                   getSecretsConfig()
                       .parameters()
                       .getAdditionalProperties()
-                      .getOrDefault(IN_CLUSTER, "false"));
+                      .getOrDefault(IN_CLUSTER, "false")));
 
       if (inCluster) {
         client = ClientBuilder.cluster().build();
         LOG.info("Using in-cluster Kubernetes configuration");
       } else {
         String kubeconfigPath =
-            (String) getSecretsConfig().parameters().getAdditionalProperties().get(KUBECONFIG_PATH);
+            Objects.toString(
+                getSecretsConfig().parameters().getAdditionalProperties().get(KUBECONFIG_PATH), "");
         if (StringUtils.isNotBlank(kubeconfigPath)) {
           client = Config.fromConfig(kubeconfigPath);
           LOG.info("Using kubeconfig from path: {}", kubeconfigPath);
         } else {
-          // Default to ~/.kube/config
           client = Config.defaultClient();
           LOG.info("Using default kubeconfig");
         }
@@ -111,23 +136,20 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
       Configuration.setDefaultApiClient(client);
       this.apiClient = new CoreV1Api(client);
 
-      // Set namespace
       this.namespace =
-          (String)
-              getSecretsConfig()
-                  .parameters()
-                  .getAdditionalProperties()
-                  .getOrDefault(NAMESPACE, DEFAULT_NAMESPACE);
+          Objects.toString(
+              getSecretsConfig().parameters().getAdditionalProperties().get(NAMESPACE),
+              DEFAULT_NAMESPACE);
       LOG.info("Kubernetes SecretsManager initialized with namespace: {}", namespace);
 
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerException("Failed to initialize Kubernetes client", e);
     }
   }
 
   @Override
   protected void storeSecret(String secretName, String secretValue) {
-    String k8sSecretName = sanitizeSecretName(secretName);
+    String k8sSecretName = secretName;
 
     try {
       V1Secret secret = new V1Secret();
@@ -168,7 +190,7 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
 
   @Override
   protected void updateSecret(String secretName, String secretValue) {
-    String k8sSecretName = sanitizeSecretName(secretName);
+    String k8sSecretName = secretName;
 
     try {
       // Get existing secret
@@ -196,7 +218,7 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
 
   @Override
   protected String getSecret(String secretName) {
-    String k8sSecretName = sanitizeSecretName(secretName);
+    String k8sSecretName = secretName;
 
     try {
       V1Secret secret = apiClient.readNamespacedSecret(k8sSecretName, namespace).execute();
@@ -221,7 +243,7 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
 
   @Override
   public boolean existSecret(String secretName) {
-    String k8sSecretName = sanitizeSecretName(secretName);
+    String k8sSecretName = secretName;
 
     try {
       apiClient.readNamespacedSecret(k8sSecretName, namespace).execute();
@@ -237,7 +259,7 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
 
   @Override
   protected void deleteSecretInternal(String secretName) {
-    String k8sSecretName = sanitizeSecretName(secretName);
+    String k8sSecretName = secretName;
 
     try {
       apiClient.deleteNamespacedSecret(k8sSecretName, namespace).execute();
@@ -249,29 +271,6 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
       }
       LOG.debug("Secret {} already deleted or does not exist", k8sSecretName);
     }
-  }
-
-  /**
-   * Sanitize secret name to be Kubernetes compliant.
-   * Kubernetes secret names must be lowercase alphanumeric or '-',
-   * and must start and end with an alphanumeric character.
-   */
-  private String sanitizeSecretName(String secretName) {
-    // Remove leading slashes
-    String sanitized = secretName.replaceAll("^/+", "");
-    sanitized = sanitized.replaceAll("[^a-zA-Z0-9-]", "-");
-    sanitized = sanitized.toLowerCase();
-    sanitized = sanitized.replaceAll("-+", "-");
-    sanitized = sanitized.replaceAll("^-+|-+$", "");
-
-    if (sanitized.length() > 253) {
-      String hash = Integer.toHexString(secretName.hashCode());
-      sanitized = sanitized.substring(0, 240) + "-" + hash;
-    }
-    if (!sanitized.matches("^[a-z0-9].*")) {
-      sanitized = prefix + "-" + sanitized;
-    }
-    return sanitized;
   }
 
   @VisibleForTesting

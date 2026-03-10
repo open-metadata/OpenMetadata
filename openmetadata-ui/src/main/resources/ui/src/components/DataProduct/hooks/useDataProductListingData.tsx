@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Box, Typography } from '@mui/material';
 import { useCallback, useMemo } from 'react';
 import { TABLE_CARD_PAGE_SIZE } from '../../../constants/constants';
 import {
@@ -20,12 +21,14 @@ import {
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { useListingData } from '../../common/atoms/compositions/useListingData';
 import {
   CellRenderer,
   ColumnConfig,
   ListingData,
 } from '../../common/atoms/shared/types';
+import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 
 export const useDataProductListingData = (): ListingData<DataProduct> => {
   const filterKeys = useMemo(() => DATAPRODUCT_DEFAULT_QUICK_FILTERS, []);
@@ -53,7 +56,12 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
 
   const columns: ColumnConfig<DataProduct>[] = useMemo(
     () => [
-      { key: 'name', labelKey: 'label.data-product', render: 'entityName' },
+      {
+        key: 'name',
+        labelKey: 'label.data-product',
+        render: 'custom',
+        customRenderer: 'dataProductName',
+      },
       { key: 'owners', labelKey: 'label.owner', render: 'owners' },
       {
         key: 'glossaryTerms',
@@ -78,7 +86,45 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
     [getGlossaryTags, getClassificationTags, getDomains]
   );
 
-  const renderers: CellRenderer<DataProduct> = useMemo(() => ({}), []);
+  const renderers: CellRenderer<DataProduct> = useMemo(
+    () => ({
+      dataProductName: (entity: DataProduct) => {
+        const entityName = getEntityName(entity);
+        const showName =
+          entity.displayName &&
+          entity.name &&
+          entity.displayName !== entity.name;
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <EntityAvatar entity={entity} size={40} />
+            <Box>
+              <Typography
+                sx={{
+                  fontWeight: 500,
+                  color: 'text.primary',
+                  fontSize: '1rem',
+                  lineHeight: '24px',
+                }}>
+                {entityName}
+              </Typography>
+              {showName && (
+                <Typography
+                  sx={{
+                    fontSize: '0.75rem',
+                    color: 'text.secondary',
+                    lineHeight: '16px',
+                  }}>
+                  {entity.name}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        );
+      },
+    }),
+    []
+  );
 
   const listingData = useListingData<DataProduct>({
     searchIndex: SearchIndex.DATA_PRODUCT,

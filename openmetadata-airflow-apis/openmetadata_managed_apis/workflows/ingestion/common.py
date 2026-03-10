@@ -171,11 +171,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         except (ValidationError, InvalidWorkflowException) as scoped_error:
             if isinstance(scoped_error, ValidationError):
                 # Let's catch validations of internal Workflow models, not the Workflow itself
-                object_error = (
-                    scoped_error.model.__name__
-                    if scoped_error.model is not None
-                    else "workflow"
-                )
+                object_error = getattr(scoped_error, "title", None) or "workflow"
                 raise ParsingConfigurationError(
                     f"We encountered an error parsing the configuration of your {object_error}.\n"
                     f"{parse_validation_err(scoped_error)}"

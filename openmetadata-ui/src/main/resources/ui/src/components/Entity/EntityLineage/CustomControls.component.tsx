@@ -46,6 +46,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 import { QueryFieldInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { exportLineageByEntityCountAsync } from '../../../rest/lineageAPI';
 import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
@@ -83,13 +84,15 @@ const CustomControls: FC<{
     setSelectedQuickFilters,
     nodes,
     selectedQuickFilters,
-    lineageConfig,
     onExportClick,
-    onLineageConfigUpdate,
-    onLineageEditClick,
+  } = useLineageProvider();
+  const {
+    lineageConfig,
+    toggleEditMode,
     isEditMode,
     platformView,
-  } = useLineageProvider();
+    setLineageConfig,
+  } = useLineageStore();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [nodeDepthAnchorEl, setNodeDepthAnchorEl] =
@@ -297,7 +300,7 @@ const CustomControls: FC<{
 
   const handleDialogSave = (newConfig: LineageConfig) => {
     // Implement save logic here
-    onLineageConfigUpdate?.(newConfig);
+    setLineageConfig(newConfig);
     setDialogVisible(false);
   };
 
@@ -363,7 +366,7 @@ const CustomControls: FC<{
           color={isEditMode ? 'primary' : 'default'}
           data-testid="edit-lineage"
           size="large"
-          onClick={onLineageEditClick}>
+          onClick={toggleEditMode}>
           <EditIcon />
         </StyledIconButton>
       </Tooltip>
@@ -374,7 +377,7 @@ const CustomControls: FC<{
     platformView,
     entityType,
     isEditMode,
-    onLineageEditClick,
+    toggleEditMode,
     t,
   ]);
 

@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Stack, Tab, Tabs, useTheme } from '@mui/material';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import Qs from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
@@ -38,7 +38,6 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
   const { isTourOpen } = useTourProvider();
   const navigate = useNavigate();
   const location = useCustomLocation();
-  const theme = useTheme();
   const { fqn: tableFqn } = useFqn();
   const { subTab: activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
     useParams<{ subTab: ProfilerTabPath }>();
@@ -72,7 +71,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
     return <ActiveComponent />;
   }, [activeTab]);
 
-  const handleTabChangeMUI = (_: React.SyntheticEvent, newValue: string) => {
+  const handleTabChange = (key: string) => {
     const param = location.search;
     const searchData = Qs.parse(
       param.startsWith('?') ? param.substring(1) : param
@@ -84,10 +83,10 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
           EntityType.TABLE,
           tableFqn,
           EntityTabs.PROFILER,
-          newValue as ProfilerTabPath
+          key as ProfilerTabPath
         ),
         search:
-          newValue === ProfilerTabPath.INCIDENTS
+          key === ProfilerTabPath.INCIDENTS
             ? undefined
             : Qs.stringify(searchData),
       },
@@ -169,89 +168,48 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
         className="data-observability-tab-container"
         data-testid="table-profiler-container"
         id="profilerDetails">
-        <Stack
-          alignItems="center"
-          direction="row"
-          justifyContent="space-between"
-          spacing={4}>
+        <div className="tw:flex tw:items-center tw:justify-between">
           {isEmpty(activeColumnFqn) ? (
             <Tabs
-              sx={(theme) => ({
-                width: 'auto',
-                display: 'inline-flex',
-                '.MuiTab-root': {
-                  color: theme.palette.grey['700'],
-                  transition:
-                    'background-color 0.2s ease-in, color 0.2s ease-in',
-                  borderRadius: '6px',
-                },
-                '.Mui-selected, .MuiTab-root:hover': {
-                  backgroundColor: `${theme.palette.primary.main} !important`,
-                  color: `${theme.palette.primary.contrastText} !important`,
-                },
-                '.MuiButtonBase-root': {
-                  minHeight: 'unset',
-                },
-                '.MuiTabs-indicator': {
-                  display: 'none',
-                },
-                '.MuiTabs-scroller': {
-                  padding: '4px',
-                  height: '100%',
-                  borderRadius: '10px',
-                },
-                '.MuiTab-root:not(:first-of-type)': {
-                  marginLeft: '4px',
-                },
-                '& .tabs-label-container': {
-                  lineHeight: '18px',
-                },
-              })}
-              value={activeTab}
-              onChange={handleTabChangeMUI}>
-              {tabOptions.map(({ label, key }) => (
-                <Tab
-                  key={key}
-                  label={
+              className="tw:w-auto"
+              selectedKey={activeTab}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List type="button-border">
+                {tabOptions.map(({ label, key }) => (
+                  <Tabs.Item
+                    className={({ isSelected, isHovered }) =>
+                      isSelected || isHovered
+                        ? 'tw:bg-brand-solid tw:text-primary_on-brand'
+                        : ''
+                    }
+                    id={key}
+                    key={key}>
                     <TabsLabel count={tabCounts?.[key]} id={key} name={label} />
-                  }
-                  value={key}
-                />
-              ))}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
             </Tabs>
           ) : (
-            <Button
-              startIcon={
-                <DropDownIcon className="transform-90" height={16} width={16} />
-              }
-              sx={{
-                color: theme.palette.primary.main,
-                fontWeight: 600,
-                fontSize: theme.typography.fontSize,
-                '&:hover': {
-                  color: theme.palette.primary.main,
-                },
-              }}
-              variant="text"
-              onClick={() => {
-                navigate({
-                  pathname: getEntityDetailsPath(
-                    EntityType.TABLE,
-                    tableFqn,
-                    EntityTabs.PROFILER,
-                    ProfilerTabPath.COLUMN_PROFILE
-                  ),
-                  search: Qs.stringify({
-                    ...searchData,
-                    activeColumnFqn: undefined,
-                  }),
-                });
+            <Link
+              className="tw:flex tw:items-center tw:gap-1 tw:font-semibold tw:no-underline!"
+              to={{
+                pathname: getEntityDetailsPath(
+                  EntityType.TABLE,
+                  tableFqn,
+                  EntityTabs.PROFILER,
+                  ProfilerTabPath.COLUMN_PROFILE
+                ),
+                search: Qs.stringify({
+                  ...searchData,
+                  activeColumnFqn: undefined,
+                }),
               }}>
+              <DropDownIcon className="transform-90" height={16} width={16} />
               {t(PAGE_HEADERS.COLUMN_PROFILE.header)}
-            </Button>
+            </Link>
           )}
           <TabFilters />
-        </Stack>
+        </div>
         <div className="data-observability-content-panel">
           {activeTabComponent}
         </div>

@@ -5,7 +5,8 @@ source:
     config:
       hostPort: my-host:5439
       username: username
-      password: strongPassword
+      authType:
+        password: strongPassword
       database: databaseToConnect
       type: Redshift
   sourceConfig:

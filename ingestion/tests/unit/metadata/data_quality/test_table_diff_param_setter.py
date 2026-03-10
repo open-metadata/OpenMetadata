@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import Column as SAColumn
 from sqlalchemy import MetaData, String, create_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
     BaseTableParameter,
@@ -127,7 +127,7 @@ SERVICE_CONNECTION_CONFIG = MysqlConnection(
                 ),
                 serviceType=DatabaseServiceType.Postgres,
             ),
-            "postgresql://test:pass]word[test@localhost:5432/database",
+            "postgresql://test:pass%5Dword%5Btest@localhost:5432/database",
             id="postgres_special_chars_in_password",
         ),
         pytest.param(
@@ -146,7 +146,7 @@ SERVICE_CONNECTION_CONFIG = MysqlConnection(
                 ),
                 serviceType=DatabaseServiceType.Mysql,
             ),
-            "mysql://test:p%40ss]w#rd!@localhost:3306/schema",
+            "mysql://test:p%40ss%5Dw%23rd%21@localhost:3306/schema",
             id="mysql_special_chars_in_password",
         ),
     ],
@@ -181,7 +181,9 @@ def test_partitioned_where_clause(input, expected):
     engine = create_engine("sqlite://")
     session = create_and_bind_session(engine)
     metadata_obj = MetaData()
-    Base = declarative_base(metadata=metadata_obj)
+
+    class Base(DeclarativeBase):
+        metadata = metadata_obj
 
     class MyTable(Base):
         __tablename__ = "customer"

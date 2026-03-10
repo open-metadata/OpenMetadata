@@ -45,6 +45,11 @@ def _extract_hostname(git_host_url) -> str:
     return hostname
 
 
+def _is_azure_devops_host(hostname: str) -> bool:
+    """Check if the hostname belongs to Azure DevOps"""
+    return "dev.azure.com" in hostname or "visualstudio.com" in hostname
+
+
 def _clone_repo(
     repo_name: str,
     path: str,
@@ -68,7 +73,18 @@ def _clone_repo(
         if isinstance(credential, GitHubCredentials):
             git_host = credential.gitHostURL or "https://github.com"
             hostname = _extract_hostname(git_host)
-            url = f"https://x-oauth-basic:{credential.token.root.get_secret_value()}@{hostname}/{repo_name}.git"
+            token = credential.token.root.get_secret_value()
+            if _is_azure_devops_host(hostname):
+                # Azure DevOps URL format:
+                # https://{PAT}@dev.azure.com/{org}/{project}/_git/{repo}
+                # repo_name comes in as "{org}/{project}/{repo}" from __init_repo
+                # We need to split off the last segment as the actual repo name
+                parts = repo_name.rsplit("/", 1)
+                owner_path = parts[0]  # {org}/{project}
+                actual_repo = parts[1] if len(parts) > 1 else repo_name
+                url = f"https://{token}@{hostname}/{owner_path}/_git/{actual_repo}"
+            else:
+                url = f"https://x-oauth-basic:{token}@{hostname}/{repo_name}.git"
         elif isinstance(credential, BitBucketCredentials):
             git_host = credential.gitHostURL or "https://bitbucket.org"
             hostname = _extract_hostname(git_host)

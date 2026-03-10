@@ -15,6 +15,7 @@ TimescaleDB source module
 import traceback
 from typing import Iterable, Optional, Tuple
 
+from sqlalchemy import text
 from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.entity.data.table import (
@@ -75,7 +76,8 @@ class TimescaleSource(PostgresSource):
         """
         super().prepare()
         try:
-            result = self.engine.execute(TIMESCALE_CHECK_EXTENSION).first()
+            with self.engine.connect() as conn:
+                result = conn.execute(text(TIMESCALE_CHECK_EXTENSION)).first()
             if result:
                 self.timescaledb_installed = result.timescaledb_installed
                 logger.info(
@@ -147,10 +149,11 @@ class TimescaleSource(PostgresSource):
         Query timescaledb_information.hypertables for metadata
         """
         try:
-            result = self.engine.execute(
-                TIMESCALE_GET_HYPERTABLE_INFO,
-                {"table_name": table_name, "schema_name": schema_name},
-            ).first()
+            with self.engine.connect() as conn:
+                result = conn.execute(
+                    text(TIMESCALE_GET_HYPERTABLE_INFO),
+                    {"table_name": table_name, "schema_name": schema_name},
+                ).first()
 
             if result:
                 return HypertableInfo.model_validate(dict(result._mapping))
@@ -169,10 +172,11 @@ class TimescaleSource(PostgresSource):
         Query timescaledb_information.compression_settings for compression config
         """
         try:
-            result = self.engine.execute(
-                TIMESCALE_GET_COMPRESSION_SETTINGS,
-                {"table_name": table_name, "schema_name": schema_name},
-            ).first()
+            with self.engine.connect() as conn:
+                result = conn.execute(
+                    text(TIMESCALE_GET_COMPRESSION_SETTINGS),
+                    {"table_name": table_name, "schema_name": schema_name},
+                ).first()
 
             if result:
                 return CompressionSettings.model_validate(dict(result._mapping))

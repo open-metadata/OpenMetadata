@@ -26,10 +26,7 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToBeNotNull import (
     BaseColumnValuesToBeNotNullValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    calculate_impact_score_pandas,
-)
+from metadata.data_quality.validations.impact_score import calculate_impact_score_pandas
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_pandas,
@@ -62,6 +59,7 @@ class ColumnValuesToBeNotNullValidator(
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
@@ -88,13 +86,13 @@ class ColumnValuesToBeNotNullValidator(
 
         try:
             dfs = self.runner
-            null_count_impl = Metrics.NULL_COUNT(column).get_pandas_computation()
-            row_count_impl = Metrics.ROW_COUNT().get_pandas_computation()
+            null_count_impl = Metrics.nullCount(column).get_pandas_computation()
+            row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
                 lambda: {
-                    Metrics.NULL_COUNT.name: null_count_impl.create_accumulator(),
-                    Metrics.ROW_COUNT.name: row_count_impl.create_accumulator(),
+                    Metrics.nullCount.name: null_count_impl.create_accumulator(),
+                    Metrics.rowCount.name: row_count_impl.create_accumulator(),
                 }
             )
 
@@ -106,32 +104,32 @@ class ColumnValuesToBeNotNullValidator(
                     dimension_value = self.format_dimension_value(dimension_value)
 
                     dimension_aggregates[dimension_value][
-                        Metrics.NULL_COUNT.name
+                        Metrics.nullCount.name
                     ] = null_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.NULL_COUNT.name],
+                        dimension_aggregates[dimension_value][Metrics.nullCount.name],
                         group_df,
                     )
                     dimension_aggregates[dimension_value][
-                        Metrics.ROW_COUNT.name
+                        Metrics.rowCount.name
                     ] = row_count_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.ROW_COUNT.name],
+                        dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
                 null_count = null_count_impl.aggregate_accumulator(
-                    agg[Metrics.NULL_COUNT.name]
+                    agg[Metrics.nullCount.name]
                 )
                 row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.ROW_COUNT.name]
+                    agg[Metrics.rowCount.name]
                 )
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.NULL_COUNT.name: null_count,
-                        Metrics.ROW_COUNT.name: row_count,
+                        Metrics.nullCount.name: null_count,
+                        Metrics.rowCount.name: row_count,
                         DIMENSION_TOTAL_COUNT_KEY: row_count,
                         DIMENSION_FAILED_COUNT_KEY: null_count,
                     }
@@ -149,27 +147,15 @@ class ColumnValuesToBeNotNullValidator(
                 results_df = aggregate_others_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
-                    top_n=DEFAULT_TOP_DIMENSIONS,
+                    top_n=top_n,
                 )
 
-                for row_dict in results_df.to_dict("records"):
-                    metric_values = self._build_metric_values_from_row(
-                        row_dict, metrics_to_compute, test_params
-                    )
-
-                    evaluation = self._evaluate_test_condition(
-                        metric_values, test_params
-                    )
-
-                    dimension_result = self._create_dimension_result(
-                        row_dict,
-                        dimension_col.name,
-                        metric_values,
-                        evaluation,
-                        test_params,
-                    )
-
-                    dimension_results.append(dimension_result)
+                dimension_results = self._process_dimension_rows(
+                    results_df.to_dict("records"),
+                    dimension_col.name,
+                    metrics_to_compute,
+                    test_params,
+                )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

@@ -132,6 +132,10 @@
       "description": "Roles that a team is inheriting through membership in teams that have set team default roles.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "defaultPersona": {
+      "description": "Default persona for all users in this team. Only applicable to Group type teams.",
+      "$ref": "../../type/entityReference.json"
+    },
     "policies": {
       "description": "Policies that is attached to this team.",
       "$ref": "../../type/entityReferenceList.json"

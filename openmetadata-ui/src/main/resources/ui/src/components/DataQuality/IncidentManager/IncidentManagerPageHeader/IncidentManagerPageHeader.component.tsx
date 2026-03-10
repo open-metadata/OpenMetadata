@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@mui/material';
-import { Divider, Skeleton, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Divider, Skeleton, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { first, isUndefined, last } from 'lodash';
@@ -257,13 +257,17 @@ const IncidentManagerPageHeader = ({
       return (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography.Text className="d-flex flex-col gap-3 text-xs whitespace-nowrap">
-            <span className="text-blue font-medium text-sm">
+          <Typography
+            as="span"
+            className="d-flex flex-col gap-3 text-xs whitespace-nowrap">
+            <Typography as="span" className="text-blue font-medium text-sm">
               {t('label.incident-status')}
-            </span>
+            </Typography>
 
-            <span>{t('label.no-entity', { entity: t('label.incident') })}</span>
-          </Typography.Text>
+            <Typography as="span">
+              {t('label.no-entity', { entity: t('label.incident') })}
+            </Typography>
+          </Typography>
         </>
       );
     }
@@ -275,10 +279,12 @@ const IncidentManagerPageHeader = ({
         {activeTask && (
           <>
             <Divider className="self-center m-x-sm" type="vertical" />
-            <Typography.Text className="d-flex flex-col gap-3 text-xs whitespace-nowrap">
-              <span className="text-blue text-sm font-medium">
+            <Typography
+              as="span"
+              className="d-flex flex-col gap-3 text-xs whitespace-nowrap">
+              <Typography as="span" className="text-blue text-sm font-medium">
                 {t('label.incident')}
-              </span>
+              </Typography>
 
               <Link
                 className="font-medium flex items-center gap-2"
@@ -287,11 +293,13 @@ const IncidentManagerPageHeader = ({
                 {`#${activeTask?.task?.id}`}
                 <InternalLinkIcon className="text-grey-muted" width="14px" />
               </Link>
-            </Typography.Text>
+            </Typography>
           </>
         )}
         <Divider className="self-center m-x-sm" type="vertical" />
-        <Typography.Text className="d-flex flex-col gap-2 text-xs whitespace-nowrap">
+        <Typography
+          as="span"
+          className="d-flex flex-col gap-2 text-xs whitespace-nowrap">
           <TestCaseIncidentManagerStatus
             newLook
             data={testCaseStatusData}
@@ -299,9 +307,9 @@ const IncidentManagerPageHeader = ({
             headerName={t('label.incident-status')}
             onSubmit={onIncidentStatusUpdate}
           />
-        </Typography.Text>
+        </Typography>
         <Divider className="self-center m-x-sm" type="vertical" />
-        <Box data-testid="assignee">
+        <div className="tw:w-full" data-testid="assignee">
           <OwnerLabel
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
@@ -316,9 +324,11 @@ const IncidentManagerPageHeader = ({
             })}
             onUpdate={handleAssigneeUpdate}
           />
-        </Box>
+        </div>
         <Divider className="self-center m-x-sm" type="vertical" />
-        <Typography.Text className="d-flex flex-col  gap-2 whitespace-nowrap">
+        <Typography
+          as="span"
+          className="d-flex flex-col gap-2 whitespace-nowrap">
           <Severity
             newLook
             hasPermission={hasEditStatusPermission}
@@ -326,7 +336,7 @@ const IncidentManagerPageHeader = ({
             severity={testCaseStatusData.severity}
             onSubmit={handleSeverityUpdate}
           />
-        </Typography.Text>
+        </Typography>
       </>
     );
   }, [testCaseStatusData, isLoading, activeTask, hasEditStatusPermission]);
@@ -348,10 +358,12 @@ const IncidentManagerPageHeader = ({
       {tableFqn && (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
-            <span className="text-blue text-sm font-medium">
+          <Typography
+            as="span"
+            className="flex flex-col gap-3 text-xs whitespace-nowrap">
+            <Typography as="span" className="text-blue text-sm font-medium">
               {t('label.table')}
-            </span>
+            </Typography>
 
             <Link
               className="font-medium flex-center gap-2"
@@ -365,48 +377,63 @@ const IncidentManagerPageHeader = ({
               {getNameFromFQN(tableFqn)}
               <InternalLinkIcon className="text-grey-muted" width="14px" />
             </Link>
-          </Typography.Text>
+          </Typography>
         </>
       )}
       {dimensionKey && (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
-            <span className="text-blue text-sm font-medium">
+          <Typography
+            as="span"
+            className="flex flex-col gap-3 text-xs whitespace-nowrap">
+            <Typography as="span" className="text-blue text-sm font-medium">
               {t('label.dimension')}
-            </span>
-            <span className="font-medium" data-testid="dimension-key">
+            </Typography>
+            <Typography
+              as="span"
+              className="font-medium"
+              data-testid="dimension-key">
               {dimensionKey}
-            </span>
-          </Typography.Text>
+            </Typography>
+          </Typography>
         </>
       )}
       {columnName && (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
-            <span className="text-blue text-sm font-medium">
+          <Typography
+            as="span"
+            className="flex flex-col gap-3 text-xs whitespace-nowrap">
+            <Typography as="span" className="text-blue text-sm font-medium">
               {t('label.column')}
-            </span>
-            <span className="font-medium" data-testid="test-column-name">
+            </Typography>
+            <Typography
+              as="span"
+              className="font-medium"
+              data-testid="test-column-name">
               {columnName}
-            </span>
-          </Typography.Text>
+            </Typography>
+          </Typography>
         </>
       )}
       <Divider className="self-center m-x-sm" type="vertical" />
-      <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
-        <span className="text-blue text-sm font-medium">
+      <Typography
+        as="span"
+        className="flex flex-col gap-3 text-xs whitespace-nowrap">
+        <Typography as="span" className="text-blue text-sm font-medium">
           {t('label.test-type')}
-        </span>
+        </Typography>
         <Tooltip
           placement="bottom"
           title={testCaseData?.testDefinition.description}>
-          <span className="font-medium" data-testid="test-definition-name">
+          <Typography
+            as="span"
+            className="font-medium"
+            data-testid="test-definition-name">
             {getEntityName(testCaseData?.testDefinition)}
-          </span>
+          </Typography>
         </Tooltip>
-      </Typography.Text>
+      </Typography>
     </Space>
   );
 };

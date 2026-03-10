@@ -1074,3 +1074,207 @@ class TestKafkaConnectLineageRefactoring(TestCase):
                         messaging_service_name="KafkaProd",
                     )
                     self.assertEqual(len(result.topics), 2)
+
+
+_SEARCH_CONTAINER = "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.search_container_from_es"
+_FQN_BUILD = "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build"
+_STATIC_FQN = "DearlakeS3.dear-lake-stg.raw_kafka"
+
+
+class TestGetDatasetEntityContainerSearch:
+    """
+    Tests for the container entity lookup in get_dataset_entity(), covering both the
+    exact-FQN fast path and the prefix-wildcard fallback introduced to handle containers
+    whose names include a topic-name suffix (e.g. raw_kafka/topic-01.v1).
+    """
+
+    def _make_source(self):
+        from metadata.ingestion.source.pipeline.kafkaconnect.metadata import (
+            KafkaconnectSource,
+        )
+
+        source = object.__new__(KafkaconnectSource)
+        source.metadata = MagicMock()
+        source.service_connection = MagicMock(spec=KafkaConnectConnection)
+        source.service_connection.hostPort = "http://localhost:8083"
+        return source
+
+    def _make_pipeline(self):
+        return KafkaConnectPipelineDetails(name="s3-sink", conn_type="sink")
+
+    def test_exact_match_returned_without_prefix_search(self):
+        """Exact FQN hit → prefix-search fallback must never be triggered."""
+        source = self._make_source()
+        pipeline = self._make_pipeline()
+        dataset = KafkaConnectDatasetDetails(
+            container_name="raw_kafka", parent_container="dear-lake-stg"
+        )
+
+        mock_container = MagicMock()
+        source.metadata.get_by_name = MagicMock(return_value=mock_container)
+
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+            with patch(_SEARCH_CONTAINER) as mock_search:
+                with patch.object(
+                    source, "get_storage_service_names", return_value=["DearlakeS3"]
+                ):
+                    result = source.get_dataset_entity(pipeline, dataset)
+
+        assert result is mock_container
+        mock_search.assert_not_called()
+
+    def test_prefix_search_used_when_exact_match_fails(self):
+        """When get_by_name returns None, search_container_from_es must be attempted."""
+        source = self._make_source()
+        pipeline = self._make_pipeline()
+        dataset = KafkaConnectDatasetDetails(
+            container_name="raw_kafka", parent_container="dear-lake-stg"
+        )
+
+        mock_container = MagicMock()
+        mock_container.fullyQualifiedName.root = (
+            "DearlakeS3.dear-lake-stg.raw_kafka/topic-01.v1"
+        )
+        source.metadata.get_by_name = MagicMock(return_value=None)
+
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+            with patch(_SEARCH_CONTAINER, return_value=mock_container) as mock_search:
+                with patch.object(
+                    source, "get_storage_service_names", return_value=[None]
+                ):
+                    result = source.get_dataset_entity(pipeline, dataset)
+
+        assert result is mock_container
+        mock_search.assert_called_once()
+
+    def test_container_with_topic_suffix_found_via_prefix_search(self):
+        """
+        Core bug scenario: bucket=dear-lake-stg, prefix=raw_kafka, topic=topic-01.v1.
+        The ingested container FQN ends with raw_kafka/topic-01.v1 — exact match fails
+        and the fallback must be called with container_name='raw_kafka*' so that
+        Elasticsearch prefix-matches the suffixed FQN.
+        """
+        source = self._make_source()
+        pipeline = self._make_pipeline()
+        dataset = KafkaConnectDatasetDetails(
+            container_name="raw_kafka", parent_container="dear-lake-stg"
+        )
+
+        container_with_suffix = MagicMock()
+        container_with_suffix.fullyQualifiedName.root = (
+            "DearlakeS3.dear-lake-stg.raw_kafka/topic-01.v1"
+        )
+        source.metadata.get_by_name = MagicMock(return_value=None)
+
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+            with patch(
+                _SEARCH_CONTAINER, return_value=container_with_suffix
+            ) as mock_search:
+                with patch.object(
+                    source, "get_storage_service_names", return_value=["DearlakeS3"]
+                ):
+                    result = source.get_dataset_entity(pipeline, dataset)
+
+        assert result is container_with_suffix
+        mock_search.assert_called_once_with(
+            metadata=source.metadata,
+            container_name="raw_kafka*",
+            service_name="DearlakeS3",
+            parent_container="dear-lake-stg",
+        )
+
+    def test_prefix_search_passes_parent_container(self):
+        """search_container_from_es must receive parent_container when it is set."""
+        source = self._make_source()
+        pipeline = self._make_pipeline()
+        dataset = KafkaConnectDatasetDetails(
+            container_name="raw_kafka", parent_container="dear-lake-stg"
+        )
+
+        source.metadata.get_by_name = MagicMock(return_value=None)
+
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+            with patch(_SEARCH_CONTAINER, return_value=None) as mock_search:
+                with patch.object(
+                    source, "get_storage_service_names", return_value=[None]
+                ):
+                    source.get_dataset_entity(pipeline, dataset)
+
+        _, call_kwargs = mock_search.call_args
+        assert call_kwargs["container_name"] == "raw_kafka*"
+        assert call_kwargs["parent_container"] == "dear-lake-stg"
+
+    def test_prefix_search_without_parent_container(self):
+        """search_container_from_es must still be called when parent_container is absent."""
+        source = self._make_source()
+        pipeline = self._make_pipeline()
+        dataset = KafkaConnectDatasetDetails(container_name="raw_kafka")
+
+        source.metadata.get_by_name = MagicMock(return_value=None)
+
+        with patch(_FQN_BUILD, return_value="DearlakeS3.raw_kafka"):
+            with patch(_SEARCH_CONTAINER, return_value=None) as mock_search:
+                with patch.object(
+                    source, "get_storage_service_names", return_value=[None]
+                ):
+                    source.get_dataset_entity(pipeline, dataset)
+
+        _, call_kwargs = mock_search.call_args
+        assert call_kwargs["container_name"] == "raw_kafka*"
+        assert call_kwargs["parent_container"] is None
+
+    def test_prefix_search_scoped_to_configured_storage_service(self):
+        """When a specific storage service is configured it is forwarded as service_name."""
+        source = self._make_source()
+        pipeline = self._make_pipeline()
+        dataset = KafkaConnectDatasetDetails(
+            container_name="raw_kafka", parent_container="dear-lake-stg"
+        )
+
+        source.metadata.get_by_name = MagicMock(return_value=None)
+
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+            with patch(_SEARCH_CONTAINER, return_value=None) as mock_search:
+                with patch.object(
+                    source, "get_storage_service_names", return_value=["DearlakeS3"]
+                ):
+                    source.get_dataset_entity(pipeline, dataset)
+
+        _, call_kwargs = mock_search.call_args
+        assert call_kwargs["service_name"] == "DearlakeS3"
+
+    def test_returns_none_when_both_searches_fail(self):
+        """If neither exact match nor prefix search finds anything, None is returned."""
+        source = self._make_source()
+        pipeline = self._make_pipeline()
+        dataset = KafkaConnectDatasetDetails(
+            container_name="raw_kafka", parent_container="dear-lake-stg"
+        )
+
+        source.metadata.get_by_name = MagicMock(return_value=None)
+
+        with patch(_FQN_BUILD, return_value=_STATIC_FQN):
+            with patch(_SEARCH_CONTAINER, return_value=None):
+                with patch.object(
+                    source, "get_storage_service_names", return_value=[None]
+                ):
+                    result = source.get_dataset_entity(pipeline, dataset)
+
+        assert result is None
+
+    def test_prefix_search_not_attempted_when_no_container_name(self):
+        """If container_name is absent, the prefix search block must be skipped."""
+        source = self._make_source()
+        pipeline = self._make_pipeline()
+        dataset = KafkaConnectDatasetDetails(parent_container="dear-lake-stg")
+
+        source.metadata.get_by_name = MagicMock(return_value=None)
+
+        with patch(_FQN_BUILD, return_value=None):
+            with patch(_SEARCH_CONTAINER) as mock_search:
+                with patch.object(
+                    source, "get_storage_service_names", return_value=[None]
+                ):
+                    source.get_dataset_entity(pipeline, dataset)
+
+        mock_search.assert_not_called()

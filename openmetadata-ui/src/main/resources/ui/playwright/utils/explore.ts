@@ -311,10 +311,5 @@ export const navigateToExploreAndSelectEntity = async (
     timeout: 30000,
   });
 
-  await openEntitySummaryPanel(
-    page,
-    entityName,
-    endpoint,
-    fullyQualifiedName
-  );
+  await openEntitySummaryPanel(page, entityName, endpoint, fullyQualifiedName);
 };

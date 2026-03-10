@@ -38,6 +38,7 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.ingestion.source.database.trino.queries import (
     TRINO_TABLE_COMMENTS,
     TRINO_VIEW_DEFINITION,
+    TRINO_VIEW_DEFINITION_FALLBACK,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
@@ -109,7 +110,7 @@ def _get_columns(
     preparer = connection.dialect.identifier_preparer
     query = f"SHOW COLUMNS FROM {preparer.quote(schema)}.{preparer.quote(table_name)}"
 
-    res = connection.execute(sql.text(query), schema=schema, table=table_name)
+    res = connection.execute(sql.text(query))
     columns = []
     for record in res:
         col_type = datatype.parse_sqltype(record.Type)
@@ -176,11 +177,14 @@ def get_view_definition(
     self, connection: Connection, view_name: str, schema: str = None, **kw
 ) -> Optional[str]:
     """
-    Get the view definition using SHOW CREATE VIEW for Trino
+    Get the view definition for Trino views.
 
-    Default implementation from sqlalchemy uses view_definition column value
-    from "information_schema"."views" view, which does not return the full definition
-    of view. Hence, we should use SHOW CREATE VIEW statement to get full view definition.
+    First attempts to fetch the definition from information_schema.views, which
+    only requires read permissions. If that returns no result, falls back to
+    SHOW CREATE VIEW which returns the full DDL but requires owner permissions.
+
+    When the definition comes from information_schema (which omits the CREATE VIEW
+    prefix), we prepend it so the lineage parser can process it correctly.
     """
     catalog_name = self._get_default_catalog_name(  # pylint: disable=protected-access
         connection
@@ -192,17 +196,44 @@ def get_view_definition(
         raise exc.NoSuchTableError("schema is required")
 
     if catalog_name:
-        full_view_name = f"{catalog_name}.{schema}.{view_name}"
+        full_view_name = f'"{catalog_name}"."{schema}"."{view_name}"'
     else:
-        full_view_name = f"{schema}.{view_name}"
+        full_view_name = f'"{schema}"."{view_name}"'
 
     try:
-        # Use SHOW CREATE VIEW to get the full DDL
-        query = TRINO_VIEW_DEFINITION.format(view_name=full_view_name)
-        res = connection.execute(sql.text(query))
-        return res.scalar()
-    except Exception:
-        logger.warning(f"Could not get view definition for view [{full_view_name}]")
+        # Fetch from information_schema.views (requires only read permissions)
+        query = TRINO_VIEW_DEFINITION
+        res = connection.execute(sql.text(query), {"schema": schema, "view": view_name})
+        view_definition = res.scalar()
+
+        if not view_definition:
+            try:
+                # Fallback to SHOW CREATE VIEW (requires owner permissions)
+                query = TRINO_VIEW_DEFINITION_FALLBACK.format(view_name=full_view_name)
+                res = connection.execute(sql.text(query))
+                view_definition = res.scalar()
+            except Exception as fallback_err:
+                logger.warning(
+                    f"SHOW CREATE VIEW failed for [{full_view_name}] "
+                    f"(may require owner permissions): {fallback_err}"
+                )
+
+        if not view_definition:
+            logger.warning(f"Could not get view definition for view [{full_view_name}]")
+            return None
+
+        # Ensure CREATE VIEW prefix exists for lineage parser compatibility.
+        create_view_pattern = re.compile(
+            r"CREATE\s+(OR\s+REPLACE\s+)?VIEW", re.IGNORECASE
+        )
+        if not create_view_pattern.search(view_definition):
+            view_definition = f"CREATE VIEW {full_view_name} AS {view_definition}"
+
+        return view_definition
+    except Exception as err:
+        logger.error(
+            f"Could not get view definition for view [{full_view_name}]: {err}"
+        )
 
 
 TrinoDialect._get_columns = _get_columns  # pylint: disable=protected-access
@@ -216,9 +247,7 @@ class TrinoSource(CommonDbSourceService):
     Trino does not support querying by table type: Getting views is not supported.
     """
 
-    ColumnTypeParser._COLUMN_TYPE_MAPPING[  # pylint: disable=protected-access
-        JSON
-    ] = "JSON"
+    ColumnTypeParser._COLUMN_TYPE_MAPPING[JSON] = "JSON"
 
     @classmethod
     def create(
@@ -252,7 +281,7 @@ class TrinoSource(CommonDbSourceService):
             self.set_inspector(database_name=configured_catalog)
             yield configured_catalog
         else:
-            results = self.connection.execute("SHOW CATALOGS")
+            results = self.connection.execute(sql.text("SHOW CATALOGS"))
             for res in results:
                 if res:
                     new_catalog = res[0]

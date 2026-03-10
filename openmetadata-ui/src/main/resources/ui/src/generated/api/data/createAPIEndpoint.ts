@@ -37,7 +37,7 @@ export interface CreateAPIEndpoint {
     /**
      * EndPoint URL for the API Collection. Capture the Root URL of the collection.
      */
-    endpointURL: string;
+    endpointURL?: string;
     /**
      * Entity extension data with custom attributes added to the entity.
      */

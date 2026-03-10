@@ -51,7 +51,10 @@ import {
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
 import {
+  AUTO_HEIGHT_TYPES,
   HYPERLINK_TYPE_CUSTOM_PROPERTY,
+  NO_OVERFLOW_TOGGLE_TYPES,
+  SCROLLABLE_WRAPPER_TYPES,
   TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
@@ -151,7 +154,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       const updatedExtension = omitBy(
         omitBy(
           {
-            ...(extension ?? {}),
+            ...extension,
             [propertyName]: ['integer', 'number'].includes(
               propertyType.name ?? ''
             )
@@ -1060,11 +1063,23 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
   const getValueElement = () => {
     const propertyValue = getPropertyValue();
+    const isScrollableType = SCROLLABLE_WRAPPER_TYPES.includes(
+      propertyType.name || ''
+    );
 
-    // if value is not undefined or property is a table type(at least show the columns), return the property value
-    return !isUndefined(value) || isTableType ? (
-      propertyValue
-    ) : (
+    if (!isUndefined(value) || isTableType) {
+      if (isScrollableType) {
+        return (
+          <div className="custom-property-scrollable-container w-full">
+            {propertyValue}
+          </div>
+        );
+      }
+
+      return propertyValue;
+    }
+
+    return (
       <span className="text-grey-muted" data-testid="no-data">
         {t('label.not-set')}
       </span>
@@ -1082,8 +1097,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
     const isMarkdownWithValue = propertyType.name === 'markdown' && value;
     const isOverflowing =
-      (contentRef.current.scrollHeight > 30 || isMarkdownWithValue) &&
-      propertyType.name !== 'entityReference' &&
+      (contentRef.current.scrollHeight > 32 || isMarkdownWithValue) &&
+      !NO_OVERFLOW_TOGGLE_TYPES.includes(propertyType.name || '') &&
       !isRenderedInRightPanel;
 
     setIsOverflowing(isOverflowing);
@@ -1093,6 +1108,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     return isExpanded || showInput || isRenderedInRightPanel;
   }, [isExpanded, showInput, isRenderedInRightPanel]);
 
+  let propertyCountSuffix: string | null = null;
+  if (propertyType.name === 'entityReferenceList' && isArray(value)) {
+    propertyCountSuffix = ` (${value.length})`;
+  } else if (
+    propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY &&
+    isArray(value?.rows)
+  ) {
+    propertyCountSuffix = ` (${value.rows.length})`;
+  }
+
   const customPropertyElement = (
     <Stack data-testid={propertyName} spacing={2}>
       <div className="d-flex items-center gap-1">
@@ -1100,6 +1125,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           className="text-grey-body property-name"
           data-testid="property-name">
           {getEntityName(property)}
+          {propertyCountSuffix}
         </Typography.Text>
         {property.description && (
           <Tooltip
@@ -1130,7 +1156,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           data-testid="property-value"
           ref={contentRef}
           style={{
-            height: containerStyleFlag ? 'auto' : '30px',
+            height:
+              containerStyleFlag ||
+              AUTO_HEIGHT_TYPES.includes(propertyType.name || '')
+                ? 'auto'
+                : '32px',
           }}>
           {showInput ? getPropertyInput() : getValueElement()}
           {hasEditPermissions && !showInput && (

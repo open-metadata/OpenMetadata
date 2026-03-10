@@ -17,6 +17,7 @@ from typing import Any, Iterable, List, Optional, Tuple
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
+from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -122,6 +123,10 @@ class UnitycatalogSource(
         self.connection_obj = self.client
         self.table_constraints = []
         self.context.storage_location = None
+        # Caches to avoid redundant API calls (N+1 optimization)
+        self._catalog_cache: dict[str, Any] = {}
+        self._schema_cache: dict[str, Any] = {}
+        self._owner_cache: dict[str, Optional[EntityReferenceList]] = {}
         self.test_connection()
 
         self._sql_connection_map = {}
@@ -144,6 +149,8 @@ class UnitycatalogSource(
 
     def get_database_names_raw(self) -> Iterable[str]:
         for catalog in self.client.catalogs.list():
+            # Cache the catalog object to avoid re-fetching in yield_database
+            self._catalog_cache[catalog.name] = catalog
             yield catalog.name
 
     @classmethod
@@ -170,7 +177,19 @@ class UnitycatalogSource(
         Catalog ID -> Database
         """
         if self.service_connection.catalog:
-            yield self.service_connection.catalog
+            configured_catalog = self.service_connection.catalog
+            try:
+                logger.debug(
+                    f"Fetching configured catalog [{configured_catalog}] details to cache for later use"
+                )
+                catalog = self.client.catalogs.get(configured_catalog)
+                self._catalog_cache[catalog.name] = catalog
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to fetch configured catalog [{configured_catalog}]: {exc}"
+                )
+            yield configured_catalog
         else:
             for catalog_name in self.get_database_names_raw():
                 try:
@@ -188,6 +207,7 @@ class UnitycatalogSource(
                             else catalog_name
                         ),
                     ):
+                        self._catalog_cache.pop(catalog_name, None)
                         self.status.filter(
                             database_fqn,
                             "Database (Catalog ID) Filtered Out",
@@ -210,7 +230,7 @@ class UnitycatalogSource(
         From topology.
         Prepare a database request and pass it to the sink
         """
-        catalog = self.client.catalogs.get(database_name)
+        catalog = self._catalog_cache.pop(database_name, None)
         database_request = CreateDatabaseRequest(
             name=database_name,
             service=self.context.get().database_service,
@@ -226,8 +246,12 @@ class UnitycatalogSource(
         return schema names
         """
         catalog_name = self.context.get().database
+        self._schema_cache.clear()
         for schema in self.client.schemas.list(catalog_name=catalog_name):
             try:
+                # Cache the schema object to avoid re-fetching in yield_database_schema
+                schema_full_name = f"{catalog_name}.{schema.name}"
+                self._schema_cache[schema_full_name] = schema
                 schema_fqn = fqn.build(
                     self.metadata,
                     entity_type=DatabaseSchema,
@@ -262,9 +286,8 @@ class UnitycatalogSource(
         From topology.
         Prepare a database schema request and pass it to the sink
         """
-        schema = self.client.schemas.get(
-            full_name=f"{self.context.get().database}.{schema_name}"
-        )
+        schema_full_name = f"{self.context.get().database}.{schema_name}"
+        schema = self._schema_cache.pop(schema_full_name, None)
         schema_request = CreateDatabaseSchemaRequest(
             name=EntityName(schema_name),
             database=FullyQualifiedEntityName(
@@ -358,10 +381,12 @@ class UnitycatalogSource(
                     return f"CREATE {view_type} `{table.catalog_name}`.`{table.schema_name}`.`{table_name}` AS {table.view_definition}"
             elif self.source_config.includeDDL and table_type != TableType.Iceberg:
                 cursor = self.sql_connection.execute(
-                    UNITY_CATALOG_GET_TABLE_DDL.format(
-                        database=self.context.get().database,
-                        schema=self.context.get().database_schema,
-                        table=table_name,
+                    text(
+                        UNITY_CATALOG_GET_TABLE_DDL.format(
+                            database=self.context.get().database,
+                            schema=self.context.get().database_schema,
+                            table=table_name,
+                        )
                     )
                 )
                 result = cursor.fetchone()
@@ -382,7 +407,7 @@ class UnitycatalogSource(
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        table = self.client.tables.get(self.context.get().table_data.full_name)
+        table = self.context.get().table_data
         schema_name = self.context.get().database_schema
         db_name = self.context.get().database
         if table.storage_location and not table.storage_location.startswith("dbfs"):
@@ -618,7 +643,7 @@ class UnitycatalogSource(
         )
         try:
             for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                for tag in self.sql_connection.execute(query):
+                for tag in self.sql_connection.execute(text(query)):
                     if tag.tag_value:
                         yield from get_ometa_tag_and_classification(
                             tag_fqn=FullyQualifiedEntityName(
@@ -669,7 +694,7 @@ class UnitycatalogSource(
         )
         try:
             for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                for tag in self.sql_connection.execute(query):
+                for tag in self.sql_connection.execute(text(query)):
                     if tag.tag_value:
                         yield from get_ometa_tag_and_classification(
                             tag_fqn=FullyQualifiedEntityName(
@@ -706,18 +731,24 @@ class UnitycatalogSource(
     # pylint: disable=arguments-renamed
     def get_owner_ref(self, owner: Optional[str]) -> Optional[EntityReferenceList]:
         """
-        Method to process the table owners
+        Method to process the table owners.
+        Results are cached to avoid repeated API lookups for the same owner.
         """
         if self.source_config.includeOwners is False:
             return None
         try:
             if not owner or not isinstance(owner, str):
                 return None
+            # Check cache first to avoid redundant API calls
+            if owner in self._owner_cache:
+                return self._owner_cache[owner]
             owner_ref = self.metadata.get_reference_by_email(email=owner)
             if owner_ref:
+                self._owner_cache[owner] = owner_ref
                 return owner_ref
             owner_name = owner.split("@")[0]
             owner_ref = self.metadata.get_reference_by_name(name=owner_name)
+            self._owner_cache[owner] = owner_ref
             return owner_ref
         except Exception as exc:
             logger.debug(traceback.format_exc())

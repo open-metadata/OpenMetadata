@@ -20,6 +20,7 @@ import {
   clearFieldError,
   createDOMClickHandler,
   createDOMFocusHandler,
+  createFormKeyDownHandler,
   createFreshFormData,
   extractFieldName,
   findChangedFields,
@@ -2795,6 +2796,175 @@ describe('SSOUtils', () => {
       };
 
       expect(hasFieldValidationErrors(error)).toBe(true);
+    });
+  });
+
+  describe('createFormKeyDownHandler', () => {
+    let handler: (e: KeyboardEvent) => void;
+    let mockEvent: Partial<KeyboardEvent>;
+
+    beforeEach(() => {
+      handler = createFormKeyDownHandler();
+      mockEvent = {
+        key: 'Enter',
+        preventDefault: jest.fn(),
+        stopPropagation: jest.fn(),
+      };
+    });
+
+    describe('should prevent default for regular input fields', () => {
+      it('should prevent default when Enter is pressed in INPUT element', () => {
+        const input = document.createElement('input');
+        Object.defineProperty(mockEvent, 'target', {
+          value: input,
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).toHaveBeenCalled();
+      });
+
+      it('should prevent default when Enter is pressed in Ant Design input field', () => {
+        const div = document.createElement('div');
+        div.className = 'ant-input';
+        Object.defineProperty(mockEvent, 'target', {
+          value: div,
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).toHaveBeenCalled();
+      });
+    });
+
+    describe('should NOT prevent default for special cases', () => {
+      it('should NOT prevent default when Enter is pressed in TEXTAREA', () => {
+        const textarea = document.createElement('textarea');
+        Object.defineProperty(mockEvent, 'target', {
+          value: textarea,
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
+      });
+
+      it('should NOT prevent default when Enter is pressed in Select tags component', () => {
+        const input = document.createElement('input');
+        const selector = document.createElement('div');
+        selector.className = 'ant-select-selector';
+        selector.appendChild(input);
+        Object.defineProperty(mockEvent, 'target', {
+          value: input,
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
+      });
+
+      it('should NOT prevent default for non-Enter keys', () => {
+        const input = document.createElement('input');
+        Object.defineProperty(mockEvent, 'target', {
+          value: input,
+          writable: true,
+        });
+        Object.defineProperty(mockEvent, 'key', {
+          value: 'Tab',
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
+      });
+
+      it('should NOT prevent default for non-input elements', () => {
+        const div = document.createElement('div');
+        Object.defineProperty(mockEvent, 'target', {
+          value: div,
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
+      });
+
+      it('should NOT prevent default for button elements', () => {
+        const button = document.createElement('button');
+        Object.defineProperty(mockEvent, 'target', {
+          value: button,
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('edge cases', () => {
+      it('should handle null target gracefully', () => {
+        Object.defineProperty(mockEvent, 'target', {
+          value: null,
+          writable: true,
+        });
+
+        expect(() => handler(mockEvent as KeyboardEvent)).not.toThrow();
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('should handle undefined target gracefully', () => {
+        Object.defineProperty(mockEvent, 'target', {
+          value: undefined,
+          writable: true,
+        });
+
+        expect(() => handler(mockEvent as KeyboardEvent)).not.toThrow();
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('should prevent default for nested input inside ant-input div', () => {
+        const input = document.createElement('input');
+        const antInputDiv = document.createElement('div');
+        antInputDiv.className = 'ant-input';
+        antInputDiv.appendChild(input);
+        Object.defineProperty(mockEvent, 'target', {
+          value: antInputDiv,
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).toHaveBeenCalled();
+      });
+
+      it('should prevent default for input with multiple classes including ant-input', () => {
+        const div = document.createElement('div');
+        div.className = 'custom-class ant-input another-class';
+        Object.defineProperty(mockEvent, 'target', {
+          value: div,
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).toHaveBeenCalled();
+      });
     });
   });
 });

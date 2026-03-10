@@ -91,6 +91,7 @@ export enum ResourceEntity {
   WORKSHEET = 'worksheet',
   NOTIFICATION_TEMPLATE = 'notificationTemplate',
   AUDIT_LOG = 'auditLog',
+  DATA_CONTRACT = 'dataContract',
 }
 
 export interface PermissionContextType {

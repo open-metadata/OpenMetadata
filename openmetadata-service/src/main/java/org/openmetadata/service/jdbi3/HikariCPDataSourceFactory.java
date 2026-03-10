@@ -45,7 +45,7 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
   private int minimumIdle = 10;
 
   @JsonProperty
-  @Max(100)
+  @Max(500)
   private int maximumPoolSize = 100;
 
   @JsonProperty private Long connectionTimeout;

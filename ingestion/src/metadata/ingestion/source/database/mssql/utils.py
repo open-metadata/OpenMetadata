@@ -497,9 +497,10 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:
     """
     returns sqlaclhemdy engine date format by running config query
     """
-    result = engine.execute(GET_DB_CONFIGS)
+    with engine.connect() as conn:
+        result = conn.execute(text(GET_DB_CONFIGS)).all()
     for row in result:
-        row_dict = dict(row)
+        row_dict = row._asdict()
         if row_dict.get("Set Option") == "dateformat":
             return row_dict.get("Value")
     return

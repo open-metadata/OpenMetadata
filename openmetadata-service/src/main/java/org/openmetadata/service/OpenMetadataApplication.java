@@ -64,6 +64,7 @@ import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.ee10.servlet.ServletMapping;
 import org.eclipse.jetty.ee10.servlet.SessionHandler;
 import org.eclipse.jetty.ee10.websocket.server.config.JettyWebSocketServletContainerInitializer;
+import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.http.UriCompliance;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -129,6 +130,7 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.resources.system.DiagnosticsResource;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -440,8 +442,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     SessionCookieConfig cookieConfig =
         Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
     cookieConfig.setHttpOnly(true);
-    cookieConfig.setSecure(
-        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie());
+    boolean isSecure =
+        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie();
+    cookieConfig.setSecure(isSecure);
+
+    if (isSecure) {
+      sessionHandler.setSameSite(HttpCookie.SameSite.NONE);
+    }
 
     // Get session expiry - use OIDC config if available, otherwise default
     int sessionExpiry = 604800; // Default 7 days in seconds
@@ -987,6 +994,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
             limits);
     environment.jersey().register(new AuditLogResource(authorizer, auditLogRepository));
+    environment.jersey().register(new DiagnosticsResource(authorizer));
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 
@@ -1100,10 +1108,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     public void stop() throws InterruptedException, SchedulerException {
       LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
-      AsyncService.getInstance().shutdown();
       EventPubSub.shutdown();
-      AppScheduler.shutDown();
       EventSubscriptionScheduler.shutDown();
+      AsyncService.getInstance().shutdown();
+      AppScheduler.shutDown();
       LOG.info("Stopping the application");
     }
   }

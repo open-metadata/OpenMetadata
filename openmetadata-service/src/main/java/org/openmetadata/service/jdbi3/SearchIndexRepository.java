@@ -405,7 +405,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
     validateTaskThread(threadContext);
     EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName().equals("fields")) {
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("fields")) {
       TaskType taskType = threadContext.getThread().getTask().getType();
       if (EntityUtil.isDescriptionTask(taskType)) {
         return new FieldDescriptionWorkflow(threadContext);

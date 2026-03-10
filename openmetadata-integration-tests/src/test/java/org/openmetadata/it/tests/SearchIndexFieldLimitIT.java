@@ -11,11 +11,13 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -256,7 +258,22 @@ public class SearchIndexFieldLimitIT {
     }
     updateTableExtension(client, table.getId().toString(), extension);
 
-    Thread.sleep(2000);
+    Awaitility.await("Wait for table to be re-indexed after extension update")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + table.getId())
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              return searchResponse.contains("\"id\":\"" + table.getId() + "\"");
+            });
 
     int finalFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 
@@ -283,6 +300,7 @@ public class SearchIndexFieldLimitIT {
 
     int initialFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 
+    String lastTableId = null;
     for (int tableNum = 0; tableNum < 3; tableNum++) {
       String propName = ns.prefix("boundedProp_" + tableNum);
       addCustomProperty(client, propName);
@@ -293,9 +311,26 @@ public class SearchIndexFieldLimitIT {
       Map<String, Object> extension = new HashMap<>();
       extension.put(propName, "value_" + tableNum);
       updateTableExtension(client, table.getId().toString(), extension);
+      lastTableId = table.getId().toString();
     }
 
-    Thread.sleep(2000);
+    String finalTableId = lastTableId;
+    Awaitility.await("Wait for tables to be re-indexed after extension updates")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + finalTableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              return searchResponse.contains("\"id\":\"" + finalTableId + "\"");
+            });
 
     int finalFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 
@@ -360,7 +395,22 @@ public class SearchIndexFieldLimitIT {
 
     updateTableExtension(client, table.getId().toString(), extension);
 
-    Thread.sleep(2000);
+    Awaitility.await("Wait for table to be re-indexed after complex property update")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              String searchResponse =
+                  client
+                      .search()
+                      .query("id:" + table.getId())
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              return searchResponse.contains("\"id\":\"" + table.getId() + "\"");
+            });
 
     int finalFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 

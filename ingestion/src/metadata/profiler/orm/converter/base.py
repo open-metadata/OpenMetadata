@@ -17,7 +17,7 @@ from typing import Optional, cast
 
 import sqlalchemy
 from sqlalchemy import MetaData
-from sqlalchemy.orm import DeclarativeMeta, declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.database import Database, databaseService
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -25,7 +25,9 @@ from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.converter.converter_registry import converter_registry
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 SQA_RESERVED_ATTRIBUTES = ["metadata"]
@@ -100,10 +102,10 @@ def build_orm_col(
 
 def ometa_to_sqa_orm(
     table: Table, metadata: OpenMetadata, sqa_metadata_obj: Optional[MetaData] = None
-) -> DeclarativeMeta:
+) -> type:
     """
     Given an OpenMetadata instance, prepare
-    the SQLAlchemy DeclarativeMeta class
+    the SQLAlchemy ORM class
     to run queries on top of it.
 
     We are building the class dynamically using
@@ -120,6 +122,15 @@ def ometa_to_sqa_orm(
     table.serviceType = cast(
         databaseService.DatabaseServiceType, table.serviceType
     )  # satisfy mypy
+
+    # SQA 2.x raises a hard error if no primary key columns are found (was just a warning in 1.x).
+    # Since build_orm_col assigns PK to the first column, we need at least one column.
+    if not table.columns:
+        raise ValueError(
+            f"Table '{table.name.root}' has no columns. "
+            "Cannot create ORM class without at least one column. "
+            "Ensure the table's column metadata was ingested correctly."
+        )
 
     orm_database_name = get_orm_database(table, metadata)
     # SQLite does not support schemas
@@ -160,8 +171,8 @@ def ometa_to_sqa_orm(
         },
     )
 
-    if not isinstance(orm, DeclarativeMeta):
-        raise ValueError("OMeta to ORM did not create a DeclarativeMeta")
+    if not issubclass(orm, Base):
+        raise ValueError("OMeta to ORM did not create a valid ORM class")
     return orm
 
 

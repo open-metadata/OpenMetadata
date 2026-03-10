@@ -154,6 +154,12 @@ public class PersonaRepository extends EntityRepository<Persona> {
     for (EntityReference user : listOrEmpty(defaultUsers)) {
       deleteRelationship(user.getId(), USER, persona.getId(), PERSONA, Relationship.DEFAULTS_TO);
     }
+
+    // Remove all team default persona relationships (HAS)
+    List<EntityReference> teams = findFrom(persona.getId(), PERSONA, Relationship.HAS, Entity.TEAM);
+    for (EntityReference team : listOrEmpty(teams)) {
+      deleteRelationship(team.getId(), Entity.TEAM, persona.getId(), PERSONA, Relationship.HAS);
+    }
   }
 
   /** Handles entity updated from PUT and POST operation. */

@@ -55,6 +55,7 @@ from metadata.ingestion.source.dashboard.superset.models import (
 from metadata.ingestion.source.dashboard.superset.utils import (
     get_dashboard_data_model_column_fqn,
 )
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -429,7 +430,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                         dataType=col_parse["dataType"],
                         arrayDataType=self.parse_array_data_type(col_parse),
                         children=self.parse_row_data_type(col_parse),
-                        name=str(field.id),
+                        name=truncate_column_name(str(field.id)),
                         displayName=field.column_name,
                         description=field.description,
                         dataLength=int(col_parse.get("dataLength", 0)),

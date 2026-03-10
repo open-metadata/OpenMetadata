@@ -421,7 +421,8 @@ public class SuggestionRepository {
   public int listCount(SuggestionFilter filter) {
     String mySqlCondition = filter.getCondition(false);
     String postgresCondition = filter.getCondition(false);
-    return dao.suggestionDAO().listCount(mySqlCondition, postgresCondition);
+    return dao.suggestionDAO()
+        .listCount(mySqlCondition, postgresCondition, filter.getQueryParams());
   }
 
   public ResultList<Suggestion> listBefore(SuggestionFilter filter, int limit, String before) {
@@ -431,7 +432,11 @@ public class SuggestionRepository {
     List<String> jsons =
         dao.suggestionDAO()
             .listBefore(
-                mySqlCondition, postgresCondition, limit + 1, RestUtil.decodeCursor(before));
+                mySqlCondition,
+                postgresCondition,
+                limit + 1,
+                RestUtil.decodeCursor(before),
+                filter.getQueryParams());
     List<Suggestion> suggestions = getSuggestionList(jsons);
     String beforeCursor = null;
     String afterCursor;
@@ -455,7 +460,12 @@ public class SuggestionRepository {
     String postgresCondition = filter.getCondition(true);
     List<String> jsons =
         dao.suggestionDAO()
-            .listAfter(mySqlCondition, postgresCondition, limit + 1, RestUtil.decodeCursor(after));
+            .listAfter(
+                mySqlCondition,
+                postgresCondition,
+                limit + 1,
+                RestUtil.decodeCursor(after),
+                filter.getQueryParams());
     List<Suggestion> suggestions = getSuggestionList(jsons);
     String beforeCursor;
     String afterCursor = null;

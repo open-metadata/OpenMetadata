@@ -73,6 +73,7 @@ import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
 function TestSummaryGraph({
   testCaseName,
+  testCaseFqn,
   testCaseParameterValue,
   testCaseResults,
   selectedTimeRange,
@@ -105,6 +106,7 @@ function TestSummaryGraph({
       testCaseParameterValue: testCaseParameterValue ?? [],
       testCaseResults,
       entityThread,
+      testCaseFqn,
     });
     setShowAILearningBanner(data.showAILearningBanner);
     const isFreshnessTest = data.information.some(
@@ -112,7 +114,7 @@ function TestSummaryGraph({
     );
 
     return { chartData: data, isFreshnessTest };
-  }, [testCaseResults, entityThread, testCaseParameterValue]);
+  }, [testCaseResults, entityThread, testCaseParameterValue, testCaseFqn]);
 
   const customLegendPayLoad = useMemo(() => {
     const legendPayload: Payload[] = chartData?.information.map((info) => ({
@@ -243,7 +245,17 @@ function TestSummaryGraph({
           width={80}
         />
         <Tooltip
-          content={<TestSummaryCustomTooltip />}
+          content={({ active, payload }) => (
+            <TestSummaryCustomTooltip
+              active={active}
+              payload={
+                payload as
+                  | Array<{ payload: Record<string, unknown> }>
+                  | undefined
+              }
+              testCaseFqn={chartData?.testCaseFqn}
+            />
+          )}
           offset={tooltipOffset}
           position={{ y: 100 }}
           wrapperStyle={{ pointerEvents: 'auto' }}

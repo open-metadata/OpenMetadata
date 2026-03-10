@@ -6,6 +6,10 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.auth.GenerateTokenRequest",
   "properties": {
+    "id": {
+      "description": "User ID for which to generate the token.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
     "JWTTokenExpiry": {
       "$ref": "jwtAuth.json#/definitions/JWTTokenExpiry"
     }

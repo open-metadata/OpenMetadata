@@ -40,6 +40,8 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
     - For a quantifiable value, return third quartile value
     """
 
+    schema_metric_type = MetricType.thirdQuartile
+
     @classmethod
     def name(cls):
         return MetricType.thirdQuartile.value

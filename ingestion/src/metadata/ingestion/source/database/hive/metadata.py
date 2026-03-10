@@ -13,14 +13,22 @@ Hive source methods.
 """
 
 import traceback
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
+from pydantic import ValidationError
 from pyhive.sqlalchemy_hive import HiveDialect
+from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -74,14 +82,44 @@ class HiveSource(CommonDbSourceService):
             version = version.replace("-", ".")
         return tuple(map(int, (version.split(".")[:3])))
 
+    def _get_validated_metastore_connection(
+        self,
+    ) -> Optional[Union[PostgresConnection, MysqlConnection]]:
+        """
+        Validate and return the metastore connection if it exists.
+        Handles cases where the connection may be a raw dict that needs validation.
+        """
+        metastore_conn = self.service_connection.metastoreConnection
+
+        if not metastore_conn:
+            return None
+
+        if isinstance(metastore_conn, (PostgresConnection, MysqlConnection)):
+            return metastore_conn
+
+        if isinstance(metastore_conn, dict) and len(metastore_conn) > 0:
+            try:
+                return PostgresConnection.model_validate(metastore_conn)
+            except ValidationError:
+                try:
+                    return MysqlConnection.model_validate(metastore_conn)
+                except ValidationError:
+                    logger.warning("Invalid metastore connection configuration")
+                    return None
+
+        return None
+
     def prepare(self):
         """
         Based on the version of hive update the get_table_names method
         Fetching views in hive server with query "SHOW VIEWS" was possible
         only after hive 2.2.0 version
         """
-        if not self.service_connection.metastoreConnection:
-            result = dict(self.engine.execute("SELECT VERSION()").fetchone())
+        metastore_conn = self._get_validated_metastore_connection()
+
+        if not metastore_conn:
+            with self.engine.connect() as conn:
+                result = conn.execute(text("SELECT VERSION()")).fetchone()._asdict()
 
             version = result.get("_c0", "").split()
             if version and self._parse_version(version[0]) >= self._parse_version(
@@ -94,9 +132,7 @@ class HiveSource(CommonDbSourceService):
                 HiveDialect.get_table_names = get_table_names_older_versions
                 HiveDialect.get_view_names = get_view_names_older_versions
         else:
-            self.engine = get_metastore_connection(
-                self.service_connection.metastoreConnection
-            )
+            self.engine = get_metastore_connection(metastore_conn)
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
@@ -106,6 +142,7 @@ class HiveSource(CommonDbSourceService):
         """
         Get the DDL statement or View Definition for a table
         """
+        schema_definition = None
         try:
             if self.source_config.includeDDL or table_type in (
                 TableType.View,

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 
@@ -17,6 +18,7 @@ export interface DomainDetailsProps {
   domain: Domain;
   onUpdate: (value: Domain) => Promise<void>;
   onDelete: (id: string) => void;
+  onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
   isVersionsView?: boolean;
   isFollowing?: boolean;
   isFollowingLoading?: boolean;

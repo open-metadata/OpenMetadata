@@ -34,6 +34,7 @@ from metadata.generated.schema.security.credentials.gitlabCredentials import (
 from metadata.ingestion.source.dashboard.looker.utils import (
     _clone_repo,
     _extract_hostname,
+    _is_azure_devops_host,
 )
 
 
@@ -69,6 +70,16 @@ class LookerUtilsTest(TestCase):
             _extract_hostname("https://git.company.com:8080"), "git.company.com:8080"
         )
         self.assertEqual(_extract_hostname("http://localhost:3000"), "localhost:3000")
+
+    def test_is_azure_devops_host(self):
+        """
+        Test _is_azure_devops_host function
+        """
+        self.assertTrue(_is_azure_devops_host("dev.azure.com"))
+        self.assertTrue(_is_azure_devops_host("myorg.visualstudio.com"))
+        self.assertFalse(_is_azure_devops_host("github.com"))
+        self.assertFalse(_is_azure_devops_host("gitlab.com"))
+        self.assertFalse(_is_azure_devops_host("bitbucket.org"))
 
     @patch.object(Repo, "clone_from")
     @patch.object(os.path, "isdir")
@@ -107,6 +118,57 @@ class LookerUtilsTest(TestCase):
         _clone_repo("owner/repo", "/test/path", github_creds)
 
         expected_url = "https://x-oauth-basic:test_token@git.company.com/owner/repo.git"
+        mock_clone_from.assert_called_once_with(
+            expected_url, "/test/path", allow_unsafe_protocols=False
+        )
+
+    @patch.object(Repo, "clone_from")
+    @patch.object(os.path, "isdir")
+    def test_clone_repo_azure_devops(self, mock_isdir, mock_clone_from):
+        """
+        Test _clone_repo with GitHub credentials using Azure DevOps host.
+        Users configure repositoryOwner as {org}/{project} and repositoryName as {repo}.
+        The clone URL should follow Azure DevOps format: https://{PAT}@dev.azure.com/{org}/{project}/_git/{repo}
+        """
+        mock_isdir.return_value = False
+
+        azure_creds = GitHubCredentials(
+            repositoryOwner="payoneer/data-platform",
+            repositoryName="Looker_Custom_Queries",
+            token="my_pat_token",
+            gitHostURL="https://dev.azure.com",
+        )
+
+        # repo_name passed from __init_repo: "{repositoryOwner}/{repositoryName}"
+        _clone_repo(
+            "payoneer/data-platform/Looker_Custom_Queries", "/test/path", azure_creds
+        )
+
+        expected_url = "https://my_pat_token@dev.azure.com/payoneer/data-platform/_git/Looker_Custom_Queries"
+        mock_clone_from.assert_called_once_with(
+            expected_url, "/test/path", allow_unsafe_protocols=False
+        )
+
+    @patch.object(Repo, "clone_from")
+    @patch.object(os.path, "isdir")
+    def test_clone_repo_azure_devops_server(self, mock_isdir, mock_clone_from):
+        """
+        Test _clone_repo with Azure DevOps Server (visualstudio.com)
+        """
+        mock_isdir.return_value = False
+
+        azure_creds = GitHubCredentials(
+            repositoryOwner="myorg/myproject",
+            repositoryName="MyRepo",
+            token="my_pat_token",
+            gitHostURL="https://myorg.visualstudio.com",
+        )
+
+        _clone_repo("myorg/myproject/MyRepo", "/test/path", azure_creds)
+
+        expected_url = (
+            "https://my_pat_token@myorg.visualstudio.com/myorg/myproject/_git/MyRepo"
+        )
         mock_clone_from.assert_called_once_with(
             expected_url, "/test/path", allow_unsafe_protocols=False
         )

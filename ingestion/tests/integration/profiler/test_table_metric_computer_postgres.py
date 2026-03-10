@@ -16,8 +16,8 @@ Integration tests for PostgresTableMetricComputer against a real PostgreSQL data
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, Integer, String, create_engine, text
+from sqlalchemy.orm import DeclarativeBase
 
 from _openmetadata_testutils.postgres.conftest import postgres_container  # noqa: F401
 from metadata.generated.schema.entity.data.table import TableType
@@ -27,7 +27,9 @@ from metadata.profiler.orm.functions.table_metric_computer import (
 )
 from metadata.profiler.processor.runner import QueryRunner
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class MetricComputerTestTable(Base):
@@ -46,17 +48,25 @@ class NonExistentModel(Base):
 @pytest.fixture(scope="module")
 def pg_engine(postgres_container):  # noqa: F811
     engine = create_engine(postgres_container.get_connection_url())
-    engine.execute(
-        "CREATE TABLE IF NOT EXISTS public.metric_computer_test "
-        "(id INTEGER PRIMARY KEY, name VARCHAR(256))"
-    )
-    engine.execute(
-        "INSERT INTO public.metric_computer_test (id, name) "
-        "SELECT g, 'name_' || g FROM generate_series(1, 100) AS g"
-    )
-    engine.execute("ANALYZE public.metric_computer_test")
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS public.metric_computer_test "
+                "(id INTEGER PRIMARY KEY, name VARCHAR(256))"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO public.metric_computer_test (id, name) "
+                "SELECT g, 'name_' || g FROM generate_series(1, 100) AS g"
+            )
+        )
+        conn.execute(text("ANALYZE public.metric_computer_test"))
+        conn.commit()
     yield engine
-    engine.execute("DROP TABLE IF EXISTS public.metric_computer_test")
+    with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS public.metric_computer_test"))
+        conn.commit()
     engine.dispose()
 
 

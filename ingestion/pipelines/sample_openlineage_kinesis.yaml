@@ -1,0 +1,31 @@
+source:
+    type: openlineage
+    serviceName: <serviceName> # sample_openlineage_kinesis
+    serviceConnection:
+      config:
+        type: OpenLineage
+        brokerConfig:
+          streamName: <streamNames> # example: openlineage-events
+          awsConfig:
+            awsRegion: <awsRegion> # example us-east-2
+            awsAccessKeyId: <awsAccessKeyId>
+            awsSecretAccessKey: <awsSecretAccessKey>
+            awsSessionToken: <awsSessionToken> #Optional
+          consumerOffsets: TRIM_HORIZON
+          poolTimeout: 1.0
+          sessionTimeout: 30
+    sourceConfig:
+      config:
+        type: PipelineMetadata
+        lineageInformation:
+          dbServiceNames:
+            - <dbServiceNames> #example: hk_mssql
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <http://host:post/api> # example: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: <jwtToken>

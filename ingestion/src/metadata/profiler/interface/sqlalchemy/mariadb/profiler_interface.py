@@ -74,7 +74,7 @@ class MariaDBProfilerInterface(SQAProfilerInterface):
                 *[metric(column).fn() for metric in metrics],
             )
             if row:
-                return dict(row)
+                return row._asdict()
         except ProgrammingError:
             logger.info(
                 f"Skipping window metrics for {runner.table_name}.{column.name} due to overflow"

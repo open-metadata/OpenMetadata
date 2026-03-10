@@ -2,9 +2,10 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.util.RestUtil.decodeCursor;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
 import org.openmetadata.schema.type.TaskStatus;
@@ -25,6 +26,7 @@ public class FeedFilter {
   @Getter private String after;
   @Getter private boolean applyDomainFilter;
   @Getter private List<UUID> domains;
+  @Getter @Builder.Default private final Map<String, String> queryParams = new HashMap<>();
 
   public String getCondition() {
     return getCondition(true);
@@ -34,7 +36,8 @@ public class FeedFilter {
     String condition1 = "";
     // Add threadType filter
     if (threadType != null) {
-      condition1 = String.format("type = '%s'", threadType.value());
+      queryParams.put("threadType", threadType.value());
+      condition1 = "type = :threadType";
       if (ThreadType.Announcement.equals(threadType) && activeAnnouncement != null) {
         // Add activeAnnouncement filter
         long now = System.currentTimeMillis(); // epoch time in milliseconds
@@ -44,8 +47,8 @@ public class FeedFilter {
                 : String.format("%s NOT BETWEEN announcementStart AND announcementEnd", now);
         condition1 = addCondition(condition1, condition2);
       } else if (ThreadType.Task.equals(threadType) && taskStatus != null) {
-        String condition2 = String.format("taskStatus = '%s'", taskStatus);
-        condition1 = addCondition(condition1, condition2);
+        queryParams.put("taskStatus", taskStatus.toString());
+        condition1 = addCondition(condition1, "taskStatus = :taskStatus");
       }
     }
     condition1 =
@@ -65,32 +68,37 @@ public class FeedFilter {
     if (applyDomainFilter) {
       if (domains != null && !domains.isEmpty()) {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-          // MySQL: generate JSON array string: ["id1", "id2", ...]
-          String jsonArray =
-              domains.stream()
-                  .map(uuid -> "\"" + uuid.toString() + "\"")
-                  .collect(Collectors.joining(",", "[", "]"));
+          // Domain UUIDs are inlined into JSON/ARRAY literals because bind parameters cannot be
+          // used inside JSON_TABLE('...') or ARRAY[...] syntax. This is safe because `domains`
+          // is List<UUID> — UUID.toString() can only produce hex digits and dashes.
+          StringBuilder jsonArrayBuilder = new StringBuilder("[");
+          for (int i = 0; i < domains.size(); i++) {
+            if (i > 0) jsonArrayBuilder.append(",");
+            jsonArrayBuilder.append("\"").append(domains.get(i).toString()).append("\"");
+          }
+          jsonArrayBuilder.append("]");
 
           domainCondition =
               "EXISTS ("
                   + "SELECT 1 FROM JSON_TABLE("
                   + "'"
-                  + jsonArray
+                  + jsonArrayBuilder
                   + "', '$[*]' "
                   + "COLUMNS (domainId VARCHAR(64) PATH '$')) d "
                   + "WHERE JSON_CONTAINS(domains, JSON_QUOTE(d.domainId))"
                   + ")";
         } else {
-          // PostgreSQL: generate ARRAY['id1','id2',...]
-          String arrayLiteral =
-              domains.stream()
-                  .map(uuid -> "'" + uuid.toString() + "'")
-                  .collect(Collectors.joining(",", "ARRAY[", "]"));
+          StringBuilder arrayBuilder = new StringBuilder("ARRAY[");
+          for (int i = 0; i < domains.size(); i++) {
+            if (i > 0) arrayBuilder.append(",");
+            arrayBuilder.append("'").append(domains.get(i).toString()).append("'");
+          }
+          arrayBuilder.append("]");
 
           domainCondition =
               "EXISTS ("
                   + "SELECT 1 FROM unnest("
-                  + arrayLiteral
+                  + arrayBuilder
                   + ") AS d(domainId) "
                   + "WHERE domainId = ANY (SELECT jsonb_array_elements_text(domains::jsonb))"
                   + ")";

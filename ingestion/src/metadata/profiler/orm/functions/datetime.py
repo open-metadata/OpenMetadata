@@ -97,7 +97,7 @@ def _(elements, compiler, **kwargs):
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     interval = elements.clauses.clauses[0].value
     interval_unit = elements.clauses.clauses[1].text
-    return f"DATE({func.current_date()}, '-{interval} {interval_unit}')"
+    return f"DATE('now', 'localtime', '-{interval} {interval_unit}')"
 
 
 # ------------------
@@ -260,7 +260,7 @@ def sqlite_function(elements, compiler, **kwargs):  # pylint: disable=unused-arg
     """SQLite timestamp and datetime function"""
     interval = elements.clauses.clauses[0].value
     interval_unit = elements.clauses.clauses[1].text
-    return f"DATE({func.current_timestamp()}, '-{interval} {interval_unit}')"
+    return f"DATETIME('now', 'localtime', '-{interval} {interval_unit}')"
 
 
 def redshift_function(elements, compiler, **kwargs):

@@ -15,6 +15,11 @@ import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContractTabMode } from '../../../constants/DataContract.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
@@ -32,25 +37,65 @@ import './contract-tab.less';
 
 export const ContractTab = () => {
   const { data: entityData } = useGenericContext();
+  const { getEntityPermission, getResourcePermission } =
+    usePermissionProvider();
   const { t } = useTranslation();
   const [tabMode, setTabMode] = useState<DataContractTabMode>(
     DataContractTabMode.VIEW
   );
   const [contract, setContract] = useState<DataContract>();
+  const [contractPermissions, setContractPermissions] =
+    useState<OperationPermission>();
+  const [dataContractResourcePermissions, setDataContractResourcePermissions] =
+    useState<OperationPermission>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { id, name: entityName } = entityData ?? {};
 
+  const hasEditPermission = contract
+    ? Boolean(contractPermissions?.EditAll)
+    : Boolean(dataContractResourcePermissions?.Create);
+
+  const fetchContractPermissions = async (contractId: string) => {
+    try {
+      const permissions = await getEntityPermission(
+        ResourceEntity.DATA_CONTRACT,
+        contractId
+      );
+      setContractPermissions(permissions);
+    } catch {
+      setContractPermissions(undefined);
+    }
+  };
+
+  const fetchDataContractResourcePermissions = async () => {
+    try {
+      const permissions = await getResourcePermission(
+        ResourceEntity.DATA_CONTRACT
+      );
+      setDataContractResourcePermissions(permissions);
+    } catch {
+      setDataContractResourcePermissions(undefined);
+    }
+  };
+
   const fetchContract = async () => {
     try {
       setIsLoading(true);
-      const contract = await getContractByEntityId(id, entityType, [
+      const fetchedContract = await getContractByEntityId(id, entityType, [
         TabSpecificField.OWNERS,
       ]);
-      setContract(contract);
+      setContract(fetchedContract);
+      if (fetchedContract?.id) {
+        await fetchContractPermissions(fetchedContract.id);
+      } else {
+        await fetchDataContractResourcePermissions();
+      }
     } catch {
       setContract(undefined);
+      setContractPermissions(undefined);
+      await fetchDataContractResourcePermissions();
     } finally {
       setIsLoading(false);
     }
@@ -120,6 +165,7 @@ export const ContractTab = () => {
             entityId={id ?? ''}
             entityName={entityName}
             entityType={entityType}
+            hasEditPermission={hasEditPermission}
             onContractUpdated={fetchContract}
             onDelete={handleDelete}
             onEdit={() => {
@@ -134,7 +180,7 @@ export const ContractTab = () => {
           />
         );
     }
-  }, [tabMode, contract, entityName, isInheritedContract]);
+  }, [tabMode, contract, entityName, isInheritedContract, hasEditPermission]);
 
   return isLoading ? (
     <Loader />

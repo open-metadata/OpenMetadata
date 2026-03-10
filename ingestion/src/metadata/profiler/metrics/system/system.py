@@ -190,6 +190,8 @@ class System(SystemMetric):
     This is supported only for BigQuery, Snowflake, and Redshift
     """
 
+    schema_metric_type = MetricType.system
+
     @classmethod
     def is_col_metric(cls) -> bool:
         """
@@ -226,7 +228,7 @@ class System(SystemMetric):
         for attr in attr_list:
             if not hasattr(self, attr):
                 raise AttributeError(
-                    f"System requires a table to be set: add_props({attr}=...)(Metrics.SYSTEM.value)"
+                    f"System requires a table to be set: add_props({attr}=...)(Metrics.system.value)"
                 )
 
     def sql(self, session: Session, **kwargs):

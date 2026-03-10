@@ -118,11 +118,10 @@ class MysqlUnitTest(TestCase):
         connection.return_value = True
         self.mysql_source.close()
 
-    @patch("sqlalchemy.engine.base.Engine")
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
     )
-    def test_get_stored_procedures(self, mock_engine, connection):
+    def test_get_stored_procedures(self, connection):
         """Test fetching stored procedures"""
         connection.return_value = True
         # Mock the database results
@@ -156,7 +155,11 @@ class MysqlUnitTest(TestCase):
             ),
         ]
 
-        mock_engine.execute.return_value.all.return_value = mock_results
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = mock_results
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
         self.mysql_source.engine = mock_engine
 
         # Enable stored procedures in config

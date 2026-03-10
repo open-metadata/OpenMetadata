@@ -116,6 +116,17 @@
     "followers": {
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "votes": {
+      "description": "Votes on the entity.",
+      "$ref": "../../type/votes.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
+    "entityStatus": {
+      "description": "Status of the entity.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "description", "domainType"],

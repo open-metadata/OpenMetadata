@@ -520,7 +520,9 @@ export const getEntityTypeIcon = (entityType?: string) => {
   return searchClassBase.getEntityIcon(entityType ?? '');
 };
 
-export const getServiceIcon = (source: SourceType) => {
+export const getServiceIcon = (source: {
+  entityType?: EntityType | string;
+}) => {
   const isDataAsset = NON_SERVICE_TYPE_ASSETS.includes(
     source.entityType as EntityType
   );

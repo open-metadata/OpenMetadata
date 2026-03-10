@@ -54,6 +54,7 @@ class ColumnValuesToBeNotInSetValidator(
         dimension_col: Column,
         metrics_to_compute: dict,
         test_params: dict,
+        top_n: int,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
@@ -80,13 +81,13 @@ class ColumnValuesToBeNotInSetValidator(
             metric_expressions = {}
             for metric_name, metric in metrics_to_compute.items():
                 metric_instance = metric.value(column)
-                if metric_name == Metrics.COUNT_IN_SET.name:
+                if metric_name == Metrics.countInSet.name:
                     metric_instance.values = forbidden_values
                 metric_expressions[metric_name] = metric_instance.fn()
 
-            metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = Metrics.ROW_COUNT().fn()
+            metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = Metrics.rowCount().fn()
             metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[
-                Metrics.COUNT_IN_SET.name
+                Metrics.countInSet.name
             ]
 
             normalized_dimension = self._get_normalized_dimension_expression(
@@ -97,23 +98,12 @@ class ColumnValuesToBeNotInSetValidator(
                 source=self.runner.dataset,
                 dimension_expr=normalized_dimension,
                 metric_expressions=metric_expressions,
+                top_n=top_n,
             )
 
-            for row in result_rows:
-                # Build metric_values dict using helper method
-                metric_values = self._build_metric_values_from_row(
-                    row, metrics_to_compute, test_params
-                )
-
-                # Evaluate test condition
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                # Create dimension result using helper method
-                dimension_result = self._create_dimension_result(
-                    row, dimension_col.name, metric_values, evaluation, test_params
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

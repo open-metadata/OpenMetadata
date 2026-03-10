@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
@@ -27,6 +28,153 @@ import {
   updateTestSuiteById,
 } from '../../rest/testAPI';
 import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
+  return {
+    ...actual,
+    Button: ({
+      children,
+      onPress,
+      ...props
+    }: {
+      children: React.ReactNode;
+      onPress?: () => void;
+      [key: string]: unknown;
+    }) => (
+      <button type="button" onClick={onPress} {...props}>
+        {children}
+      </button>
+    ),
+    Dialog: ({
+      children,
+      className,
+      ...props
+    }: {
+      children: React.ReactNode;
+      className?: string;
+      [key: string]: unknown;
+    }) => (
+      <div
+        aria-modal="true"
+        className={className}
+        data-testid="dialog"
+        role="dialog"
+        {...props}>
+        {children}
+      </div>
+    ),
+    Modal: ({
+      children,
+      className,
+      ...props
+    }: {
+      children: React.ReactNode;
+      className?: string;
+      [key: string]: unknown;
+    }) => (
+      <div className={className} data-testid="modal" {...props}>
+        {children}
+      </div>
+    ),
+    ModalOverlay: ({
+      children,
+      isOpen,
+      onOpenChange: _onOpenChange,
+      ...props
+    }: {
+      children: React.ReactNode;
+      isOpen?: boolean;
+      onOpenChange?: (open: boolean) => void;
+      [key: string]: unknown;
+    }) =>
+      isOpen ? (
+        <div data-testid="modal-overlay" {...props}>
+          {children}
+        </div>
+      ) : null,
+    Tabs: (() => {
+      const TabsRoot = ({
+        children,
+        onSelectionChange,
+        selectedKey,
+        ...props
+      }: {
+        children: React.ReactNode;
+        onSelectionChange?: (key: React.Key) => void;
+        selectedKey?: React.Key;
+        [key: string]: unknown;
+      }) => {
+        const childArray = React.Children.toArray(children);
+        const list = childArray.find(
+          (c): c is React.ReactElement =>
+            React.isValidElement(c) && 'items' in (c.props ?? {})
+        );
+        const panels = childArray.filter(
+          (c): c is React.ReactElement =>
+            React.isValidElement(c) &&
+            'id' in (c.props ?? {}) &&
+            !('items' in (c.props ?? {}))
+        );
+        const activeKey = selectedKey ?? panels[0]?.props?.id;
+        const activePanel = activeKey
+          ? panels.find((p) => p.props.id === activeKey)
+          : panels[0];
+        const listWithCallback =
+          React.isValidElement(list) && onSelectionChange
+            ? React.cloneElement(list, {
+                onSelectionChange,
+              } as Record<string, unknown>)
+            : list;
+
+        return (
+          <div data-testid="tabs-root" {...props}>
+            {listWithCallback}
+            {activePanel}
+          </div>
+        );
+      };
+      const TabsList = ({
+        items,
+        onSelectionChange,
+        ...listProps
+      }: {
+        items?: Array<{ id: string; label: React.ReactNode }>;
+        onSelectionChange?: (key: React.Key) => void;
+        [key: string]: unknown;
+      }) => (
+        <div data-testid="tabs-list" role="tablist" {...listProps}>
+          {items?.map((item) => (
+            <button
+              data-testid={`tab-${item.id}`}
+              key={item.id}
+              role="tab"
+              type="button"
+              onClick={() => onSelectionChange?.(item.id)}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      );
+      const TabsPanel = ({
+        children,
+        id,
+        ...panelProps
+      }: {
+        children: React.ReactNode;
+        id: string;
+        [key: string]: unknown;
+      }) => (
+        <div data-testid={`tab-panel-${id}`} role="tabpanel" {...panelProps}>
+          {children}
+        </div>
+      );
+
+      return Object.assign(TabsRoot, { List: TabsList, Panel: TabsPanel });
+    })(),
+  };
+});
 
 // Mock data
 const mockTestSuite = {

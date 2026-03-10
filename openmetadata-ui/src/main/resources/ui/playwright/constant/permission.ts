@@ -170,6 +170,16 @@ export const EDIT_DESCRIPTION_RULE: PolicyRulesType[] = [
   },
 ];
 
+export const VIEW_ONLY_RULE: PolicyRulesType[] = [
+  {
+    name: 'ViewOnly-Rule',
+    description: 'Allow ViewAll for all entities without edit permissions.',
+    resources: ['All'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+  },
+];
+
 export const EDIT_GLOSSARY_TERM_RULE: PolicyRulesType[] = [
   {
     name: 'EditGlossaryTerm-EditRule',

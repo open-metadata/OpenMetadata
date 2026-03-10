@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { Card, Divider } from 'antd';
 import entries from 'lodash/entries';
 import isNumber from 'lodash/isNumber';
@@ -19,16 +20,17 @@ import startCase from 'lodash/startCase';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { TooltipProps } from 'recharts';
 import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
 import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import {
   convertSecondsToHumanReadableFormat,
   formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import './test-summary-custom-tooltip.less';
@@ -38,6 +40,7 @@ const OMITTED_TOOLTIP_PAYLOAD_KEYS = [
   'status',
   'incidentId',
   'task',
+  'testCaseFqn',
   'passedRows',
   'failedRows',
   'boundArea',
@@ -47,11 +50,15 @@ function isThread(value: unknown): value is Thread {
   return typeof value === 'object' && value !== null && 'task' in value;
 }
 
-const TestSummaryCustomTooltip = (
-  props: TooltipProps<string | number, string>
-) => {
+interface TestSummaryCustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: Record<string, unknown> }>;
+  testCaseFqn?: string;
+}
+
+const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
   const { t } = useTranslation();
-  const { active, payload = [] } = props;
+  const { active, payload = [], testCaseFqn: testCaseFqnProp } = props;
 
   const state = useMemo(() => {
     if (payload.length === 0) {
@@ -65,7 +72,6 @@ const TestSummaryCustomTooltip = (
     const failedRows = payloadData.failedRows as number | undefined;
     const totalRows = (passedRows ?? 0) + (failedRows ?? 0);
     const formattedDateTime = formatDateTime(timestamp);
-    // Get status color
     let statusColor: string | undefined;
     if (status === TestCaseStatus.Failed) {
       statusColor = RED_3;
@@ -103,10 +109,10 @@ const TestSummaryCustomTooltip = (
         <li
           className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
           key={`item-${key}`}>
-          <span className="flex items-center text-grey-muted">
+          <Typography as="span" className="flex items-center text-grey-muted">
             {startCase(key)}
-          </span>
-          <span className="font-medium" data-testid={key}>
+          </Typography>
+          <Typography as="span" className="font-medium" data-testid={key}>
             {key === TABLE_FRESHNESS_KEY && isNumber(value)
               ? convertSecondsToHumanReadableFormat(
                   value,
@@ -114,7 +120,7 @@ const TestSummaryCustomTooltip = (
                   `${t('label.late-by')} `
                 )
               : tooltipValue}
-          </span>
+          </Typography>
         </li>
       );
     },
@@ -150,79 +156,118 @@ const TestSummaryCustomTooltip = (
         <ul data-testid="test-summary-tooltip-container">
           {/* Status */}
           <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-            <span className="flex items-center text-grey-muted">
+            <Typography as="span" className="flex items-center text-grey-muted">
               {t('label.status')}
-            </span>
-            <span
+            </Typography>
+            <Typography
+              as="span"
               className="font-medium"
               data-testid="status"
               style={{ color: statusColor }}>
               {status}
-            </span>
+            </Typography>
           </li>
           {/* Incident (from task) */}
           {task?.task && (
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <span className="flex items-center text-grey-muted">
+              <Typography
+                as="span"
+                className="flex items-center text-grey-muted">
                 {t('label.incident')}
-              </span>
-              <span className="font-medium" data-testid="incident">
+              </Typography>
+              <Typography
+                as="span"
+                className="font-medium"
+                data-testid="incident">
                 <Link
-                  className="font-medium cursor-pointer"
+                  className="tooltip-incident-link font-medium cursor-pointer"
                   to={getTaskDetailPath(task)}>
                   {`#${task.task.id}`}
                 </Link>
-              </span>
+              </Typography>
             </li>
           )}
-          {/* Incident ID (if task not present) */}
+          {/* Incident ID (if task not present) - show as link when testCaseFqn available */}
           {incidentId && !task?.task && (
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <span className="flex items-center text-grey-muted">
+              <Typography
+                as="span"
+                className="flex items-center text-grey-muted">
                 {t('label.incident')}
-              </span>
-              <span className="font-medium" data-testid="incident">
-                {`#${incidentId}`}
-              </span>
+              </Typography>
+              <Typography
+                as="span"
+                className="font-medium"
+                data-testid="incident">
+                {testCaseFqnProp ? (
+                  <Link
+                    className="tooltip-incident-link font-medium cursor-pointer"
+                    to={getTestCaseDetailPagePath(
+                      testCaseFqnProp,
+                      TestCasePageTabs.ISSUES
+                    )}>
+                    {`#${incidentId}`}
+                  </Link>
+                ) : (
+                  `#${incidentId}`
+                )}
+              </Typography>
             </li>
           )}
           {/* Rows Passed */}
           {!isUndefined(passedRows) && totalRows > 0 && (
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <span className="flex items-center text-grey-muted">
+              <Typography
+                as="span"
+                className="flex items-center text-grey-muted">
                 {t('label.passed-rows')}
-              </span>
-              <span className="font-medium" data-testid="rows-passed">
+              </Typography>
+              <Typography
+                as="span"
+                className="font-medium"
+                data-testid="rows-passed">
                 {`${formatNumberWithComma(passedRows)}/${formatNumberWithComma(
                   totalRows
                 )}`}
-              </span>
+              </Typography>
             </li>
           )}
           {/* Rows Failed */}
           {!isUndefined(failedRows) && totalRows > 0 && (
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <span className="flex items-center text-grey-muted">
+              <Typography
+                as="span"
+                className="flex items-center text-grey-muted">
                 {t('label.failed-rows')}
-              </span>
-              <span className="font-medium" data-testid="rows-failed">
+              </Typography>
+              <Typography
+                as="span"
+                className="font-medium"
+                data-testid="rows-failed">
                 {`${formatNumberWithComma(failedRows)}/${formatNumberWithComma(
                   totalRows
                 )}`}
-              </span>
+              </Typography>
             </li>
           )}
           {/* Other test result values */}
-          {data.map(tooltipRender)}
+          {data.map((entry) =>
+            tooltipRender(entry as [string, string | number | Thread])
+          )}
           {/* Assignee (at the bottom) */}
           {task?.task && (
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <span className="flex items-center text-grey-muted">
+              <Typography
+                as="span"
+                className="flex items-center text-grey-muted">
                 {t('label.assignee')}
-              </span>
-              <span className="font-medium" data-testid="assignee">
+              </Typography>
+              <Typography
+                as="span"
+                className="font-medium"
+                data-testid="assignee">
                 <OwnerLabel owners={task.task.assignees} />
-              </span>
+              </Typography>
             </li>
           )}
         </ul>

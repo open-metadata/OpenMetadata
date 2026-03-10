@@ -18,42 +18,52 @@ import {
   tokenExpirationForDays,
   tokenExpirationUnlimitedDays,
   updateBotDetails,
+  verifyGenerateTokenAPIContract,
 } from '../../utils/bot';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Bots Page should work properly', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test.slow(true);
+test.describe(
+  'Bots Page should work properly',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    test.slow(true);
 
-  test('Bots Page should work properly', async ({ page }) => {
-    await redirectToBotPage(page);
+    test('Bots Page should work properly', async ({ page }) => {
+      await redirectToBotPage(page);
 
-    await test.step(
-      'Verify ingestion bot delete button is always disabled',
-      async () => {
-        await expect(
-          page.getByTestId('bot-delete-ingestion-bot')
-        ).toBeDisabled();
-      }
-    );
+      await test.step(
+        'Verify ingestion bot delete button is always disabled',
+        async () => {
+          await expect(
+            page.getByTestId('bot-delete-ingestion-bot')
+          ).toBeDisabled();
+        }
+      );
 
-    await test.step('Create Bot', async () => {
-      await createBot(page);
+      await test.step('Create Bot', async () => {
+        await createBot(page);
+      });
+
+      await test.step('Update display name and description', async () => {
+        await updateBotDetails(page);
+      });
+
+      await test.step('Verify generateToken API contract', async () => {
+        await verifyGenerateTokenAPIContract(page);
+      });
+
+      await test.step('Update token expiration', async () => {
+        await redirectToBotPage(page);
+        await tokenExpirationForDays(page);
+        await tokenExpirationUnlimitedDays(page);
+      });
+
+      await test.step('Delete Bot', async () => {
+        await deleteBot(page);
+      });
     });
-
-    await test.step('Update display name and description', async () => {
-      await updateBotDetails(page);
-    });
-
-    await test.step('Update token expiration', async () => {
-      await tokenExpirationForDays(page);
-      await tokenExpirationUnlimitedDays(page);
-    });
-
-    await test.step('Delete Bot', async () => {
-      await deleteBot(page);
-    });
-  });
-});
+  }
+);

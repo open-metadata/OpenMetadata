@@ -15,46 +15,14 @@
  */
 export interface OpenLineageConnection {
     /**
-     * service type of the messaging source
+     * Event broker configuration. Choose between Kafka and Kinesis.
      */
-    brokersUrl?: string;
-    /**
-     * consumer group name
-     */
-    consumerGroupName?: string;
-    /**
-     * initial Kafka consumer offset
-     */
-    consumerOffsets?: InitialConsumerOffsets;
+    brokerConfig: BrokerConfiguration;
     /**
      * Regex exclude pipelines.
      */
-    pipelineFilterPattern?: FilterPattern;
-    /**
-     * max allowed wait time
-     */
-    poolTimeout?: number;
-    /**
-     * SASL Configuration details.
-     */
-    saslConfig?: SASLClientConfig;
-    /**
-     * Kafka security protocol config
-     */
-    securityProtocol?: KafkaSecurityProtocol;
-    /**
-     * max allowed inactivity time
-     */
-    sessionTimeout?: number;
-    /**
-     * SSL Configuration details.
-     */
-    sslConfig?:                  Config;
+    pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
-    /**
-     * topic from where Open lineage events will be pulled
-     */
-    topicName?: string;
     /**
      * Service Type
      */
@@ -62,27 +30,129 @@ export interface OpenLineageConnection {
 }
 
 /**
- * initial Kafka consumer offset
+ * Event broker configuration. Choose between Kafka and Kinesis.
+ *
+ * Kafka broker configuration for OpenLineage events.
+ *
+ * AWS Kinesis Data Streams configuration for OpenLineage events.
  */
-export enum InitialConsumerOffsets {
-    Earliest = "earliest",
-    Latest = "latest",
+export interface BrokerConfiguration {
+    /**
+     * Kafka bootstrap servers URL.
+     */
+    brokersUrl?: string;
+    /**
+     * Kafka consumer group name.
+     */
+    consumerGroupName?: string;
+    /**
+     * Initial Kafka consumer offset.
+     *
+     * Initial Kinesis shard iterator type.
+     */
+    consumerOffsets?: InitialConsumerOffsets;
+    /**
+     * Max allowed wait time.
+     *
+     * Poll interval in seconds.
+     */
+    poolTimeout?: number;
+    /**
+     * SASL Configuration details.
+     */
+    saslConfig?: SASLClientConfig;
+    /**
+     * Kafka security protocol config.
+     */
+    securityProtocol?: KafkaSecurityProtocol;
+    /**
+     * Max allowed inactivity time.
+     *
+     * Max inactivity timeout in seconds.
+     */
+    sessionTimeout?: number;
+    /**
+     * SSL Configuration details.
+     */
+    sslConfig?: Config;
+    /**
+     * Topic from where OpenLineage events will be pulled.
+     */
+    topicName?: string;
+    /**
+     * AWS credentials configuration.
+     */
+    awsConfig?: AWSCredentials;
+    /**
+     * Kinesis Data Stream name.
+     */
+    streamName?: string;
 }
 
 /**
- * Regex exclude pipelines.
+ * AWS credentials configuration.
  *
- * Regex to only fetch entities that matches the pattern.
+ * AWS credentials configs.
  */
-export interface FilterPattern {
+export interface AWSCredentials {
     /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
      */
-    excludes?: string[];
+    assumeRoleArn?: string;
     /**
-     * List of strings/regex patterns to match and include only database entities that match.
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
      */
-    includes?: string[];
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion: string;
+    /**
+     * AWS Secret Access Key.
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
+}
+
+/**
+ * Initial Kafka consumer offset.
+ *
+ * Initial Kinesis shard iterator type.
+ */
+export enum InitialConsumerOffsets {
+    Earliest = "earliest",
+    InitialConsumerOffsetsLATEST = "LATEST",
+    Latest = "latest",
+    TrimHorizon = "TRIM_HORIZON",
 }
 
 /**
@@ -119,7 +189,7 @@ export enum SaslMechanismType {
 }
 
 /**
- * Kafka security protocol config
+ * Kafka security protocol config.
  */
 export enum KafkaSecurityProtocol {
     Plaintext = "PLAINTEXT",
@@ -148,6 +218,22 @@ export interface Config {
      * The private key associated with the SSL certificate.
      */
     sslKey?: string;
+}
+
+/**
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

@@ -7,6 +7,7 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 
 /**
  * Default implementation of RecreateHandler that provides zero-downtime index recreation.
@@ -52,34 +53,60 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
     if (canonicalIndex == null || stagedIndex == null) {
       LOG.error(
-          "Cannot finalize reindex for entity '{}'. Missing canonical or staged index name.",
-          entityType);
+          "Cannot finalize reindex for entity '{}'. canonicalIndex={}, stagedIndex={}",
+          entityType,
+          canonicalIndex,
+          stagedIndex);
       return;
     }
 
-    if (reindexSuccess) {
+    // Always-promote: partial data is better than no data. When reindex failed but the staged
+    // index has documents, promote it. Only delete if truly empty.
+    boolean shouldPromote = reindexSuccess;
+    if (!shouldPromote) {
+      long docCount = searchClient.getDocumentCount(stagedIndex);
+      if (docCount > 0) {
+        LOG.info(
+            "Reindex failed for entity '{}' but staged index '{}' has {} documents. "
+                + "Promoting partial data (partial data > no data).",
+            entityType,
+            stagedIndex,
+            docCount);
+        shouldPromote = true;
+      } else if (docCount == 0) {
+        LOG.info(
+            "Reindex failed for entity '{}' and staged index '{}' has 0 documents. "
+                + "Deleting empty staged index.",
+            entityType,
+            stagedIndex);
+      } else {
+        LOG.warn(
+            "Could not determine doc count for staged index '{}' (entity '{}'). "
+                + "Promoting to avoid data loss.",
+            stagedIndex,
+            entityType);
+        shouldPromote = true;
+      }
+    }
+
+    if (shouldPromote) {
       try {
         Set<String> aliasesToAttach = new HashSet<>();
 
-        // Existing Aliases
         existingAliases.stream()
             .filter(alias -> alias != null && !alias.isBlank())
             .forEach(aliasesToAttach::add);
 
-        // Canonical Alias
         if (!nullOrEmpty(canonicalAlias)) {
           aliasesToAttach.add(canonicalAlias);
         }
 
-        // Parent Aliases
         parentAliases.stream()
             .filter(alias -> alias != null && !alias.isBlank())
             .forEach(aliasesToAttach::add);
 
-        // Remove any null or blank aliases
         aliasesToAttach.removeIf(alias -> alias == null || alias.isBlank());
 
-        // Collect all old indices to delete (except staged)
         Set<String> allEntityIndices = searchClient.listIndicesByPrefix(canonicalIndex);
         Set<String> oldIndicesToDelete = new HashSet<>();
         for (String oldIndex : allEntityIndices) {
@@ -88,7 +115,13 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           }
         }
 
-        // Canonical Indexes needs to be removed before attached that as aliases
+        LOG.debug(
+            "finalizeReindex entity '{}': aliases={}, oldIndices={}, stagedIndex={}",
+            entityType,
+            aliasesToAttach,
+            oldIndicesToDelete,
+            stagedIndex);
+
         if (oldIndicesToDelete.contains(canonicalIndex)) {
           if (searchClient.indexExists(canonicalIndex)) {
             searchClient.deleteIndexWithBackoff(canonicalIndex);
@@ -97,8 +130,6 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           }
         }
 
-        // Atomically swap aliases from old indices to staged index
-        // This ensures zero-downtime: aliases point to new index before old ones are deleted
         if (!aliasesToAttach.isEmpty()) {
           boolean swapSuccess =
               searchClient.swapAliases(oldIndicesToDelete, stagedIndex, aliasesToAttach);
@@ -111,12 +142,17 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         }
 
         LOG.info(
-            "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
+            "Promoted staged index '{}' to serve entity '{}' (aliases: {}, reindexSuccess: {}).",
             stagedIndex,
             entityType,
-            aliasesToAttach);
+            aliasesToAttach,
+            reindexSuccess);
 
-        // Delete old indices after successful alias swap (with backoff for snapshot scenarios)
+        ReindexingMetrics metrics = ReindexingMetrics.getInstance();
+        if (metrics != null) {
+          metrics.recordPromotionSuccess(entityType);
+        }
+
         for (String oldIndex : oldIndicesToDelete) {
           try {
             if (searchClient.indexExists(oldIndex)) {
@@ -131,6 +167,10 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       } catch (Exception ex) {
         LOG.error(
             "Failed to promote staged index '{}' for entity '{}'.", stagedIndex, entityType, ex);
+        ReindexingMetrics metrics = ReindexingMetrics.getInstance();
+        if (metrics != null) {
+          metrics.recordPromotionFailure(entityType);
+        }
       }
     } else {
       try {
@@ -166,12 +206,39 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
     if (canonicalIndex == null || stagedIndex == null) {
       LOG.error(
-          "Cannot promote index for entity '{}'. Missing canonical or staged index name.",
-          entityType);
+          "Cannot promote index for entity '{}'. canonicalIndex={}, stagedIndex={}",
+          entityType,
+          canonicalIndex,
+          stagedIndex);
       return;
     }
 
-    if (!reindexSuccess) {
+    // Always-promote: check doc count when reindex failed
+    boolean shouldPromote = reindexSuccess;
+    if (!shouldPromote) {
+      long docCount = searchClient.getDocumentCount(stagedIndex);
+      if (docCount > 0) {
+        LOG.info(
+            "Per-entity reindex failed for '{}' but staged index '{}' has {} documents. Promoting.",
+            entityType,
+            stagedIndex,
+            docCount);
+        shouldPromote = true;
+      } else if (docCount == 0) {
+        LOG.info(
+            "Per-entity reindex failed for '{}' and staged index '{}' is empty. Deleting.",
+            entityType,
+            stagedIndex);
+      } else {
+        LOG.warn(
+            "Could not determine doc count for staged index '{}' (entity '{}'). Promoting.",
+            stagedIndex,
+            entityType);
+        shouldPromote = true;
+      }
+    }
+
+    if (!shouldPromote) {
       try {
         if (searchClient.indexExists(stagedIndex)) {
           searchClient.deleteIndexWithBackoff(stagedIndex);
@@ -191,11 +258,9 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     }
 
     try {
-      // Get aliases from indexMapping.json (not from old index)
       Set<String> aliasesToAttach =
           getAliasesFromMapping(indexMapping, searchRepository.getClusterAlias());
 
-      // Find old indices with this prefix (except staged)
       Set<String> allEntityIndices = searchClient.listIndicesByPrefix(canonicalIndex);
       Set<String> oldIndicesToDelete = new HashSet<>();
       for (String oldIndex : allEntityIndices) {
@@ -204,7 +269,13 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         }
       }
 
-      // Canonical Indexes needs to be removed before attached that as aliases
+      LOG.debug(
+          "promoteEntityIndex '{}': aliases={}, oldIndices={}, stagedIndex={}",
+          entityType,
+          aliasesToAttach,
+          oldIndicesToDelete,
+          stagedIndex);
+
       if (oldIndicesToDelete.contains(canonicalIndex)) {
         if (searchClient.indexExists(canonicalIndex)) {
           searchClient.deleteIndexWithBackoff(canonicalIndex);
@@ -213,26 +284,35 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         }
       }
 
-      // Atomically swap aliases from old indices to staged index
-      // This ensures zero-downtime: aliases point to new index before old ones are deleted
       if (!aliasesToAttach.isEmpty()) {
         boolean swapSuccess =
             searchClient.swapAliases(oldIndicesToDelete, stagedIndex, aliasesToAttach);
         if (!swapSuccess) {
           LOG.error(
-              "Failed to atomically swap aliases for entity '{}'. Old indices will not be deleted.",
-              entityType);
+              "Failed to atomically swap aliases for entity '{}'. "
+                  + "oldIndices={}, stagedIndex={}, aliases={}",
+              entityType,
+              oldIndicesToDelete,
+              stagedIndex,
+              aliasesToAttach);
           return;
         }
+      } else {
+        LOG.warn("Entity '{}': aliasesToAttach is empty, skipping alias swap", entityType);
       }
 
       LOG.info(
-          "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
+          "Promoted staged index '{}' to serve entity '{}' (aliases: {}, reindexSuccess: {}).",
           stagedIndex,
           entityType,
-          aliasesToAttach);
+          aliasesToAttach,
+          reindexSuccess);
 
-      // Delete old indices after successful alias swap (with backoff for snapshot scenarios)
+      ReindexingMetrics promoteMetrics = ReindexingMetrics.getInstance();
+      if (promoteMetrics != null) {
+        promoteMetrics.recordPromotionSuccess(entityType);
+      }
+
       for (String oldIndex : oldIndicesToDelete) {
         try {
           if (searchClient.indexExists(oldIndex)) {
@@ -247,6 +327,10 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     } catch (Exception ex) {
       LOG.error(
           "Failed to promote staged index '{}' for entity '{}'.", stagedIndex, entityType, ex);
+      ReindexingMetrics promoteMetrics = ReindexingMetrics.getInstance();
+      if (promoteMetrics != null) {
+        promoteMetrics.recordPromotionFailure(entityType);
+      }
     }
   }
 

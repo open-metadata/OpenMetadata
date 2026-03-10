@@ -102,3 +102,17 @@ $$section
 Number of entities per partition for distributed indexing. Smaller values create more partitions for better distribution across servers. Range: 1000-50000.
 
 $$
+
+$$section
+### Time Series Max Days $(id="timeSeriesMaxDays")
+
+Maximum age in days for time series data during reindexing. Default 0 (index all data). Set to a positive value like 15 to limit to recent data only.
+
+$$
+
+$$section
+### Time Series Entity Days Override $(id="timeSeriesEntityDays")
+
+Per-entity-type override for time series max days. Keys are entity type names (e.g. testCaseResult, queryCostRecord), values are number of days. Entities not listed here use the default Time Series Max Days value.
+
+$$

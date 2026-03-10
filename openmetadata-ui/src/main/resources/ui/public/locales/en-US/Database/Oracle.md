@@ -106,6 +106,22 @@ This directory will be used to set the `LD_LIBRARY_PATH` env variable. It is req
 $$
 
 $$section
+### Preserve Identifier Case $(id="preserveIdentifierCase")
+
+Controls how Oracle identifier names (tables, columns, schemas) are stored in OpenMetadata.
+
+Oracle stores unquoted identifiers in UPPERCASE (e.g. `CREATE TABLE EMPLOYEES` → `EMPLOYEES` in the data dictionary). Quoted identifiers keep their original case (e.g. `CREATE TABLE "employees"` → `employees`).
+
+**Disabled (default):** Identifiers with the same letters but different case — such as unquoted `EMPLOYEES` and quoted `"employees"` — are not guaranteed to be stored distinctly and may collide into the same name.
+
+**Enabled:** Names are stored exactly as Oracle persists them, preserving the distinction between `EMPLOYEES` and `"employees"`.
+
+**When to enable:** If your schema contains identifiers that share the same letters but differ only in case (one unquoted UPPERCASE, one quoted lowercase) and you need them treated as separate entities in OpenMetadata.
+
+**⚠ Migration warning:** Enabling this after data has already been ingested with the default setting will change the stored names of **all** existing tables, columns, schemas, and constraints. This breaks all attached metadata — tags, descriptions, lineage, data quality tests, and custom properties — on those entities. If you must switch, soft-delete all previously ingested entities before re-ingesting with the new setting.
+$$
+
+$$section
 ### Database Name $(id="databaseName")
 In OpenMetadata, the Database Service hierarchy works as follows:
 ```

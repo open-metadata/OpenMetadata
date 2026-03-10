@@ -164,6 +164,13 @@
       },
       "default": []
     },
+    "topDimensions": {
+      "description": "Number of top dimension values to show before grouping the rest as Others. Controls the cardinality of dimensional test results. Defaults to 5 when not specified.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50,
+      "default": 5
+    },
     "entityStatus": {
       "description": "Current status of the test case.",
       "$ref": "../type/status.json",

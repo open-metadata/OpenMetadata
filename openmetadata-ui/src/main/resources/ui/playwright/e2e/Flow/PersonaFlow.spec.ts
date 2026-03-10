@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test, expect } from '../../support/fixtures/userPages';
 import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';
@@ -22,6 +22,7 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import { TeamClass } from '../../support/team/TeamClass';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
@@ -43,23 +44,6 @@ const PERSONA_DETAILS = {
 const user = new UserClass();
 const persona1 = new PersonaClass();
 const persona2 = new PersonaClass();
-
-const test = base.extend<{
-  adminPage: Page;
-  userPage: Page;
-}>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminPage.goto('/');
-    await use(adminPage);
-    await adminPage.close();
-  },
-  userPage: async ({ browser }, use) => {
-    const userPage = await browser.newPage();
-    await use(userPage);
-    await userPage.close();
-  },
-});
 
 // use the admin user to login
 test.use({
@@ -315,30 +299,6 @@ test.describe.serial('Persona operations', () => {
 });
 
 test.describe.serial('Default persona setting and removal flow', () => {
-  const test = base.extend<{
-    adminPage: Page;
-    userPage: Page;
-  }>({
-    adminPage: async ({ browser }, use) => {
-      const adminContext = await browser.newContext({
-        storageState: 'playwright/.auth/admin.json',
-      });
-      const page = await adminContext.newPage();
-      await page.goto('/');
-      await use(page);
-      await adminContext.close();
-    },
-    userPage: async ({ browser }, use) => {
-      const userContext = await browser.newContext({
-        storageState: undefined,
-      });
-      const page = await userContext.newPage();
-      await user.login(page);
-      await use(page);
-      await userContext.close();
-    },
-  });
-
   test.beforeAll('Setup user for default persona flow', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await user.create(apiContext);
@@ -352,8 +312,12 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
   test('Set and remove default persona should work properly', async ({
     adminPage,
-    userPage,
+    browser,
   }) => {
+    const userContext = await browser.newContext({ storageState: undefined });
+    const userPage = await userContext.newPage();
+    await user.login(userPage);
+
     test.slow(true);
 
     await test.step(
@@ -496,6 +460,307 @@ test.describe.serial('Default persona setting and removal flow', () => {
       await userPage.reload();
       await waitForAllLoadersToDisappear(userPage);
       await checkPersonaInProfile(userPage); // Expect no persona again
+    });
+  });
+});
+
+test.describe.serial('Team persona setting flow', () => {
+  const teamPersona = new PersonaClass();
+  const teamPersona2 = new PersonaClass();
+  const teamUser = new UserClass();
+  const testTeam = new TeamClass();
+
+  test.beforeAll(
+    'Setup user, team and persona for team persona flow',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await teamUser.create(apiContext);
+
+      testTeam.data.users = [teamUser.responseData.id];
+      await testTeam.create(apiContext);
+
+      await teamPersona.create(apiContext);
+      await teamPersona2.create(apiContext);
+      await afterAction();
+    }
+  );
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await testTeam.delete(apiContext);
+    await teamUser.delete(apiContext);
+    await teamPersona.delete(apiContext);
+    await teamPersona2.delete(apiContext);
+    await afterAction();
+  });
+
+  test('Set default persona for team should work properly', async ({
+    adminPage,
+  }) => {
+    test.slow(true);
+
+    await test.step('Admin sets default persona for a team', async () => {
+      await redirectToHomePage(adminPage);
+
+      await testTeam.visitTeamPage(adminPage);
+
+      // Click to edit default persona
+      const personasLoadResponse = adminPage.waitForResponse((response) =>
+        response.url().includes('/api/v1/personas')
+      );
+      await adminPage.getByTestId('default-edit-user-persona').click();
+
+      // Wait for dropdown to open and options to load
+      await adminPage.waitForSelector(
+        '[data-testid="default-persona-select-list"]'
+      );
+      await adminPage.waitForSelector('.ant-select-dropdown', {
+        state: 'visible',
+      });
+      const personaResponse = await personasLoadResponse;
+      expect(personaResponse.status()).toBe(200);
+
+      const option = adminPage.locator(
+        `.ant-select-dropdown:visible [title="${teamPersona.responseData.displayName}"]`
+      );
+
+      await expect(option).toBeVisible();
+      await option.click();
+
+      // Verify the selected option is correct
+      await expect(
+        adminPage.locator(
+          `span.ant-select-selection-item[title="${teamPersona.responseData.displayName}"]`
+        )
+      ).toBeVisible();
+
+      const teamPatchResponse = adminPage.waitForResponse('/api/v1/teams/*');
+
+      // Save the default persona for team
+      await adminPage
+        .getByTestId('user-profile-default-persona-edit-save')
+        .click();
+      await teamPatchResponse;
+
+      // Ensure dropdown closed
+      await expect(
+        adminPage.locator('.ant-select-dropdown:visible')
+      ).not.toBeVisible();
+
+      // Verify persona renders in team UI
+      await expect(adminPage.getByTestId('team-persona')).toContainText(
+        teamPersona.responseData.displayName
+      );
+
+      // Verify switching to a different persona in the single-select dropdown replaces the first one
+      const personasLoadResponse2 = adminPage.waitForResponse((response) =>
+        response.url().includes('/api/v1/personas')
+      );
+      await adminPage.getByTestId('default-edit-user-persona').click();
+      await adminPage.waitForSelector(
+        '[data-testid="default-persona-select-list"]'
+      );
+      await adminPage.waitForSelector('.ant-select-dropdown', {
+        state: 'visible',
+      });
+      const personaResponse2 = await personasLoadResponse2;
+      expect(personaResponse2.status()).toBe(200);
+
+      // Click the new persona (teamPersona2)
+      const userPersonaOption = adminPage.locator(
+        `.ant-select-dropdown:visible [title="${teamPersona2.responseData.displayName}"]`
+      );
+      await expect(userPersonaOption).toBeVisible();
+      await userPersonaOption.click();
+
+      // Verify the new option replaces the old option in the dropdown selection display
+      await expect(
+        adminPage.locator(
+          `span.ant-select-selection-item[title="${teamPersona2.responseData.displayName}"]`
+        )
+      ).toBeVisible();
+      await expect(
+        adminPage.locator(
+          `span.ant-select-selection-item[title="${teamPersona.responseData.displayName}"]`
+        )
+      ).not.toBeVisible();
+
+      // Save it and re-verify
+      const teamPatchSwitchResponse =
+        adminPage.waitForResponse('/api/v1/teams/*');
+      await adminPage
+        .getByTestId('user-profile-default-persona-edit-save')
+        .click();
+      await teamPatchSwitchResponse;
+
+      await expect(adminPage.getByTestId('team-persona')).toContainText(
+        teamPersona2.responseData.displayName
+      );
+
+      // Revert it back to teamPersona for the rest of the test
+      const personasLoadResponse3 = adminPage.waitForResponse((response) =>
+        response.url().includes('/api/v1/personas')
+      );
+      await adminPage.getByTestId('default-edit-user-persona').click();
+      await adminPage.waitForSelector('.ant-select-dropdown', {
+        state: 'visible',
+      });
+      await personasLoadResponse3;
+      const revertOption = adminPage.locator(
+        `.ant-select-dropdown:visible [title="${teamPersona.responseData.displayName}"]`
+      );
+      await expect(revertOption).toBeVisible();
+      await revertOption.click();
+      const teamPatchRevertResponse =
+        adminPage.waitForResponse('/api/v1/teams/*');
+      await adminPage
+        .getByTestId('user-profile-default-persona-edit-save')
+        .click();
+      const teamPatchRevertResponseData = await teamPatchRevertResponse;
+      expect(teamPatchRevertResponseData.status()).toBe(200);
+    });
+
+    await test.step(
+      'Admin can verify the team persona is applied to the team user',
+      async () => {
+        // Navigate to the Users tab in the Team page
+        await adminPage.getByTestId('users').click();
+
+        // Wait for list to load and click on the specific user
+        const userProfileResponse = adminPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/users/name/') &&
+            response.request().method() === 'GET' &&
+            response.status() === 200
+        );
+        await adminPage.getByTestId(teamUser.responseData.name).click();
+        await userProfileResponse;
+
+        // Verify the user inherited the team's default persona
+        await adminPage.waitForSelector('[data-testid="persona-details-card"]');
+        const defaultPersonaChip = adminPage
+          .locator(
+            '[data-testid="default-persona-chip"] [data-testid="tag-chip"]'
+          )
+          .first();
+
+        await expect(defaultPersonaChip).toContainText(
+          teamPersona.responseData.displayName
+        );
+
+        // Verify the inherited icon is displayed
+        await expect(
+          adminPage.locator(
+            '[data-testid="default-persona-chip"] .inherit-icon'
+          )
+        ).toBeVisible();
+      }
+    );
+  });
+
+  test('Admin can remove the default persona for a team', async ({
+    adminPage,
+    browser,
+  }) => {
+    await test.step(
+      'Admin removes the default persona for a team',
+      async () => {
+        // Ensure the team has a default persona set via API before attempting removal
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await testTeam.patch(apiContext, [
+          {
+            op: 'add',
+            path: '/defaultPersona',
+            value: {
+              id: teamPersona.responseData.id,
+              type: 'persona',
+            },
+          },
+        ]);
+        await afterAction();
+
+        await redirectToHomePage(adminPage);
+        await testTeam.visitTeamPage(adminPage);
+
+        // Verify persona is displayed before trying to remove
+        await expect(adminPage.getByTestId('team-persona')).toContainText(
+          teamPersona.responseData.displayName
+        );
+
+        await adminPage.getByTestId('default-edit-user-persona').click();
+
+        await waitForAllLoadersToDisappear(adminPage);
+
+        await adminPage.waitForSelector(
+          '[data-testid="default-persona-select-list"]'
+        );
+
+        // Hover over the select to reveal the clear button, then click it
+        await adminPage
+          .locator('[data-testid="default-persona-select-list"]')
+          .hover();
+
+        await adminPage
+          .locator(
+            '[data-testid="default-persona-select-list"] .ant-select-clear'
+          )
+          .click();
+
+        const defaultPersonaChangeResponse =
+          adminPage.waitForResponse('/api/v1/teams/*');
+
+        // Save the changes
+        await adminPage
+          .locator('[data-testid="user-profile-default-persona-edit-save"]')
+          .click();
+
+        // Wait for the API call to complete and verify no default persona is shown
+        await defaultPersonaChangeResponse;
+        await expect(adminPage.getByTestId('team-persona')).toContainText(
+          'No persona assigned'
+        );
+      }
+    );
+  });
+
+  test('User without permissions cannot edit team persona', async ({
+    dataConsumerPage,
+  }) => {
+    await test.step(
+      'User without permissions cannot edit team persona',
+      async () => {
+        await redirectToHomePage(dataConsumerPage);
+        await testTeam.visitTeamPage(dataConsumerPage);
+
+        await expect(
+          dataConsumerPage.getByTestId('default-edit-user-persona')
+        ).not.toBeVisible();
+      }
+    );
+  });
+
+  test('Non-group team types do not have a default persona setting', async ({
+    adminPage,
+    browser,
+  }) => {
+    await test.step('Verify non-group teams cannot set a persona', async () => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const businessUnitTeam = new TeamClass();
+      businessUnitTeam.setTeamType('BusinessUnit');
+      await businessUnitTeam.create(apiContext);
+
+      await redirectToHomePage(adminPage);
+      await businessUnitTeam.visitTeamPage(adminPage);
+
+      await expect(adminPage.getByTestId('team-persona')).not.toBeVisible();
+      await expect(
+        adminPage.getByTestId('default-edit-user-persona')
+      ).not.toBeVisible();
+
+      // Cleanup
+      await businessUnitTeam.delete(apiContext);
+      await afterAction();
     });
   });
 });

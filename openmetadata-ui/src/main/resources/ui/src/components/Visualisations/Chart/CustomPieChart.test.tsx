@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
 import { TEXT_GREY_MUTED } from '../../../constants/constants';
 import CustomPieChart from './CustomPieChart.component';
@@ -161,5 +161,69 @@ describe('CustomPieChart', () => {
 
     expect(container.querySelector('.custom-pie-chart')).toBeInTheDocument();
     expect(container.querySelector('.recharts-wrapper')).toBeInTheDocument();
+  });
+
+  it('calls onSegmentClick when a data segment is clicked', () => {
+    const onSegmentClick = jest.fn();
+    const { container } = render(
+      <CustomPieChart
+        data={mockData}
+        name="test-chart"
+        onSegmentClick={onSegmentClick}
+      />
+    );
+
+    const sectors = container.querySelectorAll('.recharts-pie-sector');
+    const firstDataSector = sectors[1];
+
+    fireEvent.click(firstDataSector as Element);
+
+    expect(onSegmentClick).toHaveBeenCalled();
+    expect(onSegmentClick).toHaveBeenCalledTimes(1);
+    expect(onSegmentClick).toHaveBeenCalledWith(mockData[0], 0);
+  });
+
+  it('calls onSegmentClick with correct segment and index for each data segment', () => {
+    const onSegmentClick = jest.fn();
+    const { container } = render(
+      <CustomPieChart
+        data={mockData}
+        name="test-chart"
+        onSegmentClick={onSegmentClick}
+      />
+    );
+
+    const sectors = container.querySelectorAll('.recharts-pie-sector');
+
+    mockData.forEach((segment, index) => {
+      onSegmentClick.mockClear();
+      fireEvent.click(sectors[index + 1] as Element);
+
+      expect(onSegmentClick).toHaveBeenCalledWith(segment, index);
+    });
+  });
+
+  it('applies custom-pie-chart-clickable class when onSegmentClick is provided', () => {
+    const { container } = render(
+      <CustomPieChart
+        data={mockData}
+        name="test-chart"
+        onSegmentClick={jest.fn()}
+      />
+    );
+
+    const clickablePie = container.querySelector('.custom-pie-chart-clickable');
+
+    expect(clickablePie).toBeInTheDocument();
+  });
+
+  it('does not apply custom-pie-chart-clickable class when onSegmentClick is not provided', () => {
+    const { container } = render(
+      <CustomPieChart data={mockData} name="test-chart" />
+    );
+
+    const clickablePie = container.querySelector('.custom-pie-chart-clickable');
+
+    expect(clickablePie).toBeNull();
   });
 });

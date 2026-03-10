@@ -14,6 +14,7 @@ Common Broker for fetching metadata
 """
 
 import concurrent.futures
+import time
 import traceback
 from abc import ABC
 from typing import Iterable, Optional
@@ -21,6 +22,11 @@ from typing import Iterable, Optional
 import confluent_kafka
 from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.admin import ConfigResource
+from confluent_kafka.error import (
+    ConsumeError,
+    KeyDeserializationError,
+    ValueDeserializationError,
+)
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
@@ -288,7 +294,34 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     logger.info(
                         f"Broker consumer polling for sample messages in topic {topic_name}"
                     )
-                    messages = self.consumer_client.consume(num_messages=10, timeout=10)
+                    # DeserializingConsumer does not implement consume(), use poll() in a loop instead.
+                    messages = []
+                    n_poll = 10
+                    total_timeout = 10
+                    # Total timeout for polling messages is 10 seconds from now.
+                    deadline = time.monotonic() + total_timeout
+                    for _ in range(n_poll):
+                        try:
+                            remaining = deadline - time.monotonic()
+                            if remaining <= 0:
+                                break
+                            msg = self.consumer_client.poll(timeout=remaining)
+                        except ConsumeError as exc:
+                            logger.warning(
+                                f"Consumer error polling topic {topic_name}: {exc}"
+                            )
+                            continue
+                        except (
+                            KeyDeserializationError,
+                            ValueDeserializationError,
+                        ) as exc:
+                            logger.warning(
+                                f"Failed to deserialize message from topic {topic_name}: {exc}"
+                            )
+                            continue
+                        if msg is None:
+                            break
+                        messages.append(msg)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

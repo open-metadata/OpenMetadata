@@ -101,8 +101,19 @@ export interface EventPublisherJob {
     /**
      * This schema publisher run job status.
      */
-    status?:    Status;
-    timestamp?: number;
+    status?: Status;
+    /**
+     * Per-entity-type override for time series max days. Keys are entity type names, values are
+     * number of days. Entities not in this map use timeSeriesMaxDays as default.
+     */
+    timeSeriesEntityDays?: { [key: string]: number };
+    /**
+     * Maximum age in days for time series data during reindexing. Only records from the last N
+     * days will be indexed. Default 0 (index all data). Set to a positive value like 15 to
+     * limit to recent data.
+     */
+    timeSeriesMaxDays?: number;
+    timestamp?:         number;
     /**
      * Enable distributed indexing across multiple servers. When enabled, reindexing work is
      * partitioned and can be processed by multiple servers concurrently with crash recovery

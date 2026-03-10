@@ -44,7 +44,20 @@
             "addReviewers": {
               "description": "Add the Reviewers to the assignees List.",
               "type": "boolean",
+              "default": true
+            },
+            "addOwners": {
+              "description": "Add the Owners to the assignees List.",
+              "type": "boolean",
               "default": false
+            },
+            "candidates": {
+              "description": "List of specific candidates (users or teams) assigned to this task.",
+              "type": "array",
+              "items": {
+                "$ref": "../../../../../type/entityReference.json"
+              },
+              "default": []
             }
           },
           "additionalProperties": false

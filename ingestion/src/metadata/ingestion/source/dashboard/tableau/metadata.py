@@ -82,6 +82,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     TableauDashboard,
     UpstreamTable,
 )
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
@@ -1122,7 +1123,7 @@ class TableauSource(DashboardServiceSource):
                         "dataType": ColumnTypeParser.get_column_type(
                             column.remoteType if column.remoteType else None
                         ),
-                        "name": column.id,
+                        "name": truncate_column_name(column.id),
                         "displayName": column.name if column.name else column.id,
                     }
                     if column.remoteType and column.remoteType == DataType.ARRAY.value:
@@ -1146,7 +1147,7 @@ class TableauSource(DashboardServiceSource):
                 parsed_fields = {
                     "dataTypeDisplay": "Tableau Field",
                     "dataType": DataType.RECORD,
-                    "name": field.id,
+                    "name": truncate_column_name(field.id),
                     "displayName": field.name if field.name else field.id,
                     "description": field.description,
                 }
@@ -1236,9 +1237,11 @@ class TableauSource(DashboardServiceSource):
 
                 new_usage = current_views - latest_usage
                 if new_usage < 0:
-                    raise ValueError(
-                        f"Wrong computation of usage difference. Got new_usage={new_usage}."
+                    logger.warning(
+                        f"Wrong computation of usage difference for {dashboard.fullyQualifiedName.root}."
+                        f" Got new_usage={new_usage}."
                     )
+                    return
 
                 logger.info(
                     f"Yielding new usage for {dashboard.fullyQualifiedName.root}"

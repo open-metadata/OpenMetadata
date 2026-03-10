@@ -43,6 +43,8 @@ const user2 = new UserClass();
 const user3 = new UserClass();
 const users = [user1, user2, user3];
 const table1 = new TableClass();
+const tablePagination = new TableClass();
+const PAGINATION_INCIDENT_COUNT = 22;
 
 test.describe.configure({ mode: 'serial' });
 
@@ -654,8 +656,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await nonStatusFilterRes;
 
     await page.click('[data-testid="test-case-select"]');
-    const testCaseResponse = page.waitForResponse((response) =>
-      response.url().includes(`/api/v1/search/query`) && response.url().includes("index=test_case_search_index") && response.url().includes(encodeURIComponent(testCase1))
+    const testCaseResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/search/query`) &&
+        response.url().includes('index=test_case_search_index') &&
+        response.url().includes(encodeURIComponent(testCase1))
     );
     await page.getByTestId('test-case-select').locator('input').fill(testCase1);
     await testCaseResponse;
@@ -694,5 +699,118 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         page.locator(`[data-testid="test-case-${testCase?.['name']}"]`)
       ).toBeVisible();
     }
+  });
+
+  /**
+   * Incident Manager pagination
+   * @description Uses a dedicated table with 20+ test cases to ensure multiple pages of incidents.
+   * Verifies Next/Previous and page indicator when pagination is shown.
+   */
+  test.describe('Incident Manager pagination', () => {
+    test.beforeAll(async ({ browser }) => {
+      test.slow();
+      const { afterAction, apiContext, page } = await performAdminLogin(
+        browser
+      );
+
+      if (!process.env.PLAYWRIGHT_IS_OSS) {
+        await resetTokenFromBotPage(page, 'testsuite-bot');
+      }
+
+      for (let i = 0; i < PAGINATION_INCIDENT_COUNT; i++) {
+        await tablePagination.createTestCase(apiContext, {
+          parameterValues: [
+            { name: 'minColValue', value: 12 },
+            { name: 'maxColValue', value: 24 },
+          ],
+          testDefinition: 'tableColumnCountToBeBetween',
+        });
+      }
+
+      const pipeline = await tablePagination.createTestSuitePipeline(
+        apiContext
+      );
+
+      await makeRetryRequest({
+        page,
+        fn: () =>
+          apiContext.post(
+            `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
+          ),
+      });
+
+      await triggerTestSuitePipelineAndWaitForSuccess({
+        page,
+        pipeline,
+        apiContext,
+      });
+
+      await afterAction();
+    });
+
+    test('Next, Previous and page indicator', async ({ page }) => {
+      test.slow();
+      const listUrl =
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list';
+
+      const initialListRes = page.waitForResponse((res) =>
+        res.url().includes(listUrl)
+      );
+      await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
+      await initialListRes;
+
+      await expect(
+        page.getByTestId('test-case-incident-manager-table')
+      ).toBeVisible();
+      await expect(page.getByTestId('pagination')).toBeVisible();
+      await expect(page.getByTestId('page-indicator')).toContainText('1');
+
+      const nextListRes = page.waitForResponse(
+        (res) => res.url().includes(listUrl) && res.url().includes('offset=15')
+      );
+      await page.getByTestId('next').click();
+      await nextListRes;
+
+      await expect(page.getByTestId('page-indicator')).toContainText('2');
+
+      const prevListRes = page.waitForResponse(
+        (res) => res.url().includes(listUrl) && res.url().includes('offset=0')
+      );
+      await page.getByTestId('previous').click();
+      await prevListRes;
+
+      await expect(page.getByTestId('page-indicator')).toContainText('1');
+    });
+
+    test('Page size dropdown updates list limit and resets to page 1', async ({
+      page,
+    }) => {
+      test.slow();
+      const listUrl =
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list';
+
+      const initialListRes = page.waitForResponse((res) =>
+        res.url().includes(listUrl)
+      );
+      await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
+      await initialListRes;
+
+      await expect(page.getByTestId('pagination')).toBeVisible();
+      await expect(
+        page.getByTestId('page-size-selection-dropdown')
+      ).toBeVisible();
+
+      await page.getByTestId('page-size-selection-dropdown').click();
+      const listWithLimit50 = page.waitForResponse(
+        (res) => res.url().includes(listUrl) && res.url().includes('limit=50')
+      );
+      await page.getByRole('menuitem', { name: /50.*page/i }).click();
+      await listWithLimit50;
+
+      await expect(page.getByTestId('page-indicator')).toContainText('1');
+      await expect(
+        page.getByTestId('page-size-selection-dropdown')
+      ).toContainText('50');
+    });
   });
 });

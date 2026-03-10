@@ -32,6 +32,8 @@ import i18n from '../i18next/LocalUtil';
 type DataProductWidgetKeys =
   | DetailPageWidgetKeys.DESCRIPTION
   | DetailPageWidgetKeys.OWNERS
+  | DetailPageWidgetKeys.TIER
+  | DetailPageWidgetKeys.CERTIFICATION
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
   | DetailPageWidgetKeys.DOMAIN
@@ -45,6 +47,8 @@ class DataProductClassBase {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 4,
       [DetailPageWidgetKeys.OWNERS]: 1.5,
+      [DetailPageWidgetKeys.TIER]: 1.5,
+      [DetailPageWidgetKeys.CERTIFICATION]: 1.5,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.EXPERTS]: 2,
@@ -117,24 +121,32 @@ class DataProductClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
-        i: DetailPageWidgetKeys.TAGS,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TIER],
+        i: DetailPageWidgetKeys.TIER,
         w: 2,
         x: 6,
         y: 2,
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
-        i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CERTIFICATION],
+        i: DetailPageWidgetKeys.CERTIFICATION,
         w: 2,
         x: 6,
         y: 3,
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
-        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
+        i: DetailPageWidgetKeys.TAGS,
+        w: 2,
+        x: 6,
+        y: 4,
+        static: false,
+      },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
+        i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
         y: 5,
@@ -145,7 +157,15 @@ class DataProductClassBase {
         i: DetailPageWidgetKeys.EXPERTS,
         w: 2,
         x: 6,
-        y: 5,
+        y: 6,
+        static: false,
+      },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        w: 2,
+        x: 6,
+        y: 7,
         static: false,
       },
     ];
@@ -188,6 +208,10 @@ class DataProductClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
       case DetailPageWidgetKeys.OWNERS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.OWNERS];
+      case DetailPageWidgetKeys.TIER:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TIER];
+      case DetailPageWidgetKeys.CERTIFICATION:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CERTIFICATION];
       case DetailPageWidgetKeys.TAGS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
