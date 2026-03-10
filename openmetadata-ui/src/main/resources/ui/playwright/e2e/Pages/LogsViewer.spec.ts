@@ -16,6 +16,7 @@ import {
   DOMAIN_TAGS,
   PLAYWRIGHT_INGESTION_TAG_OBJ,
 } from '../../constant/config';
+import { BundleTestSuiteClass } from '../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
@@ -23,6 +24,7 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
 const table = new TableClass();
+const bundleTestSuite = new BundleTestSuiteClass();
 
 test.describe(
   'Logs viewer page',
@@ -39,11 +41,10 @@ test.describe(
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await table.create(apiContext);
-      await table.createBundleTestSuite(apiContext);
-      const { pipeline } = await table.createBundleTestSuitePipeline(
-        apiContext
-      );
-      await table.runIngestionPipeline(apiContext, pipeline.id);
+      await bundleTestSuite.createBundleTestSuite(apiContext);
+      const { pipeline } =
+        await bundleTestSuite.createBundleTestSuitePipeline(apiContext);
+      await bundleTestSuite.runIngestionPipeline(apiContext, pipeline.id);
 
       await afterAction();
     }
@@ -67,8 +68,8 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
 
       const bundleSuiteFqn =
-        table.bundleTestSuiteResponseData?.fullyQualifiedName ??
-        table.bundleTestSuiteResponseData?.name;
+        bundleTestSuite.bundleTestSuiteResponseData?.fullyQualifiedName ??
+        bundleTestSuite.bundleTestSuiteResponseData?.name;
       expect(bundleSuiteFqn, 'bundle suite created in beforeAll').toBeTruthy();
       const bundleSuiteLink = page
         .getByTestId('test-suite-table')
@@ -82,27 +83,29 @@ test.describe(
       await page.getByTestId('pipeline').click();
       await waitForAllLoadersToDisappear(page);
 
-      const logsResponse = page.waitForResponse(
+      const pipelinesResponse = page.waitForResponse(
         (r) =>
           r.url().includes('/api/v1/services/ingestionPipelines') &&
           r.status() === 200
       );
+      const logsLastResponse = page.waitForResponse(
+        (r) => {
+          const url = r.url();
+          return (
+            url.includes('/api/v1/services/ingestionPipelines/logs/') &&
+            url.includes('/last') &&
+            r.status() === 200
+          );
+        }
+      );
       await expect(page.getByTestId('logs-button').first()).toBeVisible();
       await page.getByTestId('logs-button').first().click();
-      await logsResponse;
+      await pipelinesResponse;
+      await logsLastResponse;
     });
 
     await test.step('Wait for logs page to load and verify all key elements', async () => {
       await page.waitForURL(/\/testSuite\/.*\/logs/);
-
-      await page.waitForResponse((r) => {
-        const url = r.url();
-        return (
-          url.includes('/api/v1/services/ingestionPipelines/logs/') &&
-          url.includes('/last') &&
-          r.status() === 200
-        );
-      });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -117,8 +120,7 @@ test.describe(
         .filter({
           has: page.getByText(/no .* log|logs.*available/i),
         })
-        .isVisible()
-        .catch(() => false);
+        .isVisible();
 
       expect(hasLogContent || hasNoLogsEmptyState).toBeTruthy();
     });
