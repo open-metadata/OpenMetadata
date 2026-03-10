@@ -10,19 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HelpOutline, KeyboardArrowDown } from '@mui/icons-material';
-import {
-  Box,
-  Card,
-  MenuItem,
-  Select,
-  SelectChangeEvent,
-  Skeleton,
-  Stack,
-  Tooltip,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Select, Skeleton, Tooltip } from '@openmetadata/ui-core-components';
+import { HelpCircle } from '@untitledui/icons';
 import { ColumnsType } from 'antd/lib/table';
 import { format } from 'date-fns';
 import { isEmpty, split, toLower } from 'lodash';
@@ -60,7 +49,6 @@ import DimensionalityHeatmap from './DimensionalityHeatmap/DimensionalityHeatmap
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap/DimensionalityHeatmap.interface';
 
 const DimensionalityTab = () => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
   const { testCase } = useTestCaseStore();
@@ -73,9 +61,14 @@ const DimensionalityTab = () => {
   const { dimensionColumnsOptions, selectedColumn } = useMemo(() => {
     const column = split(dimensionKey || '', '=')[0];
 
+    const options = testCase?.dimensionColumns?.map((column) => ({
+      id: column,
+      label: column,
+    }));
+
     return {
-      dimensionColumnsOptions: testCase?.dimensionColumns ?? [],
-      selectedColumn: column ? column : testCase?.dimensionColumns?.[0],
+      dimensionColumnsOptions: options ?? [],
+      selectedColumn: column || testCase?.dimensionColumns?.[0],
     };
   }, [testCase, dimensionKey]);
 
@@ -102,8 +95,11 @@ const DimensionalityTab = () => {
     });
   };
 
-  const handleDimensionChange = (event: SelectChangeEvent<string>) => {
-    setSelectedDimension(event.target.value);
+  const handleDimensionChange = (value: string | number | null) => {
+    if (!value) {
+      return;
+    }
+    setSelectedDimension(String(value));
   };
 
   const fetchDimensionColumnData = async () => {
@@ -198,33 +194,31 @@ const DimensionalityTab = () => {
             status={toLower(result.testCaseStatus) as StatusType}
           />
         ) : (
-          <Typography sx={{ fontSize: 14 }}>--</Typography>
+          <span className="tw:text-sm">--</span>
         );
       },
     },
     {
       title: (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <div className="tw:flex tw:items-center tw:gap-2">
           {t('label.impact-score')}
           <Tooltip
             placement="top"
             title={
-              <Typography sx={{ fontSize: 12 }}>
+              <span className="tw:text-xs">
                 {t('message.impact-score-helper')}
-              </Typography>
+              </span>
             }>
-            <HelpOutline sx={{ fontSize: 16 }} />
+            <HelpCircle height={16} width={16} />
           </Tooltip>
-        </Box>
+        </div>
       ),
       dataIndex: 'result',
       key: 'impactScore',
       width: 120,
       render: (result: DimensionResultWithTimestamp) => {
         return (
-          <Typography sx={{ fontSize: 14 }}>
-            {result?.impactScore ?? '--'}
-          </Typography>
+          <span className="tw:text-sm">{result?.impactScore ?? '--'}</span>
         );
       },
     },
@@ -235,24 +229,14 @@ const DimensionalityTab = () => {
       width: 200,
       render: (dimensionValue: string, record) => {
         return (
-          <Typography
-            sx={{
-              color: 'primary.main',
-              fontSize: 14,
-              fontWeight: 400,
-              textDecoration: 'none',
-              '&:hover': {
-                textDecoration: 'underline',
-              },
-            }}>
-            <Link
-              to={getTestCaseDimensionsDetailPagePath(
-                testCase?.fullyQualifiedName || '',
-                record.result.dimensionKey || ''
-              )}>
-              {dimensionValue}
-            </Link>
-          </Typography>
+          <Link
+            className="tw:text-text-brand-secondary"
+            to={getTestCaseDimensionsDetailPagePath(
+              testCase?.fullyQualifiedName || '',
+              record.result.dimensionKey || ''
+            )}>
+            {dimensionValue}
+          </Link>
         );
       },
     },
@@ -265,7 +249,7 @@ const DimensionalityTab = () => {
         return result?.timestamp ? (
           <DateTimeDisplay timestamp={result.timestamp} />
         ) : (
-          <Typography sx={{ fontSize: 14 }}>--</Typography>
+          <span className="tw:text-sm">--</span>
         );
       },
     },
@@ -274,10 +258,10 @@ const DimensionalityTab = () => {
   const noDataPlaceholder = useMemo(() => {
     if (isLoading) {
       return (
-        <Stack spacing={8}>
+        <div className="tw:flex tw:flex-col tw:gap-16">
           <Skeleton height={200} variant="rounded" width="100%" />
           <Skeleton height={200} variant="rounded" width="100%" />
-        </Stack>
+        </div>
       );
     }
 
@@ -285,8 +269,8 @@ const DimensionalityTab = () => {
       <NoDataPlaceholderNew size={SIZE.LARGE}>
         <Trans
           components={{
-            0: <Typography sx={{ fontSize: '14px' }} />,
-            1: <Typography sx={{ fontSize: '14px' }} />,
+            0: <span className="tw:text-sm" />,
+            1: <span className="tw:text-sm" />,
             2: <Link to={pipelineLink} />,
           }}
           i18nKey="message.no-dimension-description"
@@ -296,118 +280,55 @@ const DimensionalityTab = () => {
   }, [isLoading, pipelineLink]);
 
   return (
-    <Stack p={5} spacing={7}>
-      <Box alignItems="center" display="flex" flexWrap="nowrap" gap={7.5}>
-        <Box alignItems="center" display="flex" flexWrap="nowrap" gap={2.5}>
-          <Typography
-            sx={{
-              color: theme.palette.grey[900],
-              fontSize: theme.typography.pxToRem(13),
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-            }}>
+    <div className="tw:flex tw:flex-col tw:p-5 tw:gap-6">
+      <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-7.5">
+        <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-2.5">
+          <p className="tw:m-0 tw:text-[13px] tw:font-medium tw:whitespace-nowrap tw:text-primary">
             {`${t('label.select-dimension')}:`}
-          </Typography>
+          </p>
           <Select
-            IconComponent={KeyboardArrowDown}
-            MenuProps={{
-              PaperProps: {
-                sx: {
-                  width: 'max-content',
-                  '& .MuiMenuItem-root': {
-                    '&.Mui-selected': {
-                      backgroundColor: theme.palette.primary.main,
-                      color: theme.palette.primary.contrastText,
-                      '&:hover': {
-                        backgroundColor: theme.palette.primary.dark,
-                      },
-                    },
-                  },
-                },
-              },
-            }}
+            className="tw:min-w-37.5"
             data-testid="dimension-select"
-            size="small"
-            sx={{
-              minWidth: 150,
-              fontWeight: 600,
-              '& .MuiSvgIcon-root': {
-                color: theme.palette.grey[900],
-              },
-              '& .MuiSelect-select': {
-                fontSize: '12px !important',
-                lineHeight: '18px !important',
-                padding: '6px 12px !important',
-                'box-shadow': 'none !important',
-                border: `1px solid ${theme.palette.grey[200]}`,
-              },
-              '&:hover .MuiSelect-select': {
-                bgcolor: theme.palette.grey[50],
-              },
-            }}
-            value={selectedDimension}
+            items={dimensionColumnsOptions}
+            size="sm"
+            value={selectedDimension ?? null}
             onChange={handleDimensionChange}>
-            {dimensionColumnsOptions.map((column) => (
-              <MenuItem
-                key={column}
-                sx={{
-                  fontWeight: 500,
-                }}
-                value={column}>
-                {column}
-              </MenuItem>
-            ))}
+            {(item) => (
+              <Select.Item id={item.id} key={item.id} label={item.label} />
+            )}
           </Select>
-        </Box>
-        <Box alignItems="center" display="flex" flexWrap="nowrap" gap={2.5}>
-          <Typography
-            sx={{
-              color: theme.palette.grey[900],
-              fontSize: theme.typography.pxToRem(13),
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-            }}>
+        </div>
+        <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-2.5">
+          <p className="tw:m-0 tw:text-[13px] tw:font-medium tw:whitespace-nowrap tw:text-primary">
             {`${t('label.date')}:`}
-          </Typography>
+          </p>
           <MuiDatePickerMenu
             showSelectedCustomRange
             defaultDateRange={DEFAULT_SELECTED_RANGE}
             handleDateRangeChange={handleDateRangeChange}
             size="small"
           />
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {isEmpty(dimensionData) || isLoading ? (
         noDataPlaceholder
       ) : (
         <>
-          <Card
-            sx={{
-              p: 4,
-              boxShadow: 'none',
-              border: `1px solid ${theme.palette.grey[200]}`,
-              borderRadius: '10px',
-            }}>
+          <div className="tw:p-4 tw:shadow-none tw:border tw:border-border-secondary tw:rounded-[10px]">
             <DimensionalityHeatmap
               data={dimensionData}
               endDate={dateRange.endTs}
               isLoading={isLoading}
               startDate={dateRange.startTs}
             />
-          </Card>
-          <Box>
-            <Typography
-              sx={{
-                mb: 2.5,
-                color: theme.palette.grey[900],
-                fontSize: theme.typography.pxToRem(14),
-                fontWeight: 500,
-              }}>
+          </div>
+          <div>
+            <p className="tw:m-0 tw:mb-2.5 tw:text-sm tw:font-medium tw:text-primary">
               {t('label.entity-text-table', {
                 entityText: selectedDimension || '',
               })}
-            </Typography>
+            </p>
             <Table
               bordered
               columns={tableColumns}
@@ -415,10 +336,10 @@ const DimensionalityTab = () => {
               loading={isLoading}
               pagination={false}
             />
-          </Box>
+          </div>
         </>
       )}
-    </Stack>
+    </div>
   );
 };
 

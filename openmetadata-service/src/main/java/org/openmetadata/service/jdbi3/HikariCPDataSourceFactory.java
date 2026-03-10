@@ -93,6 +93,14 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
       config.setMetricRegistry(metricRegistry);
     }
 
+    try {
+      config.setMetricsTrackerFactory(
+          new com.zaxxer.hikari.metrics.micrometer.MicrometerMetricsTrackerFactory(
+              io.micrometer.core.instrument.Metrics.globalRegistry));
+    } catch (Exception e) {
+      LOG.debug("Could not set Micrometer metrics tracker: {}", e.getMessage());
+    }
+
     LOG.debug(
         "Creating standard ManagedHikariDataSource (custom DataSource handling done in config)");
     ManagedHikariDataSource managedDataSource = new ManagedHikariDataSource(config, name);

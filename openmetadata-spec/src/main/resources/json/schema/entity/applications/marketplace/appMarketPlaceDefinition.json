@@ -153,10 +153,10 @@
       "type": "boolean",
       "default": false
     },
-    "preview": {
+    "enabled": {
       "type": "boolean",
-      "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
-      "default": false
+      "description": "Flag to enable/disable the application. If the app is not enabled, it can't be installed.",
+      "default": true
     },
     "domains" : {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",

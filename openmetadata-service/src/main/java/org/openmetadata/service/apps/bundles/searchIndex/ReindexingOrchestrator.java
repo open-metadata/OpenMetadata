@@ -223,7 +223,10 @@ public class ReindexingOrchestrator {
         context.createReindexingContext(Boolean.TRUE.equals(jobData.getUseDistributedIndexing()));
 
     ReindexingConfiguration config = ReindexingConfiguration.from(jobData);
-    config = ReindexingConfiguration.applyAutoTuning(config, searchRepository);
+    long totalEntities = countTotalEntities();
+    config = ReindexingConfiguration.applyAutoTuning(config, searchRepository, totalEntities);
+    config.applyTo(jobData);
+    updateRunRecordConfig(config);
 
     ExecutionResult result = activeStrategy.execute(config, jobContext);
     updateJobDataFromResult(result);
@@ -265,6 +268,26 @@ public class ReindexingOrchestrator {
       case COMPLETED_WITH_ERRORS -> jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
       case FAILED -> jobData.setStatus(EventPublisherJob.Status.FAILED);
       case STOPPED -> jobData.setStatus(EventPublisherJob.Status.STOPPED);
+    }
+  }
+
+  private void updateRunRecordConfig(ReindexingConfiguration config) {
+    try {
+      AppRunRecord appRecord = context.getJobRecord();
+      if (appRecord != null) {
+        Map<String, Object> configMap = appRecord.getConfig();
+        if (configMap != null) {
+          configMap.put("batchSize", config.batchSize());
+          configMap.put("consumerThreads", config.consumerThreads());
+          configMap.put("producerThreads", config.producerThreads());
+          configMap.put("queueSize", config.queueSize());
+          configMap.put("maxConcurrentRequests", config.maxConcurrentRequests());
+          configMap.put("payLoadSize", config.payloadSize());
+        }
+        context.storeRunRecord(JsonUtils.pojoToJson(appRecord));
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to update run record with auto-tuned config", e);
     }
   }
 
@@ -436,6 +459,25 @@ public class ReindexingOrchestrator {
         && !jobData.getSlackBotToken().isEmpty()
         && jobData.getSlackChannel() != null
         && !jobData.getSlackChannel().isEmpty();
+  }
+
+  private long countTotalEntities() {
+    long total = 0;
+    for (String entityType : jobData.getEntities()) {
+      try {
+        if (!SearchIndexApp.TIME_SERIES_ENTITIES.contains(entityType)) {
+          total +=
+              Entity.getEntityRepository(entityType)
+                  .getDao()
+                  .listCount(
+                      new org.openmetadata.service.jdbi3.ListFilter(
+                          org.openmetadata.schema.type.Include.ALL));
+        }
+      } catch (Exception e) {
+        LOG.debug("Could not count entities for {}: {}", entityType, e.getMessage());
+      }
+    }
+    return total;
   }
 
   private String getInstanceUrl() {

@@ -86,6 +86,10 @@ export interface App {
      */
     domains?: EntityReference[];
     /**
+     * Flag to enable/disable the application. If the app is not enabled, it can't be installed.
+     */
+    enabled?: boolean;
+    /**
      * Event Subscriptions for the Application.
      */
     eventSubscriptions?: EntityReference[];
@@ -136,11 +140,6 @@ export interface App {
      * lineage etc..
      */
     pipelines?: EntityReference[];
-    /**
-     * Flag to enable/disable preview for the application. If the app is in preview mode, it
-     * can't be installed.
-     */
-    preview?: boolean;
     /**
      * Privacy Policy for the developer
      */

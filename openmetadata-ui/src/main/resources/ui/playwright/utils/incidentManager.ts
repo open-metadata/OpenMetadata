@@ -184,7 +184,6 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
 
   // Wait for the run to complete
   await page.waitForTimeout(2000);
-  const oneHourBefore = Date.now() - 86400000;
 
   await expect
     .poll(
@@ -193,11 +192,12 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
           .get(
             `/api/v1/services/ingestionPipelines/${encodeURIComponent(
               pipeline?.['fullyQualifiedName']
-            )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`
+            )}/pipelineStatus?limit=1`
           )
           .then((res) => res.json());
+        const statuses = Array.isArray(response?.data) ? response.data : [];
 
-        return response.data[0]?.pipelineState;
+        return statuses[0]?.pipelineState ?? 'running';
       },
       {
         // Custom expect message for reporting, optional.

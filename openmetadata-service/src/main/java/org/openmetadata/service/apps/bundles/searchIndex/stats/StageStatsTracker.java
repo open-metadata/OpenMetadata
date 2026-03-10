@@ -112,6 +112,7 @@ public class StageStatsTracker {
    */
   public boolean awaitSinkCompletion(long timeoutMs) {
     long deadline = System.currentTimeMillis() + timeoutMs;
+    long sleepMs = 50;
     while (pendingSinkOps.get() > 0) {
       if (System.currentTimeMillis() >= deadline) {
         LOG.debug(
@@ -122,7 +123,9 @@ public class StageStatsTracker {
         return false;
       }
       try {
-        Thread.sleep(10);
+        Thread.sleep(sleepMs);
+        // reduces CPU waste from thousands of wakeups across partition workers.
+        sleepMs = Math.min(sleepMs * 2, 200);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         return false;

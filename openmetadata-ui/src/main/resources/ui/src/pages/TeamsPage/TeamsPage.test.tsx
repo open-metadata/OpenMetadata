@@ -242,8 +242,13 @@ describe('Test Teams Page', () => {
           bool: {
             must: [
               {
-                term: {
-                  'owners.id': 'f9578f16-363a-4788-80fb-d05816c9e169',
+                nested: {
+                  path: 'owners',
+                  query: {
+                    term: {
+                      'owners.id': 'f9578f16-363a-4788-80fb-d05816c9e169',
+                    },
+                  },
                 },
               },
             ],

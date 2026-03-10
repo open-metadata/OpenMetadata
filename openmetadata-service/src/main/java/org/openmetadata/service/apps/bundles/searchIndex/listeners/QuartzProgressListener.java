@@ -4,6 +4,7 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -21,6 +22,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.QuartzOrchestratorConte
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobContext;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.JobExecutionContext;
 
@@ -43,6 +45,7 @@ public class QuartzProgressListener implements ReindexingProgressListener {
   private volatile long lastWebSocketUpdate = 0;
   private volatile long lastDbUpdate = 0;
   private final AtomicInteger pendingErrors = new AtomicInteger(0);
+  private volatile Map<String, Object> latestDistributedMetadata;
 
   public QuartzProgressListener(
       JobExecutionContext jobExecutionContext,
@@ -97,6 +100,13 @@ public class QuartzProgressListener implements ReindexingProgressListener {
     if (pendingErrors.get() > 0) {
       pendingErrors.set(0);
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
+    }
+
+    if (context instanceof DistributedJobContext distributedContext) {
+      Map<String, Object> metadata = distributedContext.getDistributedMetadata();
+      if (metadata != null && !metadata.isEmpty()) {
+        latestDistributedMetadata = metadata;
+      }
     }
 
     jobData.setStats(stats);
@@ -225,6 +235,14 @@ public class QuartzProgressListener implements ReindexingProgressListener {
         ctx = new SuccessContext();
       }
       ctx.withAdditionalProperty("stats", jobData.getStats());
+
+      Map<String, Object> metadata = latestDistributedMetadata;
+      if (metadata != null) {
+        for (Map.Entry<String, Object> entry : metadata.entrySet()) {
+          ctx.withAdditionalProperty(entry.getKey(), entry.getValue());
+        }
+      }
+
       appRecord.setSuccessContext(ctx);
     }
 

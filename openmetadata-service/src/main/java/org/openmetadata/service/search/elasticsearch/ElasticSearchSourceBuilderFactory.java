@@ -5,6 +5,8 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.SearchUtil.getFuzziness;
+import static org.openmetadata.service.search.SearchUtil.getMaxExpansions;
 import static org.openmetadata.service.search.SearchUtil.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtil.isDataQualityIndex;
 import static org.openmetadata.service.search.SearchUtil.isServiceIndex;
@@ -273,7 +275,8 @@ public class ElasticSearchSourceBuilderFactory
               int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
 
               if (!nullOrEmpty(agg.getField())) {
-                termsAgg = ElasticAggregationBuilder.termsAggregation(agg.getField(), maxSize);
+                String field = SearchSourceBuilderFactory.remapAggregationField(agg.getField());
+                termsAgg = ElasticAggregationBuilder.termsAggregation(field, maxSize);
               } else if (!nullOrEmpty(agg.getScript())) {
                 termsAgg =
                     ElasticAggregationBuilder.termsAggregationWithScript(agg.getScript(), maxSize);
@@ -632,6 +635,9 @@ public class ElasticSearchSourceBuilderFactory
             }
           });
 
+      String fuzziness = getFuzziness(query);
+      int maxExpansions = getMaxExpansions(query);
+
       es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQuery =
           es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
               q ->
@@ -642,8 +648,8 @@ public class ElasticSearchSourceBuilderFactory
                               .type(
                                   es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType
                                       .MostFields)
-                              .fuzziness("1")
-                              .maxExpansions(10)
+                              .fuzziness(fuzziness)
+                              .maxExpansions(maxExpansions)
                               .prefixLength(1)
                               .operator(
                                   es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or)
@@ -691,7 +697,7 @@ public class ElasticSearchSourceBuilderFactory
         es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields,
         es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
         String.valueOf(DEFAULT_TIE_BREAKER),
-        "1");
+        getFuzziness(query));
   }
 
   private es.co.elastic.clients.elasticsearch._types.query_dsl.Query createStandardNonFuzzyQueryV2(
@@ -896,7 +902,8 @@ public class ElasticSearchSourceBuilderFactory
       int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
 
       if (!nullOrEmpty(agg.getField())) {
-        termsAgg = ElasticAggregationBuilder.termsAggregation(agg.getField(), maxSize);
+        String field = SearchSourceBuilderFactory.remapAggregationField(agg.getField());
+        termsAgg = ElasticAggregationBuilder.termsAggregation(field, maxSize);
       } else if (!nullOrEmpty(agg.getScript())) {
         termsAgg = ElasticAggregationBuilder.termsAggregationWithScript(agg.getScript(), maxSize);
       } else {

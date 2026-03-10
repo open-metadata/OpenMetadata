@@ -68,6 +68,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.resources.system.SearchSettingsHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil;
@@ -165,23 +166,34 @@ public class SettingsCache {
     // Initialise Search Settings
     Settings storedSearchSettings =
         Entity.getSystemRepository().getConfigWithKey(SEARCH_SETTINGS.toString());
-    if (storedSearchSettings == null) {
-      try {
-        List<String> jsonDataFiles =
-            EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
-        if (!jsonDataFiles.isEmpty()) {
-          String json =
-              CommonUtil.getResourceAsStream(
-                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+    try {
+      List<String> jsonDataFiles =
+          EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
+      if (!jsonDataFiles.isEmpty()) {
+        String json =
+            CommonUtil.getResourceAsStream(
+                EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+        SearchSettings defaultSearchSettings = JsonUtils.readValue(json, SearchSettings.class);
+        if (storedSearchSettings == null) {
           Settings setting =
-              new Settings()
-                  .withConfigType(SEARCH_SETTINGS)
-                  .withConfigValue(JsonUtils.readValue(json, SearchSettings.class));
+              new Settings().withConfigType(SEARCH_SETTINGS).withConfigValue(defaultSearchSettings);
           Entity.getSystemRepository().createNewSetting(setting);
+        } else {
+          SearchSettings existingSearchSettings =
+              JsonUtils.convertValue(storedSearchSettings.getConfigValue(), SearchSettings.class);
+          SearchSettings mergedSettings =
+              new SearchSettingsHandler()
+                  .mergeSearchSettings(defaultSearchSettings, existingSearchSettings);
+          // Only update if merged settings differ from existing settings
+          if (!JsonUtils.pojoToJson(mergedSettings)
+              .equals(JsonUtils.pojoToJson(existingSearchSettings))) {
+            storedSearchSettings.setConfigValue(mergedSettings);
+            Entity.getSystemRepository().createOrUpdate(storedSearchSettings);
+          }
         }
-      } catch (IOException e) {
-        LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
       }
+    } catch (IOException e) {
+      LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
     }
 
     // Initialise Certification Settings

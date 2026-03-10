@@ -32,6 +32,7 @@ import qliksenseConnection from '../jsons/connectionSchemas/connections/dashboar
 import quicksightConnection from '../jsons/connectionSchemas/connections/dashboard/quickSightConnection.json';
 import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
 import sigmaConnection from '../jsons/connectionSchemas/connections/dashboard/sigmaConnection.json';
+import ssrsConnection from '../jsons/connectionSchemas/connections/dashboard/ssrsConnection.json';
 import supersetConnection from '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json';
 import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
 
@@ -134,6 +135,12 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
 
     case DashboardServiceType.Hex: {
       schema = hexConnection;
+
+      break;
+    }
+
+    case DashboardServiceType.Ssrs: {
+      schema = ssrsConnection;
 
       break;
     }

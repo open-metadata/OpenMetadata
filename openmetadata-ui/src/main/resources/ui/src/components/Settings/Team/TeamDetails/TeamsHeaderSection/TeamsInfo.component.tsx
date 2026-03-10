@@ -15,7 +15,9 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
+import { useTheme } from '@mui/material';
 import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +39,10 @@ import { useEntityRules } from '../../../../../hooks/useEntityRules';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../utils/ToastUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
@@ -44,9 +50,6 @@ import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelecta
 import { SubscriptionWebhook, TeamsInfoProps } from '../team.interface';
 import './teams-info.less';
 import TeamsSubscription from './TeamsSubscription.component';
-import { useTheme } from '@mui/material';
-import { showErrorToast, showSuccessToast } from '../../../../../utils/ToastUtils';
-import { AxiosError } from 'axios';
 
 const TeamsInfo = ({
   parentTeams,
@@ -142,8 +145,8 @@ const TeamsInfo = ({
           subscription: isEmpty(data)
             ? undefined
             : {
-              [data?.webhook ?? '']: { endpoint: data?.endpoint },
-            },
+                [data?.webhook ?? '']: { endpoint: data?.endpoint },
+              },
         },
       };
 
@@ -180,7 +183,8 @@ const TeamsInfo = ({
             <Tooltip
               title={t('label.edit-entity', {
                 entity: t('label.email'),
-              })}>
+              })}
+            >
               <Button
                 className="flex-center teams-info-email-edit-button p-0"
                 data-testid="edit-email"
@@ -208,7 +212,8 @@ const TeamsInfo = ({
             //  Used onClick stop click propagation event anywhere in the form to parent
             //  TeamsDetailV1 collapsible panel
             onClick={(e) => e.stopPropagation()}
-            onFinish={onEmailSave}>
+            onFinish={onEmailSave}
+          >
             <Space align="baseline">
               <Form.Item
                 className="m-b-0"
@@ -221,7 +226,8 @@ const TeamsInfo = ({
                       fieldText: t('label.email'),
                     }),
                   },
-                ]}>
+                ]}
+              >
                 <Input
                   className="w-48"
                   data-testid="email-input"
@@ -237,7 +243,8 @@ const TeamsInfo = ({
                   disabled={isLoading}
                   size="small"
                   type="primary"
-                  onClick={() => setIsEmailEdit(false)}>
+                  onClick={() => setIsEmailEdit(false)}
+                >
                   <CloseOutlined />
                 </Button>
                 <Button
@@ -246,7 +253,8 @@ const TeamsInfo = ({
                   htmlType="submit"
                   loading={isLoading}
                   size="small"
-                  type="primary">
+                  type="primary"
+                >
                   <CheckOutlined />
                 </Button>
               </Space>
@@ -256,7 +264,8 @@ const TeamsInfo = ({
           <Space align="center">
             <Typography.Text
               className="font-medium text-sm teams-info-value"
-              data-testid="email-value">
+              data-testid="email-value"
+            >
               {email ?? NO_DATA_PLACEHOLDER}
             </Typography.Text>
           </Space>
@@ -283,7 +292,8 @@ const TeamsInfo = ({
               <Tooltip
                 title={t('label.edit-entity', {
                   entity: t('label.team-type'),
-                })}>
+                })}
+              >
                 <Button
                   className="flex-center edit-team-type-icon p-0"
                   data-testid="edit-team-type-icon"
@@ -352,7 +362,9 @@ const TeamsInfo = ({
               isDefaultPersona
               hasPermission={hasEditPermission}
               multiSelect={false}
-              selectedPersonas={currentTeam.defaultPersona ? [currentTeam.defaultPersona] : []}
+              selectedPersonas={
+                currentTeam.defaultPersona ? [currentTeam.defaultPersona] : []
+              }
               onUpdate={handleDefaultPersonaUpdate}
             />
           </div>
@@ -363,11 +375,15 @@ const TeamsInfo = ({
                 to={entityUtilClassBase.getEntityLink(
                   EntityType.PERSONA,
                   currentTeam.defaultPersona.fullyQualifiedName ?? ''
-                )}>
+                )}
+              >
                 {getEntityName(currentTeam.defaultPersona)}
               </Link>
             ) : (
-              <Typography.Text className="text-sm font-medium" color={theme.palette.grey['700']}>
+              <Typography.Text
+                className="text-sm font-medium"
+                color={theme.palette.grey['700']}
+              >
                 {t('message.no-persona-assigned')}
               </Typography.Text>
             )}
@@ -375,13 +391,20 @@ const TeamsInfo = ({
         </Space>
       </>
     );
-  }, [isGroupType, currentTeam.defaultPersona, hasEditPermission, handleDefaultPersonaUpdate, t]);
+  }, [
+    isGroupType,
+    currentTeam.defaultPersona,
+    hasEditPermission,
+    handleDefaultPersonaUpdate,
+    t,
+  ]);
 
   return (
     <Space
       className="teams-info-header-container"
       data-testid="teams-info-header"
-      size={0}>
+      size={0}
+    >
       <DomainLabel
         headerLayout
         multiple
@@ -422,7 +445,8 @@ const TeamsInfo = ({
           {t('label.total-user-plural')}
           <Tooltip
             destroyTooltipOnHide
-            title={t('message.team-distinct-user-description')}>
+            title={t('message.team-distinct-user-description')}
+          >
             <InfoCircleOutlined
               className="m-x-xss"
               data-testid="helper-icon"
@@ -433,7 +457,8 @@ const TeamsInfo = ({
 
         <Typography.Text
           className="teams-info-value text-sm font-medium text-secondary-new"
-          data-testid="team-user-count">
+          data-testid="team-user-count"
+        >
           {currentTeam.userCount}
         </Typography.Text>
       </Space>

@@ -415,6 +415,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
       recordChange("source", original.getSource(), updated.getSource(), true);
       recordChange(
           "estimatedDuration", original.getEstimatedDuration(), updated.getEstimatedDuration());
+      recordChange("status", original.getStatus(), updated.getStatus());
     }
   }
 }
