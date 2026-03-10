@@ -348,7 +348,16 @@ public class TagLabelUtil {
     List<TagLabel> result = new ArrayList<>();
     for (TagLabel existing : listOrEmpty(existingTags)) {
       String existingParent = FullyQualifiedName.getParentFQN(existing.getTagFQN());
-      if (mutuallyExclusive(existing) && incomingParents.contains(existingParent)) {
+      boolean isMutuallyExclusive = false;
+      try {
+        isMutuallyExclusive = mutuallyExclusive(existing);
+      } catch (Exception ex) {
+        LOG.warn(
+            "Could not check mutual exclusivity for tag '{}': {}",
+            existing.getTagFQN(),
+            ex.getMessage());
+      }
+      if (isMutuallyExclusive && incomingParents.contains(existingParent)) {
         continue;
       }
       result.add(existing);
