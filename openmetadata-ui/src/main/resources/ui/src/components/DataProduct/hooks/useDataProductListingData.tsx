@@ -12,7 +12,7 @@
  */
 
 import { Box, Typography } from '@mui/material';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { TABLE_CARD_PAGE_SIZE } from '../../../constants/constants';
 import {
   DATAPRODUCT_DEFAULT_QUICK_FILTERS,
@@ -23,12 +23,12 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { useListingData } from '../../common/atoms/compositions/useListingData';
-import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import {
   CellRenderer,
   ColumnConfig,
   ListingData,
 } from '../../common/atoms/shared/types';
+import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 
 export const useDataProductListingData = (): ListingData<DataProduct> => {
   const filterKeys = useMemo(() => DATAPRODUCT_DEFAULT_QUICK_FILTERS, []);
@@ -105,7 +105,8 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
                   color: 'text.primary',
                   fontSize: '1rem',
                   lineHeight: '24px',
-                }}>
+                }}
+              >
                 {entityName}
               </Typography>
               {showName && (
@@ -114,7 +115,8 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
                     fontSize: '0.75rem',
                     color: 'text.secondary',
                     lineHeight: '16px',
-                  }}>
+                  }}
+                >
                   {entity.name}
                 </Typography>
               )}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { Table } from '../../../src/generated/entity/data/table';
 import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
@@ -338,7 +337,7 @@ test.describe(
       await page.getByRole('tab', { name: 'Column Profile' }).click();
 
       const data = await colsResponse;
-      await expect(data.status()).toBe(200);
+      expect(data.status()).toBe(200);
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -645,7 +644,11 @@ test.describe(
     const largeTable = new TableClass();
     const largeTableName = `large_table_${uuid()}`;
     const targetColumnName = 'test_col_071';
-    let createdTable: Table;
+    type TableColumn = NonNullable<
+      Parameters<TableClass['createAdditionalTable']>[0]['columns']
+    >[number];
+    type ColumnDataType = TableColumn['dataType'];
+    let createdTable: Record<string, ColumnDataType | string | number>;
 
     test.beforeAll('Setup large table', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -654,12 +657,12 @@ test.describe(
       await largeTable.create(apiContext);
 
       // Generate columns
-      const columns = [];
+      const columns: TableColumn[] = [];
       // Create modest number of columns to ensure pagination/search is active
       for (let i = 0; i < 50; i++) {
         columns.push({
           name: `extra_col_${i}`,
-          dataType: 'VARCHAR',
+          dataType: 'VARCHAR' as ColumnDataType,
           dataLength: 100,
           dataTypeDisplay: 'varchar',
           description: `Extra column ${i}`,
@@ -668,7 +671,7 @@ test.describe(
       // Add the target column
       columns.push({
         name: targetColumnName,
-        dataType: 'VARCHAR',
+        dataType: 'VARCHAR' as ColumnDataType,
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'Target column for search test',
@@ -733,22 +736,21 @@ test.describe(
       expect(clipboardText).toContain(targetColumnName);
 
       // 5. Visit the copied Link
-      const keyProfileMetricsResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              `/api/v1/tables/name/${encodeURIComponent(createdTable.fullyQualifiedName!)}/columns`
-            ) &&
-          response.url().includes('fields=profile') &&
-          response.request().method() === 'GET'
-      );
-      const visitLinkResponse = page.waitForResponse((response) =>
-        response.url().includes(`/table/${createdTable.fullyQualifiedName}`)
-      );
-      await page.goto(clipboardText);
-      await visitLinkResponse;
-      await keyProfileMetricsResponse;
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(
+                `/api/v1/tables/name/${encodeURIComponent(
+                  createdTable.fullyQualifiedName
+                )}/columns`
+              ) &&
+            response.url().includes('fields=') &&
+            response.request().method() === 'GET'
+        ),
+        page.goto(clipboardText),
+      ]);
       await waitForAllLoadersToDisappear(page);
 
       // 6. Verify Side Panel is open

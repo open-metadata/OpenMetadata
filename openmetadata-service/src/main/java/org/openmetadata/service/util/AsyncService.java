@@ -31,7 +31,9 @@ public class AsyncService {
     maxConcurrency = resolveMaxConcurrency();
     concurrencyLimiter = new Semaphore(maxConcurrency);
     executorService =
-        new BoundedExecutorService(Executors.newVirtualThreadPerTaskExecutor(), concurrencyLimiter);
+        new BoundedExecutorService(
+            Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("om-async-", 0).factory()),
+            concurrencyLimiter);
     LOG.info("AsyncService initialized with max concurrency: {}", maxConcurrency);
   }
 

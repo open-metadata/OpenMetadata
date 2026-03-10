@@ -262,14 +262,16 @@ export const getSuggestionElement = (
         />
       }
       key={fqdn}
-      type="text">
+      type="text"
+    >
       <Link
         className="text-sm no-underline"
         data-testid="data-name"
         id={fqdn.replace(/\./g, '')}
         target={searchClassBase.getSearchEntityLinkTarget(entitySource)}
         to={entityLink}
-        onClick={onClickHandler}>
+        onClick={onClickHandler}
+      >
         {displayText}
         <Typography.Text className="m-l-xs text-xs" type="secondary">
           {fqn}
@@ -400,6 +402,25 @@ export const parseBucketsData = (
  * @param wildcardTerms - Optional record for wildcard queries
  * @returns Query filter object for searchQuery API
  */
+const NESTED_FIELDS = ['owners'];
+
+const getNestedPath = (field: string): string | undefined => {
+  return NESTED_FIELDS.find((nested) => field.startsWith(`${nested}.`));
+};
+
+const wrapTermQuery = (
+  field: string,
+  value: string | number | boolean,
+  nestedPath?: string
+): ElasticsearchQuery => {
+  const termQuery: ElasticsearchQuery = { term: { [field]: value } };
+  if (nestedPath) {
+    return { nested: { path: nestedPath, query: termQuery } };
+  }
+
+  return termQuery;
+};
+
 export const getTermQuery = (
   terms: Record<string, string | string[] | number | boolean>,
   queryType: 'must' | 'must_not' | 'should' | 'should_not' = 'must',
@@ -414,11 +435,12 @@ export const getTermQuery = (
 ) => {
   const termQueries = Object.entries(terms)
     .map(([field, value]) => {
+      const nestedPath = getNestedPath(field);
       if (Array.isArray(value)) {
-        return value.map((v) => ({ term: { [field]: v } }));
+        return value.map((v) => wrapTermQuery(field, v, nestedPath));
       }
 
-      return { term: { [field]: value } };
+      return wrapTermQuery(field, value, nestedPath);
     })
     .flat();
 
@@ -431,11 +453,12 @@ export const getTermQuery = (
   const mustNotQueries = options?.mustNotTerms
     ? Object.entries(options.mustNotTerms)
         .map(([field, value]) => {
+          const nestedPath = getNestedPath(field);
           if (Array.isArray(value)) {
-            return value.map((v) => ({ term: { [field]: v } }));
+            return value.map((v) => wrapTermQuery(field, v, nestedPath));
           }
 
-          return { term: { [field]: value } };
+          return wrapTermQuery(field, value, nestedPath);
         })
         .flat()
     : [];

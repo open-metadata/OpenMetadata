@@ -35,4 +35,9 @@ public class OpenSearchQueryBuilderFactory implements QueryBuilderFactory {
   public OMQueryBuilder existsQuery(String field) {
     return new OpenSearchQueryBuilder().existsQuery(field);
   }
+
+  @Override
+  public OMQueryBuilder nestedQuery(String path, OMQueryBuilder query) {
+    return new OpenSearchQueryBuilder().nestedQuery(path, query);
+  }
 }

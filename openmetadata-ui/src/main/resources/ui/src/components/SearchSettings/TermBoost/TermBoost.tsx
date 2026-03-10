@@ -68,7 +68,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
 
         // Determine field based on FQN pattern
         if (fqn?.startsWith('Certification.')) {
-          field = 'certification.tagFQN';
+          field = 'certification.tagLabel.tagFQN';
         } else if (fqn?.startsWith('Tier.')) {
           field = 'tier.tagFQN';
         }
@@ -78,12 +78,14 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             <div className="d-flex flex-column">
               <Typography.Text
                 className="text-sm"
-                data-testid="tag-option-label">
+                data-testid="tag-option-label"
+              >
                 {item.data.displayName ?? item.data.name}
               </Typography.Text>
               <Typography.Text
                 className="text-grey-muted text-sm"
-                data-testid="tag-option-fully-qualified-name">
+                data-testid="tag-option-fully-qualified-name"
+              >
                 {fqn}
               </Typography.Text>
             </div>
@@ -154,7 +156,8 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             </Typography.Text>
             <Typography.Text
               className="font-semibold boost-value"
-              data-testid="term-boost-value">
+              data-testid="term-boost-value"
+            >
               {termBoostData.boost}
             </Typography.Text>
           </div>
