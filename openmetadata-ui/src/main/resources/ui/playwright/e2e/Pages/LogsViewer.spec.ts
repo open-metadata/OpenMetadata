@@ -12,6 +12,10 @@
  */
 
 import { expect } from '@playwright/test';
+import {
+  DOMAIN_TAGS,
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+} from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
@@ -20,7 +24,15 @@ import { test } from '../fixtures/pages';
 
 const table = new TableClass();
 
-test.describe('Logs viewer page journey', () => {
+test.describe(
+  'Logs viewer page',
+  {
+    tag: [
+      `${DOMAIN_TAGS.OBSERVABILITY}:Logs_Viewer`,
+      PLAYWRIGHT_INGESTION_TAG_OBJ.tag,
+    ],
+  },
+  () => {
   test.beforeAll(
     'Create table, bundle test suite, pipeline, and run pipeline for logs viewer',
     async ({ browser }) => {
@@ -28,7 +40,9 @@ test.describe('Logs viewer page journey', () => {
 
       await table.create(apiContext);
       await table.createBundleTestSuite(apiContext);
-      const { pipeline } = await table.createBundleTestSuitePipeline(apiContext);
+      const { pipeline } = await table.createBundleTestSuitePipeline(
+        apiContext
+      );
       await table.runIngestionPipeline(apiContext, pipeline.id);
 
       await afterAction();
@@ -42,8 +56,14 @@ test.describe('Logs viewer page journey', () => {
 
     await test.step('Open Data Quality → Bundle Suites and click on the newly created bundle', async () => {
       await redirectToHomePage(page);
+
+      const listResponse = page.waitForResponse(
+        (r) =>
+          r.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
+          r.status() === 200
+      );
       await page.goto('/data-quality/test-suites/bundle-suites');
-      await page.waitForLoadState('networkidle');
+      await listResponse;
       await waitForAllLoadersToDisappear(page);
 
       const bundleSuiteFqn =
@@ -53,7 +73,7 @@ test.describe('Logs viewer page journey', () => {
       const bundleSuiteLink = page
         .getByTestId('test-suite-table')
         .locator(`a[href*="${encodeURIComponent(bundleSuiteFqn)}"]`);
-      await expect(bundleSuiteLink).toBeVisible();
+      await expect(bundleSuiteLink).toBeVisible({ timeout: 10000 });
       await bundleSuiteLink.click();
       await waitForAllLoadersToDisappear(page);
     });
