@@ -145,7 +145,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
           </Grid.Item>
           <Grid.Item span={16}>
             <RichTextEditorPreviewerNew
-              className="text-grey-700 tw:text-xs"
+              className="tw:text-grey-700 tw:text-xs"
               markdown={feedback.userComments}
               maxLength={100}
             />
