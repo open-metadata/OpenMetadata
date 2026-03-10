@@ -93,13 +93,15 @@ const UserProfilePersonas = ({
         <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
           <div
             className="d-flex flex-center"
-            style={{ width: '16px', margin: '2px', cursor: 'pointer' }}>
+            style={{ width: '16px', margin: '2px', cursor: 'pointer' }}
+          >
             <PersonaIcon height={16} />
           </div>
           <div className="d-flex justify-between w-full">
             <Typography.Text
               className="text-sm font-medium"
-              data-testid="persona-list">
+              data-testid="persona-list"
+            >
               {t('label.default-persona')}
             </Typography.Text>
             <PersonaSelectableList
@@ -116,7 +118,8 @@ const UserProfilePersonas = ({
         </div>
         <div
           className="user-profile-card-body default-persona-text ml-8 d-flex items-center gap-2"
-          data-testid="default-persona-chip">
+          data-testid="default-persona-chip"
+        >
           <Chip
             showNoDataPlaceholder
             data={activeDefaultPersona ? [activeDefaultPersona] : []}
@@ -127,7 +130,8 @@ const UserProfilePersonas = ({
             <Tooltip
               title={t('label.inherited-entity', {
                 entity: t('label.persona'),
-              })}>
+              })}
+            >
               <InheritIcon
                 className="inherit-icon cursor-pointer color-grey-muted"
                 width={14}
@@ -151,7 +155,8 @@ const UserProfilePersonas = ({
   return (
     <div
       className="d-flex flex-col mb-4 w-full  p-[20px] user-profile-card"
-      data-testid="persona-details-card">
+      data-testid="persona-details-card"
+    >
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon cursor-pointer">
           <PersonaIcon height={16} style={{ paddingLeft: '2px' }} />
@@ -159,7 +164,8 @@ const UserProfilePersonas = ({
         <div className="d-flex justify-between w-full">
           <Typography.Text
             className="text-sm font-medium"
-            data-testid="persona-list">
+            data-testid="persona-list"
+          >
             {t('label.persona')}
           </Typography.Text>
           <PersonaSelectableList

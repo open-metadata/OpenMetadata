@@ -18,10 +18,11 @@ import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
-import com.lmax.disruptor.util.DaemonThreadFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -31,16 +32,25 @@ import org.openmetadata.service.events.EventPubSub.ChangeEventHolder;
 /** Change event PubSub built based on LMAX Disruptor. */
 @Slf4j
 public class EventPubSub {
+  private static final ThreadFactory EVENT_PUBSUB_THREAD_FACTORY = createThreadFactory();
   private static Disruptor<ChangeEventHolder> disruptor;
   private static ExecutorService executor;
   private static RingBuffer<ChangeEventHolder> ringBuffer;
   private static boolean started = false;
 
+  private static ThreadFactory createThreadFactory() {
+    AtomicInteger counter = new AtomicInteger(0);
+    return r -> {
+      Thread t = new Thread(r, "om-event-pubsub-" + counter.getAndIncrement());
+      t.setDaemon(true);
+      return t;
+    };
+  }
+
   public static void start() {
     if (!started) {
-      disruptor = new Disruptor<>(ChangeEventHolder::new, 1024, DaemonThreadFactory.INSTANCE);
-      // disruptor.setDefaultExceptionHandler(new DefaultExceptionHandler());
-      executor = Executors.newCachedThreadPool(DaemonThreadFactory.INSTANCE);
+      disruptor = new Disruptor<>(ChangeEventHolder::new, 1024, EVENT_PUBSUB_THREAD_FACTORY);
+      executor = Executors.newCachedThreadPool(EVENT_PUBSUB_THREAD_FACTORY);
       ringBuffer = disruptor.start();
       LOG.info("Disruptor started");
       started = true;

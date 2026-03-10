@@ -105,7 +105,8 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
                   color: 'text.primary',
                   fontSize: '1rem',
                   lineHeight: '24px',
-                }}>
+                }}
+              >
                 {entityName}
               </Typography>
               {showName && (
@@ -114,7 +115,8 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
                     fontSize: '0.75rem',
                     color: 'text.secondary',
                     lineHeight: '16px',
-                  }}>
+                  }}
+                >
                   {entity.name}
                 </Typography>
               )}

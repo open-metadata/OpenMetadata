@@ -222,7 +222,9 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     CountDownLatch completionLatch = new CountDownLatch(1);
     ScheduledExecutorService monitor =
         Executors.newSingleThreadScheduledExecutor(
-            Thread.ofPlatform().name("distributed-monitor").factory());
+            Thread.ofPlatform()
+                .name("reindex-distributed-monitor-" + jobId.toString().substring(0, 8))
+                .factory());
 
     try {
       monitor.scheduleAtFixedRate(

@@ -43,6 +43,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -953,6 +954,17 @@ public class SearchResource {
     response.setIndexes(indexStatsList);
     response.setOrphanIndexes(orphanList);
     response.setIsSearchIndexingRunning(isSearchIndexingRunning());
+
+    Map<String, org.openmetadata.search.IndexMapping> indexMap =
+        searchRepository.getEntityIndexMap();
+    List<String> missingIndexes = new java.util.ArrayList<>();
+    for (Map.Entry<String, org.openmetadata.search.IndexMapping> entry : indexMap.entrySet()) {
+      if (!searchRepository.indexExists(entry.getValue())) {
+        missingIndexes.add(entry.getKey());
+      }
+    }
+    response.setExpectedIndexCount(indexMap.size());
+    response.setMissingIndexes(missingIndexes);
 
     return Response.ok(response).build();
   }

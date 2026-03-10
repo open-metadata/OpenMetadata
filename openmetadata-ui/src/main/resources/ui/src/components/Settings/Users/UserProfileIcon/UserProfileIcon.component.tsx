@@ -160,7 +160,8 @@ export const UserProfileIcon = () => {
         <div
           className="w-full d-flex items-center persona-label cursor-pointer d-flex justify-between"
           data-testid="persona-label"
-          onClick={() => handleSelectedPersonaChange(item)}>
+          onClick={() => handleSelectedPersonaChange(item)}
+        >
           <div className="d-flex items-center default-persona-container">
             <Typography.Text ellipsis={{ tooltip: true }}>
               {getEntityName(item)}
@@ -169,7 +170,8 @@ export const UserProfileIcon = () => {
             {isDefaultPersona && (
               <Tag
                 className="m-l-xs default-persona-tag"
-                data-testid="default-persona-tag">
+                data-testid="default-persona-tag"
+              >
                 {t('label.default')}
               </Tag>
             )}
@@ -186,7 +188,8 @@ export const UserProfileIcon = () => {
     (item: EntityReference) => (
       <Link
         className="ant-typography-ellipsis-custom text-sm m-b-0 p-0"
-        to={getTeamAndUserDetailsPath(item.name as string)}>
+        to={getTeamAndUserDetailsPath(item.name as string)}
+      >
         {getEntityName(item)}
       </Link>
     ),
@@ -201,13 +204,15 @@ export const UserProfileIcon = () => {
           onClick={(e) => {
             e.stopPropagation();
             setShowAllPersona(true);
-          }}>
+          }}
+        >
           {count} {t('label.more')}
         </Typography.Text>
       ) : (
         <Link
           className="more-teams-pill"
-          to={getUserPath(currentUser?.name as string)}>
+          to={getUserPath(currentUser?.name as string)}
+        >
           {count} {t('label.more')}
         </Link>
       ),
@@ -259,10 +264,12 @@ export const UserProfileIcon = () => {
           <Link
             data-testid="user-name"
             to={getUserPath(currentUser?.name as string)}
-            onClick={handleCloseDropdown}>
+            onClick={handleCloseDropdown}
+          >
             <Typography.Paragraph
               className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
-              ellipsis={{ rows: 1, tooltip: true }}>
+              ellipsis={{ rows: 1, tooltip: true }}
+            >
               {t('label.view-entity', { entity: t('label.profile') })}
             </Typography.Paragraph>
           </Link>
@@ -375,7 +382,8 @@ export const UserProfileIcon = () => {
           <Button
             className="text-primary d-flex items-center gap-2 p-0 font-medium"
             type="text"
-            onClick={onLogoutHandler}>
+            onClick={onLogoutHandler}
+          >
             <LogoutIcon height={20} width={20} />
             {t('label.logout')}
           </Button>
@@ -407,7 +415,8 @@ export const UserProfileIcon = () => {
       open={isDropdownOpen}
       overlayClassName="user-profile-dropdown-overlay"
       trigger={['click']}
-      onOpenChange={setIsDropdownOpen}>
+      onOpenChange={setIsDropdownOpen}
+    >
       <Button
         className="user-profile-btn flex-center"
         data-testid="dropdown-profile"
@@ -430,19 +439,22 @@ export const UserProfileIcon = () => {
           )
         }
         size="large"
-        type="text">
+        type="text"
+      >
         <div className="name-persona-container">
           <Tooltip title={getEntityName(currentUser)}>
             <Typography.Text
               className="font-semibold"
-              data-testid="nav-user-name">
+              data-testid="nav-user-name"
+            >
               {getEntityName(currentUser)}
             </Typography.Text>
           </Tooltip>
 
           <Typography.Text
             data-testid="default-persona"
-            ellipsis={{ tooltip: true }}>
+            ellipsis={{ tooltip: true }}
+          >
             {isEmpty(selectedPersona)
               ? t('label.default')
               : getEntityName(selectedPersona)}

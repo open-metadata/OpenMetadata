@@ -346,7 +346,8 @@ const SearchSettingsPage = () => {
     <PageLayoutV1
       className="search-settings"
       mainContainerClassName="p-t-0"
-      pageTitle={t('label.search')}>
+      pageTitle={t('label.search')}
+    >
       <Row className="p-md settings-row m-0" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -408,7 +409,8 @@ const SearchSettingsPage = () => {
                 <Row align="middle" justify="space-between">
                   <Typography.Title
                     className="text-sm font-semibold m-b-0"
-                    level={5}>
+                    level={5}
+                  >
                     {t('label.hybrid-search-weight-plural')}
                   </Typography.Title>
                   <Button
@@ -416,7 +418,8 @@ const SearchSettingsPage = () => {
                     disabled={!hybridWeightsChanged || isUpdating}
                     loading={isUpdating}
                     type="primary"
-                    onClick={onHybridWeightSave}>
+                    onClick={onHybridWeightSave}
+                  >
                     {t('label.save')}
                   </Button>
                 </Row>
@@ -476,7 +479,8 @@ const SearchSettingsPage = () => {
             <Collapse
               accordion
               bordered={false}
-              className="w-full search-settings-collapse">
+              className="w-full search-settings-collapse"
+            >
               <Collapse.Panel
                 className="term-boost-panel"
                 header={
@@ -494,7 +498,8 @@ const SearchSettingsPage = () => {
                         className="term-boost-save-btn"
                         data-testid="term-boost-save-btn"
                         disabled={!termBoostsChanged}
-                        onClick={handleSaveTermBoost}>
+                        onClick={handleSaveTermBoost}
+                      >
                         {t('label.save')}
                       </Button>
                       <Button
@@ -505,13 +510,15 @@ const SearchSettingsPage = () => {
                           <Icon className="text-sm" component={PlusOutlined} />
                         }
                         type="primary"
-                        onClick={handleAddNewTermBoost}>
+                        onClick={handleAddNewTermBoost}
+                      >
                         {t('label.add')}
                       </Button>
                     </Col>
                   </Row>
                 }
-                key="1">
+                key="1"
+              >
                 <Col span={24}>
                   <TermBoostList
                     handleDeleteTermBoost={handleDeleteTermBoost}
@@ -543,13 +550,15 @@ const SearchSettingsPage = () => {
                         icon={
                           <Icon className="text-sm" component={PlusOutlined} />
                         }
-                        onClick={handleAddFieldValueBoost}>
+                        onClick={handleAddFieldValueBoost}
+                      >
                         {t('label.add')}
                       </Button>
                     </Col>
                   </Row>
                 }
-                key="2">
+                key="2"
+              >
                 <Row className="p-t-sm w-full">
                   <div className="field-value-boost-table-container">
                     <FieldValueBoostList

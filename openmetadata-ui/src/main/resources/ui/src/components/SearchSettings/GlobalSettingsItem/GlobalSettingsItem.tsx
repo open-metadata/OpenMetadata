@@ -69,7 +69,8 @@ export const GlobalSettingItem = ({
           <InlineEdit
             isLoading={isUpdating}
             onCancel={handleCancel}
-            onSave={handleSave}>
+            onSave={handleSave}
+          >
             <Input
               data-testid="value-input"
               disabled={isUpdating}
@@ -92,7 +93,8 @@ export const GlobalSettingItem = ({
         <div className="d-flex items-center justify-end flex-wrap value-container">
           <span
             className="m-l-xlg font-semibold p-x-xss global-settings-item-value"
-            data-testid={`global-setting-value-${label}`}>
+            data-testid={`global-setting-value-${label}`}
+          >
             {value}
           </span>
           <Icon

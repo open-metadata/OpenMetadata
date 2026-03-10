@@ -15,10 +15,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -58,10 +59,39 @@ public class OpenSearchBulkSink implements BulkSink {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
-  private static final int MAX_CONCURRENT_DOC_BUILDS = 8;
-  private static final Semaphore DOC_BUILD_SEMAPHORE = new Semaphore(MAX_CONCURRENT_DOC_BUILDS);
-  private static final ExecutorService DOC_BUILD_EXECUTOR =
-      Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("doc-build-", 0).factory());
+  private static final int DEFAULT_DOC_BUILD_POOL_SIZE =
+      Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
+  private static final ThreadPoolExecutor DOC_BUILD_EXECUTOR =
+      createDocBuildExecutor(DEFAULT_DOC_BUILD_POOL_SIZE);
+
+  private static ThreadPoolExecutor createDocBuildExecutor(int poolSize) {
+    ThreadPoolExecutor pool =
+        new ThreadPoolExecutor(
+            poolSize,
+            poolSize,
+            60L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(),
+            Thread.ofVirtual().name("reindex-os-doc-build-", 0).factory());
+    pool.allowCoreThreadTimeOut(true);
+    return pool;
+  }
+
+  public static synchronized void setDocBuildPoolSize(int size) {
+    int newSize = Math.max(1, Math.min(50, size));
+    if (newSize <= DOC_BUILD_EXECUTOR.getMaximumPoolSize()) {
+      DOC_BUILD_EXECUTOR.setCorePoolSize(newSize);
+      DOC_BUILD_EXECUTOR.setMaximumPoolSize(newSize);
+    } else {
+      DOC_BUILD_EXECUTOR.setMaximumPoolSize(newSize);
+      DOC_BUILD_EXECUTOR.setCorePoolSize(newSize);
+    }
+    LOG.info("OpenSearch doc-build pool resized to {} threads", newSize);
+  }
+
+  public static synchronized void resetDocBuildPoolSize() {
+    setDocBuildPoolSize(DEFAULT_DOC_BUILD_POOL_SIZE);
+  }
 
   /** Callback interface for reporting sink statistics per entity type. */
   public interface SinkStatsCallback {
@@ -190,14 +220,7 @@ public class OpenSearchBulkSink implements BulkSink {
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> {
-                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
-                              try {
-                                addTimeSeriesEntity(entity, indexName, entityType, tracker);
-                              } finally {
-                                DOC_BUILD_SEMAPHORE.release();
-                              }
-                            },
+                            () -> addTimeSeriesEntity(entity, indexName, entityType, tracker),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -222,9 +245,7 @@ public class OpenSearchBulkSink implements BulkSink {
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> {
-                              DOC_BUILD_SEMAPHORE.acquireUninterruptibly();
-                              try {
+                            () ->
                                 addEntity(
                                     entity,
                                     indexName,
@@ -232,11 +253,7 @@ public class OpenSearchBulkSink implements BulkSink {
                                     reindexContext,
                                     tracker,
                                     embeddingsEnabled,
-                                    finalFingerprints);
-                              } finally {
-                                DOC_BUILD_SEMAPHORE.release();
-                              }
-                            },
+                                    finalFingerprints),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
