@@ -12,6 +12,6 @@
 #
 ---
 tabWidth: 2
-jsxBracketSameLine: true
+bracketSameLine: true
 htmlWhitespaceSensitivity: 'strict'
 singleQuote: true

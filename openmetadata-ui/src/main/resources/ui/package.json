@@ -234,7 +234,7 @@
     "organize-imports-cli": "^0.10.0",
     "pinst": "^3.0.0",
     "postcss": "8.4.31",
-    "prettier": "^2.1.2",
+    "prettier": "2.8.8",
     "react-test-renderer": "^18.2.0",
     "sync-i18n": "^0.0.20",
     "tailwind-merge": "^3.4.0",
