@@ -86,9 +86,7 @@ class JobNodes(BaseModel):
     )
     command: Optional[JobCommand] = Field(default=None, alias="Command")
     connections: Optional[JobConnections] = Field(default=None, alias="Connections")
-    default_arguments: Optional[dict] = Field(
-        default=None, alias="DefaultArguments"
-    )
+    default_arguments: Optional[dict] = Field(default=None, alias="DefaultArguments")
 
 
 class JobNodeResponse(BaseModel):

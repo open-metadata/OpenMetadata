@@ -375,9 +375,7 @@ class GluePipelineUnitTest(TestCase):
             database="dev",
             table="customer_sample",
         )
-        self.gluepipeline._resolve_jdbc_entities(
-            [jdbc_ref], lineage_details, "targets"
-        )
+        self.gluepipeline._resolve_jdbc_entities([jdbc_ref], lineage_details, "targets")
 
         assert len(lineage_details["targets"]) == 1
         assert lineage_details["targets"][0].name == "customer_sample"

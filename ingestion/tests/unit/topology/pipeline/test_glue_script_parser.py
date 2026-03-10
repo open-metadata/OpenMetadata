@@ -14,8 +14,6 @@ Tests for Glue PySpark/GlueContext script lineage parser
 from unittest import TestCase
 
 from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
-    CatalogRef,
-    JDBCRef,
     parse_glue_script,
 )
 
@@ -30,7 +28,7 @@ class TestGlueScriptParser(TestCase):
         self.assertFalse(result.has_lineage)
 
     def test_from_options_s3_source(self):
-        script = '''
+        script = """
 s3_df = glueContext.create_dynamic_frame.from_options(
     connection_type="s3",
     format="parquet",
@@ -40,7 +38,7 @@ s3_df = glueContext.create_dynamic_frame.from_options(
     },
     transformation_ctx="s3_df"
 )
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertIn(
@@ -49,7 +47,7 @@ s3_df = glueContext.create_dynamic_frame.from_options(
         )
 
     def test_write_jdbc_conf_target(self):
-        script = '''
+        script = """
 glueContext.write_dynamic_frame.from_jdbc_conf(
     frame=s3_df,
     catalog_connection="Redshift - Jdbc connection",
@@ -60,16 +58,18 @@ glueContext.write_dynamic_frame.from_jdbc_conf(
     redshift_tmp_dir="s3://collate-glue-connector-test/temp/",
     transformation_ctx="jdbc_sink"
 )
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.jdbc_targets), 1)
-        self.assertEqual(result.jdbc_targets[0].connection_name, "Redshift - Jdbc connection")
+        self.assertEqual(
+            result.jdbc_targets[0].connection_name, "Redshift - Jdbc connection"
+        )
         self.assertEqual(result.jdbc_targets[0].table, "customer_sample")
         self.assertEqual(result.jdbc_targets[0].database, "dev")
 
     def test_full_user_script(self):
-        script = '''
+        script = """
 import sys
 from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
@@ -110,7 +110,7 @@ glueContext.write_dynamic_frame.from_jdbc_conf(
 )
 
 job.commit()
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertIn(
@@ -118,18 +118,20 @@ job.commit()
             result.s3_sources,
         )
         self.assertEqual(len(result.jdbc_targets), 1)
-        self.assertEqual(result.jdbc_targets[0].connection_name, "Redshift - Jdbc connection")
+        self.assertEqual(
+            result.jdbc_targets[0].connection_name, "Redshift - Jdbc connection"
+        )
         self.assertEqual(result.jdbc_targets[0].table, "customer_sample")
         self.assertEqual(result.jdbc_targets[0].database, "dev")
 
     def test_from_catalog_source(self):
-        script = '''
+        script = """
 datasource = glueContext.create_dynamic_frame.from_catalog(
     database="my_database",
     table_name="my_table",
     transformation_ctx="datasource"
 )
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.catalog_sources), 1)
@@ -137,14 +139,14 @@ datasource = glueContext.create_dynamic_frame.from_catalog(
         self.assertEqual(result.catalog_sources[0].table, "my_table")
 
     def test_write_catalog_target(self):
-        script = '''
+        script = """
 glueContext.write_dynamic_frame.from_catalog(
     frame=output_df,
     database="output_db",
     table_name="output_table",
     transformation_ctx="sink"
 )
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.catalog_targets), 1)
@@ -152,7 +154,7 @@ glueContext.write_dynamic_frame.from_catalog(
         self.assertEqual(result.catalog_targets[0].table, "output_table")
 
     def test_write_options_s3_target(self):
-        script = '''
+        script = """
 glueContext.write_dynamic_frame.from_options(
     frame=output_df,
     connection_type="s3",
@@ -160,41 +162,43 @@ glueContext.write_dynamic_frame.from_options(
     connection_options={"path": "s3://my-bucket/output/data/"},
     transformation_ctx="s3_sink"
 )
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertIn("s3://my-bucket/output/data/", result.s3_targets)
 
     def test_spark_read_parquet(self):
-        script = '''
+        script = """
 df = spark.read.parquet("s3://my-bucket/input/data/")
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertIn("s3://my-bucket/input/data/", result.s3_sources)
 
     def test_spark_read_format_load(self):
-        script = '''
+        script = """
 df = spark.read.format("parquet").load("s3://my-bucket/input/data/")
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertIn("s3://my-bucket/input/data/", result.s3_sources)
 
     def test_spark_read_jdbc(self):
-        script = '''
+        script = """
 df = spark.read.jdbc("jdbc:postgresql://myhost:5432/mydb", "public.users")
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.jdbc_sources), 1)
-        self.assertEqual(result.jdbc_sources[0].jdbc_url, "jdbc:postgresql://myhost:5432/mydb")
+        self.assertEqual(
+            result.jdbc_sources[0].jdbc_url, "jdbc:postgresql://myhost:5432/mydb"
+        )
         self.assertEqual(result.jdbc_sources[0].table, "public.users")
 
     def test_spark_read_table(self):
-        script = '''
+        script = """
 df = spark.read.table("my_database.my_table")
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.catalog_sources), 1)
@@ -202,25 +206,25 @@ df = spark.read.table("my_database.my_table")
         self.assertEqual(result.catalog_sources[0].table, "my_table")
 
     def test_spark_write_parquet(self):
-        script = '''
+        script = """
 df.write.parquet("s3://my-bucket/output/")
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertIn("s3://my-bucket/output/", result.s3_targets)
 
     def test_spark_write_format_save(self):
-        script = '''
+        script = """
 df.write.format("csv").save("s3://my-bucket/output/csv/")
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertIn("s3://my-bucket/output/csv/", result.s3_targets)
 
     def test_spark_write_jdbc(self):
-        script = '''
+        script = """
 df.write.jdbc("jdbc:mysql://host:3306/mydb", "orders")
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.jdbc_targets), 1)
@@ -228,9 +232,9 @@ df.write.jdbc("jdbc:mysql://host:3306/mydb", "orders")
         self.assertEqual(result.jdbc_targets[0].table, "orders")
 
     def test_spark_save_as_table(self):
-        script = '''
+        script = """
 df.write.saveAsTable("analytics.user_summary")
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.catalog_targets), 1)
@@ -238,9 +242,9 @@ df.write.saveAsTable("analytics.user_summary")
         self.assertEqual(result.catalog_targets[0].table, "user_summary")
 
     def test_spark_insert_into(self):
-        script = '''
+        script = """
 df.write.insertInto("warehouse.events")
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.catalog_targets), 1)
@@ -248,7 +252,7 @@ df.write.insertInto("warehouse.events")
         self.assertEqual(result.catalog_targets[0].table, "events")
 
     def test_multiple_sources_and_targets(self):
-        script = '''
+        script = """
 source1 = glueContext.create_dynamic_frame.from_catalog(
     database="raw_db",
     table_name="orders",
@@ -258,7 +262,7 @@ source2 = spark.read.parquet("s3://data-lake/customers/")
 
 output_df = some_transform(source1, source2)
 output_df.write.saveAsTable("analytics.order_summary")
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.catalog_sources), 1)
@@ -268,22 +272,22 @@ output_df.write.saveAsTable("analytics.order_summary")
         self.assertEqual(result.catalog_targets[0].table, "order_summary")
 
     def test_no_lineage_script(self):
-        script = '''
+        script = """
 import sys
 print("Hello World")
 x = 42
-'''
+"""
         result = parse_glue_script(script)
         self.assertFalse(result.has_lineage)
 
     def test_purge_table_target(self):
-        script = '''
+        script = """
 glueContext.purge_table(
     database="temp_db",
     table_name="staging_data",
     options={"retentionPeriod": 1}
 )
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(len(result.catalog_targets), 1)
@@ -291,19 +295,19 @@ glueContext.purge_table(
         self.assertEqual(result.catalog_targets[0].table, "staging_data")
 
     def test_spark_table_single_name(self):
-        script = '''
+        script = """
 df = spark.read.table("my_table")
-'''
+"""
         result = parse_glue_script(script)
         self.assertTrue(result.has_lineage)
         self.assertEqual(result.catalog_sources[0].database, "default")
         self.assertEqual(result.catalog_sources[0].table, "my_table")
 
     def test_s3a_and_s3n_paths(self):
-        script = '''
+        script = """
 df1 = spark.read.parquet("s3a://bucket1/path/")
 df2 = spark.read.json("s3n://bucket2/path/")
-'''
+"""
         result = parse_glue_script(script)
         self.assertIn("s3a://bucket1/path/", result.s3_sources)
         self.assertIn("s3n://bucket2/path/", result.s3_sources)
@@ -337,9 +341,7 @@ class TestParseJdbcUrl(TestCase):
             GluepipelineSource,
         )
 
-        result = GluepipelineSource._parse_jdbc_url(
-            "jdbc:mysql://myhost:3306/salesdb"
-        )
+        result = GluepipelineSource._parse_jdbc_url("jdbc:mysql://myhost:3306/salesdb")
         self.assertIsNotNone(result)
         self.assertEqual(result["database"], "salesdb")
 

@@ -208,7 +208,9 @@ def _parse_glue_context_sources(source_code: str, result: ScriptLineageResult):
             database = _extract_kwarg(block, "database")
             table = _extract_kwarg(block, "table_name")
             if database and table:
-                result.catalog_sources.append(CatalogRef(database=database, table=table))
+                result.catalog_sources.append(
+                    CatalogRef(database=database, table=table)
+                )
                 logger.debug(f"Found catalog source: {database}.{table}")
         except Exception as exc:
             logger.debug(f"Failed to parse from_catalog block: {exc}")
@@ -222,13 +224,19 @@ def _parse_glue_context_sources(source_code: str, result: ScriptLineageResult):
                 result.s3_sources.extend(paths)
                 for p in paths:
                     logger.debug(f"Found S3 source: {p}")
-            elif conn_type and conn_type.lower() in ("jdbc", "mysql", "postgresql", "oracle", "redshift"):
+            elif conn_type and conn_type.lower() in (
+                "jdbc",
+                "mysql",
+                "postgresql",
+                "oracle",
+                "redshift",
+            ):
                 table = _extract_dict_value(block, "dbtable") or _extract_dict_value(
                     block, "dynamodb.input.tableName"
                 )
-                connection_name = _extract_kwarg(block, "catalog_connection") or _extract_kwarg(
-                    block, "connection_name"
-                )
+                connection_name = _extract_kwarg(
+                    block, "catalog_connection"
+                ) or _extract_kwarg(block, "connection_name")
                 if table:
                     result.jdbc_sources.append(
                         JDBCRef(connection_name=connection_name, table=table)
@@ -284,7 +292,9 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult):
             database = _extract_kwarg(block, "database")
             table = _extract_kwarg(block, "table_name")
             if database and table:
-                result.catalog_targets.append(CatalogRef(database=database, table=table))
+                result.catalog_targets.append(
+                    CatalogRef(database=database, table=table)
+                )
                 logger.debug(f"Found catalog target: {database}.{table}")
         except Exception as exc:
             logger.debug(f"Failed to parse write_catalog block: {exc}")
@@ -295,7 +305,9 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult):
             database = _extract_kwarg(block, "database")
             table = _extract_kwarg(block, "table_name")
             if database and table:
-                result.catalog_targets.append(CatalogRef(database=database, table=table))
+                result.catalog_targets.append(
+                    CatalogRef(database=database, table=table)
+                )
                 logger.debug(f"Found purge_table target: {database}.{table}")
         except Exception as exc:
             logger.debug(f"Failed to parse purge_table block: {exc}")
@@ -331,7 +343,9 @@ def _parse_spark_read(source_code: str, result: ScriptLineageResult):
         if len(parts) == 2:
             result.catalog_sources.append(CatalogRef(database=parts[0], table=parts[1]))
         else:
-            result.catalog_sources.append(CatalogRef(database="default", table=table_ref))
+            result.catalog_sources.append(
+                CatalogRef(database="default", table=table_ref)
+            )
         logger.debug(f"Found Spark read.table source: {table_ref}")
 
 
@@ -355,7 +369,9 @@ def _parse_spark_write(source_code: str, result: ScriptLineageResult):
             jdbc_url = match.group(1).strip()
             table = match.group(2).strip()
             result.jdbc_targets.append(JDBCRef(jdbc_url=jdbc_url, table=table))
-            logger.debug(f"Found Spark write.jdbc target: url={jdbc_url}, table={table}")
+            logger.debug(
+                f"Found Spark write.jdbc target: url={jdbc_url}, table={table}"
+            )
         except Exception as exc:
             logger.debug(f"Failed to parse df.write.jdbc: {exc}")
 

@@ -60,7 +60,6 @@ from metadata.ingestion.source.pipeline.gluepipeline.models import (
     S3Target,
 )
 from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
-    ScriptLineageResult,
     parse_glue_script,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -268,9 +267,7 @@ class GluepipelineSource(PipelineServiceSource):
                                 id=container[0].id,
                                 type="container",
                                 name=container[0].name.root,
-                                fullyQualifiedName=container[
-                                    0
-                                ].fullyQualifiedName.root,
+                                fullyQualifiedName=container[0].fullyQualifiedName.root,
                             )
                             if storage_entity:
                                 if key.endswith("Source"):
@@ -279,9 +276,7 @@ class GluepipelineSource(PipelineServiceSource):
                                     lineage_details["targets"].append(storage_entity)
                                 break
 
-    def _extract_script_lineage(
-        self, script_location: str, lineage_details: dict
-    ):
+    def _extract_script_lineage(self, script_location: str, lineage_details: dict):
         script_content = self._download_s3_script(script_location)
         if not script_content:
             return
@@ -373,9 +368,7 @@ class GluepipelineSource(PipelineServiceSource):
                         f"in service {db_service_name}: {exc}"
                     )
 
-    def _resolve_jdbc_entities(
-        self, refs: list, lineage_details: dict, direction: str
-    ):
+    def _resolve_jdbc_entities(self, refs: list, lineage_details: dict, direction: str):
         for ref in refs:
             database_name = ref.database
             table_name = ref.table
@@ -423,9 +416,7 @@ class GluepipelineSource(PipelineServiceSource):
             return self._glue_connection_cache[connection_name]
 
         try:
-            response = self.glue.get_connection(
-                Name=connection_name, HidePassword=True
-            )
+            response = self.glue.get_connection(Name=connection_name, HidePassword=True)
             props = response.get("Connection", {}).get("ConnectionProperties", {})
             jdbc_url = props.get("JDBC_CONNECTION_URL", "")
             result = self._parse_jdbc_url(jdbc_url)
@@ -445,9 +436,7 @@ class GluepipelineSource(PipelineServiceSource):
         # jdbc:redshift://host:port/database
         # jdbc:postgresql://host:port/database
         # jdbc:mysql://host:port/database
-        match = re.match(
-            r"jdbc:\w+://[^/]+/([^?;]+)", jdbc_url
-        )
+        match = re.match(r"jdbc:\w+://[^/]+/([^?;]+)", jdbc_url)
         if match:
             db_name = match.group(1)
             return {"database": db_name, "schema": None}
