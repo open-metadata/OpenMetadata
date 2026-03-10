@@ -556,6 +556,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     ElasticSearchConfiguration config = getSearchConfig();
     SearchRepository searchRepository = SearchRepositoryFactory.createSearchRepository(config, 50);
     Entity.setSearchRepository(searchRepository);
+    searchRepository.initializeVectorSearchService();
     LOG.info("Creating {} indexes...", searchType);
     searchRepository.createIndexes();
   }
@@ -579,6 +580,23 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(type);
+
+    if ("opensearch".equalsIgnoreCase(searchType)) {
+      org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration
+          nlSearch =
+              new org.openmetadata.schema.service.configuration.elasticsearch
+                  .NaturalLanguageSearchConfiguration();
+      nlSearch.setSemanticSearchEnabled(true);
+      nlSearch.setEnabled(true);
+      nlSearch.setEmbeddingProvider("djl");
+
+      org.openmetadata.schema.service.configuration.elasticsearch.Djl djlConfig =
+          new org.openmetadata.schema.service.configuration.elasticsearch.Djl();
+      djlConfig.setEmbeddingModel(
+          "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
+      nlSearch.setDjl(djlConfig);
+      config.setNaturalLanguageSearch(nlSearch);
+    }
 
     return config;
   }
