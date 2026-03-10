@@ -12,17 +12,12 @@
  */
 
 import {
-  Box,
   Button,
-  CircularProgress,
-  Drawer,
-  IconButton,
+  SlideoutMenu,
   Typography,
-  useTheme,
-} from '@mui/material';
-import { XClose } from '@untitledui/icons';
+} from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
-import { FC } from 'react';
+import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ProviderType } from '../../generated/api/classification/createTag';
 import TagsForm from './TagsForm';
@@ -39,94 +34,67 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
   onClose,
   onSubmit,
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
 
+  const handleOpenChange = useCallback(
+    (isOpen: boolean) => {
+      if (!isOpen) {
+        onClose();
+      }
+    },
+    [onClose]
+  );
+
   return (
-    <Drawer
-      anchor="right"
+    <SlideoutMenu
       data-testid="tag-form-drawer"
-      open={open}
-      slotProps={{
-        paper: {
-          sx: { width: 670 },
-        },
-      }}
-      sx={{ zIndex: 1000 }}
-      onClose={onClose}>
-      {/* Header */}
-      <Box
-        sx={{
-          px: 6,
-          py: 5,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: (theme) => theme.shadows[1],
-        }}>
-        <Typography data-testid="form-heading" variant="h6">
-          {tagsFormHeader}
-        </Typography>
-        <IconButton
-          data-testid="drawer-close-icon"
-          size="medium"
-          sx={{ color: (theme) => theme.palette.grey[700] }}
-          onClick={onClose}>
-          <XClose style={{ width: '20px', height: '20px' }} />
-        </IconButton>
-      </Box>
+      isOpen={open}
+      onOpenChange={handleOpenChange}
+    >
+      {({ close }) => (
+        <>
+          <SlideoutMenu.Header data-testid="drawer-header" onClose={close}>
+            <Typography as="h4" data-testid="drawer-heading">
+              {tagsFormHeader}
+            </Typography>
+          </SlideoutMenu.Header>
 
-      {/* Form Content */}
-      <Box sx={{ flex: 1, overflow: 'auto', px: 6, py: 4 }}>
-        <TagsForm
-          formRef={formRef}
-          initialValues={editTag}
-          isEditing={!isUndefined(editTag)}
-          isSystemTag={editTag?.provider === ProviderType.System}
-          isTier={isTier}
-          key={editTag?.id ?? 'new-tag'}
-          permissions={permissions}
-          onSubmit={onSubmit}
-        />
-      </Box>
+          <SlideoutMenu.Content>
+            <TagsForm
+              formRef={formRef}
+              initialValues={editTag}
+              isEditing={!isUndefined(editTag)}
+              isSystemTag={editTag?.provider === ProviderType.System}
+              isTier={isTier}
+              key={editTag?.id ?? 'new-tag'}
+              permissions={permissions}
+              onSubmit={onSubmit}
+            />
+          </SlideoutMenu.Content>
 
-      {/* Footer */}
-      <Box
-        sx={{
-          px: 6,
-          py: 3,
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 2,
-          boxShadow: (theme) => `0px -4px 6px -2px ${theme.palette.grey[200]}`,
-        }}>
-        <Button
-          color="primary"
-          data-testid="cancel-button"
-          sx={{
-            px: theme.spacing(4),
-            py: theme.spacing(2.5),
-            fontSize: theme.typography.body2.fontSize,
-            color: theme.palette.grey[700],
-            '&:hover': {
-              backgroundColor: 'transparent',
-            },
-          }}
-          variant="text"
-          onClick={onClose}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          data-testid="save-button"
-          disabled={isLoading}
-          loading={isLoading}
-          loadingIndicator={<CircularProgress color="inherit" size={18} />}
-          variant="contained"
-          onClick={() => formRef.submit()}>
-          {t('label.save')}
-        </Button>
-      </Box>
-    </Drawer>
+          <SlideoutMenu.Footer>
+            <div className="tw:flex tw:justify-end tw:gap-4">
+              <Button
+                color="tertiary"
+                data-testid="cancel-button"
+                onClick={close}
+              >
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="save-button"
+                isDisabled={isLoading}
+                isLoading={isLoading}
+                onClick={() => formRef.submit()}
+              >
+                {t('label.save')}
+              </Button>
+            </div>
+          </SlideoutMenu.Footer>
+        </>
+      )}
+    </SlideoutMenu>
   );
 };
 

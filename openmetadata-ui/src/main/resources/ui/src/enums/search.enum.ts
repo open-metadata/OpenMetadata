@@ -54,4 +54,5 @@ export enum SearchIndex {
   FILE_SEARCH_INDEX = 'file_search_index',
   SPREADSHEET_SEARCH_INDEX = 'spreadsheet_search_index',
   WORKSHEET_SEARCH_INDEX = 'worksheet_search_index',
+  METADATA_SERVICE = 'metadata_service_search_index',
 }

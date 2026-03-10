@@ -46,6 +46,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.backendConne
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.query_logger import attach_query_tracker
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_engine_step,
@@ -152,7 +153,9 @@ def _get_engine_from_env_vars() -> Engine:
     )
 
     try:
-        return create_engine(sql_alchemy_conn, pool_pre_ping=True)
+        engine = create_engine(sql_alchemy_conn, pool_pre_ping=True)
+        attach_query_tracker(engine)
+        return engine
     except Exception as exc:  # pylint: disable=broad-except
         raise SourceConnectionException(
             "Failed to create SQLAlchemy engine using the DB_* environment variables. "

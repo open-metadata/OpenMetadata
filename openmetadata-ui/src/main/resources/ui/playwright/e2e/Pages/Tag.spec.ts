@@ -322,37 +322,39 @@ test.describe('Tag Page with Admin Roles', () => {
   test('Verify tag enable/disable toggle', async ({ adminPage }) => {
     await classification1.visitPage(adminPage);
 
-    // Verify toggle is visible and enabled (tag is enabled by default)
-    const tagToggle = adminPage
-      .getByTestId(`tag-disable-toggle-${tag1.data.name}`)
-      .getByRole('switch');
-
-    await expect(tagToggle).toBeVisible();
-    await expect(tagToggle).toBeChecked();
-
-    // Disable the tag
-    const disableTagResponse = adminPage.waitForResponse(
-      (response) =>
-        response.request().method() === 'PATCH' &&
-        response.url().includes('/api/v1/tags/')
+    const tagToggle = adminPage.getByTestId(
+      `tag-disable-toggle-${tag1.data.name}`
     );
-    await tagToggle.click();
-    await disableTagResponse;
 
-    // Verify tag is now disabled
-    await expect(tagToggle).not.toBeChecked();
+    // Verify initial state using role locator separately
+    const switchInput = tagToggle.getByRole('switch');
 
-    // Re-enable the tag
-    const enableTagResponse = adminPage.waitForResponse(
-      (response) =>
-        response.request().method() === 'PATCH' &&
-        response.url().includes('/api/v1/tags/')
-    );
-    await tagToggle.click();
-    await enableTagResponse;
+    await expect(switchInput).toBeVisible();
+    await expect(switchInput).toBeChecked();
 
-    // Verify tag is enabled again
-    await expect(tagToggle).toBeChecked();
+    // Disable
+    await Promise.all([
+      adminPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          response.url().includes('/api/v1/tags/')
+      ),
+      tagToggle.click(), // <-- click wrapper, NOT hidden input
+    ]);
+
+    await expect(switchInput).not.toBeChecked();
+
+    // Enable
+    await Promise.all([
+      adminPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          response.url().includes('/api/v1/tags/')
+      ),
+      tagToggle.click(),
+    ]);
+
+    await expect(switchInput).toBeChecked();
   });
 
   test('Tag toggle should be disabled when classification is disabled', async ({
