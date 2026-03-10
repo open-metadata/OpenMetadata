@@ -422,7 +422,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         projectRoot + "/bootstrap/sql/migrations/flyway/" + DATABASE_CONTAINER.getDriverClassName();
     String nativeMigrationScriptsLocation = projectRoot + "/bootstrap/sql/migrations/native/";
 
-    config.setElasticSearchConfiguration(getSearchConfig());
+    config.setElasticSearchConfiguration(getBaseSearchConfig());
 
     if (config.getMigrationConfiguration() == null) {
       config.setMigrationConfiguration(
@@ -538,7 +538,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             flywayPath,
             config,
             forceMigrations);
-    SearchRepository searchRepository = new SearchRepository(getSearchConfig(), 50);
+    SearchRepository searchRepository = new SearchRepository(getBaseSearchConfig(), 50);
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
@@ -582,24 +582,26 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return config;
   }
 
-  private ElasticSearchConfiguration getSearchConfig() {
-    ElasticSearchConfiguration config = getBaseSearchConfig();
-    if ("opensearch".equalsIgnoreCase(searchType)) {
-      org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration
-          nlSearch =
-              new org.openmetadata.schema.service.configuration.elasticsearch
-                  .NaturalLanguageSearchConfiguration();
-      nlSearch.setSemanticSearchEnabled(true);
-      nlSearch.setEnabled(true);
-      nlSearch.setEmbeddingProvider("djl");
+  /**
+   * Returns a search config with NL search enabled for OpenSearch. Used by tests that need vector
+   * embeddings without affecting the global app configuration.
+   */
+  public static ElasticSearchConfiguration withNaturalLanguageSearch(
+      ElasticSearchConfiguration config) {
+    org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration
+        nlSearch =
+            new org.openmetadata.schema.service.configuration.elasticsearch
+                .NaturalLanguageSearchConfiguration();
+    nlSearch.setSemanticSearchEnabled(true);
+    nlSearch.setEnabled(true);
+    nlSearch.setEmbeddingProvider("djl");
 
-      org.openmetadata.schema.service.configuration.elasticsearch.Djl djlConfig =
-          new org.openmetadata.schema.service.configuration.elasticsearch.Djl();
-      djlConfig.setEmbeddingModel(
-          "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
-      nlSearch.setDjl(djlConfig);
-      config.setNaturalLanguageSearch(nlSearch);
-    }
+    org.openmetadata.schema.service.configuration.elasticsearch.Djl djlConfig =
+        new org.openmetadata.schema.service.configuration.elasticsearch.Djl();
+    djlConfig.setEmbeddingModel(
+        "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
+    nlSearch.setDjl(djlConfig);
+    config.setNaturalLanguageSearch(nlSearch);
     return config;
   }
 

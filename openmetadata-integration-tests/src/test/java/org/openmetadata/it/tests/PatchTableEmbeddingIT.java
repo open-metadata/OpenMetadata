@@ -32,6 +32,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 @Execution(ExecutionMode.CONCURRENT)
@@ -48,10 +49,22 @@ public class PatchTableEmbeddingIT {
     Assumptions.assumeTrue(
         "opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch")),
         "Vector embedding tests require OpenSearch");
-    Assumptions.assumeTrue(
-        Entity.getSearchRepository().isVectorEmbeddingEnabled(),
-        "Vector embedding is not enabled in test configuration");
 
+    SearchRepository searchRepo = Entity.getSearchRepository();
+    TestSuiteBootstrap.withNaturalLanguageSearch(searchRepo.getSearchConfiguration());
+    searchRepo.initializeVectorSearchService();
+
+    Assumptions.assumeTrue(
+        searchRepo.isVectorEmbeddingEnabled(), "Vector embedding could not be initialized");
+
+    try {
+      runEmbeddingTest(ns);
+    } finally {
+      searchRepo.getSearchConfiguration().setNaturalLanguageSearch(null);
+    }
+  }
+
+  private void runEmbeddingTest(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
