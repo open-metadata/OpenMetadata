@@ -74,6 +74,36 @@ def yield_pipeline_lineage_details(self, pipeline_details):
             ))
 ```
 
+## Lineage Precision
+
+Lineage edges must be as specific as possible. Overly-broad lineage pollutes the data catalog:
+
+- **Never use wildcard `table_name="*"` in search queries** — this links every table in a database to the dashboard/pipeline, producing massively incorrect lineage graphs
+- If the source API doesn't provide table-level granularity, either:
+  1. Skip table-level lineage entirely (yield nothing, document the limitation)
+  2. Parse SQL from the source (e.g., report definition XML, query logs) to extract specific tables
+  3. Link at the database/schema level only if the framework supports it
+- A connector with no lineage is better than a connector with wrong lineage
+
+```python
+# WRONG — links every table in the database to each dashboard
+fqn_search = build_es_fqn_search_string(
+    database_name=db_name, table_name="*"  # DO NOT DO THIS
+)
+
+# CORRECT — skip lineage if no table-level info is available
+def yield_dashboard_lineage_details(self, dashboard_details, ...):
+    """Source API does not expose per-report table usage."""
+    return
+
+# CORRECT — parse SQL from report definition to get specific tables
+def yield_dashboard_lineage_details(self, dashboard_details, ...):
+    for query in self._extract_queries_from_rdl(dashboard_details):
+        parser = LineageParser(query, dialect=Dialect.TSQL)
+        for table in parser.source_tables:
+            yield from self._create_lineage_edge(table, dashboard_details)
+```
+
 ## Dialect Mapping
 
 Every database connector maps to a SQL dialect for lineage parsing. The mapping lives in `ingestion/src/metadata/ingestion/lineage/models.py`:

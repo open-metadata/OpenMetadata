@@ -742,14 +742,16 @@ public class DistributedSearchIndexCoordinator {
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name());
     List<SearchIndexPartitionRecord> failed =
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.FAILED.name());
+    List<SearchIndexPartitionRecord> cancelled =
+        partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name());
 
     if (pending.isEmpty() && processing.isEmpty()) {
       // All partitions are done
       IndexJobStatus newStatus;
-      if (!failed.isEmpty()) {
-        newStatus = IndexJobStatus.COMPLETED_WITH_ERRORS;
-      } else if (job.getStatus() == IndexJobStatus.STOPPING) {
+      if (job.getStatus() == IndexJobStatus.STOPPING) {
         newStatus = IndexJobStatus.STOPPED;
+      } else if (!failed.isEmpty() || !cancelled.isEmpty()) {
+        newStatus = IndexJobStatus.COMPLETED_WITH_ERRORS;
       } else {
         newStatus = IndexJobStatus.COMPLETED;
       }
@@ -775,6 +777,45 @@ public class DistributedSearchIndexCoordinator {
           newStatus,
           completed.getSuccessRecords(),
           completed.getFailedRecords());
+    }
+  }
+
+  /**
+   * Force-complete any partitions still in PROCESSING state. Called during shutdown/stop to ensure
+   * partitions don't stay stuck and block the job from reaching a terminal state.
+   */
+  public void forceCompleteProcessingPartitions(UUID jobId) {
+    SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
+    List<SearchIndexPartitionRecord> processing =
+        partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name());
+
+    if (!processing.isEmpty()) {
+      long now = System.currentTimeMillis();
+      for (SearchIndexPartitionRecord p : processing) {
+        LOG.warn(
+            "Force-cancelling partition {} (entity={}, processed={}, success={}, failed={}) during job stop",
+            p.id(),
+            p.entityType(),
+            p.processedCount(),
+            p.successCount(),
+            p.failedCount());
+        partitionDAO.update(
+            p.id(),
+            PartitionStatus.CANCELLED.name(),
+            p.cursor(),
+            p.processedCount(),
+            p.successCount(),
+            p.failedCount(),
+            p.assignedServer(),
+            p.claimedAt(),
+            p.startedAt(),
+            now,
+            now,
+            "Force-cancelled during job stop",
+            p.retryCount());
+      }
+      LOG.info(
+          "Force-cancelled {} processing partitions for stopping job {}", processing.size(), jobId);
     }
   }
 

@@ -4,6 +4,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.SearchUtil.getFuzziness;
+import static org.openmetadata.service.search.SearchUtil.getMaxExpansions;
 import static org.openmetadata.service.search.SearchUtil.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtil.isDataQualityIndex;
 import static org.openmetadata.service.search.SearchUtil.isServiceIndex;
@@ -687,7 +689,8 @@ public class OpenSearchSourceBuilderFactory
       int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
 
       if (!nullOrEmpty(agg.getField())) {
-        termsAgg = OpenSearchAggregationBuilder.termsAggregation(agg.getField(), maxSize);
+        String field = SearchSourceBuilderFactory.remapAggregationField(agg.getField());
+        termsAgg = OpenSearchAggregationBuilder.termsAggregation(field, maxSize);
       } else if (!nullOrEmpty(agg.getScript())) {
         termsAgg =
             OpenSearchAggregationBuilder.termsAggregationWithScript(agg.getScript(), maxSize);
@@ -709,7 +712,8 @@ public class OpenSearchSourceBuilderFactory
               int maxSize = searchSettings.getGlobalSettings().getMaxAggregateSize();
 
               if (!nullOrEmpty(agg.getField())) {
-                termsAgg = OpenSearchAggregationBuilder.termsAggregation(agg.getField(), maxSize);
+                String field = SearchSourceBuilderFactory.remapAggregationField(agg.getField());
+                termsAgg = OpenSearchAggregationBuilder.termsAggregation(field, maxSize);
               } else if (!nullOrEmpty(agg.getScript())) {
                 termsAgg =
                     OpenSearchAggregationBuilder.termsAggregationWithScript(
@@ -1085,6 +1089,9 @@ public class OpenSearchSourceBuilderFactory
             }
           });
 
+      String fuzziness = getFuzziness(query);
+      int maxExpansions = getMaxExpansions(query);
+
       os.org.opensearch.client.opensearch._types.query_dsl.Query fuzzyQuery =
           os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
               q ->
@@ -1097,8 +1104,8 @@ public class OpenSearchSourceBuilderFactory
                                       .MostFields)
                               .operator(
                                   os.org.opensearch.client.opensearch._types.query_dsl.Operator.Or)
-                              .fuzziness("1")
-                              .maxExpansions(10)
+                              .fuzziness(fuzziness)
+                              .maxExpansions(maxExpansions)
                               .prefixLength(1)
                               .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
                               .tieBreaker(DEFAULT_TIE_BREAKER)
@@ -1144,7 +1151,7 @@ public class OpenSearchSourceBuilderFactory
         os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.MostFields,
         os.org.opensearch.client.opensearch._types.query_dsl.Operator.Or,
         String.valueOf(DEFAULT_TIE_BREAKER),
-        "1");
+        getFuzziness(query));
   }
 
   private os.org.opensearch.client.opensearch._types.query_dsl.Query createStandardNonFuzzyQueryV2(

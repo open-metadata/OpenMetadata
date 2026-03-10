@@ -30,6 +30,16 @@
 
 ## Standards Compliance
 
-Only categories relevant to the changed files are reviewed:
+Each check is PASS, FAIL (with finding reference), or N/A:
 
 {{STANDARDS_CHECK}}
+
+**Important**: A check is only PASS if no blocker or warning was found for that area.
+If a blocker or warning references a standard, that row must show FAIL with the finding number.
+
+Example:
+| Check | Status | Finding |
+|-------|--------|---------|
+| Charts linked to dashboards | FAIL | #1 |
+| Pagination implemented | PASS | — |
+| Error messages include context | FAIL | #3 |

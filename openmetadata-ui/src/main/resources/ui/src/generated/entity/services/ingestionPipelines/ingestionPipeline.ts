@@ -550,6 +550,8 @@ export enum AuthProvider {
  *
  * Regex to only fetch api endpoints with names matching the pattern.
  *
+ * Regex to exclude or include charts that matches the pattern.
+ *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
  *
@@ -695,6 +697,8 @@ export enum OpenmetadataType {
  * Flag to verify SSL Certificate for OpenMetadata Server.
  *
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
  */
 export enum VerifySSL {
     Ignore = "ignore",
@@ -1132,6 +1136,11 @@ export interface Pipeline {
      * draft dashboards
      */
     includeDraftDashboard?: boolean;
+    /**
+     * Optional configuration to toggle the ingestion of usage metadata for dashboards. When
+     * enabled, usage statistics will be collected and ingested.
+     */
+    includeUsage?: boolean;
     /**
      * Details required to generate Lineage
      */
@@ -3334,6 +3343,9 @@ export interface ServiceConnection {
  *
  * Hex Connection Config
  *
+ * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
+ * create, deploy, and manage paginated reports
+ *
  * Google BigQuery Connection Config
  *
  * Google BigTable Connection Config
@@ -3610,6 +3622,8 @@ export interface ConfigObject {
     type?: PurpleType;
     /**
      * Regex exclude or include charts that matches the pattern.
+     *
+     * Regex to exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
     /**
@@ -3687,6 +3701,8 @@ export interface ConfigObject {
      * URL to the Grafana instance.
      *
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
+     *
+     * Host and Port of the Ssrs instance.
      *
      * BigQuery APIs URL.
      *
@@ -3815,6 +3831,8 @@ export interface ConfigObject {
      *
      * Password to connect to MicroStrategy.
      *
+     * Password to connect to Ssrs.
+     *
      * Password to connect to AzureSQL.
      *
      * Password to connect to Clickhouse.
@@ -3885,6 +3903,8 @@ export interface ConfigObject {
      *
      * Username to connect to MicroStrategy. This user should have privileges to read all the
      * metadata in MicroStrategy.
+     *
+     * Username to connect to Ssrs.
      *
      * Username to connect to AzureSQL. This user should have privileges to read the metadata.
      *
@@ -4107,10 +4127,10 @@ export interface ConfigObject {
      */
     siteName?: string;
     /**
+     * SSL Configuration details.
+     *
      * SSL Configuration details for DB2 connection. Provide CA certificate for server
      * validation, and optionally client certificate and key for mutual TLS authentication.
-     *
-     * SSL Configuration details.
      *
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
@@ -4120,6 +4140,8 @@ export interface ConfigObject {
     sslConfig?: SSLConfigObject;
     /**
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
+     * Client SSL verification.
      *
      * Flag to verify SSL Certificate for OpenMetadata Server.
      *
@@ -4344,6 +4366,12 @@ export interface ConfigObject {
      * multi-regions are not yet in GA.
      */
     usageLocation?: string;
+    /**
+     * Catalog ID for Athena. For S3 Tables, use the format 's3tablescatalog/<bucket-name>'. For
+     * cross-account Glue catalogs, use the AWS account ID. If not provided, defaults to the
+     * caller's AWS account.
+     */
+    catalogId?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -7552,6 +7580,7 @@ export enum PurpleType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    Ssrs = "Ssrs",
     StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",

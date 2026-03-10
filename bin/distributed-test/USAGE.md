@@ -111,10 +111,16 @@ Any `--entity-type NUM` flag overrides the preset for that entity type:
 | `--workers NUM` | 20 | Concurrent HTTP workers |
 | `--quick` | - | Quick mode preset (~10K entities) |
 | `--scale PRESET` | - | Scale preset (small/medium/large/xlarge) |
+| `--skip-reads` | - | Skip read benchmarking phase (Phase 8) |
+| `--only-reads` | - | Skip write phases; discover existing entities and run reads only |
+| `--mixed` | - | Run mixed read/write workload (Phase 9) |
+| `--mixed-duration SECS` | 60 | Duration of mixed workload in seconds |
+| `--read-ratio PCT` | 80 | Read percentage in mixed workload (0-100) |
+| `--realistic` | - | Run Phase 4 entity creation concurrently across entity types using a shared worker pool |
 
 ### Entity Creation Order
 
-The script creates entities in dependency order across 7 phases:
+The script creates entities in dependency order across up to 9 phases:
 
 ```
 Phase 1  Metadata         domains, classifications, tags, glossaries, terms, users, teams
@@ -127,7 +133,14 @@ Phase 5  Data Quality     testSuites, testCases
 Phase 6  Lineage          table->table (60%), table->dashboard (25%), pipeline->table (15%)
 Phase 7  Time-Series      testCaseResults, entityReportData, webAnalyticViews,
                           webAnalyticActivity, rawCostAnalysis, aggCostAnalysis
+Phase 8  Read Benchmarks  entity fetch, paginated list, search queries, lineage traversal
+Phase 9  Mixed Workload   concurrent reads + writes for configurable duration (--mixed)
 ```
+
+Phases 8 and 9 are optional:
+- Phase 8 runs automatically unless `--skip-reads` is passed
+- Phase 9 only runs when `--mixed` is passed
+- `--only-reads` skips phases 1-7, discovers existing entities, and runs Phase 8
 
 ### Entity Linking
 
@@ -149,12 +162,72 @@ HTTP requests retry up to 3 times with exponential backoff (1s, 2s, 4s) on:
 - 5xx server errors
 - Connection errors / timeouts
 
+### Realistic Concurrent Workload (`--realistic`)
+
+By default, `--workers N` creates N concurrent workers **per entity type**, but entity types run
+sequentially (all tables first, then all dashboards, etc.). With `--realistic`, all Phase 4 entity
+types are created concurrently through a **single shared worker pool**, simulating real-world traffic
+where tables, dashboards, topics, and pipelines all hit the server at the same time.
+
+This exposes contention patterns not visible in sequential mode:
+- Cross-entity DB lock contention
+- Shared thread pool pressure
+- Connection pool exhaustion under mixed workloads
+
+```bash
+# Realistic mode: all entity types hit the server concurrently
+./perf-test.sh --scale 10k --realistic --server http://localhost:8585
+
+# Compare with sequential mode (default)
+./perf-test.sh --scale 10k --server http://localhost:8585
+```
+
+The report includes a `realistic_combined` entry showing combined RPS and latency distribution
+across all entity types, in addition to individual per-entity-type metrics.
+
 ### Performance Tips
 
 - Use `--workers 30` or higher if the server can handle it
 - Time-series and lineage phases use `min(10, workers)` to avoid overwhelming the server
 - At `xlarge` scale, expect the script to run for several hours depending on server capacity
 - Monitor server logs for 429/503 errors and reduce workers if needed
+
+### Multi-Scale Benchmarking
+
+Run benchmarks across multiple asset counts to compare performance at different scales:
+
+```bash
+# Benchmark at 10k, 50k, 100k, and 200k entities
+for scale in 10k 50k 100k 200k; do
+  ./scripts/perf-test.sh --scale "$scale" --server http://localhost:8585 \
+    --output "/tmp/bench-${scale}.json" --workers 20 2>&1 | tee "/tmp/bench-${scale}.log"
+done
+```
+
+With read and mixed workload benchmarks included:
+
+```bash
+for scale in 10k 50k 100k; do
+  ./scripts/perf-test.sh --scale "$scale" --server http://localhost:8585 \
+    --mixed --mixed-duration 30 \
+    --output "/tmp/bench-${scale}.json" 2>&1 | tee "/tmp/bench-${scale}.log"
+done
+```
+
+Compare results across scales:
+
+```bash
+for f in /tmp/bench-*.json; do
+  echo "=== $(basename $f) ==="
+  python3 -c "
+import json
+r = json.load(open('$f'))
+o = r['overall']
+print(f\"  Entities: {o['total_entities_created']:,}  RPS: {o['overall_throughput_rps']:.1f}\"
+      f\"  Errors: {o['overall_error_rate_pct']:.1f}%  Time: {o['total_wall_clock_s']:.0f}s\")
+"
+done
+```
 
 ## Verification After Loading
 

@@ -21,7 +21,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of();
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     assertNotNull(query);
 
@@ -60,7 +60,7 @@ class VectorSearchQueryBuilderTest {
     int k = 50;
     Map<String, List<String>> filters = Map.of("entityType", List.of("table", "dashboard"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -87,7 +87,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("owners", List.of("user1", "team2"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -123,7 +123,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("owners", List.of("__ANY__"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -159,7 +159,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("owners", List.of("__NONE__"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -187,7 +187,7 @@ class VectorSearchQueryBuilderTest {
     Map<String, List<String>> filters =
         Map.of("tags", List.of("PII.Sensitive", "Classification.Public"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -224,7 +224,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("tier", List.of("Tier.Tier1", "Tier.Tier2"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -258,7 +258,7 @@ class VectorSearchQueryBuilderTest {
             "owners", List.of("DataTeam"),
             "serviceType", List.of("BigQuery"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -279,6 +279,127 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testBuildsQueryWithServiceFilter__ANY__() throws Exception {
+    float[] vector = {0.1f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("service", List.of("__ANY__"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    JsonNode serviceFilter = mustFilters.get(1);
+    assertTrue(serviceFilter.has("bool"));
+    JsonNode shouldClauses = serviceFilter.get("bool").get("should");
+    assertEquals(1, shouldClauses.size());
+
+    JsonNode existsQuery = shouldClauses.get(0).get("exists");
+    assertNotNull(existsQuery);
+    assertEquals("service.name", existsQuery.get("field").asText());
+  }
+
+  @Test
+  void testBuildsQueryWithServiceFilter__NONE__() throws Exception {
+    float[] vector = {0.1f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("service", List.of("__NONE__"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    JsonNode serviceFilter = mustFilters.get(1);
+    assertTrue(serviceFilter.has("bool"));
+    JsonNode shouldClauses = serviceFilter.get("bool").get("should");
+    assertEquals(1, shouldClauses.size());
+
+    JsonNode mustNot = shouldClauses.get(0).get("bool").get("must_not");
+    assertNotNull(mustNot);
+    assertEquals("service.name", mustNot.get("exists").get("field").asText());
+  }
+
+  @Test
+  void testBuildsQueryWithDatabaseFilter__ANY__() throws Exception {
+    float[] vector = {0.1f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("database", List.of("__ANY__"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    JsonNode databaseFilter = mustFilters.get(1);
+    assertTrue(databaseFilter.has("bool"));
+    JsonNode shouldClauses = databaseFilter.get("bool").get("should");
+    assertEquals(1, shouldClauses.size());
+
+    JsonNode existsQuery = shouldClauses.get(0).get("exists");
+    assertNotNull(existsQuery);
+    assertEquals("database.name", existsQuery.get("field").asText());
+  }
+
+  @Test
+  void testBuildsQueryWithDatabaseFilter__NONE__() throws Exception {
+    float[] vector = {0.1f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("database", List.of("__NONE__"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    JsonNode databaseFilter = mustFilters.get(1);
+    assertTrue(databaseFilter.has("bool"));
+    JsonNode shouldClauses = databaseFilter.get("bool").get("should");
+    assertEquals(1, shouldClauses.size());
+
+    JsonNode mustNot = shouldClauses.get(0).get("bool").get("must_not");
+    assertNotNull(mustNot);
+    assertEquals("database.name", mustNot.get("exists").get("field").asText());
+  }
+
+  @Test
+  void testBuildsQueryWithServiceFilterNormalValue() throws Exception {
+    float[] vector = {0.1f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("service", List.of("my_service"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    assertEquals(2, mustFilters.size());
+
+    String filtersJson = mustFilters.toString();
+    assertTrue(filtersJson.contains("service.name"));
+    assertTrue(filtersJson.contains("service.displayName"));
+    assertTrue(filtersJson.contains("my_service"));
+  }
+
+  @Test
   void testIgnoresEmptyFilterValues() throws Exception {
     float[] vector = {0.1f};
     int size = 10;
@@ -289,7 +410,7 @@ class VectorSearchQueryBuilderTest {
             "tags", List.of() // Empty list should be ignored
             );
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -308,7 +429,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("entityType", List.of("table"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
 
@@ -334,7 +455,7 @@ class VectorSearchQueryBuilderTest {
     Map<String, List<String>> filters =
         Map.of("customProperties.department", List.of("engineering"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -365,7 +486,7 @@ class VectorSearchQueryBuilderTest {
             "customProperties.department", List.of("engineering"),
             "customProperties.location", List.of("remote"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -392,7 +513,7 @@ class VectorSearchQueryBuilderTest {
     Map<String, List<String>> filters =
         Map.of("customProperties.steward.name", List.of("John Doe"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -421,7 +542,7 @@ class VectorSearchQueryBuilderTest {
     Map<String, List<String>> filters =
         Map.of("customProperties.owner.name", List.of("O'Brien, \"Data\" Smith"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -453,7 +574,7 @@ class VectorSearchQueryBuilderTest {
             "customProperties.description", List.of("data warehouse") // Should use match query
             );
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -497,7 +618,7 @@ class VectorSearchQueryBuilderTest {
             "customProperties.department", List.of(), // Empty list should be ignored
             "entityType", List.of("table"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -521,7 +642,7 @@ class VectorSearchQueryBuilderTest {
     Map<String, List<String>> filters =
         Map.of("customProperties.notes", List.of("test \"quoted\" value"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -552,7 +673,7 @@ class VectorSearchQueryBuilderTest {
             "tier", List.of("Tier.Tier1"),
             "customProperties.cost_center", List.of("12345"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -588,7 +709,7 @@ class VectorSearchQueryBuilderTest {
             "unknownKey", List.of("value"),
             "entityType", List.of("table"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =
@@ -609,7 +730,7 @@ class VectorSearchQueryBuilderTest {
     int k = 100;
     Map<String, List<String>> filters = Map.of("unknownKey", List.of("value"));
 
-    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
 
     JsonNode root = MAPPER.readTree(query);
     JsonNode mustFilters =

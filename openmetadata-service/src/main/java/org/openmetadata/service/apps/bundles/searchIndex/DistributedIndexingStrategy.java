@@ -35,7 +35,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -223,7 +222,9 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     CountDownLatch completionLatch = new CountDownLatch(1);
     ScheduledExecutorService monitor =
         Executors.newSingleThreadScheduledExecutor(
-            Thread.ofPlatform().name("distributed-monitor").factory());
+            Thread.ofPlatform()
+                .name("reindex-distributed-monitor-" + jobId.toString().substring(0, 8))
+                .factory());
 
     try {
       monitor.scheduleAtFixedRate(
@@ -446,8 +447,6 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     Set<String> entitiesToFinalize = new HashSet<>(recreateContext.getEntities());
     entitiesToFinalize.removeAll(promotedEntities);
 
-    boolean hasVectorIndex = entitiesToFinalize.remove(VectorIndexService.VECTOR_INDEX_KEY);
-
     LOG.debug("Entities to finalize={}, already promoted={}", entitiesToFinalize, promotedEntities);
 
     try {
@@ -469,21 +468,6 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
           } catch (Exception ex) {
             LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
           }
-        }
-      }
-
-      if (hasVectorIndex) {
-        boolean vectorSuccess =
-            finalSuccess
-                || (currentStats.get() != null && !hasIncompleteProcessing(currentStats.get()));
-        try {
-          finalizeEntityReindex(
-              recreateIndexHandler,
-              recreateContext,
-              VectorIndexService.VECTOR_INDEX_KEY,
-              vectorSuccess);
-        } catch (Exception ex) {
-          LOG.error("Failed to finalize vector index", ex);
         }
       }
     } catch (Exception e) {
