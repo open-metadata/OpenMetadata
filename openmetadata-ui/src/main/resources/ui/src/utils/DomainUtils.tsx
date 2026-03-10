@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { Box, Tooltip as MUITooltip } from '@mui/material';
-import { Divider, Space, Tooltip, Typography } from 'antd';
+import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@untitledui/icons';
+import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { InternalAxiosRequestConfig } from 'axios';
 import classNames from 'classnames';
@@ -351,26 +351,11 @@ export const domainTypeTooltipDataRender = () => (
 );
 
 export const iconTooltipDataRender = () => (
-  <MUITooltip arrow placement="top" title={t('message.icon-aspect-ratio')}>
-    <Box
-      component="span"
-      sx={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        cursor: 'help',
-        lineHeight: 0,
-        pointerEvents: 'auto',
-      }}>
-      <InfoOutlinedIcon
-        data-testid="mui-helper-icon"
-        sx={{
-          fontSize: 16,
-          color: 'text.secondary',
-          pointerEvents: 'auto',
-        }}
-      />
-    </Box>
-  </MUITooltip>
+  <Tooltip placement="top" title={t('message.icon-aspect-ratio')}>
+    <TooltipTrigger>
+      <InfoCircle data-testid="helper-icon" size={14} />
+    </TooltipTrigger>
+  </Tooltip>
 );
 
 export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
@@ -418,7 +403,7 @@ export const renderDomainLink = (
     : domainDisplayName;
 
   return (
-    <Tooltip title={domainDisplayName ?? getEntityName(domain)}>
+    <AntDTooltip title={domainDisplayName ?? getEntityName(domain)}>
       <Link
         className={classNames(
           'no-underline domain-link domain-link-text font-medium',
@@ -429,18 +414,20 @@ export const renderDomainLink = (
           textClassName
         )}
         data-testid="domain-link"
-        to={getDomainPath(domain?.fullyQualifiedName)}>
+        to={getDomainPath(domain?.fullyQualifiedName)}
+      >
         {trimLink ? (
           <Typography.Text
             className="domain-link-name"
-            ellipsis={{ tooltip: false }}>
+            ellipsis={{ tooltip: false }}
+          >
             {displayName}
           </Typography.Text>
         ) : (
           <>{displayName}</>
         )}
       </Link>
-    </Tooltip>
+    </AntDTooltip>
   );
 };
 
@@ -787,7 +774,8 @@ export const DomainListItemRenderer = (props: EntityReference) => {
           <Typography.Text
             ellipsis
             className="m-l-xss text-xs"
-            type="secondary">
+            type="secondary"
+          >
             {fqn}
           </Typography.Text>
         )}
