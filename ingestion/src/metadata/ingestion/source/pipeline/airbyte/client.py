@@ -191,7 +191,7 @@ class AirbyteCloudClient(AirbyteClient):
         )
         client_config.auth_token_mode = "Bearer"
 
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config)
 
     def _fetch_oauth_token(self) -> Tuple[str, int]:
         """
