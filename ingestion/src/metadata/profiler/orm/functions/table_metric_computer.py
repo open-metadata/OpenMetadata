@@ -708,6 +708,31 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
     owner is CHAR padded with spaces — TRIM() is required for equality match.
     """
 
+    def _get_col_names_and_count(self):
+        """Override to route literal values through ColumnCountFn/ColunNameFn.
+
+        The base implementation uses literal() directly, which SQLAlchemy compiles
+        to a ? bind parameter. Informix JDBC 4.50 raises "A syntax error has occurred"
+        from prepareStatement() when ? appears in a SELECT expression (e.g.
+        ? AS "columnNames"). Other dialects like DB2 are unaffected because their
+        JDBC drivers support prepareStatement() for this pattern.
+
+        ColumnCountFn and ColunNameFn are FunctionElement subclasses that have
+        @compiles(Dialects.Informix) overrides setting literal_binds=True, which
+        inlines the value directly into SQL (e.g. 'col1,col2' and 5) so no ?
+        placeholder is generated.
+        """
+        from metadata.profiler.metrics.static.column_count import ColumnCountFn
+        from metadata.profiler.metrics.static.column_names import ColunNameFn
+
+        col_names = ColunNameFn(
+            literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)
+        ).label(COLUMN_NAMES)
+        col_count = ColumnCountFn(
+            literal(len(inspect(self.runner.raw_dataset).c))
+        ).label(COLUMN_COUNT)
+        return col_names, col_count
+
     def compute(self):
         columns = [
             Column("nrows").label(ROW_COUNT),
@@ -721,7 +746,7 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         ]
         query = self._build_query(
             columns,
-            self._build_table("systables", "informix"),
+            self._build_table("systables", None),
             where_clause,
         )
         res = self.runner._session.execute(query).first()
