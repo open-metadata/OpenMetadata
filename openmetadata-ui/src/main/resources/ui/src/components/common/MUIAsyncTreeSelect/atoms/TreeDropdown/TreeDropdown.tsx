@@ -53,6 +53,7 @@ const TreeDropdown: FC<TreeDropdownProps> = ({
       style={{ zIndex: 1300 }}>
       <ClickAwayListener onClickAway={handleClickAway}>
         <Paper
+          data-react-aria-top-layer
           elevation={0}
           sx={{
             mt: 1,

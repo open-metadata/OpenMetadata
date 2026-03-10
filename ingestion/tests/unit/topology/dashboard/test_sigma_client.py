@@ -33,7 +33,7 @@ class TestSigmaApiClient(TestCase):
             clientSecret="test-secret",
         )
 
-        with patch("metadata.ingestion.source.dashboard.sigma.client.REST"):
+        with patch("metadata.ingestion.source.dashboard.sigma.client.TrackedREST"):
             self.client = SigmaApiClient(config)
 
     def test_get_chart_details_single_page_workbook(self):

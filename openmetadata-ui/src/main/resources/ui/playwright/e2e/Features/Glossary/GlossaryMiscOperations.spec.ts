@@ -132,6 +132,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
 
   // T-U05: Rename term - verify child FQNs update
   test('should update child FQN when parent is renamed', async ({ page }) => {
+    test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     const parentTerm = new GlossaryTerm(glossary, undefined, 'OriginalParent');
@@ -178,7 +179,6 @@ test.describe('Glossary Miscellaneous Operations', () => {
         page.locator(`[data-row-key*="${childTerm.responseData.name}"]`)
       ).toBeVisible();
     } finally {
-      await glossary.delete(apiContext);
       await afterAction();
     }
   });

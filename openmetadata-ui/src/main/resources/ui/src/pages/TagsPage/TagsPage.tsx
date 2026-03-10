@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Stack, Typography, useTheme } from '@mui/material';
+import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -71,7 +71,6 @@ const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const theme = useTheme();
   const { fqn: tagCategoryName } = useFqn();
   const [tagForm] = useForm();
   const [classificationForm] = useForm();
@@ -657,43 +656,36 @@ const TagsPage = () => {
     () => (
       <div className="h-full" data-testid="tags-left-panel">
         <TagsLeftPanelSkeleton loading={isLoading}>
-          <div className="p-y-xs" data-testid="data-summary-container">
-            <Stack
-              className="w-full p-x-sm m-b-sm"
-              direction="column"
-              spacing={2}>
+          <div
+            className="p-y-xs d-flex flex-col"
+            data-testid="data-summary-container"
+          >
+            <div className="p-x-sm m-b-sm">
               {createClassificationPermission && (
                 <Button
-                  fullWidth
-                  className="text-primary"
+                  className="tw:w-full"
+                  color="secondary"
                   data-testid="add-classification"
-                  startIcon={<PlusIcon style={{ height: 16, width: 16 }} />}
-                  sx={{
-                    fontWeight: theme.typography.body2.fontWeight,
-                    border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
-                    boxShadow: 'none',
-                    '&:hover': {
-                      boxShadow: 'none',
-                      backgroundColor: 'transparent',
-                      border: `1px solid ${theme.palette.allShades.brand[500]}`,
-                    },
-                  }}
-                  variant="outlined"
+                  iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
+                  size="sm"
                   onClick={() => {
                     classificationForm.resetFields();
                     handleClassificationDrawerOpen();
-                  }}>
-                  {t('label.add-entity', {
-                    entity: t('label.classification'),
-                  })}
+                  }}
+                >
+                  <span className="tw:text-brand-600 tw:font-normal">
+                    {t('label.add-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </span>
                 </Button>
               )}
-            </Stack>
+            </div>
 
             {classifications.map((category: Classification) => (
-              <div
+              <button
                 className={classNames(
-                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
+                  'align-center cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
                   {
                     activeCategory:
                       currentClassification?.name === category.name,
@@ -701,42 +693,27 @@ const TagsPage = () => {
                 )}
                 data-testid="side-panel-classification"
                 key={category.name}
-                onClick={() => onClickClassifications(category)}>
+                onClick={() => onClickClassifications(category)}
+              >
                 <Typography
-                  noWrap
-                  className="self-center m-b-0 tag-category"
+                  as="p"
+                  className={classNames('tw:truncate', {
+                    'tw:font-bold tw:text-brand-600':
+                      currentClassification?.name === category.name,
+                  })}
                   data-testid="tag-name"
-                  sx={{
-                    fontWeight:
-                      currentClassification?.name === category.name
-                        ? theme.typography.fontWeightBold
-                        : 'inherit',
-                    color:
-                      currentClassification?.name === category.name
-                        ? 'primary.main'
-                        : 'inherit',
-                  }}
                   title={getEntityName(category)}
-                  variant="body2">
+                >
                   {getEntityName(category)}
                   {category.disabled && (
                     <Badge
-                      badgeContent={t('label.disabled')}
-                      className="m-l-xs"
-                      color="default"
+                      color="gray"
                       data-testid="disabled"
-                      sx={{
-                        '& .MuiBadge-badge': {
-                          position: 'relative',
-                          transform: 'none',
-                          height: 'auto',
-                          padding: '2px 8px',
-                          color: theme.palette.grey[700],
-                          backgroundColor: theme.palette.grey[300],
-                          fontSize: theme.typography.caption.fontSize,
-                        },
-                      }}
-                    />
+                      size="sm"
+                      type="pill-color"
+                    >
+                      {t('label.disabled')}
+                    </Badge>
                   )}
                 </Typography>
 
@@ -746,7 +723,7 @@ const TagsPage = () => {
                   currentClassification?.fullyQualifiedName ===
                     category.fullyQualifiedName
                 )}
-              </div>
+              </button>
             ))}
           </div>
         </TagsLeftPanelSkeleton>
@@ -769,7 +746,7 @@ const TagsPage = () => {
   if (error) {
     return (
       <ErrorPlaceHolder>
-        <Typography className="text-center m-auto" component="p">
+        <Typography as="p" className="tw:text-center tw:m-auto">
           {error}
         </Typography>
       </ErrorPlaceHolder>

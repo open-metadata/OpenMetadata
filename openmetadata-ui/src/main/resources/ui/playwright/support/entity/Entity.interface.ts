@@ -89,6 +89,7 @@ export type ResponseDataType = {
   description: string;
   id: string;
   fullyQualifiedName: string;
+  version?: number;
 };
 export type TestCaseData = {
   parameterValues?: unknown[];

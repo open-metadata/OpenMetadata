@@ -1653,6 +1653,7 @@
     "select-a-metric-type": "选择指标类型",
     "select-a-policy": "选择策略",
     "select-add-test-suite": "选择/添加质控测试",
+    "select-all": "全选",
     "select-all-entity": "选择全部 {{entity}}",
     "select-asset-type": "选择资产类型",
     "select-background": "选择背景",

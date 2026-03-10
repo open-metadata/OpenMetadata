@@ -95,6 +95,7 @@ from metadata.ingestion.source.database.redshift.utils import (
     get_multi_columns,
     get_redshift_columns,
     get_table_comment,
+    get_temp_table_names,
     get_view_definition,
 )
 from metadata.utils import fqn
@@ -132,6 +133,7 @@ PGDialect._get_column_info = _get_pg_column_info
 RedshiftDialect.get_all_table_comments = get_all_table_comments
 RedshiftDialect.get_table_comment = get_table_comment
 RedshiftDialect.get_view_definition = get_view_definition
+RedshiftDialect.get_temp_table_names = get_temp_table_names
 RedshiftDialect._get_redshift_columns = get_redshift_columns
 RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
     _get_all_relation_info

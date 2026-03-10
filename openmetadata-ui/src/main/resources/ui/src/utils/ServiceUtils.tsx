@@ -621,6 +621,7 @@ export const getSearchIndexFromService = (serviceName: string): SearchIndex => {
     [ServiceCategory.SEARCH_SERVICES]: SearchIndex.SEARCH_SERVICE,
     [ServiceCategory.API_SERVICES]: SearchIndex.API_SERVICE_INDEX,
     [ServiceCategory.DRIVE_SERVICES]: SearchIndex.DRIVE_SERVICE,
+    [ServiceCategory.METADATA_SERVICES]: SearchIndex.METADATA_SERVICE,
   };
 
   return mapping[serviceName] ?? SearchIndex.DATABASE_SERVICE;
