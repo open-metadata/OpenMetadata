@@ -55,7 +55,7 @@
     },
     "database": {
       "title": "Database",
-      "description": "Database of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.",
+      "description": "Database of the data source.",
       "type": "string"
     },
     "serverName": {
@@ -144,6 +144,7 @@
   "additionalProperties": false,
   "required": [
     "hostPort",
+    "database",
     "username",
     "password",
     "serverName"

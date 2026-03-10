@@ -721,7 +721,7 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         ]
         query = self._build_query(
             columns,
-            self._build_table("systables", None),
+            self._build_table("systables", "informix"),
             where_clause,
         )
         res = self.runner._session.execute(query).first()
