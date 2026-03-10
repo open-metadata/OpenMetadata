@@ -47,10 +47,10 @@ export interface TriggerConfiguration {
      */
     filter?: FilterConditionObject | string;
     /**
-     * Map of fields to their required values/patterns that must match to trigger the workflow.
-     * Takes priority over exclude fields. Field values use substring matching.
+     * Array of field names that must be present in the change description to trigger the
+     * workflow. Takes priority over exclude fields.
      */
-    include?: { [key: string]: string[] };
+    include?: string[];
 }
 
 /**
