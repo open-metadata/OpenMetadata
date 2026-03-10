@@ -4,6 +4,9 @@ import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -675,6 +678,43 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     // No relationships to store beyond what is stored in the super class
   }
 
+  static String combineFilters(String existingFilter, String userFilter) {
+    if (existingFilter == null || existingFilter.isEmpty() || existingFilter.equals("{}")) {
+      return userFilter;
+    }
+    if (userFilter == null || userFilter.isEmpty() || userFilter.equals("{}")) {
+      return existingFilter;
+    }
+    try {
+      JsonObject existingJson = JsonParser.parseString(existingFilter).getAsJsonObject();
+      JsonObject userJson = JsonParser.parseString(userFilter).getAsJsonObject();
+
+      JsonObject existingQuery = existingJson.getAsJsonObject("query");
+      JsonObject userQuery = userJson.getAsJsonObject("query");
+
+      if (existingQuery == null) return userFilter;
+      if (userQuery == null) return existingFilter;
+
+      JsonArray mustArray = new JsonArray();
+      mustArray.add(existingQuery);
+      mustArray.add(userQuery);
+
+      JsonObject boolObj = new JsonObject();
+      boolObj.add("must", mustArray);
+
+      JsonObject combinedQuery = new JsonObject();
+      combinedQuery.add("bool", boolObj);
+
+      JsonObject result = new JsonObject();
+      result.add("query", combinedQuery);
+
+      return result.toString();
+    } catch (Exception e) {
+      LOG.warn("Failed to combine filters, using user filter as fallback: {}", e.getMessage());
+      return userFilter;
+    }
+  }
+
   public DataInsightCustomChartResultList getPreviewData(
       DataInsightCustomChart chart, long startTimestamp, long endTimestamp, String filter)
       throws IOException {
@@ -683,7 +723,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       if (chartDetails.get("metrics") != null) {
         for (LinkedHashMap<String, Object> metrics :
             (List<LinkedHashMap<String, Object>>) chartDetails.get("metrics")) {
-          metrics.put("filter", filter);
+          String existingFilter = (String) metrics.get("filter");
+          metrics.put("filter", combineFilters(existingFilter, filter));
         }
       }
     }
@@ -718,7 +759,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           if (chartDetails.get("metrics") != null) {
             for (LinkedHashMap<String, Object> metrics :
                 (List<LinkedHashMap<String, Object>>) chartDetails.get("metrics")) {
-              metrics.put("filter", filter);
+              String existingFilter = (String) metrics.get("filter");
+              metrics.put("filter", combineFilters(existingFilter, filter));
             }
           }
         }

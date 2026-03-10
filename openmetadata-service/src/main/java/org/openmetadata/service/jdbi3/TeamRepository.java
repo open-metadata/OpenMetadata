@@ -424,7 +424,7 @@ public class TeamRepository extends EntityRepository<Team> {
     validateDefaultPersona(team);
   }
 
-  public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request) {
+  public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request, String userName) {
     Team team = getByName(null, teamName, getFields("id"));
 
     // Validate all to be users
@@ -436,16 +436,17 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
 
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true);
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, userName);
   }
 
-  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+  public BulkOperationResult bulkRemoveAssets(
+      String domainName, BulkAssets request, String userName) {
     Team team = getByName(null, domainName, getFields("id"));
 
     // Validate all to be users
     validateAllRefUsers(request.getAssets());
 
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false);
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, userName);
   }
 
   private void validateAllRefUsers(List<EntityReference> refs) {

@@ -49,6 +49,12 @@ class ColumnValuesMissingCountValidator(
         """
         return self.run_query_results(self.runner, metric, column, **kwargs)
 
+    def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
+        total_missing_count = row.get(self.TOTAL_MISSING_COUNT)
+        if total_missing_count is None:
+            return None
+        return {self.TOTAL_MISSING_COUNT: total_missing_count}
+
     def _execute_dimensional_validation(
         self,
         column: Column,
@@ -109,27 +115,9 @@ class ColumnValuesMissingCountValidator(
                 top_n=top_n,
             )
 
-            for row in result_rows:
-                total_missing_count = row.get(self.TOTAL_MISSING_COUNT)
-
-                if total_missing_count is None:
-                    continue
-
-                metric_values = {
-                    self.TOTAL_MISSING_COUNT: total_missing_count,
-                }
-
-                evaluation = self._evaluate_test_condition(metric_values, test_params)
-
-                dimension_result = self._create_dimension_result(
-                    row,
-                    dimension_col.name,
-                    metric_values,
-                    evaluation,
-                    test_params,
-                )
-
-                dimension_results.append(dimension_result)
+            return self._process_dimension_rows(
+                result_rows, dimension_col.name, metrics_to_compute, test_params
+            )
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

@@ -574,10 +574,15 @@ export const getQueryFilterForDataInsightChart = (
           ...(teamFilter
             ? [
                 {
-                  bool: {
-                    should: teamFilter.map((team) => ({
-                      term: { 'owners.name.keyword': team },
-                    })),
+                  nested: {
+                    path: 'owners',
+                    query: {
+                      bool: {
+                        should: teamFilter.map((team) => ({
+                          term: { 'owners.name.keyword': team },
+                        })),
+                      },
+                    },
                   },
                 },
               ]

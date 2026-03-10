@@ -52,6 +52,33 @@ export const initializePermissions = async (
   return { apiContext, policy, role };
 };
 
+export const setupUserWithPolicy = async (
+  apiContext: APIRequestContext,
+  user: UserClass,
+  policy: PolicyClass,
+  role: RolesClass,
+  policyRules: Array<{
+    name: string;
+    resources: string[];
+    operations: string[];
+    effect: string;
+  }>
+) => {
+  await user.create(apiContext, false);
+  const pol = await policy.create(apiContext, policyRules);
+  const rol = await role.create(apiContext, [pol.fullyQualifiedName]);
+  await user.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/roles/0',
+        value: { id: rol.id, type: 'role', name: rol.name },
+      },
+    ],
+  });
+};
+
 export const assignRoleToUser = async (page: Page, testUser: UserClass) => {
   const { apiContext } = await getApiContext(page);
 
