@@ -9,7 +9,7 @@ OpenMetadata is a unified metadata platform for data discovery, data observabili
 ## Architecture Overview
 
 - **Backend**: Java 21 + Dropwizard REST API framework, multi-module Maven project
-- **Frontend**: React + TypeScript + Ant Design, built with Webpack and Yarn
+- **Frontend**: React + TypeScript + MUI (via `openmetadata-ui-core-components`), built with Webpack and Yarn
 - **Ingestion**: Python 3.10-3.12 with Pydantic 2.x, 75+ data source connectors
 - **Database**: MySQL (default) or PostgreSQL with Flyway migrations
 - **Search**: Elasticsearch 7.17+ or OpenSearch 2.6+ for metadata discovery
@@ -102,7 +102,7 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 1. **Schema Changes**: Modify JSON schemas in `openmetadata-spec/`, then run `mvn clean install` on openmetadata-spec to update models
 2. **Backend**: Develop in Java using Dropwizard patterns, test with `mvn test`, format with `mvn spotless:apply`
-3. **Frontend**: Use React/TypeScript with Ant Design components, test with Jest/Playwright
+3. **Frontend**: Use React/TypeScript with `openmetadata-ui-core-components` (MUI), test with Jest/Playwright
 4. **Ingestion**: Python connectors follow plugin pattern, use `make install_dev_env` for development
 5. **Full Testing**: Use `make run_e2e_tests` before major changes
 
@@ -129,11 +129,11 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Styling
 
-- **MUI Migration**: The project is gradually migrating from Ant Design to Material-UI (MUI) v7.3.1
-- **Preferred Approach**: Use MUI components v7.3.1 and styles wherever possible for new features
+- **Standard**: Use `openmetadata-ui-core-components` for all UI components and styles — this is the required approach for all new and refactored code
+- **MUI Components**: Use Material-UI (MUI) v7.3.1 components provided by `openmetadata-ui-core-components` in all places
 - **Theme and Styles**: MUI theme data and styles are defined in `openmetadata-ui-core-components`
 - **Colors and Design Tokens**: Always reference theme colors and design tokens from the MUI theme, not hardcoded values
-- **Legacy Components**: Ant Design components remain in existing code but should be replaced with MUI equivalents when refactoring
+- **Legacy Components**: Ant Design components remaining in existing code must be replaced with `openmetadata-ui-core-components` MUI equivalents when refactoring
 - Do not add unnecessary spacing between logs and code.
 - In Java, avoid wildcards imports (e.g., use `import java.util.List;` instead of `import java.util.*;`)
 - Custom styles in `.less` files with component-specific naming (legacy pattern)
