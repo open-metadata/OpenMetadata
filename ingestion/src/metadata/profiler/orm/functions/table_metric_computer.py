@@ -27,7 +27,6 @@ from sqlalchemy import (
     inspect,
     literal,
     select,
-    text,
 )
 from sqlalchemy.sql.expression import ColumnOperators, and_, cte
 from sqlalchemy.types import String
@@ -637,68 +636,6 @@ class DB2TableMetricComputer(BaseTableMetricComputer):
         return res
 
 
-class InformixTableMetricComputer(BaseTableMetricComputer):
-    """
-    Informix Table Metric Computer.
-
-    The base implementation uses literal() for column names/count, which puts
-    bind parameters in the SELECT clause: ``? AS "columnNames"``, ``? AS "columnCount"``.
-    Informix JDBC allows bind params in WHERE clauses but NOT in SELECT expressions,
-    causing ``SQLSyntaxErrorException: A syntax error has occurred.``
-
-    Fix:
-    - Query systables for row count (bind params only in WHERE = OK).
-    - Compute column count/names in Python with no SQL needed.
-    - Return results as a plain dict so ``dict(row)`` in the caller still works.
-    """
-
-    def compute(self):
-        """Compute table metrics for Informix using literal-bound COUNT(*).
-
-        Informix JDBC's prepareStatement() rejects bind params in SELECT
-        expressions (e.g. ``? AS "columnNames"``).  The base implementation
-        uses ``literal()`` which places ``?`` in the SELECT clause → syntax
-        error.
-
-        Fix: compile a plain ``SELECT COUNT(*) FROM table`` with
-        ``literal_binds=True`` so the table name is embedded directly in
-        the SQL string.  JayDeBeApi sees no ``?`` placeholders → calls
-        ``Statement.execute()`` (no prepareStatement restrictions).
-        Column count/names are computed in Python — no SQL needed.
-        """
-        try:
-            self._set_table_and_schema_name()
-
-            # SELECT COUNT(*) with literal_binds=True → no ? placeholders.
-            # The table reference (schema.table) is part of the FROM clause,
-            # not a bind param, so it is rendered inline automatically.
-            count_query = select(func.count().label(ROW_COUNT)).select_from(
-                self.runner.raw_dataset.__table__
-            )
-            compiled = count_query.compile(
-                dialect=self.runner._session.get_bind().dialect,
-                compile_kwargs={"literal_binds": True},
-            )
-            count_result = self.runner._session.execute(text(str(compiled))).first()
-            row_count = count_result[0] if count_result else 0
-
-            # Column count and names computed in Python — zero SQL bind params.
-            col_count = len(inspect(self.runner.raw_dataset).c)
-            col_names = ",".join(inspect(self.runner.raw_dataset).c.keys())
-
-            # Returning a plain dict is compatible with dict(row) in the caller.
-            return {
-                ROW_COUNT: row_count,
-                COLUMN_COUNT: col_count,
-                COLUMN_NAMES: col_names,
-            }
-
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.warning("InformixTableMetricComputer: COUNT(*) literal-bind failed")
-            raise
-
-
 class VerticaTableMetricComputer(BaseTableMetricComputer):
     """Vertica Table Metric Computer"""
 
@@ -760,6 +697,37 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):
+            return super().compute()
+        return res
+
+
+class InformixTableMetricComputer(BaseTableMetricComputer):
+    """Informix Table Metric Computer using systables.
+
+    systables stores nrows, npused * pagesize (size), and created date.
+    owner is CHAR padded with spaces — TRIM() is required for equality match.
+    """
+
+    def compute(self):
+        columns = [
+            Column("nrows").label(ROW_COUNT),
+            (Column("npused") * Column("pagesize")).label(SIZE_IN_BYTES),
+            Column("created").label(CREATE_DATETIME),
+            *self._get_col_names_and_count(),
+        ]
+        where_clause = [
+            Column("tabname") == self.table_name,
+            func.trim(Column("owner")) == self.schema_name,
+        ]
+        query = self._build_query(
+            columns,
+            self._build_table("systables", None),
+            where_clause,
+        )
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None or res.rowCount == 0:
             return super().compute()
         return res
 

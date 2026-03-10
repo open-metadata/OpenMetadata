@@ -103,6 +103,14 @@ def _(element, compiler, **kw):
     return f"SUM(CAST({proc} AS BIGINT))"
 
 
+@compiles(SumFn, Dialects.Informix)
+def _(element, compiler, **kw):
+    """Informix max DECIMAL precision is 32; DECIMAL(38,x) causes SQLSyntaxErrorException.
+    BIGINT is not supported — use DECIMAL(32,4) to handle overflow while preserving decimals."""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM(CAST({proc} AS DECIMAL(32,4)))"
+
+
 @compiles(SumFn, Dialects.ClickHouse)
 def _(element, compiler, **kw):
     """Handle case where column type is INTEGER but SUM returns a NUMBER"""
