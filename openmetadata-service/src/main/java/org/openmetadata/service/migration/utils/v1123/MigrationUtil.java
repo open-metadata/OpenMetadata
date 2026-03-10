@@ -47,6 +47,7 @@ public class MigrationUtil {
     List<WorkflowDefinition> allWorkflows =
         repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
 
+    int needsMigration = 0;
     int totalUpdated = 0;
     for (WorkflowDefinition workflow : allWorkflows) {
       try {
@@ -56,6 +57,7 @@ public class MigrationUtil {
         JsonNode migrated = migrateIncludeFields(originalNode);
 
         if (migrated != originalNode) {
+          needsMigration++;
           WorkflowDefinition updated =
               JsonUtils.readValue(MAPPER.writeValueAsString(migrated), WorkflowDefinition.class);
           repository.createOrUpdate(null, updated, ADMIN_USER_NAME);
@@ -72,18 +74,21 @@ public class MigrationUtil {
     }
 
     LOG.info(
-        "Completed v1123 migration: {} workflow definitions updated with array-based include fields",
-        totalUpdated);
+        "Completed v1123 migration: {} of {} workflow definitions updated with array-based include fields",
+        totalUpdated,
+        allWorkflows.size());
 
-    if (totalUpdated == 0 && !allWorkflows.isEmpty()) {
+    // Only throw exception if workflows needed migration but failed to update
+    if (needsMigration > 0 && totalUpdated == 0) {
       throw new RuntimeException(
           "v1123 migration: failed to update any workflow definitions out of "
-              + allWorkflows.size());
+              + needsMigration
+              + " that needed migration");
     }
   }
 
   /**
-   * Recursively walks the workflow JSON and adds "include": {} to any trigger config
+   * Recursively walks the workflow JSON and adds "include": [] to any trigger config
    * that is eventBasedEntity type and doesn't already have an include field.
    */
   private static JsonNode migrateIncludeFields(JsonNode node) {

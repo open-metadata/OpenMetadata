@@ -140,7 +140,9 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       return false;
     }
 
-    return patterns.stream().anyMatch(pattern -> fieldValue.contains(pattern));
+    return patterns.stream()
+        .filter(pattern -> pattern != null && !pattern.isEmpty())
+        .anyMatch(pattern -> fieldValue.contains(pattern));
   }
 
   private String extractFieldValue(FieldChange change) {

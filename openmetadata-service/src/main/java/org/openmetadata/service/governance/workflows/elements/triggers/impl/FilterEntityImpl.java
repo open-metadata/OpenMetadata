@@ -25,7 +25,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
-import org.openmetadata.service.governance.workflows.util.FieldChangeValueExtractor;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.rules.RuleEngine;
@@ -251,9 +250,5 @@ public class FilterEntityImpl implements JavaDelegate {
               // If no include filter specified, check exclude filter
               return excludedFilter == null || !excludedFilter.contains(fieldName);
             });
-  }
-
-  private String getFieldValueForPatternMatching(FieldChange fieldChange) {
-    return FieldChangeValueExtractor.extractFieldValueForMatching(fieldChange);
   }
 }
