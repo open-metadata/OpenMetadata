@@ -135,8 +135,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -300,9 +300,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .recordStats()
           .build(new EntityLoaderWithId());
 
-  private static final ExecutorService FIELD_FETCH_EXECUTOR =
-      Executors.newThreadPerTaskExecutor(
-          java.lang.Thread.ofVirtual().name("field-fetch-", 0).factory());
+  private static final int DEFAULT_FIELD_FETCH_POOL_SIZE =
+      Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
+  private static final ThreadPoolExecutor FIELD_FETCH_EXECUTOR =
+      createFieldFetchExecutor(DEFAULT_FIELD_FETCH_POOL_SIZE);
+
+  private static ThreadPoolExecutor createFieldFetchExecutor(int poolSize) {
+    ThreadPoolExecutor pool =
+        new ThreadPoolExecutor(
+            poolSize,
+            poolSize,
+            60L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(),
+            java.lang.Thread.ofVirtual().name("om-field-fetch-", 0).factory());
+    pool.allowCoreThreadTimeOut(true);
+    return pool;
+  }
+
+  public static synchronized void setFieldFetchPoolSize(int size) {
+    int newSize = Math.max(1, Math.min(50, size));
+    if (newSize <= FIELD_FETCH_EXECUTOR.getMaximumPoolSize()) {
+      FIELD_FETCH_EXECUTOR.setCorePoolSize(newSize);
+      FIELD_FETCH_EXECUTOR.setMaximumPoolSize(newSize);
+    } else {
+      FIELD_FETCH_EXECUTOR.setMaximumPoolSize(newSize);
+      FIELD_FETCH_EXECUTOR.setCorePoolSize(newSize);
+    }
+    LOG.info("Field-fetch pool resized to {} threads", newSize);
+  }
+
+  public static synchronized void resetFieldFetchPoolSize() {
+    setFieldFetchPoolSize(DEFAULT_FIELD_FETCH_POOL_SIZE);
+  }
 
   private static final LoadingCache<String, Integer> COUNT_CACHE =
       CacheBuilder.newBuilder()

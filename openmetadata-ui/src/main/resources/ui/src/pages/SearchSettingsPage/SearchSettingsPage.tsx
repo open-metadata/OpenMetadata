@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Collapse, Row, Switch, Typography } from 'antd';
+import { Button, Col, Collapse, Row, Slider, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -46,6 +46,7 @@ import {
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingsPathWithFqn } from '../../utils/RouterUtils';
+import searchSettingsClassBase from '../../utils/SearchSettingsClassBase';
 import { getSearchSettingCategories } from '../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './search-settings.less';
@@ -68,6 +69,8 @@ const SearchSettingsPage = () => {
   const [selectedFieldValueBoost, setSelectedFieldValueBoost] = useState<
     FieldValueBoost | undefined
   >();
+  const [hybridWeightsChanged, setHybridWeightsChanged] =
+    useState<boolean>(false);
 
   const settingCategoryData = useMemo(
     () => getSearchSettingCategories(permissions, isAdminUser ?? false),
@@ -80,6 +83,11 @@ const SearchSettingsPage = () => {
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.search')
       ),
+    []
+  );
+
+  const showHybridSearchWeights = useMemo(
+    () => searchSettingsClassBase.showHybridSearchWeights(),
     []
   );
 
@@ -291,6 +299,45 @@ const SearchSettingsPage = () => {
     fetchSearchConfig();
   }, []);
 
+  const onHybridWeightSave = async () => {
+    if (!searchConfig) {
+      return;
+    }
+    const semanticWeight = searchConfig.globalSettings?.semanticWeight ?? 0.4;
+    const keywordWeight = Math.round((1 - semanticWeight) * 10) / 10;
+    try {
+      setIsUpdating(true);
+      const configData = {
+        config_type: SettingType.SearchSettings,
+        config_value: {
+          ...searchConfig,
+          globalSettings: {
+            ...searchConfig.globalSettings,
+            semanticWeight,
+            keywordWeight,
+          },
+        },
+      };
+      const { data } = await updateSettingsConfig(configData as Settings);
+      const updatedConfig = data.config_value as SearchSettings;
+      setSearchConfig(updatedConfig);
+      setAppPreferences({
+        ...appPreferences,
+        searchConfig: updatedConfig,
+      });
+      setHybridWeightsChanged(false);
+      showSuccessToast(
+        t('server.update-entity-success', {
+          entity: t('label.search-setting-plural'),
+        })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   if (isLoading) {
     return <Loader />;
   }
@@ -299,7 +346,8 @@ const SearchSettingsPage = () => {
     <PageLayoutV1
       className="search-settings"
       mainContainerClassName="p-t-0"
-      pageTitle={t('label.search')}>
+      pageTitle={t('label.search')}
+    >
       <Row className="p-md settings-row m-0" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -355,11 +403,84 @@ const SearchSettingsPage = () => {
               </Col>
             ))}
           </Row>
+          {showHybridSearchWeights && (
+            <Row className="p-x-xs m-t-lg" gutter={0}>
+              <Col span={24}>
+                <Row align="middle" justify="space-between">
+                  <Typography.Title
+                    className="text-sm font-semibold m-b-0"
+                    level={5}
+                  >
+                    {t('label.hybrid-search-weight-plural')}
+                  </Typography.Title>
+                  <Button
+                    data-testid="hybrid-weights-save-btn"
+                    disabled={!hybridWeightsChanged || isUpdating}
+                    loading={isUpdating}
+                    type="primary"
+                    onClick={onHybridWeightSave}
+                  >
+                    {t('label.save')}
+                  </Button>
+                </Row>
+              </Col>
+              <Col span={24}>
+                <Row align="middle" className="p-y-xs" gutter={16}>
+                  <Col flex="100px">
+                    <Typography.Text>
+                      {t('label.keyword')}:{' '}
+                      {(
+                        1 -
+                        (searchConfig?.globalSettings?.semanticWeight ?? 0.4)
+                      ).toFixed(1)}
+                    </Typography.Text>
+                  </Col>
+                  <Col flex="auto">
+                    <Slider
+                      disabled={isUpdating}
+                      max={1}
+                      min={0}
+                      step={0.1}
+                      tooltip={{
+                        formatter: (val) => `${t('label.semantic')}: ${val}`,
+                      }}
+                      value={
+                        searchConfig?.globalSettings?.semanticWeight ?? 0.4
+                      }
+                      onChange={(val: number) => {
+                        if (!searchConfig) {
+                          return;
+                        }
+                        setSearchConfig({
+                          ...searchConfig,
+                          globalSettings: {
+                            ...searchConfig.globalSettings,
+                            semanticWeight: val,
+                            keywordWeight: Math.round((1 - val) * 10) / 10,
+                          },
+                        });
+                        setHybridWeightsChanged(true);
+                      }}
+                    />
+                  </Col>
+                  <Col flex="100px">
+                    <Typography.Text>
+                      {t('label.semantic')}:{' '}
+                      {(
+                        searchConfig?.globalSettings?.semanticWeight ?? 0.4
+                      ).toFixed(1)}
+                    </Typography.Text>
+                  </Col>
+                </Row>
+              </Col>
+            </Row>
+          )}
           <Row className="boosts-section m-t-lg" gutter={[0, 16]}>
             <Collapse
               accordion
               bordered={false}
-              className="w-full search-settings-collapse">
+              className="w-full search-settings-collapse"
+            >
               <Collapse.Panel
                 className="term-boost-panel"
                 header={
@@ -377,7 +498,8 @@ const SearchSettingsPage = () => {
                         className="term-boost-save-btn"
                         data-testid="term-boost-save-btn"
                         disabled={!termBoostsChanged}
-                        onClick={handleSaveTermBoost}>
+                        onClick={handleSaveTermBoost}
+                      >
                         {t('label.save')}
                       </Button>
                       <Button
@@ -388,13 +510,15 @@ const SearchSettingsPage = () => {
                           <Icon className="text-sm" component={PlusOutlined} />
                         }
                         type="primary"
-                        onClick={handleAddNewTermBoost}>
+                        onClick={handleAddNewTermBoost}
+                      >
                         {t('label.add')}
                       </Button>
                     </Col>
                   </Row>
                 }
-                key="1">
+                key="1"
+              >
                 <Col span={24}>
                   <TermBoostList
                     handleDeleteTermBoost={handleDeleteTermBoost}
@@ -426,13 +550,15 @@ const SearchSettingsPage = () => {
                         icon={
                           <Icon className="text-sm" component={PlusOutlined} />
                         }
-                        onClick={handleAddFieldValueBoost}>
+                        onClick={handleAddFieldValueBoost}
+                      >
                         {t('label.add')}
                       </Button>
                     </Col>
                   </Row>
                 }
-                key="2">
+                key="2"
+              >
                 <Row className="p-t-sm w-full">
                   <div className="field-value-boost-table-container">
                     <FieldValueBoostList

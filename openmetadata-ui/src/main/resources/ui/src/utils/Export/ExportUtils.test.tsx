@@ -15,6 +15,7 @@ import { ExportData } from '../../components/Entity/EntityExportModalProvider/En
 import { ExportTypes } from '../../constants/Export.constants';
 import { showErrorToast } from '../ToastUtils';
 import {
+  downloadFile,
   downloadImageFromBase64,
   exportPNGImageFromElement,
 } from './ExportUtils';
@@ -28,6 +29,82 @@ jest.mock('../ToastUtils', () => ({
 }));
 
 describe('ExportUtils', () => {
+  describe('downloadFile', () => {
+    const mockLink = {
+      href: '',
+      download: '',
+      style: { visibility: '' },
+      click: jest.fn(),
+    };
+    let mockCreateObjectURL: jest.Mock;
+    let mockRevokeObjectURL: jest.Mock;
+
+    beforeEach(() => {
+      mockCreateObjectURL = jest.fn().mockReturnValue('blob:mock-url');
+      mockRevokeObjectURL = jest.fn();
+      global.URL.createObjectURL = mockCreateObjectURL;
+      global.URL.revokeObjectURL = mockRevokeObjectURL;
+
+      jest
+        .spyOn(document, 'createElement')
+        .mockReturnValue(mockLink as unknown as HTMLElement);
+      jest.spyOn(document.body, 'appendChild').mockImplementation(jest.fn());
+      jest.spyOn(document.body, 'removeChild').mockImplementation(jest.fn());
+      mockLink.click.mockClear();
+      mockLink.href = '';
+      mockLink.download = '';
+      mockLink.style.visibility = '';
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('creates an anchor element and triggers a click', () => {
+      downloadFile('a,b\n1,2', 'test.csv');
+
+      expect(document.createElement).toHaveBeenCalledWith('a');
+      expect(mockLink.click).toHaveBeenCalledTimes(1);
+    });
+
+    it('sets the correct download filename', () => {
+      downloadFile('a,b\n1,2', 'my_export.csv');
+
+      expect(mockLink.download).toBe('my_export.csv');
+    });
+
+    it('hides the link element', () => {
+      downloadFile('a,b\n1,2', 'test.csv');
+
+      expect(mockLink.style.visibility).toBe('hidden');
+    });
+
+    it('appends and removes the link from the DOM', () => {
+      downloadFile('a,b\n1,2', 'test.csv');
+
+      expect(document.body.appendChild).toHaveBeenCalledWith(mockLink);
+      expect(document.body.removeChild).toHaveBeenCalledWith(mockLink);
+    });
+
+    it('revokes the object URL after download', () => {
+      downloadFile('a,b\n1,2', 'test.csv');
+
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    });
+
+    it('uses the provided mimeType when creating the Blob', () => {
+      const mockBlob = {};
+      const MockBlob = jest.fn().mockReturnValue(mockBlob);
+      global.Blob = MockBlob as unknown as typeof Blob;
+
+      downloadFile('content', 'file.csv', 'text/csv;charset=utf-8;');
+
+      expect(MockBlob).toHaveBeenCalledWith(['content'], {
+        type: 'text/csv;charset=utf-8;',
+      });
+    });
+  });
+
   describe('downloadImageFromBase64', () => {
     let mockCreateElement: jest.SpyInstance;
     let mockSetAttribute: jest.Mock;

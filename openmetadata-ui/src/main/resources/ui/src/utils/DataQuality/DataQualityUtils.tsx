@@ -190,9 +190,17 @@ export const buildMustEsFilterForOwner = (
   ownerFqn: string,
   isTestCaseResult = false
 ) => {
+  const path = isTestCaseResult ? 'testCase.owners' : 'owners';
+  const field = isTestCaseResult ? 'testCase.owners.name' : 'owners.name';
+
   return {
-    term: {
-      [isTestCaseResult ? 'testCase.owners.name' : 'owners.name']: ownerFqn,
+    nested: {
+      path,
+      query: {
+        term: {
+          [field]: ownerFqn,
+        },
+      },
     },
   };
 };
@@ -405,13 +413,15 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
             return (
               <div
                 className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm"
-                key={`item-${index}`}>
+                key={`item-${index}`}
+              >
                 <span className="tw:flex tw:items-center">
                   <Surface
                     className="tw:mr-2"
                     height={14}
                     version="1.1"
-                    width={4}>
+                    width={4}
+                  >
                     <rect fill={entry.color} height="14" rx="2" width="4" />
                   </Surface>
                   <span className="tw:text-tertiary tw:text-[11px]">

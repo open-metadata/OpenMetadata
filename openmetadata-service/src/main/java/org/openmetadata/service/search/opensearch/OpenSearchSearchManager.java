@@ -1040,16 +1040,6 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     // Apply RBAC query with caching
     applyRbacQueryWithCaching(subjectContext, requestBuilder);
 
-    // Check if semantic search is enabled and override the query
-    if (Boolean.TRUE.equals(request.getSemanticSearch())) {
-      SemanticSearchQueryBuilder semanticBuilder = new SemanticSearchQueryBuilder();
-      Query semanticQuery = semanticBuilder.buildSemanticQuery(request);
-      if (semanticQuery != null) {
-        requestBuilder.query(semanticQuery);
-        LOG.debug("Semantic search is enabled for this query");
-      }
-    }
-
     // Apply query filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
