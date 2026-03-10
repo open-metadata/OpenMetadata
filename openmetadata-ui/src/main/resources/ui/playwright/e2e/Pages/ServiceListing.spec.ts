@@ -12,9 +12,18 @@
  */
 import test, { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MetadataServiceClass } from '../../support/entity/service/MetadataServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
+import { settingClick, type SettingOptionsType } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -33,11 +42,45 @@ test.describe('Service Listing', () => {
     },
   });
   const databaseService2 = new DatabaseServiceClass();
+  const messagingService = new MessagingServiceClass();
+  const dashboardService = new DashboardServiceClass();
+  const pipelineService = new PipelineServiceClass();
+  const mlmodelService = new MlmodelServiceClass();
+  const storageService = new StorageServiceClass();
+  const searchService = new SearchIndexServiceClass();
+  const apiService = new ApiServiceClass();
+  const driveService = new DriveServiceClass();
+  const metadataService = new MetadataServiceClass();
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await databaseService1.create(apiContext);
     await databaseService2.create(apiContext);
+    await messagingService.create(apiContext);
+    await dashboardService.create(apiContext);
+    await pipelineService.create(apiContext);
+    await mlmodelService.create(apiContext);
+    await storageService.create(apiContext);
+    await searchService.create(apiContext);
+    await apiService.create(apiContext);
+    await driveService.create(apiContext);
+    await metadataService.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await databaseService1.delete(apiContext);
+    await databaseService2.delete(apiContext);
+    await messagingService.delete(apiContext);
+    await dashboardService.delete(apiContext);
+    await pipelineService.delete(apiContext);
+    await mlmodelService.delete(apiContext);
+    await storageService.delete(apiContext);
+    await searchService.delete(apiContext);
+    await apiService.delete(apiContext);
+    await driveService.delete(apiContext);
+    await metadataService.delete(apiContext);
     await afterAction();
   });
 
@@ -80,5 +123,87 @@ test.describe('Service Listing', () => {
     await expect(
       page.getByRole('cell', { name: databaseService1.entity.name })
     ).not.toBeVisible();
+  });
+
+  test('service listing pages should use the correct search index for search', async ({
+    page,
+  }) => {
+    const searchIndexMappings: {
+      settingOption: SettingOptionsType;
+      expectedIndex: string;
+      entityName: string;
+    }[] = [
+      {
+        settingOption: GlobalSettingOptions.DATABASES,
+        expectedIndex: 'database_service_search_index',
+        entityName: databaseService2.entity.name,
+      },
+      {
+        settingOption: GlobalSettingOptions.MESSAGING,
+        expectedIndex: 'messaging_service_search_index',
+        entityName: messagingService.entity.name,
+      },
+      {
+        settingOption: GlobalSettingOptions.DASHBOARDS,
+        expectedIndex: 'dashboard_service_search_index',
+        entityName: dashboardService.entity.name,
+      },
+      {
+        settingOption: GlobalSettingOptions.PIPELINES,
+        expectedIndex: 'pipeline_service_search_index',
+        entityName: pipelineService.entity.name,
+      },
+      {
+        settingOption: GlobalSettingOptions.MLMODELS,
+        expectedIndex: 'mlmodel_service_search_index',
+        entityName: mlmodelService.entity.name,
+      },
+      {
+        settingOption: GlobalSettingOptions.STORAGES,
+        expectedIndex: 'storage_service_search_index',
+        entityName: storageService.entity.name,
+      },
+      {
+        settingOption: GlobalSettingOptions.SEARCH,
+        expectedIndex: 'search_service_search_index',
+        entityName: searchService.entity.name,
+      },
+      {
+        settingOption: GlobalSettingOptions.APIS,
+        expectedIndex: 'api_service_search_index',
+        entityName: apiService.entity.name,
+      },
+      {
+        settingOption: GlobalSettingOptions.DRIVES,
+        expectedIndex: 'drive_service_search_index',
+        entityName: driveService.entity.name,
+      },
+      {
+        settingOption: GlobalSettingOptions.METADATA,
+        expectedIndex: 'metadata_service_search_index',
+        entityName: metadataService.entity.name,
+      },
+    ];
+
+    for (const {
+      settingOption,
+      expectedIndex,
+      entityName,
+    } of searchIndexMappings) {
+      await test.step(`${settingOption} uses ${expectedIndex}`, async () => {
+        await settingClick(page, settingOption);
+        await page.waitForLoadState('networkidle');
+
+        const searchResponse = page.waitForResponse(
+          `/api/v1/search/query?q=*index=${expectedIndex}*`
+        );
+        await page.getByTestId('searchbar').fill(entityName);
+        await searchResponse;
+
+        await expect(
+          page.getByRole('cell', { name: entityName })
+        ).toBeVisible();
+      });
+    }
   });
 });
