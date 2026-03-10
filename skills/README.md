@@ -7,9 +7,9 @@ AI-powered connector development toolkit for OpenMetadata. Scaffold, implement, 
 | Skill | Command | Purpose |
 |-------|---------|---------|
 | [Connector Building](connector-building/SKILL.md) | `/scaffold-connector` | Scaffold a new connector with JSON Schema, Python boilerplate, and AI context |
-| [Connector Review](connector-review/SKILL.md) | `/connector-review` | Review connector code against golden standards with multi-agent analysis |
+| [Connector Review](connector-review/SKILL.md) | `/connector-review` | Review connector code against golden standards with multi-agent analysis, optionally post findings to GitHub PR |
 | [Connector Standards](connector-standards/SKILL.md) | `/connector-standards` | Load connector development standards into agent context |
-| [Test Locally](commands/test-locally.md) | `/test-locally` | Build and deploy a full local Docker stack to test your connector in the UI |
+| [Test Locally](test-locally/SKILL.md) | `/test-locally` | Build and deploy a full local Docker stack to test your connector in the UI |
 
 ## Agents
 
@@ -17,7 +17,7 @@ AI-powered connector development toolkit for OpenMetadata. Scaffold, implement, 
 |-------|---------|
 | [connector-researcher](agents/connector-researcher.md) | Research source system APIs, SDKs, auth, and data models |
 | [connector-validator](agents/connector-validator.md) | Validate connector implementation against standards |
-| [comment-resolution-checker](agents/comment-resolution-checker.md) | Verify PR review comments were substantively addressed |
+| [comment-resolution-checker](agents/comment-resolution-checker.md) | Verify PR review comments were substantively addressed (used by connector-review Step 7) |
 
 ## Standards
 
@@ -73,6 +73,7 @@ Architecture guides and decision trees in [connector-building/references/](conne
 | [full-review-report.md](connector-review/templates/full-review-report.md) | New connector or major refactor review |
 | [incremental-review-report.md](connector-review/templates/incremental-review-report.md) | PR with changes to existing connector |
 | [specialized-review-report.md](connector-review/templates/specialized-review-report.md) | Focused review on one area (tests, security, schema, etc.) |
+| [pr-review-comment.md](connector-review/templates/pr-review-comment.md) | Condensed format for posting reviews as GitHub PR comments |
 
 ## Scripts
 
