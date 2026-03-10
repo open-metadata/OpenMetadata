@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { getServiceSearchIndexMappings } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
@@ -23,7 +24,7 @@ import { PipelineServiceClass } from '../../support/entity/service/PipelineServi
 import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
-import { settingClick, type SettingOptionsType } from '../../utils/sidebar';
+import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -69,18 +70,7 @@ test.describe('Service Listing', () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await databaseService1.delete(apiContext);
-    await databaseService2.delete(apiContext);
-    await messagingService.delete(apiContext);
-    await dashboardService.delete(apiContext);
-    await pipelineService.delete(apiContext);
-    await mlmodelService.delete(apiContext);
-    await storageService.delete(apiContext);
-    await searchService.delete(apiContext);
-    await apiService.delete(apiContext);
-    await driveService.delete(apiContext);
-    await metadataService.delete(apiContext);
+    const { afterAction } = await createNewPage(browser);
     await afterAction();
   });
 
@@ -128,62 +118,18 @@ test.describe('Service Listing', () => {
   test('service listing pages should use the correct search index for search', async ({
     page,
   }) => {
-    const searchIndexMappings: {
-      settingOption: SettingOptionsType;
-      expectedIndex: string;
-      entityName: string;
-    }[] = [
-      {
-        settingOption: GlobalSettingOptions.DATABASES,
-        expectedIndex: 'database_service_search_index',
-        entityName: databaseService2.entity.name,
-      },
-      {
-        settingOption: GlobalSettingOptions.MESSAGING,
-        expectedIndex: 'messaging_service_search_index',
-        entityName: messagingService.entity.name,
-      },
-      {
-        settingOption: GlobalSettingOptions.DASHBOARDS,
-        expectedIndex: 'dashboard_service_search_index',
-        entityName: dashboardService.entity.name,
-      },
-      {
-        settingOption: GlobalSettingOptions.PIPELINES,
-        expectedIndex: 'pipeline_service_search_index',
-        entityName: pipelineService.entity.name,
-      },
-      {
-        settingOption: GlobalSettingOptions.MLMODELS,
-        expectedIndex: 'mlmodel_service_search_index',
-        entityName: mlmodelService.entity.name,
-      },
-      {
-        settingOption: GlobalSettingOptions.STORAGES,
-        expectedIndex: 'storage_service_search_index',
-        entityName: storageService.entity.name,
-      },
-      {
-        settingOption: GlobalSettingOptions.SEARCH,
-        expectedIndex: 'search_service_search_index',
-        entityName: searchService.entity.name,
-      },
-      {
-        settingOption: GlobalSettingOptions.APIS,
-        expectedIndex: 'api_service_search_index',
-        entityName: apiService.entity.name,
-      },
-      {
-        settingOption: GlobalSettingOptions.DRIVES,
-        expectedIndex: 'drive_service_search_index',
-        entityName: driveService.entity.name,
-      },
-      {
-        settingOption: GlobalSettingOptions.METADATA,
-        expectedIndex: 'metadata_service_search_index',
-        entityName: metadataService.entity.name,
-      },
-    ];
+    const searchIndexMappings = getServiceSearchIndexMappings({
+      [GlobalSettingOptions.DATABASES]: databaseService2.entity.name,
+      [GlobalSettingOptions.MESSAGING]: messagingService.entity.name,
+      [GlobalSettingOptions.DASHBOARDS]: dashboardService.entity.name,
+      [GlobalSettingOptions.PIPELINES]: pipelineService.entity.name,
+      [GlobalSettingOptions.MLMODELS]: mlmodelService.entity.name,
+      [GlobalSettingOptions.STORAGES]: storageService.entity.name,
+      [GlobalSettingOptions.SEARCH]: searchService.entity.name,
+      [GlobalSettingOptions.APIS]: apiService.entity.name,
+      [GlobalSettingOptions.DRIVES]: driveService.entity.name,
+      [GlobalSettingOptions.METADATA]: metadataService.entity.name,
+    });
 
     for (const {
       settingOption,
