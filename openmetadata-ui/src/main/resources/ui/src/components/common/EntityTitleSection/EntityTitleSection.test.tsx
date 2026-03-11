@@ -10,17 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
-import { ThemeColors } from '@openmetadata/ui-core-components';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityTitleSection } from './EntityTitleSection';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
+    <button onClick={onClick} {...props}>
+      {children}
+    </button>
+  )),
+  Tooltip: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+}));
 
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
@@ -83,7 +91,8 @@ jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => ({
       <div data-testid="entity-name-modal">
         <button
           data-testid="modal-save-button"
-          onClick={() => onSave({ displayName: 'Updated Display Name' })}>
+          onClick={() => onSave({ displayName: 'Updated Display Name' })}
+        >
           Save
         </button>
         <button data-testid="modal-cancel-button" onClick={onCancel}>
@@ -94,35 +103,8 @@ jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => ({
   }),
 }));
 
-const mockThemeColors: ThemeColors = {
-  white: '#FFFFFF',
-  blue: {
-    50: '#E6F4FF',
-    100: '#BAE0FF',
-    600: '#1677FF',
-    700: '#0958D9',
-  },
-  blueGray: {
-    50: '#F8FAFC',
-  },
-  gray: {
-    300: '#D1D5DB',
-    700: '#374151',
-    900: '#111827',
-  },
-} as ThemeColors;
-
-const theme: Theme = createTheme({
-  palette: {
-    allShades: mockThemeColors,
-    background: {
-      paper: '#FFFFFF',
-    },
-  },
-});
-
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+  <>{children}</>
 );
 
 describe('EntityTitleSection', () => {
@@ -568,9 +550,8 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await user.click(editButton);
 
       expect(screen.getByTestId('entity-name-modal')).toBeInTheDocument();
     });
@@ -592,17 +573,13 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await user.click(editButton);
 
       expect(screen.getByTestId('entity-name-modal')).toBeInTheDocument();
 
       const cancelButton = screen.getByTestId('modal-cancel-button');
-
-      await act(async () => {
-        fireEvent.click(cancelButton);
-      });
+      await user.click(cancelButton);
 
       expect(screen.queryByTestId('entity-name-modal')).not.toBeInTheDocument();
     });
@@ -638,15 +615,11 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await user.click(editButton);
 
       const saveButton = screen.getByTestId('modal-save-button');
-
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+      await user.click(saveButton);
 
       await waitFor(() => {
         expect(mockPatchAPI).toHaveBeenCalledWith('test-id', [
@@ -685,15 +658,12 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await user.click(editButton);
 
       const saveButton = screen.getByTestId('modal-save-button');
 
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+      await user.click(saveButton);
 
       await waitFor(() => {
         expect(mockPatchAPI).toHaveBeenCalledWith('test-id', [
@@ -726,15 +696,12 @@ describe('EntityTitleSection', () => {
 
       const editButton = screen.getByTestId('edit-displayName-button');
 
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await user.click(editButton);
 
       const saveButton = screen.getByTestId('modal-save-button');
 
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
+      await user.click(saveButton);
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalled();

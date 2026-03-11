@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Box, CircularProgress } from '@mui/material';
+import { Box } from '@mui/material';
 import { ReactNode, useMemo } from 'react';
+import Loader from '../../Loader/Loader';
 
 export interface DrawerBodyConfig {
   children?: ReactNode;
@@ -87,7 +88,7 @@ export const useDrawerBody = (config: DrawerBodyConfig = {}) => {
               backgroundColor: 'rgba(255, 255, 255, 0.8)',
               zIndex: 1000,
             }}>
-            <CircularProgress />
+            <Loader />
             {loadingMessage && (
               <Box sx={{ mt: 2, color: 'text.secondary' }}>
                 {loadingMessage}

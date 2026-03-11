@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Box, Button, CircularProgress } from '@mui/material';
+import { Box, Button } from '@mui/material';
 import { ReactNode, useMemo } from 'react';
+import Loader from '../../Loader/Loader';
 
 export interface DrawerFooterButton {
   label: string;
@@ -100,7 +101,7 @@ export const useDrawerFooter = (config: DrawerFooterConfig = {}) => {
       data-testid={button.testId}
       disabled={button.disabled || button.loading}
       key={button.label}
-      startIcon={button.loading ? <CircularProgress size={16} /> : null}
+      startIcon={button.loading ? <Loader size="x-small" /> : null}
       variant={button.variant || 'text'}
       onClick={button.onClick}>
       {button.label}

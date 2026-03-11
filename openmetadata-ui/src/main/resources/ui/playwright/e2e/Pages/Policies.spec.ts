@@ -108,19 +108,16 @@ test.describe(
     test('Add new policy with invalid condition', async ({ page }) => {
       test.slow(true);
 
-      await test.step(
-        'Default Policies and Roles should be displayed',
-        async () => {
-          // Verifying the default roles and policies are present
-          for (const policy of Object.values(DEFAULT_POLICIES)) {
-            const policyElement = page.locator('[data-testid="policy-name"]', {
-              hasText: policy,
-            });
+      await test.step('Default Policies and Roles should be displayed', async () => {
+        // Verifying the default roles and policies are present
+        for (const policy of Object.values(DEFAULT_POLICIES)) {
+          const policyElement = page.locator('[data-testid="policy-name"]', {
+            hasText: policy,
+          });
 
-            await getElementWithPagination(page, policyElement, false);
-          }
+          await getElementWithPagination(page, policyElement, false);
         }
-      );
+      });
 
       await test.step('Add new policy', async () => {
         // Click on add new policy

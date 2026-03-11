@@ -84,28 +84,25 @@ test.describe('SubDomain Pagination', () => {
       await expect(subDomainsTab).toContainText('60');
     });
 
-    await test.step(
-      'Navigate to subdomains tab and verify initial data load',
-      async () => {
-        const subDomainRes = page.waitForResponse(
-          '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9*'
-        );
-        await page.getByTestId('subdomains').click();
-        await subDomainRes;
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+    await test.step('Navigate to subdomains tab and verify initial data load', async () => {
+      const subDomainRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9*'
+      );
+      await page.getByTestId('subdomains').click();
+      await subDomainRes;
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        await expect(page.locator('table')).toBeVisible();
+      await expect(page.locator('table')).toBeVisible();
 
-        await expect(page.locator('[data-testid="pagination"]')).toBeVisible();
+      await expect(page.locator('[data-testid="pagination"]')).toBeVisible();
 
-        // Verify current page shows page 1
-        const tableRows = page.locator('table tbody tr');
+      // Verify current page shows page 1
+      const tableRows = page.locator('table tbody tr');
 
-        await expect(tableRows).toHaveCount(9);
-      }
-    );
+      await expect(tableRows).toHaveCount(9);
+    });
 
     await test.step('Test pagination navigation', async () => {
       const nextPageResponse = page.waitForResponse('/api/v1/search/query?*');
@@ -117,35 +114,32 @@ test.describe('SubDomain Pagination', () => {
       await prevPageResponse;
     });
 
-    await test.step(
-      'Create new subdomain and verify count updates',
-      async () => {
-        const subDomain = new SubDomain(domain);
-        await createSubDomain(page, subDomain.data);
+    await test.step('Create new subdomain and verify count updates', async () => {
+      const subDomain = new SubDomain(domain);
+      await createSubDomain(page, subDomain.data);
 
-        await redirectToHomePage(page);
+      await redirectToHomePage(page);
 
-        await sidebarClick(page, SidebarItem.DOMAIN);
-        await page.waitForLoadState('networkidle');
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.waitForLoadState('networkidle');
 
-        await selectDomain(page, domain.data);
+      await selectDomain(page, domain.data);
 
-        const subDomainsTab = page.getByTestId('subdomains');
+      const subDomainsTab = page.getByTestId('subdomains');
 
-        await expect(subDomainsTab).toContainText('61');
+      await expect(subDomainsTab).toContainText('61');
 
-        const { apiContext, afterAction } = await getApiContext(page);
+      const { apiContext, afterAction } = await getApiContext(page);
 
-        const response = await apiContext.get(
-          '/api/v1/domains/name/' +
-            encodeURIComponent(`"${domain.data.name}"."NewTestSubDomain"`)
-        );
-        const subDomainData = await response.json();
-        await apiContext.delete(
-          `/api/v1/domains/${subDomainData.id}?hardDelete=true`
-        );
-        await afterAction();
-      }
-    );
+      const response = await apiContext.get(
+        '/api/v1/domains/name/' +
+          encodeURIComponent(`"${domain.data.name}"."NewTestSubDomain"`)
+      );
+      const subDomainData = await response.json();
+      await apiContext.delete(
+        `/api/v1/domains/${subDomainData.id}?hardDelete=true`
+      );
+      await afterAction();
+    });
   });
 });

@@ -46,6 +46,11 @@ export interface TriggerConfiguration {
      * (applied to all entity types) or an object mapping entity types to their specific filters.
      */
     filter?: FilterConditionObject | string;
+    /**
+     * Array of field names that must be present in the change description to trigger the
+     * workflow. Takes priority over exclude fields.
+     */
+    include?: string[];
 }
 
 /**

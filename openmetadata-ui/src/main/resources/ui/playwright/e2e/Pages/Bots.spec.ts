@@ -34,14 +34,11 @@ test.describe(
     test('Bots Page should work properly', async ({ page }) => {
       await redirectToBotPage(page);
 
-      await test.step(
-        'Verify ingestion bot delete button is always disabled',
-        async () => {
-          await expect(
-            page.getByTestId('bot-delete-ingestion-bot')
-          ).toBeDisabled();
-        }
-      );
+      await test.step('Verify ingestion bot delete button is always disabled', async () => {
+        await expect(
+          page.getByTestId('bot-delete-ingestion-bot')
+        ).toBeDisabled();
+      });
 
       await test.step('Create Bot', async () => {
         await createBot(page);

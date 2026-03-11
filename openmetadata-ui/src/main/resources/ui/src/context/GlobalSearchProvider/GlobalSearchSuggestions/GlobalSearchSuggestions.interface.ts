@@ -11,24 +11,11 @@
  *  limitations under the License.
  */
 
-import { BaseSelectRef } from 'rc-select';
 import {
   ContainerSearchSource,
   DashboardDataModelSearchSource,
   StoredProcedureSearchSource,
 } from '../../../interface/search.interface';
-
-export interface GlobalSearchSuggestionsProp {
-  isSuggestionsLoading: boolean;
-  handleIsSuggestionsLoading: (value: boolean) => void;
-
-  value: string;
-  searchText: string;
-  onOptionSelection: () => void;
-  onInputKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  onSearch: (newValue: string) => void;
-  selectRef?: React.Ref<BaseSelectRef>;
-}
 
 export interface CommonSource {
   fullyQualifiedName: string;
@@ -40,6 +27,11 @@ export interface CommonSource {
 export interface TableSource extends CommonSource {
   table_id: string;
   table_name: string;
+}
+
+export interface ColumnSource extends CommonSource {
+  column_id: string;
+  column_name: string;
 }
 
 export interface DashboardSource extends CommonSource {
@@ -168,6 +160,7 @@ export interface Option {
 
 export type SearchSuggestions =
   | TableSource[]
+  | ColumnSource[]
   | TopicSource[]
   | PipelineSource[]
   | TagSource[]
@@ -192,6 +185,7 @@ export type SearchSuggestions =
 
 export interface SuggestionsObject {
   tableSuggestions: TableSource[];
+  columnSuggestions: ColumnSource[];
   topicSuggestions: TopicSource[];
   dashboardSuggestions: DashboardSource[];
   pipelineSuggestions: PipelineSource[];

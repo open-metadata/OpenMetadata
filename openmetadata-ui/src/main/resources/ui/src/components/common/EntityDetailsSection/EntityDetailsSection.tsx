@@ -57,8 +57,7 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
   return dataAsset && !isEmpty(entityDetails) ? (
     <div
       className="entity-details-section"
-      data-testid="entity-details-section"
-    >
+      data-testid="entity-details-section">
       <div className="p-x-md">
         <SearchBarComponent
           containerClassName="searchbar-container"
@@ -77,8 +76,7 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
       <ErrorPlaceHolderNew
         className="text-grey-14"
         icon={<AddPlaceHolderIcon height={100} width={100} />}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
-      >
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph className="text-center p-x-md m-t-sm no-data-placeholder">
           {t('message.no-schema-message')}
         </Typography.Paragraph>

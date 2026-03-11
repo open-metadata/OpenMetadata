@@ -227,10 +227,9 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
     dbt_manifest = None
     dbt_run_results = None
     try:
-        from metadata.ingestion.ometa.client import (  # pylint: disable=import-outside-toplevel
-            REST,
-            ClientConfig,
-        )
+        # pylint: disable=import-outside-toplevel
+        from metadata.ingestion.connections.source_api_client import TrackedREST
+        from metadata.ingestion.ometa.client import ClientConfig
 
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
@@ -241,7 +240,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             auth_header="Authorization",
             allow_redirects=True,
         )
-        client = REST(client_config)
+        client = TrackedREST(client_config)
         account_id = config.dbtCloudAccountId
         project_id = config.dbtCloudProjectId
         job_id = config.dbtCloudJobId

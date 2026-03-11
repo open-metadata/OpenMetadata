@@ -33,9 +33,13 @@ test.describe('Language Override Tests', () => {
 
     await redirectToHomePage(germanLocalePage);
 
-    await germanLocalePage.getByTestId('language-selector-button').waitFor({ state: 'visible' });
+    await germanLocalePage
+      .getByTestId('language-selector-button')
+      .waitFor({ state: 'visible' });
     await germanLocalePage.getByTestId('language-selector-button').click();
-    await germanLocalePage.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await germanLocalePage.waitForSelector('.ant-dropdown', {
+      state: 'visible',
+    });
     await germanLocalePage.getByText('EN', { exact: true }).click();
     await germanLocalePage.waitForLoadState('networkidle');
 
@@ -44,18 +48,40 @@ test.describe('Language Override Tests', () => {
       state: 'visible',
     });
 
-    const profileDropdown = germanLocalePage.locator('[role="menu"].profile-dropdown');
+    const profileDropdown = germanLocalePage.locator(
+      '[role="menu"].profile-dropdown'
+    );
 
-    await expect(profileDropdown.getByText('View Profile', { exact: true })).toBeVisible();
-    await expect(profileDropdown.getByText('Switch Persona', { exact: true })).toBeVisible();
-    await expect(profileDropdown.getByText('Roles', { exact: true })).toBeVisible();
-    await expect(profileDropdown.getByText('Inherited Roles', { exact: true })).toBeVisible();
-    await expect(profileDropdown.getByText('Logout', { exact: true })).toBeVisible();
+    await expect(
+      profileDropdown.getByText('View Profile', { exact: true })
+    ).toBeVisible();
+    await expect(
+      profileDropdown.getByText('Switch Persona', { exact: true })
+    ).toBeVisible();
+    await expect(
+      profileDropdown.getByText('Roles', { exact: true })
+    ).toBeVisible();
+    await expect(
+      profileDropdown.getByText('Inherited Roles', { exact: true })
+    ).toBeVisible();
+    await expect(
+      profileDropdown.getByText('Logout', { exact: true })
+    ).toBeVisible();
 
-    await expect(profileDropdown.getByText('Profil anzeigen', { exact: true })).not.toBeVisible();
-    await expect(profileDropdown.getByText('Persona wechseln', { exact: true })).not.toBeVisible();
-    await expect(profileDropdown.getByText('Rollen', { exact: true })).not.toBeVisible();
-    await expect(profileDropdown.getByText('Geerbte Rollen', { exact: true })).not.toBeVisible();
-    await expect(profileDropdown.getByText('Abmelden', { exact: true })).not.toBeVisible();
+    await expect(
+      profileDropdown.getByText('Profil anzeigen', { exact: true })
+    ).not.toBeVisible();
+    await expect(
+      profileDropdown.getByText('Persona wechseln', { exact: true })
+    ).not.toBeVisible();
+    await expect(
+      profileDropdown.getByText('Rollen', { exact: true })
+    ).not.toBeVisible();
+    await expect(
+      profileDropdown.getByText('Geerbte Rollen', { exact: true })
+    ).not.toBeVisible();
+    await expect(
+      profileDropdown.getByText('Abmelden', { exact: true })
+    ).not.toBeVisible();
   });
 });

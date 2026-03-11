@@ -73,8 +73,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
 }: MetricDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { tab: activeTab = EntityTabs.OVERVIEW } =
-    useRequiredParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.OVERVIEW } = useRequiredParams<{
+    tab: EntityTabs;
+  }>();
 
   const navigate = useNavigate();
 

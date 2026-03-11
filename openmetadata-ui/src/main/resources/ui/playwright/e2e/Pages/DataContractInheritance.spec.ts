@@ -128,8 +128,12 @@ const fillSLAForm = async (
   await page
     .getByTestId('refresh-frequency-interval-input')
     .fill(slaData.refreshFrequencyInterval);
-  await page.getByTestId('max-latency-value-input').fill(slaData.maxLatencyValue);
-  await page.getByTestId('retention-period-input').fill(slaData.retentionPeriod);
+  await page
+    .getByTestId('max-latency-value-input')
+    .fill(slaData.maxLatencyValue);
+  await page
+    .getByTestId('retention-period-input')
+    .fill(slaData.retentionPeriod);
 
   await page.locator('.availability-time-picker').click();
   await page.waitForSelector('.ant-picker-dropdown', { state: 'attached' });
@@ -141,7 +145,9 @@ const fillSLAForm = async (
 
   await page.getByTestId('refresh-frequency-unit-select').click();
   await page
-    .locator(`.refresh-frequency-unit-select [title=${slaData.refreshFrequencyUnit}]`)
+    .locator(
+      `.refresh-frequency-unit-select [title=${slaData.refreshFrequencyUnit}]`
+    )
     .click();
 
   await page.getByTestId('max-latency-unit-select').click();
@@ -444,12 +450,16 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify Terms of Service has inherited icon
       await expect(
-        page.locator('.contract-card-items').filter({ hasText: 'Terms of Service' })
+        page
+          .locator('.contract-card-items')
+          .filter({ hasText: 'Terms of Service' })
       ).toBeVisible();
 
       // Verify SLA section exists and has inherited icon
       await expect(
-        page.locator('.contract-card-items').filter({ hasText: 'Service Level Agreement' })
+        page
+          .locator('.contract-card-items')
+          .filter({ hasText: 'Service Level Agreement' })
       ).toBeVisible();
       await expect(
         page
@@ -585,7 +595,9 @@ test.describe('Data Contract Inheritance', () => {
       const semanticsSection = page.getByTestId('semantics-card');
 
       // Verify asset's semantic rule exists (without inherited icon)
-      await expect(semanticsSection.getByText(ASSET_SEMANTICS.name)).toBeVisible();
+      await expect(
+        semanticsSection.getByText(ASSET_SEMANTICS.name)
+      ).toBeVisible();
 
       // Verify data product's semantic rule exists (with inherited icon)
       await expect(
@@ -664,12 +676,16 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify inherited SLA is shown
       await expect(
-        page.locator('.contract-card-items').filter({ hasText: 'Service Level Agreement' })
+        page
+          .locator('.contract-card-items')
+          .filter({ hasText: 'Service Level Agreement' })
       ).toBeVisible();
 
       // Click edit to add asset's own contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
       await page.getByTestId('contract-edit-button').click();
 
       // Wait for edit form to load
@@ -701,7 +717,9 @@ test.describe('Data Contract Inheritance', () => {
       expect(response.status()).toBe(201);
 
       await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       // Verify contract was saved
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -716,7 +734,9 @@ test.describe('Data Contract Inheritance', () => {
     await test.step('Edit contract again to ADD its own SLA', async () => {
       // Click edit to modify contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
       await page.getByTestId('contract-edit-button').click();
 
       // Wait for edit form to load
@@ -750,7 +770,9 @@ test.describe('Data Contract Inheritance', () => {
       expect(response.status()).toBe(200);
 
       await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
     });
 
     await test.step('Verify asset now has its own SLA (no inherited icon)', async () => {
@@ -769,7 +791,9 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the asset's SLA values are displayed (freshness interval)
       await expect(
-        page.getByText(new RegExp(`${ASSET_SLA_EDIT.refreshFrequencyInterval}\\s*hour`, 'i'))
+        page.getByText(
+          new RegExp(`${ASSET_SLA_EDIT.refreshFrequencyInterval}\\s*hour`, 'i')
+        )
       ).toBeVisible();
     });
   });
@@ -787,7 +811,8 @@ test.describe('Data Contract Inheritance', () => {
     const DP_CONTRACT_DETAILS = {
       name: `dp_for_edit_inherited_${uuid()}`,
       description: 'Data Product contract that should NOT be modified',
-      termsOfService: 'Original Data Product Terms of Service - should remain unchanged.',
+      termsOfService:
+        'Original Data Product Terms of Service - should remain unchanged.',
     };
 
     await test.step('Create Data Product with contract', async () => {
@@ -841,7 +866,9 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Click Edit on inherited contract - should open ADD form, not EDIT', async () => {
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
       await page.getByTestId('contract-edit-button').click();
 
       // Wait for form to load
@@ -880,7 +907,9 @@ test.describe('Data Contract Inheritance', () => {
       expect(response.status()).toBe(201);
 
       await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
     });
 
     await test.step('Verify asset now has its own contract (non-inherited)', async () => {
@@ -912,9 +941,13 @@ test.describe('Data Contract Inheritance', () => {
 
       // Verify the Terms of Service content is unchanged
       await expect(
-        page.locator('.contract-card-items').filter({ hasText: 'Terms of Service' })
+        page
+          .locator('.contract-card-items')
+          .filter({ hasText: 'Terms of Service' })
       ).toBeVisible();
-      await expect(page.getByText(DP_CONTRACT_DETAILS.termsOfService)).toBeVisible();
+      await expect(
+        page.getByText(DP_CONTRACT_DETAILS.termsOfService)
+      ).toBeVisible();
     });
   });
 
@@ -975,14 +1008,18 @@ test.describe('Data Contract Inheritance', () => {
 
       // Open the contract actions menu
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
 
       // Verify delete button is disabled for inherited contract
       const deleteButton = page.getByTestId('delete-contract-button');
       await expect(deleteButton).toBeVisible();
 
       // The delete button should have the 'disabled' class or be visually disabled
-      const deleteMenuItem = page.locator('.contract-action-dropdown .ant-dropdown-menu-item').filter({ hasText: 'Delete' });
+      const deleteMenuItem = page
+        .locator('.contract-action-dropdown .ant-dropdown-menu-item')
+        .filter({ hasText: 'Delete' });
       const isDisabled = await deleteMenuItem.getAttribute('aria-disabled');
       expect(isDisabled).toBe('true');
     });
@@ -1040,7 +1077,9 @@ test.describe('Data Contract Inheritance', () => {
 
       // Open the contract actions menu
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
 
       // Click Run Now - this should trigger entity-based validation for inherited contracts
       const validateResponse = page.waitForResponse((response) => {
@@ -1048,7 +1087,8 @@ test.describe('Data Contract Inheritance', () => {
         // For inherited contracts, validation should use the entity-based endpoint
         return (
           (url.includes('/api/v1/dataContracts/validate/entity/') ||
-            url.includes('/api/v1/dataContracts/') && url.includes('/validate')) &&
+            (url.includes('/api/v1/dataContracts/') &&
+              url.includes('/validate'))) &&
           response.request().method() === 'POST'
         );
       });
@@ -1132,8 +1172,11 @@ test.describe('Data Contract Inheritance', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Select the asset checkbox
-      const assetFqn = tableForRemoveAssetTest.entityResponseData.fullyQualifiedName;
-      await page.locator(`[data-testid="table-data-card_${assetFqn}"] input`).check();
+      const assetFqn =
+        tableForRemoveAssetTest.entityResponseData.fullyQualifiedName;
+      await page
+        .locator(`[data-testid="table-data-card_${assetFqn}"] input`)
+        .check();
 
       // Click delete button
       const removeResponse = page.waitForResponse(
@@ -1213,7 +1256,9 @@ test.describe('Data Contract Inheritance', () => {
 
       // Click edit to add asset's own contract
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
       await page.getByTestId('contract-edit-button').click();
 
       await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1239,7 +1284,9 @@ test.describe('Data Contract Inheritance', () => {
       expect(response.status()).toBe(201);
 
       await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       // Verify asset's own contract is displayed
       await expect(page.getByTestId('contract-title')).toContainText(
@@ -1254,7 +1301,9 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Delete asset own contract', async () => {
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
 
       // Click delete
       const deleteResponse = page.waitForResponse((response) => {
@@ -1281,7 +1330,9 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Verify asset now shows inherited contract from Data Product', async () => {
       // Wait for contract to reload after deletion
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       // Refresh the page to ensure we get the latest contract state
       await page.reload();
@@ -1303,7 +1354,9 @@ test.describe('Data Contract Inheritance', () => {
         .locator('.contract-card-items')
         .filter({ hasText: 'Terms of Service' });
       await expect(termsSection).toBeVisible();
-      await expect(page.getByText(DP_CONTRACT_DETAILS.termsOfService)).toBeVisible();
+      await expect(
+        page.getByText(DP_CONTRACT_DETAILS.termsOfService)
+      ).toBeVisible();
     });
   });
 });

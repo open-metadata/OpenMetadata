@@ -25,7 +25,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -47,6 +46,7 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloudUpload } from '../../../assets/svg/upload-cloud.svg';
+import Loader from '../../common/Loader/Loader';
 import { CreateDataContract } from '../../../generated/api/data/createDataContract';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { ContractValidation } from '../../../generated/entity/datacontract/contractValidation';
@@ -840,7 +840,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-          <CircularProgress size={24} sx={{ mb: '12px' }} />
+          <Loader size="small" style={{ marginBottom: '12px' }} />
           <Typography
             sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
             {t('message.validating-contract-schema')}
@@ -1764,7 +1764,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           variant="contained"
           onClick={handleImport}>
           {(isLoading || isValidating) && (
-            <CircularProgress color="inherit" size={16} sx={{ mr: 1 }} />
+            <Loader size="x-small" type="white" style={{ marginRight: '8px' }} />
           )}
           {t('label.import')}
         </Button>

@@ -55,11 +55,15 @@
 
   .agents-sub-tabs-switch {
     .ant-radio-button-wrapper,
-    .ant-radio-button-wrapper-checked:not([class*=' ant-radio-button-wrapper-disabled']).ant-radio-button-wrapper:first-child {
+    .ant-radio-button-wrapper-checked:not(
+        [class*=' ant-radio-button-wrapper-disabled']
+      ).ant-radio-button-wrapper:first-child {
       font-size: 14px;
       font-weight: 500;
     }
-    .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)::before {
+    .ant-radio-button-wrapper-checked:not(
+        .ant-radio-button-wrapper-disabled
+      )::before {
       background-color: @grey-15;
     }
     .ant-radio-button-wrapper:first-child {
@@ -98,7 +102,9 @@
         gap: 8px;
       }
     }
-    .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled):hover {
+    .ant-radio-button-wrapper-checked:not(
+        .ant-radio-button-wrapper-disabled
+      ):hover {
       background-color: @primary-button-background;
     }
   }

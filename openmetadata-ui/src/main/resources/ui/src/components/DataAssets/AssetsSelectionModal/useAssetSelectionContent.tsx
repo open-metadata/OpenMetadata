@@ -19,7 +19,6 @@ import { CheckCircleOutline, ErrorOutline } from '@mui/icons-material';
 import {
   Box,
   Button,
-  CircularProgress,
   Divider as MuiDivider,
   Typography as MuiTypography,
 } from '@mui/material';
@@ -537,15 +536,16 @@ export const useAssetSelectionContent = ({
             {selectedItems.size} {t('label.selected-lowercase')}
           </Typography.Text>
         )}
-        {failedStatus?.failedRequest && failedStatus.failedRequest.length > 0 && (
-          <>
-            <Divider className="m-x-xss" type="vertical" />
-            <Typography.Text type="danger">
-              <CloseOutlined className="m-r-xs" />
-              {failedStatus.failedRequest.length} {t('label.error')}
-            </Typography.Text>
-          </>
-        )}
+        {failedStatus?.failedRequest &&
+          failedStatus.failedRequest.length > 0 && (
+            <>
+              <Divider className="m-x-xss" type="vertical" />
+              <Typography.Text type="danger">
+                <CloseOutlined className="m-r-xs" />
+                {failedStatus.failedRequest.length} {t('label.error')}
+              </Typography.Text>
+            </>
+          )}
       </div>
 
       <div>
@@ -580,17 +580,18 @@ export const useAssetSelectionContent = ({
             </MuiTypography>
           </Box>
         )}
-        {failedStatus?.failedRequest && failedStatus.failedRequest.length > 0 && (
-          <>
-            <MuiDivider flexItem orientation="vertical" sx={{ mx: 1 }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <ErrorOutline color="error" fontSize="small" />
-              <MuiTypography color="error" variant="body2">
-                {failedStatus.failedRequest.length} {t('label.error')}
-              </MuiTypography>
-            </Box>
-          </>
-        )}
+        {failedStatus?.failedRequest &&
+          failedStatus.failedRequest.length > 0 && (
+            <>
+              <MuiDivider flexItem orientation="vertical" sx={{ mx: 1 }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <ErrorOutline color="error" fontSize="small" />
+                <MuiTypography color="error" variant="body2">
+                  {failedStatus.failedRequest.length} {t('label.error')}
+                </MuiTypography>
+              </Box>
+            </>
+          )}
       </Box>
 
       <Box sx={{ display: 'flex', gap: 2 }}>
@@ -607,7 +608,7 @@ export const useAssetSelectionContent = ({
           }
           startIcon={
             (isSaveLoading || !isUndefined(assetJobResponse)) && (
-              <CircularProgress size={16} />
+              <Loader size="x-small" />
             )
           }
           variant="contained"
@@ -634,7 +635,9 @@ export const useAssetSelectionContent = ({
         />
       )}
 
-      {infoBannerText && <Alert showIcon message={infoBannerText} type="info" />}
+      {infoBannerText && (
+        <Alert showIcon message={infoBannerText} type="info" />
+      )}
 
       <div className="d-flex items-center gap-3">
         <div className="flex-1">

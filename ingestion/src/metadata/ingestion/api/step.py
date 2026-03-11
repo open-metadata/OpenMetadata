@@ -24,6 +24,8 @@ from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.operation_metrics import OperationMetricsState
+from metadata.utils.progress_tracker import ProgressTrackerState
 
 logger = ingestion_logger()
 
@@ -75,6 +77,21 @@ class Summary(StepSummary):
     @classmethod
     def from_step(cls, step: Step) -> "Summary":
         """Compute summary from Step"""
+        progress_tracker = ProgressTrackerState()
+        operation_metrics = OperationMetricsState()
+
+        # Get workflow timing for source metrics
+        workflow_timing = operation_metrics.get_workflow_timing()
+
+        # Source time = source_fetch + source_db_queries + source_api_calls
+        source_time_ms = (
+            workflow_timing.get("source", {}).get("total_ms", 0)
+            + workflow_timing.get("source_db_queries", {}).get("total_ms", 0)
+            + workflow_timing.get("source_api_calls", {}).get("total_ms", 0)
+        )
+        # Stage time = time spent processing entities
+        stage_time_ms = workflow_timing.get("stage", {}).get("total_ms", 0)
+
         return Summary(
             name=step.name,
             records=step.status.record_count
@@ -85,6 +102,10 @@ class Summary(StepSummary):
             errors=len(step.status.failures),
             filtered=len(step.status.filtered),
             failures=step.status.failures[0:10] if step.status.failures else None,
+            progress=progress_tracker.get_progress_as_dict() or None,
+            operationMetrics=operation_metrics.get_summary() or None,
+            sourceTimeMs=source_time_ms if source_time_ms else None,
+            sinkTimeMs=stage_time_ms if stage_time_ms else None,
         )
 
     def __str__(self):

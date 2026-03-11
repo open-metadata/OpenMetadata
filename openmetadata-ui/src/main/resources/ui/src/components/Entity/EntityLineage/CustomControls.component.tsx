@@ -449,6 +449,7 @@ const CustomControls: FC<{
             }
           >
             <StyledIconButton
+              data-testid="export-button"
               disabled={isEditMode}
               size="large"
               onClick={handleExportClick}
