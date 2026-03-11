@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TooltipPlacement } from 'antd/es/tooltip';
+import { Placement } from '@react-types/overlays';
 import { EntityType } from '../../../enums/entity.enum';
 
 export interface EntityTitleSectionProps {
@@ -26,7 +26,7 @@ export interface EntityTitleSectionProps {
   };
   entityLink: string | { pathname: string };
   entityType?: EntityType;
-  tooltipPlacement?: TooltipPlacement;
+  tooltipPlacement?: Placement;
   testId?: string;
   className?: string;
   hasEditPermission?: boolean;

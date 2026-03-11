@@ -113,14 +113,11 @@ test.describe(
         ).toContainText(metricName);
       });
 
-      await test.step(
-        'Verify initial unit of measurement is displayed',
-        async () => {
-          await expect(
-            page.getByTestId('data-asset-header-metadata').getByText('EVENTS')
-          ).toBeVisible();
-        }
-      );
+      await test.step('Verify initial unit of measurement is displayed', async () => {
+        await expect(
+          page.getByTestId('data-asset-header-metadata').getByText('EVENTS')
+        ).toBeVisible();
+      });
 
       await test.step('Update unit of measurement to Dollars', async () => {
         await updateUnitOfMeasurement(page, 'Dollars');

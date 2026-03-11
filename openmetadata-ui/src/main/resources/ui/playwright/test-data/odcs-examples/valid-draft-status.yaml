@@ -12,7 +12,7 @@ apiVersion: v3.1.0
 kind: DataContract
 id: draft-contract
 name: Draft ODCS Contract
-version: "0.1.0"
+version: '0.1.0'
 status: draft
 description:
   purpose: This is a draft contract under review.

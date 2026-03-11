@@ -489,15 +489,12 @@ test.describe(
     }) => {
       const page = await browser.newPage();
 
-      await test.step(
-        'Login as data consumer and visit team page',
-        async () => {
-          await dataConsumerUser.login(page);
-          await redirectToHomePage(page);
-          await restrictedTeam.visitTeamPage(page);
-          await waitForAllLoadersToDisappear(page);
-        }
-      );
+      await test.step('Login as data consumer and visit team page', async () => {
+        await dataConsumerUser.login(page);
+        await redirectToHomePage(page);
+        await restrictedTeam.visitTeamPage(page);
+        await waitForAllLoadersToDisappear(page);
+      });
 
       await test.step('Verify edit button is not visible', async () => {
         await expect(
@@ -505,13 +502,10 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await test.step(
-        'Verify subscription details are visible (read-only)',
-        async () => {
-          const subscriptionSection = page.getByTestId('teams-subscription');
-          await expect(subscriptionSection).toBeVisible();
-        }
-      );
+      await test.step('Verify subscription details are visible (read-only)', async () => {
+        const subscriptionSection = page.getByTestId('teams-subscription');
+        await expect(subscriptionSection).toBeVisible();
+      });
 
       await page.close();
     });

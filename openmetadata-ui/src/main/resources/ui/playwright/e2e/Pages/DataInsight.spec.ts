@@ -103,7 +103,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await page.waitForURL('/explore/tables?*');
 
     await expect(page.getByTestId('advance-search-filter-text')).toContainText(
-      'owners.displayName.keyword IS NULL'
+      'ownerDisplayName IS NULL'
     );
   });
 

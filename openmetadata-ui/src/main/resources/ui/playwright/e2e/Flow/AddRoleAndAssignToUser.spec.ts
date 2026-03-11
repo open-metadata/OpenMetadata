@@ -18,7 +18,7 @@ import {
   descriptionBox,
   generateRandomUsername,
   redirectToHomePage,
-  uuid
+  uuid,
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import { visitUserProfilePage } from '../../utils/user';

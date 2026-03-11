@@ -1,0 +1,5 @@
+{
+  "id": null,
+  "name": "public",
+  "description": "Default public schema for the jaffle_shop dbt project"
+}

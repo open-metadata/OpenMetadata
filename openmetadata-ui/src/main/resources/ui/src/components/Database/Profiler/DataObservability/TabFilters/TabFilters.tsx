@@ -254,10 +254,10 @@ const TabFilters = () => {
               <Button
                 color="secondary"
                 data-testid="profiler-setting-btn"
-                size="sm"
-                onClick={onSettingButtonClick}>
-                <SettingIcon />
-              </Button>
+                iconLeading={<SettingIcon />}
+                size="lg"
+                onClick={onSettingButtonClick}
+              />
             </Tooltip>
           )}
         </>

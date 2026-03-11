@@ -89,10 +89,11 @@ public class SearchIndexExecutor implements AutoCloseable {
   private static final String QUERY_COST_RESULT_WARNING =
       "Found incorrect entity type 'queryCostResult', correcting to 'queryCostRecord'";
 
+  private static final int AVAILABLE_PROCESSORS = Runtime.getRuntime().availableProcessors();
   private static final int MAX_READERS_PER_ENTITY = 5;
-  private static final int MAX_PRODUCER_THREADS = 20;
-  private static final int MAX_CONSUMER_THREADS = 20;
-  private static final int MAX_TOTAL_THREADS = 50;
+  private static final int MAX_PRODUCER_THREADS = Math.min(20, AVAILABLE_PROCESSORS * 2);
+  private static final int MAX_CONSUMER_THREADS = Math.min(20, AVAILABLE_PROCESSORS * 2);
+  private static final int MAX_TOTAL_THREADS = Math.min(50, AVAILABLE_PROCESSORS * 4);
 
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
@@ -384,21 +385,25 @@ public class SearchIndexExecutor implements AutoCloseable {
     taskQueue = new LinkedBlockingQueue<>(effectiveQueueSize);
     producersDone.set(false);
 
+    String jobIdTag = MDC.get("reindexJobId");
+    String threadPrefix = "reindex-" + (jobIdTag != null ? jobIdTag + "-" : "");
+
     int maxJobThreads =
         Math.max(1, MAX_TOTAL_THREADS - threadConfig.numProducers() - threadConfig.numConsumers());
     int cappedEntityCount = Math.min(entityCount, maxJobThreads);
     jobExecutor =
         Executors.newFixedThreadPool(
-            cappedEntityCount, Thread.ofPlatform().name("job-", 0).factory());
+            cappedEntityCount, Thread.ofPlatform().name(threadPrefix + "job-", 0).factory());
 
     int finalNumConsumers = Math.min(threadConfig.numConsumers(), MAX_CONSUMER_THREADS);
     consumerExecutor =
         Executors.newFixedThreadPool(
-            finalNumConsumers, Thread.ofPlatform().name("consumer-", 0).factory());
+            finalNumConsumers, Thread.ofPlatform().name(threadPrefix + "consumer-", 0).factory());
 
     producerExecutor =
         Executors.newFixedThreadPool(
-            threadConfig.numProducers(), Thread.ofPlatform().name("producer-", 0).factory());
+            threadConfig.numProducers(),
+            Thread.ofPlatform().name(threadPrefix + "producer-", 0).factory());
 
     return effectiveQueueSize;
   }
@@ -1087,7 +1092,30 @@ public class SearchIndexExecutor implements AutoCloseable {
           entitySuccess,
           stagedIndexOpt.get());
       defaultHandler.promoteEntityIndex(entityContext, entitySuccess);
+
+      // When promoting the table index, also promote the column index since columns
+      // are indexed as part of table processing
+      if (Entity.TABLE.equals(entityType)) {
+        promoteColumnIndex(defaultHandler, entitySuccess);
+      }
     }
+  }
+
+  private void promoteColumnIndex(DefaultRecreateHandler handler, boolean tableSuccess) {
+    if (recreateContext == null) {
+      return;
+    }
+    Optional<String> columnStagedIndex = recreateContext.getStagedIndex(Entity.TABLE_COLUMN);
+    if (columnStagedIndex.isEmpty()) {
+      return;
+    }
+    EntityReindexContext columnContext = buildEntityReindexContext(Entity.TABLE_COLUMN);
+    LOG.info(
+        "Promoting column index (success={}, stagedIndex={})",
+        tableSuccess,
+        columnStagedIndex.get());
+    handler.promoteEntityIndex(columnContext, tableSuccess);
+    promotedEntities.add(Entity.TABLE_COLUMN);
   }
 
   private ResultList<?> readWithRetry(
@@ -1296,6 +1324,20 @@ public class SearchIndexExecutor implements AutoCloseable {
     processStats.setFailedRecords(0);
     jobDataStats.setProcessStats(processStats);
 
+    // Add a stats slot for TABLE_COLUMN since columns are indexed as part of table processing
+    // but TABLE_COLUMN is not a standalone entity in the entities set
+    if (entities.contains(Entity.TABLE) && !entities.contains(Entity.TABLE_COLUMN)) {
+      StepStats columnEntityStats = new StepStats();
+      columnEntityStats.setTotalRecords(0);
+      columnEntityStats.setSuccessRecords(0);
+      columnEntityStats.setFailedRecords(0);
+      jobDataStats
+          .getEntityStats()
+          .getAdditionalProperties()
+          .put(Entity.TABLE_COLUMN, columnEntityStats);
+      LOG.info("Added TABLE_COLUMN stats slot for column indexing tracking");
+    }
+
     return jobDataStats;
   }
 
@@ -1368,7 +1410,32 @@ public class SearchIndexExecutor implements AutoCloseable {
     }
 
     updateEntityStats(jobDataStats, entityType, currentEntityStats);
+
+    // When processing tables, also update column stats from the sink
+    if (Entity.TABLE.equals(entityType) && searchIndexSink != null) {
+      updateColumnStatsFromSink(jobDataStats);
+    }
+
     updateJobStats(jobDataStats);
+  }
+
+  private void updateColumnStatsFromSink(Stats jobDataStats) {
+    StepStats columnStats = null;
+    if (searchIndexSink instanceof OpenSearchBulkSink opensearchBulkSink) {
+      columnStats = opensearchBulkSink.getColumnStats();
+    } else if (searchIndexSink instanceof ElasticSearchBulkSink elasticSearchBulkSink) {
+      columnStats = elasticSearchBulkSink.getColumnStats();
+    }
+
+    if (columnStats != null && columnStats.getTotalRecords() > 0) {
+      StepStats existingColumnStats =
+          jobDataStats.getEntityStats().getAdditionalProperties().get(Entity.TABLE_COLUMN);
+      if (existingColumnStats != null) {
+        existingColumnStats.setTotalRecords(columnStats.getTotalRecords());
+        existingColumnStats.setSuccessRecords(columnStats.getSuccessRecords());
+        existingColumnStats.setFailedRecords(columnStats.getFailedRecords());
+      }
+    }
   }
 
   synchronized void updateReaderStats(int successCount, int failedCount, int warningsCount) {

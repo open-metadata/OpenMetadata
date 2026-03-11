@@ -45,8 +45,9 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const AddCustomMetricPage = () => {
-  const { dashboardType } =
-    useRequiredParams<{ dashboardType: ProfilerDashboardType }>();
+  const { dashboardType } = useRequiredParams<{
+    dashboardType: ProfilerDashboardType;
+  }>();
   const { fqn } = useFqn();
   const { t } = useTranslation();
 

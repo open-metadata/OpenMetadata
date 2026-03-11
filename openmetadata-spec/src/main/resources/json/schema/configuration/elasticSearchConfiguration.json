@@ -138,6 +138,16 @@
           "type": "boolean",
           "default": false
         },
+        "keywordWeight": {
+          "description": "Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)",
+          "type": "number",
+          "default": 0.6
+        },
+        "semanticWeight": {
+          "description": "Weight for semantic vector search results in hybrid RRF pipeline (0.0-1.0)",
+          "type": "number",
+          "default": 0.4
+        },
         "embeddingProvider": {
           "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai).",
           "type": "string",

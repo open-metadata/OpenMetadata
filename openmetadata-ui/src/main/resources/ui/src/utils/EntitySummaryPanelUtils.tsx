@@ -23,7 +23,6 @@ import { ColumnOrTask } from '../components/Database/ColumnDetailPanel/ColumnDet
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
 import APIEndpointSummary from '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
 import { ColumnSummaryList } from '../components/Explore/EntitySummaryPanel/ColumnSummaryList/ColumnsSummaryList';
-import { EntityData } from '../components/Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection.interface';
 import DataProductSummary from '../components/Explore/EntitySummaryPanel/DataProductSummary/DataProductSummary.component';
 import DomainSummary from '../components/Explore/EntitySummaryPanel/DomainSummary/DomainSummary.component';
 import GlossaryTermSummary from '../components/Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
@@ -63,6 +62,7 @@ import { Field, Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { EntityReference } from '../generated/tests/testCase';
+import { EntityData } from '../pages/TasksPage/TasksPage.interface';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
@@ -568,6 +568,7 @@ export const getEntityChildDetails = (
 
       break;
     case EntityType.API_ENDPOINT:
+    case EntityType.API_SERVICE:
       return (
         <APIEndpointSummary
           entityDetails={entityInfo as APIEndpoint}
@@ -641,13 +642,6 @@ export const getEntityChildDetails = (
           isLoading={false}
         />
       );
-    case EntityType.API_SERVICE:
-      return (
-        <APIEndpointSummary
-          entityDetails={entityInfo as APIEndpoint}
-          highlights={highlights}
-        />
-      );
     case EntityType.GLOSSARY_TERM:
     case EntityType.GLOSSARY:
       return (
@@ -708,11 +702,11 @@ export const toEntityData = (
     'extension' in column &&
     typeof column.extension === 'object' &&
     column.extension !== null
-      ? (column.extension as Table['extension'])
+      ? column.extension
       : undefined;
 
   // Create an object that satisfies EntityData interface with index signature
-  const entityData: EntityData = {};
+  const entityData: EntityData = {} as EntityData;
   if (extension) {
     entityData.extension = extension;
   }

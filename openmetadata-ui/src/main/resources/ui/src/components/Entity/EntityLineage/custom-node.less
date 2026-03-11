@@ -486,7 +486,9 @@
       }
 
       &.creating-edge {
-        .custom-node-column-container:not(.custom-node-header-column-tracing):hover {
+        .custom-node-column-container:not(
+            .custom-node-header-column-tracing
+          ):hover {
           background-color: @primary-1;
           border-left-color: @primary-6;
         }

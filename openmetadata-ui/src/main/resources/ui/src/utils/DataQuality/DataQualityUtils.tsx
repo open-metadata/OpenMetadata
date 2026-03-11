@@ -190,9 +190,17 @@ export const buildMustEsFilterForOwner = (
   ownerFqn: string,
   isTestCaseResult = false
 ) => {
+  const path = isTestCaseResult ? 'testCase.owners' : 'owners';
+  const field = isTestCaseResult ? 'testCase.owners.name' : 'owners.name';
+
   return {
-    term: {
-      [isTestCaseResult ? 'testCase.owners.name' : 'owners.name']: ownerFqn,
+    nested: {
+      path,
+      query: {
+        term: {
+          [field]: ownerFqn,
+        },
+      },
     },
   };
 };

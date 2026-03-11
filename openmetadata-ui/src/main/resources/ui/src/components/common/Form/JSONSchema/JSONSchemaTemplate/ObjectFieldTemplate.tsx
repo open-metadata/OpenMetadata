@@ -32,118 +32,116 @@ interface PropertyMap {
   normalProperties: ObjectFieldTemplatePropertyType[];
 }
 
-export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
-  (props: ObjectFieldTemplateProps) => {
-    const { t } = useTranslation();
+export const ObjectFieldTemplate: FunctionComponent<
+  ObjectFieldTemplateProps
+> = (props: ObjectFieldTemplateProps) => {
+  const { t } = useTranslation();
 
-    const { formContext, idSchema, title, onAddClick, schema, properties } =
-      props;
+  const { formContext, idSchema, title, onAddClick, schema, properties } =
+    props;
 
-    const { advancedProperties, normalProperties } = properties.reduce(
-      (propertyMap, currentProperty) => {
-        const isAdvancedProperty = ADVANCED_PROPERTIES.includes(
-          currentProperty.name
-        );
+  const { advancedProperties, normalProperties } = properties.reduce(
+    (propertyMap, currentProperty) => {
+      const isAdvancedProperty = ADVANCED_PROPERTIES.includes(
+        currentProperty.name
+      );
 
-        let advancedProperties = [...propertyMap.advancedProperties];
-        let normalProperties = [...propertyMap.normalProperties];
+      let advancedProperties = [...propertyMap.advancedProperties];
+      let normalProperties = [...propertyMap.normalProperties];
 
-        if (isAdvancedProperty) {
-          advancedProperties = [...advancedProperties, currentProperty];
-        } else {
-          normalProperties = [...normalProperties, currentProperty];
-        }
+      if (isAdvancedProperty) {
+        advancedProperties = [...advancedProperties, currentProperty];
+      } else {
+        normalProperties = [...normalProperties, currentProperty];
+      }
 
-        return { ...propertyMap, advancedProperties, normalProperties };
-      },
-      {
-        advancedProperties: [],
+      return { ...propertyMap, advancedProperties, normalProperties };
+    },
+    {
+      advancedProperties: [],
 
-        normalProperties: [],
-      } as PropertyMap
-    );
+      normalProperties: [],
+    } as PropertyMap
+  );
 
-    const {
-      properties: updatedNormalProperties,
-      additionalField: AdditionalField,
-      additionalFieldContent,
-    } = serviceUtilClassBase.getProperties(normalProperties);
+  const {
+    properties: updatedNormalProperties,
+    additionalField: AdditionalField,
+    additionalFieldContent,
+  } = serviceUtilClassBase.getProperties(normalProperties);
 
-    const fieldElement = (
-      <Fragment>
-        <Space className="w-full justify-between header-title-wrapper m-t-sm">
-          <label
-            className={classNames('control-label', {
-              'font-medium text-base-color text-md':
-                !schema.additionalProperties,
-            })}
-            id={`${idSchema.$id}__title`}>
-            {title}
-          </label>
-        </Space>
-
-        {schema.additionalProperties && (
-          <Space className="w-full justify-between m-t-sm">
-            <label
-              className="font-medium text-base-color text-md"
-              id={`${idSchema.$id}__AdditionalProperties-label`}>
-              {t('label.additional-property-plural')}
-            </label>
-
-            <Button
-              data-testid={`add-item-${title}`}
-              icon={
-                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-              }
-              id={`${idSchema.$id}`}
-              size="small"
-              type="primary"
-              onClick={() => {
-                onAddClick(schema)();
-              }}
-              onFocus={() => {
-                if (!isUndefined(formContext.handleFocus)) {
-                  formContext.handleFocus(idSchema.$id);
-                }
-              }}
-            />
-          </Space>
-        )}
-
-        {AdditionalField &&
-          createElement(AdditionalField, {
-            data: additionalFieldContent,
+  const fieldElement = (
+    <Fragment>
+      <Space className="w-full justify-between header-title-wrapper m-t-sm">
+        <label
+          className={classNames('control-label', {
+            'font-medium text-base-color text-md': !schema.additionalProperties,
           })}
+          id={`${idSchema.$id}__title`}>
+          {title}
+        </label>
+      </Space>
 
-        {updatedNormalProperties.map((element, index) => (
-          <div
-            className={classNames('property-wrapper', {
-              'additional-fields': schema.additionalProperties,
-            })}
-            key={`${element.content.key}-${index}`}>
-            {element.content}
-          </div>
-        ))}
-        {!isEmpty(advancedProperties) && (
-          <Collapse
-            destroyInactivePanel
-            className="advanced-properties-collapse m-t-sm"
-            expandIconPosition="end">
-            <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
-              {advancedProperties.map((element, index) => (
-                <div
-                  className={classNames('property-wrapper', {
-                    'additional-fields': schema.additionalProperties,
-                  })}
-                  key={`${element.content.key}-${index}`}>
-                  {element.content}
-                </div>
-              ))}
-            </Panel>
-          </Collapse>
-        )}
-      </Fragment>
-    );
+      {schema.additionalProperties && (
+        <Space className="w-full justify-between m-t-sm">
+          <label
+            className="font-medium text-base-color text-md"
+            id={`${idSchema.$id}__AdditionalProperties-label`}>
+            {t('label.additional-property-plural')}
+          </label>
 
-    return fieldElement;
-  };
+          <Button
+            data-testid={`add-item-${title}`}
+            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            id={`${idSchema.$id}`}
+            size="small"
+            type="primary"
+            onClick={() => {
+              onAddClick(schema)();
+            }}
+            onFocus={() => {
+              if (!isUndefined(formContext.handleFocus)) {
+                formContext.handleFocus(idSchema.$id);
+              }
+            }}
+          />
+        </Space>
+      )}
+
+      {AdditionalField &&
+        createElement(AdditionalField, {
+          data: additionalFieldContent,
+        })}
+
+      {updatedNormalProperties.map((element, index) => (
+        <div
+          className={classNames('property-wrapper', {
+            'additional-fields': schema.additionalProperties,
+          })}
+          key={`${element.content.key}-${index}`}>
+          {element.content}
+        </div>
+      ))}
+      {!isEmpty(advancedProperties) && (
+        <Collapse
+          destroyInactivePanel
+          className="advanced-properties-collapse m-t-sm"
+          expandIconPosition="end">
+          <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
+            {advancedProperties.map((element, index) => (
+              <div
+                className={classNames('property-wrapper', {
+                  'additional-fields': schema.additionalProperties,
+                })}
+                key={`${element.content.key}-${index}`}>
+                {element.content}
+              </div>
+            ))}
+          </Panel>
+        </Collapse>
+      )}
+    </Fragment>
+  );
+
+  return fieldElement;
+};

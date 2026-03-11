@@ -154,238 +154,234 @@ test.describe('Bulk Import Export', () => {
       await performBulkDownload(page, dbService.entity.name);
     });
 
-    await test.step(
-      'should import and edit with two additional database',
-      async () => {
-        await dbService.visitEntityPage(page);
+    await test.step('should import and edit with two additional database', async () => {
+      await dbService.visitEntityPage(page);
 
+      await page.getByTestId('manage-button').click();
+      await page.waitForSelector(
+        '[data-testid="manage-dropdown-list-container"]',
+        { state: 'visible' }
+      );
+      await page.click('[data-testid="import-button-title"]');
+      const fileInput = page.getByTestId('upload-file-widget');
+      await fileInput?.setInputFiles([
+        'downloads/' + dbService.entity.name + '.csv',
+      ]);
 
-        await page.getByTestId('manage-button').click();
-        await page.waitForSelector(
-          '[data-testid="manage-dropdown-list-container"]',
-          { state: 'visible' }
-        );
-        await page.click('[data-testid="import-button-title"]');
-        const fileInput = page.getByTestId('upload-file-widget');
-        await fileInput?.setInputFiles([
-          'downloads/' + dbService.entity.name + '.csv',
-        ]);
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
+      // Wait for upload widget to be hidden indicating file is loaded
+      await page.waitForSelector('[data-testid="upload-file-widget"]', {
+        state: 'hidden',
+      });
+      // Adding some assertion to make sure that CSV loaded correctly
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
+      await expect(page.getByTestId('add-row-btn')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Previous' })
+      ).toBeVisible();
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
-        // Wait for upload widget to be hidden indicating file is loaded
-        await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden',
-        });
-        // Adding some assertion to make sure that CSV loaded correctly
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
-        await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
-        await expect(
-          page.getByRole('button', { name: 'Previous' })
-        ).toBeVisible();
+      await firstTimeGridAddRowAction(page);
 
-        await firstTimeGridAddRowAction(page);
+      // Add first database details
+      await fillRowDetails(
+        {
+          ...databaseDetails1,
+          owners: [
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
+          ],
+          domains: domain1.responseData,
+        },
+        page,
+        customPropertyRecord
+      );
 
-        // Add first database details
-        await fillRowDetails(
-          {
-            ...databaseDetails1,
-            owners: [
-              user1.responseData?.['displayName'],
-              user2.responseData?.['displayName'],
-            ],
-            domains: domain1.responseData,
-          },
-          page,
-          customPropertyRecord
-        );
+      await fillRecursiveEntityTypeFQNDetails(
+        `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}`,
+        databaseDetails1.entityType,
+        page
+      );
 
-        await fillRecursiveEntityTypeFQNDetails(
-          `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}`,
-          databaseDetails1.entityType,
-          page
-        );
+      // Add new row for new schema details
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Add new row for new schema details
-        await page.click('[data-testid="add-row-btn"]');
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      await pressKeyXTimes(page, 13, 'ArrowLeft');
 
-        await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await fillRowDetails(
+        {
+          ...databaseSchemaDetails1,
+          owners: [
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
+          ],
+          domains: domain1.responseData,
+        },
+        page
+      );
 
-        await fillRowDetails(
-          {
-            ...databaseSchemaDetails1,
-            owners: [
-              user1.responseData?.['displayName'],
-              user2.responseData?.['displayName'],
-            ],
-            domains: domain1.responseData,
-          },
-          page
-        );
+      await fillRecursiveEntityTypeFQNDetails(
+        `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}`,
+        databaseSchemaDetails1.entityType,
+        page
+      );
 
-        await fillRecursiveEntityTypeFQNDetails(
-          `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}`,
-          databaseSchemaDetails1.entityType,
-          page
-        );
+      // Add new row for new table details
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Add new row for new table details
-        await page.click('[data-testid="add-row-btn"]');
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      await pressKeyXTimes(page, 13, 'ArrowLeft');
 
-        await pressKeyXTimes(page, 13, 'ArrowLeft');
+      // Fill table and columns details
+      await fillRowDetails(
+        {
+          ...tableDetails1,
+          owners: [
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
+          ],
+          domains: domain1.responseData,
+        },
+        page
+      );
 
-        // Fill table and columns details
-        await fillRowDetails(
-          {
-            ...tableDetails1,
-            owners: [
-              user1.responseData?.['displayName'],
-              user2.responseData?.['displayName'],
-            ],
-            domains: domain1.responseData,
-          },
-          page
-        );
+      await fillRecursiveEntityTypeFQNDetails(
+        `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}.${tableDetails1.name}`,
+        tableDetails1.entityType,
+        page
+      );
 
-        await fillRecursiveEntityTypeFQNDetails(
-          `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}.${tableDetails1.name}`,
-          tableDetails1.entityType,
-          page
-        );
+      // Add new row for columns details
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Add new row for columns details
-        await page.click('[data-testid="add-row-btn"]');
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      await pressKeyXTimes(page, 13, 'ArrowLeft');
 
-        await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await fillRecursiveColumnDetails(
+        {
+          ...columnDetails1,
+          fullyQualifiedName: `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}.${tableDetails1.name}.${columnDetails1.name}`,
+        },
+        page
+      );
 
-        await fillRecursiveColumnDetails(
-          {
-            ...columnDetails1,
-            fullyQualifiedName: `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}.${tableDetails1.name}.${columnDetails1.name}`,
-          },
-          page
-        );
+      // Add New StoredProcedure Details
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Add New StoredProcedure Details
-        await page.click('[data-testid="add-row-btn"]');
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      await pressKeyXTimes(page, 19, 'ArrowLeft');
 
-        await pressKeyXTimes(page, 19, 'ArrowLeft');
+      await fillRowDetails(
+        {
+          ...storedProcedureDetails,
+          owners: [
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
+          ],
+          domains: domain2.responseData,
+        },
+        page
+      );
 
-        await fillRowDetails(
-          {
-            ...storedProcedureDetails,
-            owners: [
-              user1.responseData?.['displayName'],
-              user2.responseData?.['displayName'],
-            ],
-            domains: domain2.responseData,
-          },
-          page
-        );
+      await fillRecursiveEntityTypeFQNDetails(
+        `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}.${storedProcedureDetails.name}`,
+        storedProcedureDetails.entityType,
+        page
+      );
 
-        await fillRecursiveEntityTypeFQNDetails(
-          `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}.${storedProcedureDetails.name}`,
-          storedProcedureDetails.entityType,
-          page
-        );
+      await pressKeyXTimes(page, 5, 'ArrowRight');
 
-        await pressKeyXTimes(page, 5, 'ArrowRight');
+      await fillStoredProcedureCode(page);
 
-        await fillStoredProcedureCode(page);
+      // Add 2nd Database Details
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Add 2nd Database Details
-        await page.click('[data-testid="add-row-btn"]');
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      await pressKeyXTimes(page, 19, 'ArrowLeft');
 
-        await pressKeyXTimes(page, 19, 'ArrowLeft');
+      await fillRowDetails(
+        {
+          ...databaseDetails2,
+          owners: [
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
+          ],
+          domains: domain2.responseData,
+        },
+        page
+      );
 
-        await fillRowDetails(
-          {
-            ...databaseDetails2,
-            owners: [
-              user1.responseData?.['displayName'],
-              user2.responseData?.['displayName'],
-            ],
-            domains: domain2.responseData,
-          },
-          page
-        );
+      await fillRecursiveEntityTypeFQNDetails(
+        `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails2.name}`,
+        databaseDetails2.entityType,
+        page
+      );
 
-        await fillRecursiveEntityTypeFQNDetails(
-          `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails2.name}`,
-          databaseDetails2.entityType,
-          page
-        );
+      await page.waitForTimeout(100);
+      await page.getByRole('button', { name: 'Next' }).click();
 
-        await page.waitForTimeout(100);
-        await page.getByRole('button', { name: 'Next' }).click();
+      const loader = page.locator(
+        '.inovua-react-toolkit-load-mask__background-layer'
+      );
 
-        const loader = page.locator(
-          '.inovua-react-toolkit-load-mask__background-layer'
-        );
+      await loader.waitFor({ state: 'hidden' });
 
-        await loader.waitFor({ state: 'hidden' });
+      await validateImportStatus(page, {
+        passed: '7',
+        processed: '7',
+        failed: '0',
+      });
+      const rowStatus = [
+        'Entity created',
+        'Entity created',
+        'Entity created',
+        'Entity updated',
+        'Entity created',
+        'Entity created',
+      ];
 
-        await validateImportStatus(page, {
-          passed: '7',
-          processed: '7',
-          failed: '0',
-        });
-        const rowStatus = [
-          'Entity created',
-          'Entity created',
-          'Entity created',
-          'Entity updated',
-          'Entity created',
-          'Entity created',
-        ];
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
 
-        const updateButtonResponse = page.waitForResponse(
-          `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=true*`
-        );
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await page
-          .locator('.inovua-react-toolkit-load-mask__background-layer')
-          .waitFor({ state: 'detached' });
-
-        await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
-        await toastNotification(page, /details updated successfully/);
-      }
-    );
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
+      await toastNotification(page, /details updated successfully/);
+    });
 
     await dbService.delete(apiContext);
     await afterAction();
@@ -414,183 +410,180 @@ test.describe('Bulk Import Export', () => {
       await performBulkDownload(page, dbEntity.entity.name);
     });
 
-    await test.step(
-      'should import and edit with two additional database schema',
-      async () => {
-        await dbEntity.visitEntityPage(page);
+    await test.step('should import and edit with two additional database schema', async () => {
+      await dbEntity.visitEntityPage(page);
 
-        await page.getByTestId('manage-button').click();
-        await page.waitForSelector(
-          '[data-testid="manage-dropdown-list-container"]',
-          { state: 'visible' }
-        );
-        await page.click('[data-testid="import-button-title"]');
-        const fileInput = await page.$('[type="file"]');
-        await fileInput?.setInputFiles([
-          'downloads/' + dbEntity.entity.name + '.csv',
-        ]);
+      await page.getByTestId('manage-button').click();
+      await page.waitForSelector(
+        '[data-testid="manage-dropdown-list-container"]',
+        { state: 'visible' }
+      );
+      await page.click('[data-testid="import-button-title"]');
+      const fileInput = await page.$('[type="file"]');
+      await fileInput?.setInputFiles([
+        'downloads/' + dbEntity.entity.name + '.csv',
+      ]);
 
-        // Wait for upload widget to be hidden indicating file is loaded
-        await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden',
-        });
+      // Wait for upload widget to be hidden indicating file is loaded
+      await page.waitForSelector('[data-testid="upload-file-widget"]', {
+        state: 'hidden',
+      });
 
-        // Adding some assertion to make sure that CSV loaded correctly
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
-        await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
-        await expect(
-          page.getByRole('button', { name: 'Previous' })
-        ).toBeVisible();
+      // Adding some assertion to make sure that CSV loaded correctly
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
+      await expect(page.getByTestId('add-row-btn')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Previous' })
+      ).toBeVisible();
 
-        await firstTimeGridAddRowAction(page);
+      await firstTimeGridAddRowAction(page);
 
-        await fillRowDetails(
-          {
-            ...databaseSchemaDetails1,
-            owners: [
-              user1.responseData?.['displayName'],
-              user2.responseData?.['displayName'],
-            ],
-            domains: domain1.responseData,
-          },
-          page,
-          customPropertyRecord
-        );
+      await fillRowDetails(
+        {
+          ...databaseSchemaDetails1,
+          owners: [
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
+          ],
+          domains: domain1.responseData,
+        },
+        page,
+        customPropertyRecord
+      );
 
-        await fillRecursiveEntityTypeFQNDetails(
-          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}`,
-          databaseSchemaDetails1.entityType,
-          page
-        );
+      await fillRecursiveEntityTypeFQNDetails(
+        `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}`,
+        databaseSchemaDetails1.entityType,
+        page
+      );
 
-        // Add new row for columns details
-        await page.click('[data-testid="add-row-btn"]');
+      // Add new row for columns details
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await pressKeyXTimes(page, 13, 'ArrowLeft');
 
-        // Fill table and columns details
-        await fillRowDetails(
-          {
-            ...tableDetails1,
-            owners: [
-              user1.responseData?.['displayName'],
-              user2.responseData?.['displayName'],
-            ],
-            domains: domain1.responseData,
-          },
-          page
-        );
+      // Fill table and columns details
+      await fillRowDetails(
+        {
+          ...tableDetails1,
+          owners: [
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
+          ],
+          domains: domain1.responseData,
+        },
+        page
+      );
 
-        await fillRecursiveEntityTypeFQNDetails(
-          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}.${tableDetails1.name}`,
-          tableDetails1.entityType,
-          page
-        );
+      await fillRecursiveEntityTypeFQNDetails(
+        `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}.${tableDetails1.name}`,
+        tableDetails1.entityType,
+        page
+      );
 
-        // Add new row for columns details
-        await page.click('[data-testid="add-row-btn"]');
+      // Add new row for columns details
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await pressKeyXTimes(page, 13, 'ArrowLeft');
 
-        await fillRecursiveColumnDetails(
-          {
-            ...columnDetails1,
-            fullyQualifiedName: `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}.${tableDetails1.name}.${columnDetails1.name}`,
-          },
-          page
-        );
+      await fillRecursiveColumnDetails(
+        {
+          ...columnDetails1,
+          fullyQualifiedName: `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}.${tableDetails1.name}.${columnDetails1.name}`,
+        },
+        page
+      );
 
-        // Add 2nd Schema Details
-        await page.click('[data-testid="add-row-btn"]');
+      // Add 2nd Schema Details
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 17, 'ArrowLeft');
+      await pressKeyXTimes(page, 17, 'ArrowLeft');
 
-        await fillRowDetails(
-          {
-            ...databaseSchemaDetails2,
-            owners: [
-              user1.responseData?.['displayName'],
-              user2.responseData?.['displayName'],
-            ],
-            domains: domain1.responseData,
-          },
-          page
-        );
+      await fillRowDetails(
+        {
+          ...databaseSchemaDetails2,
+          owners: [
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
+          ],
+          domains: domain1.responseData,
+        },
+        page
+      );
 
-        await fillRecursiveEntityTypeFQNDetails(
-          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails2.name}`,
-          databaseSchemaDetails2.entityType,
-          page
-        );
+      await fillRecursiveEntityTypeFQNDetails(
+        `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails2.name}`,
+        databaseSchemaDetails2.entityType,
+        page
+      );
 
-        await page.getByRole('button', { name: 'Next' }).click();
-        await page.waitForSelector('text=Import is in progress.', {
-          state: 'attached',
-        });
-        await page.waitForSelector('text=Import is in progress.', {
-          state: 'detached',
-        });
+      await page.getByRole('button', { name: 'Next' }).click();
+      await page.waitForSelector('text=Import is in progress.', {
+        state: 'attached',
+      });
+      await page.waitForSelector('text=Import is in progress.', {
+        state: 'detached',
+      });
 
-        await validateImportStatus(page, {
-          passed: '13',
-          processed: '13',
-          failed: '0',
-        });
+      await validateImportStatus(page, {
+        passed: '13',
+        processed: '13',
+        failed: '0',
+      });
 
-        await page.waitForSelector('.rdg-header-row', {
-          state: 'visible',
-        });
+      await page.waitForSelector('.rdg-header-row', {
+        state: 'visible',
+      });
 
-        const rowStatus = [
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity created',
-          'Entity created',
-          'Entity updated',
-          'Entity created',
-        ];
+      const rowStatus = [
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity created',
+        'Entity created',
+        'Entity updated',
+        'Entity created',
+      ];
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-        const updateButtonResponse = page.waitForResponse(
-          `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
-        );
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await page
-          .locator('.inovua-react-toolkit-load-mask__background-layer')
-          .waitFor({ state: 'detached' });
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
 
-        await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
-        await toastNotification(page, /details updated successfully/);
-      }
-    );
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
+      await toastNotification(page, /details updated successfully/);
+    });
 
     await dbEntity.delete(apiContext);
     await afterAction();
@@ -619,155 +612,152 @@ test.describe('Bulk Import Export', () => {
       await performBulkDownload(page, dbSchemaEntity.entity.name);
     });
 
-    await test.step(
-      'should import and edit with two additional table',
-      async () => {
-        await dbSchemaEntity.visitEntityPage(page);
+    await test.step('should import and edit with two additional table', async () => {
+      await dbSchemaEntity.visitEntityPage(page);
 
-        await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-title"]');
-        const fileInput = await page.$('[type="file"]');
-        await fileInput?.setInputFiles([
-          'downloads/' + dbSchemaEntity.entity.name + '.csv',
-        ]);
+      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.click('[data-testid="import-button-title"]');
+      const fileInput = await page.$('[type="file"]');
+      await fileInput?.setInputFiles([
+        'downloads/' + dbSchemaEntity.entity.name + '.csv',
+      ]);
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
-        // Wait for upload widget to be hidden indicating file is loaded
-        await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden',
-        });
-        // Adding some assertion to make sure that CSV loaded correctly
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
-        await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
-        await expect(
-          page.getByRole('button', { name: 'Previous' })
-        ).toBeVisible();
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
+      // Wait for upload widget to be hidden indicating file is loaded
+      await page.waitForSelector('[data-testid="upload-file-widget"]', {
+        state: 'hidden',
+      });
+      // Adding some assertion to make sure that CSV loaded correctly
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
+      await expect(page.getByTestId('add-row-btn')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Previous' })
+      ).toBeVisible();
 
-        await firstTimeGridAddRowAction(page);
+      await firstTimeGridAddRowAction(page);
 
-        // First Table Details with one Column
-        await fillRowDetails(
-          {
-            ...tableDetails1,
-            owners: [
-              user1.responseData?.['displayName'],
-              user2.responseData?.['displayName'],
-            ],
-            domains: domain1.responseData,
-          },
-          page,
-          customPropertyRecord
-        );
+      // First Table Details with one Column
+      await fillRowDetails(
+        {
+          ...tableDetails1,
+          owners: [
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
+          ],
+          domains: domain1.responseData,
+        },
+        page,
+        customPropertyRecord
+      );
 
-        await fillRecursiveEntityTypeFQNDetails(
-          `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails1.name}`,
-          tableDetails1.entityType,
-          page
-        );
+      await fillRecursiveEntityTypeFQNDetails(
+        `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails1.name}`,
+        tableDetails1.entityType,
+        page
+      );
 
-        // Add new row for columns details
-        await page.click('[data-testid="add-row-btn"]');
+      // Add new row for columns details
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await pressKeyXTimes(page, 13, 'ArrowLeft');
 
-        // Fill table columns details
-        await fillRecursiveColumnDetails(
-          {
-            ...columnDetails1,
-            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails1.name}.${columnDetails1.name}`,
-          },
-          page
-        );
+      // Fill table columns details
+      await fillRecursiveColumnDetails(
+        {
+          ...columnDetails1,
+          fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails1.name}.${columnDetails1.name}`,
+        },
+        page
+      );
 
-        // Add new row for table details
-        await page.click('[data-testid="add-row-btn"]');
+      // Add new row for table details
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 17, 'ArrowLeft');
+      await pressKeyXTimes(page, 17, 'ArrowLeft');
 
-        await fillRowDetails(
-          {
-            ...tableDetails2,
-            owners: [
-              user1.responseData?.['displayName'],
-              user2.responseData?.['displayName'],
-            ],
-            domains: domain1.responseData,
-          },
-          page,
-          customPropertyRecord
-        );
+      await fillRowDetails(
+        {
+          ...tableDetails2,
+          owners: [
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
+          ],
+          domains: domain1.responseData,
+        },
+        page,
+        customPropertyRecord
+      );
 
-        await fillRecursiveEntityTypeFQNDetails(
-          `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}`,
-          tableDetails2.entityType,
-          page
-        );
+      await fillRecursiveEntityTypeFQNDetails(
+        `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}`,
+        tableDetails2.entityType,
+        page
+      );
 
-        // Add new row for columns details
-        await page.click('[data-testid="add-row-btn"]');
+      // Add new row for columns details
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await pressKeyXTimes(page, 13, 'ArrowLeft');
 
-        // fill second table columns details
-        await fillRecursiveColumnDetails(
-          {
-            ...columnDetails2,
-            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}.${columnDetails2.name}`,
-          },
-          page
-        );
+      // fill second table columns details
+      await fillRecursiveColumnDetails(
+        {
+          ...columnDetails2,
+          fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}.${columnDetails2.name}`,
+        },
+        page
+      );
 
-        await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Next' }).click();
 
-        await validateImportStatus(page, {
-          passed: '5',
-          processed: '5',
-          failed: '0',
-        });
+      await validateImportStatus(page, {
+        passed: '5',
+        processed: '5',
+        failed: '0',
+      });
 
-        const rowStatus = [
-          'Entity created',
-          'Entity updated',
-          'Entity created',
-          'Entity updated',
-        ];
+      const rowStatus = [
+        'Entity created',
+        'Entity updated',
+        'Entity created',
+        'Entity updated',
+      ];
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-        const updateButtonResponse = page.waitForResponse(
-          `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
-        );
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await page
-          .locator('.inovua-react-toolkit-load-mask__background-layer')
-          .waitFor({ state: 'detached' });
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
 
-        await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
-        await toastNotification(page, /details updated successfully/);
-      }
-    );
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
+      await toastNotification(page, /details updated successfully/);
+    });
 
     await dbSchemaEntity.delete(apiContext);
     await afterAction();
@@ -786,76 +776,73 @@ test.describe('Bulk Import Export', () => {
       await performBulkDownload(page, tableEntity.entity.name);
     });
 
-    await test.step(
-      'should import and edit with two additional columns',
-      async () => {
-        await tableEntity.visitEntityPage(page);
-        await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="import-button-title"]');
-        const fileInput = await page.$('[type="file"]');
-        await fileInput?.setInputFiles([
-          'downloads/' + tableEntity.entity.name + '.csv',
-        ]);
+    await test.step('should import and edit with two additional columns', async () => {
+      await tableEntity.visitEntityPage(page);
+      await page.click('[data-testid="manage-button"]');
+      await page.click('[data-testid="import-button-title"]');
+      const fileInput = await page.$('[type="file"]');
+      await fileInput?.setInputFiles([
+        'downloads/' + tableEntity.entity.name + '.csv',
+      ]);
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
-        // Wait for upload widget to be hidden indicating file is loaded
-        await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden',
-        });
-        // Adding some assertion to make sure that CSV loaded correctly
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
-        await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
-        await expect(
-          page.getByRole('button', { name: 'Previous' })
-        ).toBeVisible();
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
+      // Wait for upload widget to be hidden indicating file is loaded
+      await page.waitForSelector('[data-testid="upload-file-widget"]', {
+        state: 'hidden',
+      });
+      // Adding some assertion to make sure that CSV loaded correctly
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
+      await expect(page.getByTestId('add-row-btn')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Previous' })
+      ).toBeVisible();
 
-        await firstTimeGridAddRowAction(page);
+      await firstTimeGridAddRowAction(page);
 
-        // Click on first cell and edit
-        await fillColumnDetails(columnDetails1, page);
+      // Click on first cell and edit
+      await fillColumnDetails(columnDetails1, page);
 
-        await page.click('[data-testid="add-row-btn"]');
+      await page.click('[data-testid="add-row-btn"]');
 
-        // Reverse traves to first cell to fill the details
-        await page.click(RDG_ACTIVE_CELL_SELECTOR);
-        await page
-          .locator(RDG_ACTIVE_CELL_SELECTOR)
-          .press('ArrowDown', { delay: 100 });
+      // Reverse traves to first cell to fill the details
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
+      await page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 9, 'ArrowLeft');
+      await pressKeyXTimes(page, 9, 'ArrowLeft');
 
-        await fillColumnDetails(columnDetails2, page);
+      await fillColumnDetails(columnDetails2, page);
 
-        await page.getByRole('button', { name: 'Next' }).click();
-        // total column count +1 for header row and +2 for newly added columns
-        const count = `${tableEntity.entityLinkColumnsName.length + 3}`;
-        await validateImportStatus(page, {
-          passed: count,
-          processed: count,
-          failed: '0',
-        });
+      await page.getByRole('button', { name: 'Next' }).click();
+      // total column count +1 for header row and +2 for newly added columns
+      const count = `${tableEntity.entityLinkColumnsName.length + 3}`;
+      await validateImportStatus(page, {
+        passed: count,
+        processed: count,
+        failed: '0',
+      });
 
-        // total column count +2 for newly added columns
-        const rowStatus = Array(
-          tableEntity.entityLinkColumnsName.length + 2
-        ).fill('Entity updated');
+      // total column count +2 for newly added columns
+      const rowStatus = Array(
+        tableEntity.entityLinkColumnsName.length + 2
+      ).fill('Entity updated');
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-        const updateButtonResponse = page.waitForResponse(
-          `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=true*`
-        );
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
 
-        await page.click('[type="button"] >> text="Update"', { force: true });
-        await updateButtonResponse;
-        await page
-          .locator('.inovua-react-toolkit-load-mask__background-layer')
-          .waitFor({ state: 'detached' });
-        await toastNotification(page, /details updated successfully/);
-      }
-    );
+      await page.click('[type="button"] >> text="Update"', { force: true });
+      await updateButtonResponse;
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+      await toastNotification(page, /details updated successfully/);
+    });
 
     await afterAction();
   });
@@ -873,94 +860,88 @@ test.describe('Bulk Import Export', () => {
       await performBulkDownload(page, dbEntity.entity.name);
     });
 
-    await test.step(
-      'should import and perform edit operation on entity',
-      async () => {
-        await dbEntity.visitEntityPage(page);
+    await test.step('should import and perform edit operation on entity', async () => {
+      await dbEntity.visitEntityPage(page);
 
-        await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-title"]');
-        const fileInput = await page.$('[type="file"]');
-        await fileInput?.setInputFiles([
-          'downloads/' + dbEntity.entity.name + '.csv',
-        ]);
+      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.click('[data-testid="import-button-title"]');
+      const fileInput = await page.$('[type="file"]');
+      await fileInput?.setInputFiles([
+        'downloads/' + dbEntity.entity.name + '.csv',
+      ]);
 
-        await page.waitForSelector('[data-testid="add-row-btn"]', {
-          state: 'visible',
-        });
+      await page.waitForSelector('[data-testid="add-row-btn"]', {
+        state: 'visible',
+      });
 
-        // Adding some assertion to make sure that CSV loaded correctly
-        await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
-        await expect(
-          page.getByRole('button', { name: 'Previous' })
-        ).toBeVisible();
+      // Adding some assertion to make sure that CSV loaded correctly
+      await expect(page.getByTestId('add-row-btn')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Previous' })
+      ).toBeVisible();
 
-        // Click on first cell and edit
-        await page.click('.rdg-cell[role="gridcell"]');
-        await fillRowDetails(
-          {
-            ...databaseDetails1,
-            owners: [
-              user1.responseData?.['displayName'],
-              user2.responseData?.['displayName'],
-            ],
-            domains: domain1.responseData,
-          },
-          page,
-          undefined,
-          true
-        );
+      // Click on first cell and edit
+      await page.click('.rdg-cell[role="gridcell"]');
+      await fillRowDetails(
+        {
+          ...databaseDetails1,
+          owners: [
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
+          ],
+          domains: domain1.responseData,
+        },
+        page,
+        undefined,
+        true
+      );
 
-        await fillRecursiveEntityTypeFQNDetails(
-          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}`,
-          databaseSchemaDetails1.entityType,
-          page
-        );
+      await fillRecursiveEntityTypeFQNDetails(
+        `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}`,
+        databaseSchemaDetails1.entityType,
+        page
+      );
 
-        await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Next' }).click();
 
-        await validateImportStatus(page, {
-          passed: '9',
-          processed: '9',
-          failed: '0',
-        });
+      await validateImportStatus(page, {
+        passed: '9',
+        processed: '9',
+        failed: '0',
+      });
 
-        const rowStatus = [
-          'Entity created',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-        ];
+      const rowStatus = [
+        'Entity created',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+      ];
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-        const updateButtonResponse = page.waitForResponse(
-          `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
-        );
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await page
-          .locator('.inovua-react-toolkit-load-mask__background-layer')
-          .waitFor({ state: 'detached' });
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
 
-        await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
-        await toastNotification(page, /details updated successfully/);
-      }
-    );
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
+      await toastNotification(page, /details updated successfully/);
+    });
 
-    await test.step(
-      'should export data database schema details after edit changes',
-      async () => {
-        await dbEntity.visitEntityPage(page);
-        await performBulkDownload(page, `${dbEntity.entity.name}-delete`);
-      }
-    );
+    await test.step('should export data database schema details after edit changes', async () => {
+      await dbEntity.visitEntityPage(page);
+      await performBulkDownload(page, `${dbEntity.entity.name}-delete`);
+    });
 
     await test.step('Perform Column Select and Delete Operation', async () => {
       await page.click('[data-testid="manage-button"] > .anticon');
@@ -1094,53 +1075,43 @@ test.describe('Bulk Import Export', () => {
       await expect(page.locator('.rdg-row')).toHaveCount(8);
       await expect(page.locator('.rdg-cell')).toHaveCount(54); // this also includes header cells
 
-      await test.step(
-        'Ctrl+a should select all cells in the grid and deselect all cells by clicking on second cell of .rdg-row',
-        async () => {
-          await page.keyboard.press('Control+A');
+      await test.step('Ctrl+a should select all cells in the grid and deselect all cells by clicking on second cell of .rdg-row', async () => {
+        await page.keyboard.press('Control+A');
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-            48
-          );
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+          48
+        );
 
-          // Deselect all the cells by clicking on second cell of .rdg-row
-          const firstRow = page.locator('.rdg-row').first();
-          const firstCell = firstRow.locator('.rdg-cell').nth(1);
-          const secondCell = firstRow.locator('.rdg-cell').nth(1);
-          secondCell.click();
+        // Deselect all the cells by clicking on second cell of .rdg-row
+        const firstRow = page.locator('.rdg-row').first();
+        const firstCell = firstRow.locator('.rdg-cell').nth(1);
+        const secondCell = firstRow.locator('.rdg-cell').nth(1);
+        secondCell.click();
 
-          expect(firstCell).not.toBeFocused();
-          expect(secondCell).toBeFocused();
+        expect(firstCell).not.toBeFocused();
+        expect(secondCell).toBeFocused();
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-            0
-          );
-        }
-      );
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(0);
+      });
 
-      await test.step(
-        'should select all the cells in the column by clicking on column header',
-        async () => {
-          const firstHeaderCell = await page
-            .locator('.rdg-header-row')
-            .first()
-            .locator('.rdg-cell')
-            .first();
+      await test.step('should select all the cells in the column by clicking on column header', async () => {
+        const firstHeaderCell = await page
+          .locator('.rdg-header-row')
+          .first()
+          .locator('.rdg-cell')
+          .first();
 
-          const firstRow = page.locator('.rdg-row').first();
-          const firstCell = firstRow.locator('.rdg-cell').nth(1);
+        const firstRow = page.locator('.rdg-row').first();
+        const firstCell = firstRow.locator('.rdg-cell').nth(1);
 
-          await firstHeaderCell.click();
+        await firstHeaderCell.click();
 
-          await expect(firstCell).not.toBeFocused();
+        await expect(firstCell).not.toBeFocused();
 
-          await expect(firstHeaderCell).toBeFocused();
+        await expect(firstHeaderCell).toBeFocused();
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-            8
-          );
-        }
-      );
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
+      });
 
       await test.step('allow multiple column selection', async () => {
         const headerRow = page.locator('.rdg-header-row');
@@ -1176,176 +1147,158 @@ test.describe('Bulk Import Export', () => {
         );
       });
 
-      await test.step(
-        'allow multiple column selection using keyboard',
-        async () => {
-          // click first cell of first row
-          const firstRow = page.locator('.rdg-row').first();
-          const firstCell = firstRow.locator('.rdg-cell').first();
-          await firstCell.click();
+      await test.step('allow multiple column selection using keyboard', async () => {
+        // click first cell of first row
+        const firstRow = page.locator('.rdg-row').first();
+        const firstCell = firstRow.locator('.rdg-cell').first();
+        await firstCell.click();
 
-          // Press arrow up to go to header row
-          await page.keyboard.press('ArrowUp');
-          // press arrow right 3 times
-          await page.keyboard.press('Shift+ArrowRight');
-          await page.keyboard.press('Shift+ArrowRight');
+        // Press arrow up to go to header row
+        await page.keyboard.press('ArrowUp');
+        // press arrow right 3 times
+        await page.keyboard.press('Shift+ArrowRight');
+        await page.keyboard.press('Shift+ArrowRight');
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-            24
-          );
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+          24
+        );
+      });
+
+      await test.step('allow multiple cell selection using mouse on rightDown and leftUp and extend selection using shift+click', async () => {
+        // click first cell of first row
+        const firstRow = page.locator('.rdg-row').first();
+        const fourthRow = page.locator('.rdg-row').nth(3);
+        const sixthRow = page.locator('.rdg-row').nth(5);
+
+        const firstCellFirstRow = firstRow.locator('.rdg-cell').first();
+        const secondCellFourthRow = fourthRow.locator('.rdg-cell').nth(1);
+        const fifthCellSixthRow = sixthRow.locator('.rdg-cell').nth(4);
+
+        await secondCellFourthRow.click();
+
+        await expect(secondCellFourthRow).toBeFocused();
+
+        const startBox = await secondCellFourthRow.boundingBox();
+        const endBoxRightBottom = await fifthCellSixthRow.boundingBox();
+        const endBoxLeftUp = await firstCellFirstRow.boundingBox();
+
+        if (!startBox || !endBoxRightBottom || !endBoxLeftUp) {
+          throw new Error('Failed to get bounding boxes');
         }
-      );
 
-      await test.step(
-        'allow multiple cell selection using mouse on rightDown and leftUp and extend selection using shift+click',
-        async () => {
-          // click first cell of first row
-          const firstRow = page.locator('.rdg-row').first();
-          const fourthRow = page.locator('.rdg-row').nth(3);
-          const sixthRow = page.locator('.rdg-row').nth(5);
+        const startX = startBox.x + startBox.width / 2;
+        const startY = startBox.y + startBox.height / 2;
+        const endXRightBottom =
+          endBoxRightBottom.x + endBoxRightBottom.width / 2;
+        const endYRightBottom =
+          endBoxRightBottom.y + endBoxRightBottom.height / 2;
+        const endXLeftUp = endBoxLeftUp.x + endBoxLeftUp.width / 2;
+        const endYLeftUp = endBoxLeftUp.y + endBoxLeftUp.height / 2;
 
-          const firstCellFirstRow = firstRow.locator('.rdg-cell').first();
-          const secondCellFourthRow = fourthRow.locator('.rdg-cell').nth(1);
-          const fifthCellSixthRow = sixthRow.locator('.rdg-cell').nth(4);
+        const mouse = page.mouse;
 
-          await secondCellFourthRow.click();
+        // Simulate drag from col 2 to col 4
+        await mouse.move(startX, startY);
+        await mouse.down();
 
-          await expect(secondCellFourthRow).toBeFocused();
+        await mouse.move(endXRightBottom, endYRightBottom, { steps: 10 }); // Smooth drag
 
-          const startBox = await secondCellFourthRow.boundingBox();
-          const endBoxRightBottom = await fifthCellSixthRow.boundingBox();
-          const endBoxLeftUp = await firstCellFirstRow.boundingBox();
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+          12
+        );
 
-          if (!startBox || !endBoxRightBottom || !endBoxLeftUp) {
-            throw new Error('Failed to get bounding boxes');
-          }
+        await mouse.move(endXLeftUp, endYLeftUp, { steps: 10 }); // Smooth drag
+        await mouse.up();
 
-          const startX = startBox.x + startBox.width / 2;
-          const startY = startBox.y + startBox.height / 2;
-          const endXRightBottom =
-            endBoxRightBottom.x + endBoxRightBottom.width / 2;
-          const endYRightBottom =
-            endBoxRightBottom.y + endBoxRightBottom.height / 2;
-          const endXLeftUp = endBoxLeftUp.x + endBoxLeftUp.width / 2;
-          const endYLeftUp = endBoxLeftUp.y + endBoxLeftUp.height / 2;
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
 
-          const mouse = page.mouse;
+        // Hold shift and click on fifthCellSixthRow
+        await page.keyboard.down('Shift');
+        await fifthCellSixthRow.click();
+        await page.keyboard.up('Shift');
 
-          // Simulate drag from col 2 to col 4
-          await mouse.move(startX, startY);
-          await mouse.down();
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+          12
+        );
 
-          await mouse.move(endXRightBottom, endYRightBottom, { steps: 10 }); // Smooth drag
+        // Hold shift and click on firstCellFirstRow
+        await page.keyboard.down('Shift');
+        await firstCellFirstRow.click();
+        await page.keyboard.up('Shift');
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-            12
-          );
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
+      });
 
-          await mouse.move(endXLeftUp, endYLeftUp, { steps: 10 }); // Smooth drag
-          await mouse.up();
+      await test.step('allow multiple cell selection using keyboard on rightDown and leftUp', async () => {
+        // click first cell of first row
+        const firstRow = page.locator('.rdg-row').first();
+        const firstCell = firstRow.locator('.rdg-cell').first();
+        await firstCell.click();
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-            8
-          );
+        // navigate to 4th row, second cell
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('ArrowDown');
 
-          // Hold shift and click on fifthCellSixthRow
-          await page.keyboard.down('Shift');
-          await fifthCellSixthRow.click();
-          await page.keyboard.up('Shift');
+        await page.keyboard.press('Shift+ArrowDown');
+        await page.keyboard.press('Shift+ArrowDown');
+        await page.keyboard.press('Shift+ArrowRight');
+        await page.keyboard.press('Shift+ArrowRight');
+        await page.keyboard.press('Shift+ArrowRight');
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-            12
-          );
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+          12
+        );
 
-          // Hold shift and click on firstCellFirstRow
-          await page.keyboard.down('Shift');
-          await firstCellFirstRow.click();
-          await page.keyboard.up('Shift');
+        // Select left up cells
+        await page.keyboard.press('Shift+ArrowUp');
+        await page.keyboard.press('Shift+ArrowUp');
+        await page.keyboard.press('Shift+ArrowUp');
+        await page.keyboard.press('Shift+ArrowUp');
+        await page.keyboard.press('Shift+ArrowUp');
+        await page.keyboard.press('Shift+ArrowLeft');
+        await page.keyboard.press('Shift+ArrowLeft');
+        await page.keyboard.press('Shift+ArrowLeft');
+        await page.keyboard.press('Shift+ArrowLeft');
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-            8
-          );
-        }
-      );
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
+      });
 
-      await test.step(
-        'allow multiple cell selection using keyboard on rightDown and leftUp',
-        async () => {
-          // click first cell of first row
-          const firstRow = page.locator('.rdg-row').first();
-          const firstCell = firstRow.locator('.rdg-cell').first();
-          await firstCell.click();
+      await test.step('perform single cell copy-paste and undo-redo', async () => {
+        // click first cell of first row
+        const firstRow = page.locator('.rdg-row').first();
+        const firstCell = firstRow.locator('.rdg-cell').first();
+        const secondCell = firstRow.locator('.rdg-cell').nth(1);
+        await firstCell.click();
 
-          // navigate to 4th row, second cell
-          await page.keyboard.press('ArrowRight');
-          await page.keyboard.press('ArrowDown');
-          await page.keyboard.press('ArrowDown');
-          await page.keyboard.press('ArrowDown');
+        // copy the cell
+        await page.keyboard.press('Control+C');
 
-          await page.keyboard.press('Shift+ArrowDown');
-          await page.keyboard.press('Shift+ArrowDown');
-          await page.keyboard.press('Shift+ArrowRight');
-          await page.keyboard.press('Shift+ArrowRight');
-          await page.keyboard.press('Shift+ArrowRight');
+        // move to next right cell
+        await page.keyboard.press('ArrowRight');
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-            12
-          );
+        // paste the cell
+        await page.keyboard.press('Control+V');
 
-          // Select left up cells
-          await page.keyboard.press('Shift+ArrowUp');
-          await page.keyboard.press('Shift+ArrowUp');
-          await page.keyboard.press('Shift+ArrowUp');
-          await page.keyboard.press('Shift+ArrowUp');
-          await page.keyboard.press('Shift+ArrowUp');
-          await page.keyboard.press('Shift+ArrowLeft');
-          await page.keyboard.press('Shift+ArrowLeft');
-          await page.keyboard.press('Shift+ArrowLeft');
-          await page.keyboard.press('Shift+ArrowLeft');
+        // second cell should have text equal to first cell text
+        await expect(secondCell).toHaveText(
+          (await firstCell.textContent()) || ''
+        );
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-            8
-          );
-        }
-      );
+        // undo the action
+        await page.keyboard.press('Control+Z');
 
-      await test.step(
-        'perform single cell copy-paste and undo-redo',
-        async () => {
-          // click first cell of first row
-          const firstRow = page.locator('.rdg-row').first();
-          const firstCell = firstRow.locator('.rdg-cell').first();
-          const secondCell = firstRow.locator('.rdg-cell').nth(1);
-          await firstCell.click();
+        await expect(secondCell).toHaveText('');
 
-          // copy the cell
-          await page.keyboard.press('Control+C');
+        // redo the action
+        await page.keyboard.press('Control+Y');
 
-          // move to next right cell
-          await page.keyboard.press('ArrowRight');
-
-          // paste the cell
-          await page.keyboard.press('Control+V');
-
-          // second cell should have text equal to first cell text
-          await expect(secondCell).toHaveText(
-            (await firstCell.textContent()) || ''
-          );
-
-          // undo the action
-          await page.keyboard.press('Control+Z');
-
-          await expect(secondCell).toHaveText('');
-
-          // redo the action
-          await page.keyboard.press('Control+Y');
-
-          // second cell should have text equal to first cell text
-          await expect(secondCell).toHaveText(
-            (await firstCell.textContent()) || ''
-          );
-        }
-      );
+        // second cell should have text equal to first cell text
+        await expect(secondCell).toHaveText(
+          (await firstCell.textContent()) || ''
+        );
+      });
 
       await test.step('Select range, copy-paste and undo-redo', async () => {
         // click on first cell to focus

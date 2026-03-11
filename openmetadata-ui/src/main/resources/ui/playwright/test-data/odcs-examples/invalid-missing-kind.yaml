@@ -11,5 +11,5 @@
 apiVersion: v3.1.0
 id: missing-kind
 name: Missing Kind Contract
-version: "1.0.0"
+version: '1.0.0'
 status: active

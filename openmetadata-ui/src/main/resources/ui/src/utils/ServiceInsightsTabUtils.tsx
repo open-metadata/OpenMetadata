@@ -57,6 +57,7 @@ export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
         EntityType.DATABASE_SCHEMA,
         EntityType.STORED_PROCEDURE,
         EntityType.TABLE,
+        EntityType.TABLE_COLUMN,
         EntityType.QUERY,
       ];
     case 'messagingServices':

@@ -332,7 +332,7 @@ EXPECTED_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_RESULT = [
     },
     {
         "database": "my-gcp-project",
-        "schema": "my-gcp-project.DW_Main",
+        "schema": "DW_Main",
         "table": "View_Dim_Entities",
     },
 ]
@@ -498,6 +498,32 @@ MOCK_DATAFLOW_EXPORT_EMPTY_DOC = DataflowExportResponse(
     entities=[],
     **{"pbi:mashup": DataflowMashup(document="", queriesMetadata={})},
 )
+MOCK_BIGQUERY_NATIVE_QUERY_FQN_BACKTICK_EXP = (
+    "let\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="payoneer-prod-eu-svc-data-016f"])'
+    '{[Name="payoneer-prod-eu-svc-data-016f"]}[Data], '
+    '"SELECT e.Master_Account_Holder_ID, e.Entity_ID#(lf)'
+    "FROM `payoneer-prod-eu-svc-data-016f.DW_Main.View_Dim_Entities` e#(lf)"
+    "JOIN `payoneer-prod-eu-svc-data-016f.DW_Main.View_Dim_Master_Accounts` m "
+    'ON e.Master_Account_Holder_ID = m.Master_Account_Holder_ID", '
+    "null, [EnableFolding=true])\n"
+    "in\n"
+    "    Source"
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_FQN_BACKTICK_RESULT = [
+    {
+        "database": "payoneer-prod-eu-svc-data-016f",
+        "schema": "DW_Main",
+        "table": "View_Dim_Entities",
+    },
+    {
+        "database": "payoneer-prod-eu-svc-data-016f",
+        "schema": "DW_Main",
+        "table": "View_Dim_Master_Accounts",
+    },
+]
 
 mock_config = {
     "source": {
@@ -804,6 +830,16 @@ class PowerBIUnitTest(TestCase):
             table,
         )
         self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_RESULT)
+
+        # Test with BigQuery NativeQuery using fully-qualified backtick-quoted tables
+        # e.g. `project.dataset.table` — parser returns "project.dataset" as schema,
+        # which must be split into database and schema
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_FQN_BACKTICK_EXP,
+            MOCK_DASHBOARD_DATA_MODEL,
+            table,
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_FQN_BACKTICK_RESULT)
 
     @pytest.mark.order(2)
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_reference_by_email")

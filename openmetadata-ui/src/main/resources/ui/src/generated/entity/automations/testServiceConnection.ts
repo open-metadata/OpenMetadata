@@ -215,6 +215,9 @@ export interface TestServiceConnectionConnection {
  *
  * Hex Connection Config
  *
+ * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
+ * create, deploy, and manage paginated reports
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -509,6 +512,8 @@ export interface ConfigObject {
      *
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
+     * Host and Port of the Ssrs instance.
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -609,6 +614,12 @@ export interface ConfigObject {
      */
     usageLocation?: string;
     awsConfig?:     AWSCredentials;
+    /**
+     * Catalog ID for Athena. For S3 Tables, use the format 's3tablescatalog/<bucket-name>'. For
+     * cross-account Glue catalogs, use the AWS account ID. If not provided, defaults to the
+     * caller's AWS account.
+     */
+    catalogId?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -754,6 +765,8 @@ export interface ConfigObject {
      *
      * Password to connect to MicroStrategy.
      *
+     * Password to connect to Ssrs.
+     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -871,6 +884,8 @@ export interface ConfigObject {
      *
      * Username to connect to MicroStrategy. This user should have privileges to read all the
      * metadata in MicroStrategy.
+     *
+     * Username to connect to Ssrs.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -1346,6 +1361,8 @@ export interface ConfigObject {
     /**
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
+     * Client SSL verification.
+     *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
      *
@@ -1416,6 +1433,8 @@ export interface ConfigObject {
     realmName?: string;
     /**
      * Regex exclude or include charts that matches the pattern.
+     *
+     * Regex to exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
     /**
@@ -2139,6 +2158,8 @@ export interface UsernamePasswordAuthentication {
  * Regex exclude or include data models that matches the pattern.
  *
  * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to exclude or include charts that matches the pattern.
  *
  * Regex to only fetch topics that matches the pattern.
  *
@@ -3753,6 +3774,8 @@ export enum ConnectionType {
 /**
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
+ * Client SSL verification.
+ *
  * Flag to verify SSL Certificate for OpenMetadata Server.
  */
 export enum VerifySSL {
@@ -4732,6 +4755,7 @@ export enum ConfigType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    Ssrs = "Ssrs",
     StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Avatar, CircularProgress, SxProps, Theme } from '@mui/material';
+import { Avatar, SxProps, Theme } from '@mui/material';
 import { useMemo } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -19,6 +19,7 @@ import { User } from '../../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import { getRandomColor } from '../../../../utils/CommonUtils';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
+import Loader from '../../Loader/Loader';
 
 type UserData = Pick<User, 'name' | 'displayName'>;
 
@@ -79,11 +80,9 @@ const ProfilePicture = ({
   if (isPicLoading) {
     return (
       <Avatar sx={getAvatarStyles()}>
-        <CircularProgress
-          size={size * 0.6}
-          sx={{
-            color: avatarType === 'solid' ? '#fff' : color,
-          }}
+        <Loader
+          size={size >= 24 ? 'small' : 'x-small'}
+          type={avatarType === 'solid' ? 'white' : 'default'}
         />
       </Avatar>
     );

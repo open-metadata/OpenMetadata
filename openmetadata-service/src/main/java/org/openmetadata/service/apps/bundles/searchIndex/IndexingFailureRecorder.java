@@ -207,6 +207,7 @@ public class IndexingFailureRecorder implements AutoCloseable {
     if (closed) {
       return;
     }
+    LOG.info("Closing failure recorder for job {} (buffered={})", jobId, buffer.size());
     closed = true;
     flush();
   }

@@ -58,8 +58,10 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const AddIngestionPage = () => {
   const { fetchAirflowStatus } = useAirflowStatus();
-  const { ingestionType, serviceCategory } =
-    useRequiredParams<{ ingestionType: string; serviceCategory: string }>();
+  const { ingestionType, serviceCategory } = useRequiredParams<{
+    ingestionType: string;
+    serviceCategory: string;
+  }>();
   const { fqn: serviceFQN } = useFqn();
   const { t } = useTranslation();
   const navigate = useNavigate();

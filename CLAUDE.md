@@ -9,7 +9,7 @@ OpenMetadata is a unified metadata platform for data discovery, data observabili
 ## Architecture Overview
 
 - **Backend**: Java 21 + Dropwizard REST API framework, multi-module Maven project
-- **Frontend**: React + TypeScript + Ant Design, built with Webpack and Yarn
+- **Frontend**: React + TypeScript, built with Webpack and Yarn; component library via `openmetadata-ui-core-components` (Tailwind CSS v4 with `tw:` prefix, react-aria-components foundation)
 - **Ingestion**: Python 3.10-3.12 with Pydantic 2.x, 75+ data source connectors
 - **Database**: MySQL (default) or PostgreSQL with Flyway migrations
 - **Search**: Elasticsearch 7.17+ or OpenSearch 2.6+ for metadata discovery
@@ -102,7 +102,7 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 1. **Schema Changes**: Modify JSON schemas in `openmetadata-spec/`, then run `mvn clean install` on openmetadata-spec to update models
 2. **Backend**: Develop in Java using Dropwizard patterns, test with `mvn test`, format with `mvn spotless:apply`
-3. **Frontend**: Use React/TypeScript with Ant Design components, test with Jest/Playwright
+3. **Frontend**: Use React/TypeScript with components from `openmetadata-ui-core-components`, test with Jest/Playwright
 4. **Ingestion**: Python connectors follow plugin pattern, use `make install_dev_env` for development
 5. **Full Testing**: Use `make run_e2e_tests` before major changes
 
@@ -129,16 +129,21 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Styling
 
-- **MUI Migration**: The project is gradually migrating from Ant Design to Material-UI (MUI) v7.3.1
-- **Preferred Approach**: Use MUI components v7.3.1 and styles wherever possible for new features
-- **Theme and Styles**: MUI theme data and styles are defined in `openmetadata-ui-core-components`
-- **Colors and Design Tokens**: Always reference theme colors and design tokens from the MUI theme, not hardcoded values
-- **Legacy Components**: Ant Design components remain in existing code but should be replaced with MUI equivalents when refactoring
+- **Component Library**: Use components from `openmetadata-ui-core-components` for all new UI work. This is the canonical component library — do not use MUI or introduce new MUI dependencies.
+- **Available Components**: Button, Input, Select, Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle, Slider, Textarea, Tags, and more — all in `openmetadata-ui-core-components/src/main/resources/ui/src/components/`
+- **Tailwind Classes**: All Tailwind utility classes must use the `tw:` prefix (e.g., `tw:flex`, `tw:text-sm`, `tw:bg-blue-500`) to avoid conflicts with existing Ant Design/Less styles
+- **Design Tokens**: Use CSS custom properties defined in `openmetadata-ui-core-components/src/main/resources/ui/src/styles/globals.css`. Never use hardcoded color or spacing values. Semantic tokens include:
+  - Text: `--color-text-primary`, `--color-text-secondary`, `--color-text-tertiary`, `--color-text-error-primary`, etc.
+  - Border: `--color-border-primary`, `--color-border-secondary`, `--color-border-error`, `--color-border-brand`, etc.
+  - Background: `--color-bg-primary`, `--color-bg-secondary`, `--color-bg-error-primary`, `--color-bg-brand-solid`, etc.
+  - Shadows: `--shadow-xs` through `--shadow-3xl`
+  - Border radius: `--radius-none` through `--radius-full`
+- **MUI**: Do not use MUI — we are actively removing MUI from the codebase. Do not import from `@mui/*` or `@emotion/*`
+- **Legacy**: Ant Design components remain in existing code but should be replaced with `openmetadata-ui-core-components` equivalents when refactoring
 - Do not add unnecessary spacing between logs and code.
 - In Java, avoid wildcards imports (e.g., use `import java.util.List;` instead of `import java.util.*;`)
-- Custom styles in `.less` files with component-specific naming (legacy pattern)
-- Follow BEM naming convention for custom CSS classes
-- Use CSS modules where appropriate
+- Custom styles in `.less` files with component-specific naming (legacy pattern, avoid for new code)
+- Follow BEM naming convention for custom CSS classes when writing raw CSS
 
 ### UI considerations
 

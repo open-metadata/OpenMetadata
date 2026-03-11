@@ -13,6 +13,7 @@ import static org.openmetadata.service.util.TestUtils.assertFieldExists;
 
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -144,7 +145,9 @@ class OpenSearchRBACConditionEvaluatorTest {
         "must_not for hasDomain");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.must[?(@.nested.query.term['owners.id'].value=='"
+            + mockUser.getId().toString()
+            + "')]",
         "owner.id");
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
   }
@@ -222,6 +225,8 @@ class OpenSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -275,6 +280,8 @@ class OpenSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
@@ -316,6 +323,8 @@ class OpenSearchRBACConditionEvaluatorTest {
       SearchRepository mockSearchRepository = mock(SearchRepository.class);
       when(mockSearchRepository.getIndexOrAliasName(anyString()))
           .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      when(mockSearchRepository.getChildIndexAliases(anyString()))
+          .thenReturn(Collections.emptyList());
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
 
       OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);

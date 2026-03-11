@@ -14,6 +14,7 @@
 package org.openmetadata.service.search;
 
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.TABLE_COLUMN;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,11 +52,9 @@ public class QueryFilterBuilder {
     addHierarchyCondition(mustArray, query.getFieldPath(), query.getFieldValue());
     addCommonFilters(mustArray, query);
 
-    // Exclude data products from domain assets
+    // Exclude data products and columns from domain assets
     ArrayNode mustNotArray = boolNode.putArray(MUST_NOT_KEY);
-    ObjectNode dataProductNode = MAPPER.createObjectNode();
-    dataProductNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, DATA_PRODUCT);
-    mustNotArray.add(dataProductNode);
+    addEntityTypeExclusions(mustNotArray);
 
     return serializeQuery(queryFilter);
   }
@@ -71,11 +70,9 @@ public class QueryFilterBuilder {
     existsNode.putObject("exists").put("field", fieldPath);
     mustArray.add(existsNode);
 
-    // Exclude data products from domain assets
+    // Exclude data products and columns from domain assets
     ArrayNode mustNotArray = boolNode.putArray(MUST_NOT_KEY);
-    ObjectNode dataProductNode = MAPPER.createObjectNode();
-    dataProductNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, DATA_PRODUCT);
-    mustNotArray.add(dataProductNode);
+    addEntityTypeExclusions(mustNotArray);
 
     return serializeQuery(queryFilter);
   }
@@ -87,14 +84,16 @@ public class QueryFilterBuilder {
     ArrayNode mustArray = boolNode.putArray(MUST_KEY);
 
     // Filter to only include assets owned by teams (not users)
-    ObjectNode ownerTypeNode = MAPPER.createObjectNode();
-    ownerTypeNode.putObject(TERM_KEY).put("owners.type", "team");
-    mustArray.add(ownerTypeNode);
+    addNestedTermCondition(mustArray, "owners", "owners.type", "team");
 
     // Exclude deleted assets
     ObjectNode deletedNode = MAPPER.createObjectNode();
     deletedNode.putObject(TERM_KEY).put(DELETED_KEY, false);
     mustArray.add(deletedNode);
+
+    // Exclude data products and columns from team assets
+    ArrayNode mustNotArray = boolNode.putArray(MUST_NOT_KEY);
+    addEntityTypeExclusions(mustNotArray);
 
     return serializeQuery(queryFilter);
   }
@@ -105,8 +104,7 @@ public class QueryFilterBuilder {
     ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
     ArrayNode mustArray = boolNode.putArray(MUST_KEY);
 
-    // owners.fullyQualifiedName is a text field, use match query for exact matching
-    addMatchCondition(mustArray, query.getFieldPath(), query.getFieldValue());
+    addNestedMatchCondition(mustArray, "owners", query.getFieldPath(), query.getFieldValue());
     addCommonFilters(mustArray, query);
 
     return serializeQuery(queryFilter);
@@ -146,8 +144,7 @@ public class QueryFilterBuilder {
     ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
     ArrayNode mustArray = boolNode.putArray(MUST_KEY);
 
-    // owners.id is a keyword field, use term query with OR condition
-    addOrCondition(mustArray, query.getFieldPath(), query.getFieldValues());
+    addNestedOrCondition(mustArray, "owners", query.getFieldPath(), query.getFieldValues());
     addCommonFilters(mustArray, query);
 
     return serializeQuery(queryFilter);
@@ -183,6 +180,45 @@ public class QueryFilterBuilder {
     mustArray.add(matchNode);
   }
 
+  private static void addNestedTermCondition(
+      ArrayNode mustArray, String path, String fieldPath, String fieldValue) {
+    ObjectNode nestedNode = MAPPER.createObjectNode();
+    ObjectNode nestedInner = nestedNode.putObject("nested");
+    nestedInner.put("path", path);
+    ObjectNode termNode = MAPPER.createObjectNode();
+    termNode.putObject(TERM_KEY).put(fieldPath, fieldValue);
+    nestedInner.set(QUERY_KEY, termNode);
+    mustArray.add(nestedNode);
+  }
+
+  private static void addNestedMatchCondition(
+      ArrayNode mustArray, String path, String fieldPath, String fieldValue) {
+    ObjectNode nestedNode = MAPPER.createObjectNode();
+    ObjectNode nestedInner = nestedNode.putObject("nested");
+    nestedInner.put("path", path);
+    ObjectNode matchNode = MAPPER.createObjectNode();
+    matchNode.putObject(MATCH_KEY).put(fieldPath, fieldValue);
+    nestedInner.set(QUERY_KEY, matchNode);
+    mustArray.add(nestedNode);
+  }
+
+  private static void addNestedOrCondition(
+      ArrayNode mustArray, String path, String fieldPath, List<String> fieldValues) {
+    ObjectNode nestedNode = MAPPER.createObjectNode();
+    ObjectNode nestedInner = nestedNode.putObject("nested");
+    nestedInner.put("path", path);
+    ObjectNode orCondition = MAPPER.createObjectNode();
+    ObjectNode innerBool = orCondition.putObject(BOOL_KEY);
+    ArrayNode shouldArray = innerBool.putArray(SHOULD_KEY);
+    for (String value : fieldValues) {
+      ObjectNode termNode = MAPPER.createObjectNode();
+      termNode.putObject(TERM_KEY).put(fieldPath, value);
+      shouldArray.add(termNode);
+    }
+    nestedInner.set(QUERY_KEY, orCondition);
+    mustArray.add(nestedNode);
+  }
+
   private static void addOrCondition(
       ArrayNode mustArray, String fieldPath, List<String> fieldValues) {
     ObjectNode orCondition = MAPPER.createObjectNode();
@@ -210,6 +246,16 @@ public class QueryFilterBuilder {
       entityTypeNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, query.getEntityTypeFilter());
       mustArray.add(entityTypeNode);
     }
+  }
+
+  private static void addEntityTypeExclusions(ArrayNode mustNotArray) {
+    ObjectNode dataProductNode = MAPPER.createObjectNode();
+    dataProductNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, DATA_PRODUCT);
+    mustNotArray.add(dataProductNode);
+
+    ObjectNode columnNode = MAPPER.createObjectNode();
+    columnNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, TABLE_COLUMN);
+    mustNotArray.add(columnNode);
   }
 
   private static String serializeQuery(ObjectNode queryFilter) {

@@ -753,7 +753,8 @@ test.describe('Bulk Edit Entity', () => {
     await parentGlossaryTerm.create(apiContext);
 
     // Set the parent for the nested term
-    nestedGlossaryTerm.data.parent = parentGlossaryTerm.responseData.fullyQualifiedName;
+    nestedGlossaryTerm.data.parent =
+      parentGlossaryTerm.responseData.fullyQualifiedName;
     nestedGlossaryTerm.data.fullyQualifiedName = `${parentGlossaryTerm.responseData.fullyQualifiedName}."${nestedGlossaryTerm.data.name}"`;
     await nestedGlossaryTerm.create(apiContext);
 
@@ -841,10 +842,7 @@ test.describe('Bulk Edit Entity', () => {
         state: 'detached',
       });
 
-      await toastNotification(
-        page,
-        /details updated successfully/
-      );
+      await toastNotification(page, /details updated successfully/);
 
       // Visit the glossary terms tab
       await page.click('[data-testid="terms"]');

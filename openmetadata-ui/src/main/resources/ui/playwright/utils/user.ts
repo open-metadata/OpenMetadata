@@ -626,7 +626,7 @@ export const checkStewardPermissions = async (page: Page) => {
   await page
     .getByRole('cell', { name: /user_id/i })
     .getByTestId('edit-displayName-button')
-    .waitFor({ state: 'attached'});
+    .waitFor({ state: 'attached' });
 
   // Check edit owner permission
   await expect(page.locator('[data-testid="edit-owner"]')).toBeVisible();

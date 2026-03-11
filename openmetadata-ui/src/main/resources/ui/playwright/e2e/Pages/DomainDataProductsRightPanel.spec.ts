@@ -232,9 +232,9 @@ test.describe('Domain Data Products Tab - Right Panel', () => {
     await rightPanel.waitForPanelLoaded();
 
     await overview.navigateToOverviewTab();
-    const glossaryTermSection = rightPanel.getSummaryPanel().locator(
-      '.glossary-terms-section'
-    );
+    const glossaryTermSection = rightPanel
+      .getSummaryPanel()
+      .locator('.glossary-terms-section');
     await expect(glossaryTermSection).not.toBeVisible();
   });
 });

@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  CircularProgress,
   IconButton,
   Typography,
   useTheme,
@@ -23,6 +22,7 @@ import { RefreshCcw01, Trash01, UploadCloud01 } from '@untitledui/icons';
 import { useSnackbar } from 'notistack';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Loader from '../Loader/Loader';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import imageClassBase from '../../BlockEditor/Extensions/image/ImageClassBase';
 import MUIFileUpload from '../FileUpload/MUIFileUpload';
@@ -451,10 +451,7 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                 justifyContent: 'center',
                 backgroundColor: theme.palette.grey?.[100],
               }}>
-              <CircularProgress
-                data-testid="cover-image-upload-loading-spinner"
-                size={24}
-              />
+              <Loader size="small" />
             </Box>
           ) : null}
 

@@ -722,13 +722,28 @@ const TeamDetailsV1 = ({
         isEntityDeleted={isTeamDeleted}
         noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
-        queryFilter={getTermQuery({ 'owners.id': currentTeam.id })}
+        queryFilter={getTermQuery(
+          { 'owners.id': currentTeam.id },
+          'must',
+          undefined,
+          {
+            mustNotTerms: {
+              entityType: ['tableColumn'],
+            },
+          }
+        )}
         type={AssetsOfEntity.TEAM}
         onAddAsset={() => navigate(ROUTES.EXPLORE)}
         onAssetClick={setPreviewAsset}
       />
     ),
-    [entityPermissions, assetsCount, setPreviewAsset, isTeamDeleted]
+    [
+      entityPermissions,
+      assetsCount,
+      setPreviewAsset,
+      isTeamDeleted,
+      currentTeam.id,
+    ]
   );
 
   const rolesTabRender = useMemo(

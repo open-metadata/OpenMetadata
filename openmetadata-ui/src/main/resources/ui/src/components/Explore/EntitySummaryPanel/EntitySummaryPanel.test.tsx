@@ -11,15 +11,7 @@
  *  limitations under the License.
  */
 
-import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
-import { ThemeColors } from '@openmetadata/ui-core-components';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
@@ -32,35 +24,8 @@ import { mockTopicEntityDetails } from './mocks/TopicSummary.mock';
 
 const mockHandleClosePanel = jest.fn();
 
-const mockThemeColors: ThemeColors = {
-  white: '#FFFFFF',
-  blue: {
-    50: '#E6F4FF',
-    100: '#BAE0FF',
-    600: '#1677FF',
-    700: '#0958D9',
-  },
-  blueGray: {
-    50: '#F8FAFC',
-  },
-  gray: {
-    300: '#D1D5DB',
-    700: '#374151',
-    900: '#111827',
-  },
-} as ThemeColors;
-
-const theme: Theme = createTheme({
-  palette: {
-    allShades: mockThemeColors,
-    background: {
-      paper: '#FFFFFF',
-    },
-  },
-});
-
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+  <>{children}</>
 );
 
 jest.mock('../../../utils/EntityUtils', () => {
@@ -204,18 +169,20 @@ jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
           props.entityDetails?.displayName ??
           props.entityDetails?.name}
       </span>
-      {props.hasEditPermission && props.entityType && props.entityDetails?.id && (
-        <button
-          data-testid="edit-displayName-button"
-          onClick={() => {
-            if (props.onDisplayNameUpdate) {
-              props.onDisplayNameUpdate('Updated Display Name');
-              mockOnDisplayNameUpdate('Updated Display Name');
-            }
-          }}>
-          Edit
-        </button>
-      )}
+      {props.hasEditPermission &&
+        props.entityType &&
+        props.entityDetails?.id && (
+          <button
+            data-testid="edit-displayName-button"
+            onClick={() => {
+              if (props.onDisplayNameUpdate) {
+                props.onDisplayNameUpdate('Updated Display Name');
+                mockOnDisplayNameUpdate('Updated Display Name');
+              }
+            }}>
+            Edit
+          </button>
+        )}
     </div>
   )),
 }));
@@ -230,220 +197,203 @@ jest.mock('../../../rest/tableAPI', () => ({
 
 describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
-    await act(async () => {
-      render(
-        <EntitySummaryPanel
-          entityDetails={{
-            details: {
-              ...mockTableEntityDetails,
-              entityType: EntityType.TABLE,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
-      );
+    render(
+      <EntitySummaryPanel
+        entityDetails={{
+          details: {
+            ...mockTableEntityDetails,
+            entityType: EntityType.TABLE,
+          },
+        }}
+        handleClosePanel={mockHandleClosePanel}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
     });
-
-    const tableSummary = screen.getByTestId('TableSummary');
-
-    expect(tableSummary).toBeInTheDocument();
   });
 
   it('TopicSummary should render for topics data', async () => {
-    await act(async () => {
-      render(
-        <EntitySummaryPanel
-          entityDetails={{
-            details: {
-              ...mockTopicEntityDetails,
-              entityType: EntityType.TOPIC,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
-      );
+    render(
+      <EntitySummaryPanel
+        entityDetails={{
+          details: {
+            ...mockTopicEntityDetails,
+            entityType: EntityType.TOPIC,
+          },
+        }}
+        handleClosePanel={mockHandleClosePanel}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('TopicSummary')).toBeInTheDocument();
     });
-
-    const topicSummary = screen.getByTestId('TopicSummary');
-
-    expect(topicSummary).toBeInTheDocument();
   });
 
   it('DashboardSummary should render for dashboard data', async () => {
-    await act(async () => {
-      render(
-        <EntitySummaryPanel
-          entityDetails={{
-            details: {
-              ...mockDashboardEntityDetails,
-              entityType: EntityType.DASHBOARD,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
-      );
+    render(
+      <EntitySummaryPanel
+        entityDetails={{
+          details: {
+            ...mockDashboardEntityDetails,
+            entityType: EntityType.DASHBOARD,
+          },
+        }}
+        handleClosePanel={mockHandleClosePanel}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('DashboardSummary')).toBeInTheDocument();
     });
-
-    const dashboardSummary = screen.getByTestId('DashboardSummary');
-
-    expect(dashboardSummary).toBeInTheDocument();
   });
 
   it('PipelineSummary should render for pipeline data', async () => {
-    await act(async () => {
-      render(
-        <EntitySummaryPanel
-          entityDetails={{
-            details: {
-              ...mockPipelineEntityDetails,
-              entityType: EntityType.PIPELINE,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
-      );
+    render(
+      <EntitySummaryPanel
+        entityDetails={{
+          details: {
+            ...mockPipelineEntityDetails,
+            entityType: EntityType.PIPELINE,
+          },
+        }}
+        handleClosePanel={mockHandleClosePanel}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('PipelineSummary')).toBeInTheDocument();
     });
-
-    const pipelineSummary = screen.getByTestId('PipelineSummary');
-
-    expect(pipelineSummary).toBeInTheDocument();
   });
 
   it('MlModelSummary should render for mlModel data', async () => {
-    await act(async () => {
-      render(
-        <EntitySummaryPanel
-          entityDetails={{
-            details: {
-              ...mockMlModelEntityDetails,
-              entityType: EntityType.MLMODEL,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
-      );
+    render(
+      <EntitySummaryPanel
+        entityDetails={{
+          details: {
+            ...mockMlModelEntityDetails,
+            entityType: EntityType.MLMODEL,
+          },
+        }}
+        handleClosePanel={mockHandleClosePanel}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('MlModelSummary')).toBeInTheDocument();
     });
-
-    const mlModelSummary = screen.getByTestId('MlModelSummary');
-
-    expect(mlModelSummary).toBeInTheDocument();
   });
 
   it('ChartSummary should render for chart data', async () => {
-    await act(async () => {
-      render(
-        <EntitySummaryPanel
-          entityDetails={{
-            details: {
-              ...mockMlModelEntityDetails,
-              entityType: EntityType.CHART,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
-      );
+    render(
+      <EntitySummaryPanel
+        entityDetails={{
+          details: {
+            ...mockMlModelEntityDetails,
+            entityType: EntityType.CHART,
+          },
+        }}
+        handleClosePanel={mockHandleClosePanel}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ChartSummary')).toBeInTheDocument();
     });
-
-    const chartSummary = screen.getByTestId('ChartSummary');
-
-    expect(chartSummary).toBeInTheDocument();
   });
 
   it('should render for domain data without requesting invalid domains field', async () => {
-    const { container } = await act(async () => {
-      return render(
-        <EntitySummaryPanel
-          entityDetails={{
-            details: {
-              ...mockDomainEntityDetails,
-              entityType: EntityType.DOMAIN,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
-      );
-    });
+    const { container } = render(
+      <EntitySummaryPanel
+        entityDetails={{
+          details: {
+            ...mockDomainEntityDetails,
+            entityType: EntityType.DOMAIN,
+          },
+        }}
+        handleClosePanel={mockHandleClosePanel}
+      />,
+      { wrapper: Wrapper }
+    );
 
-    expect(
-      container.querySelector('.entity-summary-panel-container')
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        container.querySelector('.entity-summary-panel-container')
+      ).toBeInTheDocument();
+    });
   });
 
   it('should render drawer header when isSideDrawer is true', async () => {
-    await act(async () => {
-      render(
-        <EntitySummaryPanel
-          isSideDrawer
-          entityDetails={{
-            details: {
-              ...mockTableEntityDetails,
-              entityType: EntityType.TABLE,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
-      );
+    render(
+      <EntitySummaryPanel
+        isSideDrawer
+        entityDetails={{
+          details: {
+            ...mockTableEntityDetails,
+            entityType: EntityType.TABLE,
+          },
+        }}
+        handleClosePanel={mockHandleClosePanel}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('drawer-close-icon')).toBeInTheDocument();
     });
-
-    const closeIcon = screen.getByTestId('drawer-close-icon');
-
-    expect(closeIcon).toBeInTheDocument();
   });
 
   it('should not render drawer header when isSideDrawer is false', async () => {
-    await act(async () => {
-      render(
-        <EntitySummaryPanel
-          entityDetails={{
-            details: {
-              ...mockTableEntityDetails,
-              entityType: EntityType.TABLE,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-          isSideDrawer={false}
-        />,
-        { wrapper: Wrapper }
-      );
+    render(
+      <EntitySummaryPanel
+        entityDetails={{
+          details: {
+            ...mockTableEntityDetails,
+            entityType: EntityType.TABLE,
+          },
+        }}
+        handleClosePanel={mockHandleClosePanel}
+        isSideDrawer={false}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('drawer-close-icon')).not.toBeInTheDocument();
     });
-
-    const closeIcon = screen.queryByTestId('drawer-close-icon');
-
-    expect(closeIcon).not.toBeInTheDocument();
   });
 
   it('should apply drawer-specific CSS classes when isSideDrawer is true', async () => {
-    const { container } = await act(async () => {
-      return render(
-        <EntitySummaryPanel
-          isSideDrawer
-          entityDetails={{
-            details: {
-              ...mockTableEntityDetails,
-              entityType: EntityType.TABLE,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-        />,
-        { wrapper: Wrapper }
-      );
-    });
-
-    const summaryPanelContainer = container.querySelector(
-      '.drawer-summary-panel-container'
+    const { container } = render(
+      <EntitySummaryPanel
+        isSideDrawer
+        entityDetails={{
+          details: {
+            ...mockTableEntityDetails,
+            entityType: EntityType.TABLE,
+          },
+        }}
+        handleClosePanel={mockHandleClosePanel}
+      />,
+      { wrapper: Wrapper }
     );
-    const contentArea = container.querySelector('.drawer-content-area');
 
-    expect(summaryPanelContainer).toBeInTheDocument();
-    expect(contentArea).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        container.querySelector('.drawer-summary-panel-container')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('.drawer-content-area')
+      ).toBeInTheDocument();
+    });
   });
 
   describe('Lineage Loading State Management', () => {
@@ -452,96 +402,87 @@ describe('EntitySummaryPanel component tests', () => {
     });
 
     it('should initialize with loading state for permissions', async () => {
-      // Force permission fetch to remain pending so we can reliably assert the initial loader state.
       (
         usePermissionProvider().getEntityPermission as jest.Mock
       ).mockImplementationOnce(() => new Promise(() => undefined));
 
-      const { container } = await act(async () => {
-        return render(
-          <EntitySummaryPanel
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                entityType: EntityType.TABLE,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+      const { container } = render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        const loaders = container.querySelectorAll('[data-testid="loader"]');
+
+        expect(loaders.length).toBeGreaterThan(0);
       });
-
-      // Should show loader initially while permissions load
-      const loaders = container.querySelectorAll('[data-testid="loader"]');
-
-      expect(loaders.length).toBeGreaterThan(0);
     });
 
     it('should handle entity type that supports lineage', async () => {
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                entityType: EntityType.TABLE,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
       });
-
-      // Table entity should render (tables support lineage)
-      const tableSummary = screen.getByTestId('TableSummary');
-
-      expect(tableSummary).toBeInTheDocument();
     });
 
     it('should handle entity type that does not support lineage gracefully', async () => {
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                entityType: EntityType.USER,
-                id: 'user-1',
-                fullyQualifiedName: 'user1',
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
-      });
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.USER,
+              id: 'user-1',
+              fullyQualifiedName: 'user1',
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
 
-      // Should still render without crashing, even though USER doesn't support lineage
-      expect(screen.queryByTestId('TableSummary')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByTestId('TableSummary')).not.toBeInTheDocument();
+      });
     });
 
     it('should handle missing lineageData gracefully', async () => {
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                entityType: EntityType.TABLE,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
       });
-
-      // Should render without crashing even when lineageData is null/undefined
-      const tableSummary = screen.getByTestId('TableSummary');
-
-      expect(tableSummary).toBeInTheDocument();
     });
 
     it('should handle missing fullyQualifiedName for lineage-supported entity', async () => {
@@ -551,62 +492,54 @@ describe('EntitySummaryPanel component tests', () => {
         entityType: EntityType.TABLE,
       };
 
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            entityDetails={{
-              details: entityWithoutFQN,
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: entityWithoutFQN,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
       });
-
-      // Should still render without crashing
-      const tableSummary = screen.getByTestId('TableSummary');
-
-      expect(tableSummary).toBeInTheDocument();
     });
 
     it('should handle missing entityType gracefully', async () => {
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                entityType: undefined as unknown as EntityType,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: undefined as unknown as EntityType,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
       });
-
-      // Component defaults to EntityType.TABLE when entityType is undefined
-      // So it should render TableSummary as a fallback
-      const tableSummary = screen.getByTestId('TableSummary');
-
-      expect(tableSummary).toBeInTheDocument();
     });
 
     it('should handle missing entityDetails gracefully', async () => {
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            entityDetails={{
-              details: null as unknown as any,
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
-      });
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: null as unknown as never,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
 
-      // Should not crash when entityDetails is null
-      expect(screen.queryByTestId('TableSummary')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByTestId('TableSummary')).not.toBeInTheDocument();
+      });
     });
 
     it('should handle missing id for lineage-supported entity', async () => {
@@ -616,59 +549,56 @@ describe('EntitySummaryPanel component tests', () => {
         entityType: EntityType.TABLE,
       };
 
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            entityDetails={{
-              details: entityWithoutId,
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
-      });
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: entityWithoutId,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
 
-      // Should not crash when id is missing (component may show loader or not render summary)
-      // The component should handle missing id gracefully without throwing errors
-      expect(screen.queryByTestId('TableSummary')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByTestId('TableSummary')).not.toBeInTheDocument();
+      });
     });
 
     it('should handle entity type change correctly', async () => {
-      const { rerender } = await act(async () => {
-        return render(
+      const { rerender } = render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
+      });
+
+      rerender(
+        <Wrapper>
           <EntitySummaryPanel
             entityDetails={{
               details: {
-                ...mockTableEntityDetails,
-                entityType: EntityType.TABLE,
+                ...mockTopicEntityDetails,
+                entityType: EntityType.TOPIC,
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+          />
+        </Wrapper>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('TopicSummary')).toBeInTheDocument();
       });
-
-      expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
-
-      // Change entity type to Topic
-      await act(async () => {
-        rerender(
-          <Wrapper>
-            <EntitySummaryPanel
-              entityDetails={{
-                details: {
-                  ...mockTopicEntityDetails,
-                  entityType: EntityType.TOPIC,
-                },
-              }}
-              handleClosePanel={mockHandleClosePanel}
-            />
-          </Wrapper>
-        );
-      });
-
-      expect(screen.getByTestId('TopicSummary')).toBeInTheDocument();
     });
 
     it('should handle missing fullyQualifiedName gracefully', async () => {
@@ -677,67 +607,62 @@ describe('EntitySummaryPanel component tests', () => {
         fullyQualifiedName: undefined,
       };
 
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            entityDetails={{
-              details: {
-                ...entityWithoutFQN,
-                entityType: EntityType.TABLE,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...entityWithoutFQN,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
       });
-
-      // Should still render without crashing
-      const tableSummary = screen.getByTestId('TableSummary');
-
-      expect(tableSummary).toBeInTheDocument();
     });
 
     it('should handle entity details change correctly', async () => {
-      const { rerender } = await act(async () => {
-        return render(
+      const { rerender } = render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              id: 'table-1',
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
+      });
+
+      rerender(
+        <Wrapper>
           <EntitySummaryPanel
             entityDetails={{
               details: {
                 ...mockTableEntityDetails,
-                id: 'table-1',
+                id: 'table-2',
+                fullyQualifiedName: 'new.table.fqn',
                 entityType: EntityType.TABLE,
               },
             }}
             handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+          />
+        </Wrapper>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
       });
-
-      expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
-
-      // Change to different entity with different ID
-      await act(async () => {
-        rerender(
-          <Wrapper>
-            <EntitySummaryPanel
-              entityDetails={{
-                details: {
-                  ...mockTableEntityDetails,
-                  id: 'table-2',
-                  fullyQualifiedName: 'new.table.fqn',
-                  entityType: EntityType.TABLE,
-                },
-              }}
-              handleClosePanel={mockHandleClosePanel}
-            />
-          </Wrapper>
-        );
-      });
-
-      // Should still render the new entity
-      expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
     });
 
     it('should handle permission loading state correctly', async () => {
@@ -754,26 +679,25 @@ describe('EntitySummaryPanel component tests', () => {
         usePermissionProvider().getEntityPermission as jest.Mock
       ).mockImplementationOnce(mockGetEntityPermission);
 
-      const { container } = await act(async () => {
-        return render(
-          <EntitySummaryPanel
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                entityType: EntityType.TABLE,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+      const { container } = render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        const loaders = container.querySelectorAll('[data-testid="loader"]');
+
+        expect(loaders.length).toBeGreaterThan(0);
+        expect(mockGetEntityPermission).toHaveBeenCalled();
       });
-
-      // Should show loader while permission is loading
-      const loaders = container.querySelectorAll('[data-testid="loader"]');
-
-      expect(loaders.length).toBeGreaterThan(0);
-      expect(mockGetEntityPermission).toHaveBeenCalled();
     });
   });
 
@@ -798,30 +722,27 @@ describe('EntitySummaryPanel component tests', () => {
         EditDisplayName: true,
       });
 
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            isSideDrawer
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                id: 'test-table-id',
-                entityType: EntityType.TABLE,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+      render(
+        <EntitySummaryPanel
+          isSideDrawer
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              id: 'test-table-id',
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('entity-title-section')).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('edit-displayName-button')
+        ).toBeInTheDocument();
       });
-
-      const entityTitleSection = screen.getByTestId('entity-title-section');
-
-      expect(entityTitleSection).toBeInTheDocument();
-
-      const editButton = screen.queryByTestId('edit-displayName-button');
-
-      expect(editButton).toBeInTheDocument();
     });
 
     it('should not render edit button when user lacks EditDisplayName permission', async () => {
@@ -832,26 +753,26 @@ describe('EntitySummaryPanel component tests', () => {
         EditDisplayName: false,
       });
 
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            isSideDrawer
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                id: 'test-table-id',
-                entityType: EntityType.TABLE,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+      render(
+        <EntitySummaryPanel
+          isSideDrawer
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              id: 'test-table-id',
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('edit-displayName-button')
+        ).not.toBeInTheDocument();
       });
-
-      const editButton = screen.queryByTestId('edit-displayName-button');
-
-      expect(editButton).not.toBeInTheDocument();
     });
 
     it('should call onDisplayNameUpdate callback when display name is updated', async () => {
@@ -862,28 +783,24 @@ describe('EntitySummaryPanel component tests', () => {
         EditDisplayName: true,
       });
 
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            isSideDrawer
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                id: 'test-table-id',
-                entityType: EntityType.TABLE,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
-      });
+      render(
+        <EntitySummaryPanel
+          isSideDrawer
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              id: 'test-table-id',
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
 
-      const editButton = screen.getByTestId('edit-displayName-button');
+      const editButton = await screen.findByTestId('edit-displayName-button');
 
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
+      fireEvent.click(editButton);
 
       expect(mockOnDisplayNameUpdate).toHaveBeenCalledWith(
         'Updated Display Name'
@@ -906,64 +823,56 @@ describe('EntitySummaryPanel component tests', () => {
         tags: [],
       });
 
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            isSideDrawer
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                id: 'test-table-id',
-                displayName: 'Initial Display Name',
-                entityType: EntityType.TABLE,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
+      render(
+        <EntitySummaryPanel
+          isSideDrawer
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              id: 'test-table-id',
+              displayName: 'Initial Display Name',
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('entity-display-name')).toBeInTheDocument();
+      });
+
+      const editButton = await screen.findByTestId('edit-displayName-button');
+
+      fireEvent.click(editButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('entity-display-name')).toHaveTextContent(
+          'Updated Display Name'
         );
-      });
-
-      await waitFor(() => {
-        const displayNameElement = screen.getByTestId('entity-display-name');
-
-        expect(displayNameElement).toBeInTheDocument();
-      });
-
-      const editButton = screen.getByTestId('edit-displayName-button');
-
-      await act(async () => {
-        fireEvent.click(editButton);
-      });
-
-      await waitFor(() => {
-        const displayNameElement = screen.getByTestId('entity-display-name');
-
-        expect(displayNameElement).toHaveTextContent('Updated Display Name');
       });
     });
 
     it('should render entity-header-title testId in drawer mode', async () => {
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            isSideDrawer
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                id: 'test-table-id',
-                entityType: EntityType.TABLE,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
+      render(
+        <EntitySummaryPanel
+          isSideDrawer
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              id: 'test-table-id',
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('entity-title-section')).toBeInTheDocument();
       });
-
-      const entityTitleSection = screen.getByTestId('entity-title-section');
-
-      expect(entityTitleSection).toBeInTheDocument();
     });
 
     it('should pass entityDisplayName from entityData to EntityTitleSection', async () => {
@@ -984,28 +893,26 @@ describe('EntitySummaryPanel component tests', () => {
         EditDisplayName: true,
       });
 
-      await act(async () => {
-        render(
-          <EntitySummaryPanel
-            isSideDrawer
-            entityDetails={{
-              details: {
-                ...mockTableEntityDetails,
-                id: 'test-table-id',
-                displayName: 'Original Display Name',
-                entityType: EntityType.TABLE,
-              },
-            }}
-            handleClosePanel={mockHandleClosePanel}
-          />,
-          { wrapper: Wrapper }
-        );
-      });
+      render(
+        <EntitySummaryPanel
+          isSideDrawer
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              id: 'test-table-id',
+              displayName: 'Original Display Name',
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
 
       await waitFor(() => {
-        const displayNameElement = screen.getByTestId('entity-display-name');
-
-        expect(displayNameElement).toHaveTextContent('EntityData Display Name');
+        expect(screen.getByTestId('entity-display-name')).toHaveTextContent(
+          'EntityData Display Name'
+        );
       });
     });
   });

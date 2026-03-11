@@ -13,10 +13,11 @@
 
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { SimpleTreeView, SimpleTreeViewProps } from '@mui/x-tree-view';
 import React, { FC, memo, MutableRefObject, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import Loader from '../../../Loader/Loader';
 
 export interface TreeContentProps {
   loading: boolean;
@@ -60,7 +61,7 @@ const TreeContent: FC<TreeContentProps> = ({
           justifyContent: 'center',
           py: 2,
         }}>
-        <CircularProgress size={20} />
+        <Loader size="x-small" />
         <Typography sx={{ ml: 1 }} variant="body2">
           {loadingMessage || t('label.loading')}
         </Typography>
