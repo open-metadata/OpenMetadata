@@ -15,7 +15,6 @@ import {
   CloseOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { AlertCircle as ErrorOutline, CheckCircle as CheckCircleOutline } from '@untitledui/icons';
 import {
   Box,
   Button,
@@ -23,6 +22,7 @@ import {
   Typography as MuiTypography,
   useTheme,
 } from '@mui/material';
+import { AlertCircle, CheckCircle } from '@untitledui/icons';
 import { Alert, Checkbox, Divider, List, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -576,7 +576,7 @@ export const useAssetSelectionContent = ({
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {selectedItems && selectedItems.size >= 1 && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <CheckCircleOutline color={muiTheme.palette.success.main} size={20} />
+            <CheckCircle color={muiTheme.palette.success.main} size={20} />
             <MuiTypography variant="body2">
               {selectedItems.size} {t('label.selected-lowercase')}
             </MuiTypography>
@@ -587,7 +587,7 @@ export const useAssetSelectionContent = ({
             <>
               <MuiDivider flexItem orientation="vertical" sx={{ mx: 1 }} />
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <ErrorOutline color={muiTheme.palette.error.main} size={20} />
+                <AlertCircle color={muiTheme.palette.error.main} size={20} />
                 <MuiTypography color="error" variant="body2">
                   {failedStatus.failedRequest.length} {t('label.error')}
                 </MuiTypography>

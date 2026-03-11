@@ -11,9 +11,17 @@
  *  limitations under the License.
  */
 
-import { InfoCircle as InfoOutlinedIcon } from '@untitledui/icons';
-import { Box, Chip, FormLabel, SxProps, Theme, Tooltip, useTheme } from '@mui/material';
+import {
+  Box,
+  Chip,
+  FormLabel,
+  SxProps,
+  Theme,
+  Tooltip,
+  useTheme,
+} from '@mui/material';
 import { TooltipProps } from '@mui/material/Tooltip';
+import { InfoCircle } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HelperTextType } from '../../../interface/FormUtils.interface';
@@ -74,10 +82,10 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
                   lineHeight: 0,
                   pointerEvents: 'auto',
                 }}>
-                <InfoOutlinedIcon
-                  data-testid="mui-helper-icon"
+                <InfoCircle
                   color={theme.palette.text.secondary}
-                  size={16}
+                  data-testid="mui-helper-icon"
+                  size={14}
                   style={{
                     pointerEvents: 'auto',
                   }}

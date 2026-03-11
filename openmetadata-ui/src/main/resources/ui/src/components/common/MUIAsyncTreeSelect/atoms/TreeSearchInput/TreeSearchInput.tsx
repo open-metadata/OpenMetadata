@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { XClose as CloseIcon } from '@untitledui/icons';
 import { Box, IconButton, InputAdornment, TextField } from '@mui/material';
+import { XClose } from '@untitledui/icons';
 import React, { FC, memo, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagChip } from '../../../atoms/TagChip';
@@ -169,7 +169,7 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
                         }
                       }
                     }}>
-                    <CloseIcon size={20} />
+                    <XClose size={20} />
                   </IconButton>
                 )}
               </InputAdornment>
