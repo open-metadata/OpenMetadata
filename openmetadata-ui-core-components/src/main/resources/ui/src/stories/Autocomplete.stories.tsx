@@ -222,32 +222,6 @@ export const WithSupportingText: StoryObj = {
   },
 };
 
-export const Sizes: StoryObj = {
-  render: () => {
-    const selectedSmall = useListData<AutocompleteItemType>({ initialItems: [ITEMS[0]] });
-    const selectedMedium = useListData<AutocompleteItemType>({ initialItems: [ITEMS[1]] });
-
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, width: 360 }}>
-        <Autocomplete size="sm" label="Small (sm)" items={ITEMS} selectedItems={selectedSmall} placeholder="Search...">
-          {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label}>
-              {item.label}
-            </Autocomplete.Item>
-          )}
-        </Autocomplete>
-
-        <Autocomplete size="md" label="Medium (md)" items={ITEMS} selectedItems={selectedMedium} placeholder="Search...">
-          {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label}>
-              {item.label}
-            </Autocomplete.Item>
-          )}
-        </Autocomplete>
-      </div>
-    );
-  },
-};
 
 export const Disabled: StoryObj = {
   render: () => {

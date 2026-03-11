@@ -62,7 +62,6 @@ export interface AutocompleteProps
   hint?: string;
   label?: string;
   tooltip?: string;
-  size?: 'sm' | 'md';
   placeholder?: string;
   items?: SelectItemType[];
   popoverClassName?: string;
@@ -215,7 +214,6 @@ const AutocompleteTrigger = ({
 export const AutocompleteBase = ({
   items,
   children,
-  size = 'sm',
   label,
   tooltip,
   hint,
@@ -301,11 +299,11 @@ export const AutocompleteBase = ({
 
   useResizeObserver({ ref: triggerRef, onResize, box: 'border-box' });
 
-  const selectContextValue = useMemo(() => ({ size }), [size]);
+  const selectContextValue = useMemo(() => ({ size: 'sm' as const }), []);
 
   const autocompleteContextValue = useMemo(
-    () => ({ size, selectedKeys, selectedItems: internalSelected, onInputChange, onRemove, renderTag }),
-    [size, selectedKeys, internalSelected, onInputChange, onRemove, renderTag],
+    () => ({ size: 'sm' as const, selectedKeys, selectedItems: internalSelected, onInputChange, onRemove, renderTag }),
+    [selectedKeys, internalSelected, onInputChange, onRemove, renderTag],
   );
 
   return (
@@ -331,7 +329,7 @@ export const AutocompleteBase = ({
 
               <div ref={triggerRef} className="tw:relative tw:w-full">
                 <AutocompleteTrigger
-                  size={size}
+                  size="sm"
                   placeholder={placeholder}
                   placeholderIcon={props.placeholderIcon}
                   onFocus={onResize}
