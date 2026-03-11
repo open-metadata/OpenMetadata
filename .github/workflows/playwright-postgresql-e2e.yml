@@ -267,9 +267,28 @@ jobs:
             const passed = allTests.filter(t => t.status === 'expected');
             const skipped = allTests.filter(t => t.status === 'skipped');
 
-            // Skip comment if everything passed
+            // Helper to find existing bot comment for this shard
+            async function findExistingComment() {
+              const marker = `Playwright Shard ${shard}`;
+              for await (const response of github.paginate.iterator(
+                github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+              )) {
+                const found = response.data.find(c =>
+                  c.user?.login === 'github-actions[bot]' && c.body?.includes(marker)
+                );
+                if (found) return found;
+              }
+              return null;
+            }
+
+            // If everything passed, delete any stale failure comment and exit
             if (genuine.length === 0 && flaky.length === 0) {
-              console.log(`Shard ${shard}: all ${passed.length} tests passed, skipping comment`);
+              console.log(`Shard ${shard}: all ${passed.length} tests passed`);
+              const stale = await findExistingComment();
+              if (stale) {
+                await github.rest.issues.deleteComment({ ...repo, comment_id: stale.id });
+                console.log(`Deleted stale failure comment for shard ${shard}`);
+              }
               return;
             }
 
@@ -333,17 +352,7 @@ jobs:
 
             const body = lines.join('\n');
 
-            const comments = await github.rest.issues.listComments({
-              ...repo,
-              issue_number: prNumber,
-              per_page: 100,
-            });
-
-            const marker = `Playwright Shard ${shard}`;
-            const existing = comments.data.find(c =>
-              c.user?.login === 'github-actions[bot]' && c.body?.includes(marker)
-            );
-
+            const existing = await findExistingComment();
             if (existing) {
               await github.rest.issues.updateComment({ ...repo, comment_id: existing.id, body });
             } else {
