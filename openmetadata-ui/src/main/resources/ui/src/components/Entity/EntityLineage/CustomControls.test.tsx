@@ -195,6 +195,24 @@ describe('CustomControls', () => {
     expect(screen.getByTestId('search-bar')).toBeInTheDocument();
   });
 
+  it('Not shows SearchBar when in impact analysis mode & onSearchValueChange is not provided', () => {
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=3&dir=downstream',
+    }));
+
+    render(
+      <CustomControlsComponent
+        {...defaultProps}
+        onSearchValueChange={undefined}
+      />,
+      {
+        wrapper: Wrapper,
+      }
+    );
+
+    expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
+  });
+
   it('toggles filter selection when filter button is clicked', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
