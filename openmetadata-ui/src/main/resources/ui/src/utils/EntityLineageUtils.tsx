@@ -1114,7 +1114,8 @@ export const getConnectedNodesEdges = (
               currentNodeID
             );
 
-      // avoid any loops from upstream to downstream and vice versa by checking nodeDepth
+      // Removing the Root Node from the Child Nodes here, which comes when a cycle lineage is formed
+      // So while collapsing the cycle lineage, we need to prevent the Root Node not to be removed.
       const finalNodes = childNodes.filter((node) => node.data.nodeDepth !== 0);
 
       stack.push(...finalNodes);

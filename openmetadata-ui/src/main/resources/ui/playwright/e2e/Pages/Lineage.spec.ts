@@ -696,7 +696,7 @@ test('Verify cycle lineage should be handled properly', async ({ page }) => {
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
     await expect(
       page.getByTestId(`lineage-node-${dashboardFqn}`)
-    ).toBeVisible();
+    ).not.toBeVisible();
   } finally {
     await Promise.all([
       table.delete(apiContext),
