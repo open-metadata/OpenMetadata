@@ -442,16 +442,7 @@ public class ReindexingOrchestrator {
   }
 
   private Set<String> getAll() {
-    Set<String> entities =
-        new HashSet<>(
-            Entity.getEntityList().stream()
-                .filter(t -> searchRepository.getEntityIndexMap().containsKey(t))
-                .toList());
-    entities.addAll(
-        SearchIndexApp.TIME_SERIES_ENTITIES.stream()
-            .filter(t -> searchRepository.getEntityIndexMap().containsKey(t))
-            .toList());
-    return entities;
+    return new HashSet<>(searchRepository.getEntityIndexMap().keySet());
   }
 
   private boolean hasSlackConfig() {
