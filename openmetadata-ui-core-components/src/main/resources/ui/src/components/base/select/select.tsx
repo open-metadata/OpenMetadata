@@ -26,6 +26,7 @@ export interface SelectCommonProps {
     label?: string;
     tooltip?: string;
     size?: "sm" | "md";
+    fontSize?: "xs" | "sm" | "md" | "lg" | "xl";
     placeholder?: string;
 }
 
@@ -39,6 +40,7 @@ interface SelectProps extends Omit<AriaSelectProps<SelectItemType>, "children" |
 interface SelectValueProps {
     isOpen: boolean;
     size: "sm" | "md";
+    fontSize: "xs" | "sm" | "md" | "lg" | "xl";
     isFocused: boolean;
     isDisabled: boolean;
     placeholder?: string;
@@ -51,7 +53,7 @@ export const sizes = {
     md: { root: "tw:py-2.5 tw:px-3.5", shortcut: "tw:pr-3" },
 };
 
-const SelectValue = ({ isOpen, isFocused, isDisabled, size, placeholder, placeholderIcon, ref }: SelectValueProps) => {
+const SelectValue = ({ isOpen, isFocused, isDisabled, size, fontSize, placeholder, placeholderIcon, ref }: SelectValueProps) => {
     return (
         <AriaButton
             ref={ref}
@@ -85,11 +87,11 @@ const SelectValue = ({ isOpen, isFocused, isDisabled, size, placeholder, placeho
 
                             {state.selectedItem ? (
                                 <section className="tw:flex tw:w-full tw:gap-2 tw:truncate">
-                                    <p className="tw:truncate tw:text-md tw:font-medium tw:text-primary">{state.selectedItem?.label}</p>
-                                    {state.selectedItem?.supportingText && <p className="tw:text-md tw:text-tertiary">{state.selectedItem?.supportingText}</p>}
+                                    <p className={cx("tw:truncate tw:font-medium tw:text-primary", `tw:text-${fontSize}`)}>{state.selectedItem?.label}</p>
+                                    {state.selectedItem?.supportingText && <p className={cx("tw:text-tertiary", `tw:text-${fontSize}`)}>{state.selectedItem?.supportingText}</p>}
                                 </section>
                             ) : (
-                                <p className={cx("tw:text-md tw:text-placeholder", isDisabled && "tw:text-disabled")}>{placeholder}</p>
+                                <p className={cx("tw:text-placeholder", `tw:text-${fontSize}`, isDisabled && "tw:text-disabled")}>{placeholder}</p>
                             )}
 
                             <ChevronDown
@@ -106,7 +108,7 @@ const SelectValue = ({ isOpen, isFocused, isDisabled, size, placeholder, placeho
 
 export const SelectContext = createContext<{ size: "sm" | "md" }>({ size: "sm" });
 
-const Select = ({ placeholder = "Select", placeholderIcon, size = "sm", children, items, label, hint, tooltip, className, ...rest }: SelectProps) => {
+const Select = ({ placeholder = "Select", placeholderIcon, size = "sm", fontSize = "md", children, items, label, hint, tooltip, className, ...rest }: SelectProps) => {
     return (
         <SelectContext.Provider value={{ size }}>
             <AriaSelect {...rest} className={(state) => cx("tw:flex tw:flex-col tw:gap-1.5", typeof className === "function" ? className(state) : className)}>
@@ -118,7 +120,7 @@ const Select = ({ placeholder = "Select", placeholderIcon, size = "sm", children
                             </Label>
                         )}
 
-                        <SelectValue {...state} {...{ size, placeholder }} placeholderIcon={placeholderIcon} />
+                        <SelectValue {...state} {...{ size, fontSize, placeholder }} placeholderIcon={placeholderIcon} />
 
                         <Popover size={size} className={rest.popoverClassName}>
                             <AriaListBox items={items} className="tw:size-full tw:outline-hidden">

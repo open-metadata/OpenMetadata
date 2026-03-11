@@ -12,7 +12,24 @@
  */
 import type { Meta, StoryObj } from "@storybook/react";
 import { Button } from "../components/base/buttons/button";
+import { Select } from "../components/base/select/select";
+import { Typography } from "../components/foundations/typography";
 import { Popover, PopoverTrigger } from "../components/application/popover/popover";
+
+const COUNTRY_ITEMS = [
+  { id: "us", label: "United States" },
+  { id: "gb", label: "United Kingdom" },
+  { id: "ca", label: "Canada" },
+  { id: "au", label: "Australia" },
+  { id: "de", label: "Germany" },
+];
+
+const ROLE_ITEMS = [
+  { id: "admin", label: "Admin", supportingText: "(full access)" },
+  { id: "editor", label: "Editor" },
+  { id: "viewer", label: "Viewer", supportingText: "(read only)" },
+  { id: "guest", label: "Guest", isDisabled: true },
+];
 
 const meta = {
   title: "Components/Popover",
@@ -24,18 +41,78 @@ const meta = {
 } satisfies Meta<typeof Popover>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
+export const Default: StoryObj = {
   render: () => (
     <PopoverTrigger>
       <Button color="secondary">Open Popover</Button>
       <Popover>
-        <div style={{ padding: "16px 20px", minWidth: 200 }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#101828" }}>Popover title</p>
-          <p style={{ margin: "4px 0 0", fontSize: 14, color: "#667085" }}>
-            This is a general-purpose popover with any content.
-          </p>
+        <div className="tw:p-4 tw:min-w-50">
+          <Typography>
+            <h4>Popover title</h4>
+            <p>This is a general-purpose popover with any content.</p>
+          </Typography>
+        </div>
+      </Popover>
+    </PopoverTrigger>
+  ),
+};
+
+export const WithSelectContent: StoryObj = {
+  render: () => (
+    <PopoverTrigger>
+      <Button color="secondary">Filter by Country</Button>
+      <Popover>
+        <div className="tw:p-4 tw:min-w-60">
+          <Typography>
+            <h4>Select a country</h4>
+          </Typography>
+          <Select label="Country" placeholder="Select a country" items={COUNTRY_ITEMS}>
+            {(item) => (
+              <Select.Item key={item.id} id={item.id} textValue={item.label}>
+                {item.label}
+              </Select.Item>
+            )}
+          </Select>
+        </div>
+      </Popover>
+    </PopoverTrigger>
+  ),
+};
+
+export const WithMultipleSelects: StoryObj = {
+  render: () => (
+    <PopoverTrigger>
+      <Button color="primary">Configure Access</Button>
+      <Popover>
+        <div className="tw:p-4 tw:min-w-70 tw:flex tw:flex-col tw:gap-4">
+          <Typography>
+            <h4>Access settings</h4>
+            <p>Configure the user's region and role.</p>
+          </Typography>
+          <Select label="Country" placeholder="Select a country" items={COUNTRY_ITEMS}>
+            {(item) => (
+              <Select.Item key={item.id} id={item.id} textValue={item.label}>
+                {item.label}
+              </Select.Item>
+            )}
+          </Select>
+          <Select
+            label="Role"
+            placeholder="Select a role"
+            hint="Role determines access level."
+            items={ROLE_ITEMS}
+          >
+            {(item) => (
+              <Select.Item key={item.id} id={item.id} textValue={item.label} isDisabled={item.isDisabled}>
+                {item.label}
+                {item.supportingText && (
+                  <span className="tw:text-tertiary tw:text-sm tw:ml-1">{item.supportingText}</span>
+                )}
+              </Select.Item>
+            )}
+          </Select>
+          <Button color="primary" className="tw:w-full">Apply</Button>
         </div>
       </Popover>
     </PopoverTrigger>
@@ -47,83 +124,11 @@ export const WithArrow: StoryObj = {
     <PopoverTrigger>
       <Button color="secondary">With Arrow</Button>
       <Popover arrow>
-        <div style={{ padding: "16px 20px", minWidth: 200 }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#101828" }}>With Arrow</p>
-          <p style={{ margin: "4px 0 0", fontSize: 14, color: "#667085" }}>
-            This popover has an arrow pointing to its trigger.
-          </p>
-        </div>
-      </Popover>
-    </PopoverTrigger>
-  ),
-};
-
-export const PlacementTop: StoryObj = {
-  render: () => (
-    <PopoverTrigger>
-      <Button color="secondary">Opens Above</Button>
-      <Popover placement="top">
-        <div style={{ padding: "16px 20px", minWidth: 200 }}>
-          <p style={{ margin: 0, fontSize: 14, color: "#101828" }}>Popover above the trigger</p>
-        </div>
-      </Popover>
-    </PopoverTrigger>
-  ),
-};
-
-export const PlacementRight: StoryObj = {
-  render: () => (
-    <PopoverTrigger>
-      <Button color="secondary">Opens Right</Button>
-      <Popover placement="right">
-        <div style={{ padding: "16px 20px", minWidth: 200 }}>
-          <p style={{ margin: 0, fontSize: 14, color: "#101828" }}>Popover to the right</p>
-        </div>
-      </Popover>
-    </PopoverTrigger>
-  ),
-};
-
-export const WithRichContent: StoryObj = {
-  render: () => (
-    <PopoverTrigger>
-      <Button color="primary">User Profile</Button>
-      <Popover>
-        <div style={{ padding: 16, minWidth: 240 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                background: "#6941C6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                fontWeight: 700,
-                fontSize: 16,
-              }}
-            >
-              JD
-            </div>
-            <div>
-              <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: "#101828" }}>John Doe</p>
-              <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>john.doe@example.com</p>
-            </div>
-          </div>
-          <hr style={{ border: "none", borderTop: "1px solid #EAECF0", margin: "0 0 12px" }} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <button style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "8px 4px", fontSize: 14, color: "#344054" }}>
-              View Profile
-            </button>
-            <button style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "8px 4px", fontSize: 14, color: "#344054" }}>
-              Settings
-            </button>
-            <button style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "8px 4px", fontSize: 14, color: "#D92D20" }}>
-              Sign out
-            </button>
-          </div>
+        <div className="tw:p-4 tw:min-w-50">
+          <Typography>
+            <h4>With Arrow</h4>
+            <p>This popover has an arrow pointing to its trigger.</p>
+          </Typography>
         </div>
       </Popover>
     </PopoverTrigger>
@@ -132,17 +137,19 @@ export const WithRichContent: StoryObj = {
 
 export const Placements: StoryObj = {
   render: () => (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24, padding: 64 }}>
+    <div className="tw:grid tw:grid-cols-2 tw:gap-6 tw:p-16">
       {(["top", "bottom", "left", "right"] as const).map((placement) => (
         <PopoverTrigger key={placement}>
           <Button color="secondary" size="sm" className="tw:capitalize">
             {placement}
           </Button>
           <Popover placement={placement} arrow>
-            <div style={{ padding: "12px 16px" }}>
-              <p style={{ margin: 0, fontSize: 13, color: "#101828" }}>
-                Placed <strong>{placement}</strong>
-              </p>
+            <div className="tw:px-4 tw:py-3">
+              <Typography>
+                <p>
+                  Placed <strong>{placement}</strong>
+                </p>
+              </Typography>
             </div>
           </Popover>
         </PopoverTrigger>
