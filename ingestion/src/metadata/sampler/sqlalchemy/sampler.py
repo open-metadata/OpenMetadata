@@ -15,7 +15,7 @@ for the profiler
 import hashlib
 from typing import List, Optional, Union, cast
 
-from sqlalchemy import Column, inspect, text
+from sqlalchemy import Column, inspect, text, select
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
@@ -308,20 +308,15 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
     def _partitioned_table(self):
         """Return a CTE for partitioned tables.
 
-        We build the CTE inside the session context because SQA 2.0
-        requires the session to be alive when .cte() is called on a Query.
+        Build the CTE using Core select() so it does not require an active Session.
         """
         self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
         partition_filter = build_partition_predicate(
             self.partition_details,
             self.raw_dataset.__table__.c,
         )
-        with self.session_factory() as client:
-            return (
-                client.query(self.raw_dataset)
-                .filter(partition_filter)
-                .cte(f"{self.get_sampler_table_name()}_partitioned")
-            )
+        stmt = select(self.raw_dataset).where(partition_filter)
+        return stmt.cte(f"{self.get_sampler_table_name()}_partitioned")
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""
@@ -335,8 +330,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if query is not None:
             return query.filter(partition_filter)
 
-        with self.session_factory() as client:
-            return client.query(self.raw_dataset).filter(partition_filter)
+        # Return a Core select so callers do not require an active Session
+        return select(self.raw_dataset).where(partition_filter)
 
     def get_columns(self):
         """get columns from entity"""
