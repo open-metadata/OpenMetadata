@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { ChevronDown as ExpandMoreIcon, ChevronRight as ChevronRightIcon } from '@untitledui/icons';
 import { Box, Typography } from '@mui/material';
 import { SimpleTreeView, SimpleTreeViewProps } from '@mui/x-tree-view';
 import React, { FC, memo, MutableRefObject, ReactNode } from 'react';

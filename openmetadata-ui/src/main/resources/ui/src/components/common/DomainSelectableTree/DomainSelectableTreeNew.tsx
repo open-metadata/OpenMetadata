@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import AddIcon from '@mui/icons-material/Add';
+import { Plus as AddIcon } from '@untitledui/icons';
 import { Button as MUIButton, useTheme } from '@mui/material';
 import { Button, Empty, Select, Space, Tree } from 'antd';
 import { AxiosError } from 'axios';

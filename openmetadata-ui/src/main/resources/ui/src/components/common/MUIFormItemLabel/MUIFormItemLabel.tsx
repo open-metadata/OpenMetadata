@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { Box, Chip, FormLabel, SxProps, Theme, Tooltip } from '@mui/material';
+import { InfoCircle as InfoOutlinedIcon } from '@untitledui/icons';
+import { Box, Chip, FormLabel, SxProps, Theme, Tooltip, useTheme } from '@mui/material';
 import { TooltipProps } from '@mui/material/Tooltip';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,6 +42,7 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
   slotProps,
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
 
   return (
     <Box alignItems="center" display="inline-flex" gap={0.5}>
@@ -75,9 +76,9 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
                 }}>
                 <InfoOutlinedIcon
                   data-testid="mui-helper-icon"
-                  sx={{
-                    fontSize: 16,
-                    color: 'text.secondary',
+                  color={theme.palette.text.secondary}
+                  size={16}
+                  style={{
                     pointerEvents: 'auto',
                   }}
                 />

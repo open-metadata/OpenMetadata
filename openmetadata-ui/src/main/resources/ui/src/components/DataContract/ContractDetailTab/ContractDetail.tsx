@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { AddOutlined, ExpandMore } from '@mui/icons-material';
+import { ChevronDown as ExpandMore, Plus as AddOutlined } from '@untitledui/icons';
 import { Button, Menu, MenuItem } from '@mui/material';
 import {
   Card,
@@ -169,13 +169,12 @@ const ContractDetail: React.FC<{
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE,
         icon: (
           <AddOutlined
-            sx={{
-              color:
-                hoveredAddContractItem ===
-                DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE
-                  ? PRIMARY_COLOR
-                  : 'inherit',
-            }}
+            color={
+              hoveredAddContractItem ===
+              DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE
+                ? PRIMARY_COLOR
+                : undefined
+            }
           />
         ),
         testId: 'create-contract-button',

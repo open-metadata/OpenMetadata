@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CloseCircleOutlined } from '@ant-design/icons';
-import { Close, KeyboardArrowDown } from '@mui/icons-material';
+import { ChevronDown as KeyboardArrowDown, XClose as Close } from '@untitledui/icons';
 import {
   Box,
   Button,
@@ -245,7 +245,7 @@ const MuiDatePickerMenu = ({
                 size="small"
                 sx={{ p: 0.25, ml: -0.5 }}
                 onClick={handleClear}>
-                <Close sx={{ fontSize: 16 }} />
+                <Close size={16} />
               </IconButton>
             )}
             <KeyboardArrowDown />

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { ArrowRight as ArrowForwardIcon } from '@untitledui/icons';
 import { Box, Button, useTheme } from '@mui/material';
 import { Popover } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -84,9 +84,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
       </Box>
       <Button
         endIcon={
-          <ArrowForwardIcon
-            sx={{ fontSize: theme.typography.body2.fontSize }}
-          />
+          <ArrowForwardIcon size={14} />
         }
         size="small"
         sx={{

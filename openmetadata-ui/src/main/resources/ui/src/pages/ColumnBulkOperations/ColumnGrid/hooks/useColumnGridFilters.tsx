@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AddOutlined } from '@mui/icons-material';
+import { Plus as AddOutlined } from '@untitledui/icons';
 import { Button, Menu, MenuItem, useTheme } from '@mui/material';
 import { defaultColors } from '@openmetadata/ui-core-components';
 import {

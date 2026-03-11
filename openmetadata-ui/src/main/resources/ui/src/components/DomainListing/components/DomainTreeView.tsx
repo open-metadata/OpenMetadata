@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import AddIcon from '@mui/icons-material/Add';
+import { Plus as AddIcon } from '@untitledui/icons';
 import { Box, Button, Chip, Typography, useTheme } from '@mui/material';
 import { SimpleTreeView, TreeItem, treeItemClasses } from '@mui/x-tree-view';
 import { AxiosError } from 'axios';

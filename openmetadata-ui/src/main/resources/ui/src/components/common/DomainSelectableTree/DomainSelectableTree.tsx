@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import AddIcon from '@mui/icons-material/Add';
+import { Plus as AddIcon } from '@untitledui/icons';
 import { Button as MUIButton, useTheme } from '@mui/material';
 import { Button, Empty, Space, Spin, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';

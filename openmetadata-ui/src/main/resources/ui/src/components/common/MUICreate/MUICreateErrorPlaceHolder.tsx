@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import AddIcon from '@mui/icons-material/Add';
+import { Plus as AddIcon } from '@untitledui/icons';
 import { Box, Button, Typography } from '@mui/material';
 import classNames from 'classnames';
 import { ReactNode } from 'react';

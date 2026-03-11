@@ -182,14 +182,6 @@ jest.mock('@mui/material/styles', () => ({
   }),
 }));
 
-jest.mock('@mui/icons-material', () => ({
-  HelpOutlineIcon: jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="help-outline-icon">HelpIcon</div>
-    )),
-}));
-
 jest.mock('@ant-design/icons', () => ({
   CloseOutlined: () => <div data-testid="close-icon">CloseIcon</div>,
 }));
