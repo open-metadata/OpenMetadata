@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "search_metadata",
-      "description": "Keyword-based search for data assets in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes.",
+      "description": "Keyword-based search for data assets in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties.",
         "type": "object",
@@ -101,7 +101,7 @@
     },
     {
       "name": "semantic_search",
-      "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns entity summaries with name, columns, description, and metadata. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes.",
+      "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns entity summaries with name, columns, description, and metadata. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' to describe what you're looking for in plain language. The system finds conceptually similar assets using vector similarity. Optionally filter by entity type, service, or tags.",
         "type": "object",
@@ -162,18 +162,18 @@
     },
     {
       "name": "get_entity_details",
-      "description": "Get detailed information about a specific entity. Response is optimized for LLM context by excluding verbose metadata fields.",
+      "description": "Get detailed information about a specific entity by its fully qualified name. IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context by excluding verbose metadata fields.",
       "parameters": {
-        "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
+        "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
         "type": "object",
         "properties": {
           "entityType": {
             "type": "string",
-            "description": "Type of entity"
+            "description": "Type of entity (e.g., table, dashboard, topic, pipeline). Use the 'entityType' value from search results."
           },
           "fqn": {
             "type": "string",
-            "description": "Fully qualified name of the entity"
+            "description": "Fully qualified name of the entity. IMPORTANT: Use the exact 'fullyQualifiedName' value from search_metadata or semantic_search results. Do not attempt to construct or modify the FQN."
           }
         },
         "required": [

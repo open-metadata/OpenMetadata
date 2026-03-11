@@ -305,6 +305,9 @@ public class SearchMetadataTool implements McpTool {
     result.put("totalFound", totalResults);
     result.put("returnedCount", cleanedResults.size());
     result.put("query", query);
+    result.put(
+        "usage",
+        "To get full details for any result, call get_entity_details with the result's exact 'entityType' and 'fullyQualifiedName' values.");
 
     // Handle aggregations based on includeAggregations flag
     if (includeAggregations && searchResponse.containsKey("aggregations")) {

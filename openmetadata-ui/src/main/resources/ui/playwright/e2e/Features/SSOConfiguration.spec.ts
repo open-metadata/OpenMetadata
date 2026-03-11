@@ -86,90 +86,87 @@ test.describe('SSO Configuration Tests', () => {
     });
   });
 
-  test.describe(
-    'Provider Field Visibility Checks - Confidential Client',
-    () => {
-      test('should show correct fields for Google provider with confidential client', async ({
-        page,
-      }) => {
-        await selectSSOProvider(page, 'google');
+  test.describe('Provider Field Visibility Checks - Confidential Client', () => {
+    test('should show correct fields for Google provider with confidential client', async ({
+      page,
+    }) => {
+      await selectSSOProvider(page, 'google');
 
-        // Verify Confidential client type is selected by default
-        const confidentialRadio = page.getByRole('radio', {
-          name: /confidential/i,
-        });
-
-        await expect(confidentialRadio).toBeChecked();
-
-        // Verify common fields are visible
-        await verifyProviderFields(page, SSO_COMMON_FIELDS);
-
-        // Verify OIDC specific fields with OIDC prefix in labels
-
-        for (const field of OIDC_COMMON_FIELDS) {
-          const fieldElement = page.getByLabel(field);
-          const fieldCount = await fieldElement.count();
-          if (fieldCount > 0) {
-            await expect(fieldElement.first()).toBeVisible();
-          }
-        }
+      // Verify Confidential client type is selected by default
+      const confidentialRadio = page.getByRole('radio', {
+        name: /confidential/i,
       });
 
-      test('should show correct fields for Auth0 provider with confidential client', async ({
-        page,
-      }) => {
-        await selectSSOProvider(page, 'auth0');
+      await expect(confidentialRadio).toBeChecked();
 
-        // Verify Confidential client type is selected by default
-        const confidentialRadio = page.getByRole('radio', {
-          name: /confidential/i,
-        });
+      // Verify common fields are visible
+      await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
-        await expect(confidentialRadio).toBeChecked();
+      // Verify OIDC specific fields with OIDC prefix in labels
 
-        // Verify common fields are visible
-        await verifyProviderFields(page, SSO_COMMON_FIELDS);
-
-        // Verify OIDC specific fields with OIDC prefix in labels
-        const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
-
-        for (const field of oidcFields) {
-          const fieldElement = page.getByLabel(field);
-          const fieldCount = await fieldElement.count();
-          if (fieldCount > 0) {
-            await expect(fieldElement.first()).toBeVisible();
-          }
+      for (const field of OIDC_COMMON_FIELDS) {
+        const fieldElement = page.getByLabel(field);
+        const fieldCount = await fieldElement.count();
+        if (fieldCount > 0) {
+          await expect(fieldElement.first()).toBeVisible();
         }
+      }
+    });
+
+    test('should show correct fields for Auth0 provider with confidential client', async ({
+      page,
+    }) => {
+      await selectSSOProvider(page, 'auth0');
+
+      // Verify Confidential client type is selected by default
+      const confidentialRadio = page.getByRole('radio', {
+        name: /confidential/i,
       });
 
-      test('should show correct fields for Okta provider with confidential client', async ({
-        page,
-      }) => {
-        await selectSSOProvider(page, 'okta');
+      await expect(confidentialRadio).toBeChecked();
 
-        // Verify Confidential client type is selected by default
-        const confidentialRadio = page.getByRole('radio', {
-          name: /confidential/i,
-        });
+      // Verify common fields are visible
+      await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
-        await expect(confidentialRadio).toBeChecked();
+      // Verify OIDC specific fields with OIDC prefix in labels
+      const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
 
-        // Verify common fields are visible
-        await verifyProviderFields(page, SSO_COMMON_FIELDS);
-
-        // Verify OIDC specific fields with OIDC prefix in labels
-        const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
-
-        for (const field of oidcFields) {
-          const fieldElement = page.getByLabel(field);
-          const fieldCount = await fieldElement.count();
-          if (fieldCount > 0) {
-            await expect(fieldElement.first()).toBeVisible();
-          }
+      for (const field of oidcFields) {
+        const fieldElement = page.getByLabel(field);
+        const fieldCount = await fieldElement.count();
+        if (fieldCount > 0) {
+          await expect(fieldElement.first()).toBeVisible();
         }
+      }
+    });
+
+    test('should show correct fields for Okta provider with confidential client', async ({
+      page,
+    }) => {
+      await selectSSOProvider(page, 'okta');
+
+      // Verify Confidential client type is selected by default
+      const confidentialRadio = page.getByRole('radio', {
+        name: /confidential/i,
       });
-    }
-  );
+
+      await expect(confidentialRadio).toBeChecked();
+
+      // Verify common fields are visible
+      await verifyProviderFields(page, SSO_COMMON_FIELDS);
+
+      // Verify OIDC specific fields with OIDC prefix in labels
+      const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
+
+      for (const field of oidcFields) {
+        const fieldElement = page.getByLabel(field);
+        const fieldCount = await fieldElement.count();
+        if (fieldCount > 0) {
+          await expect(fieldElement.first()).toBeVisible();
+        }
+      }
+    });
+  });
 
   test.describe('Provider Field Visibility Checks - Public Client', () => {
     test('should show correct fields when selecting SAML provider', async ({
@@ -668,7 +665,9 @@ test.describe('SSO Configuration Tests', () => {
       await selectSSOProvider(page, 'ldap');
 
       const addMappingButton = page.getByTestId('add-mapping-btn');
-      const ldapGroupInputs = page.locator('[data-testid^="ldap-group-input-"]');
+      const ldapGroupInputs = page.locator(
+        '[data-testid^="ldap-group-input-"]'
+      );
       const rolesSelects = page.locator('[data-testid^="roles-select-"]');
       const errorMessages = page.locator('[data-testid^="ldap-group-error-"]');
 
@@ -744,13 +743,15 @@ test.describe('SSO Configuration Tests', () => {
       // Opening the dropdown shows API-fetched role options
       await field.click();
       await expect(dropdown).toBeVisible();
-      await expect(
-        dropdown.locator('.ant-select-item-option')
-      ).not.toHaveCount(0);
+      await expect(dropdown.locator('.ant-select-item-option')).not.toHaveCount(
+        0
+      );
 
       // Select the first available role — it appears as a selection tag
       await dropdown
-        .locator('.ant-select-item-option:not(.ant-select-item-option-disabled)')
+        .locator(
+          '.ant-select-item-option:not(.ant-select-item-option-disabled)'
+        )
         .first()
         .click();
       await expect(field.locator('.ant-select-selection-item')).toHaveCount(1);
@@ -856,8 +857,7 @@ test.describe('SSO Back Navigation', () => {
               enableSelfSignup: false,
             },
             authorizerConfiguration: {
-              className:
-                'org.openmetadata.service.security.DefaultAuthorizer',
+              className: 'org.openmetadata.service.security.DefaultAuthorizer',
               containerRequestFilter:
                 'org.openmetadata.service.security.JwtFilter',
               adminPrincipals: ['admin'],

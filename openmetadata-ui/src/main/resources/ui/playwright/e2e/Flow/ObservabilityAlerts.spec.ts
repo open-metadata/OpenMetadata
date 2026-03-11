@@ -380,18 +380,15 @@ test('Alert operations for a user with and without permissions', async ({
     });
   });
 
-  await test.step(
-    'Check alert details page and Recent Events tab',
-    async () => {
-      await checkAlertDetailsForWithPermissionUser({
-        page: userWithPermissionsPage,
-        alertDetails: data.alertDetails,
-        sourceName: SOURCE_NAME_3,
-        table: table1,
-        user: user2,
-      });
-    }
-  );
+  await test.step('Check alert details page and Recent Events tab', async () => {
+    await checkAlertDetailsForWithPermissionUser({
+      page: userWithPermissionsPage,
+      alertDetails: data.alertDetails,
+      sourceName: SOURCE_NAME_3,
+      table: table1,
+      user: user2,
+    });
+  });
 
   await test.step('Delete alert', async () => {
     await deleteAlert(userWithPermissionsPage, data.alertDetails, false);

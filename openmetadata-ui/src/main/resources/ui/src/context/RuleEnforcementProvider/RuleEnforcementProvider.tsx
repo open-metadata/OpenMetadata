@@ -38,81 +38,82 @@ interface RuleEnforcementProviderProps {
   children: React.ReactNode;
 }
 
-export const RuleEnforcementProvider: React.FC<RuleEnforcementProviderProps> =
-  ({ children }) => {
-    const [rules, setRules] = useState<Record<string, ParsedRule[]>>({});
-    const [isLoading, setIsLoading] = useState(false);
-    const [loadedEntityTypes, setLoadedEntityTypes] = useState<Set<string>>(
-      new Set()
-    );
+export const RuleEnforcementProvider: React.FC<
+  RuleEnforcementProviderProps
+> = ({ children }) => {
+  const [rules, setRules] = useState<Record<string, ParsedRule[]>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadedEntityTypes, setLoadedEntityTypes] = useState<Set<string>>(
+    new Set()
+  );
 
-    const fetchRulesForEntity = useCallback(
-      async (entityType: EntityType) => {
-        // Skip if already loaded
-        if (loadedEntityTypes.has(entityType)) {
-          return;
-        }
+  const fetchRulesForEntity = useCallback(
+    async (entityType: EntityType) => {
+      // Skip if already loaded
+      if (loadedEntityTypes.has(entityType)) {
+        return;
+      }
 
-        setIsLoading(true);
+      setIsLoading(true);
 
-        try {
-          const response = await getEntityRules(entityType);
-          const parsedRules = response.map(parseRule);
+      try {
+        const response = await getEntityRules(entityType);
+        const parsedRules = response.map(parseRule);
 
-          setRules((prev) => ({
-            ...prev,
-            [entityType]: parsedRules,
-          }));
+        setRules((prev) => ({
+          ...prev,
+          [entityType]: parsedRules,
+        }));
 
-          setLoadedEntityTypes((prev) => new Set([...prev, entityType]));
-        } catch (err) {
-          showErrorToast(err as AxiosError);
-        } finally {
-          setIsLoading(false);
-        }
-      },
-      [loadedEntityTypes]
-    );
+        setLoadedEntityTypes((prev) => new Set([...prev, entityType]));
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [loadedEntityTypes]
+  );
 
-    const getRulesForEntity = useCallback(
-      (entityType: EntityType): ParsedRule[] => {
-        return rules[entityType] || [];
-      },
-      [rules]
-    );
+  const getRulesForEntity = useCallback(
+    (entityType: EntityType): ParsedRule[] => {
+      return rules[entityType] || [];
+    },
+    [rules]
+  );
 
-    const getEntityRuleValidation = useCallback(
-      (entityType: EntityType) => {
-        const entityRules = getRulesForEntity(entityType);
+  const getEntityRuleValidation = useCallback(
+    (entityType: EntityType) => {
+      const entityRules = getRulesForEntity(entityType);
 
-        return getEntityRulesValidation(entityRules, entityType);
-      },
-      [getRulesForEntity]
-    );
+      return getEntityRulesValidation(entityRules, entityType);
+    },
+    [getRulesForEntity]
+  );
 
-    const contextValue = useMemo(
-      () => ({
-        rules,
-        isLoading,
-        fetchRulesForEntity,
-        getRulesForEntity,
-        getEntityRuleValidation,
-      }),
-      [
-        rules,
-        isLoading,
-        fetchRulesForEntity,
-        getRulesForEntity,
-        getEntityRuleValidation,
-      ]
-    );
+  const contextValue = useMemo(
+    () => ({
+      rules,
+      isLoading,
+      fetchRulesForEntity,
+      getRulesForEntity,
+      getEntityRuleValidation,
+    }),
+    [
+      rules,
+      isLoading,
+      fetchRulesForEntity,
+      getRulesForEntity,
+      getEntityRuleValidation,
+    ]
+  );
 
-    return (
-      <RuleEnforcementContext.Provider value={contextValue}>
-        {children}
-      </RuleEnforcementContext.Provider>
-    );
-  };
+  return (
+    <RuleEnforcementContext.Provider value={contextValue}>
+      {children}
+    </RuleEnforcementContext.Provider>
+  );
+};
 
 export const useRuleEnforcementProvider = () =>
   useContext(RuleEnforcementContext);

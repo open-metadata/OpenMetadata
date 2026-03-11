@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   EDIT_USER_FOR_TEAM_RULES,
   OWNER_TEAM_RULES,
@@ -124,12 +124,6 @@ test.describe('Teams Page', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await user.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await user.delete(apiContext);
     await afterAction();
   });
 
@@ -608,10 +602,16 @@ test.describe('Teams Page', () => {
       await addTeamOwnerToEntity(page, table3, team3);
       await addTeamOwnerToEntity(page, table4, team4);
 
-      await verifyTeamListingAssetCount(page, team1, 1);
-      await verifyTeamListingAssetCount(page, team2, 1);
-      await verifyTeamListingAssetCount(page, team3, 1);
-      await verifyTeamListingAssetCount(page, team4, 1);
+      // Columns are excluded from team asset counts, so only count the table itself
+      const assetCount1 = 1;
+      const assetCount2 = 1;
+      const assetCount3 = 1;
+      const assetCount4 = 1;
+
+      await verifyTeamListingAssetCount(page, team1, assetCount1);
+      await verifyTeamListingAssetCount(page, team2, assetCount2);
+      await verifyTeamListingAssetCount(page, team3, assetCount3);
+      await verifyTeamListingAssetCount(page, team4, assetCount4);
     } finally {
       await table1.delete(apiContext);
       await table2.delete(apiContext);
@@ -866,18 +866,6 @@ test.describe('Teams Page with EditUser Permission', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-    await user2.delete(apiContext);
-    await editOnlyUser.delete(apiContext);
-    await team.delete(apiContext);
-    await team2.delete(apiContext);
-    await policy.delete(apiContext);
-    await role.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach('Visit Home Page', async ({ editOnlyUserPage }) => {
     await redirectToHomePage(editOnlyUserPage);
     await team2.visitTeamPage(editOnlyUserPage);
@@ -935,17 +923,6 @@ test.describe('Teams Page with Data Consumer User', () => {
     });
     await team.create(apiContext);
     await team2.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await dataConsumerUser.delete(apiContext);
-    await user.delete(apiContext);
-    await team.delete(apiContext);
-    await policy.delete(apiContext);
-    await role.delete(apiContext);
-    await team2.delete(apiContext);
     await afterAction();
   });
 
@@ -1113,13 +1090,6 @@ test.describe('Teams Page action as Owner of Team', () => {
     await teamNoOwner.create(apiContext);
     await domain.create(apiContext);
     await dataProduct.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await policy.delete(apiContext);
-    await role.delete(apiContext);
     await afterAction();
   });
 

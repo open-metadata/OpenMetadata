@@ -15,17 +15,16 @@
  * Generate the Main Index Page (README.md)
  */
 function generateIndexMarkdown(components, stats) {
-  
   // Group components by Domain for display
   const domains = {
-    'Governance': [],
-    'Platform': [],
-    'Discovery': [],
-    'Observability': [],
-    'Integration': []
+    Governance: [],
+    Platform: [],
+    Discovery: [],
+    Observability: [],
+    Integration: [],
   };
 
-  components.forEach(c => {
+  components.forEach((c) => {
     if (domains[c.domain]) {
       domains[c.domain].push(c);
     } else {
@@ -36,28 +35,28 @@ function generateIndexMarkdown(components, stats) {
   });
 
   // Sort components within domains
-  Object.keys(domains).forEach(d => {
+  Object.keys(domains).forEach((d) => {
     domains[d].sort((a, b) => b.totalScenarios - a.totalScenarios);
   });
 
   // Calculate accurate "Scenario" count (Test + Steps)
-  // Logic: 
+  // Logic:
   // If a test has steps, Scenarios = Step Count.
   // If a test has NO steps, Scenarios = 1 (The test itself).
   let totalScenarios = 0;
-  components.forEach(c => {
-      c.files.forEach(f => {
-          // Process root tests
-          f.rootTests.forEach(t => {
-              totalScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
-          });
-          // Process describes
-          f.describes.forEach(d => {
-              d.tests.forEach(t => {
-                  totalScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
-              });
-          });
+  components.forEach((c) => {
+    c.files.forEach((f) => {
+      // Process root tests
+      f.rootTests.forEach((t) => {
+        totalScenarios += t.steps && t.steps.length > 0 ? t.steps.length : 1;
       });
+      // Process describes
+      f.describes.forEach((d) => {
+        d.tests.forEach((t) => {
+          totalScenarios += t.steps && t.steps.length > 0 ? t.steps.length : 1;
+        });
+      });
+    });
   });
 
   let md = `# OpenMetadata E2E Test Documentation
@@ -84,13 +83,23 @@ function generateIndexMarkdown(components, stats) {
     // Calculate Domain Stats
     const domainTests = comps.reduce((s, c) => s + c.totalTests, 0);
     const domainComponents = comps.length;
-    
+
     let domainScenarios = 0;
-    comps.forEach(c => {
-        c.files.forEach(f => {
-            f.rootTests.forEach(t => domainScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1);
-            f.describes.forEach(d => d.tests.forEach(t => domainScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1));
-        });
+    comps.forEach((c) => {
+      c.files.forEach((f) => {
+        f.rootTests.forEach(
+          (t) =>
+            (domainScenarios +=
+              t.steps && t.steps.length > 0 ? t.steps.length : 1)
+        );
+        f.describes.forEach((d) =>
+          d.tests.forEach(
+            (t) =>
+              (domainScenarios +=
+                t.steps && t.steps.length > 0 ? t.steps.length : 1)
+          )
+        );
+      });
     });
 
     md += `## ${domainName}\n\n`;
@@ -98,20 +107,20 @@ function generateIndexMarkdown(components, stats) {
 
     md += `| Component | Files | Tests | Total Scenarios | Skipped |\n`;
     md += `|-----------|-------|-------|-----------------|---------|\n`;
-    
-    comps.forEach(c => {
+
+    comps.forEach((c) => {
       let compScenarios = 0;
       let skippedCount = 0; // Initialize skippedCount for each component
-      c.files.forEach(file => {
-        file.rootTests.forEach(t => { 
-            if(t.isSkipped) skippedCount++; 
-            compScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
+      c.files.forEach((file) => {
+        file.rootTests.forEach((t) => {
+          if (t.isSkipped) skippedCount++;
+          compScenarios += t.steps && t.steps.length > 0 ? t.steps.length : 1;
         });
-        file.describes.forEach(d => {
-            d.tests.forEach(t => { 
-                if(t.isSkipped) skippedCount++; 
-                compScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
-            });
+        file.describes.forEach((d) => {
+          d.tests.forEach((t) => {
+            if (t.isSkipped) skippedCount++;
+            compScenarios += t.steps && t.steps.length > 0 ? t.steps.length : 1;
+          });
         });
       });
 
@@ -119,7 +128,7 @@ function generateIndexMarkdown(components, stats) {
       const anchor = c.slug; // Use pre-calculated slug
       const link = `./${domainName}.md#${anchor}`;
       const skippedBadge = skippedCount > 0 ? `🟡 ${skippedCount}` : '0';
-      
+
       md += `| [${c.name}](${link}) | ${c.files.length} | ${c.totalTests} | ${compScenarios} | ${skippedBadge} |\n`;
     });
     md += '\n';
@@ -138,20 +147,20 @@ function generateDomainMarkdown(domainName, components, options = {}) {
   // Stats for the Domain
   const totalTests = components.reduce((s, c) => s + c.totalTests, 0);
   const totalFiles = components.reduce((s, c) => s + c.files.length, 0);
-  
+
   // Calculate Domain Total Scenarios
   let domainScenarios = 0;
-  components.forEach(c => {
-      c.files.forEach(f => {
-          f.rootTests.forEach(t => {
-              domainScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
-          });
-          f.describes.forEach(d => {
-              d.tests.forEach(t => {
-                  domainScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
-              });
-          });
+  components.forEach((c) => {
+    c.files.forEach((f) => {
+      f.rootTests.forEach((t) => {
+        domainScenarios += t.steps && t.steps.length > 0 ? t.steps.length : 1;
       });
+      f.describes.forEach((d) => {
+        d.tests.forEach((t) => {
+          domainScenarios += t.steps && t.steps.length > 0 ? t.steps.length : 1;
+        });
+      });
+    });
   });
 
   let md = `[🏠 Home](./README.md) > **${domainName}**\n\n`;
@@ -160,24 +169,26 @@ function generateDomainMarkdown(domainName, components, options = {}) {
 
   // Table of Contents for the page
   md += `## Table of Contents\n`;
-  components.forEach(c => {
+  components.forEach((c) => {
     md += `- [${c.name}](#${c.slug})\n`;
   });
   md += `\n---\n\n`;
 
   // Render Each Component
-  components.forEach(component => {
+  components.forEach((component) => {
     // Add explicit anchor div to ensure robust linking
     md += `<div id="${component.slug}"></div>\n\n`;
     md += `## ${component.name}\n\n`;
-    
-    // Sort files by size (scenarios)
-    const sortedFiles = [...component.files].sort((a, b) => b.totalScenarios - a.totalScenarios);
 
-    sortedFiles.forEach(file => {
+    // Sort files by size (scenarios)
+    const sortedFiles = [...component.files].sort(
+      (a, b) => b.totalScenarios - a.totalScenarios
+    );
+
+    sortedFiles.forEach((file) => {
       md += renderFileWithCollapse(file, repoBaseUrl);
     });
-    
+
     md += `\n---\n\n`;
   });
 
@@ -185,13 +196,13 @@ function generateDomainMarkdown(domainName, components, options = {}) {
 }
 
 function renderFileWithCollapse(file, repoBaseUrl) {
-  // Try to find relative path from 'src/main/resources/ui' or similar common roots if possible, 
+  // Try to find relative path from 'src/main/resources/ui' or similar common roots if possible,
   // or fall back to just filename if path parsing is complex.
   // Assuming standard Maven structure: .../src/main/resources/ui/...
-  
+
   // Robust path logic for both OpenMetadata (monorepo) and Collate (separate repo)
   // Goal: relativePath should be 'src/main/resources/ui/...' to match standard docs
-  
+
   let relativePath = file.path;
   const standardPrefix = 'src/main/resources/ui/';
 
@@ -207,21 +218,30 @@ function renderFileWithCollapse(file, repoBaseUrl) {
   }
 
   // URL Construction assuming 'openmetadata-ui' is the root module folder in both repos
-  const fileUrl = `${repoBaseUrl}/blob/main/openmetadata-ui/${relativePath.startsWith('/') ? relativePath.substring(1) : relativePath}`;
-  
+  const fileUrl = `${repoBaseUrl}/blob/main/openmetadata-ui/${
+    relativePath.startsWith('/') ? relativePath.substring(1) : relativePath
+  }`;
+
   // Calculate File Scenarios
   let fileScenarios = 0;
-  file.rootTests.forEach(t => fileScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1);
-  file.describes.forEach(d => d.tests.forEach(t => fileScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1));
+  file.rootTests.forEach(
+    (t) => (fileScenarios += t.steps && t.steps.length > 0 ? t.steps.length : 1)
+  );
+  file.describes.forEach((d) =>
+    d.tests.forEach(
+      (t) =>
+        (fileScenarios += t.steps && t.steps.length > 0 ? t.steps.length : 1)
+    )
+  );
 
   // Collapsible Details Block
   let md = `<details open>\n`;
   md += `<summary>📄 <b>${file.fileName}</b> (${file.totalTests} tests, ${fileScenarios} scenarios)</summary>\n\n`;
-  
+
   md += `> Source: [\`${relativePath}\`](${fileUrl})\n\n`;
 
   // Render Describes
-  file.describes.forEach(describe => {
+  file.describes.forEach((describe) => {
     if (describe.tests.length === 0) return;
     md += `### ${describe.name}\n\n`;
     // Pass prefix to renderTable
@@ -238,39 +258,45 @@ function renderFileWithCollapse(file, repoBaseUrl) {
   return md;
 }
 
-
 function renderTable(tests, fileUrl, prefix = '') {
   let md = `| # | Test Case | Description |\n|---|-----------|-------------|\n`;
-  
+
   tests.forEach((test, idx) => {
     const badge = test.isSkipped ? ' ⏭️' : '';
     // Escape backslashes first, then pipes to avoid breaking tables
     const name = test.name.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
-    const desc = (test.description || '-').replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
-    
+    const desc = (test.description || '-')
+      .replace(/\\/g, '\\\\')
+      .replace(/\|/g, '\\|');
+
     // Bold specific parts for readability (e.g., Entity Names)
-    const formattedName = name.includes('→') 
-      ? name.split('→').map((part, i) => i === 0 ? `**${part.trim()}**` : part.trim()).join(' → ')
+    const formattedName = name.includes('→')
+      ? name
+          .split('→')
+          .map((part, i) => (i === 0 ? `**${part.trim()}**` : part.trim()))
+          .join(' → ')
       : name;
 
     // Use explicit prefix if provided (e.g. Entity Name)
-    const displayName = prefix ? `**${prefix}** - ${formattedName}` : formattedName;
+    const displayName = prefix
+      ? `**${prefix}** - ${formattedName}`
+      : formattedName;
 
     // Test Case text is plain text (bolded/formatted) without line number link
     md += `| ${idx + 1} | ${displayName}${badge} | ${desc} |\n`;
 
     // Render Steps as sub-rows if needed
-    test.steps.forEach(step => {
-       const stepName = step.name.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
-       md += `| | ↳ *${stepName}* | |\n`;
+    test.steps.forEach((step) => {
+      const stepName = step.name.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+      md += `| | ↳ *${stepName}* | |\n`;
     });
   });
-  
+
   md += '\n';
   return md;
 }
 
 module.exports = {
   generateIndexMarkdown,
-  generateDomainMarkdown
+  generateDomainMarkdown,
 };

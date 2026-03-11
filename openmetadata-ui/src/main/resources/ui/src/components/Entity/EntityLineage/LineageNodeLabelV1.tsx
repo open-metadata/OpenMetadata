@@ -87,7 +87,7 @@ const EntityLabel = ({ node }: LineageNodeLabelProps) => {
         <div className="d-flex entity-service-icon m-r-xs">
           {getServiceIcon(node)}
         </div>
-        <Space align="start" direction="vertical" size={0}>
+        <Space align="start" className="flex-1" direction="vertical" size={0}>
           <Typography.Text
             className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
             data-testid="entity-header-display-name"

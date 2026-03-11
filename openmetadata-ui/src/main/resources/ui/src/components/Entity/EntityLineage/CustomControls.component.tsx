@@ -326,17 +326,19 @@ const CustomControls: FC<{
   }, [selectedQuickFilters]);
 
   const searchBarComponent = useMemo(() => {
-    return activeTab === 'impact_analysis' && onSearchValueChange ? (
-      <Searchbar
-        removeMargin
-        inputClassName="w-80"
-        placeholder={t('label.search-for-type', {
-          type: t('label.asset-or-column'),
-        })}
-        searchValue={searchValue}
-        typingInterval={300}
-        onSearch={onSearchValueChange}
-      />
+    return activeTab === 'impact_analysis' ? (
+      onSearchValueChange && (
+        <Searchbar
+          removeMargin
+          inputClassName="w-80"
+          placeholder={t('label.search-for-type', {
+            type: t('label.asset-or-column'),
+          })}
+          searchValue={searchValue}
+          typingInterval={300}
+          onSearch={onSearchValueChange}
+        />
+      )
     ) : (
       <LineageSearchSelect />
     );
@@ -440,6 +442,7 @@ const CustomControls: FC<{
                 : t('label.export')
             }>
             <StyledIconButton
+              data-testid="export-button"
               disabled={isEditMode}
               size="large"
               onClick={handleExportClick}>

@@ -58,6 +58,25 @@ public final class SearchIndexUtils {
     return ownersRef.stream().map(item -> item.getId().toString()).toList();
   }
 
+  public static Map<String, Object> toEntityRefMap(EntityReference ref) {
+    if (ref == null) {
+      return null;
+    }
+    Map<String, Object> map = new HashMap<>();
+    map.put("id", ref.getId() != null ? ref.getId().toString() : null);
+    map.put("name", ref.getName());
+    map.put(
+        "displayName",
+        ref.getDisplayName() != null && !ref.getDisplayName().isBlank()
+            ? ref.getDisplayName()
+            : ref.getName());
+    map.put("fullyQualifiedName", ref.getFullyQualifiedName());
+    map.put("description", ref.getDescription());
+    map.put("deleted", ref.getDeleted());
+    map.put("type", ref.getType());
+    return map;
+  }
+
   public static void removeNonIndexableFields(Map<String, Object> doc, Set<String> fields) {
     for (String key : fields) {
       if (key.contains(".")) {

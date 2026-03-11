@@ -210,7 +210,9 @@ test.describe(
           { state: 'detached' }
         );
 
-        const teamsSearchBar = page.getByTestId('owner-select-teams-search-bar');
+        const teamsSearchBar = page.getByTestId(
+          'owner-select-teams-search-bar'
+        );
         await teamsSearchBar.waitFor({ state: 'visible' });
 
         const searchUser = page.waitForResponse(
@@ -745,7 +747,9 @@ test.describe(
 
         // Navigate to glossary term page with full page load
         await page.goto(
-          `/glossary/${encodeURIComponent(testGlossaryTerm.responseData.fullyQualifiedName)}`
+          `/glossary/${encodeURIComponent(
+            testGlossaryTerm.responseData.fullyQualifiedName
+          )}`
         );
 
         // Wait for page to be fully loaded

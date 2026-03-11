@@ -13,8 +13,8 @@
 import { expect } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { TableClass } from '../../support/entity/TableClass';
-import { UserClass } from '../../support/user/UserClass';
 import { test } from '../../support/fixtures/userPages';
+import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,

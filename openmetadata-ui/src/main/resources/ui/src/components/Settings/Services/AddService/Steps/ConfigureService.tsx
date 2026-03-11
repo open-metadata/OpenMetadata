@@ -30,8 +30,9 @@ const ConfigureService = ({
   onBack,
   onNext,
 }: ConfigureServiceProps) => {
-  const { serviceCategory } =
-    useRequiredParams<{ serviceCategory: ServiceCategory }>();
+  const { serviceCategory } = useRequiredParams<{
+    serviceCategory: ServiceCategory;
+  }>();
   const [form] = Form.useForm();
   const { t } = useTranslation();
 

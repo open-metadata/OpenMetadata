@@ -453,8 +453,7 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
         className="action action--ADD-RULE"
         data-testid="add-condition-button"
         type="primary"
-        onClick={props?.onClick}
-      >
+        onClick={props?.onClick}>
         {t('label.add-entity', {
           entity: t('label.condition'),
         })}

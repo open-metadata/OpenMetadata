@@ -124,19 +124,14 @@ export class DataProduct extends EntityClass {
 
     return response.body;
   }
-  
+
   private getFqn() {
     return this.data?.fullyQualifiedName ?? this.data.name;
   }
 
-  async addAssets(
-    apiContext: APIRequestContext,
-    assets: AssetReference[]
-  ) {
+  async addAssets(apiContext: APIRequestContext, assets: AssetReference[]) {
     const response = await apiContext.put(
-      `/api/v1/dataProducts/${encodeURIComponent(
-        this.getFqn()
-      )}/assets/add`,
+      `/api/v1/dataProducts/${encodeURIComponent(this.getFqn())}/assets/add`,
       {
         data: { assets },
       }

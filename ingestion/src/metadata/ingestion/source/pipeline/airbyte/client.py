@@ -27,7 +27,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.airbyte.oaut
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
-from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import APIError, ClientConfig
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.credentials import generate_http_basic_token
 from metadata.utils.helpers import clean_uri
@@ -65,7 +66,7 @@ class AirbyteClient:
                 0,
             )
 
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="airbyte")
 
     def list_workspaces(self) -> List[dict]:
         """
@@ -190,7 +191,7 @@ class AirbyteCloudClient(AirbyteClient):
         )
         client_config.auth_token_mode = "Bearer"
 
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config)
 
     def _fetch_oauth_token(self) -> Tuple[str, int]:
         """

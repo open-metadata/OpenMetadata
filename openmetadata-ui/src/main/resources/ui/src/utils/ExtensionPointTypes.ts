@@ -53,7 +53,7 @@ export const EXTENSION_POINTS = {
  * Type-safe extension point IDs
  */
 export type ExtensionPointId =
-  typeof EXTENSION_POINTS[keyof typeof EXTENSION_POINTS];
+  (typeof EXTENSION_POINTS)[keyof typeof EXTENSION_POINTS];
 
 // ============================================================================
 // Plugin Context Types

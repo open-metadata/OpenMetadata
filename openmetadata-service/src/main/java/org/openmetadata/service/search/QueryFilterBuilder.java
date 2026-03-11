@@ -14,6 +14,7 @@
 package org.openmetadata.service.search;
 
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.TABLE_COLUMN;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,11 +52,9 @@ public class QueryFilterBuilder {
     addHierarchyCondition(mustArray, query.getFieldPath(), query.getFieldValue());
     addCommonFilters(mustArray, query);
 
-    // Exclude data products from domain assets
+    // Exclude data products and columns from domain assets
     ArrayNode mustNotArray = boolNode.putArray(MUST_NOT_KEY);
-    ObjectNode dataProductNode = MAPPER.createObjectNode();
-    dataProductNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, DATA_PRODUCT);
-    mustNotArray.add(dataProductNode);
+    addEntityTypeExclusions(mustNotArray);
 
     return serializeQuery(queryFilter);
   }
@@ -71,11 +70,9 @@ public class QueryFilterBuilder {
     existsNode.putObject("exists").put("field", fieldPath);
     mustArray.add(existsNode);
 
-    // Exclude data products from domain assets
+    // Exclude data products and columns from domain assets
     ArrayNode mustNotArray = boolNode.putArray(MUST_NOT_KEY);
-    ObjectNode dataProductNode = MAPPER.createObjectNode();
-    dataProductNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, DATA_PRODUCT);
-    mustNotArray.add(dataProductNode);
+    addEntityTypeExclusions(mustNotArray);
 
     return serializeQuery(queryFilter);
   }
@@ -93,6 +90,10 @@ public class QueryFilterBuilder {
     ObjectNode deletedNode = MAPPER.createObjectNode();
     deletedNode.putObject(TERM_KEY).put(DELETED_KEY, false);
     mustArray.add(deletedNode);
+
+    // Exclude data products and columns from team assets
+    ArrayNode mustNotArray = boolNode.putArray(MUST_NOT_KEY);
+    addEntityTypeExclusions(mustNotArray);
 
     return serializeQuery(queryFilter);
   }
@@ -245,6 +246,16 @@ public class QueryFilterBuilder {
       entityTypeNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, query.getEntityTypeFilter());
       mustArray.add(entityTypeNode);
     }
+  }
+
+  private static void addEntityTypeExclusions(ArrayNode mustNotArray) {
+    ObjectNode dataProductNode = MAPPER.createObjectNode();
+    dataProductNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, DATA_PRODUCT);
+    mustNotArray.add(dataProductNode);
+
+    ObjectNode columnNode = MAPPER.createObjectNode();
+    columnNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, TABLE_COLUMN);
+    mustNotArray.add(columnNode);
   }
 
   private static String serializeQuery(ObjectNode queryFilter) {

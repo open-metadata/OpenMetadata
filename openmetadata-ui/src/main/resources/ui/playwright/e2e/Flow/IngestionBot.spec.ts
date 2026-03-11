@@ -113,37 +113,34 @@ test.describe('Ingestion Bot ', () => {
       await addAssetsToDomain(page, domain2, domainAsset2, true, true);
     });
 
-    await test.step(
-      'Ingestion bot should access domain assigned assets',
-      async () => {
-        // Check if entity page is accessible & it has domain
-        for (const asset of domainAsset1) {
-          await redirectToHomePage(ingestionBotPage);
-          await asset.visitEntityPage(ingestionBotPage);
+    await test.step('Ingestion bot should access domain assigned assets', async () => {
+      // Check if entity page is accessible & it has domain
+      for (const asset of domainAsset1) {
+        await redirectToHomePage(ingestionBotPage);
+        await asset.visitEntityPage(ingestionBotPage);
 
-          await expect(
-            ingestionBotPage.getByTestId('permission-error-placeholder')
-          ).not.toBeVisible();
+        await expect(
+          ingestionBotPage.getByTestId('permission-error-placeholder')
+        ).not.toBeVisible();
 
-          await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
-            domain1.data.displayName
-          );
-        }
-        // Check if entity page is accessible & it has domain
-        for (const asset of domainAsset2) {
-          await redirectToHomePage(ingestionBotPage);
-          await asset.visitEntityPage(ingestionBotPage);
-
-          await expect(
-            ingestionBotPage.getByTestId('permission-error-placeholder')
-          ).not.toBeVisible();
-
-          await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
-            domain2.data.displayName
-          );
-        }
+        await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
+          domain1.data.displayName
+        );
       }
-    );
+      // Check if entity page is accessible & it has domain
+      for (const asset of domainAsset2) {
+        await redirectToHomePage(ingestionBotPage);
+        await asset.visitEntityPage(ingestionBotPage);
+
+        await expect(
+          ingestionBotPage.getByTestId('permission-error-placeholder')
+        ).not.toBeVisible();
+
+        await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
+          domain2.data.displayName
+        );
+      }
+    });
 
     await test.step('Assign services to domains', async () => {
       // Add assets to domain 1
@@ -168,23 +165,20 @@ test.describe('Ingestion Bot ', () => {
       ]);
     });
 
-    await test.step(
-      'Ingestion bot should access domain assigned services',
-      async () => {
-        await redirectToHomePage(ingestionBotPage);
+    await test.step('Ingestion bot should access domain assigned services', async () => {
+      await redirectToHomePage(ingestionBotPage);
 
-        // Check if services is searchable and accessible or not
-        await visitServiceDetailsPage(ingestionBotPage, {
-          name: domainAsset1[0].get().service.name,
-          type: domainAsset1[0].serviceCategory,
-        });
+      // Check if services is searchable and accessible or not
+      await visitServiceDetailsPage(ingestionBotPage, {
+        name: domainAsset1[0].get().service.name,
+        type: domainAsset1[0].serviceCategory,
+      });
 
-        // check if service has domain or not
-        await expect(
-          ingestionBotPage.getByTestId('domain-link').first()
-        ).toHaveText(domain1.data.displayName);
-      }
-    );
+      // check if service has domain or not
+      await expect(
+        ingestionBotPage.getByTestId('domain-link').first()
+      ).toHaveText(domain1.data.displayName);
+    });
 
     await assetCleanup1();
     await assetCleanup2();

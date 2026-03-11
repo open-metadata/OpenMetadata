@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -158,7 +158,9 @@ test.describe('Entity Version pages', () => {
       await page.waitForLoadState('networkidle');
       // Read actual version from API response to avoid hardcoding version numbers.
       const setupPatchVersion = entity.entityResponseData.version;
-      const setupVersionText = `v${Number.parseFloat(String(setupPatchVersion)).toFixed(1)}`;
+      const setupVersionText = `v${Number.parseFloat(
+        String(setupPatchVersion)
+      ).toFixed(1)}`;
       const versionDetailResponse = page.waitForResponse(
         (response) =>
           response.url().includes(`/versions/${setupPatchVersion}`) &&
@@ -171,40 +173,35 @@ test.describe('Entity Version pages', () => {
         .locator(`[data-testid="version-selector-${setupVersionText}"]`)
         .click();
 
-      await test.step(
-        'should show edited tags and description changes',
-        async () => {
-          await expect(
-            page.locator(
-              `[data-testid="version-entry-${setupVersionText}"] [data-testid="version-change-description"]`
-            )
-          ).toContainText('description');
+      await test.step('should show edited tags and description changes', async () => {
+        await expect(
+          page.locator(
+            `[data-testid="version-entry-${setupVersionText}"] [data-testid="version-change-description"]`
+          )
+        ).toContainText('description');
 
-          await expect(
-            page.locator(
-              '[data-testid="domain-link"] [data-testid="diff-added"]'
-            )
-          ).toBeVisible();
+        await expect(
+          page.locator('[data-testid="domain-link"] [data-testid="diff-added"]')
+        ).toBeVisible();
 
-          await expect(
-            page.locator(
-              `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
-            )
-          ).toBeVisible();
+        await expect(
+          page.locator(
+            `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
+          )
+        ).toBeVisible();
 
-          await expect(
-            page.locator(
-              '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
-            )
-          ).toBeVisible();
+        await expect(
+          page.locator(
+            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
+          )
+        ).toBeVisible();
 
-          await expect(
-            page.locator(
-              '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
-            )
-          ).toBeVisible();
-        }
-      );
+        await expect(
+          page.locator(
+            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
+          )
+        ).toBeVisible();
+      });
 
       await test.step('should show owner changes', async () => {
         await page.locator('[data-testid="version-button"]').click();
@@ -228,7 +225,9 @@ test.describe('Entity Version pages', () => {
 
         // patch() updates entityResponseData, so version reflects the incremented value.
         const ownerPatchVersion = entity.entityResponseData.version;
-        const ownerVersionText = `v${Number.parseFloat(String(ownerPatchVersion)).toFixed(1)}`;
+        const ownerVersionText = `v${Number.parseFloat(
+          String(ownerPatchVersion)
+        ).toFixed(1)}`;
         const versionDetailResponse = page.waitForResponse(
           (response) =>
             response.url().includes(`/versions/${ownerPatchVersion}`) &&
@@ -252,41 +251,38 @@ test.describe('Entity Version pages', () => {
       });
 
       if (entity.endpoint === 'tables') {
-        await test.step(
-          'should show column display name changes properly',
-          async () => {
-            await page.locator('[data-testid="version-button"]').click();
+        await test.step('should show column display name changes properly', async () => {
+          await page.locator('[data-testid="version-button"]').click();
 
-            await page
-              .locator(
-                `[data-row-key$="${
-                  (entity as TableClass).entity.columns[0].name
-                }"] [data-testid="edit-displayName-button"]`
-              )
-              .click();
+          await page
+            .locator(
+              `[data-row-key$="${
+                (entity as TableClass).entity.columns[0].name
+              }"] [data-testid="edit-displayName-button"]`
+            )
+            .click();
 
-            await page.locator('#displayName').clear();
-            await page.locator('#displayName').fill('New Column Name');
+          await page.locator('#displayName').clear();
+          await page.locator('#displayName').fill('New Column Name');
 
-            await page
-              .locator('.ant-modal-footer [data-testid="save-button"]')
-              .click();
+          await page
+            .locator('.ant-modal-footer [data-testid="save-button"]')
+            .click();
 
-            await page.waitForSelector('.ant-modal-body', {
-              state: 'detached',
-            });
+          await page.waitForSelector('.ant-modal-body', {
+            state: 'detached',
+          });
 
-            await page.locator('[data-testid="version-button"]').click();
+          await page.locator('[data-testid="version-button"]').click();
 
-            await expect(
-              page.locator(
-                `[data-row-key$="${
-                  (entity as TableClass).entity.columns[0].name
-                }"] [data-testid="diff-added"]`
-              )
-            ).toBeVisible();
-          }
-        );
+          await expect(
+            page.locator(
+              `[data-row-key$="${
+                (entity as TableClass).entity.columns[0].name
+              }"] [data-testid="diff-added"]`
+            )
+          ).toBeVisible();
+        });
       }
 
       await test.step('should show tier changes', async () => {
@@ -312,7 +308,9 @@ test.describe('Entity Version pages', () => {
 
         // patch() updates entityResponseData, so version reflects the incremented value.
         const tierPatchVersion = entity.entityResponseData.version;
-        const tierVersionText = `v${Number.parseFloat(String(tierPatchVersion)).toFixed(1)}`;
+        const tierVersionText = `v${Number.parseFloat(
+          String(tierPatchVersion)
+        ).toFixed(1)}`;
         const versionDetailResponse = page.waitForResponse(
           (response) =>
             response.url().includes(`/versions/${tierPatchVersion}`) &&
@@ -335,67 +333,64 @@ test.describe('Entity Version pages', () => {
         ).toBeVisible();
       });
 
-      await test.step(
-        'should show version details after soft deleted',
-        async () => {
-          await page.locator('[data-testid="version-button"]').click();
+      await test.step('should show version details after soft deleted', async () => {
+        await page.locator('[data-testid="version-button"]').click();
 
-          await page.click('[data-testid="manage-button"]');
-          await page.click('[data-testid="delete-button"]');
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="delete-button"]');
 
-          await page.waitForSelector('[role="dialog"].ant-modal');
+        await page.waitForSelector('[role="dialog"].ant-modal');
 
-          await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
-          await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-          const deleteResponse = page.waitForResponse(
-            `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
-          );
-          await page.click('[data-testid="confirm-button"]');
+        await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+        const deleteResponse = page.waitForResponse(
+          `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
+        );
+        await page.click('[data-testid="confirm-button"]');
 
-          await deleteResponse;
+        await deleteResponse;
 
-          await toastNotification(
-            page,
-            /deleted successfully!/,
-            BIG_ENTITY_DELETE_TIMEOUT
-          );
+        await toastNotification(
+          page,
+          /deleted successfully!/,
+          BIG_ENTITY_DELETE_TIMEOUT
+        );
 
-          await reloadAndWaitForNetworkIdle(page);
+        await reloadAndWaitForNetworkIdle(page);
 
-          const deletedBadge = page.locator('[data-testid="deleted-badge"]');
+        const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
-          await expect(deletedBadge).toHaveText('Deleted');
+        await expect(deletedBadge).toHaveText('Deleted');
 
-          // Soft-delete is UI-only — no patch response to read the version from,
-          // so match any version URL and select the first (latest) panel entry.
-          const versionDetailResponse = page.waitForResponse(
-            (response) =>
-              /\/versions\/\d+\.\d+/.test(response.url()) &&
-              response.status() === 200
-          );
-          await page.locator('[data-testid="version-button"]').click();
-          await versionDetailResponse;
+        // Soft-delete is UI-only — no patch response to read the version from,
+        // so match any version URL and select the first (latest) panel entry.
+        const versionDetailResponse = page.waitForResponse(
+          (response) =>
+            /\/versions\/\d+\.\d+/.test(response.url()) &&
+            response.status() === 200
+        );
+        await page.locator('[data-testid="version-button"]').click();
+        await versionDetailResponse;
 
-          const latestVersionEntry = page
-            .locator('[data-testid^="version-entry-"]')
-            .first();
-          await latestVersionEntry
-            .locator('[data-testid^="version-selector-"]')
-            .click();
+        const latestVersionEntry = page
+          .locator('[data-testid^="version-entry-"]')
+          .first();
+        await latestVersionEntry
+          .locator('[data-testid^="version-selector-"]')
+          .click();
 
-          await expect(
-            latestVersionEntry.locator(
-              '[data-testid="version-change-description"]'
-            )
-          ).toContainText('Data Asset has been deleted');
+        await expect(
+          latestVersionEntry.locator(
+            '[data-testid="version-change-description"]'
+          )
+        ).toContainText('Data Asset has been deleted');
 
-          // Deleted badge should be visible
-          await expect(
-            page.locator('[data-testid="deleted-badge"]')
-          ).toBeVisible();
-        }
-      );
+        // Deleted badge should be visible
+        await expect(
+          page.locator('[data-testid="deleted-badge"]')
+        ).toBeVisible();
+      });
     });
   });
 });
