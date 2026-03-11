@@ -757,7 +757,9 @@ test.describe('Glossary tests', () => {
     await glossaryTerm1.create(apiContext);
 
     const assetsToBeAddedViaUI = [table, topic, dashboard];
-    const allAssets = [...assetsToBeAddedViaUI, table1];
+    // Adding both table and its column as glossary term is assigned to both of them
+    // and table columns are also count as assets
+    const allAssets = [...assetsToBeAddedViaUI, table1, table1.children[0]];
 
     try {
       await test.step('Assign Glossary Term to table column', async () => {

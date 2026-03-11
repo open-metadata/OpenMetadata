@@ -702,4 +702,258 @@ describe('AddTestCaseList', () => {
       expect(screen.queryByText('label.column:')).not.toBeInTheDocument();
     });
   });
+
+  it('does not render select all button when showSelectAll is false (default)', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: mockTestCases,
+      paging: { total: 3 },
+    });
+
+    await act(async () => {
+      renderWithRouter(mockProps);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('select-all-test-cases')).toBeNull();
+  });
+
+  it('does not render select all button when showSelectAll is false and items exist', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: mockTestCases,
+      paging: { total: 3 },
+    });
+
+    await act(async () => {
+      renderWithRouter({ ...mockProps, showSelectAll: false });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('select-all-test-cases')).toBeNull();
+  });
+
+  it('renders select all button when showSelectAll is true and items exist', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: mockTestCases,
+      paging: { total: 3 },
+    });
+
+    await act(async () => {
+      renderWithRouter({ ...mockProps, showSelectAll: true });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+  });
+
+  it('does not render select all button when showSelectAll is true but no items', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+
+    await act(async () => {
+      renderWithRouter({ ...mockProps, showSelectAll: true });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Error Placeholder Mock')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('select-all-test-cases')).toBeNull();
+  });
+
+  it('shows selected count in select all button when items are selected', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: mockTestCases,
+      paging: { total: 3 },
+    });
+
+    await act(async () => {
+      renderWithRouter({ ...mockProps, showSelectAll: true });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+    });
+
+    const selectAllButton = screen.getByTestId('select-all-test-cases');
+
+    expect(selectAllButton.textContent).not.toContain('(3)');
+
+    fireEvent.click(selectAllButton);
+
+    await waitFor(() => {
+      expect(selectAllButton.textContent).toContain('(3)');
+    });
+  });
+
+  it('selects all items when select all is clicked and none are selected', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: mockTestCases,
+      paging: { total: 3 },
+    });
+
+    const onChange = jest.fn();
+
+    await act(async () => {
+      renderWithRouter({
+        ...mockProps,
+        showSelectAll: true,
+        onChange,
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('select-all-test-cases'));
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith(mockTestCases);
+    });
+
+    expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+      'checked',
+      true
+    );
+    expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+      'checked',
+      true
+    );
+    expect(screen.getByTestId('checkbox-test_case_3')).toHaveProperty(
+      'checked',
+      true
+    );
+  });
+
+  it('selects all items when select all is clicked and some are selected', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: mockTestCases,
+      paging: { total: 3 },
+    });
+
+    const onChange = jest.fn();
+
+    await act(async () => {
+      renderWithRouter({
+        ...mockProps,
+        showSelectAll: true,
+        onChange,
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+    });
+
+    const card1 = screen.getByTestId('test_case_1').closest('.cursor-pointer');
+    fireEvent.click(card1 as Element);
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith([mockTestCases[0]]);
+    });
+
+    fireEvent.click(screen.getByTestId('select-all-test-cases'));
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenLastCalledWith(mockTestCases);
+    });
+
+    expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+      'checked',
+      true
+    );
+    expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+      'checked',
+      true
+    );
+    expect(screen.getByTestId('checkbox-test_case_3')).toHaveProperty(
+      'checked',
+      true
+    );
+  });
+
+  it('deselects all items when select all is clicked and all are selected', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: mockTestCases,
+      paging: { total: 3 },
+    });
+
+    const onChange = jest.fn();
+
+    await act(async () => {
+      renderWithRouter({
+        ...mockProps,
+        showSelectAll: true,
+        onChange,
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('select-all-test-cases'));
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith(mockTestCases);
+    });
+
+    onChange.mockClear();
+
+    fireEvent.click(screen.getByTestId('select-all-test-cases'));
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith([]);
+    });
+
+    expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+      'checked',
+      false
+    );
+    expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+      'checked',
+      false
+    );
+    expect(screen.getByTestId('checkbox-test_case_3')).toHaveProperty(
+      'checked',
+      false
+    );
+  });
+
+  it('calls onChange with all items when select all is clicked', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: mockTestCases,
+      paging: { total: 3 },
+    });
+
+    const onChange = jest.fn();
+
+    await act(async () => {
+      renderWithRouter({
+        ...mockProps,
+        showSelectAll: true,
+        onChange,
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('select-all-test-cases'));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(mockTestCases);
+  });
 });

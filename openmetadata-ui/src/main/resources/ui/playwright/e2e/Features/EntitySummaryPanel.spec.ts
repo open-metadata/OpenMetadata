@@ -13,8 +13,8 @@
 import { expect, Page, test } from '@playwright/test';
 import { ENTITY_TYPES } from '../../constant/entity';
 import { SidebarItem } from '../../constant/sidebar';
-import { TableClass } from '../../support/entity/TableClass';
 import { EntityType } from '../../support/entity/EntityDataClass.interface';
+import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   editDisplayNameFromPanel,
@@ -82,7 +82,7 @@ test.describe('Entity Summary Panel', () => {
 
   ENTITY_TYPES.forEach((entityType) => {
     test(`should display summary panel for ${entityType}`, async ({ page }) => {
-      await openEntitySummaryPanel(page, entityType);
+      await openEntitySummaryPanel(page, entityType as EntityType);
 
       await page.locator('.entity-summary-panel-container').isVisible();
 

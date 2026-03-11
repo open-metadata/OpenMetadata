@@ -20,6 +20,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { updateTableColumn } from '../../../rest/tableAPI';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -63,6 +65,18 @@ export const EntityTitleSection = ({
       }
 
       try {
+        if (entityType === EntityType.TABLE_COLUMN) {
+          const res = await updateTableColumn(
+            entityDetails.fullyQualifiedName ?? '',
+            {
+              displayName: data.displayName,
+            }
+          );
+          onDisplayNameUpdate?.(res.displayName ?? data.displayName ?? '');
+
+          return;
+        }
+
         const jsonPatch = [
           {
             op: entityDisplayName ? 'replace' : 'add',
@@ -97,7 +111,14 @@ export const EntityTitleSection = ({
         setIsEditModalOpen(false);
       }
     },
-    [entityDetails.id, entityDisplayName, entityType, onDisplayNameUpdate, t]
+    [
+      entityDetails.id,
+      entityDetails.fullyQualifiedName,
+      entityDisplayName,
+      entityType,
+      onDisplayNameUpdate,
+      t,
+    ]
   );
 
   return (

@@ -219,7 +219,16 @@ const TeamsPage = () => {
           query: '',
           pageNumber: 0,
           pageSize: 0,
-          queryFilter: getTermQuery({ 'owners.id': selectedTeam.id }),
+          queryFilter: getTermQuery(
+            { 'owners.id': selectedTeam.id },
+            'must',
+            undefined,
+            {
+              mustNotTerms: {
+                entityType: ['tableColumn', 'dataProduct'],
+              },
+            }
+          ),
           searchIndex: SearchIndex.ALL,
         });
         const total = res?.hits?.total.value ?? 0;

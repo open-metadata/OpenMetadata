@@ -22,6 +22,7 @@ import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as IconApiCollection } from '../assets/svg/ic-api-collection-default.svg';
 import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
+import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconDatabase } from '../assets/svg/ic-database.svg';
 import { ReactComponent as IconDatabaseSchema } from '../assets/svg/ic-schema.svg';
@@ -212,6 +213,12 @@ export const getGroupLabel = (index: string) => {
 
       break;
 
+    case SearchIndex.COLUMN:
+      label = i18next.t('label.column-plural');
+      GroupIcon = ColumnIcon;
+
+      break;
+
     default: {
       const { label: indexLabel, GroupIcon: IndexIcon } =
         searchClassBase.getIndexGroupLabel(index);
@@ -224,7 +231,7 @@ export const getGroupLabel = (index: string) => {
   }
 
   const groupLabel = (
-    <div className="d-flex items-center p-y-xs">
+    <div className="d-flex items-center p-y-xs p-x-lg">
       <GroupIcon className="m-r-sm" height={16} width={16} />
       <p className="text-grey-muted text-xs">{label}</p>
     </div>
@@ -250,7 +257,7 @@ export const getSuggestionElement = (
   return (
     <Button
       block
-      className="text-left truncate p-0"
+      className="text-left truncate p-y-0 p-x-lg"
       data-testid={dataTestId}
       icon={
         <img

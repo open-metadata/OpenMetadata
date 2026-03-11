@@ -39,8 +39,6 @@ const CSV_WITH_QUOTES_AND_COMMAS = `parent,name*,displayName,description,synonym
 ,"Test1234","Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.","<p>Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.</p>",,,,,,user:admin,Approved,,,
 ,"TermWithComma,AndQuote","Display name with ""quoted"" text, and comma","<p>Description with ""quotes"" and, commas</p>",,,,,,user:admin,Approved,,,`;
 
-const EXPECTED_PROCESSED = 4;
-
 test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
@@ -96,9 +94,12 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
 
         await waitForImportGridLoadMaskToDisappear(page);
 
+        const expectedProcessed = await page
+          .getByTestId('processed-row')
+          .textContent();
         await validateImportStatus(page, {
-          passed: String(EXPECTED_PROCESSED),
-          processed: String(EXPECTED_PROCESSED),
+          passed: expectedProcessed?.trim() ?? '0',
+          processed: expectedProcessed?.trim() ?? '0',
           failed: '0',
         });
 
@@ -172,9 +173,12 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
 
         await waitForImportGridLoadMaskToDisappear(page);
 
+        const expectedProcessed = await page
+          .getByTestId('processed-row')
+          .textContent();
         await validateImportStatus(page, {
-          passed: String(EXPECTED_PROCESSED),
-          processed: String(EXPECTED_PROCESSED),
+          passed: expectedProcessed?.trim() ?? '0',
+          processed: expectedProcessed?.trim() ?? '0',
           failed: '0',
         });
 

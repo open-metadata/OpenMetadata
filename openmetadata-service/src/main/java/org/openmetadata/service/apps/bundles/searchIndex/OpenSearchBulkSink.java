@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -28,8 +29,10 @@ import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -39,6 +42,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -127,6 +131,10 @@ public class OpenSearchBulkSink implements BulkSink {
   // Vector embedding stats (incremented inline during addEntity)
   private final AtomicLong vectorSuccess = new AtomicLong(0);
   private final AtomicLong vectorFailed = new AtomicLong(0);
+
+  // Column indexing metrics
+  private final AtomicLong columnIndexed = new AtomicLong(0);
+  private final AtomicLong columnFailed = new AtomicLong(0);
 
   public OpenSearchBulkSink(
       SearchRepository searchRepository,
@@ -436,6 +444,82 @@ public class OpenSearchBulkSink implements BulkSink {
             IndexingFailureRecorder.FailureStage.PROCESS);
       }
     }
+  }
+
+  private void indexTableColumns(
+      EntityInterface entity, boolean recreateIndex, ReindexContext reindexContext) {
+    if (!(entity instanceof Table table)) {
+      return;
+    }
+
+    IndexMapping columnIndexMapping = searchRepository.getIndexMapping(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      LOG.debug("No index mapping found for tableColumn. Skipping column indexing.");
+      return;
+    }
+
+    String columnIndexName;
+    if (reindexContext != null) {
+      Optional<String> stagedIndex = reindexContext.getStagedIndex(Entity.TABLE_COLUMN);
+      columnIndexName =
+          stagedIndex.orElse(columnIndexMapping.getIndexName(searchRepository.getClusterAlias()));
+    } else {
+      columnIndexName = columnIndexMapping.getIndexName(searchRepository.getClusterAlias());
+    }
+
+    List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+    for (Column column : flattenedColumns) {
+      try {
+        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+        Map<String, Object> searchIndexDoc = columnIndex.buildSearchIndexDoc();
+        String json = JsonUtils.pojoToJson(searchIndexDoc);
+        String docId = searchIndexDoc.get("id").toString();
+
+        BulkOperation operation;
+        if (recreateIndex) {
+          operation =
+              BulkOperation.of(
+                  op ->
+                      op.index(
+                          idx ->
+                              idx.index(columnIndexName)
+                                  .id(docId)
+                                  .document(OsUtils.toJsonData(json))));
+        } else {
+          operation =
+              BulkOperation.of(
+                  op ->
+                      op.update(
+                          upd ->
+                              upd.index(columnIndexName)
+                                  .id(docId)
+                                  .document(OsUtils.toJsonData(json))
+                                  .docAsUpsert(true)));
+        }
+        long estimatedSize =
+            (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
+        bulkProcessor.add(operation, docId, Entity.TABLE_COLUMN, null, estimatedSize);
+        columnIndexed.incrementAndGet();
+      } catch (Exception e) {
+        columnFailed.incrementAndGet();
+        LOG.error(
+            "Failed to index column {} for table {}",
+            column.getFullyQualifiedName(),
+            table.getFullyQualifiedName(),
+            e);
+      }
+    }
+  }
+
+  /** Get stats for column indexing (columns indexed during table processing) */
+  public StepStats getColumnStats() {
+    StepStats columnStats = new StepStats();
+    long indexed = columnIndexed.get();
+    long failed = columnFailed.get();
+    columnStats.setTotalRecords((int) (indexed + failed));
+    columnStats.setSuccessRecords((int) indexed);
+    columnStats.setFailedRecords((int) failed);
+    return columnStats;
   }
 
   private void updateStats() {

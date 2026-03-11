@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
@@ -26,7 +27,6 @@ import {
 } from '../../utils/common';
 import { addMultiOwner, removeOwnersFromList } from '../../utils/entity';
 import { test } from '../fixtures/pages';
-import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 const table = new TableClass();
 const user1 = new UserClass();

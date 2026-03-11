@@ -78,6 +78,8 @@ import software.amazon.awssdk.regions.Region;
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
+  private static final int REQUEST_COMPRESSION_THRESHOLD_BYTES = 8 * 1024;
+
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
@@ -718,6 +720,8 @@ public class OpenSearchClient implements SearchClient {
           AwsSdk2TransportOptions.builder()
               .setCredentials(buildCredentialsProvider(awsConfig))
               .setMapper(new JacksonJsonpMapper())
+              .setRequestCompressionSize(REQUEST_COMPRESSION_THRESHOLD_BYTES)
+              .setResponseCompression(true)
               .build();
 
       LOG.info(
