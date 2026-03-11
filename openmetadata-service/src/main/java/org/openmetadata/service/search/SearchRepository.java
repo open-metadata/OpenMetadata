@@ -354,6 +354,9 @@ public class SearchRepository {
         if (mappingContent != null) {
           searchClient.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
           success++;
+        } else {
+          failed++;
+          LOG.warn("No mapping content found for entity type: {}", entry.getKey());
         }
       } catch (Exception e) {
         failed++;
