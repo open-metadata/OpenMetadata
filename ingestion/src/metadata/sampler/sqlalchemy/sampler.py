@@ -15,7 +15,7 @@ for the profiler
 import hashlib
 from typing import List, Optional, Union, cast
 
-from sqlalchemy import Column, inspect, text, select
+from sqlalchemy import Column, inspect, select, text
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
