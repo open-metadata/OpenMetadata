@@ -311,9 +311,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         We build the CTE inside the session context because SQA 2.0
         requires the session to be alive when .cte() is called on a Query.
         """
-        self.partition_details = cast(
-            PartitionProfilerConfig, self.partition_details
-        )
+        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
         partition_filter = build_partition_predicate(
             self.partition_details,
             self.raw_dataset.__table__.c,

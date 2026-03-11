@@ -259,16 +259,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return columns
 
 
-def get_multi_columns(self, connection, **kw):
-    """
-    Override OracleDialect's get_multi_columns to ensure our custom
-    get_columns() is used. SQA 2.0 batch reflection bypasses get_columns()
-    in favor of get_multi_columns(), which would skip our custom column
-    metadata (system_data_type, identity columns, etc.).
-    """
-    return self._default_multi_reflect(self.get_columns, connection, **kw)
-
-
 @reflection.cache
 def get_table_names(self, connection, schema=None, **kw):
     """
