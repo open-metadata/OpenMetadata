@@ -62,6 +62,7 @@ from metadata.ingestion.source.database.oracle.utils import (
     get_all_view_definitions,
     get_columns,
     get_indexes_preserve_case,
+    get_multi_columns,
     get_mview_names,
     get_mview_names_dialect,
     get_table_comment,
@@ -94,6 +95,7 @@ ischema_names.update(
 
 OracleDialect.get_table_comment = get_table_comment
 OracleDialect.get_columns = get_columns
+OracleDialect.get_multi_columns = get_multi_columns
 OracleDialect._get_col_type = _get_col_type
 OracleDialect.get_view_definition = get_view_definition
 OracleDialect.get_all_view_definitions = get_all_view_definitions
