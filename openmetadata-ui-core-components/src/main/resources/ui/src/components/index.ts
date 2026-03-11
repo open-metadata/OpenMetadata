@@ -57,7 +57,9 @@ export * from "./base/file-upload-trigger/file-upload-trigger";
 export * from "./base/select/select";
 export * from "./base/select/multi-select";
 export * from "./base/select/combobox";
-export * from "./base/select/popover";
+export {
+  Popover as SelectPopover,
+} from "./base/select/popover";
 export * from "./base/select/select-item";
 export * from "./base/select/select-native";
 export * from "./base/form/form";
@@ -81,6 +83,8 @@ export * from "./base/video-player/icons";
 export * from "./base/video-player/play-button-icon";
 
 // Application components
+export * from "./application/accordion/accordion";
+export * from "./application/popover/popover";
 export * from "./application/date-picker/calendar";
 export * from "./application/date-picker/cell";
 export * from "./application/date-picker/date-input";
