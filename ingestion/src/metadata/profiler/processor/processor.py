@@ -36,6 +36,9 @@ from metadata.utils.dependency_injector.dependency_injector import (
     Inject,
     inject,
 )
+from metadata.utils.logger import profiler_logger
+
+logger = profiler_logger()
 
 
 class ProfilerProcessor(Processor):
@@ -70,6 +73,13 @@ class ProfilerProcessor(Processor):
         return "Profiler"
 
     def _run(self, record: ProfilerSourceAndEntity) -> Either[ProfilerResponse]:
+        if not record.entity.columns:
+            logger.warning(
+                "Skipping profiler for table '%s': no columns found",
+                record.entity.fullyQualifiedName.root,
+            )
+            return Either()
+
         profiler_runner: Profiler = record.profiler_source.get_profiler_runner(
             record.entity, self.profiler_config
         )

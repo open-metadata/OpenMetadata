@@ -94,6 +94,50 @@ def get_multi_columns(self, connection, **kw):
     return self._default_multi_reflect(self.get_columns, connection, **kw)
 
 
+def get_multi_pk_constraint(self, connection, **kw):
+    """
+    Override PGDialect's get_multi_pk_constraint which uses
+    array_agg(... ORDER BY ...) not supported by Redshift.
+    Falls back to the default implementation that delegates to
+    the already-overridden get_pk_constraint() method.
+    """
+    return self._default_multi_reflect(self.get_pk_constraint, connection, **kw)
+
+
+def get_multi_unique_constraints(self, connection, **kw):
+    """
+    Override PGDialect's get_multi_unique_constraints which uses
+    array_agg(... ORDER BY ...) not supported by Redshift.
+    Falls back to the default implementation that delegates to
+    the already-overridden get_unique_constraints() method.
+    """
+    return self._default_multi_reflect(self.get_unique_constraints, connection, **kw)
+
+
+def _pg_class_filter_scope_schema(self, query, schema, scope, pg_class_table=None):
+    """
+    Override PGDialect's _pg_class_filter_scope_schema to skip the
+    pg_class.relpersistence filter which does not exist in Redshift.
+    """
+    from sqlalchemy.dialects.postgresql import pg_catalog
+
+    if pg_class_table is None:
+        pg_class_table = pg_catalog.pg_class
+    query = query.join(
+        pg_catalog.pg_namespace,
+        pg_catalog.pg_namespace.c.oid == pg_class_table.c.relnamespace,
+    )
+
+    if schema is None:
+        query = query.where(
+            pg_catalog.pg_table_is_visible(pg_class_table.c.oid),
+            pg_catalog.pg_namespace.c.nspname != "pg_catalog",
+        )
+    else:
+        query = query.where(pg_catalog.pg_namespace.c.nspname == schema)
+    return query
+
+
 # pylint: disable=protected-access
 @calculate_execution_time()
 def get_columns(self, connection, table_name, schema=None, **kw):
