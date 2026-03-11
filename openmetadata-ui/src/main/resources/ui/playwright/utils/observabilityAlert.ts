@@ -122,6 +122,15 @@ export const addExternalDestination = async ({
       .getByText('Advanced Configuration')
       .click();
 
+    const authTypeSelect = page.getByTestId(
+      `auth-type-select-${destinationNumber}`
+    );
+    await expect(authTypeSelect).toBeVisible();
+    await authTypeSelect.click();
+    await page.click(
+      `.ant-select-dropdown:visible [title="Bearer (HMAC Signature)"]:visible`
+    );
+
     await expect(
       page.getByTestId(`secret-key-input-${destinationNumber}`)
     ).toBeVisible();
@@ -646,7 +655,6 @@ export const createCommonObservabilityAlert = async ({
         }
         await page.click(`[title="${input.inputValue}"]:visible`);
 
-        // eslint-disable-next-line jest/no-conditional-expect
         await expect(page.getByTestId(input.inputSelector)).toHaveText(
           input.inputValue
         );
