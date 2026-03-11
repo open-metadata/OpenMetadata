@@ -33,6 +33,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: playwright-ci-pr-postgresql-${{ github.head_ref || github.run_id }}
@@ -112,6 +113,7 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright@1.57.0 install --with-deps
       - name: Run Playwright tests
+        id: run-tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
           if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
@@ -123,10 +125,10 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled \
               --project=Basic \
-          
+
           elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
             echo "🔹 Running ingestion tests on shard 2"
-            
+
             # run ingestion framework tests
             npx playwright test \
               --project=ingestion \
@@ -199,6 +201,139 @@ jobs:
           name: playwright-report-${{ matrix.shardIndex }}
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
+
+      - name: Upload test results (screenshots, traces)
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-test-results-${{ matrix.shardIndex }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/test-results
+          retention-days: 5
+
+      - name: Post failure summary to PR
+        if: ${{ failure() && github.event_name == 'pull_request_target' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const shard = '${{ matrix.shardIndex }}';
+            const runId = '${{ github.run_id }}';
+            const repo = context.repo;
+            const prNumber = context.payload.pull_request?.number;
+            if (!prNumber) return;
+
+            // Parse the Playwright report for failures
+            const resultsDir = 'openmetadata-ui/src/main/resources/ui/playwright/output/test-results';
+            const reportDir = 'openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report';
+
+            let failures = [];
+            let screenshots = [];
+
+            // Walk test-results to find failures with screenshots
+            function walkDir(dir) {
+              if (!fs.existsSync(dir)) return;
+              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                  walkDir(fullPath);
+                } else if (entry.name.endsWith('.png')) {
+                  screenshots.push({ dir: path.basename(path.dirname(fullPath)), file: entry.name });
+                }
+              }
+            }
+            walkDir(resultsDir);
+
+            // Parse the last-run.json if available
+            const lastRunPath = path.join(reportDir, 'last-run.json');
+            let summary = '';
+            if (fs.existsSync(lastRunPath)) {
+              const lastRun = JSON.parse(fs.readFileSync(lastRunPath, 'utf8'));
+              summary = `Status: ${lastRun.status || 'unknown'}`;
+            }
+
+            // Parse stdout/stderr from the test step for failure details
+            // The GitHub Actions reporter already annotates failures, so we extract from test-results dirs
+            const failedTests = [];
+            if (fs.existsSync(resultsDir)) {
+              for (const entry of fs.readdirSync(resultsDir, { withFileTypes: true })) {
+                if (entry.isDirectory()) {
+                  // Directory names follow pattern: test-title-browserName
+                  const testName = entry.name
+                    .replace(/-chromium$/, '')
+                    .replace(/-retry\d+$/, '')
+                    .replace(/-/g, ' ');
+                  const testDir = path.join(resultsDir, entry.name);
+                  const hasScreenshot = fs.readdirSync(testDir).some(f => f.endsWith('.png'));
+                  const hasTrace = fs.readdirSync(testDir).some(f => f.endsWith('.zip'));
+                  failedTests.push({ name: testName, hasScreenshot, hasTrace, dir: entry.name });
+                }
+              }
+            }
+
+            if (failedTests.length === 0) {
+              console.log('No failed test artifacts found, skipping comment');
+              return;
+            }
+
+            const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
+            const lines = [
+              `## 🔴 Playwright Shard ${shard} — ${failedTests.length} test failure(s)`,
+              '',
+              '| Test | Screenshot | Trace |',
+              '|------|-----------|-------|',
+            ];
+
+            for (const t of failedTests.slice(0, 30)) {
+              const screenshotCol = t.hasScreenshot ? '📸 Yes' : '—';
+              const traceCol = t.hasTrace ? '🔍 Yes' : '—';
+              lines.push(`| \`${t.name}\` | ${screenshotCol} | ${traceCol} |`);
+            }
+
+            if (failedTests.length > 30) {
+              lines.push(`| ... and ${failedTests.length - 30} more | | |`);
+            }
+
+            lines.push('');
+            lines.push(`📦 [Download artifacts (report + screenshots + traces)](${artifactUrl})`);
+            lines.push('');
+            lines.push('<details><summary>How to view traces locally</summary>');
+            lines.push('');
+            lines.push('```bash');
+            lines.push('# Download the playwright-test-results-' + shard + ' artifact and unzip it');
+            lines.push('npx playwright show-trace path/to/trace.zip');
+            lines.push('```');
+            lines.push('</details>');
+
+            const body = lines.join('\n');
+
+            // Check for existing comment from this shard to update instead of creating duplicates
+            const comments = await github.rest.issues.listComments({
+              ...repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+
+            const marker = `Playwright Shard ${shard}`;
+            const existing = comments.data.find(c =>
+              c.user?.login === 'github-actions[bot]' && c.body?.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                ...repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                ...repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
 
       - name: Clean Up
         run: |
