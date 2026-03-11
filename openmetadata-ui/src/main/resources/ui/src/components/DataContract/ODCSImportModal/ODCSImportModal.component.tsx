@@ -32,6 +32,7 @@ import {
 import {
   AlertTriangle,
   CheckCircle,
+  CheckVerified01,
   File06,
   Trash01,
   XCircle,
@@ -1213,7 +1214,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             {t('label.schema-validation')}
           </Typography>
           <Chip
-            icon={<TaskAltOutlined size={12} />}
+            icon={<CheckVerified01 size={12} />}
             label={
               hasTypeMismatches
                 ? t('label.passed-with-warnings')
@@ -1580,7 +1581,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         </Box>
         {!isLoading && (
           <IconButton size="medium" sx={{ p: 0 }} onClick={handleReset}>
-            <XClose />
+            <XClose data-testid="CloseIcon" />
           </IconButton>
         )}
       </DialogTitle>
@@ -1672,6 +1673,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
 
                   <IconButton
                     className="remove-button"
+                    data-testid="remove-file-button"
                     size="small"
                     title="Delete file"
                     onClick={handleRemoveFile}>
