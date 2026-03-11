@@ -1,9 +1,12 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.CalendarInterval;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -23,6 +26,7 @@ import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 
 public class ElasticSearchLineChartAggregator
     implements ElasticSearchDynamicChartAggregatorInterface {
@@ -46,7 +50,34 @@ public class ElasticSearchLineChartAggregator
       long end,
       List<FormulaHolder> formulas,
       Map metricFormulaHolder,
+      boolean live,
+      String filter)
+      throws IOException {
+    return prepareSearchRequestInternal(
+        diChart, start, end, formulas, metricFormulaHolder, live, filter);
+  }
+
+  @Override
+  public SearchRequest prepareSearchRequest(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      List<FormulaHolder> formulas,
+      Map metricFormulaHolder,
       boolean live)
+      throws IOException {
+    return prepareSearchRequestInternal(
+        diChart, start, end, formulas, metricFormulaHolder, live, null);
+  }
+
+  private SearchRequest prepareSearchRequestInternal(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      List<FormulaHolder> formulas,
+      Map metricFormulaHolder,
+      boolean live,
+      String filter)
       throws IOException {
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
     Map<String, Aggregation> aggregationsMap = new HashMap<>();
@@ -74,20 +105,20 @@ public class ElasticSearchLineChartAggregator
         Aggregation termsAgg =
             Aggregation.of(
                 a -> {
-                  var tb = a.terms(t -> t.field(lineChart.getxAxisField()).size(1000));
+                  var tb = a.terms(t -> t.field(lineChart.getxAxisField()).size(100));
                   if (finalIncludeTerms != null) {
                     tb =
                         a.terms(
                             t ->
                                 t.field(lineChart.getxAxisField())
-                                    .size(1000)
+                                    .size(100)
                                     .include(inc -> inc.regexp(finalIncludeTerms)));
                   }
                   if (finalExcludeTerms != null) {
                     tb =
                         a.terms(
                             t -> {
-                              var builder = t.field(lineChart.getxAxisField()).size(1000);
+                              var builder = t.field(lineChart.getxAxisField()).size(100);
                               if (finalIncludeTerms != null) {
                                 builder = builder.include(inc -> inc.regexp(finalIncludeTerms));
                               }
@@ -132,7 +163,7 @@ public class ElasticSearchLineChartAggregator
         if (currentAgg.isTerms()) {
           // Rebuild terms aggregation with sub-aggregations
           final String fieldName = currentAgg.terms().field();
-          final int size = currentAgg.terms().size() != null ? currentAgg.terms().size() : 1000;
+          final int size = currentAgg.terms().size() != null ? currentAgg.terms().size() : 100;
           metricAggregations.put(
               metricName,
               Aggregation.of(
@@ -167,12 +198,12 @@ public class ElasticSearchLineChartAggregator
         Aggregation groupByAgg =
             Aggregation.of(
                 a -> {
-                  var termsBuilder = a.terms(t -> t.field(lineChart.getGroupBy()).size(1000));
+                  var termsBuilder = a.terms(t -> t.field(lineChart.getGroupBy()).size(100));
                   if (finalIncludeGroups != null || finalExcludeGroups != null) {
                     termsBuilder =
                         a.terms(
                             t -> {
-                              var tb = t.field(lineChart.getGroupBy()).size(1000);
+                              var tb = t.field(lineChart.getGroupBy()).size(100);
                               if (finalIncludeGroups != null) {
                                 tb = tb.include(inc -> inc.terms(finalIncludeGroups));
                               }
@@ -209,7 +240,10 @@ public class ElasticSearchLineChartAggregator
                                       .lte(
                                           es.co.elastic.clients.json.JsonData.of(
                                               String.valueOf(end))))));
-      searchRequestBuilder.query(rangeQuery);
+
+      // Apply filter at query level to reduce document set BEFORE aggregations
+      Query finalQuery = buildQueryWithFilter(rangeQuery, filter);
+      searchRequestBuilder.query(finalQuery);
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {
       searchRequestBuilder.index(
@@ -218,6 +252,26 @@ public class ElasticSearchLineChartAggregator
 
     searchRequestBuilder.aggregations(aggregationsMap);
     return searchRequestBuilder.build();
+  }
+
+  /**
+   * Combines the time range query with the user-provided filter using a bool query.
+   * This ensures documents are filtered BEFORE aggregations run, preventing bucket explosion.
+   */
+  private Query buildQueryWithFilter(Query rangeQuery, String filter) {
+    if (nullOrEmpty(filter) || filter.equals("{}")) {
+      return rangeQuery;
+    }
+
+    try {
+      String queryToProcess = EsUtils.parseJsonQuery(filter);
+      Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+
+      return Query.of(q -> q.bool(BoolQuery.of(b -> b.must(rangeQuery).filter(filterQuery))));
+    } catch (Exception e) {
+      // If filter parsing fails, fall back to range query only
+      return rangeQuery;
+    }
   }
 
   private String getMetricName(LineChart lineChart, String name) {
