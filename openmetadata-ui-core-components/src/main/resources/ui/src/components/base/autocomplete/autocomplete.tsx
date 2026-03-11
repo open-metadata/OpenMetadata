@@ -22,10 +22,14 @@ import {
   ListBox as AriaListBox,
   ComboBoxStateContext,
 } from 'react-aria-components';
+import type { ListData } from 'react-stately';
 import { CloseButton } from '../buttons/close-button';
 import { AutocompleteItem } from './autocomplete-item';
 
-export type { SelectItemType as AutocompleteItemType } from '@/components/base/select/select';
+export type AutocompleteItemType = SelectItemType & {
+  labelColor?: string;
+  supportingTextLayout?: 'row' | 'column';
+};
 
 interface AutocompleteContextValue {
   size: 'sm' | 'md';
@@ -62,7 +66,7 @@ export interface AutocompleteProps
   placeholder?: string;
   items?: SelectItemType[];
   popoverClassName?: string;
-  selectedItems: SelectItemType[];
+  selectedItems: SelectItemType[] | ListData<SelectItemType>;
   placeholderIcon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemInserted?: (key: Key) => void;
@@ -143,7 +147,7 @@ const InnerAutocomplete = ({ isDisabled, placeholder }: { isDisabled?: boolean; 
           ) : (
             <span
               key={item.id}
-              className="tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:ring-1 tw:ring-primary tw:ring-inset"
+              className="tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:py-1.5 tw:px-2.5 tw:ring-1 tw:ring-primary tw:ring-inset"
             >
               <p className="tw:truncate tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-secondary tw:select-none">
                 {item.label}
@@ -152,7 +156,7 @@ const InnerAutocomplete = ({ isDisabled, placeholder }: { isDisabled?: boolean; 
               <CloseButton
                 size="sm"
                 isDisabled={isDisabled}
-                className="tw:ml-0.75"
+                className="tw:ml-0.75 tw:h-auto tw:w-auto tw:p-0"
                 onKeyDown={(event) => handleTagKeyDown(event, item.id)}
                 onPress={() => context.onRemove(new Set([item.id]))}
               />
@@ -230,11 +234,16 @@ export const AutocompleteBase = ({
 }: AutocompleteProps) => {
   const { contains } = useFilter({ sensitivity: 'base' });
 
-  const [internalSelected, setInternalSelected] = useState<SelectItemType[]>(selectedItems);
+  const resolveSelectedItems = (value: SelectItemType[] | ListData<SelectItemType>): SelectItemType[] =>
+    Array.isArray(value) ? value : value.items;
+
+  const [internalSelected, setInternalSelected] = useState<SelectItemType[]>(
+    resolveSelectedItems(selectedItems)
+  );
   const selectedKeys = internalSelected.map((item) => item.id);
 
   useEffect(() => {
-    setInternalSelected(selectedItems);
+    setInternalSelected(resolveSelectedItems(selectedItems));
   }, [selectedItems]);
 
   const [allItems, setAllItems] = useState<SelectItemType[]>(items ?? []);

@@ -34,6 +34,14 @@ const ITEMS_WITH_SUPPORTING_TEXT: AutocompleteItemType[] = [
   { id: "t5", label: "Restricted", supportingText: "Restricted access" },
 ];
 
+const ITEMS_WITH_SUPPORTING_TEXT_COLUMN: AutocompleteItemType[] = [
+  { id: "c1", label: "Alice Johnson", supportingText: "alice@example.com", supportingTextLayout: "column" },
+  { id: "c2", label: "Bob Smith", supportingText: "bob@example.com", supportingTextLayout: "column" },
+  { id: "c3", label: "Carol Williams", supportingText: "carol@example.com", supportingTextLayout: "column" },
+  { id: "c4", label: "David Brown", supportingText: "david@example.com", supportingTextLayout: "column" },
+  { id: "c5", label: "Eva Martinez", supportingText: "eva@example.com", supportingTextLayout: "column" },
+];
+
 const ITEMS_WITH_AVATARS: AutocompleteItemType[] = [
   { id: "u1", label: "Alice Johnson", avatarUrl: "https://i.pravatar.cc/32?img=1" },
   { id: "u2", label: "Bob Smith", avatarUrl: "https://i.pravatar.cc/32?img=2" },
@@ -308,6 +316,43 @@ export const WithoutIcon: StoryObj = {
         >
           {(item) => (
             <Autocomplete.Item key={item.id} id={item.id} label={item.label} supportingText={item.supportingText}>
+              {item.label}
+            </Autocomplete.Item>
+          )}
+        </Autocomplete>
+      </div>
+    );
+  },
+};
+
+export const WithSupportingTextLayouts: StoryObj = {
+  render: () => {
+    const selectedRow = useListData<AutocompleteItemType>({ initialItems: [] });
+    const selectedColumn = useListData<AutocompleteItemType>({ initialItems: [] });
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 24, width: 380 }}>
+        <Autocomplete
+          label="Row layout (default)"
+          items={ITEMS_WITH_SUPPORTING_TEXT}
+          selectedItems={selectedRow}
+          placeholder="Search tags..."
+        >
+          {(item) => (
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} supportingText={item.supportingText} supportingTextLayout="row">
+              {item.label}
+            </Autocomplete.Item>
+          )}
+        </Autocomplete>
+
+        <Autocomplete
+          label="Column layout"
+          items={ITEMS_WITH_SUPPORTING_TEXT_COLUMN}
+          selectedItems={selectedColumn}
+          placeholder="Search people..."
+        >
+          {(item) => (
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} supportingText={item.supportingText} supportingTextLayout="column">
               {item.label}
             </Autocomplete.Item>
           )}

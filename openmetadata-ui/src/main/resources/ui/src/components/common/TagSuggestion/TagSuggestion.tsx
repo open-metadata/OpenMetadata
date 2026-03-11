@@ -69,11 +69,16 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
         tagDataMap.current.set(opt.value, opt.data as TagLabel);
       });
       setOptions(
-        fetched.map((opt) => ({
-          id: opt.value,
-          label: opt.label,
-          supportingText: (opt.data as TagLabel)?.displayName || opt.label,
-        }))
+        fetched.map((opt) => {
+          const style = (opt.data as TagLabel)?.style;
+
+          return {
+            id: opt.value,
+            label: opt.label,
+            supportingText: (opt.data as TagLabel)?.displayName || opt.label,
+            labelColor: style?.color,
+          };
+        })
       );
     } catch {
       setOptions([]);
@@ -92,11 +97,16 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
         tagDataMap.current.set(opt.value, opt.data as TagLabel);
       });
       setOptions(
-        initialOptions.map((opt) => ({
-          id: opt.value,
-          label: opt.label,
-          supportingText: (opt.data as TagLabel)?.displayName || opt.label,
-        }))
+        initialOptions.map((opt) => {
+          const style = (opt.data as TagLabel)?.style;
+
+          return {
+            id: opt.value,
+            label: opt.label,
+            supportingText: (opt.data as TagLabel)?.displayName || opt.label,
+            labelColor: style?.color,
+          };
+        })
       );
     } else {
       fetchOptions('');
@@ -107,7 +117,6 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
     (searchText: string) => {
       if (searchText === '') {
         searchDebounced.cancel();
-        setOptions([]);
         fetchOptions('');
       } else {
         searchDebounced(searchText);
@@ -131,7 +140,6 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
 
       onChange?.([...value, newTag]);
       searchDebounced.cancel();
-      setOptions([]);
       fetchOptions('');
     },
     [value, onChange, searchDebounced]
@@ -168,18 +176,17 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
         selectedItems={selectedItems}
         onItemCleared={handleItemCleared}
         onItemInserted={handleItemInserted}
-        onSearchChange={handleSearchChange}
-      >
+        onSearchChange={handleSearchChange}>
         {(item) => (
           <Autocomplete.Item
             data-testid={`tag-option-${item.id}`}
             id={String(item.id)}
             key={item.id}
             label={item.label}
+            labelColor={item.labelColor}
             supportingText={item.supportingText}
-          >
-            {item.label}
-          </Autocomplete.Item>
+            supportingTextLayout="column"
+          />
         )}
       </Autocomplete>
     </div>

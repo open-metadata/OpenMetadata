@@ -1,11 +1,11 @@
-import { isValidElement, useContext } from "react";
-import { Check } from "@untitledui/icons";
-import type { ListBoxItemProps as AriaListBoxItemProps } from "react-aria-components";
-import { ListBoxItem as AriaListBoxItem, Text as AriaText } from "react-aria-components";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { SelectContext } from "@/components/base/select/select";
 import { cx } from "@/utils/cx";
 import { isReactComponent } from "@/utils/is-react-component";
+import { Check } from "@untitledui/icons";
+import { isValidElement, useContext } from "react";
+import type { ListBoxItemProps as AriaListBoxItemProps } from "react-aria-components";
+import { ListBoxItem as AriaListBoxItem, Text as AriaText } from "react-aria-components";
 import type { AutocompleteItemType } from "./autocomplete";
 
 const sizes = {
@@ -16,6 +16,8 @@ const sizes = {
 interface AutocompleteItemProps extends Omit<AriaListBoxItemProps<AutocompleteItemType>, "id">, Omit<AutocompleteItemType, "id"> {
     id: string;
     "data-testid"?: string;
+    supportingTextLayout?: "row" | "column";
+    labelColor?: string;
 }
 
 const renderItemIcon = (avatarUrl: string | undefined, Icon: AutocompleteItemType["icon"], label: string | undefined) => {
@@ -31,7 +33,7 @@ const renderItemIcon = (avatarUrl: string | undefined, Icon: AutocompleteItemTyp
     return null;
 };
 
-export const AutocompleteItem = ({ label, id, value, avatarUrl, supportingText, isDisabled, icon: Icon, className, children, "data-testid": dataTestId, ...props }: AutocompleteItemProps) => {
+export const AutocompleteItem = ({ label, id, value, avatarUrl, supportingText, supportingTextLayout = "row", labelColor, isDisabled, icon: Icon, className, children, "data-testid": dataTestId, ...props }: AutocompleteItemProps) => {
     const { size } = useContext(SelectContext);
 
     const labelOrChildren = label || (typeof children === "string" ? children : "");
@@ -74,10 +76,14 @@ export const AutocompleteItem = ({ label, id, value, avatarUrl, supportingText, 
                 >
                     {renderItemIcon(avatarUrl, Icon, label)}
 
-                    <div className="tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2">
+                    <div className={cx(
+                        "tw:flex tw:w-full tw:min-w-0 tw:flex-1",
+                        supportingTextLayout === "column" ? "tw:flex-col tw:gap-y-0.5" : "tw:flex-wrap tw:gap-x-2",
+                    )}>
                         <AriaText
                             slot="label"
                             className={cx("tw:truncate tw:text-md tw:font-medium tw:whitespace-nowrap tw:text-primary", state.isDisabled && "tw:text-disabled")}
+                            style={labelColor && !state.isDisabled ? { color: labelColor } : undefined}
                         >
                             {label || (typeof children === "function" ? children(state) : children)}
                         </AriaText>
