@@ -18,7 +18,6 @@ import pytest
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import DashboardElement, Query
 
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
@@ -31,7 +30,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -212,10 +210,15 @@ class TestYieldDashboardLineageDetails:
     def test_explore_to_dashboard_lineage_is_created(self, looker_source):
         with (
             patch.object(
-                OpenMetadata, "get_by_name", side_effect=lambda entity, fqn: (
-                    MOCK_DASHBOARD_ENTITY if entity is Dashboard else
-                    MOCK_EXPLORE if entity is DashboardDataModel else None
-                )
+                OpenMetadata,
+                "get_by_name",
+                side_effect=lambda entity, fqn: (
+                    MOCK_DASHBOARD_ENTITY
+                    if entity is Dashboard
+                    else MOCK_EXPLORE
+                    if entity is DashboardDataModel
+                    else None
+                ),
             ),
         ):
             results = list(
@@ -227,8 +230,10 @@ class TestYieldDashboardLineageDetails:
 
         edges = [r.right.edge for r in lineage_results]
         explore_to_dashboard = [
-            e for e in edges
-            if e.toEntity.type == "dashboard" and e.fromEntity.type == "dashboardDataModel"
+            e
+            for e in edges
+            if e.toEntity.type == "dashboard"
+            and e.fromEntity.type == "dashboardDataModel"
         ]
         assert len(explore_to_dashboard) == 1
         assert explore_to_dashboard[0].fromEntity.id.root == MOCK_EXPLORE_ID
@@ -244,7 +249,9 @@ class TestYieldDashboardLineageDetails:
                 return MOCK_CHART_ENTITY
             return None
 
-        with patch.object(OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect):
+        with patch.object(
+            OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect
+        ):
             results = list(
                 looker_source.yield_dashboard_lineage_details(MOCK_LOOKER_DASHBOARD)
             )
@@ -253,7 +260,8 @@ class TestYieldDashboardLineageDetails:
         edges = [r.right.edge for r in lineage_results]
 
         explore_to_chart = [
-            e for e in edges
+            e
+            for e in edges
             if e.toEntity.type == "chart" and e.fromEntity.type == "dashboardDataModel"
         ]
         assert len(explore_to_chart) == 1
@@ -270,14 +278,18 @@ class TestYieldDashboardLineageDetails:
                 return MOCK_CHART_ENTITY
             return None
 
-        with patch.object(OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect):
+        with patch.object(
+            OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect
+        ):
             results = list(
                 looker_source.yield_dashboard_lineage_details(MOCK_LOOKER_DASHBOARD)
             )
 
         for r in results:
             if r and r.right:
-                assert r.right.edge.lineageDetails.source == LineageSource.DashboardLineage
+                assert (
+                    r.right.edge.lineageDetails.source == LineageSource.DashboardLineage
+                )
 
     def test_no_lineage_when_explore_not_found(self, looker_source):
         def get_by_name_side_effect(entity, fqn):
@@ -285,7 +297,9 @@ class TestYieldDashboardLineageDetails:
                 return MOCK_DASHBOARD_ENTITY
             return None  # explore and chart not found
 
-        with patch.object(OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect):
+        with patch.object(
+            OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect
+        ):
             results = list(
                 looker_source.yield_dashboard_lineage_details(MOCK_LOOKER_DASHBOARD)
             )
@@ -303,7 +317,9 @@ class TestYieldDashboardLineageDetails:
                 return MOCK_CHART_ENTITY
             return None
 
-        with patch.object(OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect):
+        with patch.object(
+            OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect
+        ):
             results = list(
                 looker_source.yield_dashboard_lineage_details(MOCK_LOOKER_DASHBOARD)
             )
@@ -339,7 +355,9 @@ class TestYieldDashboardLineageDetails:
                 return MOCK_CHART_ENTITY
             return None
 
-        with patch.object(OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect):
+        with patch.object(
+            OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect
+        ):
             results = list(
                 looker_source.yield_dashboard_lineage_details(MOCK_LOOKER_DASHBOARD)
             )
@@ -379,14 +397,15 @@ class TestYieldDashboardLineageDetails:
                 return MOCK_CHART_ENTITY
             return None
 
-        with patch.object(OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect):
-            results = list(
-                looker_source.yield_dashboard_lineage_details(dashboard)
-            )
+        with patch.object(
+            OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect
+        ):
+            results = list(looker_source.yield_dashboard_lineage_details(dashboard))
 
         # Second chart lineage was still processed despite first chart error
         explore_to_chart = [
-            r for r in results
+            r
+            for r in results
             if r and r.right and r.right.edge.toEntity.type == "chart"
         ]
         assert len(explore_to_chart) == 1
@@ -401,7 +420,9 @@ class TestYieldDashboardLineageDetails:
                 return MOCK_CHART_ENTITY
             return None
 
-        with patch.object(OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect):
+        with patch.object(
+            OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect
+        ):
             results = list(
                 looker_source.yield_dashboard_lineage_details(MOCK_LOOKER_DASHBOARD)
             )

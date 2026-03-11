@@ -1602,8 +1602,8 @@ class LookerSource(DashboardServiceSource):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=dashboard_details.id,
-                    error=f"Unexpected exception yielding lineage from dashboard [{dashboard_details.id}]: {exc}",
+                    name=dashboard_details.title,
+                    error=f"Unexpected exception yielding lineage from dashboard [{dashboard_details.title}]: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
