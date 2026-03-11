@@ -223,7 +223,8 @@ public class CostAnalysisWorkflow {
     CreateReportDataProcessor createReportdataProcessor =
         new CreateReportDataProcessor(
             rawCostAnalysisReportDataList.size(),
-            "[CostAnalysisWorkflow] Raw Cost Analysis Report Data Processor");
+            "[CostAnalysisWorkflow] Raw Cost Analysis Report Data Processor",
+            ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA);
 
     Optional<List<ReportData>> rawCostAnalysisReportData = Optional.empty();
 
@@ -295,7 +296,8 @@ public class CostAnalysisWorkflow {
       CreateReportDataProcessor createReportdataProcessor =
           new CreateReportDataProcessor(
               aggregatedCostAnalysisReportDataList.get().size(),
-              "[CostAnalysisWorkflow] Aggregated Cost Analysis Report Data Processor");
+              "[CostAnalysisWorkflow] Aggregated Cost Analysis Report Data Processor",
+              ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA);
       Optional<List<ReportData>> aggregatedCostAnalysisReportData = Optional.empty();
 
       try {

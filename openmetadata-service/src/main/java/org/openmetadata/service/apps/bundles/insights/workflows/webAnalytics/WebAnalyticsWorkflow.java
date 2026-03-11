@@ -211,7 +211,8 @@ public class WebAnalyticsWorkflow {
     CreateReportDataProcessor createReportDataProcessor =
         new CreateReportDataProcessor(
             entityViewReportData.values().size(),
-            "[WebAnalyticsWorkflow] Entity View Report Data Processor");
+            "[WebAnalyticsWorkflow] Entity View Report Data Processor",
+            ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
 
     Optional<List<ReportData>> entityViewReportDataList = Optional.empty();
 
@@ -275,7 +276,8 @@ public class WebAnalyticsWorkflow {
     CreateReportDataProcessor createReportdataProcessor =
         new CreateReportDataProcessor(
             userActivityReportData.values().size(),
-            "[WebAnalyticsWorkflow] User Activity Report Data Processor");
+            "[WebAnalyticsWorkflow] User Activity Report Data Processor",
+            ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
     Optional<List<ReportData>> userActivityReportDataList = Optional.empty();
 
     // Process UserActivity ReportData
