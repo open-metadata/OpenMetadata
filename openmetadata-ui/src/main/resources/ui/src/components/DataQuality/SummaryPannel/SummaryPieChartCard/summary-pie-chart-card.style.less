@@ -14,6 +14,25 @@
 @import (reference) '../../../../styles/variables.less';
 
 .pie-chart-summary-panel {
+  container-type: inline-size;
+  min-width: 0;
+
+  .summary-title-row {
+    display: flex;
+    align-items: center;
+    gap: @size-xs;
+    margin-right: @size-xs;
+  }
+}
+
+@container (max-width: 400px) {
+  .pie-chart-summary-panel .summary-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.pie-chart-summary-panel {
   .summary-title {
     font-size: 16px;
     color: @text-color;
