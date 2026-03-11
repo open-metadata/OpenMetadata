@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import type { ReactNode } from "react";
+import { useContext } from "react";
 import { ChevronDown } from "@untitledui/icons";
 import type {
   ButtonProps as AriaButtonProps,
@@ -23,6 +24,7 @@ import {
   Disclosure as AriaDisclosure,
   DisclosureGroup as AriaDisclosureGroup,
   DisclosurePanel as AriaDisclosurePanel,
+  DisclosureStateContext,
   Heading as AriaHeading,
 } from "react-aria-components";
 import { cx } from "@/utils/cx";
@@ -34,12 +36,7 @@ export interface AccordionProps extends AriaDisclosureGroupProps {
   className?: string;
 }
 
-export interface AccordionItemProps extends AriaDisclosureProps {
-  /**
-   * Optional className for the disclosure item wrapper.
-   */
-  className?: string;
-}
+export interface AccordionItemProps extends AriaDisclosureProps {}
 
 export interface AccordionHeaderProps extends AriaButtonProps {
   /**
@@ -105,7 +102,7 @@ export const AccordionItem = ({
         cx(
           "tw:group/item tw:w-full tw:bg-primary",
           state.isDisabled && "tw:cursor-not-allowed tw:opacity-50",
-          typeof className === "string" ? className : undefined,
+          typeof className === "function" ? className(state) : className,
         )
       }
     >
@@ -158,11 +155,14 @@ export const AccordionPanel = ({
   className,
   ...props
 }: AccordionPanelProps) => {
+  const state = useContext(DisclosureStateContext);
+
   return (
     <AriaDisclosurePanel
       {...props}
       className={cx(
         "tw:overflow-hidden tw:border-t tw:border-border-secondary tw:px-6 tw:py-4 tw:text-sm tw:text-secondary",
+        !state?.isExpanded && "tw:hidden",
         className,
       )}
     >

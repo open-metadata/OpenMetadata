@@ -76,9 +76,9 @@ export const Popover = ({
         cx(
           "tw:origin-(--trigger-anchor-point) tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:outline-hidden tw:will-change-transform",
           state.isEntering &&
-            "tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5",
+            "tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-left:slide-in-from-right-0.5 tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5",
           state.isExiting &&
-            "tw:duration-100 tw:ease-in tw:animate-out tw:fade-out tw:placement-right:slide-out-to-left-0.5 tw:placement-top:slide-out-to-bottom-0.5 tw:placement-bottom:slide-out-to-top-0.5",
+            "tw:duration-100 tw:ease-in tw:animate-out tw:fade-out tw:placement-left:slide-out-to-right-0.5 tw:placement-right:slide-out-to-left-0.5 tw:placement-top:slide-out-to-bottom-0.5 tw:placement-bottom:slide-out-to-top-0.5",
           typeof popoverProps.className === "function"
             ? popoverProps.className(state)
             : popoverProps.className,
