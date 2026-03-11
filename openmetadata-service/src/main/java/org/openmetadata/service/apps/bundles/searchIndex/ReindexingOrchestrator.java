@@ -154,7 +154,17 @@ public class ReindexingOrchestrator {
   private void preflightFixes() {
     LOG.info("Running preflight fixes before reindexing");
     markStaleRunningJobsStopped();
+    syncIndexTemplates();
     cleanupOrphanedIndicesPreFlight();
+  }
+
+  private void syncIndexTemplates() {
+    try {
+      searchRepository.createOrUpdateIndexTemplates();
+      LOG.info("Preflight: synced index templates from indexMapping files");
+    } catch (Exception e) {
+      LOG.warn("Preflight: failed to sync index templates: {}", e.getMessage());
+    }
   }
 
   private static final String APP_NAME = "SearchIndexingApplication";
