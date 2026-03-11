@@ -12,16 +12,11 @@
  */
 
 import CloseIcon from '@mui/icons-material/Close';
-import {
-  Box,
-  CircularProgress,
-  IconButton,
-  InputAdornment,
-  TextField,
-} from '@mui/material';
+import { Box, IconButton, InputAdornment, TextField } from '@mui/material';
 import React, { FC, memo, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagChip } from '../../../atoms/TagChip';
+import Loader from '../../../Loader/Loader';
 
 export interface TreeSearchInputProps {
   open: boolean;
@@ -147,7 +142,7 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
           input: {
             endAdornment: (
               <InputAdornment position="end">
-                {loading && <CircularProgress size={20} />}
+                {loading && <Loader size="x-small" />}
                 {hasClearableValue && !disabled && (
                   <IconButton
                     disableFocusRipple

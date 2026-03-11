@@ -431,14 +431,10 @@ const GlossaryHeader = ({
   ];
 
   const statusBadge = useMemo(() => {
-    if (!isGlossary) {
-      const entityStatus = selectedData.entityStatus ?? EntityStatus.Approved;
+    const entityStatus = selectedData.entityStatus ?? EntityStatus.Approved;
 
-      return <EntityStatusBadge showDivider status={entityStatus} />;
-    }
-
-    return null;
-  }, [isGlossary, selectedData]);
+    return <EntityStatusBadge showDivider status={entityStatus} />;
+  }, [selectedData]);
 
   const createButtons = useMemo(() => {
     if (permissions.Create || createGlossaryTermPermission) {

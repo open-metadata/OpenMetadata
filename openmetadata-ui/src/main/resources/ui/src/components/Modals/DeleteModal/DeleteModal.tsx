@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -24,6 +23,7 @@ import {
 } from '@mui/material';
 import { Trash01 } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
+import Loader from '../../common/Loader/Loader';
 import { DeleteModalProps } from './DeleteModal.interface';
 
 const DeleteModal = ({
@@ -143,7 +143,7 @@ const DeleteModal = ({
             variant="contained"
             onClick={onConfirm}>
             {isDeleting ? (
-              <CircularProgress color="inherit" size={20} />
+              <Loader size="small" type="white" />
             ) : (
               t('label.delete')
             )}

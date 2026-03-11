@@ -19,7 +19,6 @@ import { CheckCircleOutline, ErrorOutline } from '@mui/icons-material';
 import {
   Box,
   Button,
-  CircularProgress,
   Divider as MuiDivider,
   Typography as MuiTypography,
 } from '@mui/material';
@@ -609,7 +608,7 @@ export const useAssetSelectionContent = ({
           }
           startIcon={
             (isSaveLoading || !isUndefined(assetJobResponse)) && (
-              <CircularProgress size={16} />
+              <Loader size="x-small" />
             )
           }
           variant="contained"
