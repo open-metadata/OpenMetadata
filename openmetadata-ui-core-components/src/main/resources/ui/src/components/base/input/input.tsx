@@ -6,6 +6,7 @@ import { HintText } from "@/components/base/input/hint-text";
 import { Label } from "@/components/base/input/label";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx, sortCx } from "@/utils/cx";
+import { fontSizeClass } from "@/utils/tailwindClasses";
 
 export interface InputBaseProps extends TextFieldProps {
     /** Tooltip message on hover. */
@@ -127,7 +128,7 @@ export const InputBase = ({
                 ref={ref}
                 placeholder={placeholder}
                 className={cx(
-                    cx("tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:ring-0 tw:outline-hidden tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary", `tw:text-${fontSize}`),
+                    cx("tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:ring-0 tw:outline-hidden tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary", fontSizeClass[fontSize]),
                     isDisabled && "tw:cursor-not-allowed tw:text-disabled",
                     sizes[inputSize].root,
                     context?.inputClassName,
