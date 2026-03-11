@@ -124,6 +124,46 @@ public class OpenSearchGenericManager implements GenericClient {
   }
 
   @Override
+  public void createOrUpdateIndexTemplate(
+      String templateName, String indexPattern, String mappingContent) throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot create index template.");
+      return;
+    }
+    try {
+      String transformedContent = OsUtils.enrichIndexMappingForOpenSearch(mappingContent);
+      String body =
+          String.format(
+              "{\"index_patterns\":[\"%s\"],\"priority\":100,\"template\":%s}",
+              indexPattern, transformedContent);
+      OpenSearchGenericClient genericClient = client.generic();
+      var response =
+          genericClient.execute(
+              Requests.builder()
+                  .method("PUT")
+                  .endpoint("/_index_template/" + templateName)
+                  .json(body)
+                  .build());
+      int statusCode = response.getStatus();
+      if (statusCode == 200) {
+        LOG.debug("Successfully created/updated index template: {}", templateName);
+      } else {
+        LOG.error(
+            "Failed to create/update index template: {}. Status: {}", templateName, statusCode);
+        throw new IOException("Failed to create/update index template: HTTP " + statusCode);
+      }
+    } catch (OpenSearchException e) {
+      LOG.error("Failed to create/update index template: {}", templateName, e);
+      throw e;
+    } catch (IOException e) {
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Failed to create/update index template {}", templateName, e);
+      throw new IOException("Failed to create/update index template: " + e.getMessage(), e);
+    }
+  }
+
+  @Override
   public void deleteIndexTemplate(String templateName) throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot delete index template.");

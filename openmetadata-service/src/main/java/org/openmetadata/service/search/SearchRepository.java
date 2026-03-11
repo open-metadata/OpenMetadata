@@ -316,6 +316,49 @@ public class SearchRepository {
     }
   }
 
+  public void createOrUpdateIndexTemplates() {
+    LOG.info("Creating/updating index templates for all entities...");
+    int success = 0;
+    int failed = 0;
+    for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
+      try {
+        IndexMapping indexMapping = entry.getValue();
+        String indexName = indexMapping.getIndexName(clusterAlias);
+        String templateName = "om_" + indexName;
+        String indexPattern = indexName + "*";
+        String mappingContent = readIndexMapping(indexMapping);
+        if (mappingContent != null) {
+          searchClient.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
+          success++;
+        }
+      } catch (Exception e) {
+        failed++;
+        LOG.warn("Failed to create index template for {}: {}", entry.getKey(), e.getMessage());
+      }
+    }
+    LOG.info(
+        "Index templates creation completed. Success: {}, Failed: {}, Total: {}",
+        success,
+        failed,
+        entityIndexMap.size());
+  }
+
+  public void createOrUpdateIndexTemplate(String entityType) throws IOException {
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    if (indexMapping == null) {
+      throw new IllegalArgumentException("No index mapping found for entity type: " + entityType);
+    }
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    String templateName = "om_" + indexName;
+    String indexPattern = indexName + "*";
+    String mappingContent = readIndexMapping(indexMapping);
+    if (mappingContent == null) {
+      throw new IllegalArgumentException("No mapping content found for entity type: " + entityType);
+    }
+    searchClient.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
+    LOG.info("Created/updated index template '{}' for entity type '{}'", templateName, entityType);
+  }
+
   public void prepareForReindex() {
     initializeVectorSearchService();
   }

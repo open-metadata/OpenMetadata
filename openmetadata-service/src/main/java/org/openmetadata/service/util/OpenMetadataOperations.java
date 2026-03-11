@@ -953,6 +953,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("OpenMetadata Database Schema is Updated.");
       LOG.info("create indexes.");
       searchRepository.createIndexes();
+      searchRepository.createOrUpdateIndexTemplates();
       Entity.cleanup();
       return 0;
     } catch (Exception e) {
@@ -1031,6 +1032,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       validateAndRunSystemDataMigrations(force);
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
+      LOG.info("Update Index Templates.");
+      searchRepository.createOrUpdateIndexTemplates();
       printChangeLog();
       // update entities secrets if required
       new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
@@ -2255,6 +2258,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Creating indexes for search engine...");
       parseConfig();
       searchRepository.createIndexes();
+      searchRepository.createOrUpdateIndexTemplates();
       createDataInsightsIndexes();
       Entity.cleanup();
       LOG.info("All indexes created successfully.");
