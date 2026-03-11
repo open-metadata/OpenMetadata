@@ -23,7 +23,7 @@ import { uuid } from './common';
 import { visitEntityPage } from './entity';
 
 type EntityTypes = InstanceType<
-  typeof nestedChildrenTestData[keyof typeof nestedChildrenTestData]['CreationClass']
+  (typeof nestedChildrenTestData)[keyof typeof nestedChildrenTestData]['CreationClass']
 >;
 
 export const getNestedColumnDetails = (type: string, data: EntityTypes) => {

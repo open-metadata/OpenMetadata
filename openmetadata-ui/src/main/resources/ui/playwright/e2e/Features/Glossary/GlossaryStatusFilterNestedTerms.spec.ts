@@ -228,7 +228,11 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     await setTermStatus(apiContext, basicChild, 'Draft');
 
     // Create multi-level hierarchy: Grandparent (Approved) -> Parent (Draft) -> Child (In Review)
-    multiGrandparent = new GlossaryTerm(glossary, undefined, 'MultiGrandparent');
+    multiGrandparent = new GlossaryTerm(
+      glossary,
+      undefined,
+      'MultiGrandparent'
+    );
     await multiGrandparent.create(apiContext);
 
     multiParent = new GlossaryTerm(glossary, undefined, 'MultiParent');
@@ -251,11 +255,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
 
     const childStatuses = ['Approved', 'Draft', 'In Review', 'Rejected'];
     for (let i = 0; i < childStatuses.length; i++) {
-      const child = new GlossaryTerm(
-        glossary,
-        undefined,
-        `MultiChild${i + 1}`
-      );
+      const child = new GlossaryTerm(glossary, undefined, `MultiChild${i + 1}`);
       child.data.parent = multiChildrenParent.responseData.fullyQualifiedName;
       await child.create(apiContext);
       if (childStatuses[i] !== 'Approved') {
@@ -468,7 +468,9 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       await verifyTermVisible(page, basicParent.data.displayName);
     });
 
-    test('clearing status filter maintains search results', async ({ page }) => {
+    test('clearing status filter maintains search results', async ({
+      page,
+    }) => {
       await performSearch(page, basicParent.data.name);
       await applyStatusFilter(page, ['Draft']);
 
@@ -513,7 +515,6 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       await verifyTermNotVisible(page, basicParent.data.displayName);
     });
 
-
     test('expand all button loads all terms', async ({ page }) => {
       await applyStatusFilter(page, ['Approved']);
 
@@ -531,7 +532,6 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       const rowCount = await getRowCount(page);
       expect(rowCount).toBeGreaterThan(0);
     });
-
   });
 
   // ==================== EDGE CASES ====================
@@ -578,6 +578,5 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       // Parent chain should NOT be visible (different statuses)
       await verifyTermNotVisible(page, deepTerms[0].data.displayName);
     });
-
   });
 });

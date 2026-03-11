@@ -35,17 +35,19 @@ class TestHexApiClient(TestCase):
             tokenType="personal",
         )
 
-        # Create client with mocked REST client
-        with patch("metadata.ingestion.source.dashboard.hex.client.REST"):
-            self.client = HexApiClient(self.config)
-            self.client.client = MagicMock()
+        # Create client with mocked TrackedREST client
+        self.client = HexApiClient.__new__(HexApiClient)
+        self.client.config = self.config
+        self.client.client = MagicMock()
 
     def test_client_initialization_with_personal_token(self):
         """Test client initialization with personal token"""
-        with patch("metadata.ingestion.source.dashboard.hex.client.REST") as mock_rest:
+        with patch(
+            "metadata.ingestion.source.dashboard.hex.client.TrackedREST"
+        ) as mock_rest:
             client = HexApiClient(self.config)
 
-            # Verify REST client was initialized with correct config
+            # Verify TrackedREST client was initialized with correct config
             mock_rest.assert_called_once()
             call_args = mock_rest.call_args[0][0]
 
@@ -68,7 +70,9 @@ class TestHexApiClient(TestCase):
             tokenType="workspace",
         )
 
-        with patch("metadata.ingestion.source.dashboard.hex.client.REST") as mock_rest:
+        with patch(
+            "metadata.ingestion.source.dashboard.hex.client.TrackedREST"
+        ) as mock_rest:
             client = HexApiClient(workspace_config)
 
             mock_rest.assert_called_once()
@@ -228,7 +232,7 @@ class TestHexApiClient(TestCase):
             token="test_token",
         )
 
-        with patch("metadata.ingestion.source.dashboard.hex.client.REST"):
+        with patch("metadata.ingestion.source.dashboard.hex.client.TrackedREST"):
             client = HexApiClient(config)
 
             project = Project(id="proj_789", title="Test")
@@ -338,7 +342,7 @@ class TestHexApiClient(TestCase):
         """Test that clean_uri is properly called"""
         mock_clean_uri.return_value = "https://app.hex.tech"
 
-        with patch("metadata.ingestion.source.dashboard.hex.client.REST"):
+        with patch("metadata.ingestion.source.dashboard.hex.client.TrackedREST"):
             client = HexApiClient(self.config)
 
             # Verify clean_uri was called for initialization
@@ -346,7 +350,9 @@ class TestHexApiClient(TestCase):
 
     def test_headers_configuration(self):
         """Test that proper headers are configured"""
-        with patch("metadata.ingestion.source.dashboard.hex.client.REST") as mock_rest:
+        with patch(
+            "metadata.ingestion.source.dashboard.hex.client.TrackedREST"
+        ) as mock_rest:
             client = HexApiClient(self.config)
 
             call_args = mock_rest.call_args[0][0]
@@ -370,7 +376,9 @@ class TestHexApiClientIntegration(TestCase):
             token="test_token",
         )
 
-        with patch("metadata.ingestion.source.dashboard.hex.client.REST") as mock_rest:
+        with patch(
+            "metadata.ingestion.source.dashboard.hex.client.TrackedREST"
+        ) as mock_rest:
             mock_client = MagicMock()
             mock_rest.return_value = mock_client
 
@@ -434,7 +442,9 @@ class TestHexApiClientIntegration(TestCase):
             token="test_token",
         )
 
-        with patch("metadata.ingestion.source.dashboard.hex.client.REST") as mock_rest:
+        with patch(
+            "metadata.ingestion.source.dashboard.hex.client.TrackedREST"
+        ) as mock_rest:
             mock_client = MagicMock()
             mock_rest.return_value = mock_client
 

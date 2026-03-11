@@ -111,28 +111,32 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchAllTeamsBasicDetails = useCallback(async (parentTeam?: string) => {
-    setIsTeamBasicDataLoading(true);
-    try {
-      const { data } = await getTeams({
-        parentTeam: parentTeam ?? 'organization',
-        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
-      });
+  const fetchAllTeamsBasicDetails = useCallback(
+    async (parentTeam?: string) => {
+      setIsTeamBasicDataLoading(true);
+      try {
+        const { data } = await getTeams({
+          parentTeam: parentTeam ?? 'organization',
+          include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
+        });
 
-      const modifiedTeams: Team[] = data.map((team) => ({
-        ...team,
-        key: team.fullyQualifiedName,
-        children: team.childrenCount && team.childrenCount > 0 ? [] : undefined,
-      }));
+        const modifiedTeams: Team[] = data.map((team) => ({
+          ...team,
+          key: team.fullyQualifiedName,
+          children:
+            team.childrenCount && team.childrenCount > 0 ? [] : undefined,
+        }));
 
-      setChildTeams(modifiedTeams);
-      setFetchAllTeamAdvancedDetails(true);
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    } finally {
-      setIsTeamBasicDataLoading(false);
-    }
-  }, [showDeletedTeam]);
+        setChildTeams(modifiedTeams);
+        setFetchAllTeamAdvancedDetails(true);
+      } catch (error) {
+        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      } finally {
+        setIsTeamBasicDataLoading(false);
+      }
+    },
+    [showDeletedTeam]
+  );
 
   const fetchTeamAssetCounts = useCallback(async () => {
     try {
@@ -215,7 +219,16 @@ const TeamsPage = () => {
           query: '',
           pageNumber: 0,
           pageSize: 0,
-          queryFilter: getTermQuery({ 'owners.id': selectedTeam.id }),
+          queryFilter: getTermQuery(
+            { 'owners.id': selectedTeam.id },
+            'must',
+            undefined,
+            {
+              mustNotTerms: {
+                entityType: ['tableColumn', 'dataProduct'],
+              },
+            }
+          ),
           searchIndex: SearchIndex.ALL,
         });
         const total = res?.hits?.total.value ?? 0;
@@ -250,36 +263,44 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchTeamAdvancedDetails = useCallback(async (name: string) => {
-    setFetchingAdvancedDetails(true);
-    try {
-      const data = await getTeamByName(name, {
-        fields: [
-          TabSpecificField.USERS,
-          TabSpecificField.USER_COUNT,
-          TabSpecificField.DEFAULT_ROLES,
-          TabSpecificField.DEFAULT_PERSONA,
-          TabSpecificField.POLICIES,
-          TabSpecificField.CHILDREN_COUNT,
-          TabSpecificField.DOMAINS,
-        ],
-        include: Include.All,
-      });
+  const fetchTeamAdvancedDetails = useCallback(
+    async (name: string) => {
+      setFetchingAdvancedDetails(true);
+      try {
+        const data = await getTeamByName(name, {
+          fields: [
+            TabSpecificField.USERS,
+            TabSpecificField.USER_COUNT,
+            TabSpecificField.DEFAULT_ROLES,
+            TabSpecificField.DEFAULT_PERSONA,
+            TabSpecificField.POLICIES,
+            TabSpecificField.CHILDREN_COUNT,
+            TabSpecificField.DOMAINS,
+          ],
+          include: Include.All,
+        });
 
-      setSelectedTeam((prev) => ({ ...prev, ...data }));
-      fetchAssets(data);
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    } finally {
-      setFetchingAdvancedDetails(false);
-    }
-  }, [fetchAssets]);
+        setSelectedTeam((prev) => ({ ...prev, ...data }));
+        fetchAssets(data);
+      } catch (error) {
+        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      } finally {
+        setFetchingAdvancedDetails(false);
+      }
+    },
+    [fetchAssets]
+  );
 
   const loadAdvancedDetails = useCallback(() => {
     fetchTeamAdvancedDetails(fqn);
     fetchAllTeamsBasicDetails(fqn);
     fetchTeamAssetCounts();
-  }, [fqn, fetchTeamAdvancedDetails, fetchAllTeamsBasicDetails, fetchTeamAssetCounts]);
+  }, [
+    fqn,
+    fetchTeamAdvancedDetails,
+    fetchAllTeamsBasicDetails,
+    fetchTeamAssetCounts,
+  ]);
 
   /**
    * Take Team data as input and create the team

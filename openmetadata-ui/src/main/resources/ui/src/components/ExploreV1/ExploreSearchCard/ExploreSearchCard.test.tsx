@@ -29,7 +29,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
 jest.mock('../../../utils/SearchClassBase', () => ({
   __esModule: true,
   default: {
-    getListOfEntitiesWithoutDomain: jest.fn(),
+    getListOfEntitiesWithoutDomain: jest.fn().mockImplementation(() => []),
     getListOfEntitiesWithoutTier: jest.fn().mockReturnValue([]),
     getServiceIcon: jest.fn().mockReturnValue(<span>service-icon</span>),
     getEntityBreadcrumbs: jest.fn().mockReturnValue([]),

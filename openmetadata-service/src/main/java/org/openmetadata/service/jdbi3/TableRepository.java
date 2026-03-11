@@ -31,6 +31,7 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
@@ -1054,9 +1055,15 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table =
-        get(null, tableId, getFields(Set.of(FIELD_OWNERS, FIELD_TAGS)), NON_DELETED, false);
+        get(
+            null,
+            tableId,
+            getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD)),
+            NON_DELETED,
+            false);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -1080,10 +1087,14 @@ public class TableRepository extends EntityRepository<Table> {
       storeOwners(table, dataModel.getOwners());
     }
 
-    table.setTags(dataModel.getTags());
+    List<TagLabel> mergedTableTags =
+        mergeTagsWithIncomingPrecedence(table.getTags(), dataModel.getTags());
+    daoCollection.tagUsageDAO().deleteTagsByTarget(table.getFullyQualifiedName());
+    table.setTags(mergedTableTags);
     applyTags(table);
 
     // Carry forward the column description from the model to table columns, if empty
+    List<String> updatedColumnFqns = new ArrayList<>();
     for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
       Column stored =
           table.getColumns().stream()
@@ -1093,7 +1104,15 @@ public class TableRepository extends EntityRepository<Table> {
       if (stored == null) {
         continue;
       }
-      stored.setTags(modelColumn.getTags());
+      List<TagLabel> mergedColumnTags =
+          mergeTagsWithIncomingPrecedence(stored.getTags(), modelColumn.getTags());
+      if (stored.getFullyQualifiedName() != null) {
+        stored.setTags(mergedColumnTags);
+        updatedColumnFqns.add(stored.getFullyQualifiedName());
+      }
+    }
+    if (!updatedColumnFqns.isEmpty()) {
+      daoCollection.tagUsageDAO().deleteTagsByTargets(updatedColumnFqns);
     }
     applyColumnTags(table.getColumns());
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));

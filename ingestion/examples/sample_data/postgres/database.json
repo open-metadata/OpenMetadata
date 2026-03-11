@@ -1,0 +1,5 @@
+{
+  "id": null,
+  "name": "jaffle_shop",
+  "description": "Sample dbt jaffle_shop project database demonstrating dbt metadata integration with raw, staging, and final data layers"
+}

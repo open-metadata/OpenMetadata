@@ -15,7 +15,7 @@ apiVersion: v3.1.0
 kind: DataContract
 id: ecommerce-multi-object-contract
 name: E-commerce Multi-Object Data Contract
-version: "1.0.0"
+version: '1.0.0'
 status: active
 description:
   purpose: Comprehensive data contract covering multiple e-commerce dimension tables
@@ -138,10 +138,10 @@ schema:
 
 slaProperties:
   - property: freshness
-    value: "24"
+    value: '24'
     unit: hours
   - property: availability
-    value: "99.5"
+    value: '99.5'
     unit: percent
 team:
   - username: ecommerce_data_team

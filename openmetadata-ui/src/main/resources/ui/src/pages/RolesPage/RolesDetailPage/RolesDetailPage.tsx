@@ -67,8 +67,10 @@ const RolesDetailPage = () => {
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
   const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
-  const [selectedEntity, setEntity] =
-    useState<{ attribute: Attribute; record: EntityReference }>();
+  const [selectedEntity, setEntity] = useState<{
+    attribute: Attribute;
+    record: EntityReference;
+  }>();
 
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
   const [rolePermission, setRolePermission] =

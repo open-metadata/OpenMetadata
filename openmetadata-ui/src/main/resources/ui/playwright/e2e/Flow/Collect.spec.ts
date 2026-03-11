@@ -19,68 +19,72 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Collect end point should work properly', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  const PAGES = {
-    setting: {
-      name: 'Settings',
-      menuId: SidebarItem.SETTINGS,
-    },
-    explore: {
-      name: 'Explore',
-      menuId: SidebarItem.EXPLORE,
-    },
-    dataQuality: {
-      name: 'Quality',
-      menuId: SidebarItem.DATA_QUALITY,
-    },
-    incidentManager: {
-      name: 'Incident Manager',
-      menuId: SidebarItem.INCIDENT_MANAGER,
-    },
-    insight: {
-      name: 'Insights',
-      menuId: SidebarItem.DATA_INSIGHT,
-    },
-    glossary: {
-      name: 'Glossary',
-      menuId: SidebarItem.GLOSSARY,
-    },
-    tag: {
-      name: 'Tags',
-      menuId: SidebarItem.TAGS,
-    },
-  };
+test.describe(
+  'Collect end point should work properly',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    const PAGES = {
+      setting: {
+        name: 'Settings',
+        menuId: SidebarItem.SETTINGS,
+      },
+      explore: {
+        name: 'Explore',
+        menuId: SidebarItem.EXPLORE,
+      },
+      dataQuality: {
+        name: 'Quality',
+        menuId: SidebarItem.DATA_QUALITY,
+      },
+      incidentManager: {
+        name: 'Incident Manager',
+        menuId: SidebarItem.INCIDENT_MANAGER,
+      },
+      insight: {
+        name: 'Insights',
+        menuId: SidebarItem.DATA_INSIGHT,
+      },
+      glossary: {
+        name: 'Glossary',
+        menuId: SidebarItem.GLOSSARY,
+      },
+      tag: {
+        name: 'Tags',
+        menuId: SidebarItem.TAGS,
+      },
+    };
 
-  test.beforeEach('Visit entity details page', async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  for (const key of Object.keys(PAGES)) {
-    const pageDetails = PAGES[key as keyof typeof PAGES];
-
-    test(`Visit ${pageDetails.name} page should trigger collect API`, async ({
-      page,
-    }) => {
-      // Wait for the request and response after the click action
-      const collectResponsePromise = page.waitForResponse(
-        '/api/v1/analytics/web/events/collect'
-      );
-
-      await settingClick(
-        page,
-        pageDetails.menuId as unknown as SettingOptionsType
-      );
-
-      const collectResponse = await collectResponsePromise;
-      const requestPayload = JSON.parse(
-        collectResponse.request().postData() ?? '{}'
-      );
-      const collectJsonResponse = await collectResponse.json();
-
-      // omit the eventId from the response
-      delete collectJsonResponse.eventId;
-
-      expect(collectJsonResponse).toStrictEqual(requestPayload);
+    test.beforeEach('Visit entity details page', async ({ page }) => {
+      await redirectToHomePage(page);
     });
+
+    for (const key of Object.keys(PAGES)) {
+      const pageDetails = PAGES[key as keyof typeof PAGES];
+
+      test(`Visit ${pageDetails.name} page should trigger collect API`, async ({
+        page,
+      }) => {
+        // Wait for the request and response after the click action
+        const collectResponsePromise = page.waitForResponse(
+          '/api/v1/analytics/web/events/collect'
+        );
+
+        await settingClick(
+          page,
+          pageDetails.menuId as unknown as SettingOptionsType
+        );
+
+        const collectResponse = await collectResponsePromise;
+        const requestPayload = JSON.parse(
+          collectResponse.request().postData() ?? '{}'
+        );
+        const collectJsonResponse = await collectResponse.json();
+
+        // omit the eventId from the response
+        delete collectJsonResponse.eventId;
+
+        expect(collectJsonResponse).toStrictEqual(requestPayload);
+      });
+    }
   }
-});
+);

@@ -23,75 +23,75 @@ import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.int
 import './modal-with-markdown-editor.less';
 import { ModalWithMarkdownEditorProps } from './ModalWithMarkdownEditor.interface';
 
-export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorProps> =
-  ({
-    header,
-    placeholder,
-    value,
-    onSave,
-    onCancel,
-    visible,
-  }: ModalWithMarkdownEditorProps) => {
-    const { t } = useTranslation();
-    const [isLoading, setIsLoading] = useState<boolean>(false);
+export const ModalWithMarkdownEditor: FunctionComponent<
+  ModalWithMarkdownEditorProps
+> = ({
+  header,
+  placeholder,
+  value,
+  onSave,
+  onCancel,
+  visible,
+}: ModalWithMarkdownEditorProps) => {
+  const { t } = useTranslation();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-    const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
+  const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
-    const handleSaveData = async () => {
-      if (markdownRef.current) {
-        setIsLoading(true);
-        try {
-          const content =
-            markdownRef.current?.getEditorContent?.()?.trim() ?? '';
-          await onSave?.(removeAttachmentsWithoutUrl(content));
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          setIsLoading(false);
-        }
+  const handleSaveData = async () => {
+    if (markdownRef.current) {
+      setIsLoading(true);
+      try {
+        const content = markdownRef.current?.getEditorContent?.()?.trim() ?? '';
+        await onSave?.(removeAttachmentsWithoutUrl(content));
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
       }
-    };
-
-    return (
-      <Modal
-        centered
-        destroyOnClose
-        className="description-markdown-editor"
-        closable={false}
-        data-testid="markdown-editor"
-        footer={
-          <KeyDownStopPropagationWrapper>
-            <Button
-              data-testid="cancel"
-              disabled={isLoading}
-              key="cancelButton"
-              type="link"
-              onClick={onCancel}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              data-testid="save"
-              key="saveButton"
-              loading={isLoading}
-              type="primary"
-              onClick={handleSaveData}>
-              {t('label.save')}
-            </Button>
-          </KeyDownStopPropagationWrapper>
-        }
-        maskClosable={false}
-        open={visible}
-        title={<Typography.Text data-testid="header">{header}</Typography.Text>}
-        width="90%"
-        onCancel={onCancel}>
-        <KeyDownStopPropagationWrapper>
-          <RichTextEditor
-            autofocus
-            initialValue={value}
-            placeHolder={placeholder}
-            ref={markdownRef}
-          />
-        </KeyDownStopPropagationWrapper>
-      </Modal>
-    );
+    }
   };
+
+  return (
+    <Modal
+      centered
+      destroyOnClose
+      className="description-markdown-editor"
+      closable={false}
+      data-testid="markdown-editor"
+      footer={
+        <KeyDownStopPropagationWrapper>
+          <Button
+            data-testid="cancel"
+            disabled={isLoading}
+            key="cancelButton"
+            type="link"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="save"
+            key="saveButton"
+            loading={isLoading}
+            type="primary"
+            onClick={handleSaveData}>
+            {t('label.save')}
+          </Button>
+        </KeyDownStopPropagationWrapper>
+      }
+      maskClosable={false}
+      open={visible}
+      title={<Typography.Text data-testid="header">{header}</Typography.Text>}
+      width="90%"
+      onCancel={onCancel}>
+      <KeyDownStopPropagationWrapper>
+        <RichTextEditor
+          autofocus
+          initialValue={value}
+          placeHolder={placeholder}
+          ref={markdownRef}
+        />
+      </KeyDownStopPropagationWrapper>
+    </Modal>
+  );
+};

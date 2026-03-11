@@ -19,6 +19,7 @@ import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
+@Deprecated(since = "1.12.0", forRemoval = true)
 public class AuthenticationProviderFactory {
   public AuthenticationProvider getAuthProvider(OpenMetadataConnection serverConfig) {
     if (Objects.requireNonNull(serverConfig.getAuthProvider()) == AuthProvider.OPENMETADATA) {

@@ -268,8 +268,7 @@ const AccessTokenCard: FC<MockProps> = ({
         { disabled },
         isSCIMBot && 'scim-token-card'
       )}
-      data-testid="center-panel"
-    >
+      data-testid="center-panel">
       {!isDataLoaded ? <Loader /> : renderAuthComponent()}
       <ConfirmationModal
         bodyText={

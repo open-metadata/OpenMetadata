@@ -35,7 +35,7 @@ const adminUser = new UserClass();
 const persona = new PersonaClass();
 
 // Define the type for test entities using EntityDataClass properties
-type TestEntity = typeof EntityDataClass[keyof typeof EntityDataClass];
+type TestEntity = (typeof EntityDataClass)[keyof typeof EntityDataClass];
 
 // Map entity types to their EntityDataClass properties
 const entityTypeToTestEntity: Record<string, TestEntity> = {

@@ -29,60 +29,64 @@ const testDomainData: Domain['data'] = {
   domainType: 'Aggregate',
 };
 
-test.describe('Sample Data Domain and Data Product Validation', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
+test.describe(
+  'Sample Data Domain and Data Product Validation',
+  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
+  () => {
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+    });
 
-  test('Verify TestDomain exists from sample data ingestion', async ({
-    page,
-  }) => {
-    await sidebarClick(page, SidebarItem.DOMAIN);
-    await waitForAllLoadersToDisappear(page);
-    await selectDomain(page, testDomainData);
-    await expect(page.getByTestId('entity-header-name')).toContainText(
-      'TestDomain'
-    );
-  });
+    test('Verify TestDomain exists from sample data ingestion', async ({
+      page,
+    }) => {
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await waitForAllLoadersToDisappear(page);
+      await selectDomain(page, testDomainData);
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        'TestDomain'
+      );
+    });
 
-  test('Verify TestDataProduct exists under TestDomain', async ({ page }) => {
-    await sidebarClick(page, SidebarItem.DOMAIN);
-    await waitForAllLoadersToDisappear(page);
-    await selectDomain(page, testDomainData);
-    const dpRes = page.waitForResponse((response) =>
-      response.url().includes('index=data_product_search_index')
-    );
-    await page.getByTestId('data_products').click();
-    await dpRes;
-    await waitForAllLoadersToDisappear(page);
-    await expect(
-      page.getByTestId('explore-card-TestDataProduct')
-    ).toBeVisible();
-  });
+    test('Verify TestDataProduct exists under TestDomain', async ({ page }) => {
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await waitForAllLoadersToDisappear(page);
+      await selectDomain(page, testDomainData);
+      const dpRes = page.waitForResponse((response) =>
+        response.url().includes('index=data_product_search_index')
+      );
+      await page.getByTestId('data_products').click();
+      await dpRes;
+      await waitForAllLoadersToDisappear(page);
+      await expect(
+        page.getByTestId('explore-card-TestDataProduct')
+      ).toBeVisible();
+    });
 
-  test('Verify TestDataProduct shows correct details and domain association', async ({
-    page,
-  }) => {
-    await sidebarClick(page, SidebarItem.DOMAIN);
-    await waitForAllLoadersToDisappear(page);
-    await selectDomain(page, testDomainData);
-    const dpRes = page.waitForResponse((response) =>
-      response.url().includes('index=data_product_search_index')
-    );
-    await page.getByTestId('data_products').click();
-    await dpRes;
-    await waitForAllLoadersToDisappear(page);
-    const dataProductCard = page.getByTestId('explore-card-TestDataProduct');
-    await expect(dataProductCard).toBeVisible();
-    await dataProductCard.click();
-    await page.waitForSelector(
-      '[data-testid="entity-summary-panel-container"]',
-      { state: 'visible' }
-    );
-    const summaryPanel = page.getByTestId('entity-summary-panel-container');
-    await expect(summaryPanel).toContainText('Test Data Product');
-    await expect(summaryPanel).toContainText(
-      'A sample data product for testing purposes'
-    );
-  });
-});
+    test('Verify TestDataProduct shows correct details and domain association', async ({
+      page,
+    }) => {
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await waitForAllLoadersToDisappear(page);
+      await selectDomain(page, testDomainData);
+      const dpRes = page.waitForResponse((response) =>
+        response.url().includes('index=data_product_search_index')
+      );
+      await page.getByTestId('data_products').click();
+      await dpRes;
+      await waitForAllLoadersToDisappear(page);
+      const dataProductCard = page.getByTestId('explore-card-TestDataProduct');
+      await expect(dataProductCard).toBeVisible();
+      await dataProductCard.click();
+      await page.waitForSelector(
+        '[data-testid="entity-summary-panel-container"]',
+        { state: 'visible' }
+      );
+      const summaryPanel = page.getByTestId('entity-summary-panel-container');
+      await expect(summaryPanel).toContainText('Test Data Product');
+      await expect(summaryPanel).toContainText(
+        'A sample data product for testing purposes'
+      );
+    });
+  }
+);

@@ -11,15 +11,21 @@
  *  limitations under the License.
  */
 
-import { Box, IconButton, useTheme } from '@mui/material';
-import { Tooltip } from 'antd';
+import {
+  Button,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { updateTableColumn } from '../../../rest/tableAPI';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -34,15 +40,14 @@ export const EntityTitleSection = ({
   entityDetails,
   entityLink,
   entityType,
-  tooltipPlacement = 'topLeft',
+  tooltipPlacement = 'top left',
   testId = 'entity-link',
-  className = '',
+  className,
   hasEditPermission = false,
   onDisplayNameUpdate,
   entityDisplayName,
 }: EntityTitleSectionProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const entityTypeValue = entityDetails.entityType ?? '';
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -63,6 +68,18 @@ export const EntityTitleSection = ({
       }
 
       try {
+        if (entityType === EntityType.TABLE_COLUMN) {
+          const res = await updateTableColumn(
+            entityDetails.fullyQualifiedName ?? '',
+            {
+              displayName: data.displayName,
+            }
+          );
+          onDisplayNameUpdate?.(res.displayName ?? data.displayName ?? '');
+
+          return;
+        }
+
         const jsonPatch = [
           {
             op: entityDisplayName ? 'replace' : 'add',
@@ -97,93 +114,54 @@ export const EntityTitleSection = ({
         setIsEditModalOpen(false);
       }
     },
-    [entityDetails.id, entityDisplayName, entityType, onDisplayNameUpdate, t]
+    [
+      entityDetails.id,
+      entityDetails.fullyQualifiedName,
+      entityDisplayName,
+      entityType,
+      onDisplayNameUpdate,
+      t,
+    ]
   );
 
   return (
-    <Box
-      className={className}
-      sx={{
-        position: 'sticky',
-        padding: theme.spacing(1),
-        zIndex: 999,
-        top: 0,
-        flex: 1,
-        backgroundColor: theme.palette.background.paper,
-        ...(className.includes('drawer-title-section') && {
-          backgroundColor: 'transparent',
-        }),
-      }}>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderRadius: theme.spacing(2),
-          height: theme.spacing(11.5),
-          px: theme.spacing(1),
-          backgroundColor: theme.palette.allShades.blueGray[50],
-        }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            flex: 1,
-            minWidth: 0,
-            overflow: 'hidden',
-          }}>
-          <Box
-            sx={{
-              color: theme.palette.allShades.blue[600],
-              width: theme.spacing(4.5),
-              height: theme.spacing(4.5),
-              ml: theme.spacing(1),
-              display: 'inline-flex',
-              alignItems: 'center',
-              flexShrink: 0,
-              mr: theme.spacing(2),
-            }}>
-            {searchClassBase.getEntityIcon(entityTypeValue)}
-          </Box>
-          <Tooltip
-            mouseEnterDelay={0.5}
-            placement={tooltipPlacement}
-            title={getTextFromHtmlString(entityName)}
-            trigger="hover">
+    <div
+      className={classNames(
+        'tw:sticky tw:p-1 tw:z-999 tw:top-0 tw:bg-white',
+        className
+      )}>
+      <div className="tw:flex tw:gap-2 tw:items-center tw:rounded-lg tw:px-1 tw:bg-gray-blue-50 tw:py-2">
+        <span className="tw:text-blue-700 tw:w-4.5 tw:h-4.5 tw:ml-1 tw:shrink-0">
+          {searchClassBase.getEntityIcon(entityTypeValue)}
+        </span>
+        <Tooltip
+          placement={tooltipPlacement}
+          title={getTextFromHtmlString(entityName)}
+          trigger="hover">
+          <TooltipTrigger>
             <Link
+              className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:font-semibold tw:truncate tw:no-underline tw:text-blue-700 tw:block"
               data-testid={testId}
-              style={{
-                minWidth: 0,
-                overflow: 'hidden',
-                fontSize: theme.typography.pxToRem(15),
-                cursor: 'pointer',
-                fontWeight: 600,
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                textDecoration: 'none',
-                color: theme.palette.allShades.blue[700],
-                display: 'block',
-              }}
               to={linkHref}>
               {stringToHTML(entityName)}
             </Link>
-          </Tooltip>
-          {hasEditPermission && entityType && entityDetails.id && (
-            <Tooltip placement="top" title={t('label.edit')}>
-              <IconButton
+          </TooltipTrigger>
+        </Tooltip>
+        {hasEditPermission && entityType && entityDetails.id && (
+          <Tooltip placement="top" title={t('label.edit')}>
+            <TooltipTrigger>
+              <Button
+                color="tertiary"
                 data-testid="edit-displayName-button"
-                size="small"
-                sx={{
-                  ml: theme.spacing(1),
-                  flexShrink: 0,
-                }}
-                onClick={() => setIsEditModalOpen(true)}>
-                <IconEdit color={DE_ACTIVE_COLOR} height={14} width={14} />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-      </Box>
+                iconLeading={
+                  <IconEdit color={DE_ACTIVE_COLOR} height={16} width={16} />
+                }
+                onClick={() => setIsEditModalOpen(true)}
+              />
+            </TooltipTrigger>
+          </Tooltip>
+        )}
+      </div>
       {isEditModalOpen && (
         <EntityNameModal
           entity={{
@@ -198,6 +176,6 @@ export const EntityTitleSection = ({
           onSave={handleDisplayNameUpdate}
         />
       )}
-    </Box>
+    </div>
   );
 };

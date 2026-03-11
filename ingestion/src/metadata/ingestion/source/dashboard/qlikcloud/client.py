@@ -19,7 +19,8 @@ from typing import Dict, Iterable, List, Optional
 from metadata.generated.schema.entity.services.connections.dashboard.qlikCloudConnection import (
     QlikCloudConnection,
 )
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.qlikcloud.constants import (
     APP_LOADMODEL_REQ,
     CREATE_SHEET_SESSION,
@@ -71,7 +72,7 @@ class QlikCloudClient:
             auth_header=AUTHORIZATION_HEADER,
             auth_token=lambda: (self.config.token.get_secret_value(), 0),
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="qlikcloud")
 
     def connect_websocket(self, dashboard_id: str = None) -> None:
         """

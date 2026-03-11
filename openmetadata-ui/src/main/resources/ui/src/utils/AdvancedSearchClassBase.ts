@@ -983,7 +983,7 @@ class AdvancedSearchClassBase {
           useAsyncSearch: false,
         },
       },
-      [EntityFields.ENTITY_TYPE]: {
+      [EntityFields.ENTITY_TYPE_KEYWORD]: {
         label: t('label.entity-type-plural', { entity: t('label.entity') }),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
@@ -991,7 +991,7 @@ class AdvancedSearchClassBase {
         fieldSettings: {
           asyncFetch: this.autocomplete({
             searchIndex: entitySearchIndex,
-            entityField: EntityFields.ENTITY_TYPE,
+            entityField: EntityFields.ENTITY_TYPE_KEYWORD,
           }),
           useAsyncSearch: true,
         },

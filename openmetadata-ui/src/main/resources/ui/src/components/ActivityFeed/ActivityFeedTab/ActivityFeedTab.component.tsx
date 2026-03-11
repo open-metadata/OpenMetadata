@@ -107,8 +107,10 @@ export const ActivityFeedTab = ({
     root: document.querySelector('#center-container'),
     rootMargin: '0px 0px 2px 0px',
   });
-  const { subTab: activeTab = subTab } =
-    useRequiredParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
+  const { subTab: activeTab = subTab } = useRequiredParams<{
+    tab: EntityTabs;
+    subTab: ActivityFeedTabs;
+  }>();
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );

@@ -113,8 +113,9 @@ function ServiceMainTabContent({
   setIsServiceLoading,
 }: Readonly<ServiceMainTabContentProps>) {
   const { t } = useTranslation();
-  const { serviceCategory } =
-    useRequiredParams<{ serviceCategory: ServiceTypes }>();
+  const { serviceCategory } = useRequiredParams<{
+    serviceCategory: ServiceTypes;
+  }>();
   const { permissions } = usePermissionProvider();
   const navigate = useNavigate();
   const [pageData, setPageData] = useState<ServicePageData[]>([]);

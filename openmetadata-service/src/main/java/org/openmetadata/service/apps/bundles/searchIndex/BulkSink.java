@@ -122,6 +122,16 @@ public interface BulkSink {
         : VectorCompletionResult.timeout(getPendingVectorTaskCount(), waited);
   }
 
+  /**
+   * Returns the column indexing statistics. Columns are indexed as a side effect of table
+   * processing, so their stats are tracked separately.
+   *
+   * @return StepStats with column indexing success/failed counts, or null if not supported
+   */
+  default StepStats getColumnStats() {
+    return null;
+  }
+
   /** Key for passing StageStatsTracker through context data to the sink. */
   String STATS_TRACKER_CONTEXT_KEY = "stageStatsTracker";
 }
