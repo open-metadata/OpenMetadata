@@ -60,8 +60,10 @@ export const VersionButton = forwardRef<
         'timeline-content p-b-md cursor-pointer',
         className
       )}
+      data-testid={`version-entry-${versionText}`}
       ref={ref}
-      onClick={() => onVersionSelect(toString(versionNumber))}>
+      onClick={() => onVersionSelect(toString(versionNumber))}
+    >
       <div className="timeline-wrapper">
         <span
           className={classNames(
@@ -81,12 +83,14 @@ export const VersionButton = forwardRef<
         <Typography.Text
           className={classNames('d-flex font-medium', {
             'text-primary': selected,
-          })}>
+          })}
+        >
           <span>{versionText}</span>
           {isMajorVersion ? (
             <span
               className="m-l-xs text-xs font-medium text-grey-body tw-bg-tag p-x-xs p-y-xss bg-grey rounded-4"
-              style={{ backgroundColor: '#EEEAF8' }}>
+              style={{ backgroundColor: '#EEEAF8' }}
+            >
               {t('label.major')}
             </span>
           ) : null}
@@ -94,7 +98,9 @@ export const VersionButton = forwardRef<
         <div
           className={classNames('text-xs font-normal break-all', {
             'diff-description': selected,
-          })}>
+          })}
+          data-testid="version-change-description"
+        >
           {getSummary({
             changeDescription: changeDescription,
             isGlossaryTerm: !isEmpty(glossary),
@@ -104,7 +110,8 @@ export const VersionButton = forwardRef<
           <UserPopOverCard
             className="font-italic"
             profileWidth={16}
-            userName={updatedBy}>
+            userName={updatedBy}
+          >
             <Link className="thread-author m-r-xss" to={getUserPath(updatedBy)}>
               {getEntityName(user)}
             </Link>
@@ -181,7 +188,8 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
                 block
                 className="m-t-lg"
                 href="/settings/billing/plans"
-                type="primary">
+                type="primary"
+              >
                 See Upgrade Options
               </Button>
             </div>
@@ -215,7 +223,8 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
           <Divider className="m-0" />
         </>
       }
-      width={330}>
+      width={330}
+    >
       {versions}
     </Drawer>
   );

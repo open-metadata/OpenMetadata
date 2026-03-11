@@ -156,16 +156,30 @@ test.describe('Entity Version pages', () => {
       await entity.visitEntityPage(page);
 
       await page.waitForLoadState('networkidle');
+      // Read actual version from API response to avoid hardcoding version numbers.
+      const setupPatchVersion = entity.entityResponseData.version;
+      const setupVersionText = `v${Number.parseFloat(String(setupPatchVersion)).toFixed(1)}`;
       const versionDetailResponse = page.waitForResponse(
         (response) =>
-          response.url().includes('/versions/0.2') && response.status() === 200
+          response.url().includes(`/versions/${setupPatchVersion}`) &&
+          response.status() === 200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
+      // Explicitly select the incremental version in the history panel.
+      await page
+        .locator(`[data-testid="version-selector-${setupVersionText}"]`)
+        .click();
 
       await test.step(
         'should show edited tags and description changes',
         async () => {
+          await expect(
+            page.locator(
+              `[data-testid="version-entry-${setupVersionText}"] [data-testid="version-change-description"]`
+            )
+          ).toContainText('description');
+
           await expect(
             page.locator(
               '[data-testid="domain-link"] [data-testid="diff-added"]'
@@ -212,9 +226,25 @@ test.describe('Entity Version pages', () => {
 
         await reloadAndWaitForNetworkIdle(page);
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
+        // patch() updates entityResponseData, so version reflects the incremented value.
+        const ownerPatchVersion = entity.entityResponseData.version;
+        const ownerVersionText = `v${Number.parseFloat(String(ownerPatchVersion)).toFixed(1)}`;
+        const versionDetailResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes(`/versions/${ownerPatchVersion}`) &&
+            response.status() === 200
+        );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
+        await page
+          .locator(`[data-testid="version-selector-${ownerVersionText}"]`)
+          .click();
+
+        await expect(
+          page.locator(
+            `[data-testid="version-entry-${ownerVersionText}"] [data-testid="version-change-description"]`
+          )
+        ).toContainText('owners');
 
         await expect(
           page.locator('[data-testid="owner-link"] [data-testid="diff-added"]')
@@ -280,9 +310,25 @@ test.describe('Entity Version pages', () => {
 
         await reloadAndWaitForNetworkIdle(page);
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
+        // patch() updates entityResponseData, so version reflects the incremented value.
+        const tierPatchVersion = entity.entityResponseData.version;
+        const tierVersionText = `v${Number.parseFloat(String(tierPatchVersion)).toFixed(1)}`;
+        const versionDetailResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes(`/versions/${tierPatchVersion}`) &&
+            response.status() === 200
+        );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
+        await page
+          .locator(`[data-testid="version-selector-${tierVersionText}"]`)
+          .click();
+
+        await expect(
+          page.locator(
+            `[data-testid="version-entry-${tierVersionText}"] [data-testid="version-change-description"]`
+          )
+        ).toContainText(COMMON_TIER_TAG[0].fullyQualifiedName);
 
         await expect(
           page.locator('[data-testid="Tier"] > [data-testid="diff-added"]')
@@ -315,15 +361,34 @@ test.describe('Entity Version pages', () => {
             BIG_ENTITY_DELETE_TIMEOUT
           );
 
-          await page.reload();
+          await reloadAndWaitForNetworkIdle(page);
 
           const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
           await expect(deletedBadge).toHaveText('Deleted');
 
-          const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
+          // Soft-delete is UI-only — no patch response to read the version from,
+          // so match any version URL and select the first (latest) panel entry.
+          const versionDetailResponse = page.waitForResponse(
+            (response) =>
+              /\/versions\/\d+\.\d+/.test(response.url()) &&
+              response.status() === 200
+          );
           await page.locator('[data-testid="version-button"]').click();
           await versionDetailResponse;
+
+          const latestVersionEntry = page
+            .locator('[data-testid^="version-entry-"]')
+            .first();
+          await latestVersionEntry
+            .locator('[data-testid^="version-selector-"]')
+            .click();
+
+          await expect(
+            latestVersionEntry.locator(
+              '[data-testid="version-change-description"]'
+            )
+          ).toContainText('Data Asset has been deleted');
 
           // Deleted badge should be visible
           await expect(

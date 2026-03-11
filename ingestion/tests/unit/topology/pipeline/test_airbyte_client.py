@@ -32,7 +32,7 @@ from metadata.ingestion.source.pipeline.airbyte.client import (
     AirbyteCloudClient,
 )
 
-MOCK_REST = "metadata.ingestion.source.pipeline.airbyte.client.REST"
+MOCK_REST = "metadata.ingestion.source.pipeline.airbyte.client.TrackedREST"
 MOCK_REQUESTS_POST = "metadata.ingestion.source.pipeline.airbyte.client.requests.post"
 MOCK_GENERATE_TOKEN = (
     "metadata.ingestion.source.pipeline.airbyte.client.generate_http_basic_token"

@@ -1653,6 +1653,7 @@
     "select-a-metric-type": "Selecteer een type metriek",
     "select-a-policy": "Selecteer een beleidsregel",
     "select-add-test-suite": "Selecteer/voeg testsuite toe",
+    "select-all": "Alles selecteren",
     "select-all-entity": "Selecteer alles {{entity}}",
     "select-asset-type": "Selecteer Type Asset",
     "select-background": "Selecteer achtergrond",

@@ -357,7 +357,8 @@ const LogsViewerPage = () => {
           alignItems="center"
           direction="row"
           justifyContent="flex-end"
-          spacing={4}>
+          spacing={4}
+        >
           <Skeleton height={30} variant="rounded" width={120} />
           <Skeleton height={30} variant="circular" width={30} />
           <Skeleton height={30} variant="circular" width={30} />
@@ -383,7 +384,7 @@ const LogsViewerPage = () => {
           )}
         />
         <Typography variant="h6">
-          {ingestionDetails?.name ?? appData?.name}
+          {getEntityName(ingestionDetails) || getEntityName(appData)}
         </Typography>
 
         <Stack
@@ -391,7 +392,8 @@ const LogsViewerPage = () => {
           data-testid="summary-card"
           direction="row"
           divider={<Divider flexItem orientation="vertical" />}
-          spacing={2}>
+          spacing={2}
+        >
           {Object.entries(logSummaries).map(([key, value]) => {
             let valueText = value;
 
@@ -411,7 +413,8 @@ const LogsViewerPage = () => {
                         lineHeight: '16px',
                         marginBottom: '0px !important',
                       }}
-                      variant="body1">
+                      variant="body1"
+                    >
                       {descriptionFirstPart}
                     </Typography>
                     <Typography
@@ -422,7 +425,8 @@ const LogsViewerPage = () => {
                         marginBottom: '0px !important',
                         color: theme.palette.grey[500],
                       }}
-                      variant="body1">
+                      variant="body1"
+                    >
                       {descriptionSecondPart}
                     </Typography>
                   </Stack>
@@ -442,7 +446,8 @@ const LogsViewerPage = () => {
           <Stack alignItems="center" height="50vh" justifyContent="center">
             <ErrorPlaceHolder
               className="bg-white"
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+            >
               {t('label.no-entity-available', {
                 entity: t('label.log-lowercase-plural'),
               })}
@@ -454,13 +459,15 @@ const LogsViewerPage = () => {
               alignItems="center"
               direction="row"
               justifyContent="flex-end"
-              spacing={4}>
+              spacing={4}
+            >
               <Button
                 color="primary"
                 data-testid="jump-to-end-button"
                 size="small"
                 variant="outlined"
-                onClick={handleJumpToEnd}>
+                onClick={handleJumpToEnd}
+              >
                 {t('label.jump-to-end')}
               </Button>
 
@@ -469,14 +476,16 @@ const LogsViewerPage = () => {
               {progress ? (
                 <Tooltip
                   placement="top"
-                  title={t('label.downloading-log-plural')}>
+                  title={t('label.downloading-log-plural')}
+                >
                   <CircularProgress size={16} />
                 </Tooltip>
               ) : (
                 <IconButton
                   data-testid="download"
                   sx={{ padding: 0 }}
-                  onClick={handleIngestionDownloadClick}>
+                  onClick={handleIngestionDownloadClick}
+                >
                   <DownloadOutlined data-testid="download-icon" width="16" />
                 </IconButton>
               )}

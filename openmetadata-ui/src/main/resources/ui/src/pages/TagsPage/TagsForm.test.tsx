@@ -18,6 +18,38 @@ import { Classification } from '../../generated/entity/classification/classifica
 import { Tag } from '../../generated/entity/classification/tag';
 import TagsForm from './TagsForm';
 
+jest.mock('@openmetadata/ui-core-components', () => {
+  const GridItem = ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+  const GridComponent = ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  );
+  GridComponent.Item = GridItem;
+
+  return {
+    Tooltip: ({
+      children,
+      title,
+    }: {
+      children: React.ReactNode;
+      title?: React.ReactNode;
+    }) => (
+      <div data-testid="tooltip" title={title as string}>
+        {children}
+      </div>
+    ),
+    TooltipTrigger: ({
+      children,
+      className,
+    }: {
+      children: React.ReactNode;
+      className?: string;
+    }) => <button className={className}>{children}</button>,
+    Grid: GridComponent,
+  };
+});
+
 jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockImplementation(({ initialValue }) => {
     return <div>{initialValue}MarkdownWithPreview component</div>;
