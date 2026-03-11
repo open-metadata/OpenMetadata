@@ -12,6 +12,7 @@
  */
 
 // Base components
+export * from "./base/alert/alert";
 export * from "./base/avatar/avatar";
 export * from "./base/avatar/avatar-label-group";
 export * from "./base/avatar/avatar-profile-photo";
@@ -57,9 +58,7 @@ export * from "./base/file-upload-trigger/file-upload-trigger";
 export * from "./base/select/select";
 export * from "./base/select/multi-select";
 export * from "./base/select/combobox";
-export {
-  Popover as SelectPopover,
-} from "./base/select/popover";
+export { Popover as SelectPopover } from "./base/select/popover";
 export * from "./base/select/select-item";
 export * from "./base/select/select-native";
 export * from "./base/form/form";
@@ -103,6 +102,7 @@ export * from "./application/tabs/tabs";
 
 // Foundations
 export * from "./foundations/dot-icon";
+export * from "./foundations/featured-icon/featured-icon";
 export * from "./foundations/typography";
 
 // Other components
