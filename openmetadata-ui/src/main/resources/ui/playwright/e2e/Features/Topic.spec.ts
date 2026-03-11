@@ -107,7 +107,9 @@ test.describe('Topic entity specific tests ', () => {
     await expect(sidePanel).not.toBeVisible();
 
     // Verify URL does not contain the column part
-    await expect(page).toHaveURL(new RegExp(`/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`));
+    await expect(page).toHaveURL(
+      new RegExp(`/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`)
+    );
   });
 
   test('Copy nested field link should include full hierarchical path', async ({
@@ -134,7 +136,10 @@ test.describe('Topic entity specific tests ', () => {
         const nestedCopyButton = nestedCopyButtons.nth(1);
         await expect(nestedCopyButton).toBeVisible();
 
-        const clipboardText = await copyAndGetClipboardText(page, nestedCopyButton);
+        const clipboardText = await copyAndGetClipboardText(
+          page,
+          nestedCopyButton
+        );
 
         // Verify the URL contains the topic FQN
         expect(clipboardText).toContain('/topic/');
@@ -155,7 +160,11 @@ test.describe('Topic entity specific tests ', () => {
         await expect(sidePanel).not.toBeVisible();
 
         // Verify URL does not contain the column part
-        await expect(page).toHaveURL(new RegExp(`/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`));
+        await expect(page).toHaveURL(
+          new RegExp(
+            `/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`
+          )
+        );
       }
     }
   });

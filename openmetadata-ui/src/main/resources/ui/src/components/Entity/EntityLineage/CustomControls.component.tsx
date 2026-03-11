@@ -440,6 +440,7 @@ const CustomControls: FC<{
                 : t('label.export')
             }>
             <StyledIconButton
+              data-testid="export-button"
               disabled={isEditMode}
               size="large"
               onClick={handleExportClick}>

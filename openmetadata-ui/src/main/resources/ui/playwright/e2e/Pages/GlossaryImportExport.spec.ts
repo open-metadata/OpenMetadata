@@ -134,161 +134,151 @@ test.describe('Glossary Bulk Import Export', () => {
       await download.saveAs('downloads/' + download.suggestedFilename());
     });
 
-    await test.step(
-      'should import and edit with one additional glossaryTerm',
-      async () => {
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary1.data.displayName);
+    await test.step('should import and edit with one additional glossaryTerm', async () => {
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
 
-        // Update Reviewer
-        await addMultiOwner({
-          page,
-          ownerNames: [user3.getUserDisplayName()],
-          activatorBtnDataTestId: 'Add',
-          resultTestId: 'glossary-reviewer-name',
-          endpoint: EntityTypeEndpoint.Glossary,
-          type: 'Users',
-        });
+      // Update Reviewer
+      await addMultiOwner({
+        page,
+        ownerNames: [user3.getUserDisplayName()],
+        activatorBtnDataTestId: 'Add',
+        resultTestId: 'glossary-reviewer-name',
+        endpoint: EntityTypeEndpoint.Glossary,
+        type: 'Users',
+      });
 
-        // Safety check to close potential glossary not found alert
-        // Arrived due to parallel testing
-        await closeFirstPopupAlert(page);
+      // Safety check to close potential glossary not found alert
+      // Arrived due to parallel testing
+      await closeFirstPopupAlert(page);
 
-        await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="import-button-description"]');
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[type="file"]', { state: 'attached' });
-        await page.setInputFiles(
-          '[type="file"]',
-          'downloads/' + glossary1.data.displayName + '.csv'
-        );
+      await page.click('[data-testid="manage-button"]');
+      await page.click('[data-testid="import-button-description"]');
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[type="file"]', { state: 'attached' });
+      await page.setInputFiles(
+        '[type="file"]',
+        'downloads/' + glossary1.data.displayName + '.csv'
+      );
 
-        await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden'
-        });
+      await page.waitForSelector('[data-testid="upload-file-widget"]', {
+        state: 'hidden',
+      });
 
-        // Adding some assertion to make sure that CSV loaded correctly
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
-        await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
-        await expect(
-          page.getByRole('button', { name: 'Previous' })
-        ).toBeVisible();
+      // Adding some assertion to make sure that CSV loaded correctly
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
+      await expect(page.getByTestId('add-row-btn')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Previous' })
+      ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
+      await page.click('[data-testid="add-row-btn"]');
 
-        // click on last row first cell
-        const rows = await page.$$('.rdg-row');
-        const lastRow = rows[rows.length - 1];
+      // click on last row first cell
+      const rows = await page.$$('.rdg-row');
+      const lastRow = rows[rows.length - 1];
 
-        const firstCell = await lastRow.$('.rdg-cell');
-        await firstCell?.click();
+      const firstCell = await lastRow.$('.rdg-cell');
+      await firstCell?.click();
 
-        // Click on first cell and edit
-        await fillGlossaryRowDetails(
-          {
-            ...additionalGlossaryTerm,
-            owners: [user1.responseData?.['displayName']],
-            reviewers: [user2.responseData?.['displayName']],
-            relatedTerm: {
-              parent: glossary2.data.name,
-              name: glossaryTerm2.data.name,
-            },
+      // Click on first cell and edit
+      await fillGlossaryRowDetails(
+        {
+          ...additionalGlossaryTerm,
+          owners: [user1.responseData?.['displayName']],
+          reviewers: [user2.responseData?.['displayName']],
+          relatedTerm: {
+            parent: glossary2.data.name,
+            name: glossaryTerm2.data.name,
           },
-          page,
-          propertyListName
-        );
+        },
+        page,
+        propertyListName
+      );
 
-        await page.getByRole('button', { name: 'Next' }).click();
-        const loader = page.locator(
-          '.inovua-react-toolkit-load-mask__background-layer'
-        );
+      await page.getByRole('button', { name: 'Next' }).click();
+      const loader = page.locator(
+        '.inovua-react-toolkit-load-mask__background-layer'
+      );
 
-        await loader.waitFor({ state: 'hidden' });
+      await loader.waitFor({ state: 'hidden' });
 
-        await validateImportStatus(page, {
-          passed: '3',
-          processed: '3',
-          failed: '0',
-        });
+      await validateImportStatus(page, {
+        passed: '3',
+        processed: '3',
+        failed: '0',
+      });
 
-        await page.waitForSelector('.rdg-header-row', {
-          state: 'visible',
-        });
+      await page.waitForSelector('.rdg-header-row', {
+        state: 'visible',
+      });
 
-        const rowStatus = ['Entity updated', 'Entity created'];
+      const rowStatus = ['Entity updated', 'Entity created'];
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await page
-          .locator('.inovua-react-toolkit-load-mask__background-layer')
-          .waitFor({ state: 'detached' });
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
 
-        await toastNotification(
-          page,
-          `Glossary ${glossary1.responseData.fullyQualifiedName} details updated successfully`
-        );
-      }
-    );
+      await toastNotification(
+        page,
+        `Glossary ${glossary1.responseData.fullyQualifiedName} details updated successfully`
+      );
+    });
 
-    await test.step(
-      'should verify bulk import details in version history',
-      async () => {
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary1.data.displayName);
-        const versionResponse = page.waitForResponse(
-          /\/api\/v1\/glossaries\/[^/]+\/versions\/[^/]+$/
-        );
-        await page.click('[data-testid="version-button"]');
-        await versionResponse;
-        await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await test.step('should verify bulk import details in version history', async () => {
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      const versionResponse = page.waitForResponse(
+        /\/api\/v1\/glossaries\/[^/]+\/versions\/[^/]+$/
+      );
+      await page.click('[data-testid="version-button"]');
+      await versionResponse;
+      await page.waitForSelector('[role="dialog"]', { state: 'visible' });
 
-        await page.waitForSelector('[data-testid="processed-row"]');
-        const processedRow = await page.$eval(
-          '[data-testid="processed-row"]',
-          (el) => el.textContent
-        );
+      await page.waitForSelector('[data-testid="processed-row"]');
+      const processedRow = await page.$eval(
+        '[data-testid="processed-row"]',
+        (el) => el.textContent
+      );
 
-        expect(processedRow).toBe('3');
+      expect(processedRow).toBe('3');
 
-        const passedRow = await page.$eval(
-          '[data-testid="passed-row"]',
-          (el) => el.textContent
-        );
+      const passedRow = await page.$eval(
+        '[data-testid="passed-row"]',
+        (el) => el.textContent
+      );
 
-        expect(passedRow).toBe('3');
+      expect(passedRow).toBe('3');
 
-        const failedRow = await page.$eval(
-          '[data-testid="failed-row"]',
-          (el) => el.textContent
-        );
+      const failedRow = await page.$eval(
+        '[data-testid="failed-row"]',
+        (el) => el.textContent
+      );
 
-        expect(failedRow).toBe('0');
+      expect(failedRow).toBe('0');
 
-        await expect(page.getByTestId('view-more-button')).toBeVisible();
+      await expect(page.getByTestId('view-more-button')).toBeVisible();
 
-        await page.getByTestId('view-more-button').click();
+      await page.getByTestId('view-more-button').click();
 
-        await expect(
-          page.getByTestId('bulk-import-details-modal')
-        ).toBeVisible();
+      await expect(page.getByTestId('bulk-import-details-modal')).toBeVisible();
 
-        await expect(
-          page
-            .getByTestId('bulk-import-details-modal')
-            .locator('.rdg-header-row')
-        ).toBeVisible();
+      await expect(
+        page.getByTestId('bulk-import-details-modal').locator('.rdg-header-row')
+      ).toBeVisible();
 
-        await page.getByTestId('close-modal-button').click();
+      await page.getByTestId('close-modal-button').click();
 
-        await expect(
-          page.getByTestId('bulk-import-details-modal')
-        ).not.toBeVisible();
+      await expect(
+        page.getByTestId('bulk-import-details-modal')
+      ).not.toBeVisible();
 
-        await page.getByRole('dialog').getByRole('img').click();
-      }
-    );
+      await page.getByRole('dialog').getByRole('img').click();
+    });
 
     await test.step('delete custom properties', async () => {
       for (const propertyName of Object.values(propertyListName)) {
@@ -308,12 +298,9 @@ test.describe('Glossary Bulk Import Export', () => {
     const circularRefGlossary = new Glossary('Test CSV');
 
     try {
-      await test.step(
-        'Create glossary for circular reference test',
-        async () => {
-          await circularRefGlossary.create(apiContext);
-        }
-      );
+      await test.step('Create glossary for circular reference test', async () => {
+        await circularRefGlossary.create(apiContext);
+      });
 
       await test.step('Import initial glossary terms', async () => {
         await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -343,7 +330,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         });
 
         await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden'
+          state: 'hidden',
         });
 
         await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -373,72 +360,66 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         );
       });
 
-      await test.step(
-        'Import CSV with circular reference and verify error',
-        async () => {
-          await sidebarClick(page, SidebarItem.GLOSSARY);
-          await selectActiveGlossary(
-            page,
-            circularRefGlossary.data.displayName
-          );
+      await test.step('Import CSV with circular reference and verify error', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, circularRefGlossary.data.displayName);
 
-          await page.click('[data-testid="manage-button"]');
-          await page.click('[data-testid="import-button-description"]');
-          await page.waitForLoadState('networkidle');
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="import-button-description"]');
+        await page.waitForLoadState('networkidle');
 
-          const circularCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+        const circularCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
 ${circularRefGlossary.data.name}.name1,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,
 ,parent,parent,<p>parent</p>,,,,,,user:admin,Approved,,,
 ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin,Approved,,,`;
 
-          const circularCsvBlob = new Blob([circularCsvContent], {
+        const circularCsvBlob = new Blob([circularCsvContent], {
+          type: 'text/csv',
+        });
+        const circularCsvFile = new File(
+          [circularCsvBlob],
+          'circular-reference.csv',
+          {
             type: 'text/csv',
-          });
-          const circularCsvFile = new File(
-            [circularCsvBlob],
-            'circular-reference.csv',
-            {
-              type: 'text/csv',
-            }
-          );
+          }
+        );
 
-          await page.waitForSelector('[type="file"]', { state: 'attached' });
-          await page.setInputFiles('[type="file"]', {
-            name: circularCsvFile.name,
-            mimeType: circularCsvFile.type,
-            buffer: Buffer.from(await circularCsvFile.arrayBuffer()),
-          });
+        await page.waitForSelector('[type="file"]', { state: 'attached' });
+        await page.setInputFiles('[type="file"]', {
+          name: circularCsvFile.name,
+          mimeType: circularCsvFile.type,
+          buffer: Buffer.from(await circularCsvFile.arrayBuffer()),
+        });
 
-          await page.waitForSelector('[data-testid="upload-file-widget"]', {
-            state: 'hidden'
-          });
+        await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          state: 'hidden',
+        });
 
-          await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-          await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Next' }).click();
 
-          const loader = page.locator(
-            '.inovua-react-toolkit-load-mask__background-layer'
-          );
+        const loader = page.locator(
+          '.inovua-react-toolkit-load-mask__background-layer'
+        );
 
-          await loader.waitFor({ state: 'hidden' });
+        await loader.waitFor({ state: 'hidden' });
 
-          await validateImportStatus(page, {
-            passed: '3',
-            processed: '4',
-            failed: '1',
-          });
+        await validateImportStatus(page, {
+          passed: '3',
+          processed: '4',
+          failed: '1',
+        });
 
-          const rows = await page.$$('.rdg-row');
-          const firstRow = rows[0];
-          const detailsCell = await firstRow.$('.rdg-cell-details');
-          const errorText = await detailsCell?.textContent();
+        const rows = await page.$$('.rdg-row');
+        const firstRow = rows[0];
+        const detailsCell = await firstRow.$('.rdg-cell-details');
+        const errorText = await detailsCell?.textContent();
 
-          expect(errorText).toContain(
-            "Invalid hierarchy: Term 'Test CSV.name1' cannot be its own parent"
-          );
-        }
-      );
+        expect(errorText).toContain(
+          "Invalid hierarchy: Term 'Test CSV.name1' cannot be its own parent"
+        );
+      });
     } finally {
       await circularRefGlossary.delete(apiContext);
       await afterAction();
@@ -455,53 +436,50 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         await validationGlossary.create(apiContext);
       });
 
-      await test.step(
-        'Import CSV with missing required name field',
-        async () => {
-          await sidebarClick(page, SidebarItem.GLOSSARY);
-          await selectActiveGlossary(page, validationGlossary.data.displayName);
+      await test.step('Import CSV with missing required name field', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, validationGlossary.data.displayName);
 
-          await page.click('[data-testid="manage-button"]');
-          await page.click('[data-testid="import-button-description"]');
-          await page.waitForLoadState('networkidle');
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="import-button-description"]');
+        await page.waitForLoadState('networkidle');
 
-          // CSV with missing name (required field)
-          const missingNameCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+        // CSV with missing name (required field)
+        const missingNameCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
 ,,,<p>Description without name</p>,,,,,,user:admin,Approved,,,`;
 
-          const csvBlob = new Blob([missingNameCsv], { type: 'text/csv' });
-          const csvFile = new File([csvBlob], 'missing-name.csv', {
-            type: 'text/csv',
-          });
+        const csvBlob = new Blob([missingNameCsv], { type: 'text/csv' });
+        const csvFile = new File([csvBlob], 'missing-name.csv', {
+          type: 'text/csv',
+        });
 
-          await page.waitForSelector('[type="file"]', { state: 'attached' });
-          await page.setInputFiles('[type="file"]', {
-            name: csvFile.name,
-            mimeType: csvFile.type,
-            buffer: Buffer.from(await csvFile.arrayBuffer()),
-          });
+        await page.waitForSelector('[type="file"]', { state: 'attached' });
+        await page.setInputFiles('[type="file"]', {
+          name: csvFile.name,
+          mimeType: csvFile.type,
+          buffer: Buffer.from(await csvFile.arrayBuffer()),
+        });
 
-          await page.waitForSelector('[data-testid="upload-file-widget"]', {
-            state: 'hidden'
-          });
+        await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          state: 'hidden',
+        });
 
-          await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-          await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Next' }).click();
 
-          const loader = page.locator(
-            '.inovua-react-toolkit-load-mask__background-layer'
-          );
-          await loader.waitFor({ state: 'hidden' });
+        const loader = page.locator(
+          '.inovua-react-toolkit-load-mask__background-layer'
+        );
+        await loader.waitFor({ state: 'hidden' });
 
-          // Should show failure due to missing required field
-          await validateImportStatus(page, {
-            passed: '1',
-            processed: '2',
-            failed: '1',
-          });
-        }
-      );
+        // Should show failure due to missing required field
+        await validateImportStatus(page, {
+          passed: '1',
+          processed: '2',
+          failed: '1',
+        });
+      });
     } finally {
       await validationGlossary.delete(apiContext);
       await afterAction();
@@ -543,7 +521,7 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
         });
 
         await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden'
+          state: 'hidden',
         });
 
         await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -582,61 +560,58 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
         await partialGlossary.create(apiContext);
       });
 
-      await test.step(
-        'Import CSV with mixed valid and invalid terms',
-        async () => {
-          await sidebarClick(page, SidebarItem.GLOSSARY);
-          await selectActiveGlossary(page, partialGlossary.data.displayName);
+      await test.step('Import CSV with mixed valid and invalid terms', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, partialGlossary.data.displayName);
 
-          await page.click('[data-testid="manage-button"]');
-          await page.click('[data-testid="import-button-description"]');
-          await page.waitForLoadState('networkidle');
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="import-button-description"]');
+        await page.waitForLoadState('networkidle');
 
-          // CSV with one valid term and one with circular reference
-          const mixedCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+        // CSV with one valid term and one with circular reference
+        const mixedCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
 ,validTerm,validTerm,<p>This is a valid term</p>,,,,,,user:admin,Approved,,,
 ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p>,,,,,,user:admin,Approved,,,`;
 
-          const csvBlob = new Blob([mixedCsv], { type: 'text/csv' });
-          const csvFile = new File([csvBlob], 'mixed-terms.csv', {
-            type: 'text/csv',
-          });
+        const csvBlob = new Blob([mixedCsv], { type: 'text/csv' });
+        const csvFile = new File([csvBlob], 'mixed-terms.csv', {
+          type: 'text/csv',
+        });
 
-          await page.waitForSelector('[type="file"]', { state: 'attached' });
-          await page.setInputFiles('[type="file"]', {
-            name: csvFile.name,
-            mimeType: csvFile.type,
-            buffer: Buffer.from(await csvFile.arrayBuffer()),
-          });
+        await page.waitForSelector('[type="file"]', { state: 'attached' });
+        await page.setInputFiles('[type="file"]', {
+          name: csvFile.name,
+          mimeType: csvFile.type,
+          buffer: Buffer.from(await csvFile.arrayBuffer()),
+        });
 
-          await page.waitForSelector('[data-testid="upload-file-widget"]', {
-            state: 'hidden'
-          });
+        await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          state: 'hidden',
+        });
 
-          await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-          await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Next' }).click();
 
-          const loader = page.locator(
-            '.inovua-react-toolkit-load-mask__background-layer'
-          );
-          await loader.waitFor({ state: 'hidden' });
+        const loader = page.locator(
+          '.inovua-react-toolkit-load-mask__background-layer'
+        );
+        await loader.waitFor({ state: 'hidden' });
 
-          // Should show partial success (some passed, some failed)
-          const passedCount = page.getByTestId('passed-count');
-          const failedCount = page.getByTestId('failed-count');
+        // Should show partial success (some passed, some failed)
+        const passedCount = page.getByTestId('passed-count');
+        const failedCount = page.getByTestId('failed-count');
 
-          if (
-            (await passedCount.isVisible()) &&
-            (await failedCount.isVisible())
-          ) {
-            const passed = await passedCount.textContent();
+        if (
+          (await passedCount.isVisible()) &&
+          (await failedCount.isVisible())
+        ) {
+          const passed = await passedCount.textContent();
 
-            // At least one should pass and there should be processing of multiple items
-            expect(parseInt(passed || '0')).toBeGreaterThanOrEqual(1);
-          }
+          // At least one should pass and there should be processing of multiple items
+          expect(parseInt(passed || '0')).toBeGreaterThanOrEqual(1);
         }
-      );
+      });
     } finally {
       await partialGlossary.delete(apiContext);
       await afterAction();

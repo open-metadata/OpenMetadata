@@ -409,61 +409,58 @@ test.describe('Mention notifications in Notification Box', () => {
   }) => {
     test.slow();
 
-    await test.step(
-      'Admin user creates a conversation on an entity',
-      async () => {
-        await entity.visitEntityPage(adminPage);
-        // Added a safety check on waiting for activity feed count to avoid missing feed
-        // Poll the activity feed tab count from the page until it's a valid non-negative number
-        let count = NaN;
-        const maxRetries = 30;
-        for (let i = 0; i < maxRetries && (isNaN(count) || count <= 0); i++) {
-          const countText = await adminPage
-            .getByRole('tab', { name: 'Activity Feeds & Tasks' })
-            .getByTestId('count')
-            .textContent();
-          count = Number(countText ?? '0');
-          if (isNaN(count) || count <= 0) {
-            // wait for 2s before querying again
-            await adminPage.waitForTimeout(2000);
-            await adminPage.reload();
-            await adminPage.waitForLoadState('networkidle');
-            await waitForAllLoadersToDisappear(adminPage);
-          }
+    await test.step('Admin user creates a conversation on an entity', async () => {
+      await entity.visitEntityPage(adminPage);
+      // Added a safety check on waiting for activity feed count to avoid missing feed
+      // Poll the activity feed tab count from the page until it's a valid non-negative number
+      let count = NaN;
+      const maxRetries = 30;
+      for (let i = 0; i < maxRetries && (isNaN(count) || count <= 0); i++) {
+        const countText = await adminPage
+          .getByRole('tab', { name: 'Activity Feeds & Tasks' })
+          .getByTestId('count')
+          .textContent();
+        count = Number(countText ?? '0');
+        if (isNaN(count) || count <= 0) {
+          // wait for 2s before querying again
+          await adminPage.waitForTimeout(2000);
+          await adminPage.reload();
+          await adminPage.waitForLoadState('networkidle');
+          await waitForAllLoadersToDisappear(adminPage);
         }
-
-        await adminPage.getByTestId('activity_feed').click();
-        await adminPage.waitForLoadState('networkidle');
-
-        await adminPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        await adminPage.getByTestId('comments-input-field').click();
-
-        await adminPage
-          .locator(
-            '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
-          )
-          .fill('Initial conversation thread for mention test');
-
-        await expect(
-          adminPage.locator('[data-testid="send-button"]')
-        ).toBeVisible();
-        await expect(
-          adminPage.locator('[data-testid="send-button"]')
-        ).not.toBeDisabled();
-
-        const postConversation = adminPage.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/feed') &&
-            response.request().method() === 'POST' &&
-            response.url().includes('/posts')
-        );
-        await adminPage.locator('[data-testid="send-button"]').click();
-        await postConversation;
       }
-    );
+
+      await adminPage.getByTestId('activity_feed').click();
+      await adminPage.waitForLoadState('networkidle');
+
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await adminPage.getByTestId('comments-input-field').click();
+
+      await adminPage
+        .locator(
+          '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+        )
+        .fill('Initial conversation thread for mention test');
+
+      await expect(
+        adminPage.locator('[data-testid="send-button"]')
+      ).toBeVisible();
+      await expect(
+        adminPage.locator('[data-testid="send-button"]')
+      ).not.toBeDisabled();
+
+      const postConversation = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/feed') &&
+          response.request().method() === 'POST' &&
+          response.url().includes('/posts')
+      );
+      await adminPage.locator('[data-testid="send-button"]').click();
+      await postConversation;
+    });
 
     await test.step('User1 mentions admin user in a reply', async () => {
       await entity.visitEntityPage(user1Page);
@@ -518,125 +515,119 @@ test.describe('Mention notifications in Notification Box', () => {
       await postMentionResponse;
     });
 
-    await test.step(
-      'Admin user checks notification for correct user and timestamp',
-      async () => {
-        await adminPage.reload();
-        await adminPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-        const notificationBell = adminPage.getByTestId('task-notifications');
+    await test.step('Admin user checks notification for correct user and timestamp', async () => {
+      await adminPage.reload();
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      const notificationBell = adminPage.getByTestId('task-notifications');
 
-        await expect(notificationBell).toBeVisible();
+      await expect(notificationBell).toBeVisible();
 
-        const feedResponseForNotifications =
-          adminPage.waitForResponse(`api/v1/feed?userId=*`);
+      const feedResponseForNotifications =
+        adminPage.waitForResponse(`api/v1/feed?userId=*`);
 
-        await notificationBell.click();
-        await feedResponseForNotifications;
-        const notificationBox = adminPage.locator('.notification-box');
+      await notificationBell.click();
+      await feedResponseForNotifications;
+      const notificationBox = adminPage.locator('.notification-box');
 
-        await expect(notificationBox).toBeVisible();
+      await expect(notificationBox).toBeVisible();
 
-        const mentionsTab = adminPage
-          .locator('.notification-box')
-          .getByText('Mentions');
+      const mentionsTab = adminPage
+        .locator('.notification-box')
+        .getByText('Mentions');
 
-        const mentionsFeedResponse = adminPage.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/feed') &&
-            response.url().includes('filterType=MENTIONS')
-        );
+      const mentionsFeedResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/feed') &&
+          response.url().includes('filterType=MENTIONS')
+      );
 
-        await mentionsTab.click();
-        await mentionsFeedResponse;
+      await mentionsTab.click();
+      await mentionsFeedResponse;
 
-        const mentionsList = adminPage
-          .getByRole('tabpanel', { name: 'Mentions' })
-          .getByRole('list');
+      const mentionsList = adminPage
+        .getByRole('tabpanel', { name: 'Mentions' })
+        .getByRole('list');
 
-        await expect(mentionsList).toBeVisible();
+      await expect(mentionsList).toBeVisible();
 
-        const firstNotificationItem = mentionsList
-          .locator('li.ant-list-item.notification-dropdown-list-btn')
-          .first();
+      const firstNotificationItem = mentionsList
+        .locator('li.ant-list-item.notification-dropdown-list-btn')
+        .first();
 
-        const firstNotificationText = await firstNotificationItem.textContent();
+      const firstNotificationText = await firstNotificationItem.textContent();
 
-        expect(firstNotificationText?.toLowerCase()).toContain(
-          user1.responseData.name.toLowerCase()
-        );
-        expect(firstNotificationText?.toLowerCase()).not.toContain(
-          adminUser.responseData.name.toLowerCase()
-        );
+      expect(firstNotificationText?.toLowerCase()).toContain(
+        user1.responseData.name.toLowerCase()
+      );
+      expect(firstNotificationText?.toLowerCase()).not.toContain(
+        adminUser.responseData.name.toLowerCase()
+      );
 
-        const mentionNotificationLink = firstNotificationItem.locator(
-          '[data-testid^="notification-link-"]'
-        );
+      const mentionNotificationLink = firstNotificationItem.locator(
+        '[data-testid^="notification-link-"]'
+      );
 
-        const navigationPromise = adminPage.waitForURL(/activity_feed/);
-        await mentionNotificationLink.click();
-        await navigationPromise;
-        await adminPage.waitForLoadState('networkidle');
+      const navigationPromise = adminPage.waitForURL(/activity_feed/);
+      await mentionNotificationLink.click();
+      await navigationPromise;
+      await adminPage.waitForLoadState('networkidle');
 
-        expect(adminPage.url()).toContain('activity_feed');
-        expect(adminPage.url()).toContain('/all');
+      expect(adminPage.url()).toContain('activity_feed');
+      expect(adminPage.url()).toContain('/all');
+    });
+
+    await test.step('Update user display name and verify reaction tooltip', async () => {
+      test.slow();
+      const newDisplayName = `UpdatedName${uuid()}`;
+
+      // Go to profile and update name
+      await redirectToHomePage(user1Page);
+      await visitOwnProfilePage(user1Page);
+      await editDisplayName(user1Page, newDisplayName);
+
+      // Go back to entity
+      await entity.visitEntityPage(user1Page);
+
+      await user1Page.getByTestId('activity_feed').click();
+      await user1Page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      // Find a message to react to.
+      const message = user1Page
+        .locator('[data-testid="message-container"]')
+        .first();
+      await expect(message).toBeVisible();
+
+      // Add reaction
+      await message.locator('[data-testid="add-reactions"]').click();
+      const reactionResponse = user1Page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/feed') &&
+          response.request().method() === 'PATCH'
+      );
+      await user1Page.locator('[title="rocket"]').click();
+      await reactionResponse;
+
+      // Hover over the emoji button to see the popover
+      const emojiButton = message
+        .locator('[data-testid="emoji-button"]')
+        .last();
+      await emojiButton.hover();
+
+      // Verify tooltip using the data-testid from Emoji.tsx popoverContent
+      const tooltip = user1Page.getByTestId('popover-content');
+      await expect(tooltip).toBeVisible();
+      await expect(tooltip).toContainText(newDisplayName);
+      await expect(tooltip).toContainText('reacted with');
+
+      // Ensure username is not displayed if it's different
+      if (newDisplayName !== user1.responseData.name) {
+        await expect(tooltip).not.toContainText(user1.responseData.name);
       }
-    );
-
-    await test.step(
-      'Update user display name and verify reaction tooltip',
-      async () => {
-        test.slow();
-        const newDisplayName = `UpdatedName${uuid()}`;
-
-        // Go to profile and update name
-        await redirectToHomePage(user1Page);
-        await visitOwnProfilePage(user1Page);
-        await editDisplayName(user1Page, newDisplayName);
-
-        // Go back to entity
-        await entity.visitEntityPage(user1Page);
-
-        await user1Page.getByTestId('activity_feed').click();
-        await user1Page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        // Find a message to react to.
-        const message = user1Page
-          .locator('[data-testid="message-container"]')
-          .first();
-        await expect(message).toBeVisible();
-
-        // Add reaction
-        await message.locator('[data-testid="add-reactions"]').click();
-        const reactionResponse = user1Page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/feed') &&
-            response.request().method() === 'PATCH'
-        );
-        await user1Page.locator('[title="rocket"]').click();
-        await reactionResponse;
-
-        // Hover over the emoji button to see the popover
-        const emojiButton = message
-          .locator('[data-testid="emoji-button"]')
-          .last();
-        await emojiButton.hover();
-
-        // Verify tooltip using the data-testid from Emoji.tsx popoverContent
-        const tooltip = user1Page.getByTestId('popover-content');
-        await expect(tooltip).toBeVisible();
-        await expect(tooltip).toContainText(newDisplayName);
-        await expect(tooltip).toContainText('reacted with');
-
-        // Ensure username is not displayed if it's different
-        if (newDisplayName !== user1.responseData.name) {
-          await expect(tooltip).not.toContainText(user1.responseData.name);
-        }
-      }
-    );
+    });
   });
 });
 

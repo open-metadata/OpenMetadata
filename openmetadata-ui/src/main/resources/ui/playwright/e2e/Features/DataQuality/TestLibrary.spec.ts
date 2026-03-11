@@ -597,145 +597,133 @@ test.describe(
       const SUPPORTED_SERVICES_DISPLAY_NAME = `Aaaa Service Filter Test ${uuid()}`;
       let createdTestId: string;
 
-      await test.step(
-        'Create test definition with specific supported services',
-        async () => {
-          await page.goto('/test-library');
+      await test.step('Create test definition with specific supported services', async () => {
+        await page.goto('/test-library');
 
-          await page.getByTestId('add-test-definition-button').click();
+        await page.getByTestId('add-test-definition-button').click();
 
-          await expect(page.locator('.ant-drawer')).toBeVisible();
+        await expect(page.locator('.ant-drawer')).toBeVisible();
 
-          await page.locator('#name').fill(SUPPORTED_SERVICES_TEST_NAME);
-          await page
-            .locator('#displayName')
-            .fill(SUPPORTED_SERVICES_DISPLAY_NAME);
-          await page
-            .locator('#description')
-            .fill('Test definition to validate supported services filtering');
+        await page.locator('#name').fill(SUPPORTED_SERVICES_TEST_NAME);
+        await page
+          .locator('#displayName')
+          .fill(SUPPORTED_SERVICES_DISPLAY_NAME);
+        await page
+          .locator('#description')
+          .fill('Test definition to validate supported services filtering');
 
-          await page.locator('#entityType').click();
-          const entityTypeOption = page
-            .locator('.ant-select-dropdown:visible')
-            .getByTitle('TABLE');
-          await expect(entityTypeOption).toBeVisible();
-          await entityTypeOption.click();
-          await expect(
-            page.locator('.ant-select-dropdown:visible')
-          ).not.toBeVisible();
+        await page.locator('#entityType').click();
+        const entityTypeOption = page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('TABLE');
+        await expect(entityTypeOption).toBeVisible();
+        await entityTypeOption.click();
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
-          await page.locator('#supportedServices').click();
-          await page.locator('#supportedServices').fill('Mysql');
-          const mysqlOption = page
-            .locator('.ant-select-dropdown:visible')
-            .getByTitle('Mysql');
-          await expect(mysqlOption).toBeVisible();
-          await mysqlOption.click();
-          await page.locator('#supportedServices').clear();
-          await page.locator('#supportedServices').fill('Postgres');
+        await page.locator('#supportedServices').click();
+        await page.locator('#supportedServices').fill('Mysql');
+        const mysqlOption = page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Mysql');
+        await expect(mysqlOption).toBeVisible();
+        await mysqlOption.click();
+        await page.locator('#supportedServices').clear();
+        await page.locator('#supportedServices').fill('Postgres');
 
-          const postgresOption = page
-            .locator('.ant-select-dropdown:visible')
-            .getByTitle('Postgres');
-          await expect(postgresOption).toBeVisible();
-          await postgresOption.click();
+        const postgresOption = page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('Postgres');
+        await expect(postgresOption).toBeVisible();
+        await postgresOption.click();
 
-          await page
-            .getByRole('dialog')
-            .getByText('Add Test Definition')
-            .click();
-          await expect(
-            page.locator('.ant-select-dropdown:visible')
-          ).not.toBeVisible();
+        await page.getByRole('dialog').getByText('Add Test Definition').click();
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
-          const createResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'POST'
-          );
+        const createResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'POST'
+        );
 
-          await page.getByTestId('save-test-definition').click();
+        await page.getByTestId('save-test-definition').click();
 
-          const responseData = await createResponse;
-          expect(responseData.status()).toBe(201);
+        const responseData = await createResponse;
+        expect(responseData.status()).toBe(201);
 
-          const createdData = await responseData.json();
-          createdTestId = createdData.id;
+        const createdData = await responseData.json();
+        createdTestId = createdData.id;
 
-          await expect(page.getByText(/created successfully/i)).toBeVisible();
-          await expect(
-            page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
-          ).toBeVisible();
-        }
-      );
+        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await expect(
+          page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
+        ).toBeVisible();
+      });
 
-      await test.step(
-        'Verify supported services are saved correctly',
-        async () => {
-          await expect(page.getByTestId('test-definition-table')).toBeVisible();
+      await test.step('Verify supported services are saved correctly', async () => {
+        await expect(page.getByTestId('test-definition-table')).toBeVisible();
 
-          const editButton = page.getByTestId(
-            `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
-          );
-          await editButton.click();
+        const editButton = page.getByTestId(
+          `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+        );
+        await editButton.click();
 
-          await expect(page.locator('.ant-drawer')).toBeVisible();
+        await expect(page.locator('.ant-drawer')).toBeVisible();
 
-          const supportedServicesField = page.locator('#supportedServices');
-          await expect(supportedServicesField).toBeVisible();
+        const supportedServicesField = page.locator('#supportedServices');
+        await expect(supportedServicesField).toBeVisible();
 
-          await expect(
-            page.locator('.ant-select-selection-item[title="Mysql"]')
-          ).toBeVisible();
-          await expect(
-            page.locator('.ant-select-selection-item[title="Postgres"]')
-          ).toBeVisible();
+        await expect(
+          page.locator('.ant-select-selection-item[title="Mysql"]')
+        ).toBeVisible();
+        await expect(
+          page.locator('.ant-select-selection-item[title="Postgres"]')
+        ).toBeVisible();
 
-          await page.getByRole('button', { name: /Cancel/i }).click();
-          await expect(page.locator('.ant-drawer')).not.toBeVisible();
-        }
-      );
+        await page.getByRole('button', { name: /Cancel/i }).click();
+        await expect(page.locator('.ant-drawer')).not.toBeVisible();
+      });
 
-      await test.step(
-        'Verify test definition appears when filtering by supported services',
-        async () => {
-          const { apiContext } = await getApiContext(page);
-          const mysqlFilterResponse = await apiContext.get(
-            '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=Mysql'
-          );
-          expect(mysqlFilterResponse.status()).toBe(200);
+      await test.step('Verify test definition appears when filtering by supported services', async () => {
+        const { apiContext } = await getApiContext(page);
+        const mysqlFilterResponse = await apiContext.get(
+          '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=Mysql'
+        );
+        expect(mysqlFilterResponse.status()).toBe(200);
 
-          const mysqlData = await mysqlFilterResponse.json();
-          const foundInMySql = mysqlData.data.find(
-            (def: { id: string }) => def.id === createdTestId
-          );
-          expect(foundInMySql).toBeDefined();
-          expect(foundInMySql.supportedServices).toContain('Mysql');
+        const mysqlData = await mysqlFilterResponse.json();
+        const foundInMySql = mysqlData.data.find(
+          (def: { id: string }) => def.id === createdTestId
+        );
+        expect(foundInMySql).toBeDefined();
+        expect(foundInMySql.supportedServices).toContain('Mysql');
 
-          const postgresFilterResponse = await apiContext.get(
-            '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=Postgres'
-          );
-          expect(postgresFilterResponse.status()).toBe(200);
+        const postgresFilterResponse = await apiContext.get(
+          '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=Postgres'
+        );
+        expect(postgresFilterResponse.status()).toBe(200);
 
-          const postgresData = await postgresFilterResponse.json();
-          const foundInPostgres = postgresData.data.find(
-            (def: { id: string }) => def.id === createdTestId
-          );
-          expect(foundInPostgres).toBeDefined();
-          expect(foundInPostgres.supportedServices).toContain('Postgres');
+        const postgresData = await postgresFilterResponse.json();
+        const foundInPostgres = postgresData.data.find(
+          (def: { id: string }) => def.id === createdTestId
+        );
+        expect(foundInPostgres).toBeDefined();
+        expect(foundInPostgres.supportedServices).toContain('Postgres');
 
-          const bigQueryFilterResponse = await apiContext.get(
-            '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=BigQuery'
-          );
-          expect(bigQueryFilterResponse.status()).toBe(200);
+        const bigQueryFilterResponse = await apiContext.get(
+          '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=BigQuery'
+        );
+        expect(bigQueryFilterResponse.status()).toBe(200);
 
-          const bigQueryData = await bigQueryFilterResponse.json();
-          const foundInBigQuery = bigQueryData.data.find(
-            (def: { id: string }) => def.id === createdTestId
-          );
-          expect(foundInBigQuery).toBeUndefined();
-        }
-      );
+        const bigQueryData = await bigQueryFilterResponse.json();
+        const foundInBigQuery = bigQueryData.data.find(
+          (def: { id: string }) => def.id === createdTestId
+        );
+        expect(foundInBigQuery).toBeUndefined();
+      });
 
       await test.step('Edit and change supported services', async () => {
         await expect(page.getByTestId('test-definition-table')).toBeVisible();
@@ -794,92 +782,86 @@ test.describe(
         await expect(page.getByText(/updated successfully/i)).toBeVisible();
       });
 
-      await test.step(
-        'Verify updated supported services are persisted',
-        async () => {
-          await expect(page.getByTestId('test-definition-table')).toBeVisible();
+      await test.step('Verify updated supported services are persisted', async () => {
+        await expect(page.getByTestId('test-definition-table')).toBeVisible();
 
-          const editButton = page.getByTestId(
-            `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
-          );
-          await editButton.click();
+        const editButton = page.getByTestId(
+          `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+        );
+        await editButton.click();
 
-          await expect(page.locator('.ant-drawer')).toBeVisible();
+        await expect(page.locator('.ant-drawer')).toBeVisible();
 
-          await expect(
-            page.locator('.ant-select-selection-item[title="Postgres"]')
-          ).toBeVisible();
+        await expect(
+          page.locator('.ant-select-selection-item[title="Postgres"]')
+        ).toBeVisible();
 
-          await expect(
-            page.locator('.ant-select-selection-item[title="BigQuery"]')
-          ).toBeVisible();
+        await expect(
+          page.locator('.ant-select-selection-item[title="BigQuery"]')
+        ).toBeVisible();
 
-          await expect(
-            page.locator('.ant-select-selection-item[title="Mysql"]')
-          ).not.toBeVisible();
+        await expect(
+          page.locator('.ant-select-selection-item[title="Mysql"]')
+        ).not.toBeVisible();
 
-          await page.getByRole('button', { name: /Cancel/i }).click();
-          await expect(page.locator('.ant-drawer')).not.toBeVisible();
-        }
-      );
+        await page.getByRole('button', { name: /Cancel/i }).click();
+        await expect(page.locator('.ant-drawer')).not.toBeVisible();
+      });
 
-      await test.step(
-        'Clear all supported services (should apply to all services)',
-        async () => {
-          await expect(page.getByTestId('test-definition-table')).toBeVisible();
+      await test.step('Clear all supported services (should apply to all services)', async () => {
+        await expect(page.getByTestId('test-definition-table')).toBeVisible();
 
-          const editButton = page.getByTestId(
-            `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
-          );
-          await editButton.click();
+        const editButton = page.getByTestId(
+          `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+        );
+        await editButton.click();
 
-          await expect(page.locator('.ant-drawer')).toBeVisible();
+        await expect(page.locator('.ant-drawer')).toBeVisible();
 
-          const postgresTag = page.locator(
-            '.ant-select-selection-item[title="Postgres"]'
-          );
-          await expect(postgresTag).toBeVisible();
+        const postgresTag = page.locator(
+          '.ant-select-selection-item[title="Postgres"]'
+        );
+        await expect(postgresTag).toBeVisible();
 
-          const postgresRemove = postgresTag.locator(
-            '.ant-select-selection-item-remove'
-          );
-          await postgresRemove.click();
+        const postgresRemove = postgresTag.locator(
+          '.ant-select-selection-item-remove'
+        );
+        await postgresRemove.click();
 
-          await expect(postgresTag).not.toBeVisible();
+        await expect(postgresTag).not.toBeVisible();
 
-          const bigQueryTag = page.locator(
-            '.ant-select-selection-item[title="BigQuery"]'
-          );
-          await expect(bigQueryTag).toBeVisible();
+        const bigQueryTag = page.locator(
+          '.ant-select-selection-item[title="BigQuery"]'
+        );
+        await expect(bigQueryTag).toBeVisible();
 
-          const bigQueryRemove = bigQueryTag.locator(
-            '.ant-select-selection-item-remove'
-          );
-          await bigQueryRemove.click();
+        const bigQueryRemove = bigQueryTag.locator(
+          '.ant-select-selection-item-remove'
+        );
+        await bigQueryRemove.click();
 
-          await expect(bigQueryTag).not.toBeVisible();
+        await expect(bigQueryTag).not.toBeVisible();
 
-          const patchResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'PATCH'
-          );
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'PATCH'
+        );
 
-          await page.getByTestId('save-test-definition').click();
+        await page.getByTestId('save-test-definition').click();
 
-          const updateResponse = await patchResponse;
-          expect(updateResponse.status()).toBe(200);
+        const updateResponse = await patchResponse;
+        expect(updateResponse.status()).toBe(200);
 
-          const updatedData = await updateResponse.json();
-          expect(
-            updatedData.supportedServices === null ||
-              updatedData.supportedServices === undefined ||
-              updatedData.supportedServices.length === 0
-          ).toBeTruthy();
+        const updatedData = await updateResponse.json();
+        expect(
+          updatedData.supportedServices === null ||
+            updatedData.supportedServices === undefined ||
+            updatedData.supportedServices.length === 0
+        ).toBeTruthy();
 
-          await expect(page.getByText(/updated successfully/i)).toBeVisible();
-        }
-      );
+        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+      });
 
       await test.step('Delete test definition', async () => {
         await expect(page.getByTestId('test-definition-table')).toBeVisible();
@@ -918,41 +900,38 @@ test.describe(
       const PAGINATION_TEST_DISPLAY_NAME = `Zzzz Pagination Test ${uuid()}`;
       const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
 
-      await test.step(
-        'Create a test definition starting with "z"',
-        async () => {
-          await page.goto('/test-library');
-          await page.getByTestId('add-test-definition-button').click();
-          await expect(page.locator('.ant-drawer')).toBeVisible();
+      await test.step('Create a test definition starting with "z"', async () => {
+        await page.goto('/test-library');
+        await page.getByTestId('add-test-definition-button').click();
+        await expect(page.locator('.ant-drawer')).toBeVisible();
 
-          await page.locator('#name').fill(PAGINATION_TEST_NAME);
-          await page.locator('#displayName').fill(PAGINATION_TEST_DISPLAY_NAME);
-          await page
-            .locator('#description')
-            .fill('Test definition for pagination behavior testing');
+        await page.locator('#name').fill(PAGINATION_TEST_NAME);
+        await page.locator('#displayName').fill(PAGINATION_TEST_DISPLAY_NAME);
+        await page
+          .locator('#description')
+          .fill('Test definition for pagination behavior testing');
 
-          await page.locator('#entityType').click();
-          await page
-            .locator('.ant-select-dropdown:visible')
-            .getByTitle('TABLE')
-            .click();
-          await expect(
-            page.locator('.ant-select-dropdown:visible')
-          ).not.toBeVisible();
+        await page.locator('#entityType').click();
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('TABLE')
+          .click();
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
-          const createResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'POST'
-          );
+        const createResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'POST'
+        );
 
-          await page.getByTestId('save-test-definition').click();
+        await page.getByTestId('save-test-definition').click();
 
-          const responseData = await createResponse;
-          expect(responseData.status()).toBe(201);
-          await expect(page.getByText(/created successfully/i)).toBeVisible();
-        }
-      );
+        const responseData = await createResponse;
+        expect(responseData.status()).toBe(201);
+        await expect(page.getByText(/created successfully/i)).toBeVisible();
+      });
 
       await test.step('Change page size to 25', async () => {
         const pageSizeDropdown = page.getByTestId(
@@ -972,122 +951,109 @@ test.describe(
         await pageChangeResponse;
       });
 
-      await test.step(
-        'Navigate until we find our test definition or reach last page',
-        async () => {
-          const nextButton = page.getByTestId('next');
-          const testDefLocator = page.getByTestId(PAGINATION_TEST_NAME);
+      await test.step('Navigate until we find our test definition or reach last page', async () => {
+        const nextButton = page.getByTestId('next');
+        const testDefLocator = page.getByTestId(PAGINATION_TEST_NAME);
 
-          // Check if item is already visible on current page
-          let isItemVisible = await testDefLocator.isVisible();
+        // Check if item is already visible on current page
+        let isItemVisible = await testDefLocator.isVisible();
 
-          // Navigate until we find our test definition or reach the last page
-          while (!isItemVisible && (await nextButton.isEnabled())) {
-            const fetchResponse = page.waitForResponse(
-              (response) =>
-                response
-                  .url()
-                  .includes('/api/v1/dataQuality/testDefinitions') &&
-                response.request().method() === 'GET'
-            );
-            await nextButton.click();
-            await fetchResponse;
-
-            // Check again after page load
-            isItemVisible = await testDefLocator.isVisible();
-          }
-
-          // Verify our test definition is now visible
-          await expect(testDefLocator).toBeVisible({
-            timeout: 10000,
-          });
-        }
-      );
-
-      await test.step(
-        'Edit the test definition and verify we stay on the same page',
-        async () => {
-          // Verify our test definition is visible on this page
-          await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();
-
-          // Get current page indicator before edit
-          const previousButton = page.getByTestId('previous');
-          const prevDisabledBefore = await previousButton.isDisabled();
-
-          // Edit the test definition
-          await page
-            .getByTestId(`edit-test-definition-${PAGINATION_TEST_NAME}`)
-            .click();
-          await expect(page.locator('.ant-drawer')).toBeVisible();
-
-          const displayNameInput = page.getByLabel('Display Name');
-          await displayNameInput.clear();
-          await displayNameInput.fill(UPDATED_DISPLAY_NAME);
-
-          const patchResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'PATCH'
-          );
-
-          await page.getByTestId('save-test-definition').click();
-          const updateResponse = await patchResponse;
-          expect(updateResponse.status()).toBe(200);
-
-          await expect(page.getByText(/updated successfully/i)).toBeVisible();
-
-          // Verify we stayed on the same page (previous button state should be unchanged)
-          const prevDisabledAfter = await previousButton.isDisabled();
-          expect(prevDisabledAfter).toBe(prevDisabledBefore);
-
-          // Verify the updated test definition is still visible
-          await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();
-        }
-      );
-
-      await test.step(
-        'Delete the test definition and verify redirect to first page',
-        async () => {
-          await page
-            .getByTestId(`delete-test-definition-${PAGINATION_TEST_NAME}`)
-            .click();
-
-          await expect(page.locator('.ant-modal')).toBeVisible();
-          await page.getByTestId('confirmation-text-input').fill('DELETE');
-
-          // Set up both DELETE and the subsequent GET response waits BEFORE clicking
-          const deleteResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-              response.request().method() === 'DELETE'
-          );
-
-          const getResponse = page.waitForResponse(
+        // Navigate until we find our test definition or reach the last page
+        while (!isItemVisible && (await nextButton.isEnabled())) {
+          const fetchResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/dataQuality/testDefinitions') &&
               response.request().method() === 'GET'
           );
+          await nextButton.click();
+          await fetchResponse;
 
-          await page.getByTestId('confirm-button').click();
-
-          const deleteResult = await deleteResponse;
-          expect(deleteResult.status()).toBe(200);
-
-          // Wait for the GET that happens after delete (page reset + fetch)
-          await getResponse;
-
-          await expect(page.getByText(/deleted successfully/i)).toBeVisible();
-
-          // Previous button should be disabled on first page
-          const previousButton = page.getByTestId('previous');
-          await expect(previousButton).toBeDisabled();
-
-          // Verify the deleted test definition is no longer visible
-          await expect(
-            page.getByTestId(PAGINATION_TEST_NAME)
-          ).not.toBeVisible();
+          // Check again after page load
+          isItemVisible = await testDefLocator.isVisible();
         }
-      );
+
+        // Verify our test definition is now visible
+        await expect(testDefLocator).toBeVisible({
+          timeout: 10000,
+        });
+      });
+
+      await test.step('Edit the test definition and verify we stay on the same page', async () => {
+        // Verify our test definition is visible on this page
+        await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();
+
+        // Get current page indicator before edit
+        const previousButton = page.getByTestId('previous');
+        const prevDisabledBefore = await previousButton.isDisabled();
+
+        // Edit the test definition
+        await page
+          .getByTestId(`edit-test-definition-${PAGINATION_TEST_NAME}`)
+          .click();
+        await expect(page.locator('.ant-drawer')).toBeVisible();
+
+        const displayNameInput = page.getByLabel('Display Name');
+        await displayNameInput.clear();
+        await displayNameInput.fill(UPDATED_DISPLAY_NAME);
+
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'PATCH'
+        );
+
+        await page.getByTestId('save-test-definition').click();
+        const updateResponse = await patchResponse;
+        expect(updateResponse.status()).toBe(200);
+
+        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+
+        // Verify we stayed on the same page (previous button state should be unchanged)
+        const prevDisabledAfter = await previousButton.isDisabled();
+        expect(prevDisabledAfter).toBe(prevDisabledBefore);
+
+        // Verify the updated test definition is still visible
+        await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();
+      });
+
+      await test.step('Delete the test definition and verify redirect to first page', async () => {
+        await page
+          .getByTestId(`delete-test-definition-${PAGINATION_TEST_NAME}`)
+          .click();
+
+        await expect(page.locator('.ant-modal')).toBeVisible();
+        await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+        // Set up both DELETE and the subsequent GET response waits BEFORE clicking
+        const deleteResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'DELETE'
+        );
+
+        const getResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'GET'
+        );
+
+        await page.getByTestId('confirm-button').click();
+
+        const deleteResult = await deleteResponse;
+        expect(deleteResult.status()).toBe(200);
+
+        // Wait for the GET that happens after delete (page reset + fetch)
+        await getResponse;
+
+        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+
+        // Previous button should be disabled on first page
+        const previousButton = page.getByTestId('previous');
+        await expect(previousButton).toBeDisabled();
+
+        // Verify the deleted test definition is no longer visible
+        await expect(page.getByTestId(PAGINATION_TEST_NAME)).not.toBeVisible();
+      });
     });
   }
 );

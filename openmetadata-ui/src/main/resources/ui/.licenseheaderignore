@@ -4,6 +4,11 @@
 # Husky
 ".husky/_"
 ".husky/pre-commit"
+".husky/commit-msg"
+".husky/post-commit"
+".husky/pre-push"
+".husky/prepare-commit-msg"
+".husky/prepare-commit-msg.pre-entire"
 
 # Dependencies
 /node
@@ -86,3 +91,9 @@ src/generated/antlr
 
 # Code quality ignore
 ".codeqlignore"
+
+# Entire CLI
+".entire"
+
+# Claude
+".claude"

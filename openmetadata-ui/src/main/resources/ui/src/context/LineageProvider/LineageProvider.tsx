@@ -1924,8 +1924,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           'full-screen-lineage': isFullScreen,
           'sidebar-collapsed': isFullScreen && preferences?.isSidebarCollapsed,
           'sidebar-expanded': isFullScreen && !preferences?.isSidebarCollapsed,
-        })}
-      >
+        })}>
         {isFullScreen && breadcrumbs.length > 0 && (
           <TitleBreadcrumb
             useCustomArrow
@@ -1949,8 +1948,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               },
             }}
             transitionDuration={300}
-            onClose={onCloseDrawer}
-          >
+            onClose={onCloseDrawer}>
             {selectedNode && (
               <EntitySummaryPanel
                 isSideDrawer
@@ -1991,8 +1989,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             onCancel={() => {
               setShowDeleteModal(false);
             }}
-            onOk={onRemove}
-          >
+            onOk={onRemove}>
             {getModalBodyText(selectedEdge as Edge)}
           </Modal>
         )}

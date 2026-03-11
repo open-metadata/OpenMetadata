@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient.EmbeddingInitializationException;
 import org.opensearch.testcontainers.OpensearchContainer;
@@ -260,6 +262,96 @@ class VectorEmbeddingIntegrationIT {
     assertEquals(testTable.getId().toString(), fields.get("parentId"));
     assertEquals(0, fields.get("chunkIndex"));
     assertTrue((int) fields.get("chunkCount") >= 1);
+  }
+
+  @Test
+  void testPatchTableDescriptionUpdatesEmbeddingForSemanticSearch() throws Exception {
+    UUID decoyId = UUID.randomUUID();
+    Table decoyTable =
+        createTestTable(
+            decoyId,
+            "Decoy Table",
+            "User authentication logs and session tracking data",
+            "test.database.decoyTable." + decoyId.toString().substring(0, 8));
+    indexEntityDocument(decoyTable);
+
+    vectorService.updateEntityEmbedding(testTable, TEST_INDEX);
+    vectorService.updateEntityEmbedding(decoyTable, TEST_INDEX);
+    Thread.sleep(1000);
+
+    Map<String, Object> initialDoc = getDocumentById(testTable.getId().toString());
+    String initialFingerprint = (String) initialDoc.get("fingerprint");
+    String initialTextToEmbed = (String) initialDoc.get("textToEmbed");
+
+    String patchedDescription = "Revenue metrics for quarterly financial reporting analysis";
+    testTable.setDescription(patchedDescription);
+    indexEntityDocument(testTable);
+
+    vectorService.updateEntityEmbedding(testTable, TEST_INDEX);
+    Thread.sleep(1000);
+
+    Map<String, Object> updatedDoc = getDocumentById(testTable.getId().toString());
+    String updatedFingerprint = (String) updatedDoc.get("fingerprint");
+    String updatedTextToEmbed = (String) updatedDoc.get("textToEmbed");
+
+    assertFalse(
+        initialFingerprint.equals(updatedFingerprint), "Fingerprint should change after PATCH");
+    assertFalse(
+        initialTextToEmbed.equals(updatedTextToEmbed), "textToEmbed should change after PATCH");
+    assertTrue(
+        updatedTextToEmbed.contains("Revenue metrics"),
+        "Updated textToEmbed should reflect patched description");
+
+    List<Map<String, Object>> results =
+        executeKnnSearch("quarterly financial revenue reporting", 10);
+
+    assertFalse(results.isEmpty(), "Semantic search should return results");
+
+    String topResultParentId = (String) results.get(0).get("parentId");
+    assertEquals(
+        testTable.getId().toString(),
+        topResultParentId,
+        "Patched table should be the top result for its new description content");
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<Map<String, Object>> executeKnnSearch(String queryText, int size) throws Exception {
+    openSearchClient.indices().refresh(r -> r.index(TEST_INDEX));
+
+    float[] queryVector = embeddingClient.embed(queryText);
+    String searchQuery = VectorSearchQueryBuilder.build(queryVector, size, 0, size, Map.of(), 0.0);
+
+    var genericClient = openSearchClient.generic();
+    try (var response =
+        genericClient.execute(
+            os.org.opensearch.client.opensearch.generic.Requests.builder()
+                .method("POST")
+                .endpoint("/" + TEST_INDEX + "/_search")
+                .json(searchQuery)
+                .build())) {
+      String body =
+          response
+              .getBody()
+              .map(
+                  b -> {
+                    try {
+                      return new String(b.bodyAsBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                    } catch (Exception e) {
+                      return "{}";
+                    }
+                  })
+              .orElse("{}");
+      JsonNode root = mapper.readTree(body);
+      JsonNode hitsNode = root.path("hits").path("hits");
+
+      List<Map<String, Object>> results = new ArrayList<>();
+      for (JsonNode hit : hitsNode) {
+        Map<String, Object> hitMap = mapper.convertValue(hit.path("_source"), Map.class);
+        hitMap.put("_score", hit.path("_score").asDouble(0.0));
+        results.add(hitMap);
+      }
+      return results;
+    }
   }
 
   private DjlEmbeddingClient createTestEmbeddingClient() throws EmbeddingInitializationException {

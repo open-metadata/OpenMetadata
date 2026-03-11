@@ -383,7 +383,7 @@ const LogsViewerPage = () => {
           )}
         />
         <Typography variant="h6">
-          {ingestionDetails?.name ?? appData?.name}
+          {getEntityName(ingestionDetails) || getEntityName(appData)}
         </Typography>
 
         <Stack

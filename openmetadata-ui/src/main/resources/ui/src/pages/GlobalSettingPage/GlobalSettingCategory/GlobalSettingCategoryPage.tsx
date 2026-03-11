@@ -43,8 +43,9 @@ import '../global-setting-page.style.less';
 const GlobalSettingCategoryPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { settingCategory } =
-    useRequiredParams<{ settingCategory: GlobalSettingsMenuCategory }>();
+  const { settingCategory } = useRequiredParams<{
+    settingCategory: GlobalSettingsMenuCategory;
+  }>();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
 

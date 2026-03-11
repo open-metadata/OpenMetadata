@@ -28,9 +28,8 @@ export const navigateToSampleDataTab = async (
     (response) =>
       response
         .url()
-        .includes(
-          `/api/v1/tables/${table.entityResponseData.id}/sampleData`
-        ) && response.request().method() === 'GET'
+        .includes(`/api/v1/tables/${table.entityResponseData.id}/sampleData`) &&
+      response.request().method() === 'GET'
   );
 
   await page.getByRole('tab', { name: 'Sample Data' }).click();

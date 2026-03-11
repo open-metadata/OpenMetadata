@@ -12,7 +12,7 @@ apiVersion: v3.1.0
 kind: DataContract
 id: invalid-schema-contract
 name: Contract with Invalid Schema Fields
-version: "1.0.0"
+version: '1.0.0'
 status: active
 description:
   purpose: Testing schema validation - these fields don't exist in the table

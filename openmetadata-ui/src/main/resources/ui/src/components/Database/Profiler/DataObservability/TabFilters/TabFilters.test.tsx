@@ -214,8 +214,7 @@ jest.mock('../../../../common/MuiDatePickerMenu/MuiDatePickerMenu', () => {
               key: 'last7days',
               title: 'Last 7 days',
             })
-          }
-        >
+          }>
           Change Date
         </button>
       </div>

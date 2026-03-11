@@ -79,14 +79,13 @@ class BigQueryIngestionClass extends ServiceBaseClass {
       )
       .getByRole('combobox')
       .click({ force: true });
-    await page.click('.ant-select-dropdown:visible [title="Multiple Project ID"]');
+    await page.click(
+      '.ant-select-dropdown:visible [title="Multiple Project ID"]'
+    );
 
     const projectIds = projectId.split(',');
     for (const id of projectIds) {
-      await page.fill(
-        '#root\\/credentials\\/gcpConfig\\/projectId',
-        id.trim()
-      );
+      await page.fill('#root\\/credentials\\/gcpConfig\\/projectId', id.trim());
       await page
         .locator('#root\\/credentials\\/gcpConfig\\/projectId')
         .press('Enter');

@@ -15,7 +15,7 @@ apiVersion: v3.1.0
 kind: DataContract
 id: customer-analytics-full
 name: Customer Analytics Full Contract
-version: "2.1.0"
+version: '2.1.0'
 status: active
 
 description:
@@ -25,15 +25,15 @@ description:
 
 slaProperties:
   - property: freshness
-    value: "24"
+    value: '24'
     unit: hours
     description: Data should be no older than 24 hours
   - property: availability
-    value: "99.9"
+    value: '99.9'
     unit: percent
     description: Data should be available 99.9% of the time
   - property: latency
-    value: "500"
+    value: '500'
     unit: milliseconds
 
 team:

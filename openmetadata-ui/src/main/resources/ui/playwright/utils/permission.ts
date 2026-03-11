@@ -144,7 +144,6 @@ export const validateViewPermissions = async (
     ).toHaveCount(0);
   }
 
-
   // check edit owner permission
   await expect(page.locator('[data-testid="edit-owner"]')).not.toBeVisible();
   // check edit description permission

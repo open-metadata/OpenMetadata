@@ -252,6 +252,18 @@ describe('Test Teams Page', () => {
                 },
               },
             ],
+            must_not: [
+              {
+                term: {
+                  entityType: 'tableColumn',
+                },
+              },
+              {
+                term: {
+                  entityType: 'dataProduct',
+                },
+              },
+            ],
           },
         },
       },

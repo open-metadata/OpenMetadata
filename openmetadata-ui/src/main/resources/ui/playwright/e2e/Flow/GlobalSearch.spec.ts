@@ -23,49 +23,53 @@ const DESCRIPTION_SEARCH =
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test('searching for longer description should work', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
-  await redirectToHomePage(page);
+test(
+  'searching for longer description should work',
+  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
+  async ({ page }) => {
+    await redirectToHomePage(page);
 
-  await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.waitForLoadState('networkidle');
+    await sidebarClick(page, SidebarItem.EXPLORE);
+    await page.waitForLoadState('networkidle');
 
-  await page.getByTestId('global-search-selector').click();
-  await page.getByTestId('global-search-select-option-Table').click();
+    await page.getByTestId('global-search-selector').click();
+    await page.getByTestId('global-search-select-option-Table').click();
 
-  await page
-    .getByTestId('navbar-search-container')
-    .getByTestId('searchBox')
-    .fill(DESCRIPTION_SEARCH);
+    await page
+      .getByTestId('navbar-search-container')
+      .getByTestId('searchBox')
+      .fill(DESCRIPTION_SEARCH);
 
-  await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
 
-  await page.waitForSelector(
-    '[data-testid="search-container"] [data-testid="loader"]',
-    {
-      state: 'detached',
-    }
-  );
+    await page.waitForSelector(
+      '[data-testid="search-container"] [data-testid="loader"]',
+      {
+        state: 'detached',
+      }
+    );
 
-  await page.waitForSelector('[data-testid="search-results"]', {
-    state: 'visible',
-  });
+    await page.waitForSelector('[data-testid="search-results"]', {
+      state: 'visible',
+    });
 
-  await expect(
-    page
-      .getByTestId('search-results')
-      .getByTestId(
-        'table-data-card_sample_data.ecommerce_db.shopify.dim_customer'
-      )
-  ).toBeVisible();
+    await expect(
+      page
+        .getByTestId('search-results')
+        .getByTestId(
+          'table-data-card_sample_data.ecommerce_db.shopify.dim_customer'
+        )
+    ).toBeVisible();
 
-  expect(
-    page
-      .getByTestId('search-results')
-      .getByTestId(
-        'table-data-card_sample_data.ecommerce_db.shopify.dim_customer'
-      )
-      .getByTestId('entity-link')
-  ).toHaveText('dim_customer');
+    expect(
+      page
+        .getByTestId('search-results')
+        .getByTestId(
+          'table-data-card_sample_data.ecommerce_db.shopify.dim_customer'
+        )
+        .getByTestId('entity-link')
+    ).toHaveText('dim_customer');
 
-  expect(page.getByTestId('alert-bar')).not.toBeVisible();
-});
+    expect(page.getByTestId('alert-bar')).not.toBeVisible();
+  }
+);

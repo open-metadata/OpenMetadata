@@ -22,10 +22,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  descriptionBox,
-  redirectToHomePage,
-} from '../../utils/common';
+import { descriptionBox, redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDataProduct,
   createDataProductFromListPage,
@@ -510,9 +507,9 @@ test.describe('Data Products', () => {
         tagFqn: tag.responseData.fullyQualifiedName,
       });
 
-      await expect(page.locator('[data-testid="tag-suggestion"]')).toContainText(
-        tag.data.displayName
-      );
+      await expect(
+        page.locator('[data-testid="tag-suggestion"]')
+      ).toContainText(tag.data.displayName);
     });
 
     await test.step('Save and verify tag is applied', async () => {

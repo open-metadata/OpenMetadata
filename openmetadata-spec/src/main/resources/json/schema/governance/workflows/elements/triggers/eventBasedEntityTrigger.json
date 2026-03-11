@@ -52,6 +52,15 @@
             "type": "string"
           }
         },
+        "include": {
+          "title": "Include Fields",
+          "description": "Array of field names that must be present in the change description to trigger the workflow. Takes priority over exclude fields.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Field name that must be present in the change description for the workflow to trigger"
+          }
+        },
         "filter": {
           "title": "Filter Condition",
           "description": "JSON Logic expression to determine if the workflow should be triggered. Can be a string (applied to all entity types) or an object mapping entity types to their specific filters.",

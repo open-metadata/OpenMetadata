@@ -73,17 +73,15 @@ export const deleteTestCase = async (page: Page, testCaseName: string) => {
 };
 
 export const waitForPermissionsResponse = (page: Page) =>
-  page.waitForResponse(
-    (res) => {
-      const url = res.url();
-      return (
-        url.includes('/api/v1/permissions') &&
-        !url.includes('/api/v1/permissions/table/name/') &&
-        res.request().method() === 'GET' &&
-        res.status() === 200
-      );
-    }
-  );
+  page.waitForResponse((res) => {
+    const url = res.url();
+    return (
+      url.includes('/api/v1/permissions') &&
+      !url.includes('/api/v1/permissions/table/name/') &&
+      res.request().method() === 'GET' &&
+      res.status() === 200
+    );
+  });
 
 export const waitForTableEntityPermissionsResponse = (page: Page) =>
   page.waitForResponse(

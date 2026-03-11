@@ -21,6 +21,7 @@ from sqlalchemy.event import listen
 from sqlalchemy.sql.elements import TextClause
 
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.operation_metrics import OperationMetricsState
 
 logger = ingestion_logger()
 
@@ -87,7 +88,28 @@ class QueryLogger:
                 f"  Parameters: {query.parameters}"
             )
 
+            operation_type = self._extract_query_type(statement)
+            OperationMetricsState().record_operation(
+                category="source_db_queries",
+                operation=operation_type,
+                duration_ms=query.duration_ms,
+            )
+
             self._current_query = None
+
+    @staticmethod
+    def _extract_query_type(statement: Union[str, TextClause]) -> str:
+        """Extract the query type (SELECT, INSERT, etc.) from a SQL statement"""
+        if isinstance(statement, TextClause):
+            statement = str(statement)
+
+        statement_str = statement.strip().upper() if statement else ""
+        if statement_str:
+            first_word = (
+                statement_str.split()[0] if statement_str.split() else "UNKNOWN"
+            )
+            return first_word
+        return "UNKNOWN"
 
 
 def attach_query_tracker(engine: Any):

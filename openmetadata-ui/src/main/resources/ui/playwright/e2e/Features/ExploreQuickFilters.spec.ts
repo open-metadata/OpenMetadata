@@ -219,3 +219,33 @@ test('should persist quick filter on global search', async ({ page }) => {
     page.getByRole('button', { name: 'Owners : No Owners' })
   ).toBeVisible();
 });
+
+test('Filter by column entity type shows only column results', async ({
+  page,
+}) => {
+  await sidebarClick(page, SidebarItem.EXPLORE);
+  await page.waitForLoadState('networkidle');
+
+  await page.getByRole('button', { name: 'Data Assets' }).click();
+
+  const columnCheckbox = page.getByTestId('tablecolumn-checkbox');
+
+  const dataAssetDropdownRequest = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*tableColumn*'
+  );
+
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill('tableColumn');
+
+  await dataAssetDropdownRequest;
+
+  await columnCheckbox.check();
+  await page.getByTestId('update-btn').click();
+
+  await page.waitForLoadState('networkidle');
+
+  const quickFilter = page.getByTestId('search-dropdown-Data Assets');
+  await expect(quickFilter).toContainText('tablecolumn');
+});

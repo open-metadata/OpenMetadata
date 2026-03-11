@@ -89,8 +89,9 @@ import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.componen
 
 export const TestCases = () => {
   const [form] = useForm();
-  const { tab = DataQualityClassBase.getDefaultActiveTab() } =
-    useParams<{ tab: DataQualityPageTabs }>();
+  const { tab = DataQualityClassBase.getDefaultActiveTab() } = useParams<{
+    tab: DataQualityPageTabs;
+  }>();
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
