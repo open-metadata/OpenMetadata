@@ -211,7 +211,7 @@ jobs:
           retention-days: 5
 
       - name: Post failure summary to PR
-        if: ${{ failure() && github.event_name == 'pull_request_target' }}
+        if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -225,91 +225,114 @@ jobs:
             const prNumber = context.payload.pull_request?.number;
             if (!prNumber) return;
 
-            // Parse the Playwright report for failures
-            const resultsDir = 'openmetadata-ui/src/main/resources/ui/playwright/output/test-results';
-            const reportDir = 'openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report';
+            const jsonPath = 'openmetadata-ui/src/main/resources/ui/playwright/output/results.json';
+            if (!fs.existsSync(jsonPath)) {
+              console.log('No results.json found, skipping comment');
+              return;
+            }
 
-            let failures = [];
-            let screenshots = [];
+            const report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+            const suites = report.suites || [];
 
-            // Walk test-results to find failures with screenshots
-            function walkDir(dir) {
-              if (!fs.existsSync(dir)) return;
-              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-                const fullPath = path.join(dir, entry.name);
-                if (entry.isDirectory()) {
-                  walkDir(fullPath);
-                } else if (entry.name.endsWith('.png')) {
-                  screenshots.push({ dir: path.basename(path.dirname(fullPath)), file: entry.name });
+            // Flatten all test results from nested suites
+            const allTests = [];
+            function collectTests(suite, filePath) {
+              const file = suite.file || filePath || '';
+              for (const spec of (suite.specs || [])) {
+                for (const test of (spec.tests || [])) {
+                  const results = test.results || [];
+                  const lastResult = results[results.length - 1] || {};
+                  const firstResult = results[0] || {};
+                  allTests.push({
+                    title: spec.title,
+                    file: file,
+                    status: test.status,          // expected, unexpected, flaky, skipped
+                    duration: results.reduce((sum, r) => sum + (r.duration || 0), 0),
+                    retries: results.length - 1,
+                    error: lastResult.error?.message || firstResult.error?.message || '',
+                    attachments: lastResult.attachments || firstResult.attachments || [],
+                  });
                 }
               }
-            }
-            walkDir(resultsDir);
-
-            // Parse the last-run.json if available
-            const lastRunPath = path.join(reportDir, 'last-run.json');
-            let summary = '';
-            if (fs.existsSync(lastRunPath)) {
-              const lastRun = JSON.parse(fs.readFileSync(lastRunPath, 'utf8'));
-              summary = `Status: ${lastRun.status || 'unknown'}`;
-            }
-
-            // Parse stdout/stderr from the test step for failure details
-            // The GitHub Actions reporter already annotates failures, so we extract from test-results dirs
-            const failedTests = [];
-            if (fs.existsSync(resultsDir)) {
-              for (const entry of fs.readdirSync(resultsDir, { withFileTypes: true })) {
-                if (entry.isDirectory()) {
-                  // Directory names follow pattern: test-title-browserName
-                  const testName = entry.name
-                    .replace(/-chromium$/, '')
-                    .replace(/-retry\d+$/, '')
-                    .replace(/-/g, ' ');
-                  const testDir = path.join(resultsDir, entry.name);
-                  const hasScreenshot = fs.readdirSync(testDir).some(f => f.endsWith('.png'));
-                  const hasTrace = fs.readdirSync(testDir).some(f => f.endsWith('.zip'));
-                  failedTests.push({ name: testName, hasScreenshot, hasTrace, dir: entry.name });
-                }
+              for (const child of (suite.suites || [])) {
+                collectTests(child, file);
               }
             }
+            for (const suite of suites) {
+              collectTests(suite, '');
+            }
 
-            if (failedTests.length === 0) {
-              console.log('No failed test artifacts found, skipping comment');
+            const genuine = allTests.filter(t => t.status === 'unexpected');
+            const flaky = allTests.filter(t => t.status === 'flaky');
+            const passed = allTests.filter(t => t.status === 'expected');
+            const skipped = allTests.filter(t => t.status === 'skipped');
+
+            // Skip comment if everything passed
+            if (genuine.length === 0 && flaky.length === 0) {
+              console.log(`Shard ${shard}: all ${passed.length} tests passed, skipping comment`);
               return;
             }
 
             const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
-            const lines = [
-              `## 🔴 Playwright Shard ${shard} — ${failedTests.length} test failure(s)`,
-              '',
-              '| Test | Screenshot | Trace |',
-              '|------|-----------|-------|',
-            ];
+            const lines = [];
 
-            for (const t of failedTests.slice(0, 30)) {
-              const screenshotCol = t.hasScreenshot ? '📸 Yes' : '—';
-              const traceCol = t.hasTrace ? '🔍 Yes' : '—';
-              lines.push(`| \`${t.name}\` | ${screenshotCol} | ${traceCol} |`);
+            if (genuine.length > 0) {
+              lines.push(`## 🔴 Playwright Shard ${shard} — ${genuine.length} genuine failure(s)${flaky.length > 0 ? `, ${flaky.length} flaky` : ''}`);
+            } else {
+              lines.push(`## 🟡 Playwright Shard ${shard} — ${flaky.length} flaky test(s) (all passed on retry)`);
+            }
+            lines.push('');
+            lines.push(`✅ ${passed.length} passed · ❌ ${genuine.length} failed · 🟡 ${flaky.length} flaky · ⏭️ ${skipped.length} skipped`);
+            lines.push('');
+
+            if (genuine.length > 0) {
+              lines.push('### Genuine Failures (failed on all attempts)');
+              lines.push('');
+              for (const t of genuine.slice(0, 20)) {
+                const shortFile = t.file.replace(/.*playwright\/e2e\//, '');
+                const errorSnippet = t.error.split('\n')[0].substring(0, 200);
+                lines.push(`<details><summary>❌ <code>${shortFile}</code> › ${t.title}</summary>`);
+                lines.push('');
+                lines.push('```');
+                lines.push(t.error.substring(0, 1000));
+                lines.push('```');
+                lines.push('</details>');
+                lines.push('');
+              }
+              if (genuine.length > 20) {
+                lines.push(`... and ${genuine.length - 20} more failures`);
+                lines.push('');
+              }
             }
 
-            if (failedTests.length > 30) {
-              lines.push(`| ... and ${failedTests.length - 30} more | | |`);
+            if (flaky.length > 0) {
+              lines.push('<details><summary>🟡 Flaky tests (passed on retry)</summary>');
+              lines.push('');
+              for (const t of flaky.slice(0, 20)) {
+                const shortFile = t.file.replace(/.*playwright\/e2e\//, '');
+                lines.push(`- \`${shortFile}\` › ${t.title} (${t.retries} ${t.retries === 1 ? 'retry' : 'retries'})`);
+              }
+              if (flaky.length > 20) {
+                lines.push(`- ... and ${flaky.length - 20} more`);
+              }
+              lines.push('');
+              lines.push('</details>');
+              lines.push('');
             }
 
+            lines.push(`📦 [Download artifacts (report + screenshots + traces + videos)](${artifactUrl})`);
             lines.push('');
-            lines.push(`📦 [Download artifacts (report + screenshots + traces)](${artifactUrl})`);
-            lines.push('');
-            lines.push('<details><summary>How to view traces locally</summary>');
+            lines.push('<details><summary>How to debug locally</summary>');
             lines.push('');
             lines.push('```bash');
-            lines.push('# Download the playwright-test-results-' + shard + ' artifact and unzip it');
-            lines.push('npx playwright show-trace path/to/trace.zip');
+            lines.push('# Download playwright-test-results-' + shard + ' artifact and unzip');
+            lines.push('npx playwright show-trace path/to/trace.zip    # view trace');
+            lines.push('# Videos are in the same artifact as .webm files');
             lines.push('```');
             lines.push('</details>');
 
             const body = lines.join('\n');
 
-            // Check for existing comment from this shard to update instead of creating duplicates
             const comments = await github.rest.issues.listComments({
               ...repo,
               issue_number: prNumber,
@@ -322,17 +345,34 @@ jobs:
             );
 
             if (existing) {
-              await github.rest.issues.updateComment({
-                ...repo,
-                comment_id: existing.id,
-                body,
-              });
+              await github.rest.issues.updateComment({ ...repo, comment_id: existing.id, body });
             } else {
-              await github.rest.issues.createComment({
-                ...repo,
-                issue_number: prNumber,
-                body,
-              });
+              await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
+            }
+
+            // Write a rich summary with inline screenshots to GITHUB_STEP_SUMMARY
+            const summaryLines = [`## Shard ${shard} Failure Screenshots\n`];
+            const resultsDir = 'openmetadata-ui/src/main/resources/ui/playwright/output/test-results';
+            if (fs.existsSync(resultsDir)) {
+              let screenshotCount = 0;
+              for (const entry of fs.readdirSync(resultsDir, { withFileTypes: true })) {
+                if (!entry.isDirectory()) continue;
+                const testDir = path.join(resultsDir, entry.name);
+                const pngs = fs.readdirSync(testDir).filter(f => f.endsWith('.png'));
+                for (const png of pngs) {
+                  if (screenshotCount >= 10) break;
+                  const pngPath = path.join(testDir, png);
+                  const b64 = fs.readFileSync(pngPath, 'base64');
+                  const testName = entry.name.replace(/-chromium.*$/, '').replace(/-/g, ' ');
+                  summaryLines.push(`### ${testName}`);
+                  summaryLines.push(`<img src="data:image/png;base64,${b64}" width="800" />\n`);
+                  screenshotCount++;
+                }
+                if (screenshotCount >= 10) break;
+              }
+            }
+            if (summaryLines.length > 1) {
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryLines.join('\n'));
             }
 
       - name: Clean Up
