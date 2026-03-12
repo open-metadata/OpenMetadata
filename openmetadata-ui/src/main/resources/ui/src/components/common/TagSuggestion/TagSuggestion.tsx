@@ -19,7 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import { EntityTags } from 'Models';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { TagSource } from '../../../generated/entity/data/container';
@@ -57,12 +57,16 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
   const [options, setOptions] = useState<TagSelectItem[]>([]);
   const tagDataMap = useRef<Map<string, TagLabel>>(new Map());
 
-  const selectedItems: TagSelectItem[] = value.map((tag) => ({
-    id: tag.tagFQN,
-    label: getTagDisplay(tag.displayName || tag.name) || tag.tagFQN,
-    supportingText: tag.displayName || tag.name,
-    value: tag,
-  }));
+  const selectedItems = useMemo<TagSelectItem[]>(
+    () =>
+      value.map((tag) => ({
+        id: tag.tagFQN,
+        label: getTagDisplay(tag.displayName || tag.name) || tag.tagFQN,
+        supportingText: tag.displayName || tag.name,
+        value: tag,
+      })),
+    [value]
+  );
 
   const fetchOptions = async (searchText: string) => {
     try {

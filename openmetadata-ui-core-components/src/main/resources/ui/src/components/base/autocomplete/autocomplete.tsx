@@ -222,6 +222,9 @@ const AutocompleteTrigger = ({
   );
 };
 
+const resolveSelectedItems = (value: SelectItemType[] | ListData<SelectItemType>): SelectItemType[] =>
+  Array.isArray(value) ? value : value.items;
+
 export const AutocompleteBase = ({
   items,
   children,
@@ -241,9 +244,6 @@ export const AutocompleteBase = ({
   ...props
 }: AutocompleteProps) => {
   const { contains } = useFilter({ sensitivity: 'base' });
-
-  const resolveSelectedItems = (value: SelectItemType[] | ListData<SelectItemType>): SelectItemType[] =>
-    Array.isArray(value) ? value : value.items;
 
   const [internalSelected, setInternalSelected] = useState<SelectItemType[]>(resolveSelectedItems(selectedItems));
   const selectedKeys = internalSelected.map((item) => item.id);
