@@ -13,12 +13,18 @@ public interface DataInsightAggregatorClient {
 
   default DataInsightCustomChartResultList buildDIChart(
       DataInsightCustomChart diChart, long start, long end, boolean live) throws IOException {
-    return null;
+    return buildDIChart(diChart, start, end, live, null);
   }
 
   default DataInsightCustomChartResultList buildDIChart(
       DataInsightCustomChart diChart, long start, long end) throws IOException {
-    return buildDIChart(diChart, start, end, false);
+    return buildDIChart(diChart, start, end, false, null);
+  }
+
+  default DataInsightCustomChartResultList buildDIChart(
+      DataInsightCustomChart diChart, long start, long end, boolean live, String filter)
+      throws IOException {
+    return null;
   }
 
   default List<Map<String, String>> fetchDIChartFields() throws IOException {
