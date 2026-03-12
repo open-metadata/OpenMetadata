@@ -697,7 +697,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           const columnApiResponse = page.waitForResponse(
             (response) =>
-              response.url().includes('/api/v1/tables/name/') &&
+              response.url().includes(`/api/v1/${entity.endpoint}/name/`) &&
               response.url().includes('/columns') &&
               response.request().method() === 'GET'
           );
@@ -1348,7 +1348,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           const columnApiResponse = page.waitForResponse(
             (response) =>
-              response.url().includes('/api/v1/tables/name/') &&
+              response.url().includes(`/api/v1/${entity.endpoint}/name/`) &&
               response.url().includes('/columns') &&
               response.request().method() === 'GET'
           );
