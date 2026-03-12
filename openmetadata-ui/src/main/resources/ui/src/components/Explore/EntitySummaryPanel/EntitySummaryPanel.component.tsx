@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@mui/icons-material';
 import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -87,6 +86,7 @@ import {
   patchContainerDetails,
 } from '../../../rest/storageAPI';
 
+import { X } from '@untitledui/icons';
 import {
   getStoredProceduresByFqn,
   patchStoredProceduresDetails,
@@ -168,9 +168,10 @@ export default function EntitySummaryPanel({
   const id = entityDetails?.details?.id ?? '';
   const fqn = entityDetails?.details?.fullyQualifiedName ?? '';
 
-  const entityType = useMemo(() => {
-    return get(entityDetails, 'details.entityType');
-  }, [entityDetails]);
+  const entityType = useMemo(
+    () => get(entityDetails, 'details.entityType') as EntityType | undefined,
+    [entityDetails]
+  );
 
   const fetchResourcePermission = async (id: string) => {
     try {
@@ -482,6 +483,10 @@ export default function EntitySummaryPanel({
         return updatedTags;
       }
 
+      if (!entityType) {
+        return;
+      }
+
       try {
         let res: Partial<EntityData> = {};
         if (entityType === EntityType.TABLE_COLUMN) {
@@ -564,6 +569,10 @@ export default function EntitySummaryPanel({
 
       if (isEmpty(jsonPatch)) {
         return updatedTags;
+      }
+
+      if (!entityType) {
+        return;
       }
 
       try {
@@ -895,12 +904,14 @@ export default function EntitySummaryPanel({
               />
             )}
             <div className="entity-summary-panel-tab-content">
-              <EntityDetailsSection
-                dataAsset={entityDetails.details}
-                entityType={entityType}
-                highlights={highlights}
-                isLoading={isPermissionLoading}
-              />
+              {entityType && (
+                <EntityDetailsSection
+                  dataAsset={entityDetails.details}
+                  entityType={entityType}
+                  highlights={highlights}
+                  isLoading={isPermissionLoading}
+                />
+              )}
             </div>
           </>
         );
@@ -953,25 +964,27 @@ export default function EntitySummaryPanel({
                 entityLink={entityLink}
               />
             )}
-            <CustomPropertiesSection
-              emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
-                entityType
-              )}
-              entityData={entityData ?? undefined}
-              entityDetails={entityDetails}
-              entityType={entityType}
-              entityTypeDetail={entityTypeDetail}
-              hasEditPermissions={getPrioritizedEditPermission(
-                entityPermissions,
-                Operation.EditCustomFields
-              )}
-              isEntityDataLoading={isEntityDataLoading || isEntityTypeLoading}
-              viewCustomPropertiesPermission={getPrioritizedViewPermission(
-                entityPermissions,
-                Operation.ViewCustomFields
-              )}
-              onExtensionUpdate={handleExtensionUpdate}
-            />
+            {entityType && (
+              <CustomPropertiesSection
+                emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
+                  entityType
+                )}
+                entityData={entityData ?? undefined}
+                entityDetails={entityDetails}
+                entityType={entityType}
+                entityTypeDetail={entityTypeDetail}
+                hasEditPermissions={getPrioritizedEditPermission(
+                  entityPermissions,
+                  Operation.EditCustomFields
+                )}
+                isEntityDataLoading={isEntityDataLoading || isEntityTypeLoading}
+                viewCustomPropertiesPermission={getPrioritizedViewPermission(
+                  entityPermissions,
+                  Operation.ViewCustomFields
+                )}
+                onExtensionUpdate={handleExtensionUpdate}
+              />
+            )}
           </>
         );
       }
@@ -991,7 +1004,7 @@ export default function EntitySummaryPanel({
       {isSideDrawer && (
         <div className="d-flex items-center justify-between">
           <EntityTitleSection
-            className="drawer-title-section"
+            className="tw:bg-transparent!"
             entityDetails={entityDetails.details}
             entityDisplayName={entityData?.displayName}
             entityLink={entityLink}
@@ -1001,14 +1014,14 @@ export default function EntitySummaryPanel({
               Operation.EditDisplayName
             )}
             testId="entity-header-title"
-            tooltipPlacement="bottomLeft"
+            tooltipPlacement="bottom left"
             onDisplayNameUpdate={handleDisplayNameUpdate}
           />
           <Button
             aria-label={t('label.close')}
             className="drawer-close-icon flex-center mr-2"
             data-testid="drawer-close-icon"
-            icon={<CloseOutlined />}
+            icon={<X size={16} />}
             size="small"
             onClick={handleClosePanel}
           />
@@ -1028,12 +1041,14 @@ export default function EntitySummaryPanel({
             {renderTabContent()}
           </Card>
         </Card>
-        <EntityRightPanelVerticalNav
-          activeTab={activeTab}
-          entityType={entityType}
-          isSideDrawer={isSideDrawer}
-          onTabChange={handleTabChange}
-        />
+        {entityType && (
+          <EntityRightPanelVerticalNav
+            activeTab={activeTab}
+            entityType={entityType}
+            isSideDrawer={isSideDrawer}
+            onTabChange={handleTabChange}
+          />
+        )}
       </div>
     </div>
   );

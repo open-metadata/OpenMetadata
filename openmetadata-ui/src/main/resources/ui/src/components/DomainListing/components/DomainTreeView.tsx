@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import AddIcon from '@mui/icons-material/Add';
 import { Box, Button, Chip, Typography, useTheme } from '@mui/material';
 import { SimpleTreeView, TreeItem, treeItemClasses } from '@mui/x-tree-view';
+import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -824,7 +824,7 @@ const DomainTreeView = ({
                   mb: 1.5,
                 }}>
                 <Button
-                  startIcon={isLoadingMore ? null : <AddIcon />}
+                  startIcon={isLoadingMore ? null : <Plus />}
                   sx={{
                     p: 0,
                     cursor: 'pointer',

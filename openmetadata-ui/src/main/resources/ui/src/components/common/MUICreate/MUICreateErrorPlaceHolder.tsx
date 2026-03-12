@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import AddIcon from '@mui/icons-material/Add';
 import { Box, Button, Typography } from '@mui/material';
+import { Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 
@@ -61,7 +61,7 @@ const MUICreateErrorPlaceHolder = ({
             <Button
               color="primary"
               data-testid={buttonId}
-              startIcon={<AddIcon />}
+              startIcon={<Plus />}
               sx={{ mt: 3, minWidth: '10rem' }}
               variant="contained"
               onClick={onClick}>

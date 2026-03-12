@@ -236,5 +236,53 @@
     },
     "sql_query": "select customer_id, sum(total_amount) as total_spend from fact_orders group by customer_id",
     "edge_meta": { "fqn": "sample_airflow.ml_feature_pipeline", "type": "pipeline" }
+  },
+  {
+    "from": { "fqn": "postgres_sample.jaffle_shop.public.raw_customers", "type": "table" },
+    "to": { "fqn": "postgres_sample.jaffle_shop.public.stg_customers", "type": "table" },
+    "sql_query": "SELECT id AS customer_id, first_name, last_name FROM jaffle_shop.public.raw_customers",
+    "edge_meta": { "fqn": "", "type": "" }
+  },
+  {
+    "from": { "fqn": "postgres_sample.jaffle_shop.public.raw_orders", "type": "table" },
+    "to": { "fqn": "postgres_sample.jaffle_shop.public.stg_orders", "type": "table" },
+    "sql_query": "SELECT id AS order_id, user_id AS customer_id, order_date, status FROM jaffle_shop.public.raw_orders",
+    "edge_meta": { "fqn": "", "type": "" }
+  },
+  {
+    "from": { "fqn": "postgres_sample.jaffle_shop.public.raw_payments", "type": "table" },
+    "to": { "fqn": "postgres_sample.jaffle_shop.public.stg_payments", "type": "table" },
+    "sql_query": "SELECT id AS payment_id, order_id, payment_method, amount / 100.0 AS amount FROM jaffle_shop.public.raw_payments",
+    "edge_meta": { "fqn": "", "type": "" }
+  },
+  {
+    "from": { "fqn": "postgres_sample.jaffle_shop.public.stg_customers", "type": "table" },
+    "to": { "fqn": "postgres_sample.jaffle_shop.public.customers", "type": "table" },
+    "sql_query": "SELECT customers.customer_id, customers.first_name, customers.last_name, customer_orders.first_order, customer_orders.most_recent_order, customer_orders.number_of_orders, customer_payments.total_amount AS customer_lifetime_value FROM stg_customers AS customers LEFT JOIN customer_orders ON customers.customer_id = customer_orders.customer_id LEFT JOIN customer_payments ON customers.customer_id = customer_payments.customer_id",
+    "edge_meta": { "fqn": "", "type": "" }
+  },
+  {
+    "from": { "fqn": "postgres_sample.jaffle_shop.public.stg_orders", "type": "table" },
+    "to": { "fqn": "postgres_sample.jaffle_shop.public.customers", "type": "table" },
+    "sql_query": "SELECT customer_id, MIN(order_date) AS first_order, MAX(order_date) AS most_recent_order, COUNT(order_id) AS number_of_orders FROM stg_orders GROUP BY customer_id",
+    "edge_meta": { "fqn": "", "type": "" }
+  },
+  {
+    "from": { "fqn": "postgres_sample.jaffle_shop.public.stg_payments", "type": "table" },
+    "to": { "fqn": "postgres_sample.jaffle_shop.public.customers", "type": "table" },
+    "sql_query": "SELECT orders.customer_id, SUM(amount) AS total_amount FROM stg_payments LEFT JOIN stg_orders ON stg_payments.order_id = stg_orders.order_id GROUP BY orders.customer_id",
+    "edge_meta": { "fqn": "", "type": "" }
+  },
+  {
+    "from": { "fqn": "postgres_sample.jaffle_shop.public.stg_orders", "type": "table" },
+    "to": { "fqn": "postgres_sample.jaffle_shop.public.orders", "type": "table" },
+    "sql_query": "SELECT orders.order_id, orders.customer_id, orders.order_date, orders.status, order_payments.credit_card_amount, order_payments.coupon_amount, order_payments.bank_transfer_amount, order_payments.gift_card_amount, order_payments.total_amount AS amount FROM stg_orders AS orders LEFT JOIN order_payments ON orders.order_id = order_payments.order_id",
+    "edge_meta": { "fqn": "", "type": "" }
+  },
+  {
+    "from": { "fqn": "postgres_sample.jaffle_shop.public.stg_payments", "type": "table" },
+    "to": { "fqn": "postgres_sample.jaffle_shop.public.orders", "type": "table" },
+    "sql_query": "SELECT order_id, SUM(CASE WHEN payment_method = 'credit_card' THEN amount ELSE 0 END) AS credit_card_amount, SUM(CASE WHEN payment_method = 'coupon' THEN amount ELSE 0 END) AS coupon_amount, SUM(CASE WHEN payment_method = 'bank_transfer' THEN amount ELSE 0 END) AS bank_transfer_amount, SUM(CASE WHEN payment_method = 'gift_card' THEN amount ELSE 0 END) AS gift_card_amount, SUM(amount) AS total_amount FROM stg_payments GROUP BY order_id",
+    "edge_meta": { "fqn": "", "type": "" }
   }
 ]

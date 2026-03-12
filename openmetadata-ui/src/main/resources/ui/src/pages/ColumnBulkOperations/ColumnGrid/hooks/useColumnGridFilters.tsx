@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { AddOutlined } from '@mui/icons-material';
 import { Button, Menu, MenuItem, useTheme } from '@mui/material';
 import { defaultColors } from '@openmetadata/ui-core-components';
+import { Plus } from '@untitledui/icons';
 import {
   MouseEvent,
   ReactNode,
@@ -146,7 +146,7 @@ export const useColumnGridFilters = (
     return (
       <>
         <Button
-          startIcon={<AddOutlined />}
+          startIcon={<Plus />}
           sx={{
             color: defaultColors.blue[600],
             fontSize: theme.typography.body2.fontSize,

@@ -13,7 +13,8 @@ Test athena source
 """
 
 import unittest
-from unittest.mock import patch
+from datetime import datetime
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 from pydantic import AnyUrl
@@ -57,6 +58,8 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.athena.metadata import AthenaSource
+from metadata.ingestion.source.database.athena.models import AthenaStatus
+from metadata.ingestion.source.database.athena.usage import AthenaUsageSource
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
 
 EXPECTED_DATABASE_NAMES = ["mydatabase"]
@@ -321,3 +324,53 @@ class TestAthenaService(unittest.TestCase):
             MOCK_LOCATION_ENTITY[0].dataModel, MOCK_TABLE_ENTITY[0], columns_list
         )
         assert column_lineage == EXPECTED_COLUMN_LINEAGE
+
+
+SUBMISSION_DT = datetime(2024, 1, 2, 10, 0, 0)
+COMPLETION_DT = datetime(2024, 1, 2, 10, 5, 0)
+
+
+class TestAthenaUsageYieldTableQueries:
+    def _make_source(self):
+        source = MagicMock()
+        source.dialect.value = "athena"
+        source.config.serviceName = "test_athena"
+        source.start = datetime(2024, 1, 1)
+        source.is_not_dbt_or_om_query.return_value = True
+        return source
+
+    def _make_query_list(self, status):
+        query = MagicMock()
+        query.Query = "SELECT 1"
+        query.Status = status
+        query.Statistics = None
+        query_list = MagicMock()
+        query_list.QueryExecutions = [query]
+        return query_list
+
+    def test_end_time_uses_completion_datetime_when_present(self):
+        status = MagicMock()
+        status.State = "SUCCEEDED"
+        status.SubmissionDateTime = SUBMISSION_DT
+        status.CompletionDateTime = COMPLETION_DT
+
+        source = self._make_source()
+        source.get_queries.return_value = [self._make_query_list(status)]
+
+        results = list(AthenaUsageSource.yield_table_queries(source))
+
+        assert len(results) == 1
+        assert len(results[0].queries) == 1
+        assert results[0].queries[0].endTime == COMPLETION_DT.isoformat(" ", "seconds")
+
+    def test_end_time_falls_back_to_submission_when_completion_missing(self):
+        status = AthenaStatus(State="SUCCEEDED", SubmissionDateTime=SUBMISSION_DT)
+
+        source = self._make_source()
+        source.get_queries.return_value = [self._make_query_list(status)]
+
+        results = list(AthenaUsageSource.yield_table_queries(source))
+
+        assert len(results) == 1
+        assert len(results[0].queries) == 1
+        assert results[0].queries[0].endTime == SUBMISSION_DT.isoformat(" ", "seconds")

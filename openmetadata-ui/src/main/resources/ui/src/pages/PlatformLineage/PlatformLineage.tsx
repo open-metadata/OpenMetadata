@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid, Tooltip } from '@mui/material';
+import {
+  Grid,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import { Expand05, Home02, Minimize02 } from '@untitledui/icons';
 import { Card, Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
@@ -247,14 +251,18 @@ const PlatformLineage = () => {
         />
         <div className="d-flex gap-2">
           <Tooltip
-            arrow
             placement="top"
             title={t('label.export-as-type', {
               type: t('label.png-uppercase'),
             })}>
-            <StyledIconButton size="large" onClick={handleExport}>
-              <DownloadIcon />
-            </StyledIconButton>
+            <TooltipTrigger>
+              <StyledIconButton
+                data-testid="export-button"
+                size="large"
+                onClick={handleExport}>
+                <DownloadIcon />
+              </StyledIconButton>
+            </TooltipTrigger>
           </Tooltip>
           <StyledIconButton
             data-testid="lineage-config"
@@ -263,25 +271,26 @@ const PlatformLineage = () => {
             <SettingsOutlined />
           </StyledIconButton>
           <Tooltip
-            arrow
             placement="top"
             title={
               isFullScreen
                 ? t('label.exit-full-screen')
                 : t('label.full-screen-view')
             }>
-            <StyledIconButton
-              size="large"
-              onClick={() =>
-                navigate({
-                  search: QueryString.stringify({
-                    ...queryParams,
-                    [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
-                  }),
-                })
-              }>
-              {isFullScreen ? <Minimize02 /> : <Expand05 />}
-            </StyledIconButton>
+            <TooltipTrigger>
+              <StyledIconButton
+                size="large"
+                onClick={() =>
+                  navigate({
+                    search: QueryString.stringify({
+                      ...queryParams,
+                      [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
+                    }),
+                  })
+                }>
+                {isFullScreen ? <Minimize02 /> : <Expand05 />}
+              </StyledIconButton>
+            </TooltipTrigger>
           </Tooltip>
         </div>
       </div>
@@ -319,10 +328,10 @@ const PlatformLineage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.lineage')}>
-      <Grid container spacing={2}>
+      <Grid rowGap="2">
         {isFullScreen ? null : (
           <>
-            <Grid size={12}>
+            <Grid.Item span={24}>
               <TitleBreadcrumb
                 useCustomArrow
                 titleLinks={[
@@ -338,9 +347,9 @@ const PlatformLineage = () => {
                   },
                 ]}
               />
-            </Grid>
+            </Grid.Item>
 
-            <Grid size={12}>
+            <Grid.Item span={24}>
               <Card>
                 <PageHeader
                   data={{
@@ -353,12 +362,12 @@ const PlatformLineage = () => {
                   title={t('label.lineage')}
                 />
               </Card>
-            </Grid>
+            </Grid.Item>
           </>
         )}
-        <Grid size={12}>
+        <Grid.Item span={24}>
           <div className="platform-lineage-container">{lineageElement}</div>
-        </Grid>
+        </Grid.Item>
       </Grid>
 
       <LineageConfigModal
