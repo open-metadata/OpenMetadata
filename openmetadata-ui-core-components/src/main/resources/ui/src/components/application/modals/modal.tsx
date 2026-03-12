@@ -102,7 +102,7 @@ const DialogFooter = ({ children, className }: DialogFooterProps) => (
   >
     <div className="tw:w-full tw:border-t tw:border-secondary" />
     <div className="tw:h-4 tw:w-full tw:sm:h-6" />
-    <div className="w:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6 tw:px-4">
+    <div className="tw:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6 tw:px-4">
       {children}
     </div>
   </div>
