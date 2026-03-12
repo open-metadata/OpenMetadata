@@ -405,7 +405,9 @@ class KafkaconnectSource(PipelineServiceSource):
         """
         Parse topics from connector config and resolve to Topic entities.
         """
-        topics_to_process = pipeline_details.topics or pipeline_details.config.get('topics') or []
+        topics_to_process = (
+            pipeline_details.topics or pipeline_details.config.get("topics") or []
+        )
 
         if (
             not topics_to_process
@@ -1268,31 +1270,39 @@ class KafkaconnectSource(PipelineServiceSource):
                         f"Matched sink dataset table '{dataset_details.table}' to topic '{dataset_details.table}' (exact match)"
                     )
                     return topic_entities_map[dataset_details.table]
-                    
 
                 # 1. Define a list of potential keys used to map Kafka topics to target table names
-                format_keys = ['collection.name.format', 'table.name.format']
+                format_keys = ["collection.name.format", "table.name.format"]
 
                 # 2. Extract the first available pattern found in the config
                 pattern = None
                 for key in format_keys:
                     if key in pipeline_details.config:
                         pattern = pipeline_details.config[key]
-                        logger.debug(f"Found naming format using key '{key}': {pattern}")
+                        logger.debug(
+                            f"Found naming format using key '{key}': {pattern}"
+                        )
                         break
 
                 # 3. Fallback logic: if neither key is present, default to just the topic name
                 if not pattern:
-                    pattern = '${topic}'
-                    logger.warning("No naming format key found. Defaulting to '${topic}'.")
+                    pattern = "${topic}"
+                    logger.warning(
+                        "No naming format key found. Defaulting to '${topic}'."
+                    )
 
                 # Try case-insensitive match
                 for topic_name, topic_entity in topic_entities_map.items():
-                    
+
                     # 4. Use the pattern to resolve the table name
                     # This logic remains the same regardless of which key provided the pattern
-                    resolved_table = pattern.replace('${topic}', topic_name).replace('.', '_').lower() 
+                    sanitized_topic = topic_name.replace(".", "_")
+                    resolved_table = pattern.replace(
+                        "${topic}", sanitized_topic
+                    ).lower()
                     if resolved_table == dataset_details.table.lower():
+                        # resolved_table = pattern.replace('${topic}', topic_name).replace('.', '_').lower()
+                        # if resolved_table == dataset_details.table.lower():
                         logger.info(
                             f"Matched sink dataset table '{dataset_details.table}' to topic '{topic_name}' (case-insensitive)"
                         )
