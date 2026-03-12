@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import AddIcon from '@mui/icons-material/Add';
 import { Button as MUIButton, useTheme } from '@mui/material';
+import { Plus } from '@untitledui/icons';
 import { Button, Empty, Select, Space, Tree } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
@@ -240,7 +240,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           className: 'load-more-node',
           title: (
             <MUIButton
-              startIcon={isLoadingMore ? null : <AddIcon />}
+              startIcon={isLoadingMore ? null : <Plus />}
               sx={{
                 p: 0,
                 ml: 7,

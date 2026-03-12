@@ -19,32 +19,6 @@ import dotenv from 'dotenv';
  */
 dotenv.config();
 
-const STATEFUL_TEST_FILES = [
-  '**/Pages/LoginConfiguration.spec.ts',
-  '**/Pages/Tag.spec.ts',
-  '**/Pages/TagPageRightPanel.spec.ts',
-  '**/Pages/TeamAssetsRightPanel.spec.ts',
-  '**/Pages/Teams.spec.ts',
-  '**/Pages/UserDetails.spec.ts',
-  '**/Pages/Users.spec.ts',
-  '**/VersionPages/*.spec.ts',
-];
-
-const GRAPH_TEST_FILES = [
-  '**/Features/ImpactAnalysis.spec.ts',
-  '**/Pages/ExplorePageRightPanel.spec.ts',
-  '**/Pages/InputOutputPorts.spec.ts',
-  '**/Pages/Lineage.spec.ts',
-];
-
-const LANDING_TEST_FILES = [
-  '**/Features/ActivityFeed.spec.ts',
-  '**/Features/CustomizeDetailPage.spec.ts',
-  '**/Features/LandingPageWidgets/*.spec.ts',
-  '**/Flow/CustomizeLandingPage.spec.ts',
-  '**/Flow/CustomizeWidgets.spec.ts',
-];
-
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -80,9 +54,8 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
     /* Collect trace and video on every failure (not just retries) for debugging */
-    trace: 'retain-on-failure',
+    trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
      * This ensures page.goto() and waitForLoadState() calls timeout after 60s
@@ -115,40 +88,12 @@ export default defineConfig({
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
-        ...STATEFUL_TEST_FILES,
-        ...GRAPH_TEST_FILES,
-        ...LANDING_TEST_FILES,
       ],
     },
     {
       name: 'SearchRBAC',
       testMatch: '**/SearchRBAC.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      teardown: 'entity-data-teardown',
-    },
-    {
-      name: 'landing',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
-      testMatch: LANDING_TEST_FILES,
-      fullyParallel: false,
-      teardown: 'entity-data-teardown',
-    },
-    {
-      name: 'graph',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
-      testMatch: GRAPH_TEST_FILES,
-      fullyParallel: false,
-      teardown: 'entity-data-teardown',
-    },
-    {
-      name: 'stateful',
-      use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
-      testMatch: STATEFUL_TEST_FILES,
-      grepInvert: [/@sample-data/],
-      fullyParallel: false,
       teardown: 'entity-data-teardown',
     },
     {
@@ -187,7 +132,6 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
       fullyParallel: true,
-      testIgnore: LANDING_TEST_FILES,
     },
     {
       name: 'ingestion',
@@ -200,7 +144,6 @@ export default defineConfig({
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
-        ...LANDING_TEST_FILES,
       ],
     },
     // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
@@ -216,7 +159,6 @@ export default defineConfig({
 
   // Increase timeout for the test
   timeout: 60000,
-  expect: { timeout: 15_000 },
 
   /* Run your local dev server before starting the tests */
   // webServer: {
