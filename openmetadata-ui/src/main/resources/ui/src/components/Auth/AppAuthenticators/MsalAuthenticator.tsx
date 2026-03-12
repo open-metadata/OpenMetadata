@@ -50,7 +50,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const login = async () => {
       try {
-        const isInIframe = window.self !== window.top;
+        const isInIframe = globalThis.self !== window.top;
 
         if (isInIframe) {
           // Use popup login when in iframe to avoid redirect issues
@@ -72,7 +72,8 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         handleSuccessfulLogout();
         await instance.logoutRedirect({
           account: account ?? accounts[0],
-          postLogoutRedirectUri: window.location.origin + ROUTES.SIGNIN,
+          logoutHint: (account ?? accounts[0])?.username,
+          postLogoutRedirectUri: globalThis.location.origin + ROUTES.SIGNIN,
         });
       } catch {
         // logoutRedirect failed; app state already cleaned up above
