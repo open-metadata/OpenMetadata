@@ -245,7 +245,7 @@ public class SettingsCache {
                               .withMediumGraphBatchSize(5000)
                               .withLargeGraphBatchSize(1000)
                               .withStreamingBatchSize(500)
-                              .withEnableCaching(true)
+                              .withEnableCaching(false)
                               .withCacheTTLSeconds(300)
                               .withMaxCachedGraphs(100)
                               .withEnableProgressTracking(false)

@@ -5,37 +5,97 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.EntityUtil;
 
-/**
- * Migrates workflow definitions for v1.12.3 changes:
- *
- * <p>Updates the "include" field in existing workflow trigger configurations from map format
- * to array format for Tag and Domain change approval workflows.
- *
- * <p>For each workflow definition with an eventBasedEntity trigger that doesn't have
- * an "include" field in its config, the migration adds an empty include array:
- * {@code "include": []}.
- * For existing include fields in map format, converts them to array format by extracting field names.
- *
- * <p>This ensures backward compatibility - existing workflows continue to work as before,
- * and new workflows can use the include fields feature for fine-grained control over
- * which metadata changes trigger approval workflows.
- *
- * Uses {@link WorkflowDefinitionRepository#createOrUpdate} so that Flowable also receives the
- * updated workflow definition. The migration is idempotent – running it more than once is safe.
- */
 @Slf4j
 public class MigrationUtil {
 
+  private MigrationUtil() {}
+
+  private static final String UPDATE_EVENT_SUB_MYSQL =
+      "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
+  private static final String UPDATE_EVENT_SUB_POSTGRESQL =
+      "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id";
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String ADMIN_USER_NAME = "admin";
+
+  public static void migrateWebhookSecretKeyToAuthType(Handle handle) {
+    LOG.info("Starting migration of webhook secretKey to authType");
+
+    List<Map<String, Object>> rows =
+        handle.createQuery("SELECT id, json FROM event_subscription_entity").mapToMap().list();
+
+    int migratedCount = 0;
+    for (Map<String, Object> row : rows) {
+      String id = row.get("id").toString();
+      String jsonStr = row.get("json").toString();
+
+      try {
+        ObjectNode root = (ObjectNode) JsonUtils.readTree(jsonStr);
+        JsonNode destinations = root.get("destinations");
+        if (destinations == null || !destinations.isArray()) {
+          continue;
+        }
+
+        boolean modified = false;
+        for (JsonNode destination : destinations) {
+          String destinationType =
+              destination.get("type") != null
+                  ? destination.get("type").asText().toLowerCase()
+                  : null;
+          if (destinationType == null
+              || !destinationType.equals(
+                  SubscriptionDestination.SubscriptionType.WEBHOOK.value().toLowerCase())) {
+            continue;
+          }
+          JsonNode config = destination.get("config");
+          if (config == null || !config.isObject()) {
+            continue;
+          }
+
+          JsonNode secretKeyNode = config.get("secretKey");
+          if (secretKeyNode == null
+              || secretKeyNode.isNull()
+              || secretKeyNode.asText().trim().isEmpty()) {
+            continue;
+          }
+
+          ObjectNode configObj = (ObjectNode) config;
+          ObjectNode bearerAuth =
+              JsonUtils.getObjectMapper()
+                  .createObjectNode()
+                  .put("type", "bearer")
+                  .put("secretKey", secretKeyNode.asText());
+          configObj.set("authType", bearerAuth);
+          configObj.remove("secretKey");
+          modified = true;
+        }
+
+        if (modified) {
+          String updateSql =
+              Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+                  ? UPDATE_EVENT_SUB_MYSQL
+                  : UPDATE_EVENT_SUB_POSTGRESQL;
+          handle.createUpdate(updateSql).bind("json", root.toString()).bind("id", id).execute();
+          migratedCount++;
+        }
+      } catch (Exception e) {
+        LOG.warn("Error migrating event subscription {}: {}", id, e.getMessage());
+      }
+    }
+
+    LOG.info("Migrated {} event subscriptions with secretKey to authType", migratedCount);
+  }
 
   public static void migrateWorkflowDefinitions() {
     LOG.info(
