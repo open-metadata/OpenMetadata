@@ -228,8 +228,33 @@ jobs:
           path: openmetadata-ui/src/main/resources/ui/playwright/output/test-results
           retention-days: 5
 
-      - name: Post failure summary to PR
-        if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
+      - name: Upload results JSON for summary
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-results-json-${{ matrix.shardIndex }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/results.json
+          retention-days: 1
+          if-no-files-found: ignore
+
+      - name: Clean Up
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
+
+  playwright-summary:
+    if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
+    needs: playwright-ci-postgresql
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all results JSON
+        uses: actions/download-artifact@v4
+        with:
+          pattern: playwright-results-json-*
+          path: results
+
+      - name: Post consolidated PR comment
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -237,98 +262,101 @@ jobs:
             const fs = require('fs');
             const path = require('path');
 
-            const shard = '${{ matrix.shardIndex }}';
             const runId = '${{ github.run_id }}';
             const repo = context.repo;
             const prNumber = context.payload.pull_request?.number;
             if (!prNumber) return;
 
-            const jsonPath = 'openmetadata-ui/src/main/resources/ui/playwright/output/results.json';
-            if (!fs.existsSync(jsonPath)) {
-              console.log('No results.json found, skipping comment');
-              return;
-            }
-
-            const report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-            const suites = report.suites || [];
-
-            // Flatten all test results from nested suites
-            const allTests = [];
-            function collectTests(suite, filePath) {
-              const file = suite.file || filePath || '';
-              for (const spec of (suite.specs || [])) {
-                for (const test of (spec.tests || [])) {
-                  const results = test.results || [];
-                  const lastResult = results[results.length - 1] || {};
-                  const firstResult = results[0] || {};
-                  allTests.push({
-                    title: spec.title,
-                    file: file,
-                    status: test.status,          // expected, unexpected, flaky, skipped
-                    duration: results.reduce((sum, r) => sum + (r.duration || 0), 0),
-                    retries: results.length - 1,
-                    error: lastResult.error?.message || firstResult.error?.message || '',
-                    attachments: lastResult.attachments || firstResult.attachments || [],
-                  });
-                }
-              }
-              for (const child of (suite.suites || [])) {
-                collectTests(child, file);
-              }
-            }
-            for (const suite of suites) {
-              collectTests(suite, '');
-            }
-
-            const genuine = allTests.filter(t => t.status === 'unexpected');
-            const flaky = allTests.filter(t => t.status === 'flaky');
-            const passed = allTests.filter(t => t.status === 'expected');
-            const skipped = allTests.filter(t => t.status === 'skipped');
-
-            // Helper to find existing bot comment for this shard
-            async function findExistingComment() {
-              const marker = `Playwright Shard ${shard}`;
-              for await (const response of github.paginate.iterator(
-                github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-              )) {
-                const found = response.data.find(c =>
-                  c.user?.login === 'github-actions[bot]' && c.body?.includes(marker)
-                );
-                if (found) return found;
-              }
-              return null;
-            }
-
-            // If everything passed, delete any stale failure comment and exit
-            if (genuine.length === 0 && flaky.length === 0) {
-              console.log(`Shard ${shard}: all ${passed.length} tests passed`);
-              const stale = await findExistingComment();
-              if (stale) {
-                await github.rest.issues.deleteComment({ ...repo, comment_id: stale.id });
-                console.log(`Deleted stale failure comment for shard ${shard}`);
-              }
-              return;
-            }
-
             const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
-            const lines = [];
+            const commentMarker = '<!-- playwright-summary -->';
 
-            if (genuine.length > 0) {
-              lines.push(`## 🔴 Playwright Shard ${shard} — ${genuine.length} genuine failure(s)${flaky.length > 0 ? `, ${flaky.length} flaky` : ''}`);
+            // Collect results from all shards
+            const shardResults = [];
+            const resultsDir = 'results';
+            if (fs.existsSync(resultsDir)) {
+              for (const dir of fs.readdirSync(resultsDir).sort()) {
+                const jsonPath = path.join(resultsDir, dir, 'results.json');
+                if (!fs.existsSync(jsonPath)) continue;
+
+                const shardNum = dir.replace('playwright-results-json-', '');
+                const report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+
+                const allTests = [];
+                function collectTests(suite, filePath) {
+                  const file = suite.file || filePath || '';
+                  for (const spec of (suite.specs || [])) {
+                    for (const test of (spec.tests || [])) {
+                      const results = test.results || [];
+                      const lastResult = results[results.length - 1] || {};
+                      const firstResult = results[0] || {};
+                      allTests.push({
+                        title: spec.title,
+                        file: file,
+                        status: test.status,
+                        retries: results.length - 1,
+                        error: lastResult.error?.message || firstResult.error?.message || '',
+                      });
+                    }
+                  }
+                  for (const child of (suite.suites || [])) {
+                    collectTests(child, file);
+                  }
+                }
+                for (const suite of (report.suites || [])) {
+                  collectTests(suite, '');
+                }
+
+                shardResults.push({
+                  shard: shardNum,
+                  genuine: allTests.filter(t => t.status === 'unexpected'),
+                  flaky: allTests.filter(t => t.status === 'flaky'),
+                  passed: allTests.filter(t => t.status === 'expected'),
+                  skipped: allTests.filter(t => t.status === 'skipped'),
+                });
+              }
+            }
+
+            if (shardResults.length === 0) {
+              console.log('No shard results found');
+              return;
+            }
+
+            // Aggregate totals
+            const totalPassed = shardResults.reduce((s, r) => s + r.passed.length, 0);
+            const totalFailed = shardResults.reduce((s, r) => s + r.genuine.length, 0);
+            const totalFlaky = shardResults.reduce((s, r) => s + r.flaky.length, 0);
+            const totalSkipped = shardResults.reduce((s, r) => s + r.skipped.length, 0);
+
+            const lines = [commentMarker];
+
+            if (totalFailed > 0) {
+              lines.push(`## 🔴 Playwright Results — ${totalFailed} failure(s)${totalFlaky > 0 ? `, ${totalFlaky} flaky` : ''}`);
+            } else if (totalFlaky > 0) {
+              lines.push(`## 🟡 Playwright Results — all passed (${totalFlaky} flaky)`);
             } else {
-              lines.push(`## 🟡 Playwright Shard ${shard} — ${flaky.length} flaky test(s) (all passed on retry)`);
+              lines.push(`## ✅ Playwright Results — all ${totalPassed} tests passed`);
             }
             lines.push('');
-            lines.push(`✅ ${passed.length} passed · ❌ ${genuine.length} failed · 🟡 ${flaky.length} flaky · ⏭️ ${skipped.length} skipped`);
+            lines.push(`✅ ${totalPassed} passed · ❌ ${totalFailed} failed · 🟡 ${totalFlaky} flaky · ⏭️ ${totalSkipped} skipped`);
             lines.push('');
 
-            if (genuine.length > 0) {
+            // Per-shard summary table
+            lines.push('| Shard | Passed | Failed | Flaky | Skipped |');
+            lines.push('|-------|--------|--------|-------|---------|');
+            for (const r of shardResults) {
+              const status = r.genuine.length > 0 ? '🔴' : r.flaky.length > 0 ? '🟡' : '✅';
+              lines.push(`| ${status} Shard ${r.shard} | ${r.passed.length} | ${r.genuine.length} | ${r.flaky.length} | ${r.skipped.length} |`);
+            }
+            lines.push('');
+
+            // Genuine failures detail
+            const allGenuine = shardResults.flatMap(r => r.genuine.map(t => ({ ...t, shard: r.shard })));
+            if (allGenuine.length > 0) {
               lines.push('### Genuine Failures (failed on all attempts)');
               lines.push('');
-              for (const t of genuine.slice(0, 20)) {
+              for (const t of allGenuine.slice(0, 30)) {
                 const shortFile = t.file.replace(/.*playwright\/e2e\//, '');
-                const errorSnippet = t.error.split('\n')[0].substring(0, 200);
-                lines.push(`<details><summary>❌ <code>${shortFile}</code> › ${t.title}</summary>`);
+                lines.push(`<details><summary>❌ <code>${shortFile}</code> › ${t.title} (shard ${t.shard})</summary>`);
                 lines.push('');
                 lines.push('```');
                 lines.push(t.error.substring(0, 1000));
@@ -336,76 +364,66 @@ jobs:
                 lines.push('</details>');
                 lines.push('');
               }
-              if (genuine.length > 20) {
-                lines.push(`... and ${genuine.length - 20} more failures`);
+              if (allGenuine.length > 30) {
+                lines.push(`... and ${allGenuine.length - 30} more failures`);
                 lines.push('');
               }
             }
 
-            if (flaky.length > 0) {
-              lines.push('<details><summary>🟡 Flaky tests (passed on retry)</summary>');
+            // Flaky tests
+            const allFlaky = shardResults.flatMap(r => r.flaky.map(t => ({ ...t, shard: r.shard })));
+            if (allFlaky.length > 0) {
+              lines.push(`<details><summary>🟡 ${allFlaky.length} flaky test(s) (passed on retry)</summary>`);
               lines.push('');
-              for (const t of flaky.slice(0, 20)) {
+              for (const t of allFlaky.slice(0, 30)) {
                 const shortFile = t.file.replace(/.*playwright\/e2e\//, '');
-                lines.push(`- \`${shortFile}\` › ${t.title} (${t.retries} ${t.retries === 1 ? 'retry' : 'retries'})`);
+                lines.push(`- \`${shortFile}\` › ${t.title} (shard ${t.shard}, ${t.retries} ${t.retries === 1 ? 'retry' : 'retries'})`);
               }
-              if (flaky.length > 20) {
-                lines.push(`- ... and ${flaky.length - 20} more`);
+              if (allFlaky.length > 30) {
+                lines.push(`- ... and ${allFlaky.length - 30} more`);
               }
               lines.push('');
               lines.push('</details>');
               lines.push('');
             }
 
-            lines.push(`📦 [Download artifacts (report + screenshots + traces + videos)](${artifactUrl})`);
+            lines.push(`📦 [Download artifacts](${artifactUrl})`);
             lines.push('');
             lines.push('<details><summary>How to debug locally</summary>');
             lines.push('');
             lines.push('```bash');
-            lines.push('# Download playwright-test-results-' + shard + ' artifact and unzip');
+            lines.push('# Download playwright-test-results-<shard> artifact and unzip');
             lines.push('npx playwright show-trace path/to/trace.zip    # view trace');
-            lines.push('# Videos are in the same artifact as .webm files');
             lines.push('```');
             lines.push('</details>');
 
             const body = lines.join('\n');
 
-            const existing = await findExistingComment();
-            if (existing) {
-              await github.rest.issues.updateComment({ ...repo, comment_id: existing.id, body });
+            // Find existing consolidated comment
+            let existingComment = null;
+            for await (const response of github.paginate.iterator(
+              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+            )) {
+              const found = response.data.find(c =>
+                c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
+              );
+              if (found) { existingComment = found; break; }
+            }
+
+            // Also clean up any old per-shard comments from previous runs
+            for await (const response of github.paginate.iterator(
+              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+            )) {
+              for (const c of response.data) {
+                if (c.user?.login === 'github-actions[bot]' && /Playwright Shard \d/.test(c.body || '') && !c.body?.includes(commentMarker)) {
+                  await github.rest.issues.deleteComment({ ...repo, comment_id: c.id });
+                  console.log(`Deleted old per-shard comment ${c.id}`);
+                }
+              }
+            }
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
             } else {
               await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
             }
-
-            // Write a lightweight summary to GITHUB_STEP_SUMMARY (no inline images to stay under 1024k limit)
-            const summaryLines = [`## Shard ${shard} Failure Summary\n`];
-            const resultsDir = 'openmetadata-ui/src/main/resources/ui/playwright/output/test-results';
-            if (fs.existsSync(resultsDir)) {
-              const failedTests = [];
-              for (const entry of fs.readdirSync(resultsDir, { withFileTypes: true })) {
-                if (!entry.isDirectory()) continue;
-                const testDir = path.join(resultsDir, entry.name);
-                const hasScreenshots = fs.readdirSync(testDir).some(f => f.endsWith('.png'));
-                const hasTraces = fs.readdirSync(testDir).some(f => f.endsWith('.zip'));
-                const testName = entry.name.replace(/-chromium.*$/, '').replace(/-/g, ' ');
-                failedTests.push({ testName, hasScreenshots, hasTraces });
-              }
-              if (failedTests.length > 0) {
-                summaryLines.push(`| Test | Screenshots | Traces |`);
-                summaryLines.push(`|------|-------------|--------|`);
-                for (const t of failedTests.slice(0, 30)) {
-                  summaryLines.push(`| ${t.testName} | ${t.hasScreenshots ? '📸' : '-'} | ${t.hasTraces ? '🔍' : '-'} |`);
-                }
-                summaryLines.push('');
-                summaryLines.push(`📦 [Download screenshots, traces & videos from artifacts](${artifactUrl})`);
-              }
-            }
-            if (summaryLines.length > 1) {
-              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryLines.join('\n'));
-            }
-
-      - name: Clean Up
-        run: |
-          cd ./docker/development
-          docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
