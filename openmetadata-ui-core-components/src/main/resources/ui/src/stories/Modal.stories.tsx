@@ -43,273 +43,282 @@ type Story = StoryObj<typeof meta>;
 
 export const WithTitleProp: Story = {
   name: "Title prop (no sub-components)",
-  render: () => (
-    <DialogTrigger>
-      <Button color="primary">Open Modal</Button>
-      <ModalOverlay>
-        <Modal>
-          <Dialog title="Add your company" showCloseButton>
-            {({ close }) => (
-              <>
-                <Dialog.Content>
-                  <p className="tw:text-sm tw:text-secondary">
-                    Provide a few details about your organisation to get
-                    started.
-                  </p>
-                  <Input
-                    label="Company name"
-                    name="company"
-                    placeholder="e.g. Acme Corp"
-                  />
-                </Dialog.Content>
-                <Dialog.Footer>
-                  <Button color="secondary" onPress={close}>
-                    Cancel
-                  </Button>
-                  <Button color="primary">Create</Button>
-                </Dialog.Footer>
-              </>
-            )}
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
-    </DialogTrigger>
-  ),
+  render: () => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+      <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Button color="primary" onPress={() => setIsOpen(true)}>
+          Open Modal
+        </Button>
+        <ModalOverlay>
+          <Modal>
+            <Dialog title="Add your company" showCloseButton onClose={() => setIsOpen(false)}>
+              <Dialog.Content>
+                <p className="tw:text-sm tw:text-secondary">
+                  Provide a few details about your organisation to get started.
+                </p>
+                <Input
+                  label="Company name"
+                  name="company"
+                  placeholder="e.g. Acme Corp"
+                />
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button color="secondary" onPress={() => setIsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button color="primary">Create</Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      </DialogTrigger>
+    );
+  },
 };
 
 // ─── Full sub-component composition ──────────────────────────────────────────
 
 export const SubComponentComposition: Story = {
   name: "Sub-component composition",
-  render: () => (
-    <DialogTrigger>
-      <Button color="primary">Invite member</Button>
-      <ModalOverlay>
-        <Modal>
-          <Dialog showCloseButton>
-            {({ close }) => (
-              <>
-                <Dialog.Header>
-                  <FeaturedIcon
-                    color="gray"
-                    theme="modern"
-                    size="lg"
-                    icon={User01}
-                    className="tw:max-sm:hidden"
-                  />
-                  <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5">
-                    <span className="tw:text-md tw:font-semibold tw:text-primary">
-                      Invite team member
-                    </span>
-                    <p className="tw:text-sm tw:text-tertiary">
-                      They will receive an email with a link to join.
-                    </p>
-                  </div>
-                </Dialog.Header>
-                <div className="tw:h-5 tw:w-full" />
-                <div className="tw:w-full tw:border-t tw:border-secondary" />
-                <Dialog.Content>
-                  <Input
-                    label="Full name"
-                    name="name"
-                    placeholder="Jane Doe"
-                    icon={User01}
-                  />
-                  <Input
-                    label="Email address"
-                    name="email"
-                    type="email"
-                    placeholder="jane@acme.com"
-                    icon={Mail01}
-                  />
-                  <Select
-                    label="Role"
-                    placeholder="Select a role"
-                    items={[
-                      { id: "admin", label: "Admin" },
-                      { id: "editor", label: "Editor" },
-                      { id: "viewer", label: "Viewer" },
-                    ]}
-                  >
-                    {(item) => (
-                      <SelectItem id={item.id}>{item.label}</SelectItem>
-                    )}
-                  </Select>
-                </Dialog.Content>
-                <Dialog.Footer>
-                  <Button color="secondary" onPress={close}>
-                    Cancel
-                  </Button>
-                  <Button color="primary">Send invite</Button>
-                </Dialog.Footer>
-              </>
-            )}
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
-    </DialogTrigger>
-  ),
+  render: () => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+      <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Button color="primary" onPress={() => setIsOpen(true)}>
+          Invite member
+        </Button>
+        <ModalOverlay>
+          <Modal>
+            <Dialog showCloseButton onClose={() => setIsOpen(false)}>
+              <Dialog.Header>
+                <FeaturedIcon
+                  color="gray"
+                  theme="modern"
+                  size="lg"
+                  icon={User01}
+                  className="tw:max-sm:hidden"
+                />
+                <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5">
+                  <span className="tw:text-md tw:font-semibold tw:text-primary">
+                    Invite team member
+                  </span>
+                  <p className="tw:text-sm tw:text-tertiary">
+                    They will receive an email with a link to join.
+                  </p>
+                </div>
+              </Dialog.Header>
+              <div className="tw:h-5 tw:w-full" />
+              <div className="tw:w-full tw:border-t tw:border-secondary" />
+              <Dialog.Content>
+                <Input
+                  label="Full name"
+                  name="name"
+                  placeholder="Jane Doe"
+                  icon={User01}
+                />
+                <Input
+                  label="Email address"
+                  name="email"
+                  type="email"
+                  placeholder="jane@acme.com"
+                  icon={Mail01}
+                />
+                <Select
+                  label="Role"
+                  placeholder="Select a role"
+                  items={[
+                    { id: "admin", label: "Admin" },
+                    { id: "editor", label: "Editor" },
+                    { id: "viewer", label: "Viewer" },
+                  ]}
+                >
+                  {(item) => (
+                    <SelectItem id={item.id}>{item.label}</SelectItem>
+                  )}
+                </Select>
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button color="secondary" onPress={() => setIsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button color="primary">Send invite</Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      </DialogTrigger>
+    );
+  },
 };
 
 // ─── Custom header (no title, custom children) ────────────────────────────────
 
 export const CustomHeader: Story = {
   name: "Custom header with icon + badge",
-  render: () => (
-    <DialogTrigger>
-      <Button color="secondary">Add company</Button>
-      <ModalOverlay>
-        <Modal>
-          <Dialog showCloseButton>
-            {({ close }) => (
-              <>
-                <Dialog.Header>
-                  <FeaturedIcon
-                    color="gray"
-                    theme="modern"
-                    size="lg"
-                    icon={Building07}
-                    className="tw:max-sm:hidden"
-                  />
-                  <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5">
-                    <div className="tw:flex tw:items-center tw:gap-2">
-                      <span className="tw:text-md tw:font-semibold tw:text-primary">
-                        Add your company
-                      </span>
-                      <Badge color="brand" size="sm">
-                        New
-                      </Badge>
-                    </div>
-                    <p className="tw:text-sm tw:text-tertiary">
-                      Create your company profile for free{" "}
-                      <span className="tw:max-md:hidden">
-                        in less than 5 minutes.
-                      </span>
-                    </p>
+  render: () => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+      <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Button color="secondary" onPress={() => setIsOpen(true)}>
+          Add company
+        </Button>
+        <ModalOverlay>
+          <Modal>
+            <Dialog showCloseButton onClose={() => setIsOpen(false)}>
+              <Dialog.Header>
+                <FeaturedIcon
+                  color="gray"
+                  theme="modern"
+                  size="lg"
+                  icon={Building07}
+                  className="tw:max-sm:hidden"
+                />
+                <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5">
+                  <div className="tw:flex tw:items-center tw:gap-2">
+                    <span className="tw:text-md tw:font-semibold tw:text-primary">
+                      Add your company
+                    </span>
+                    <Badge color="brand" size="sm">
+                      New
+                    </Badge>
                   </div>
-                </Dialog.Header>
-                <div className="tw:h-5 tw:w-full" />
-                <div className="tw:w-full tw:border-t tw:border-secondary" />
-                <Dialog.Content>
-                  <Input
-                    label="Company name"
-                    name="company"
-                    placeholder="e.g. Linear"
-                  />
-                  <TextArea
-                    label="Description"
-                    name="description"
-                    placeholder="Write a few sentences about the company..."
-                    className="tw:h-24"
-                  />
-                </Dialog.Content>
-                <Dialog.Footer>
-                  <Button color="secondary" onPress={close}>
-                    Cancel
-                  </Button>
-                  <Button color="primary">Add company</Button>
-                </Dialog.Footer>
-              </>
-            )}
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
-    </DialogTrigger>
-  ),
+                  <p className="tw:text-sm tw:text-tertiary">
+                    Create your company profile for free{" "}
+                    <span className="tw:max-md:hidden">
+                      in less than 5 minutes.
+                    </span>
+                  </p>
+                </div>
+              </Dialog.Header>
+              <div className="tw:h-5 tw:w-full" />
+              <div className="tw:w-full tw:border-t tw:border-secondary" />
+              <Dialog.Content>
+                <Input
+                  label="Company name"
+                  name="company"
+                  placeholder="e.g. Linear"
+                />
+                <TextArea
+                  label="Description"
+                  name="description"
+                  placeholder="Write a few sentences about the company..."
+                  className="tw:h-24"
+                />
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button color="secondary" onPress={() => setIsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button color="primary">Add company</Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      </DialogTrigger>
+    );
+  },
 };
 
 // ─── Custom footer layout ─────────────────────────────────────────────────────
 
 export const CustomFooter: Story = {
   name: "Custom footer layout",
-  render: () => (
-    <DialogTrigger>
-      <Button color="secondary">Settings</Button>
-      <ModalOverlay>
-        <Modal>
-          <Dialog title="Notification settings" showCloseButton>
-            {({ close }) => (
-              <>
-                <Dialog.Content>
-                  <p className="tw:text-sm tw:text-secondary">
-                    Choose how you want to be notified about activity.
-                  </p>
-                  <Select
-                    label="Email frequency"
-                    placeholder="Select frequency"
-                    items={[
-                      { id: "realtime", label: "Real-time" },
-                      { id: "daily", label: "Daily digest" },
-                      { id: "weekly", label: "Weekly digest" },
-                      { id: "never", label: "Never" },
-                    ]}
-                  >
-                    {(item) => (
-                      <SelectItem id={item.id}>{item.label}</SelectItem>
-                    )}
-                  </Select>
-                </Dialog.Content>
-                {/* Custom footer — full-width single button */}
-                <Dialog.Footer className="tw:[&>div:last-child]:tw:grid-cols-1">
-                  <Button color="primary" className="tw:w-full" onPress={close}>
-                    Save settings
-                  </Button>
-                </Dialog.Footer>
-              </>
-            )}
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
-    </DialogTrigger>
-  ),
+  render: () => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+      <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Button color="secondary" onPress={() => setIsOpen(true)}>
+          Settings
+        </Button>
+        <ModalOverlay>
+          <Modal>
+            <Dialog title="Notification settings" showCloseButton onClose={() => setIsOpen(false)}>
+              <Dialog.Content>
+                <p className="tw:text-sm tw:text-secondary">
+                  Choose how you want to be notified about activity.
+                </p>
+                <Select
+                  label="Email frequency"
+                  placeholder="Select frequency"
+                  items={[
+                    { id: "realtime", label: "Real-time" },
+                    { id: "daily", label: "Daily digest" },
+                    { id: "weekly", label: "Weekly digest" },
+                    { id: "never", label: "Never" },
+                  ]}
+                >
+                  {(item) => (
+                    <SelectItem id={item.id}>{item.label}</SelectItem>
+                  )}
+                </Select>
+              </Dialog.Content>
+              {/* Custom footer — full-width single button */}
+              <Dialog.Footer className="tw:[&>div:last-child]:tw:grid-cols-1">
+                <Button color="primary" className="tw:w-full" onPress={() => setIsOpen(false)}>
+                  Save settings
+                </Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      </DialogTrigger>
+    );
+  },
 };
 
 // ─── Destructive / confirmation ───────────────────────────────────────────────
 
 export const Destructive: Story = {
   name: "Destructive confirmation",
-  render: () => (
-    <DialogTrigger>
-      <Button color="primary-destructive">Delete workspace</Button>
-      <ModalOverlay>
-        <Modal>
-          <Dialog showCloseButton width={400}>
-            {({ close }) => (
-              <>
-                <Dialog.Header className="tw:flex-col">
-                  <div className="tw:relative tw:w-max">
-                    <FeaturedIcon
-                      color="error"
-                      theme="light"
-                      size="lg"
-                      icon={AlertTriangle}
-                    />
-                  </div>
-                  <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5 tw:mt-4">
-                    <span className="tw:text-md tw:font-semibold tw:text-primary">
-                      Delete workspace
-                    </span>
-                    <p className="tw:text-sm tw:text-tertiary">
-                      Are you sure you want to delete this workspace? This
-                      action cannot be undone.
-                    </p>
-                  </div>
-                </Dialog.Header>
-                <div className="tw:z-10 tw:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:p-4 tw:pt-6 tw:*:grow tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6 tw:sm:pt-8 tw:sm:pb-6">
-                  <Button size="lg" color="secondary" onPress={close}>
-                    Cancel
-                  </Button>
-                  <Button size="lg" color="primary-destructive">
-                    Delete workspace
-                  </Button>
+  render: () => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+      <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Button color="primary-destructive" onPress={() => setIsOpen(true)}>
+          Delete workspace
+        </Button>
+        <ModalOverlay>
+          <Modal>
+            <Dialog showCloseButton width={400} onClose={() => setIsOpen(false)}>
+              <Dialog.Header className="tw:flex-col">
+                <div className="tw:relative tw:w-max">
+                  <FeaturedIcon
+                    color="error"
+                    theme="light"
+                    size="lg"
+                    icon={AlertTriangle}
+                  />
                 </div>
-              </>
-            )}
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
-    </DialogTrigger>
-  ),
+                <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5 tw:mt-4">
+                  <span className="tw:text-md tw:font-semibold tw:text-primary">
+                    Delete workspace
+                  </span>
+                  <p className="tw:text-sm tw:text-tertiary">
+                    Are you sure you want to delete this workspace? This action
+                    cannot be undone.
+                  </p>
+                </div>
+              </Dialog.Header>
+              <div className="tw:z-10 tw:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:p-4 tw:pt-6 tw:*:grow tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6 tw:sm:pt-8 tw:sm:pb-6">
+                <Button size="lg" color="secondary" onPress={() => setIsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button size="lg" color="primary-destructive">
+                  Delete workspace
+                </Button>
+              </div>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      </DialogTrigger>
+    );
+  },
 };
 
 // ─── No close button, controlled open state ───────────────────────────────────

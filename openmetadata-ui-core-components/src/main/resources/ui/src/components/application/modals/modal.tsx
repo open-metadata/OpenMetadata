@@ -102,10 +102,12 @@ const DialogFooter = ({ children, className }: DialogFooterProps) => (
 
 // Main Dialog
 
-interface DialogProps extends AriaDialogProps {
+interface DialogProps extends Omit<AriaDialogProps, "children"> {
+  children?: ReactNode;
   title?: string;
   showCloseButton?: boolean;
   width?: number;
+  onClose?: () => void;
 }
 
 type DialogComponent = ((props: DialogProps) => JSX.Element) & {
@@ -114,7 +116,7 @@ type DialogComponent = ((props: DialogProps) => JSX.Element) & {
   Footer: typeof DialogFooter;
 };
 
-const DialogBase = ({ children, title, showCloseButton, width = 688, ...props }: DialogProps) => (
+const DialogBase = ({ children, title, showCloseButton, onClose, width = 688, ...props }: DialogProps) => (
   <AriaDialog
     {...props}
     className={cx(
@@ -122,30 +124,28 @@ const DialogBase = ({ children, title, showCloseButton, width = 688, ...props }:
       props.className as string | undefined,
     )}
   >
-    {(renderProps) => (
-      <div
-        className="tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl"
-        style={{ maxWidth: width }}
-      >
-        <div className="tw:overflow-hidden tw:rounded-2xl">
-          {title && (
-            <>
-              <DialogHeader title={title} />
-              <div className="tw:h-5 tw:w-full" />
-              <div className="tw:w-full tw:border-t tw:border-secondary" />
-            </>
-          )}
-          {typeof children === "function" ? children(renderProps) : children}
-        </div>
-        {showCloseButton && (
-          <CloseButton
-            size="lg"
-            className="tw:absolute tw:top-3 tw:right-3 tw:z-10"
-            onPress={renderProps.close}
-          />
+    <div
+      className="tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl"
+      style={{ maxWidth: width }}
+    >
+      <div className="tw:overflow-hidden tw:rounded-2xl">
+        {title && (
+          <>
+            <DialogHeader title={title} />
+            <div className="tw:h-5 tw:w-full" />
+            <div className="tw:w-full tw:border-t tw:border-secondary" />
+          </>
         )}
+        {children}
       </div>
-    )}
+      {showCloseButton && (
+        <CloseButton
+          size="lg"
+          className="tw:absolute tw:top-3 tw:right-3 tw:z-10"
+          onPress={onClose}
+        />
+      )}
+    </div>
   </AriaDialog>
 );
 
