@@ -1061,7 +1061,10 @@ export const openColumnDetailPanel = async ({
   }
   await expect(page.locator('.column-detail-panel')).toBeVisible();
 
-  await apiResponsePromise;
+  if (apiResponsePromise) {
+    const apiResponse = await apiResponsePromise;
+    expect(apiResponse.status()).toBe(200);
+  }
 
   const panelContainer = page.locator('.column-detail-panel');
 
