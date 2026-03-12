@@ -341,15 +341,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     _compute_sqa_fn, so compiler.process() already produces LENGTH("col")
     here — no special-casing needed.
     """
-    # pylint: disable=import-outside-toplevel
-    from metadata.profiler.orm.registry import is_date_time
-
     col_clause = elements.clauses.clauses[0]
-
-    col_type = getattr(col_clause, "type", None)
-    if col_type is not None and is_date_time(col_type):
-        return "CAST(NULL AS DECIMAL(32,4))"
-
     col = compiler.process(col_clause)
     table = elements.clauses.clauses[1].value
     percentile = elements.clauses.clauses[2].value
