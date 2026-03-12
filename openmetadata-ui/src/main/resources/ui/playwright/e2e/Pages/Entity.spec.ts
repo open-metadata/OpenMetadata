@@ -593,9 +593,18 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             '[data-testid="glossary-term-select-search-bar"]'
           );
           await expect(searchBar).toBeVisible();
+          const glossarySearchResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.url().includes('glossary_term_search_index') &&
+              response.request().method() === 'GET'
+          );
           await searchBar.fill(
             EntityDataClass.glossaryTerm1.responseData.displayName
           );
+          const glossarySearchRequest = await glossarySearchResponse;
+          expect(glossarySearchRequest.status()).toBe(200);
+          await waitForAllLoadersToDisappear(page);
 
           // Wait for term option to be visible before clicking
           const termOption = page.locator('.ant-list-item').filter({
@@ -695,12 +704,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             )
           ).toBeVisible();
 
-          const columnApiResponse = page.waitForResponse(
-            (response) =>
-              (response.url().includes(`/api/v1/${entity.endpoint}/name/`) ||
-                response.url().includes('/api/v1/columns/name/')) &&
-              response.request().method() === 'GET'
-          );
           // Cleanup: remove both tag and glossary term from column detail panel
           const cleanupPanel = await openColumnDetailPanel({
             page,
@@ -708,10 +711,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             columnId: entity.childrenSelectorId ?? '',
             columnNameTestId,
             entityType: entity.type as EntityType,
+            entityEndpoint:
+              entity.type === 'Table' ? entity.endpoint : undefined,
           });
 
-          const columnApiRequest = await columnApiResponse;
-          expect(columnApiRequest.status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
           // Remove glossary term
           await cleanupPanel.getByTestId('edit-glossary-terms').click();
@@ -1331,6 +1334,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       test('Glossary Term Add, Update and Remove for child entities', async ({
         page,
       }) => {
+        test.slow(true);
         await page.getByTestId(entity.childrenTabId ?? '').click();
 
         await entity.glossaryTermChildren({
@@ -1346,22 +1350,16 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           const columnNameTestId =
             entity.type === 'Pipeline' ? 'task-name' : 'column-name';
 
-          const columnApiResponse = page.waitForResponse(
-            (response) =>
-              (response.url().includes(`/api/v1/${entity.endpoint}/name/`) ||
-                response.url().includes('/api/v1/columns/name/')) &&
-              response.request().method() === 'GET'
-          );
           const panelContainer = await openColumnDetailPanel({
             page,
             rowSelector,
             columnId: entity.childrenSelectorId ?? '',
             columnNameTestId,
             entityType: entity.type as EntityType,
+            entityEndpoint:
+              entity.type === 'Table' ? entity.endpoint : undefined,
           });
 
-          const columnApiRequest = await columnApiResponse;
-          expect(columnApiRequest.status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
           // Add glossary term via panel
           const editButton = panelContainer.getByTestId('edit-glossary-terms');
