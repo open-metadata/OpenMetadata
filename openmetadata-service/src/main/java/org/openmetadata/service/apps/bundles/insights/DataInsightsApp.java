@@ -52,7 +52,6 @@ import org.quartz.JobExecutionContext;
 
 @Slf4j
 public class DataInsightsApp extends AbstractNativeApplication {
-  public static final String REPORT_DATA_TYPE_KEY = "ReportDataType";
   public static final String DATA_ASSET_INDEX_PREFIX = "di-data-assets";
   @Getter private Long timestamp;
   @Getter private int batchSize;

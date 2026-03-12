@@ -48,7 +48,6 @@ public class ReindexingUtil {
   }
 
   public static final String ENTITY_TYPE_KEY = "entityType";
-  public static final String ENTITY_NAME_LIST_KEY = "entityNameList";
   public static final String TIMESTAMP_KEY = "@timestamp";
   public static final String TARGET_INDEX_KEY = "targetIndex";
   public static final String RECREATE_CONTEXT = "recreateContext";
