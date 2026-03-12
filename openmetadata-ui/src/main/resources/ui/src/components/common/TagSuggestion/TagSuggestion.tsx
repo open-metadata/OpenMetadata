@@ -13,7 +13,9 @@
 
 import {
   Autocomplete,
-  type AutocompleteItemType,
+  BadgeWithButton,
+  Dot,
+  type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import { EntityTags } from 'Models';
@@ -25,7 +27,8 @@ import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsUtils';
-import { TagChip } from '../atoms/TagChip';
+
+type TagSelectItem = SelectItemType & { labelColor?: string };
 
 export type SelectOption = {
   label: string;
@@ -51,10 +54,10 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
   required = false,
 }) => {
   const { t } = useTranslation();
-  const [options, setOptions] = useState<AutocompleteItemType[]>([]);
+  const [options, setOptions] = useState<TagSelectItem[]>([]);
   const tagDataMap = useRef<Map<string, TagLabel>>(new Map());
 
-  const selectedItems: AutocompleteItemType[] = value.map((tag) => ({
+  const selectedItems: TagSelectItem[] = value.map((tag) => ({
     id: tag.tagFQN,
     label: getTagDisplay(tag.displayName || tag.name) || tag.tagFQN,
     supportingText: tag.displayName || tag.name,
@@ -159,35 +162,65 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
         isRequired={required}
         items={options}
         label={label}
-        noOptionsMessage={t('label.no-result-found')}
         placeholder={
           placeholder ??
           t('label.select-field', { field: t('label.tag-plural') })
         }
-        renderTag={(item, onRemove) => (
-          <TagChip
-            key={item.id}
-            label={item.label ?? item.id}
-            size="small"
-            tagColor={tagDataMap.current.get(String(item.id))?.style?.color}
-            onDelete={onRemove}
-          />
-        )}
+        renderTag={(item, onRemove) => {
+          const tagColor = tagDataMap.current.get(String(item.id))?.style
+            ?.color;
+
+          return (
+            <BadgeWithButton
+              key={item.id}
+              size="sm"
+              type="color"
+              onButtonClick={onRemove}>
+              {tagColor && (
+                <Dot
+                  size="sm"
+                  style={{ color: tagColor, marginRight: '2px' }}
+                />
+              )}
+              {item.label ?? item.id}
+            </BadgeWithButton>
+          );
+        }}
         selectedItems={selectedItems}
         onItemCleared={handleItemCleared}
         onItemInserted={handleItemInserted}
         onSearchChange={handleSearchChange}>
-        {(item) => (
-          <Autocomplete.Item
-            data-testid={`tag-option-${item.id}`}
-            id={String(item.id)}
-            key={item.id}
-            label={item.label}
-            labelColor={item.labelColor}
-            supportingText={item.supportingText}
-            supportingTextLayout="column"
-          />
-        )}
+        {(item) => {
+          const tagItem = item as TagSelectItem;
+
+          return (
+            <Autocomplete.Item
+              data-testid={`tag-option-${tagItem.id}`}
+              id={String(tagItem.id)}
+              key={tagItem.id}
+              label={tagItem.label}
+              supportingText={tagItem.supportingText}>
+              {({ isDisabled }) => (
+                <div className="tw:flex tw:flex-col tw:gap-y-0.5 tw:min-w-0 tw:flex-1">
+                  <span
+                    className="tw:truncate tw:text-md tw:font-medium tw:whitespace-nowrap"
+                    style={
+                      tagItem.labelColor && !isDisabled
+                        ? { color: tagItem.labelColor }
+                        : undefined
+                    }>
+                    {tagItem.label}
+                  </span>
+                  {tagItem.supportingText && (
+                    <span className="tw:text-sm tw:whitespace-nowrap tw:text-tertiary">
+                      {tagItem.supportingText}
+                    </span>
+                  )}
+                </div>
+              )}
+            </Autocomplete.Item>
+          );
+        }}
       </Autocomplete>
     </div>
   );

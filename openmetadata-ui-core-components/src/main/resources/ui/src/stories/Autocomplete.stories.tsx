@@ -13,9 +13,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useListData } from "react-stately";
 import { Autocomplete } from "../components/base/autocomplete/autocomplete";
-import type { AutocompleteItemType } from "../components/base/autocomplete/autocomplete";
+import type { SelectItemType } from "../components/base/select/select";
 
-const ITEMS: AutocompleteItemType[] = [
+const ITEMS: SelectItemType[] = [
   { id: "1", label: "Alice Johnson" },
   { id: "2", label: "Bob Smith" },
   { id: "3", label: "Carol Williams" },
@@ -26,7 +26,7 @@ const ITEMS: AutocompleteItemType[] = [
   { id: "8", label: "Henry Wilson" },
 ];
 
-const ITEMS_WITH_SUPPORTING_TEXT: AutocompleteItemType[] = [
+const ITEMS_WITH_SUPPORTING_TEXT: SelectItemType[] = [
   { id: "t1", label: "PII", supportingText: "Personally Identifiable Information" },
   { id: "t2", label: "Sensitive", supportingText: "Sensitive data" },
   { id: "t3", label: "Public", supportingText: "Publicly available" },
@@ -34,20 +34,22 @@ const ITEMS_WITH_SUPPORTING_TEXT: AutocompleteItemType[] = [
   { id: "t5", label: "Restricted", supportingText: "Restricted access" },
 ];
 
-const ITEMS_WITH_SUPPORTING_TEXT_COLUMN: AutocompleteItemType[] = [
-  { id: "c1", label: "Alice Johnson", supportingText: "alice@example.com", supportingTextLayout: "column" },
-  { id: "c2", label: "Bob Smith", supportingText: "bob@example.com", supportingTextLayout: "column" },
-  { id: "c3", label: "Carol Williams", supportingText: "carol@example.com", supportingTextLayout: "column" },
-  { id: "c4", label: "David Brown", supportingText: "david@example.com", supportingTextLayout: "column" },
-  { id: "c5", label: "Eva Martinez", supportingText: "eva@example.com", supportingTextLayout: "column" },
-];
-
-const ITEMS_WITH_AVATARS: AutocompleteItemType[] = [
+const ITEMS_WITH_AVATARS: SelectItemType[] = [
   { id: "u1", label: "Alice Johnson", avatarUrl: "https://i.pravatar.cc/32?img=1" },
   { id: "u2", label: "Bob Smith", avatarUrl: "https://i.pravatar.cc/32?img=2" },
   { id: "u3", label: "Carol Williams", avatarUrl: "https://i.pravatar.cc/32?img=3" },
   { id: "u4", label: "David Brown", avatarUrl: "https://i.pravatar.cc/32?img=4" },
   { id: "u5", label: "Eva Martinez", avatarUrl: "https://i.pravatar.cc/32?img=5" },
+];
+
+type TagItem = SelectItemType & { tagColor?: string };
+
+const ITEMS_WITH_COLORS: TagItem[] = [
+  { id: "c1", label: "PII", supportingText: "Personally Identifiable Information", tagColor: "#e53e3e" },
+  { id: "c2", label: "Sensitive", supportingText: "Internal use only", tagColor: "#dd6b20" },
+  { id: "c3", label: "Public", supportingText: "Publicly available data", tagColor: "#38a169" },
+  { id: "c4", label: "Confidential", supportingText: "Restricted to authorized users", tagColor: "#3182ce" },
+  { id: "c5", label: "Restricted", supportingText: "Highly restricted access", tagColor: "#805ad5" },
 ];
 
 const meta = {
@@ -64,15 +66,13 @@ export default meta;
 
 export const Default: StoryObj = {
   render: () => {
-    const selectedItems = useListData<AutocompleteItemType>({ initialItems: [] });
+    const selectedItems = useListData<SelectItemType>({ initialItems: [] });
 
     return (
       <div style={{ width: 360 }}>
         <Autocomplete items={ITEMS} selectedItems={selectedItems} placeholder="Search people...">
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} isDisabled={item.isDisabled}>
-              {item.label}
-            </Autocomplete.Item>
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} isDisabled={item.isDisabled} />
           )}
         </Autocomplete>
       </div>
@@ -82,7 +82,7 @@ export const Default: StoryObj = {
 
 export const WithLabel: StoryObj = {
   render: () => {
-    const selectedItems = useListData<AutocompleteItemType>({ initialItems: [] });
+    const selectedItems = useListData<SelectItemType>({ initialItems: [] });
 
     return (
       <div style={{ width: 360 }}>
@@ -93,9 +93,7 @@ export const WithLabel: StoryObj = {
           placeholder="Search and select owners..."
         >
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label}>
-              {item.label}
-            </Autocomplete.Item>
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
           )}
         </Autocomplete>
       </div>
@@ -105,7 +103,7 @@ export const WithLabel: StoryObj = {
 
 export const WithHint: StoryObj = {
   render: () => {
-    const selectedItems = useListData<AutocompleteItemType>({ initialItems: [] });
+    const selectedItems = useListData<SelectItemType>({ initialItems: [] });
 
     return (
       <div style={{ width: 360 }}>
@@ -117,9 +115,7 @@ export const WithHint: StoryObj = {
           placeholder="Search tags..."
         >
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} supportingText={item.supportingText}>
-              {item.label}
-            </Autocomplete.Item>
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} supportingText={item.supportingText} />
           )}
         </Autocomplete>
       </div>
@@ -129,7 +125,7 @@ export const WithHint: StoryObj = {
 
 export const WithTooltip: StoryObj = {
   render: () => {
-    const selectedItems = useListData<AutocompleteItemType>({ initialItems: [] });
+    const selectedItems = useListData<SelectItemType>({ initialItems: [] });
 
     return (
       <div style={{ width: 360 }}>
@@ -141,9 +137,7 @@ export const WithTooltip: StoryObj = {
           placeholder="Search assignees..."
         >
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label}>
-              {item.label}
-            </Autocomplete.Item>
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
           )}
         </Autocomplete>
       </div>
@@ -153,7 +147,7 @@ export const WithTooltip: StoryObj = {
 
 export const WithPreselectedItems: StoryObj = {
   render: () => {
-    const selectedItems = useListData<AutocompleteItemType>({
+    const selectedItems = useListData<SelectItemType>({
       initialItems: [ITEMS[0], ITEMS[2], ITEMS[5]],
     });
 
@@ -166,9 +160,7 @@ export const WithPreselectedItems: StoryObj = {
           placeholder="Search and add more..."
         >
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label}>
-              {item.label}
-            </Autocomplete.Item>
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
           )}
         </Autocomplete>
       </div>
@@ -178,7 +170,7 @@ export const WithPreselectedItems: StoryObj = {
 
 export const WithAvatars: StoryObj = {
   render: () => {
-    const selectedItems = useListData<AutocompleteItemType>({ initialItems: [] });
+    const selectedItems = useListData<SelectItemType>({ initialItems: [] });
 
     return (
       <div style={{ width: 360 }}>
@@ -189,9 +181,7 @@ export const WithAvatars: StoryObj = {
           placeholder="Search team members..."
         >
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} avatarUrl={item.avatarUrl}>
-              {item.label}
-            </Autocomplete.Item>
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} avatarUrl={item.avatarUrl} />
           )}
         </Autocomplete>
       </div>
@@ -201,7 +191,7 @@ export const WithAvatars: StoryObj = {
 
 export const WithSupportingText: StoryObj = {
   render: () => {
-    const selectedItems = useListData<AutocompleteItemType>({ initialItems: [] });
+    const selectedItems = useListData<SelectItemType>({ initialItems: [] });
 
     return (
       <div style={{ width: 380 }}>
@@ -212,9 +202,7 @@ export const WithSupportingText: StoryObj = {
           placeholder="Search tags..."
         >
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} supportingText={item.supportingText}>
-              {item.label}
-            </Autocomplete.Item>
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} supportingText={item.supportingText} />
           )}
         </Autocomplete>
       </div>
@@ -222,10 +210,56 @@ export const WithSupportingText: StoryObj = {
   },
 };
 
+export const WithCustomChildren: StoryObj = {
+  render: () => {
+    const selectedItems = useListData<TagItem>({ initialItems: [] });
+
+    return (
+      <div style={{ width: 380 }}>
+        <Autocomplete
+          label="Tags"
+          hint="Items use custom children for column layout and colored labels."
+          items={ITEMS_WITH_COLORS}
+          selectedItems={selectedItems}
+          placeholder="Search tags..."
+        >
+          {(item) => {
+            const tagItem = item as TagItem;
+
+            return (
+              <Autocomplete.Item
+                key={tagItem.id}
+                id={tagItem.id}
+                label={tagItem.label}
+                supportingText={tagItem.supportingText}
+              >
+                {({ isDisabled }) => (
+                  <div className="tw:flex tw:flex-col tw:gap-y-0.5 tw:min-w-0 tw:flex-1">
+                    <span
+                      className="tw:truncate tw:text-md tw:font-medium tw:whitespace-nowrap"
+                      style={tagItem.tagColor && !isDisabled ? { color: tagItem.tagColor } : undefined}
+                    >
+                      {tagItem.label}
+                    </span>
+                    {tagItem.supportingText && (
+                      <span className="tw:text-md tw:whitespace-nowrap tw:text-tertiary">
+                        {tagItem.supportingText}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </Autocomplete.Item>
+            );
+          }}
+        </Autocomplete>
+      </div>
+    );
+  },
+};
 
 export const Disabled: StoryObj = {
   render: () => {
-    const selectedItems = useListData<AutocompleteItemType>({
+    const selectedItems = useListData<SelectItemType>({
       initialItems: [ITEMS[0], ITEMS[1]],
     });
 
@@ -239,9 +273,7 @@ export const Disabled: StoryObj = {
           placeholder="Search..."
         >
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label}>
-              {item.label}
-            </Autocomplete.Item>
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
           )}
         </Autocomplete>
       </div>
@@ -251,23 +283,21 @@ export const Disabled: StoryObj = {
 
 export const WithInvalidState: StoryObj = {
   render: () => {
-    const selectedItems = useListData<AutocompleteItemType>({ initialItems: [] });
+    const selectedItems = useListData<SelectItemType>({ initialItems: [] });
 
     return (
       <div style={{ width: 360 }}>
         <Autocomplete
           isInvalid
+          isRequired
           label="Required Field"
           hint="At least one owner must be selected."
           items={ITEMS}
           selectedItems={selectedItems}
           placeholder="Search owners..."
-          isRequired
         >
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label}>
-              {item.label}
-            </Autocomplete.Item>
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
           )}
         </Autocomplete>
       </div>
@@ -277,7 +307,7 @@ export const WithInvalidState: StoryObj = {
 
 export const WithoutIcon: StoryObj = {
   render: () => {
-    const selectedItems = useListData<AutocompleteItemType>({ initialItems: [] });
+    const selectedItems = useListData<SelectItemType>({ initialItems: [] });
 
     return (
       <div style={{ width: 360 }}>
@@ -289,46 +319,7 @@ export const WithoutIcon: StoryObj = {
           placeholder="Type to search..."
         >
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} supportingText={item.supportingText}>
-              {item.label}
-            </Autocomplete.Item>
-          )}
-        </Autocomplete>
-      </div>
-    );
-  },
-};
-
-export const WithSupportingTextLayouts: StoryObj = {
-  render: () => {
-    const selectedRow = useListData<AutocompleteItemType>({ initialItems: [] });
-    const selectedColumn = useListData<AutocompleteItemType>({ initialItems: [] });
-
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 24, width: 380 }}>
-        <Autocomplete
-          label="Row layout (default)"
-          items={ITEMS_WITH_SUPPORTING_TEXT}
-          selectedItems={selectedRow}
-          placeholder="Search tags..."
-        >
-          {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} supportingText={item.supportingText} supportingTextLayout="row">
-              {item.label}
-            </Autocomplete.Item>
-          )}
-        </Autocomplete>
-
-        <Autocomplete
-          label="Column layout"
-          items={ITEMS_WITH_SUPPORTING_TEXT_COLUMN}
-          selectedItems={selectedColumn}
-          placeholder="Search people..."
-        >
-          {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label} supportingText={item.supportingText} supportingTextLayout="column">
-              {item.label}
-            </Autocomplete.Item>
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} supportingText={item.supportingText} />
           )}
         </Autocomplete>
       </div>
@@ -338,7 +329,7 @@ export const WithSupportingTextLayouts: StoryObj = {
 
 export const ManySelectedItems: StoryObj = {
   render: () => {
-    const selectedItems = useListData<AutocompleteItemType>({
+    const selectedItems = useListData<SelectItemType>({
       initialItems: [ITEMS[0], ITEMS[1], ITEMS[2], ITEMS[3]],
     });
 
@@ -351,9 +342,7 @@ export const ManySelectedItems: StoryObj = {
           placeholder="Add more..."
         >
           {(item) => (
-            <Autocomplete.Item key={item.id} id={item.id} label={item.label}>
-              {item.label}
-            </Autocomplete.Item>
+            <Autocomplete.Item key={item.id} id={item.id} label={item.label} />
           )}
         </Autocomplete>
       </div>

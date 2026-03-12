@@ -5,9 +5,10 @@ import { Popover } from '@/components/base/select/popover';
 import { type SelectItemType, SelectContext, sizes } from '@/components/base/select/select';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
 import { SearchLg } from '@untitledui/icons';
 import type { FocusEventHandler, KeyboardEvent, PointerEventHandler, ReactNode, RefAttributes } from 'react';
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, isValidElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { FocusScope, useFilter, useFocusManager } from 'react-aria';
 import type {
   ComboBoxProps as AriaComboBoxProps,
@@ -23,13 +24,9 @@ import {
   ComboBoxStateContext,
 } from 'react-aria-components';
 import type { ListData } from 'react-stately';
+import { Avatar } from '../avatar/avatar';
 import { CloseButton } from '../buttons/close-button';
 import { AutocompleteItem } from './autocomplete-item';
-
-export type AutocompleteItemType = SelectItemType & {
-  labelColor?: string;
-  supportingTextLayout?: 'row' | 'column';
-};
 
 interface AutocompleteContextValue {
   size: 'sm' | 'md';
@@ -73,8 +70,21 @@ export interface AutocompleteProps
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   filterOption?: (item: SelectItemType, filterText: string) => boolean;
   onSearchChange?: (value: string) => void;
-  noOptionsMessage?: string;
 }
+
+const renderChipIcon = (item: SelectItemType) => {
+  if (item.avatarUrl) {
+    return <Avatar size="xs" src={item.avatarUrl} alt={item.label} />;
+  }
+  const Icon = item.icon;
+  if (isReactComponent(Icon)) {
+    return <Icon className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" aria-hidden="true" />;
+  }
+  if (isValidElement(Icon)) {
+    return Icon;
+  }
+  return null;
+};
 
 const InnerAutocomplete = ({ isDisabled, placeholder }: { isDisabled?: boolean; placeholder?: string }) => {
   const focusManager = useFocusManager();
@@ -146,8 +156,9 @@ const InnerAutocomplete = ({ isDisabled, placeholder }: { isDisabled?: boolean; 
           ) : (
             <span
               key={item.id}
-              className="tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:py-1.5 tw:px-2.5 tw:ring-1 tw:ring-primary tw:ring-inset"
+              className="tw:flex tw:items-center tw:gap-1.5 tw:rounded-md tw:bg-primary tw:py-1.5 tw:px-2.5 tw:ring-1 tw:ring-primary tw:ring-inset"
             >
+              {renderChipIcon(item)}
               <p className="tw:truncate tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-secondary tw:select-none">
                 {item.label}
               </p>
@@ -225,7 +236,6 @@ export const AutocompleteBase = ({
   renderTag,
   filterOption,
   onSearchChange,
-  noOptionsMessage,
   name: _name,
   className: _className,
   ...props
@@ -235,9 +245,7 @@ export const AutocompleteBase = ({
   const resolveSelectedItems = (value: SelectItemType[] | ListData<SelectItemType>): SelectItemType[] =>
     Array.isArray(value) ? value : value.items;
 
-  const [internalSelected, setInternalSelected] = useState<SelectItemType[]>(
-    resolveSelectedItems(selectedItems)
-  );
+  const [internalSelected, setInternalSelected] = useState<SelectItemType[]>(resolveSelectedItems(selectedItems));
   const selectedKeys = internalSelected.map((item) => item.id);
 
   useEffect(() => {
@@ -338,17 +346,7 @@ export const AutocompleteBase = ({
               </div>
 
               <Popover size="md" triggerRef={triggerRef} style={{ width: popoverWidth }} className={popoverClassName}>
-                <AriaListBox
-                  selectionMode="multiple"
-                  className="tw:size-full tw:outline-hidden"
-                  renderEmptyState={() =>
-                    noOptionsMessage ? (
-                      <div className="tw:px-3 tw:py-2 tw:select-none tw:text-center tw:text-sm">
-                        <HintText>{noOptionsMessage}</HintText>
-                      </div>
-                    ) : null
-                  }
-                >
+                <AriaListBox selectionMode="multiple" className="tw:size-full tw:outline-hidden">
                   {children}
                 </AriaListBox>
               </Popover>
