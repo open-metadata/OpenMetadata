@@ -118,7 +118,7 @@ export const Alert = ({
           size="sm"
           label="Close alert"
           className="tw:shrink-0"
-          onClick={onClose}
+          onPress={onClose}
         />
       )}
     </div>

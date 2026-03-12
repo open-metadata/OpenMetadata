@@ -137,6 +137,9 @@ interface FeaturedIconProps {
 
 export const FeaturedIcon = (props: FeaturedIconProps) => {
   const {
+    ref,
+    className,
+    children,
     size = "sm",
     theme: variant = "light",
     color = "brand",
@@ -146,6 +149,7 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
 
   return (
     <div
+      ref={ref}
       {...otherProps}
       data-featured-icon
       className={cx(
@@ -156,13 +160,13 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
         styles[variant].sizes[size],
         styles[variant].colors[color],
 
-        props.className,
+        className,
       )}
     >
       {isReactComponent(Icon) && <Icon data-icon className="tw:z-1" />}
       {isValidElement(Icon) && <div className="tw:z-1">{Icon}</div>}
 
-      {props.children}
+      {children}
     </div>
   );
 };
