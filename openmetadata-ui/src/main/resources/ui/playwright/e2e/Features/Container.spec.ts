@@ -345,14 +345,9 @@ test.describe('Deeply nested container navigation', () => {
     await waitForAllLoadersToDisappear(page);
 
     await test.step('correct container loads for 5-part FQN (4 nesting levels)', async () => {
-      const containerResponse = page.waitForResponse(
-        '/api/v1/containers/name/*'
-      );
-
       await expect(page.getByTestId('entity-header-name')).toContainText(
         deepContainer4Name
       );
-      await containerResponse;
     });
 
     await test.step('breadcrumb shows all 4 ancestor levels at L4', async () => {
