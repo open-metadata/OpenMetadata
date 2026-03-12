@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type {
   DialogProps as AriaDialogProps,
   ModalOverlayProps as AriaModalOverlayProps,
@@ -5,9 +6,11 @@ import type {
 import {
   Dialog as AriaDialog,
   DialogTrigger as AriaDialogTrigger,
+  Heading,
   Modal as AriaModal,
   ModalOverlay as AriaModalOverlay,
 } from "react-aria-components";
+import { CloseButton } from "@/components/base/buttons/close-button";
 import { cx } from "@/utils/cx";
 
 export const DialogTrigger = AriaDialogTrigger;
@@ -50,18 +53,103 @@ export const Modal = (props: AriaModalOverlayProps) => (
   />
 );
 
-export const Dialog = ({ children, ...props }: AriaDialogProps) => (
+// Sub-components
+
+interface DialogHeaderProps {
+  title?: string;
+  children?: ReactNode;
+  className?: string;
+}
+
+const DialogHeader = ({ title, children, className }: DialogHeaderProps) => (
+  <div className={cx("tw:flex tw:gap-4 tw:px-4 tw:pt-5 tw:sm:px-6 tw:sm:pt-6", className)}>
+    <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5">
+      {title && (
+        <Heading slot="title" className="tw:text-md tw:font-semibold tw:text-primary">
+          {title}
+        </Heading>
+      )}
+      {children}
+    </div>
+  </div>
+);
+
+interface DialogContentProps {
+  children?: ReactNode;
+  className?: string;
+}
+
+const DialogContent = ({ children, className }: DialogContentProps) => (
+  <div className={cx("tw:flex tw:flex-col tw:justify-start tw:gap-4 tw:px-4 tw:pt-5 tw:sm:px-6", className)}>
+    {children}
+  </div>
+);
+
+interface DialogFooterProps {
+  children?: ReactNode;
+  className?: string;
+}
+
+const DialogFooter = ({ children, className }: DialogFooterProps) => (
+  <div className={cx("tw:z-10 tw:flex tw:flex-col tw:pt-6 tw:pb-4 tw:sm:pt-8 tw:sm:pb-6", className)}>
+    <div className="tw:w-full tw:border-t tw:border-secondary" />
+    <div className="tw:h-4 tw:w-full tw:sm:h-6" />
+    <div className="tw:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:px-4 tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6">
+      {children}
+    </div>
+  </div>
+);
+
+// Main Dialog
+
+interface DialogProps extends AriaDialogProps {
+  title?: string;
+  showCloseButton?: boolean;
+  width?: number;
+}
+
+type DialogComponent = ((props: DialogProps) => JSX.Element) & {
+  Header: typeof DialogHeader;
+  Content: typeof DialogContent;
+  Footer: typeof DialogFooter;
+};
+
+const DialogBase = ({ children, title, showCloseButton, width = 688, ...props }: DialogProps) => (
   <AriaDialog
     {...props}
     className={cx(
       "tw:flex tw:w-full tw:items-center tw:justify-center tw:outline-hidden",
-      props.className,
+      props.className as string | undefined,
     )}
   >
     {(renderProps) => (
-      <div className="tw:relative tw:overflow-hidden tw:rounded-2xl tw:bg-primary tw:shadow-xl">
-        {typeof children === "function" ? children(renderProps) : children}
+      <div
+        className="tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl"
+        style={{ maxWidth: width }}
+      >
+        <div className="tw:overflow-hidden tw:rounded-2xl">
+          {title && (
+            <>
+              <DialogHeader title={title} />
+              <div className="tw:h-5 tw:w-full" />
+              <div className="tw:w-full tw:border-t tw:border-secondary" />
+            </>
+          )}
+          {typeof children === "function" ? children(renderProps) : children}
+        </div>
+        {showCloseButton && (
+          <CloseButton
+            size="lg"
+            className="tw:absolute tw:top-3 tw:right-3 tw:z-10"
+            onPress={renderProps.close}
+          />
+        )}
       </div>
     )}
   </AriaDialog>
 );
+
+export const Dialog = DialogBase as DialogComponent;
+Dialog.Header = DialogHeader;
+Dialog.Content = DialogContent;
+Dialog.Footer = DialogFooter;
