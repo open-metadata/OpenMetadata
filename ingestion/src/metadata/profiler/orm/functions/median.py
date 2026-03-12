@@ -325,3 +325,50 @@ def _(elements, compiler, **kw):  # pylint: disable=unused-argument
     percentile = elements.clauses.clauses[2].value
     percentile_int = int(percentile * 100)
     return "PERCENTILE(%s, %d)" % (col, percentile_int)
+
+
+@compiles(MedianFn, Dialects.Informix)
+def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
+    """Median/percentile computation for Informix.
+
+    Informix does not support PERCENTILE_CONT ... WITHIN GROUP (ORDER BY ...).
+    Uses ROW_NUMBER() OVER (ORDER BY col) + COUNT(*) OVER () in a subquery.
+
+    COUNT(*) OVER () returns DECIMAL in Informix, so row positions are wrapped
+    in CAST(... AS INTEGER) to truncate before comparison with integer rn.
+
+    For string columns, fn() wraps the column with LenFn before calling
+    _compute_sqa_fn, so compiler.process() already produces LENGTH("col")
+    here — no special-casing needed.
+    """
+    # pylint: disable=import-outside-toplevel
+    from metadata.profiler.orm.registry import is_date_time
+
+    col_clause = elements.clauses.clauses[0]
+
+    col_type = getattr(col_clause, "type", None)
+    if col_type is not None and is_date_time(col_type):
+        return "CAST(NULL AS DECIMAL(32,4))"
+
+    col = compiler.process(col_clause)
+    table = elements.clauses.clauses[1].value
+    percentile = elements.clauses.clauses[2].value
+
+    if abs(percentile - 0.5) < 0.01:  # Median
+        pos1 = "CAST((cnt + 1) / 2 AS INTEGER)"
+        pos2 = "CAST((cnt + 2) / 2 AS INTEGER)"
+    elif percentile < 0.5:  # Q1 (0.25)
+        pos1 = "CAST((cnt + 3) / 4 AS INTEGER)"
+        pos2 = "CAST((cnt + 4) / 4 AS INTEGER)"
+    else:  # Q3 (0.75)
+        pos1 = "CAST((3 * cnt + 3) / 4 AS INTEGER)"
+        pos2 = "CAST((3 * cnt + 4) / 4 AS INTEGER)"
+
+    return (
+        "(SELECT AVG(CASE WHEN rn = {pos1} OR rn = {pos2} "
+        "THEN CAST(_col_val_ AS DECIMAL(32,4)) END) "
+        "FROM (SELECT {col} AS _col_val_, "
+        "ROW_NUMBER() OVER (ORDER BY {col}) AS rn, "
+        "COUNT(*) OVER () AS cnt "
+        "FROM {table} WHERE {col} IS NOT NULL) sub)"
+    ).format(pos1=pos1, pos2=pos2, col=col, table=table)

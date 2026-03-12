@@ -105,8 +105,24 @@ def _(element, compiler, **kw):
 
 @compiles(SumFn, Dialects.Informix)
 def _(element, compiler, **kw):
-    """Informix max DECIMAL precision is 32; DECIMAL(38,x) causes SQLSyntaxErrorException.
-    BIGINT is not supported — use DECIMAL(32,4) to handle overflow while preserving decimals."""
+    """Informix: BIGINT unsupported, max DECIMAL precision is 32 (not 38).
+    Unlike other databases that infer CASE result type from THEN/ELSE branches (1/0 → integer),
+    Informix infers it from the WHEN condition's column type. For DATETIME/INTERVAL columns,
+    this makes CAST(CASE ... AS DECIMAL) fail. Rewrite to COUNT(*) - COUNT(col) instead."""
+    # pylint: disable=import-outside-toplevel
+    from sqlalchemy.sql.elements import Case as _Case
+
+    from metadata.profiler.orm.registry import is_date_time
+
+    clause = element.clauses.clauses[0] if element.clauses.clauses else None
+    if isinstance(clause, _Case) and clause.whens:
+        cond = clause.whens[0][0]
+        col_clause = getattr(cond, "left", None)
+        col_type = getattr(col_clause, "type", None)
+        if col_type is not None and is_date_time(col_type):
+            col_name = compiler.process(col_clause, **kw)
+            return f"(COUNT(*) - COUNT({col_name}))"
+
     proc = compiler.process(element.clauses, **kw)
     return f"SUM(CAST({proc} AS DECIMAL(32,4)))"
 

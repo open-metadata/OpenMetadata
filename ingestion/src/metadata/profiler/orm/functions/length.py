@@ -20,9 +20,6 @@ from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE
 from metadata.profiler.orm.registry import Dialects
-from metadata.utils.logger import profiler_logger
-
-logger = profiler_logger()
 
 
 class LenFn(FunctionElement):
@@ -49,12 +46,12 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.Oracle)
 @compiles(LenFn, Dialects.IbmDbSa)
 @compiles(LenFn, Dialects.Db2)
-@compiles(LenFn, Dialects.Informix)
 @compiles(LenFn, Dialects.Hana)
 @compiles(LenFn, Dialects.Druid)
 @compiles(LenFn, Dialects.Doris)
 @compiles(LenFn, Dialects.StarRocks)
 @compiles(LenFn, Dialects.Teradata)
+@compiles(LenFn, Dialects.Informix)
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
 

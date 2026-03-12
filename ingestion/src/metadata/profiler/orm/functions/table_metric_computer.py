@@ -16,6 +16,8 @@ Run profiler metrics on the table
 
 import traceback
 from abc import ABC, abstractmethod
+from collections import namedtuple
+from datetime import datetime as _datetime
 from typing import Callable, List, Optional, Tuple, Type
 
 from sqlalchemy import (
@@ -702,25 +704,23 @@ class SAPHanaTableMetricComputer(BaseTableMetricComputer):
 
 
 class InformixTableMetricComputer(BaseTableMetricComputer):
-    """Informix Table Metric Computer using systables.
+    """Informix table metrics from systables.
 
-    systables stores nrows, npused * pagesize (size), and created date.
-    owner is CHAR padded with spaces — TRIM() is required for equality match.
+    Reads nrows, npused * pagesize (size), and created date.
+    owner is CHAR-padded — TRIM() is required for equality match.
+
+    JayDeBeApi returns systables.created as a JPype Java string proxy,
+    not a Python datetime. core.py calls .replace(tzinfo=...) on it,
+    which fails on a string. Since SQLAlchemy Row is immutable, we
+    convert to a namedtuple so the date can be patched before returning.
     """
 
     def _get_col_names_and_count(self):
-        """Override to route literal values through ColumnCountFn/ColunNameFn.
+        """Route literals through ColumnCountFn/ColunNameFn to avoid ? bind params.
 
-        The base implementation uses literal() directly, which SQLAlchemy compiles
-        to a ? bind parameter. Informix JDBC 4.50 raises "A syntax error has occurred"
-        from prepareStatement() when ? appears in a SELECT expression (e.g.
-        ? AS "columnNames"). Other dialects like DB2 are unaffected because their
-        JDBC drivers support prepareStatement() for this pattern.
-
-        ColumnCountFn and ColunNameFn are FunctionElement subclasses that have
-        @compiles(Dialects.Informix) overrides setting literal_binds=True, which
-        inlines the value directly into SQL (e.g. 'col1,col2' and 5) so no ?
-        placeholder is generated.
+        Informix JDBC 4.50 rejects ? in SELECT projections via prepareStatement().
+        These FunctionElement subclasses have @compiles(Dialects.Informix) overrides
+        that set literal_binds=True, inlining values directly into SQL.
         """
         from metadata.profiler.metrics.static.column_count import ColumnCountFn
         from metadata.profiler.metrics.static.column_names import ColunNameFn
@@ -754,7 +754,16 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
             return None
         if res.rowCount is None or res.rowCount == 0:
             return super().compute()
-        return res
+        d = dict(res._asdict())
+        created = d.get(CREATE_DATETIME)
+        if created is not None and not isinstance(created, _datetime):
+            for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y"):
+                try:
+                    d[CREATE_DATETIME] = _datetime.strptime(str(created), fmt)
+                    break
+                except (ValueError, TypeError):
+                    continue
+        return namedtuple("Row", d.keys())(**d)
 
 
 class TableMetricComputer:
