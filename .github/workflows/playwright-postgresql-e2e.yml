@@ -81,6 +81,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Install antlr cli
+        run: sudo make install_antlr_cli
+
       - name: Build with Maven
         run: mvn -DskipTests clean package
 
