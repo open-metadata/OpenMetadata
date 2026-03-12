@@ -46,15 +46,15 @@ export default defineConfig({
       },
     ],
     ['blob'],
+    ['json', { outputFile: './playwright/output/results.json' }],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    /* Collect trace and video on every failure (not just retries) for debugging */
     trace: 'on-first-retry',
-    /* Screenshot on failure. */
     screenshot: 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.

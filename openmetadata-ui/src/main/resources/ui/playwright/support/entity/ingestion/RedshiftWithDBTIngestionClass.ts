@@ -26,6 +26,7 @@ import {
   toastNotification,
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
+import { visitLineageTab } from '../../../utils/lineage';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -264,6 +265,26 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await expect(page.getByTestId(DBT.dataQualityTest1)).toHaveText(
         DBT.dataQualityTest1
       );
+    });
+
+    await test.step('validate DBT icon should be show to lineage node', async () => {
+      // Verify DBT in table entity
+      await visitEntityPage({
+        page,
+        searchTerm: this.dbtEntityFqn,
+        dataTestId: `${REDSHIFT.serviceName}-${REDSHIFT.DBTTable}`,
+      });
+
+      await visitLineageTab(page);
+
+      await expect(
+        page.getByTestId(`lineage-node-${this.dbtEntityFqn}`)
+      ).toBeVisible();
+      await expect(
+        page
+          .getByTestId(`lineage-node-${this.dbtEntityFqn}`)
+          .getByTestId('dbt-icon')
+      ).toBeVisible();
     });
   }
 

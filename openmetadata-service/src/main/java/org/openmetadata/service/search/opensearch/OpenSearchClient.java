@@ -838,6 +838,12 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public void createOrUpdateIndexTemplate(
+      String templateName, String indexPattern, String mappingContent) throws IOException {
+    genericManager.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
+  }
+
+  @Override
   public void deleteIndexTemplate(String templateName) throws IOException {
     genericManager.deleteIndexTemplate(templateName);
   }
