@@ -357,12 +357,16 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     if abs(percentile - 0.5) < 0.01:  # Median
         pos1 = "CAST((cnt + 1) / 2 AS INTEGER)"
         pos2 = "CAST((cnt + 2) / 2 AS INTEGER)"
-    elif percentile < 0.5:  # Q1 (0.25)
+    elif abs(percentile - 0.25) < 0.01:  # Q1
         pos1 = "CAST((cnt + 3) / 4 AS INTEGER)"
         pos2 = "CAST((cnt + 4) / 4 AS INTEGER)"
-    else:  # Q3 (0.75)
+    elif abs(percentile - 0.75) < 0.01:  # Q3
         pos1 = "CAST((3 * cnt + 3) / 4 AS INTEGER)"
         pos2 = "CAST((3 * cnt + 4) / 4 AS INTEGER)"
+    else:
+        raise ValueError(
+            f"Unsupported percentile {percentile} for Informix — expected 0.25, 0.5, or 0.75"
+        )
 
     return (
         "(SELECT AVG(CASE WHEN rn = {pos1} OR rn = {pos2} "

@@ -715,6 +715,14 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
     convert to a namedtuple so the date can be patched before returning.
     """
 
+    def _parse_created_datetime(self, value) -> Optional[_datetime]:
+        for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y"):
+            try:
+                return _datetime.strptime(str(value), fmt)
+            except (ValueError, TypeError):
+                continue
+        return None
+
     def _get_col_names_and_count(self):
         """Route literals through ColumnCountFn/ColunNameFn to avoid ? bind params.
 
@@ -757,12 +765,7 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         d = dict(res._asdict())
         created = d.get(CREATE_DATETIME)
         if created is not None and not isinstance(created, _datetime):
-            for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y"):
-                try:
-                    d[CREATE_DATETIME] = _datetime.strptime(str(created), fmt)
-                    break
-                except (ValueError, TypeError):
-                    continue
+            d[CREATE_DATETIME] = self._parse_created_datetime(created)
         return namedtuple("Row", d.keys())(**d)
 
 
