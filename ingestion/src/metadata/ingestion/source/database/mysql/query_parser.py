@@ -73,5 +73,5 @@ class MysqlQueryParserSource(QueryParserSource, ABC):
         else:
             sql_column = "argument"
         if self.source_config.filterCondition:
-            return f"{self.filters.format(sql_column=sql_column)} AND {self.source_config.filterCondition}"
+            return f"{self.filters.format(sql_column=sql_column)} AND ({self.source_config.filterCondition})"
         return self.filters.format(sql_column=sql_column)
