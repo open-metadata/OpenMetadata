@@ -40,9 +40,61 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  playwright-ci-postgresql:
+  build:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.4
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build with Maven
+        run: mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+
+      - name: Upload Maven build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmetadata-build
+          path: openmetadata-dist/target/openmetadata-*.tar.gz
+          retention-days: 1
+
+  playwright-ci-postgresql:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     environment: test
     strategy:
       fail-fast: false
@@ -60,46 +112,23 @@ jobs:
           large-packages: false
           swap-storage: true
           docker-images: false
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
 
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Cache Maven Dependencies
-        id: cache-output
-        uses: actions/cache@v4
+      - name: Download Maven build artifact
+        uses: actions/download-artifact@v4
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          name: openmetadata-build
+          path: openmetadata-dist/target
 
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
-          # Pass different args depending on the shardIndex:
-          # - shard 2: run with ingestion setup
-          # - other shards: skip ingestion setup
-          args: ${{ matrix.shardIndex == 2 && '-d postgresql' || '-d postgresql -i false' }}
+          args: ${{ matrix.shardIndex == 2 && '-d postgresql -s true' || '-d postgresql -i false -s true' }}
           ingestion_dependency: "all"
 
       - name: Setup Node.js
