@@ -697,8 +697,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           const columnApiResponse = page.waitForResponse(
             (response) =>
-              response.url().includes(`/api/v1/${entity.endpoint}/name/`) &&
-              response.url().includes('/columns') &&
+              (response.url().includes(`/api/v1/${entity.endpoint}/name/`) ||
+                response.url().includes('/api/v1/columns/name/')) &&
               response.request().method() === 'GET'
           );
           // Cleanup: remove both tag and glossary term from column detail panel
@@ -1026,7 +1026,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           const clickResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes('/api/v1/tables/name/'),
+              response.url().includes(`/api/v1/${entity.endpoint}/name/`),
             { timeout: 10000 }
           );
 
@@ -1079,7 +1079,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const intermediateClickResponse = page.waitForResponse(
               (response) =>
                 response.url().includes('/api/v1/columns/name/') ||
-                response.url().includes('/api/v1/tables/name/'),
+                response.url().includes(`/api/v1/${entity.endpoint}/name/`),
               { timeout: 10000 }
             );
 
@@ -1348,8 +1348,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           const columnApiResponse = page.waitForResponse(
             (response) =>
-              response.url().includes(`/api/v1/${entity.endpoint}/name/`) &&
-              response.url().includes('/columns') &&
+              (response.url().includes(`/api/v1/${entity.endpoint}/name/`) ||
+                response.url().includes('/api/v1/columns/name/')) &&
               response.request().method() === 'GET'
           );
           const panelContainer = await openColumnDetailPanel({
