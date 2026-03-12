@@ -441,6 +441,134 @@
                     "resolutions": {}
                 }
             ]
+        },
+        {
+            "testSuiteName": "postgres_sample.jaffle_shop.public.customers.testSuite",
+            "executableEntityReference": "postgres_sample.jaffle_shop.public.customers",
+            "testSuiteDescription": "dbt data quality tests for the customers final model in the jaffle_shop project",
+            "scheduleInterval": "0 6 * * *",
+            "testCases": [
+                {
+                    "name": "not_null_customers_customer_id",
+                    "description": "customer_id must not be null",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.customers::columns::customer_id>",
+                    "testDefinitionName": "columnValuesToBeNotNull",
+                    "parameterValues": [],
+                    "resolutions": {}
+                },
+                {
+                    "name": "unique_customers_customer_id",
+                    "description": "customer_id must be unique across all customers",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.customers::columns::customer_id>",
+                    "testDefinitionName": "columnValuesToBeUnique",
+                    "parameterValues": [],
+                    "resolutions": {}
+                },
+                {
+                    "name": "accepted_values_customers_status",
+                    "description": "Orders referenced by customers must have valid statuses",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.customers>",
+                    "testDefinitionName": "tableRowCountToBeBetween",
+                    "parameterValues": [
+                        { "name": "minValue", "value": "1" },
+                        { "name": "maxValue", "value": "10000" }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity2" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity2", "assignee": "aaron_johnson0" },
+                            { "testCaseResolutionStatusType": "Resolved", "severity": "Severity2", "resolver": "aaron_johnson0" }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "testSuiteName": "postgres_sample.jaffle_shop.public.orders.testSuite",
+            "executableEntityReference": "postgres_sample.jaffle_shop.public.orders",
+            "testSuiteDescription": "dbt data quality tests for the orders final model in the jaffle_shop project",
+            "scheduleInterval": "0 6 * * *",
+            "testCases": [
+                {
+                    "name": "not_null_orders_order_id",
+                    "description": "order_id must not be null",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.orders::columns::order_id>",
+                    "testDefinitionName": "columnValuesToBeNotNull",
+                    "parameterValues": [],
+                    "resolutions": {}
+                },
+                {
+                    "name": "unique_orders_order_id",
+                    "description": "order_id must be unique across all orders",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.orders::columns::order_id>",
+                    "testDefinitionName": "columnValuesToBeUnique",
+                    "parameterValues": [],
+                    "resolutions": {}
+                },
+                {
+                    "name": "accepted_values_orders_status",
+                    "description": "Order status must be one of: placed, shipped, completed, return_pending, returned",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.orders::columns::status>",
+                    "testDefinitionName": "columnValuesToBeInSet",
+                    "parameterValues": [
+                        {
+                            "name": "allowedValues",
+                            "value": "[\"placed\", \"shipped\", \"completed\", \"return_pending\", \"returned\"]"
+                        }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity1" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity1", "assignee": "aaron_johnson0" },
+                            { "testCaseResolutionStatusType": "Resolved", "severity": "Severity1", "resolver": "aaron_johnson0" }
+                        ],
+                        "sequenceTwo": [
+                            { "testCaseResolutionStatusType": "New", "severity": "Severity1" },
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity1" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity1", "assignee": "christopher_campbell7" },
+                            { "testCaseResolutionStatusType": "Resolved", "severity": "Severity1", "resolver": "christopher_campbell7" }
+                        ]
+                    }
+                },
+                {
+                    "name": "relationships_orders_customer_id",
+                    "description": "Every order must reference a valid customer",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.orders::columns::customer_id>",
+                    "testDefinitionName": "columnValuesToBeNotNull",
+                    "parameterValues": [],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity2" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity2", "assignee": "christopher_campbell7" },
+                            { "testCaseResolutionStatusType": "Resolved", "severity": "Severity2", "resolver": "christopher_campbell7" }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "testSuiteName": "postgres_sample.jaffle_shop.public.stg_customers.testSuite",
+            "executableEntityReference": "postgres_sample.jaffle_shop.public.stg_customers",
+            "testSuiteDescription": "dbt data quality tests for the stg_customers staging model in the jaffle_shop project",
+            "scheduleInterval": "0 5 * * *",
+            "testCases": [
+                {
+                    "name": "not_null_stg_customers_customer_id",
+                    "description": "customer_id must not be null in the staging layer",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.stg_customers::columns::customer_id>",
+                    "testDefinitionName": "columnValuesToBeNotNull",
+                    "parameterValues": [],
+                    "resolutions": {}
+                },
+                {
+                    "name": "unique_stg_customers_customer_id",
+                    "description": "customer_id must be unique in the staging layer",
+                    "entityLink": "<#E::table::postgres_sample.jaffle_shop.public.stg_customers::columns::customer_id>",
+                    "testDefinitionName": "columnValuesToBeUnique",
+                    "parameterValues": [],
+                    "resolutions": {}
+                }
+            ]
         }
     ]
 }

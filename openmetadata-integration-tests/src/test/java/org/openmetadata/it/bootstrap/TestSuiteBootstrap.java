@@ -558,6 +558,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     Entity.setSearchRepository(searchRepository);
     LOG.info("Creating {} indexes...", searchType);
     searchRepository.createIndexes();
+    searchRepository.createOrUpdateIndexTemplates();
   }
 
   private ElasticSearchConfiguration getBaseSearchConfig() {

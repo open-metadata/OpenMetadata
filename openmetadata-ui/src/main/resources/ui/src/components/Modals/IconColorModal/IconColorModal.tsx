@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -23,6 +22,7 @@ import {
 import { Form } from 'antd';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Loader from '../../common/Loader/Loader';
 import { Style } from '../../../generated/type/schema';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
 import { MUIColorPicker } from '../../common/ColorPicker';
@@ -134,7 +134,7 @@ const IconColorModal: FC<StyleModalProps> = ({
             disabled={saving}
             form="style-modal-new"
             loading={saving}
-            loadingIndicator={<CircularProgress color="inherit" size={16} />}
+            loadingIndicator={<Loader size="x-small" type="white" />}
             type="submit"
             variant="contained"
             onClick={() => form.submit()}>

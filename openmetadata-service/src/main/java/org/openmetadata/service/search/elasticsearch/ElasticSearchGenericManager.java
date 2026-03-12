@@ -21,6 +21,7 @@ import es.co.elastic.clients.elasticsearch.nodes.NodesStatsResponse;
 import es.co.elastic.clients.elasticsearch.nodes.Stats;
 import es.co.elastic.clients.json.JsonData;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -104,6 +105,32 @@ public class ElasticSearchGenericManager implements GenericClient {
       }
     } catch (Exception e) {
       LOG.error("Failed to delete ILM policy {}", policyName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void createOrUpdateIndexTemplate(
+      String templateName, String indexPattern, String mappingContent) throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot create index template.");
+      return;
+    }
+    try {
+      client
+          .indices()
+          .putIndexTemplate(
+              p ->
+                  p.name(templateName)
+                      .indexPatterns(List.of(indexPattern))
+                      .priority(100L)
+                      .template(t -> t.withJson(new StringReader(mappingContent))));
+      LOG.debug("Successfully created/updated index template: {}", templateName);
+    } catch (ElasticsearchException e) {
+      LOG.error("Failed to create/update index template: {}", templateName, e);
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Failed to create/update index template {}", templateName, e);
       throw e;
     }
   }

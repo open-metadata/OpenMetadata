@@ -664,7 +664,7 @@ public class DistributedSearchIndexCoordinator {
 
     // Get per-server stats for distributed visibility
     List<ServerStatsRecord> serverStatsList = partitionDAO.getServerStats(jobId.toString());
-    LOG.info("Fetched server stats for job {}: {} records from DB", jobId, serverStatsList.size());
+    LOG.debug("Fetched server stats for job {}: {} records from DB", jobId, serverStatsList.size());
     Map<String, SearchIndexJob.ServerStats> serverStatsMap = new HashMap<>();
     for (ServerStatsRecord ss : serverStatsList) {
       LOG.debug(

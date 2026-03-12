@@ -66,6 +66,13 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
   public DataInsightCustomChartResultList buildDIChart(
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
       throws IOException {
+    return buildDIChart(diChart, start, end, live, null);
+  }
+
+  @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart, long start, long end, boolean live, String filter)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot build DI chart.");
       return null;
@@ -78,7 +85,8 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
       Map<String, ElasticSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
           new HashMap<>();
       SearchRequest searchRequest =
-          aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder, live);
+          aggregator.prepareSearchRequest(
+              diChart, start, end, formulas, metricFormulaHolder, live, filter);
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> searchResponse;
       try {

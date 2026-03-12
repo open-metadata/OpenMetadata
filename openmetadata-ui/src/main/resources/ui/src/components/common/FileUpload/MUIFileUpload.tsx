@@ -26,7 +26,6 @@
 
 import {
   Box,
-  CircularProgress,
   FormControl,
   FormLabel,
   Typography,
@@ -37,6 +36,7 @@ import { AxiosError } from 'axios';
 import { useSnackbar } from 'notistack';
 import { FC, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import Loader from '../Loader/Loader';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import { MUIFileUploadProps } from './MUIFileUpload.interface';
 
@@ -314,7 +314,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
                   alignItems: 'center',
                   gap: 2,
                 }}>
-                <CircularProgress size={40} />
+                <Loader />
                 <Typography
                   sx={{ color: theme.palette.grey?.[600] }}
                   variant="body2">

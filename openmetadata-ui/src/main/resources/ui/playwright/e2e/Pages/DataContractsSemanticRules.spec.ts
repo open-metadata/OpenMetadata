@@ -31,6 +31,7 @@ import {
   removeSingleSelectDomain,
 } from '../../utils/common';
 import {
+  clickEditContractButton,
   performInitialStepForRules,
   saveAndTriggerDataContractValidation,
 } from '../../utils/dataContracts';
@@ -1597,12 +1598,46 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
 
+      // Save with a placeholder value first. The entity version cannot be
+      // hardcoded because saving a contract and running validation each bump
+      // the entity version, and session consolidation (same user, same entity,
+      // rapid updates) may merge those into fewer bumps depending on execution
+      // speed. The actual post-save version is read from the UI after reload.
+      // Use 99.9 so the placeholder never collides with the real entity version
+      // (which starts at 0.1), ensuring the second edit always produces a diff
+      // and the save button stays enabled.
       await ruleLocator
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-        .fill('0.1');
+        .fill('99.9');
 
-      // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
+
+        // After the reload inside saveAndTriggerDataContractValidation, the
+        // version button in the header reflects the entity's current version.
+        // Read it from the UI so the rule always matches regardless of how many
+        // bumps session consolidation produced.
+        const actualVersionText = await page
+          .getByTestId('version-button')
+          .textContent();
+        expect(
+          actualVersionText,
+          'Could not read current entity version from version-button'
+        ).toBeTruthy();
+        const actualVersion = actualVersionText!.trim();
+
+        // Edit the contract to set the rule to the actual entity version, then
+        // re-validate to confirm the IS check now passes.
+        await clickEditContractButton(page);
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        const versionInput = page
+          .locator('.group')
+          .first()
+          .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+      await versionInput.clear();
+      await versionInput.fill(actualVersion);
+
+      await saveAndTriggerDataContractValidation(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1682,20 +1717,60 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
       );
 
-      await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-        .fill('0.2');
+        // Save with a placeholder value first. The entity version cannot be
+        // hardcoded because saving a contract and running validation each bump
+        // the entity version, and session consolidation (same user, same entity,
+        // rapid updates) may merge those into fewer bumps depending on execution
+        // speed. The actual post-save version is read from the UI after reload.
+        // Use 99.9 so the placeholder never collides with the real entity version
+        // (which starts at 0.1), ensuring the second edit always produces a diff
+        // and the save button stays enabled.
+        await ruleLocator
+          .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+          .fill('99.9');
 
-      // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+        await saveAndTriggerDataContractValidation(page, true);
 
-      await expect(
-        page.getByTestId('contract-status-card-item-semantics-status')
-      ).toContainText('Passed');
-      await expect(
-        page.getByTestId('data-contract-latest-result-btn')
-      ).not.toBeVisible();
-    });
+        // After the reload inside saveAndTriggerDataContractValidation, the
+        // version button in the header reflects the entity's current version.
+        // The next step assigns a domain which bumps the version by 0.1, so
+        // set the IS NOT rule to that future version — when the domain is
+        // assigned the entity version will equal the rule value, causing the
+        // IS NOT check to fail as expected.
+          const currentVersionText = await page
+            .getByTestId('version-button')
+            .textContent();
+          expect(
+            currentVersionText,
+            'Could not read current entity version from version-button'
+          ).toBeTruthy();
+          const currentVersion = currentVersionText!;
+          const domainBumpedVersion = (
+            Math.round((Number.parseFloat(currentVersion) + 0.1) * 10) / 10
+          ).toFixed(1);
+
+        // Edit the contract to target the post-domain version, then re-validate
+        // to confirm the IS NOT check still passes at the current version.
+        await clickEditContractButton(page);
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        const versionInput = page
+          .locator('.group')
+          .first()
+          .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        await versionInput.clear();
+        await versionInput.fill(domainBumpedVersion);
+
+        await saveAndTriggerDataContractValidation(page);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Passed');
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).not.toBeVisible();
+      }
+    );
 
     await test.step('Contract with is_not condition for version should failed', async () => {
       await assignSingleSelectDomain(page, domain.responseData);

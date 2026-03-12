@@ -15,7 +15,6 @@ import {
   Badge,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -24,6 +23,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import Loader from '../../Loader/Loader';
 import { Trash01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -312,7 +312,7 @@ export const useDelete = <
               variant="contained"
               onClick={handleDelete}>
               {isDeleting ? (
-                <CircularProgress color="inherit" size={20} />
+                <Loader size="small" type="white" />
               ) : (
                 t('label.delete')
               )}
