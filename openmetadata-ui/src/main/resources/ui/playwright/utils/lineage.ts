@@ -302,7 +302,7 @@ export const performExpand = async (
 
   if (newNode) {
     const expandRes = page.waitForResponse('/api/v1/lineage/getLineage/*?*');
-    await expandBtn.click();
+    await expandBtn.dispatchEvent('click');
     await expandRes;
     await verifyNodePresent(page, newNode);
   }
