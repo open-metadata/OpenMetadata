@@ -75,10 +75,9 @@ class ProfilerProcessor(Processor):
     def _run(self, record: ProfilerSourceAndEntity) -> Either[ProfilerResponse]:
         if not record.entity.columns:
             logger.warning(
-                "Skipping profiler for table '%s': no columns found",
+                "Table '%s' has no columns — continuing to run profiler for table-level metrics",
                 record.entity.fullyQualifiedName.root,
             )
-            return Either()
 
         profiler_runner: Profiler = record.profiler_source.get_profiler_runner(
             record.entity, self.profiler_config
