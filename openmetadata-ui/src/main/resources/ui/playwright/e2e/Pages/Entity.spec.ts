@@ -695,6 +695,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             )
           ).toBeVisible();
 
+          const columnApiResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/tables/name/') &&
+              response.url().includes('/columns') &&
+              response.request().method() === 'GET'
+          );
           // Cleanup: remove both tag and glossary term from column detail panel
           const cleanupPanel = await openColumnDetailPanel({
             page,
@@ -704,6 +710,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             entityType: entity.type as EntityType,
           });
 
+          const columnApiRequest = await columnApiResponse;
+          expect(columnApiRequest.status()).toBe(200);
+          await waitForAllLoadersToDisappear(page);
           // Remove glossary term
           await cleanupPanel.getByTestId('edit-glossary-terms').click();
           await page
@@ -1337,6 +1346,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           const columnNameTestId =
             entity.type === 'Pipeline' ? 'task-name' : 'column-name';
 
+          const columnApiResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/tables/name/') &&
+              response.url().includes('/columns') &&
+              response.request().method() === 'GET'
+          );
           const panelContainer = await openColumnDetailPanel({
             page,
             rowSelector,
@@ -1345,6 +1360,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             entityType: entity.type as EntityType,
           });
 
+          const columnApiRequest = await columnApiResponse;
+          expect(columnApiRequest.status()).toBe(200);
+          await waitForAllLoadersToDisappear(page);
           // Add glossary term via panel
           const editButton = panelContainer.getByTestId('edit-glossary-terms');
           await expect(editButton).toBeVisible();
