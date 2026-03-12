@@ -13,6 +13,7 @@ public record ChartIndex(Chart chart) implements SearchIndex {
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(chart, Entity.CHART);
     esDoc.putAll(commonAttributes);
+    esDoc.put("upstreamLineage", SearchIndex.getLineageData(chart.getEntityReference()));
     return esDoc;
   }
 }

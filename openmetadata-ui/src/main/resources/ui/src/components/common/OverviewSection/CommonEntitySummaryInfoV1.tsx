@@ -79,8 +79,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
       <Link
         className="summary-item-link"
         to={info.linkProps ?? info.url ?? ''}
-        onClick={onLinkClick}
-      >
+        onClick={onLinkClick}>
         {info.value}
       </Link>
     );
@@ -92,8 +91,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
         <div className="overview-row">
           <Typography
             className="no-data-placeholder"
-            data-testid="no-data-placeholder"
-          >
+            data-testid="no-data-placeholder">
             {t('label.no-overview-available')}
           </Typography>
         </div>
@@ -102,14 +100,12 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
           <div className="overview-row" key={info.name}>
             <span
               className={classNames('overview-label')}
-              data-testid={`${info.name}-label`}
-            >
+              data-testid={`${info.name}-label`}>
               {info.name}
             </span>
             <span
               className={classNames('overview-value text-grey-body')}
-              data-testid={`${info.name}-value`}
-            >
+              data-testid={`${info.name}-value`}>
               {renderInfoValue(info)}
             </span>
           </div>

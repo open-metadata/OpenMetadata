@@ -225,8 +225,7 @@ const PortsLineageView = ({
             />
           }
           size={SIZE.SMALL}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
-        >
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography as="p" className="text-center">
             {assetCount === 0
               ? t('message.no-assets-for-ports-lineage')
@@ -245,8 +244,7 @@ const PortsLineageView = ({
           : 'tw:relative tw:rounded-lg tw:border tw:border-gray-200'
       }`}
       data-testid="ports-lineage-view"
-      style={{ height: containerHeight }}
-    >
+      style={{ height: containerHeight }}>
       {onToggleFullScreen && (
         <div className="tw:absolute tw:top-2 tw:right-2 tw:z-10">
           <Tooltip
@@ -254,8 +252,7 @@ const PortsLineageView = ({
               isFullScreen
                 ? t('label.exit-full-screen')
                 : t('label.full-screen')
-            }
-          >
+            }>
             <TooltipTrigger>
               <Button
                 color="secondary"
@@ -284,8 +281,7 @@ const PortsLineageView = ({
         nodesConnectable={false}
         nodesDraggable={false}
         onEdgesChange={onEdgesChange}
-        onNodesChange={onNodesChange}
-      >
+        onNodesChange={onNodesChange}>
         <Background color="#e5e7eb" gap={16} size={1} />
         <Controls
           showFitView

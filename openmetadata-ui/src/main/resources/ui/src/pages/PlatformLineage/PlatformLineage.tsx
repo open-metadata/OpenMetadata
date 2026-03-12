@@ -254,14 +254,12 @@ const PlatformLineage = () => {
             placement="top"
             title={t('label.export-as-type', {
               type: t('label.png-uppercase'),
-            })}
-          >
+            })}>
             <TooltipTrigger>
               <StyledIconButton
                 data-testid="export-button"
                 size="large"
-                onClick={handleExport}
-              >
+                onClick={handleExport}>
                 <DownloadIcon />
               </StyledIconButton>
             </TooltipTrigger>
@@ -269,8 +267,7 @@ const PlatformLineage = () => {
           <StyledIconButton
             data-testid="lineage-config"
             size="large"
-            onClick={handleSettingsClick}
-          >
+            onClick={handleSettingsClick}>
             <SettingsOutlined />
           </StyledIconButton>
           <Tooltip
@@ -279,8 +276,7 @@ const PlatformLineage = () => {
               isFullScreen
                 ? t('label.exit-full-screen')
                 : t('label.full-screen-view')
-            }
-          >
+            }>
             <TooltipTrigger>
               <StyledIconButton
                 size="large"
@@ -291,8 +287,7 @@ const PlatformLineage = () => {
                       [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
                     }),
                   })
-                }
-              >
+                }>
                 {isFullScreen ? <Minimize02 /> : <Expand05 />}
               </StyledIconButton>
             </TooltipTrigger>

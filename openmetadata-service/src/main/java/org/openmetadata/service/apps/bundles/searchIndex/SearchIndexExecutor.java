@@ -30,7 +30,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -1566,16 +1565,7 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private Set<String> getAll() {
-    Set<String> entityAvailableForIndex =
-        Entity.getEntityList().stream()
-            .filter(t -> searchRepository.getEntityIndexMap().containsKey(t))
-            .collect(Collectors.toSet());
-    Set<String> entities = new HashSet<>(entityAvailableForIndex);
-    entities.addAll(
-        TIME_SERIES_ENTITIES.stream()
-            .filter(t -> searchRepository.getEntityIndexMap().containsKey(t))
-            .collect(Collectors.toSet()));
-    return entities;
+    return new HashSet<>(searchRepository.getEntityIndexMap().keySet());
   }
 
   private ReindexContext reCreateIndexes(Set<String> entities) {

@@ -103,6 +103,9 @@ public class SemanticSearchTool implements McpTool {
     result.put("results", cleanedResults);
     result.put("returnedCount", cleanedResults.size());
     result.put("totalFound", cleanedResults.size());
+    result.put(
+        "usage",
+        "To get full details for any result, call get_entity_details with the result's exact 'entityType' and 'fullyQualifiedName' values.");
 
     if (cleanedResults.size() >= requestedSize) {
       result.put(

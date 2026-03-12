@@ -326,17 +326,19 @@ const CustomControls: FC<{
   }, [selectedQuickFilters]);
 
   const searchBarComponent = useMemo(() => {
-    return activeTab === 'impact_analysis' && onSearchValueChange ? (
-      <Searchbar
-        removeMargin
-        inputClassName="w-80"
-        placeholder={t('label.search-for-type', {
-          type: t('label.asset-or-column'),
-        })}
-        searchValue={searchValue}
-        typingInterval={300}
-        onSearch={onSearchValueChange}
-      />
+    return activeTab === 'impact_analysis' ? (
+      onSearchValueChange && (
+        <Searchbar
+          removeMargin
+          inputClassName="w-80"
+          placeholder={t('label.search-for-type', {
+            type: t('label.asset-or-column'),
+          })}
+          searchValue={searchValue}
+          typingInterval={300}
+          onSearch={onSearchValueChange}
+        />
+      )
     ) : (
       <LineageSearchSelect />
     );
@@ -361,14 +363,12 @@ const CustomControls: FC<{
       <Tooltip
         arrow
         placement="top"
-        title={t('label.edit-entity', { entity: t('label.lineage') })}
-      >
+        title={t('label.edit-entity', { entity: t('label.lineage') })}>
         <StyledIconButton
           color={isEditMode ? 'primary' : 'default'}
           data-testid="edit-lineage"
           size="large"
-          onClick={toggleEditMode}
-        >
+          onClick={toggleEditMode}>
           <EditIcon />
         </StyledIconButton>
       </Tooltip>
@@ -392,8 +392,7 @@ const CustomControls: FC<{
       <StyledIconButton
         data-testid="lineage-config"
         size="large"
-        onClick={handleSettingsClick}
-      >
+        onClick={handleSettingsClick}>
         <SettingsOutlined />
       </StyledIconButton>
     );
@@ -407,8 +406,7 @@ const CustomControls: FC<{
             <StyledIconButton
               color={filterSelectionActive ? 'primary' : 'default'}
               size="large"
-              onClick={toggleFilterSelection}
-            >
+              onClick={toggleFilterSelection}>
               <FilterLinesIcon />
             </StyledIconButton>
           </Tooltip>
@@ -421,16 +419,14 @@ const CustomControls: FC<{
                 className="font-semibold"
                 sx={activeTab === 'lineage' ? buttonActiveStyle : {}}
                 variant="outlined"
-                onClick={handleLineageClick}
-              >
+                onClick={handleLineageClick}>
                 {t('label.lineage')}
               </Button>
               <Button
                 className="font-semibold"
                 sx={activeTab === 'impact_analysis' ? buttonActiveStyle : {}}
                 variant="outlined"
-                onClick={handleImpactAnalysisClick}
-              >
+                onClick={handleImpactAnalysisClick}>
                 {t('label.impact-analysis')}
               </Button>{' '}
             </>
@@ -444,14 +440,12 @@ const CustomControls: FC<{
               activeTab === 'impact_analysis'
                 ? t('label.export-as-type', { type: t('label.csv') })
                 : t('label.export')
-            }
-          >
+            }>
             <StyledIconButton
               data-testid="export-button"
               disabled={isEditMode}
               size="large"
-              onClick={handleExportClick}
-            >
+              onClick={handleExportClick}>
               <DownloadIcon />
             </StyledIconButton>
           </Tooltip>
@@ -463,14 +457,12 @@ const CustomControls: FC<{
               isFullScreen
                 ? t('label.exit-full-screen')
                 : t('label.full-screen-view')
-            }
-          >
+            }>
             <StyledIconButton
               size="large"
               onClick={() =>
                 updateURLParams({ [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen })
-              }
-            >
+              }>
               {isFullScreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
             </StyledIconButton>
           </Tooltip>
@@ -492,8 +484,7 @@ const CustomControls: FC<{
                     },
                   }}
                   variant="text"
-                  onClick={(e) => setNodeDepthAnchorEl(e.currentTarget)}
-                >
+                  onClick={(e) => setNodeDepthAnchorEl(e.currentTarget)}>
                   {`${t('label.node-depth')}:`}{' '}
                   <span className="text-primary m-l-xss">{nodeDepth}</span>
                 </Button>
@@ -511,14 +502,12 @@ const CustomControls: FC<{
                       'aria-labelledby': 'long-button',
                     },
                   }}
-                  onClose={() => setNodeDepthAnchorEl(null)}
-                >
+                  onClose={() => setNodeDepthAnchorEl(null)}>
                   {(nodeDepthOptions ?? [])?.map((depth) => (
                     <MenuItem
                       key={depth}
                       selected={depth === nodeDepth}
-                      onClick={() => handleNodeDepthUpdate(depth)}
-                    >
+                      onClick={() => handleNodeDepthUpdate(depth)}>
                       {depth}
                     </MenuItem>
                   ))}
@@ -544,8 +533,7 @@ const CustomControls: FC<{
               color: theme.palette.primary.main,
             }}
             variant="text"
-            onClick={handleClearAllFilters}
-          >
+            onClick={handleClearAllFilters}>
             {t('label.clear-entity', { entity: t('label.all') })}
           </Button>
         </div>

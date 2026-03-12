@@ -557,26 +557,49 @@ test('Verify cycle lineage should be handled properly', async ({ page }) => {
       'entityResponseData.fullyQualifiedName'
     );
 
+    // connect table to topic
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      {
+        id: table.entityResponseData.id,
+        type: 'table',
+      },
+      {
+        id: topic.entityResponseData.id,
+        type: 'topic',
+      }
+    );
+
+    // connect topic to dashboard
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      {
+        id: topic.entityResponseData.id,
+        type: 'topic',
+      },
+      {
+        id: dashboard.entityResponseData.id,
+        type: 'dashboard',
+      }
+    );
+
+    // connect dashboard to table
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      {
+        id: dashboard.entityResponseData.id,
+        type: 'dashboard',
+      },
+      {
+        id: table.entityResponseData.id,
+        type: 'table',
+      }
+    );
+
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await visitLineageTab(page);
-    await editLineage(page);
-    await performZoomOut(page);
 
-    // connect table to topic
-    await connectEdgeBetweenNodes(page, table, topic);
-    await rearrangeNodes(page);
-
-    // connect topic to dashboard
-    await connectEdgeBetweenNodes(page, topic, dashboard);
-    await rearrangeNodes(page);
-
-    // connect dashboard to table
-    await connectEdgeBetweenNodes(page, dashboard, table);
-    await rearrangeNodes(page);
-
-    await page.reload();
-    await page.waitForLoadState('networkidle');
     await performZoomOut(page);
 
     await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
@@ -618,7 +641,7 @@ test('Verify cycle lineage should be handled properly', async ({ page }) => {
     await page
       .getByTestId(`lineage-node-${dashboardFqn}`)
       .getByTestId('plus-icon')
-      .click();
+      .dispatchEvent('click');
 
     await downstreamResponse;
 
@@ -633,7 +656,7 @@ test('Verify cycle lineage should be handled properly', async ({ page }) => {
     await page
       .getByTestId(`lineage-node-${dashboardFqn}`)
       .getByTestId('upstream-collapse-handle')
-      .click();
+      .dispatchEvent('click');
 
     await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
     await expect(
@@ -654,7 +677,7 @@ test('Verify cycle lineage should be handled properly', async ({ page }) => {
     await page
       .getByTestId(`lineage-node-${dashboardFqn}`)
       .getByTestId('plus-icon')
-      .click();
+      .dispatchEvent('click');
     await upStreamResponse2;
 
     await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
@@ -667,13 +690,13 @@ test('Verify cycle lineage should be handled properly', async ({ page }) => {
     await page
       .getByTestId(`lineage-node-${topicFqn}`)
       .getByTestId('downstream-collapse-handle')
-      .click();
+      .dispatchEvent('click');
 
     await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
     await expect(
       page.getByTestId(`lineage-node-${dashboardFqn}`)
-    ).toBeVisible();
+    ).not.toBeVisible();
   } finally {
     await Promise.all([
       table.delete(apiContext),

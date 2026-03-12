@@ -26,6 +26,11 @@ jest.mock('@untitledui/icons', () => ({
     .mockImplementation((props: React.SVGProps<SVGSVGElement>) => (
       <svg data-testid="chevron-right-icon" {...props} />
     )),
+  DotsHorizontal: jest
+    .fn()
+    .mockImplementation((props: React.SVGProps<SVGSVGElement>) => (
+      <svg data-testid="dots-horizontal-icon" {...props} />
+    )),
 }));
 
 // Mock react-i18next
@@ -82,8 +87,7 @@ jest.mock('antd', () => ({
         data-size={size}
         data-testid="button"
         onClick={onClick}
-        {...props}
-      >
+        {...props}>
         {children}
       </button>
     )),
@@ -366,7 +370,7 @@ describe('LineageTabContent', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
       expect(screen.getByText('Upstream Table')).toBeInTheDocument();
-      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
       expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 
@@ -413,7 +417,7 @@ describe('LineageTabContent', () => {
       render(<LineageTabContent {...defaultProps} filter="downstream" />);
 
       expect(screen.getByText('Downstream Table')).toBeInTheDocument();
-      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
       expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 
@@ -478,7 +482,7 @@ describe('LineageTabContent', () => {
 
       expect(screen.getByText('service')).toBeInTheDocument();
       expect(screen.getByText('schema')).toBeInTheDocument();
-      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
       expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 
@@ -636,7 +640,7 @@ describe('LineageTabContent', () => {
 
       expect(screen.getByText('service')).toBeInTheDocument();
       expect(screen.getByText('table')).toBeInTheDocument();
-      expect(screen.getByTestId('MoreHorizIcon')).toBeInTheDocument();
+      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
       expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
     });
 

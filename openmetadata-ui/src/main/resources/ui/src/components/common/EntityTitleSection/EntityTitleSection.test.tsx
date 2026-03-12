@@ -91,8 +91,7 @@ jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => ({
       <div data-testid="entity-name-modal">
         <button
           data-testid="modal-save-button"
-          onClick={() => onSave({ displayName: 'Updated Display Name' })}
-        >
+          onClick={() => onSave({ displayName: 'Updated Display Name' })}>
           Save
         </button>
         <button data-testid="modal-cancel-button" onClick={onCancel}>

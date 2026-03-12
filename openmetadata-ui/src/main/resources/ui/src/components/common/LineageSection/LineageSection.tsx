@@ -40,8 +40,7 @@ const LineageItem = React.memo<LineageItemProps>(function LineageItem({
       data-testid={`${type}-lineage`}
       iconLeading={<Icon height={14} width={14} />}
       size="sm"
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <div className="tw:flex tw:flex-row tw:gap-1">
         <Typography as="p" className="tw:text-blue-700 tw:font-normal">
           {t('label.-with-colon', { text: t(`label.${type}`) })}
@@ -49,8 +48,7 @@ const LineageItem = React.memo<LineageItemProps>(function LineageItem({
         <Typography
           as="p"
           className="tw:text-blue-700 tw:font-normal"
-          data-testid={`${type}-count`}
-        >
+          data-testid={`${type}-count`}>
           {count}
         </Typography>
       </div>
@@ -150,8 +148,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
   return (
     <div
       className="tw:px-3.25 tw:pb-4 tw:border-b tw:border-gray-200"
-      data-testid="lineage-section"
-    >
+      data-testid="lineage-section">
       <Typography as="p" className="tw:font-bold tw:text-gray-400">
         {t('label.lineage')}
       </Typography>

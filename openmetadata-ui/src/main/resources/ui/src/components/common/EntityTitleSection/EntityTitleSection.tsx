@@ -129,8 +129,7 @@ export const EntityTitleSection = ({
       className={classNames(
         'tw:sticky tw:p-1 tw:z-999 tw:top-0 tw:bg-white',
         className
-      )}
-    >
+      )}>
       <div className="tw:flex tw:gap-2 tw:items-center tw:rounded-lg tw:px-1 tw:bg-gray-blue-50 tw:py-2">
         <span className="tw:text-blue-700 tw:w-4.5 tw:h-4.5 tw:ml-1 tw:shrink-0">
           {searchClassBase.getEntityIcon(entityTypeValue)}
@@ -138,14 +137,12 @@ export const EntityTitleSection = ({
         <Tooltip
           placement={tooltipPlacement}
           title={getTextFromHtmlString(entityName)}
-          trigger="hover"
-        >
+          trigger="hover">
           <TooltipTrigger>
             <Link
               className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:font-semibold tw:truncate tw:no-underline tw:text-blue-700 tw:block"
               data-testid={testId}
-              to={linkHref}
-            >
+              to={linkHref}>
               {stringToHTML(entityName)}
             </Link>
           </TooltipTrigger>

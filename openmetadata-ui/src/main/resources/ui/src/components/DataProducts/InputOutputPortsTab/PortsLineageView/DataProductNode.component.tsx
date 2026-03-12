@@ -27,8 +27,7 @@ const DataProductNode = memo(({ data }: DataProductNodeProps) => {
   return (
     <div
       className="data-product-center-node"
-      data-testid="data-product-center-node"
-    >
+      data-testid="data-product-center-node">
       <Handle
         className="lineage-node-handle"
         id={`${dataProduct.id}-left`}
@@ -54,8 +53,7 @@ const DataProductNode = memo(({ data }: DataProductNodeProps) => {
         <Typography
           as="h4"
           className="tw:text-center tw:text-gray-400"
-          title={getEntityName(dataProduct)}
-        >
+          title={getEntityName(dataProduct)}>
           {getEntityName(dataProduct)}
         </Typography>
       </div>

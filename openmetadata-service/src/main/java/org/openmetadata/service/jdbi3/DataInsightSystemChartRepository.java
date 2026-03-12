@@ -770,8 +770,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           HashMap chartDetails = (HashMap) chart.getChartDetails();
           chartDetails.put("includeXAxisFiled", serviceName.toLowerCase());
         }
+        // Pass filter to buildDIChart so it's applied at query level (not just inside aggregations)
         DataInsightCustomChartResultList data =
-            searchClient.buildDIChart(chart, startTimestamp, endTimestamp, live);
+            searchClient.buildDIChart(chart, startTimestamp, endTimestamp, live, filter);
         result.put(chartName, data);
       }
     }

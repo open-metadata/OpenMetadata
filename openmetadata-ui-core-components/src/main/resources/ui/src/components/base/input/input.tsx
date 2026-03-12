@@ -6,6 +6,7 @@ import { HintText } from "@/components/base/input/hint-text";
 import { Label } from "@/components/base/input/label";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx, sortCx } from "@/utils/cx";
+import { fontSizeClass } from "@/utils/tailwindClasses";
 
 export interface InputBaseProps extends TextFieldProps {
     /** Tooltip message on hover. */
@@ -15,6 +16,11 @@ export interface InputBaseProps extends TextFieldProps {
      * @default "sm"
      */
     size?: "sm" | "md";
+    /**
+     * Font size of the input text.
+     * @default "md"
+     */
+    fontSize?: "xs" | "sm" | "md" | "lg" | "xl";
     /** Placeholder text. */
     placeholder?: string;
     /** Class name for the icon. */
@@ -39,6 +45,7 @@ export const InputBase = ({
     shortcut,
     groupRef,
     size = "sm",
+    fontSize = "md",
     isInvalid,
     isDisabled,
     icon: Icon,
@@ -121,7 +128,7 @@ export const InputBase = ({
                 ref={ref}
                 placeholder={placeholder}
                 className={cx(
-                    "tw:m-0 tw:w-full tw:bg-transparent tw:text-md tw:text-primary tw:ring-0 tw:outline-hidden tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary",
+                    cx("tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:ring-0 tw:outline-hidden tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary", fontSizeClass[fontSize]),
                     isDisabled && "tw:cursor-not-allowed tw:text-disabled",
                     sizes[inputSize].root,
                     context?.inputClassName,
@@ -221,6 +228,7 @@ interface InputProps extends InputBaseProps, BaseProps {
 
 export const Input = ({
     size = "sm",
+    fontSize = "md",
     placeholder,
     icon: Icon,
     label,
@@ -248,6 +256,7 @@ export const Input = ({
                             ref,
                             groupRef,
                             size,
+                            fontSize,
                             placeholder,
                             icon: Icon,
                             shortcut,
