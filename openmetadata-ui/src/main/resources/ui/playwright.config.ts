@@ -115,6 +115,9 @@ export default defineConfig({
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
+        ...STATEFUL_TEST_FILES,
+        ...GRAPH_TEST_FILES,
+        ...LANDING_TEST_FILES,
       ],
     },
     {
