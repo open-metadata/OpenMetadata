@@ -47,8 +47,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6]
-        shardTotal: [6]
+        shardIndex: [1, 2, 3, 4, 5, 6, 7, 8]
+        shardTotal: [8]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -133,14 +133,32 @@ jobs:
             npx playwright test \
               --project=ingestion \
 
+          elif [ "${{ matrix.shardIndex }}" -eq "6" ]; then
+            echo "🔹 Running stateful Playwright tests serially on shard 6"
+            npx playwright test \
+              --project=stateful \
+              --workers=1
+
+          elif [ "${{ matrix.shardIndex }}" -eq "7" ]; then
+            echo "🔹 Running graph/right-panel Playwright tests with reduced concurrency on shard 7"
+            npx playwright test \
+              --project=graph \
+              --workers=2
+
+          elif [ "${{ matrix.shardIndex }}" -eq "8" ]; then
+            echo "🔹 Running landing/widget Playwright tests with reduced concurrency on shard 8"
+            npx playwright test \
+              --project=landing \
+              --workers=2
+
           else
-            # Shards 3-6 handle chromium tests (4 workers total)
+            # Shards 3-5 handle chromium tests (3 shards total)
             CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 2 ))
-            echo "🔹 Running all other tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/4"
+            echo "🔹 Running all other tests (excluding DataAssetRules/stateful) on chromium shard ${CHROMIUM_SHARD}/3"
             npx playwright test \
               --project=chromium \
               --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/4
+              --shard=${CHROMIUM_SHARD}/3
           fi
 
         env:
@@ -359,25 +377,27 @@ jobs:
               await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
             }
 
-            // Write a rich summary with inline screenshots to GITHUB_STEP_SUMMARY
-            const summaryLines = [`## Shard ${shard} Failure Screenshots\n`];
+            // Write a lightweight summary to GITHUB_STEP_SUMMARY (no inline images to stay under 1024k limit)
+            const summaryLines = [`## Shard ${shard} Failure Summary\n`];
             const resultsDir = 'openmetadata-ui/src/main/resources/ui/playwright/output/test-results';
             if (fs.existsSync(resultsDir)) {
-              let screenshotCount = 0;
+              const failedTests = [];
               for (const entry of fs.readdirSync(resultsDir, { withFileTypes: true })) {
                 if (!entry.isDirectory()) continue;
                 const testDir = path.join(resultsDir, entry.name);
-                const pngs = fs.readdirSync(testDir).filter(f => f.endsWith('.png'));
-                for (const png of pngs) {
-                  if (screenshotCount >= 10) break;
-                  const pngPath = path.join(testDir, png);
-                  const b64 = fs.readFileSync(pngPath, 'base64');
-                  const testName = entry.name.replace(/-chromium.*$/, '').replace(/-/g, ' ');
-                  summaryLines.push(`### ${testName}`);
-                  summaryLines.push(`<img src="data:image/png;base64,${b64}" width="800" />\n`);
-                  screenshotCount++;
+                const hasScreenshots = fs.readdirSync(testDir).some(f => f.endsWith('.png'));
+                const hasTraces = fs.readdirSync(testDir).some(f => f.endsWith('.zip'));
+                const testName = entry.name.replace(/-chromium.*$/, '').replace(/-/g, ' ');
+                failedTests.push({ testName, hasScreenshots, hasTraces });
+              }
+              if (failedTests.length > 0) {
+                summaryLines.push(`| Test | Screenshots | Traces |`);
+                summaryLines.push(`|------|-------------|--------|`);
+                for (const t of failedTests.slice(0, 30)) {
+                  summaryLines.push(`| ${t.testName} | ${t.hasScreenshots ? '📸' : '-'} | ${t.hasTraces ? '🔍' : '-'} |`);
                 }
-                if (screenshotCount >= 10) break;
+                summaryLines.push('');
+                summaryLines.push(`📦 [Download screenshots, traces & videos from artifacts](${artifactUrl})`);
               }
             }
             if (summaryLines.length > 1) {
