@@ -62,15 +62,16 @@ interface DialogHeaderProps {
 }
 
 const DialogHeader = ({ title, children, className }: DialogHeaderProps) => (
-  <div className={cx("tw:flex tw:gap-4 tw:px-4 tw:pt-5 tw:sm:px-6 tw:sm:pt-6", className)}>
-    <div className="tw:z-10 tw:flex tw:flex-col tw:gap-0.5">
-      {title && (
-        <Heading slot="title" className="tw:text-md tw:font-semibold tw:text-primary">
-          {title}
-        </Heading>
-      )}
-      {children}
-    </div>
+  <div className={cx("tw:px-4 tw:pt-5 tw:sm:px-6 tw:sm:pt-6", className)}>
+    {title && (
+      <Heading
+        slot="title"
+        className="tw:text-md tw:font-semibold tw:text-primary"
+      >
+        {title}
+      </Heading>
+    )}
+    {children}
   </div>
 );
 
@@ -80,7 +81,12 @@ interface DialogContentProps {
 }
 
 const DialogContent = ({ children, className }: DialogContentProps) => (
-  <div className={cx("tw:flex tw:flex-col tw:justify-start tw:gap-4 tw:px-4 tw:pt-5 tw:sm:px-6", className)}>
+  <div
+    className={cx(
+      "tw:flex tw:flex-col tw:justify-start tw:gap-4 tw:px-4 tw:pt-5 tw:sm:px-6",
+      className,
+    )}
+  >
     {children}
   </div>
 );
@@ -91,10 +97,12 @@ interface DialogFooterProps {
 }
 
 const DialogFooter = ({ children, className }: DialogFooterProps) => (
-  <div className={cx("tw:z-10 tw:flex tw:flex-col tw:pt-6 tw:pb-4 tw:sm:pt-8 tw:sm:pb-6", className)}>
+  <div
+    className={cx("tw:z-10 tw:pt-6 tw:pb-4 tw:sm:pt-8 tw:sm:pb-6", className)}
+  >
     <div className="tw:w-full tw:border-t tw:border-secondary" />
     <div className="tw:h-4 tw:w-full tw:sm:h-6" />
-    <div className="tw:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:px-4 tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6">
+    <div className="w:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:px-4 tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6 tw:px-4 tw:sm:px-6">
       {children}
     </div>
   </div>
@@ -116,7 +124,14 @@ type DialogComponent = ((props: DialogProps) => JSX.Element) & {
   Footer: typeof DialogFooter;
 };
 
-const DialogBase = ({ children, title, showCloseButton, onClose, width = 688, ...props }: DialogProps) => (
+const DialogBase = ({
+  children,
+  title,
+  showCloseButton,
+  onClose,
+  width = 688,
+  ...props
+}: DialogProps) => (
   <AriaDialog
     {...props}
     className={cx(
@@ -131,7 +146,10 @@ const DialogBase = ({ children, title, showCloseButton, onClose, width = 688, ..
       <div className="tw:overflow-hidden tw:rounded-2xl">
         {title && (
           <>
-            <DialogHeader title={title} />
+            <DialogHeader
+              title={title}
+              className={showCloseButton ? "tw:pr-12" : undefined}
+            />
             <div className="tw:h-5 tw:w-full" />
             <div className="tw:w-full tw:border-t tw:border-secondary" />
           </>
