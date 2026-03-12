@@ -54,9 +54,8 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
     /* Collect trace and video on every failure (not just retries) for debugging */
-    trace: 'retain-on-failure',
+    trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
      * This ensures page.goto() and waitForLoadState() calls timeout after 60s
