@@ -288,7 +288,7 @@ const ObservabilityAlertsPage = () => {
       header: t('label.observability-alert'),
       subHeader: t('message.alerts-description'),
     }),
-    []
+    [t]
   );
 
   return (
